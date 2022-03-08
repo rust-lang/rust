@@ -199,6 +199,8 @@ fn target_data_for_def(
             let syntax = in_file_source.value.syntax();
             (vis_offset(syntax), in_file_source.value.visibility(), syntax.text_range(), file_id)
         }
+        // FIXME
+        hir::ModuleDef::Macro(_) => return None,
         // Enum variants can't be private, we can't modify builtin types
         hir::ModuleDef::Variant(_) | hir::ModuleDef::BuiltinType(_) => return None,
     };

@@ -8,7 +8,7 @@
 use arrayvec::ArrayVec;
 use hir::{
     Adt, AsAssocItem, AssocItem, BuiltinAttr, BuiltinType, Const, Field, Function, GenericParam,
-    HasVisibility, Impl, ItemInNs, Label, Local, MacroDef, Module, ModuleDef, Name, PathResolution,
+    HasVisibility, Impl, ItemInNs, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
     Semantics, Static, ToolModule, Trait, TypeAlias, Variant, Visibility,
 };
 use stdx::impl_from;
@@ -22,7 +22,7 @@ use crate::RootDatabase;
 // FIXME: a more precise name would probably be `Symbol`?
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Definition {
-    Macro(MacroDef),
+    Macro(Macro),
     Field(Field),
     Module(Module),
     Function(Function),
@@ -48,7 +48,7 @@ impl Definition {
 
     pub fn module(&self, db: &RootDatabase) -> Option<Module> {
         let module = match self {
-            Definition::Macro(it) => it.module(db)?,
+            Definition::Macro(it) => it.module(db),
             Definition::Module(it) => it.parent(db)?,
             Definition::Field(it) => it.parent_def(db).module(db),
             Definition::Function(it) => it.module(db),
@@ -493,7 +493,6 @@ impl From<PathResolution> for Definition {
             PathResolution::Local(local) => Definition::Local(local),
             PathResolution::TypeParam(par) => Definition::GenericParam(par.into()),
             PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
-            PathResolution::Macro(def) => Definition::Macro(def),
             PathResolution::SelfType(impl_def) => Definition::SelfType(impl_def),
             PathResolution::BuiltinAttr(attr) => Definition::BuiltinAttr(attr),
             PathResolution::ToolModule(tool) => Definition::ToolModule(tool),
@@ -512,6 +511,7 @@ impl From<ModuleDef> for Definition {
             ModuleDef::Static(it) => Definition::Static(it),
             ModuleDef::Trait(it) => Definition::Trait(it),
             ModuleDef::TypeAlias(it) => Definition::TypeAlias(it),
+            ModuleDef::Macro(it) => Definition::Macro(it),
             ModuleDef::BuiltinType(it) => Definition::BuiltinType(it),
         }
     }

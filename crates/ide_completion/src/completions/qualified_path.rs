@@ -52,7 +52,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             if let hir::PathResolution::Def(hir::ModuleDef::Module(module)) = resolution {
                 for (name, def) in module.scope(ctx.db, ctx.module) {
-                    if let Some(def) = module_or_fn_macro(def) {
+                    if let Some(def) = module_or_fn_macro(ctx.db, def) {
                         acc.add_resolution(ctx, name, def);
                     }
                 }
@@ -81,7 +81,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             for (name, def) in module_scope {
                 let add_resolution = match def {
                     // Don't suggest attribute macros and derives.
-                    ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                    ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
                     // no values in type places
                     ScopeDef::ModuleDef(
                         hir::ModuleDef::Function(_)

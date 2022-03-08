@@ -21,7 +21,7 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{known, ScopeDef};
+use hir::{db::HirDatabase, known, ScopeDef};
 use ide_db::SymbolKind;
 
 use crate::{
@@ -40,17 +40,17 @@ use crate::{
     CompletionContext, CompletionItem, CompletionItemKind,
 };
 
-fn module_or_attr(def: ScopeDef) -> Option<ScopeDef> {
+fn module_or_attr(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
     match def {
-        ScopeDef::MacroDef(mac) if mac.is_attr() => Some(def),
+        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_attr(db) => Some(def),
         ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
         _ => None,
     }
 }
 
-fn module_or_fn_macro(def: ScopeDef) -> Option<ScopeDef> {
+fn module_or_fn_macro(db: &dyn HirDatabase, def: ScopeDef) -> Option<ScopeDef> {
     match def {
-        ScopeDef::MacroDef(mac) if mac.is_fn_like() => Some(def),
+        ScopeDef::ModuleDef(hir::ModuleDef::Macro(m)) if m.is_fn_like(db) => Some(def),
         ScopeDef::ModuleDef(hir::ModuleDef::Module(_)) => Some(def),
         _ => None,
     }

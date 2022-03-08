@@ -1,5 +1,5 @@
 //! See [`FamousDefs`].
-use hir::{Crate, Enum, MacroDef, Module, ScopeDef, Semantics, Trait};
+use hir::{Crate, Enum, Macro, Module, ScopeDef, Semantics, Trait};
 
 use crate::RootDatabase;
 
@@ -84,7 +84,7 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:marker:Copy")
     }
 
-    pub fn core_macros_builtin_derive(&self) -> Option<MacroDef> {
+    pub fn core_macros_builtin_derive(&self) -> Option<Macro> {
         self.find_macro("core:macros:builtin:derive")
     }
 
@@ -118,9 +118,9 @@ impl FamousDefs<'_, '_> {
         }
     }
 
-    fn find_macro(&self, path: &str) -> Option<MacroDef> {
+    fn find_macro(&self, path: &str) -> Option<Macro> {
         match self.find_def(path)? {
-            hir::ScopeDef::MacroDef(it) => Some(it),
+            hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(it)) => Some(it),
             _ => None,
         }
     }

@@ -18,7 +18,7 @@ pub(crate) fn render_macro(
     ctx: RenderContext<'_>,
     import_to_add: Option<ImportEdit>,
     name: hir::Name,
-    macro_: hir::MacroDef,
+    macro_: hir::Macro,
 ) -> CompletionItem {
     let _p = profile::span("render_macro");
     render(ctx, name, macro_, import_to_add)
@@ -27,7 +27,7 @@ pub(crate) fn render_macro(
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     name: hir::Name,
-    macro_: hir::MacroDef,
+    macro_: hir::Macro,
     import_to_add: Option<ImportEdit>,
 ) -> CompletionItem {
     let source_range = if completion.is_immediately_after_macro_bang() {
@@ -40,14 +40,14 @@ fn render(
     let name = name.to_smol_str();
     let docs = ctx.docs(macro_);
     let docs_str = docs.as_ref().map(Documentation::as_str).unwrap_or_default();
-    let (bra, ket) =
-        if macro_.is_fn_like() { guess_macro_braces(&name, docs_str) } else { ("", "") };
+    let is_fn_like = macro_.is_fn_like(completion.db);
+    let (bra, ket) = if is_fn_like { guess_macro_braces(&name, docs_str) } else { ("", "") };
 
-    let needs_bang = macro_.is_fn_like()
-        && !matches!(completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
+    let needs_bang =
+        is_fn_like && !matches!(completion.path_kind(), Some(PathKind::Mac | PathKind::Use));
 
     let mut item = CompletionItem::new(
-        SymbolKind::from(macro_.kind()),
+        SymbolKind::from(macro_.kind(completion.db)),
         source_range,
         label(&ctx, needs_bang, bra, ket, &name),
     );
@@ -103,7 +103,7 @@ fn banged_name(name: &str) -> SmolStr {
     SmolStr::from_iter([name, "!"])
 }
 
-fn detail(sema: &Semantics<RootDatabase>, macro_: hir::MacroDef) -> Option<String> {
+fn detail(sema: &Semantics<RootDatabase>, macro_: hir::Macro) -> Option<String> {
     // FIXME: This is parsing the file!
     let InFile { file_id, value } = macro_.source(sema.db)?;
     let _ = sema.parse_or_expand(file_id);

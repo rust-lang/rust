@@ -180,7 +180,7 @@ impl<'a> DeclValidator<'a> {
                 AttrDefId::ImplId(iid) => Some(iid.lookup(self.db.upcast()).container.into()),
                 AttrDefId::ExternBlockId(id) => Some(id.lookup(self.db.upcast()).container.into()),
                 // These warnings should not explore macro definitions at all
-                AttrDefId::MacroDefId(_) => None,
+                AttrDefId::MacroId(_) => None,
                 AttrDefId::AdtId(aid) => match aid {
                     AdtId::StructId(sid) => Some(sid.lookup(self.db.upcast()).container.into()),
                     AdtId::EnumId(eid) => Some(eid.lookup(self.db.upcast()).container.into()),

@@ -225,7 +225,6 @@ impl<'a> Ctx<'a> {
             hir::PathResolution::Local(_)
             | hir::PathResolution::ConstParam(_)
             | hir::PathResolution::SelfType(_)
-            | hir::PathResolution::Macro(_)
             | hir::PathResolution::AssocItem(_)
             | hir::PathResolution::BuiltinAttr(_)
             | hir::PathResolution::ToolModule(_) => (),

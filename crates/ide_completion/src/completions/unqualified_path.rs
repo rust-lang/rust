@@ -36,7 +36,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(ImmediateLocation::ItemList | ImmediateLocation::Trait | ImmediateLocation::Impl) => {
             // only show macros in {Assoc}ItemList
             ctx.process_all_names(&mut |name, def| {
-                if let Some(def) = module_or_fn_macro(def) {
+                if let Some(def) = module_or_fn_macro(ctx.db, def) {
                     acc.add_resolution(ctx, name, def);
                 }
             });
@@ -45,7 +45,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(ImmediateLocation::TypeBound) => {
             ctx.process_all_names(&mut |name, res| {
                 let add_resolution = match res {
-                    ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+                    ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
                     ScopeDef::ModuleDef(hir::ModuleDef::Trait(_) | hir::ModuleDef::Module(_)) => {
                         true
                     }
@@ -94,7 +94,7 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
                 !ctx.previous_token_is(syntax::T![impl]) && !ctx.previous_token_is(syntax::T![for])
             }
             // Don't suggest attribute macros and derives.
-            ScopeDef::MacroDef(mac) => mac.is_fn_like(),
+            ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => mac.is_fn_like(ctx.db),
             // no values in type places
             ScopeDef::ModuleDef(
                 hir::ModuleDef::Function(_)
