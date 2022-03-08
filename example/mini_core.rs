@@ -483,8 +483,17 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+pub struct Unique<T: ?Sized> {
+    pub pointer: *const T,
+    pub _marker: PhantomData<T>,
+}
+
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
+
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Unique<U>> for Unique<T> where T: Unsize<U> {}
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T);
+pub struct Box<T: ?Sized>(Unique<T>, ());
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
@@ -508,8 +517,8 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
-    libc::free(ptr as *mut u8);
+unsafe fn box_free<T: ?Sized>(ptr: Unique<T>, alloc: ()) {
+    libc::free(ptr.pointer as *mut u8);
 }
 
 #[lang = "drop"]

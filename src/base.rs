@@ -25,7 +25,7 @@ pub(crate) fn codegen_fn<'tcx>(
     let mir = tcx.instance_mir(instance.def);
     let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
-        rustc_middle::mir::write_mir_pretty(tcx, Some(instance.def_id()), &mut buf).unwrap();
+        rustc_middle::mir::pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf).unwrap();
         String::from_utf8_lossy(&buf).into_owned()
     });
 
@@ -813,7 +813,14 @@ pub(crate) fn codegen_place<'tcx>(
     for elem in place.projection {
         match elem {
             PlaceElem::Deref => {
-                cplace = cplace.place_deref(fx);
+                if cplace.layout().ty.is_box() {
+                    cplace = cplace
+                        .place_field(fx, Field::new(0)) // Box<T> -> Unique<T>
+                        .place_field(fx, Field::new(0)) // Unique<T> -> *const T
+                        .place_deref(fx);
+                } else {
+                    cplace = cplace.place_deref(fx);
+                }
             }
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
