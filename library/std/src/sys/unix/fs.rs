@@ -1604,17 +1604,15 @@ mod remove_dir_impl {
         }
     }
 
-    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, p: &Path) -> io::Result<()> {
-        let pcstr = cstr(p)?;
-
+    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
         // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &pcstr) {
+        let fd = match openat_nofollow_dironly(parent_fd, &path) {
             Err(err) if err.raw_os_error() == Some(libc::ENOTDIR) => {
                 // not a directory - don't traverse further
                 return match parent_fd {
                     // unlink...
                     Some(parent_fd) => {
-                        cvt(unsafe { unlinkat(parent_fd, pcstr.as_ptr(), 0) }).map(drop)
+                        cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
                     }
                     // ...unless this was supposed to be the deletion root directory
                     None => Err(err),
@@ -1627,26 +1625,27 @@ mod remove_dir_impl {
         let (dir, fd) = fdreaddir(fd)?;
         for child in dir {
             let child = child?;
+            let child_name = child.name_cstr();
             match is_dir(&child) {
                 Some(true) => {
-                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
+                    remove_dir_all_recursive(Some(fd), child_name)?;
                 }
                 Some(false) => {
-                    cvt(unsafe { unlinkat(fd, child.name_cstr().as_ptr(), 0) })?;
+                    cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
                 }
                 None => {
                     // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
                     // if the process has the appropriate privileges. This however can causing orphaned
                     // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
                     // into it first instead of trying to unlink() it.
-                    remove_dir_all_recursive(Some(fd), Path::new(&child.file_name()))?;
+                    remove_dir_all_recursive(Some(fd), child_name)?;
                 }
             }
         }
 
         // unlink the directory after removing its contents
         cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), pcstr.as_ptr(), libc::AT_REMOVEDIR)
+            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
         })?;
         Ok(())
     }
@@ -1659,7 +1658,7 @@ mod remove_dir_impl {
         if attr.file_type().is_symlink() {
             crate::fs::remove_file(p)
         } else {
-            remove_dir_all_recursive(None, p)
+            remove_dir_all_recursive(None, &cstr(p)?)
         }
     }
 
