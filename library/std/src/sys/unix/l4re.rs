@@ -250,11 +250,11 @@ pub mod net {
             unimpl!()
         }
 
-        pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
             unimpl!()
         }
 
-        pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
             unimpl!()
         }
 
@@ -328,11 +328,11 @@ pub mod net {
             unimpl!()
         }
 
-        pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
             unimpl!()
         }
 
-        pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
             unimpl!()
         }
 
@@ -486,11 +486,11 @@ pub mod net {
             unimpl!()
         }
 
-        pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+        pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
             unimpl!()
         }
 
-        pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+        pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
             unimpl!()
         }
 

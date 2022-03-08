@@ -216,11 +216,11 @@ impl TcpStream {
         sgx_ineffective(DEFAULT_FAKE_HLIM)
     }
 
-    pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
         sgx_ineffective(())
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         sgx_ineffective(DEFAULT_FAKE_HLIM)
     }
 
@@ -308,11 +308,11 @@ impl TcpListener {
         sgx_ineffective(DEFAULT_FAKE_HLIM)
     }
 
-    pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
         sgx_ineffective(())
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         sgx_ineffective(DEFAULT_FAKE_HLIM)
     }
 
@@ -462,11 +462,11 @@ impl UdpSocket {
         self.0
     }
 
-    pub fn set_multicast_hlim_v6(&self, limit: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, limit: u32) -> io::Result<()> {
         self.0
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         self.0
     }
 

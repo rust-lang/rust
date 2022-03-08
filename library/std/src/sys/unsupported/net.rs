@@ -108,11 +108,11 @@ impl TcpStream {
         self.0
     }
 
-    pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
         self.0
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         self.0
     }
 
@@ -166,11 +166,11 @@ impl TcpListener {
         self.0
     }
 
-    pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
         self.0
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         self.0
     }
 
@@ -308,11 +308,11 @@ impl UdpSocket {
         self.0
     }
 
-    pub fn set_multicast_hlim_v6(&self, _: u32) -> io::Result<()> {
+    pub fn set_multicast_hop_limit_v6(&self, _: u32) -> io::Result<()> {
         self.0
     }
 
-    pub fn multicast_hlim_v6(&self) -> io::Result<u32> {
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u32> {
         self.0
     }
 
