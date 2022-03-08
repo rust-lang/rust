@@ -489,7 +489,8 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
         tcx.crates(())
             .iter()
-            .find(|&&num| tcx.crate_name(num).as_str() == name)
+            .copied()
+            .find(|&num| tcx.crate_name(num).as_str() == name)
             .map(CrateNum::as_def_id)
     }
 

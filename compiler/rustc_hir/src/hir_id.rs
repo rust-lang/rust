@@ -13,6 +13,7 @@ use std::fmt;
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[derive(Encodable, Decodable)]
+#[rustc_pass_by_value]
 pub struct HirId {
     pub owner: LocalDefId,
     pub local_id: ItemLocalId,

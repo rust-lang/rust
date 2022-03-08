@@ -33,7 +33,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
-    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: &Field) -> Ty<'tcx> {
+    pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
         let answer = match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
@@ -57,7 +57,7 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
     pub fn projection_ty(self, tcx: TyCtxt<'tcx>, elem: PlaceElem<'tcx>) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, &ty| ty)
+        self.projection_ty_core(tcx, ty::ParamEnv::empty(), &elem, |_, _, ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -70,11 +70,11 @@ impl<'tcx> PlaceTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         elem: &ProjectionElem<V, T>,
-        mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>,
+        mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
-        T: ::std::fmt::Debug,
+        T: ::std::fmt::Debug + Copy,
     {
         let answer = match *elem {
             ProjectionElem::Deref => {
@@ -105,7 +105,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(ref f, ref fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
+            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(&self, f, fty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer

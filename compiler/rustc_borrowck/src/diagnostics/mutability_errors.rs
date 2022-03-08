@@ -220,8 +220,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    [
-                        proj_base @ ..,
+                    &[
+                        ref proj_base @ ..,
                         ProjectionElem::Deref,
                         ProjectionElem::Field(field, _),
                         ProjectionElem::Deref,
@@ -342,7 +342,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 let tcx = self.infcx.tcx;
-                if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
+                if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
                     self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                 }
             }
@@ -382,7 +382,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
                 {
-                    if let ty::Closure(id, _) = ty.kind() {
+                    if let ty::Closure(id, _) = *ty.kind() {
                         self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                     }
                 }
@@ -687,7 +687,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn show_mutating_upvar(
         &self,
         tcx: TyCtxt<'_>,
-        id: &hir::def_id::DefId,
+        id: hir::def_id::DefId,
         the_place_err: PlaceRef<'tcx>,
         err: &mut Diagnostic,
     ) {
@@ -701,7 +701,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
                 // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
-                let captured_places = tables.closure_min_captures[id].get(&root_hir_id).unwrap();
+                let captured_places = tables.closure_min_captures[&id].get(&root_hir_id).unwrap();
 
                 let origin_projection = closure_kind_origin
                     .projections
@@ -1083,7 +1083,7 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    field: &mir::Field,
+    field: mir::Field,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
     if let ty::Ref(_, ty, _) = ty.kind()

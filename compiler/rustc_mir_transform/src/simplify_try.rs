@@ -707,7 +707,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
     ) -> StatementEquality {
         let helper = |rhs: &Rvalue<'tcx>,
                       place: &Place<'tcx>,
-                      variant_index: &VariantIdx,
+                      variant_index: VariantIdx,
                       switch_value: u128,
                       side_to_choose| {
             let place_type = place.ty(self.body, self.tcx).ty;
@@ -717,7 +717,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
             };
             // We need to make sure that the switch value that targets the bb with
             // SetDiscriminant is the same as the variant discriminant.
-            let variant_discr = adt.discriminant_for_variant(self.tcx, *variant_index).val;
+            let variant_discr = adt.discriminant_for_variant(self.tcx, variant_index).val;
             if variant_discr != switch_value {
                 trace!(
                     "NO: variant discriminant {} does not equal switch value {}",
@@ -726,7 +726,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                 );
                 return StatementEquality::NotEqual;
             }
-            let variant_is_fieldless = adt.variants[*variant_index].fields.is_empty();
+            let variant_is_fieldless = adt.variants[variant_index].fields.is_empty();
             if !variant_is_fieldless {
                 trace!("NO: variant {:?} was not fieldless", variant_index);
                 return StatementEquality::NotEqual;
@@ -753,7 +753,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
             // check for case A
             (
                 StatementKind::Assign(box (_, rhs)),
-                StatementKind::SetDiscriminant { place, variant_index },
+                &StatementKind::SetDiscriminant { ref place, variant_index },
             ) if y_target_and_value.value.is_some() => {
                 // choose basic block of x, as that has the assign
                 helper(
@@ -765,8 +765,8 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                 )
             }
             (
-                StatementKind::SetDiscriminant { place, variant_index },
-                StatementKind::Assign(box (_, rhs)),
+                &StatementKind::SetDiscriminant { ref place, variant_index },
+                &StatementKind::Assign(box (_, ref rhs)),
             ) if x_target_and_value.value.is_some() => {
                 // choose basic block of y, as that has the assign
                 helper(

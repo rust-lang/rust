@@ -702,10 +702,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
         fn upvar_is_local_variable<'tcx>(
             upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
-            upvar_id: &hir::HirId,
+            upvar_id: hir::HirId,
             body_owner_is_closure: bool,
         ) -> bool {
-            upvars.map(|upvars| !upvars.contains_key(upvar_id)).unwrap_or(body_owner_is_closure)
+            upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
         }
 
         debug!("walk_captures({:?})", closure_expr);
@@ -727,7 +727,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                     PlaceBase::Upvar(upvar_id) => {
                         if upvar_is_local_variable(
                             upvars,
-                            &upvar_id.var_path.hir_id,
+                            upvar_id.var_path.hir_id,
                             body_owner_is_closure,
                         ) {
                             // The nested closure might be fake reading the current (enclosing) closure's local variables.
