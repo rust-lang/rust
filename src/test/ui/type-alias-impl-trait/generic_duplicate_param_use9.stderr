@@ -10,13 +10,12 @@ note: previous use here
 LL | fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: the trait bound `A: Foo` is not satisfied in `(A, B, <A as Foo>::Bar)`
+error[E0277]: the trait bound `A: Foo` is not satisfied
   --> $DIR/generic_duplicate_param_use9.rs:7:18
    |
 LL | type Two<A, B> = impl Debug;
-   |                  ^^^^^^^^^^ within `(A, B, <A as Foo>::Bar)`, the trait `Foo` is not implemented for `A`
+   |                  ^^^^^^^^^^ the trait `Foo` is not implemented for `A`
    |
-   = note: required because it appears within the type `(A, B, <A as Foo>::Bar)`
 help: consider restricting type parameter `A`
    |
 LL | type Two<A: Foo, B> = impl Debug;
@@ -28,7 +27,7 @@ error[E0277]: `A` doesn't implement `Debug`
 LL | type Two<A, B> = impl Debug;
    |                  ^^^^^^^^^^ `A` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, <A as Foo>::Bar)`
+   = note: required because of the requirements on the impl of `Debug` for `(A, B, _)`
 help: consider restricting type parameter `A`
    |
 LL | type Two<A: std::fmt::Debug, B> = impl Debug;
@@ -40,7 +39,7 @@ error[E0277]: `B` doesn't implement `Debug`
 LL | type Two<A, B> = impl Debug;
    |                  ^^^^^^^^^^ `B` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = note: required because of the requirements on the impl of `Debug` for `(A, B, <A as Foo>::Bar)`
+   = note: required because of the requirements on the impl of `Debug` for `(A, B, _)`
 help: consider restricting type parameter `B`
    |
 LL | type Two<A, B: std::fmt::Debug> = impl Debug;
