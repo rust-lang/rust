@@ -3,7 +3,7 @@ use core::hint;
 use core::ops::RangeBounds;
 use core::ptr;
 
-use super::node::{marker, ForceResult::*, Handle, NodeRef};
+use super::node::{marker, ForceResult::*, Handle, NodeRef, Root};
 
 use crate::alloc::Allocator;
 // `front` and `back` are always both `None` or both `Some`.
@@ -11,6 +11,8 @@ pub struct LeafRange<BorrowType, K, V> {
     front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
     back: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
 }
+
+pub type RootVessel<K, V> = Option<Root<K, V>>;
 
 impl<'a, K: 'a, V: 'a> Clone for LeafRange<marker::Immut<'a>, K, V> {
     fn clone(&self) -> Self {
@@ -198,9 +200,14 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub fn deallocating_end<A: Allocator>(&mut self, alloc: &A) {
+    /// Fused: no harm if invoked multiple times on the same range object.
+    pub fn deallocating_end<A: Allocator>(
+        &mut self,
+        alloc: &A,
+        root_recycling: Option<&mut RootVessel<K, V>>,
+    ) {
         if let Some(front) = self.take_front() {
-            front.deallocating_end(alloc)
+            front.deallocating_end(alloc, root_recycling)
         }
     }
 }
@@ -501,10 +508,28 @@ impl<K, V> Handle<NodeRef<marker::Dying, K, V, marker::Leaf>, marker::Edge> {
     /// both sides of the tree, and have hit the same edge. As it is intended
     /// only to be called when all keys and values have been returned,
     /// no cleanup is done on any of the keys or values.
-    fn deallocating_end<A: Allocator>(self, alloc: &A) {
-        let mut edge = self.forget_node_type();
-        while let Some(parent_edge) = unsafe { edge.into_node().deallocate_and_ascend(alloc) } {
-            edge = parent_edge.forget_node_type();
+    ///
+    /// If `root_recycling` is given some vessel, this method recycles the leaf
+    /// and stores it as a fresh root in the vessel, instead of deallocating it.
+    fn deallocating_end<A: Allocator>(
+        self,
+        alloc: &A,
+        root_recycling: Option<&mut RootVessel<K, V>>,
+    ) {
+        let leaf = self.into_node();
+        let mut parent_edge = match root_recycling {
+            None => unsafe { leaf.deallocate_and_ascend(alloc) },
+            Some(root_recycling) => {
+                let (leaf, parent_edge) = unsafe { leaf.recycle_and_ascend() };
+                *root_recycling = Some(leaf.forget_type());
+                parent_edge
+            }
+        };
+        loop {
+            parent_edge = match parent_edge {
+                Some(edge) => unsafe { edge.into_node().deallocate_and_ascend(alloc) },
+                None => return,
+            }
         }
     }
 }

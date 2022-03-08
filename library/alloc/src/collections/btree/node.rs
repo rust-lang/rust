@@ -394,20 +394,57 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
         self,
         alloc: &A,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
-        let height = self.height;
-        let node = self.node;
-        let ret = self.ascend().ok();
-        unsafe {
-            alloc.deallocate(
-                node.cast(),
-                if height > 0 {
-                    Layout::new::<InternalNode<K, V>>()
-                } else {
-                    Layout::new::<LeafNode<K, V>>()
-                },
-            );
+        match self.force() {
+            ForceResult::Leaf(node) => unsafe { node.deallocate_and_ascend(alloc) },
+            ForceResult::Internal(node) => unsafe { node.deallocate_and_ascend(alloc) },
         }
-        ret
+    }
+}
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::Internal> {
+    /// Overload for internal nodes.
+    pub unsafe fn deallocate_and_ascend<A: Allocator>(
+        self,
+        alloc: &A,
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
+        debug_assert!(self.height > 0);
+        let node = self.node;
+        let parent_edge = self.ascend().ok();
+        unsafe { alloc.deallocate(node.cast(), Layout::new::<InternalNode<K, V>>()) };
+        parent_edge
+    }
+}
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::Leaf> {
+    /// Overload for leaf nodes.
+    pub unsafe fn deallocate_and_ascend<A: Allocator>(
+        self,
+        alloc: &A,
+    ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>> {
+        debug_assert!(self.height == 0);
+        let node = self.node;
+        let parent_edge = self.ascend().ok();
+        unsafe { alloc.deallocate(node.cast(), Layout::new::<LeafNode<K, V>>()) };
+        parent_edge
+    }
+}
+
+impl<K, V> NodeRef<marker::Dying, K, V, marker::Leaf> {
+    /// Similar to `ascend`, gets a reference to a node's parent node, but also
+    /// clears and returns the current leaf node. This is unsafe because that
+    /// leaf node will still be accessible from the dying tree, despite having
+    /// been reinitialized and being returned in an exclusive `NodeRef`.
+    pub unsafe fn recycle_and_ascend(
+        self,
+    ) -> (
+        NodeRef<marker::Owned, K, V, marker::Leaf>,
+        Option<Handle<NodeRef<marker::Dying, K, V, marker::Internal>, marker::Edge>>,
+    ) {
+        debug_assert!(self.height == 0);
+        let node = self.node;
+        let parent_edge = self.ascend().ok();
+        unsafe { LeafNode::init(node.as_ptr()) };
+        (NodeRef { height: 0, node, _marker: PhantomData }, parent_edge)
     }
 }
 

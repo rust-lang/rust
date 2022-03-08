@@ -1408,6 +1408,8 @@ fn test_bad_zst() {
 #[test]
 fn test_clear() {
     let mut map = BTreeMap::new();
+    map.clear();
+    assert_eq!(map.height(), None);
     for &len in &[MIN_INSERTS_HEIGHT_1, MIN_INSERTS_HEIGHT_2, 0, node::CAPACITY] {
         for i in 0..len {
             map.insert(i, ());
@@ -1415,7 +1417,7 @@ fn test_clear() {
         assert_eq!(map.len(), len);
         map.clear();
         map.check();
-        assert_eq!(map.height(), None);
+        assert_eq!(map.height(), Some(0), "len={len}");
     }
 }
 

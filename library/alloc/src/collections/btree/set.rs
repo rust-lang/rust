@@ -572,6 +572,7 @@ impl<T, A: Allocator> BTreeSet<T, A> {
     }
 
     /// Clears the set, removing all elements.
+    /// Keeps a part of the allocated memory for reuse.
     ///
     /// # Examples
     ///

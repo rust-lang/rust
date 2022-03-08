@@ -13,7 +13,7 @@ use crate::alloc::{Allocator, Global};
 
 use super::borrow::DormantMutRef;
 use super::dedup_sorted_iter::DedupSortedIter;
-use super::navigate::{LazyLeafRange, LeafRange};
+use super::navigate::{LazyLeafRange, LeafRange, RootVessel};
 use super::node::{self, marker, ForceResult::*, Handle, NodeRef, Root};
 use super::search::SearchResult::*;
 
@@ -559,6 +559,7 @@ impl<K, V> BTreeMap<K, V> {
 
 impl<K, V, A: Allocator> BTreeMap<K, V, A> {
     /// Clears the map, removing all elements.
+    /// Keeps a part of the allocated memory for reuse.
     ///
     /// # Examples
     ///
@@ -574,12 +575,18 @@ impl<K, V, A: Allocator> BTreeMap<K, V, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        // avoid moving the allocator
-        mem::drop(BTreeMap {
-            root: mem::replace(&mut self.root, None),
-            length: mem::replace(&mut self.length, 0),
-            alloc: ManuallyDrop::new(&*self.alloc),
-        });
+        if let Some(root) = self.root.take() {
+            let mut iter = IntoIter {
+                range: root.into_dying().full_range(),
+                length: self.length,
+                alloc: unsafe { ManuallyDrop::take(&mut self.alloc) },
+            };
+            self.length = 0;
+            while let Some(kv) = iter.dying_next(Some(&mut self.root)) {
+                // SAFETY: we consume the dying handle immediately.
+                unsafe { kv.drop_key_val() };
+            }
+        }
     }
 
     /// Makes a new empty BTreeMap with a reasonable choice for B.
@@ -1606,14 +1613,14 @@ impl<K, V, A: Allocator> Drop for IntoIter<K, V, A> {
             fn drop(&mut self) {
                 // Continue the same loop we perform below. This only runs when unwinding, so we
                 // don't have to care about panics this time (they'll abort).
-                while let Some(kv) = self.0.dying_next() {
+                while let Some(kv) = self.0.dying_next(None) {
                     // SAFETY: we consume the dying handle immediately.
                     unsafe { kv.drop_key_val() };
                 }
             }
         }
 
-        while let Some(kv) = self.dying_next() {
+        while let Some(kv) = self.dying_next(None) {
             let guard = DropGuard(self);
             // SAFETY: we don't touch the tree before consuming the dying handle.
             unsafe { kv.drop_key_val() };
@@ -1625,11 +1632,15 @@ impl<K, V, A: Allocator> Drop for IntoIter<K, V, A> {
 impl<K, V, A: Allocator> IntoIter<K, V, A> {
     /// Core of a `next` method returning a dying KV handle,
     /// invalidated by further calls to this function and some others.
+    ///
+    /// If `root_recycling` is given some vessel, this method recycles the last
+    /// leaf and stores it as a fresh root in the vessel.
     fn dying_next(
         &mut self,
+        root_recycling: Option<&mut RootVessel<K, V>>,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
         if self.length == 0 {
-            self.range.deallocating_end(&self.alloc);
+            self.range.deallocating_end(&self.alloc, root_recycling);
             None
         } else {
             self.length -= 1;
@@ -1643,7 +1654,7 @@ impl<K, V, A: Allocator> IntoIter<K, V, A> {
         &mut self,
     ) -> Option<Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV>> {
         if self.length == 0 {
-            self.range.deallocating_end(&self.alloc);
+            self.range.deallocating_end(&self.alloc, None);
             None
         } else {
             self.length -= 1;
@@ -1658,7 +1669,7 @@ impl<K, V, A: Allocator> Iterator for IntoIter<K, V, A> {
 
     fn next(&mut self) -> Option<(K, V)> {
         // SAFETY: we consume the dying handle immediately.
-        self.dying_next().map(unsafe { |kv| kv.into_key_val() })
+        self.dying_next(None).map(unsafe { |kv| kv.into_key_val() })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
