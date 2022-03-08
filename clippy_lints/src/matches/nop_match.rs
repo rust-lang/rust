@@ -80,26 +80,29 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
 }
 
 fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
-    if let Some(else_block) = if_let.if_else {
+    if let Some(if_else) = if_let.if_else {
         if !pat_same_as_expr(if_let.let_pat, peel_blocks_with_stmt(if_let.if_then)) {
             return false;
         }
 
-        let else_expr = peel_blocks_with_stmt(else_block);
         // Recurrsively check for each `else if let` phrase,
-        if let Some(ref nested_if_let) = higher::IfLet::hir(cx, else_expr) {
+        if let Some(ref nested_if_let) = higher::IfLet::hir(cx, if_else) {
             return check_if_let(cx, nested_if_let);
         }
-        let ret = strip_return(else_expr);
-        let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
-        if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
-            if let ExprKind::Path(ref qpath) = ret.kind {
-                return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
+
+        if matches!(if_else.kind, ExprKind::Block(..)) {
+            let else_expr = peel_blocks_with_stmt(if_else);
+            let ret = strip_return(else_expr);
+            let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
+            if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
+                if let ExprKind::Path(ref qpath) = ret.kind {
+                    return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
+                }
+            } else {
+                return eq_expr_value(cx, if_let.let_expr, ret);
             }
-        } else {
-            return eq_expr_value(cx, if_let.let_expr, ret);
+            return true;
         }
-        return true;
     }
     false
 }

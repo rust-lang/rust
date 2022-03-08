@@ -3,6 +3,7 @@
 #![allow(clippy::manual_map)]
 #![allow(dead_code)]
 
+#[derive(Clone, Copy)]
 enum Choice {
     A,
     B,
@@ -79,8 +80,8 @@ fn if_let_result(x: Result<(), i32>) {
     let _: Result<(), i32> = if let Err(e) = Ok(1) { Err(e) } else { x };
 }
 
-fn custom_enum_a(x: Choice) -> Choice {
-    if let Choice::A = x {
+fn if_let_custom_enum(x: Choice) {
+    let _: Choice = if let Choice::A = x {
         Choice::A
     } else if let Choice::B = x {
         Choice::B
@@ -88,7 +89,15 @@ fn custom_enum_a(x: Choice) -> Choice {
         Choice::C
     } else {
         x
-    }
+    };
+    // Don't trigger
+    let _: Choice = if let Choice::A = x {
+        Choice::A
+    } else if true {
+        Choice::B
+    } else {
+        x
+    };
 }
 
 fn main() {}
