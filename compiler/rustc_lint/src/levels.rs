@@ -258,7 +258,7 @@ impl<'s> LintLevelsBuilder<'s> {
             };
 
             if metas.is_empty() {
-                // FIXME (#55112): issue unused-attributes lint for `#[level()]`
+                // This emits the unused_attributes lint for `#[level()]`
                 continue;
             }
 
@@ -271,8 +271,6 @@ impl<'s> LintLevelsBuilder<'s> {
                     ast::MetaItemKind::Word => {} // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
-                            // FIXME (#55112): issue unused-attributes lint if we thereby
-                            // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_err(
