@@ -187,13 +187,12 @@ EOF
 
     git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,llvm-asm/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,simd*,borrowck/,test*,*lto*.rs} || true
+    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,simd*,borrowck/,test*,*lto*.rs} || true
     for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
       rm $test
     done
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
     git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
-    rm src/test/ui/llvm-asm/llvm-asm-in-out-operand.rs || true # TODO(antoyo): Enable back this test if I ever implement the llvm_asm! macro.
 
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
