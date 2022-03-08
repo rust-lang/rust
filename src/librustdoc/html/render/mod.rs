@@ -1065,14 +1065,15 @@ fn render_assoc_items_inner(
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::empty_from(w);
-        let render_mode = match what {
+        let (render_mode, id) = match what {
             AssocItemRender::All => {
                 tmp_buf.write_str(
                     "<h2 id=\"implementations\" class=\"small-section-header\">\
-                         Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
-                    </h2>",
+                         Implementations\
+                         <a href=\"#implementations\" class=\"anchor\"></a>\
+                     </h2>",
                 );
-                RenderMode::Normal
+                (RenderMode::Normal, "implementations-list".to_owned())
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
@@ -1090,7 +1091,7 @@ fn render_assoc_items_inner(
                     trait_ = trait_.print(cx),
                     type_ = type_.print(cx),
                 );
-                RenderMode::ForDeref { mut_: deref_mut_ }
+                (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
         };
         let mut impls_buf = Buffer::empty_from(w);
@@ -1115,7 +1116,9 @@ fn render_assoc_items_inner(
         }
         if !impls_buf.is_empty() {
             w.push_buffer(tmp_buf);
+            write!(w, "<div id=\"{}\">", id);
             w.push_buffer(impls_buf);
+            w.write_str("</div>");
         }
     }
 
@@ -1146,7 +1149,8 @@ fn render_assoc_items_inner(
             write!(
                 w,
                 "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
-                     Trait Implementations<a href=\"#trait-implementations\" class=\"anchor\"></a>\
+                     Trait Implementations\
+                     <a href=\"#trait-implementations\" class=\"anchor\"></a>\
                  </h2>\
                  <div id=\"trait-implementations-list\">{}</div>",
                 impls
