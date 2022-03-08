@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -178,34 +178,7 @@ impl CheckAttrVisitor<'_> {
                 check_duplicates(self.tcx, attr, hir_id, *duplicates, &mut seen);
             }
 
-            // Warn on useless empty attributes.
-            if matches!(
-                attr.name_or_empty(),
-                sym::macro_use
-                    | sym::allow
-                    | sym::warn
-                    | sym::deny
-                    | sym::forbid
-                    | sym::feature
-                    | sym::repr
-                    | sym::target_feature
-            ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
-            {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("unused attribute")
-                        .span_suggestion(
-                            attr.span,
-                            "remove this attribute",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        )
-                        .note(&format!(
-                            "attribute `{}` with an empty list has no effect",
-                            attr.name_or_empty()
-                        ))
-                        .emit();
-                });
-            }
+            self.check_unused_attribute(hir_id, attr)
         }
 
         if !is_valid {
@@ -1968,6 +1941,55 @@ impl CheckAttrVisitor<'_> {
                 lint.build("`#[plugin_registrar]` only has an effect on functions").emit();
             });
         }
+    }
+
+    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute) {
+        // Warn on useless empty attributes.
+        let note = if matches!(
+            attr.name_or_empty(),
+            sym::macro_use
+                | sym::allow
+                | sym::expect
+                | sym::warn
+                | sym::deny
+                | sym::forbid
+                | sym::feature
+                | sym::repr
+                | sym::target_feature
+        ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
+        {
+            format!(
+                "attribute `{}` with an empty list has no effect",
+                attr.name_or_empty()
+            )
+        } else if matches!(
+                attr.name_or_empty(),
+                sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+            ) && let Some(meta) = attr.meta_item_list()
+            && meta.len() == 1
+            && let Some(item) = meta[0].meta_item()
+            && let MetaItemKind::NameValue(_) = &item.kind
+            && item.path == sym::reason
+        {
+            format!(
+                "attribute `{}` without any lints has no effect",
+                attr.name_or_empty()
+            )
+        } else {
+            return;
+        };
+
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            lint.build("unused attribute")
+                .span_suggestion(
+                    attr.span,
+                    "remove this attribute",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .note(&note)
+                .emit();
+        });
     }
 }
 

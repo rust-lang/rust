@@ -795,7 +795,9 @@ crate fn repr_nullable_ptr<'tcx>(
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
             match (field_ty_scalar.valid_range.start, field_ty_scalar.valid_range.end) {
-                (0, _) => unreachable!("Non-null optimisation extended to a non-zero value."),
+                (0, x) if x == field_ty_scalar.value.size(&cx.tcx).unsigned_int_max() - 1 => {
+                    return Some(get_nullable_type(cx, field_ty).unwrap());
+                }
                 (1, _) => {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }

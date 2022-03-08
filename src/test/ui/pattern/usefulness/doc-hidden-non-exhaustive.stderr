@@ -4,8 +4,22 @@ error[E0004]: non-exhaustive patterns: `_` not covered
 LL |     match Foo::A {
    |           ^^^^^^ pattern `_` not covered
    |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+note: `Foo` defined here
+  --> $DIR/auxiliary/hidden.rs:1:1
+   |
+LL | / pub enum Foo {
+LL | |     A,
+LL | |     B,
+LL | |     #[doc(hidden)]
+LL | |     C,
+LL | | }
+   | |_^
    = note: the matched value is of type `Foo`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Foo::B => {}
+LL +         _ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `B` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:14:11
@@ -13,13 +27,23 @@ error[E0004]: non-exhaustive patterns: `B` not covered
 LL |     match Foo::A {
    |           ^^^^^^ pattern `B` not covered
    |
-  ::: $DIR/auxiliary/hidden.rs:3:5
+note: `Foo` defined here
+  --> $DIR/auxiliary/hidden.rs:3:5
    |
-LL |     B,
-   |     - not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL | / pub enum Foo {
+LL | |     A,
+LL | |     B,
+   | |     ^ not covered
+LL | |     #[doc(hidden)]
+LL | |     C,
+LL | | }
+   | |_-
    = note: the matched value is of type `Foo`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Foo::C => {}
+LL +         B => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `B` and `_` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:20:11
@@ -27,13 +51,23 @@ error[E0004]: non-exhaustive patterns: `B` and `_` not covered
 LL |     match Foo::A {
    |           ^^^^^^ patterns `B` and `_` not covered
    |
-  ::: $DIR/auxiliary/hidden.rs:3:5
+note: `Foo` defined here
+  --> $DIR/auxiliary/hidden.rs:3:5
    |
-LL |     B,
-   |     - not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL | / pub enum Foo {
+LL | |     A,
+LL | |     B,
+   | |     ^ not covered
+LL | |     #[doc(hidden)]
+LL | |     C,
+LL | | }
+   | |_-
    = note: the matched value is of type `Foo`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         Foo::A => {}
+LL +         B | _ => todo!()
+   |
 
 error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
   --> $DIR/doc-hidden-non-exhaustive.rs:25:11
@@ -41,13 +75,24 @@ error[E0004]: non-exhaustive patterns: `Some(B)` and `Some(_)` not covered
 LL |     match None {
    |           ^^^^ patterns `Some(B)` and `Some(_)` not covered
    |
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
+note: `Option<Foo>` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ---- not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL | / pub enum Option<T> {
+LL | |     /// No value.
+LL | |     #[lang = "None"]
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+...  |
+LL | |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   | |     ^^^^ not covered
+LL | | }
+   | |_-
    = note: the matched value is of type `Option<Foo>`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         Some(Foo::A) => {}
+LL +         Some(B) | Some(_) => todo!()
+   |
 
 error: aborting due to 4 previous errors
 

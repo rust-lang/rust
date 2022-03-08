@@ -20,7 +20,6 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::source_map::{self, Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, Pos};
@@ -2712,8 +2711,7 @@ impl<'a> Parser<'a> {
         let mut async_block_err = |e: &mut Diagnostic, span: Span| {
             recover_async = true;
             e.span_label(span, "`async` blocks are only allowed in Rust 2018 or later");
-            e.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
-            e.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
+            e.help_use_latest_edition();
         };
 
         while self.token != token::CloseDelim(close_delim) {
