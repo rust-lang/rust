@@ -85,7 +85,7 @@ struct ZST;
 // A `RawVec` holding zero-sized elements should always look like this.
 fn zst_sanity<T>(v: &Box<[MaybeUninit<T>]>) {
     assert_eq!(v.capacity(), usize::MAX);
-    assert_eq!(v.as_ptr(), core::ptr::Unique::<T>::dangling().as_ptr());
+    assert_eq!(v.as_ptr().cast::<T>(), core::ptr::Unique::<T>::dangling().as_ptr() as *const T);
     // assert_eq!(v.current_memory(), None);
 }
 
