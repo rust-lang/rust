@@ -48,9 +48,9 @@ impl RWLock {
             }
             panic!("rwlock read lock would result in deadlock");
         } else {
-            // According to POSIX, for a properly initialized rwlock this can only
-            // return EAGAIN or EDEADLK or 0. We rely on that.
-            debug_assert_eq!(r, 0);
+            // POSIX does not make guarantees about all the errors that may be returned.
+            // See issue #94705 for more details.
+            assert_eq!(r, 0, "unexpected error during rwlock read lock: {:?}", r);
             self.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }
