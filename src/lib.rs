@@ -301,7 +301,10 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
     };
 
-    isa_builder.finish(flags)
+    match isa_builder.finish(flags) {
+        Ok(target_isa) => target_isa,
+        Err(err) => sess.fatal(&format!("failed to build TargetIsa: {}", err)),
+    }
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
