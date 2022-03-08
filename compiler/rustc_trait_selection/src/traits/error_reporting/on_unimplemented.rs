@@ -4,7 +4,7 @@ use super::{
 use crate::infer::InferCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::subst::Subst;
+use rustc_middle::ty::subst::{Subst, SubstsRef};
 use rustc_middle::ty::{self, GenericParamDefKind};
 use rustc_span::symbol::sym;
 use std::iter;
@@ -17,7 +17,7 @@ crate trait InferCtxtExt<'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<DefId>;
+    ) -> Option<(DefId, SubstsRef<'tcx>)>;
 
     /*private*/
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str>;
@@ -34,7 +34,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
-    ) -> Option<DefId> {
+    ) -> Option<(DefId, SubstsRef<'tcx>)> {
         let tcx = self.tcx;
         let param_env = obligation.param_env;
         let trait_ref = tcx.erase_late_bound_regions(trait_ref);
@@ -50,7 +50,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let impl_self_ty = impl_trait_ref.self_ty();
 
             if let Ok(..) = self.can_eq(param_env, trait_self_ty, impl_self_ty) {
-                self_match_impls.push(def_id);
+                self_match_impls.push((def_id, impl_substs));
 
                 if iter::zip(
                     trait_ref.substs.types().skip(1),
@@ -58,12 +58,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 )
                 .all(|(u, v)| self.fuzzy_match_tys(u, v, false).is_some())
                 {
-                    fuzzy_match_impls.push(def_id);
+                    fuzzy_match_impls.push((def_id, impl_substs));
                 }
             }
         });
 
-        let impl_def_id = if self_match_impls.len() == 1 {
+        let impl_def_id_and_substs = if self_match_impls.len() == 1 {
             self_match_impls[0]
         } else if fuzzy_match_impls.len() == 1 {
             fuzzy_match_impls[0]
@@ -71,7 +71,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return None;
         };
 
-        tcx.has_attr(impl_def_id, sym::rustc_on_unimplemented).then_some(impl_def_id)
+        tcx.has_attr(impl_def_id_and_substs.0, sym::rustc_on_unimplemented)
+            .then_some(impl_def_id_and_substs)
     }
 
     /// Used to set on_unimplemented's `ItemContext`
@@ -120,8 +121,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         obligation: &PredicateObligation<'tcx>,
     ) -> OnUnimplementedNote {
-        let def_id =
-            self.impl_similar_to(trait_ref, obligation).unwrap_or_else(|| trait_ref.def_id());
+        let (def_id, substs) = self
+            .impl_similar_to(trait_ref, obligation)
+            .unwrap_or_else(|| (trait_ref.def_id(), trait_ref.skip_binder().substs));
         let trait_ref = trait_ref.skip_binder();
 
         let mut flags = vec![(
@@ -176,7 +178,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             for param in generics.params.iter() {
                 let value = match param.kind {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
-                        trait_ref.substs[param.index as usize].to_string()
+                        substs[param.index as usize].to_string()
                     }
                     GenericParamDefKind::Lifetime => continue,
                 };
@@ -184,7 +186,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((name, Some(value)));
 
                 if let GenericParamDefKind::Type { .. } = param.kind {
-                    let param_ty = trait_ref.substs[param.index as usize].expect_ty();
+                    let param_ty = substs[param.index as usize].expect_ty();
                     if let Some(def) = param_ty.ty_adt_def() {
                         // We also want to be able to select the parameter's
                         // original signature with no type arguments resolved
@@ -229,9 +231,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         });
 
-        if let Ok(Some(command)) =
-            OnUnimplementedDirective::of_item(self.tcx, trait_ref.def_id, def_id)
-        {
+        if let Ok(Some(command)) = OnUnimplementedDirective::of_item(self.tcx, def_id) {
             command.evaluate(self.tcx, trait_ref, &flags)
         } else {
             OnUnimplementedNote::default()

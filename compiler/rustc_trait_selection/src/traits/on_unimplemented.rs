@@ -54,7 +54,7 @@ fn parse_error(
 impl<'tcx> OnUnimplementedDirective {
     fn parse(
         tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
+        item_def_id: DefId,
         items: &[NestedMetaItem],
         span: Span,
         is_root: bool,
@@ -63,7 +63,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut item_iter = items.iter();
 
         let parse_value = |value_str| {
-            OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span).map(Some)
+            OnUnimplementedFormatString::try_parse(tcx, item_def_id, value_str, span).map(Some)
         };
 
         let condition = if is_root {
@@ -135,7 +135,7 @@ impl<'tcx> OnUnimplementedDirective {
             {
                 if let Some(items) = item.meta_item_list() {
                     if let Ok(subcommand) =
-                        Self::parse(tcx, trait_def_id, &items, item.span(), false)
+                        Self::parse(tcx, item_def_id, &items, item.span(), false)
                     {
                         subcommands.push(subcommand);
                     } else {
@@ -178,19 +178,15 @@ impl<'tcx> OnUnimplementedDirective {
         }
     }
 
-    pub fn of_item(
-        tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
-        impl_def_id: DefId,
-    ) -> Result<Option<Self>, ErrorGuaranteed> {
-        let attrs = tcx.get_attrs(impl_def_id);
+    pub fn of_item(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<Option<Self>, ErrorGuaranteed> {
+        let attrs = tcx.get_attrs(item_def_id);
 
         let Some(attr) = tcx.sess.find_by_name(&attrs, sym::rustc_on_unimplemented) else {
             return Ok(None);
         };
 
         let result = if let Some(items) = attr.meta_item_list() {
-            Self::parse(tcx, trait_def_id, &items, attr.span, true).map(Some)
+            Self::parse(tcx, item_def_id, &items, attr.span, true).map(Some)
         } else if let Some(value) = attr.value_str() {
             Ok(Some(OnUnimplementedDirective {
                 condition: None,
@@ -198,7 +194,7 @@ impl<'tcx> OnUnimplementedDirective {
                 subcommands: vec![],
                 label: Some(OnUnimplementedFormatString::try_parse(
                     tcx,
-                    trait_def_id,
+                    item_def_id,
                     value,
                     attr.span,
                 )?),
@@ -209,7 +205,7 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             return Err(ErrorGuaranteed);
         };
-        debug!("of_item({:?}/{:?}) = {:?}", trait_def_id, impl_def_id, result);
+        debug!("of_item({:?}) = {:?}", item_def_id, result);
         result
     }
 
@@ -280,23 +276,29 @@ impl<'tcx> OnUnimplementedDirective {
 impl<'tcx> OnUnimplementedFormatString {
     fn try_parse(
         tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
+        item_def_id: DefId,
         from: Symbol,
         err_sp: Span,
     ) -> Result<Self, ErrorGuaranteed> {
         let result = OnUnimplementedFormatString(from);
-        result.verify(tcx, trait_def_id, err_sp)?;
+        result.verify(tcx, item_def_id, err_sp)?;
         Ok(result)
     }
 
     fn verify(
         &self,
         tcx: TyCtxt<'tcx>,
-        trait_def_id: DefId,
+        item_def_id: DefId,
         span: Span,
     ) -> Result<(), ErrorGuaranteed> {
-        let name = tcx.item_name(trait_def_id);
-        let generics = tcx.generics_of(trait_def_id);
+        let trait_def_id = if tcx.is_trait(item_def_id) {
+            item_def_id
+        } else {
+            tcx.trait_id_of_impl(item_def_id)
+                .expect("expected `on_unimplemented` to correspond to a trait")
+        };
+        let trait_name = tcx.item_name(trait_def_id);
+        let generics = tcx.generics_of(item_def_id);
         let s = self.0.as_str();
         let parser = Parser::new(s, None, None, false, ParseMode::Format);
         let mut result = Ok(());
@@ -307,7 +309,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     // `{Self}` is allowed
                     Position::ArgumentNamed(s, _) if s == kw::SelfUpper => (),
                     // `{ThisTraitsName}` is allowed
-                    Position::ArgumentNamed(s, _) if s == name => (),
+                    Position::ArgumentNamed(s, _) if s == trait_name => (),
                     // `{from_method}` is allowed
                     Position::ArgumentNamed(s, _) if s == sym::from_method => (),
                     // `{from_desugaring}` is allowed
@@ -329,9 +331,13 @@ impl<'tcx> OnUnimplementedFormatString {
                                     tcx.sess,
                                     span,
                                     E0230,
-                                    "there is no parameter `{}` on trait `{}`",
+                                    "there is no parameter `{}` on {}",
                                     s,
-                                    name
+                                    if trait_def_id == item_def_id {
+                                        format!("trait `{}`", trait_name)
+                                    } else {
+                                        "impl".to_string()
+                                    }
                                 )
                                 .emit();
                                 result = Err(ErrorGuaranteed);
