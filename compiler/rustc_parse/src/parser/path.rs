@@ -624,9 +624,18 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
+            let is_const_fn = self.look_ahead(1, |t| t.kind == token::OpenDelim(token::Paren));
+            let mut snapshot = self.clone();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
+                    if is_const_fn {
+                        if let Ok(expr) = snapshot.parse_expr_res(Restrictions::CONST_EXPR, None) {
+                            *self = snapshot;
+                            return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                        }
+                    }
+                    // self.parse_fn_call_expr();
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
