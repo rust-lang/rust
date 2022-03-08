@@ -69,8 +69,8 @@ pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
 // (See also the comment on `DiagnosticBuilder`'s `diagnostic` field.)
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(PResult<'_, ()>, 16);
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(PResult<'_, bool>, 24);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64", not(bootstrap)))]
+rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Encodable, Decodable)]
 pub enum SuggestionStyle {

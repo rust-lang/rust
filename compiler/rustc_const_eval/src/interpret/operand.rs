@@ -780,13 +780,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 }
 
 // Some nodes are used a lot. Make sure they don't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64", not(bootstrap)))]
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
     // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(Immediate, 56);
-    static_assert_size!(ImmTy<'_>, 72);
-    static_assert_size!(Operand, 64);
-    static_assert_size!(OpTy<'_>, 88);
+    static_assert_size!(Immediate, 48);
+    static_assert_size!(ImmTy<'_>, 64);
+    static_assert_size!(Operand, 56);
+    static_assert_size!(OpTy<'_>, 80);
 }
