@@ -2475,7 +2475,7 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("x86_64", "watchos") => "watchsimulator",
         ("arm64_32", "watchos") => "watchos",
         ("aarch64", "watchos") => "watchos",
-        ("armv7k", "watchos") => "watchos",
+        ("arm", "watchos") => "watchos",
         _ => {
             sess.err(&format!("unsupported arch `{}` for os `{}`", arch, os));
             return;
@@ -2533,7 +2533,7 @@ fn get_apple_sdk_root(sdk_name: &str) -> Result<String, String> {
         }
     }
     let res =
-        Command::new("xcrunp").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
+        Command::new("xcrun").arg("--show-sdk-path").arg("-sdk").arg(sdk_name).output().and_then(
             |output| {
                 if output.status.success() {
                     Ok(String::from_utf8(output.stdout).unwrap())

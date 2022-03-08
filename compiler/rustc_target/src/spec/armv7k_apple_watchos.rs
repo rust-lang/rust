@@ -11,7 +11,6 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v7,+vfp4,+neon".to_string(),
             max_atomic_width: Some(64),
-            unsupported_abis: super::arm_base::unsupported_abis(),
             forces_embed_bitcode: true,
             // These arguments are not actually invoked - they just have
             // to look right to pass App Store validation.

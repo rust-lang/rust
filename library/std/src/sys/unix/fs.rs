@@ -17,6 +17,7 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
     all(target_os = "linux", target_env = "gnu"),
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
 ))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "macos")]
@@ -27,6 +28,7 @@ use libc::{c_int, mode_t};
 #[cfg(any(
     target_os = "macos",
     target_os = "ios",
+    target_os = "watchos",
     all(target_os = "linux", target_env = "gnu")
 ))]
 use libc::c_char;
@@ -714,6 +716,7 @@ impl DirEntry {
     #[cfg(not(any(
         target_os = "macos",
         target_os = "ios",
+        target_os = "watchos",
         target_os = "netbsd",
         target_os = "openbsd",
         target_os = "freebsd",

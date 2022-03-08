@@ -18,7 +18,7 @@ pub enum Arch {
 
 fn target_abi(arch: Arch) -> String {
     match arch {
-        Armv7 | Armv7s | Arm64 | I386 | X86_64 => "",
+        Armv7 | Armv7k | Armv7s | Arm64 | Arm64_32 | I386 | X86_64 => "",
         X86_64_macabi | Arm64_macabi => "macabi",
         Arm64_sim => "sim",
     }

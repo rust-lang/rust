@@ -33,7 +33,7 @@ pub const unwinder_private_data_size: usize = 6;
 #[cfg(all(target_arch = "arm", not(any(target_os = "ios", target_os = "watchos"))))]
 pub const unwinder_private_data_size: usize = 20;
 
-#[cfg(all(target_arch = "arm", any(target_os = "ios", target_os = "watchos")))]
+#[cfg(all(any(target_arch = "arm", target_arch="arm64_32"), any(target_os = "ios", target_os = "watchos")))]
 pub const unwinder_private_data_size: usize = 5;
 
 #[cfg(all(target_arch = "aarch64", target_pointer_width = "64"))]
