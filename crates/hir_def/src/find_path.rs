@@ -98,6 +98,7 @@ impl PrefixKind {
     }
 }
 
+/// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
 fn find_path_inner(
     db: &dyn DefDatabase,
     item: ItemInNs,

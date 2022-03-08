@@ -389,7 +389,7 @@ impl DefMap {
         let from_legacy_macro = self[module]
             .scope
             .get_legacy_macro(name)
-            .map_or_else(PerNs::none, |m| PerNs::macros(m, Visibility::Public));
+            .map_or_else(PerNs::none, |m| PerNs::macros(m.into(), Visibility::Public));
         let from_scope = self[module].scope.get(name);
         let from_builtin = match self.block {
             Some(_) => {

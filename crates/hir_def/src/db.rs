@@ -21,8 +21,9 @@ use crate::{
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
     ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId,
-    LocalFieldId, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
+    StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
+    UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -49,6 +50,12 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_extern_block(&self, loc: ExternBlockLoc) -> ExternBlockId;
     #[salsa::interned]
     fn intern_block(&self, loc: BlockLoc) -> BlockId;
+    #[salsa::interned]
+    fn intern_macro2(&self, loc: Macro2Loc) -> Macro2Id;
+    #[salsa::interned]
+    fn intern_proc_macro(&self, loc: ProcMacroLoc) -> ProcMacroId;
+    #[salsa::interned]
+    fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]

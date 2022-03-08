@@ -2,15 +2,16 @@
 
 use std::marker::PhantomData;
 
-use hir_expand::{MacroCallId, MacroDefId};
+use hir_expand::MacroCallId;
 use rustc_hash::FxHashMap;
 use syntax::{ast, AstNode, AstPtr};
 
 use crate::{
     attr::AttrId,
     dyn_map::{DynMap, Policy},
-    ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId, StaticId,
-    StructId, TraitId, TypeAliasId, TypeOrConstParamId, UnionId,
+    ConstId, EnumId, EnumVariantId, FieldId, FunctionId, ImplId, LifetimeParamId, Macro2Id,
+    MacroRulesId, ProcMacroId, StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId,
+    UnionId,
 };
 
 pub type Key<K, V> = crate::dyn_map::Key<K, V, AstPtrPolicy<K, V>>;
@@ -32,7 +33,9 @@ pub const TYPE_PARAM: Key<ast::TypeParam, TypeOrConstParamId> = Key::new();
 pub const CONST_PARAM: Key<ast::ConstParam, TypeOrConstParamId> = Key::new();
 pub const LIFETIME_PARAM: Key<ast::LifetimeParam, LifetimeParamId> = Key::new();
 
-pub const MACRO: Key<ast::Macro, MacroDefId> = Key::new();
+pub const MACRO_RULES: Key<ast::MacroRules, MacroRulesId> = Key::new();
+pub const MACRO2: Key<ast::MacroDef, Macro2Id> = Key::new();
+pub const PROC_MACRO: Key<ast::Fn, ProcMacroId> = Key::new();
 pub const ATTR_MACRO_CALL: Key<ast::Item, MacroCallId> = Key::new();
 pub const DERIVE_MACRO_CALL: Key<ast::Attr, (AttrId, MacroCallId, Box<[Option<MacroCallId>]>)> =
     Key::new();

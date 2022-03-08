@@ -8,6 +8,7 @@ use crate::{
     attr_macro_as_call_id, builtin_attr,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
+    macro_id_to_def_id,
     nameres::path_resolution::ResolveMode,
     path::{ModPath, PathKind},
     AstIdWithPath, LocalModuleId, UnresolvedMacro,
@@ -45,7 +46,7 @@ impl DefMap {
         );
         let def = match resolved_res.resolved_def.take_macros() {
             Some(def) => {
-                if def.is_attribute() {
+                if def.is_attribute(db) {
                     def
                 } else {
                     return Ok(ResolvedAttr::Other);
@@ -54,7 +55,14 @@ impl DefMap {
             None => return Err(UnresolvedMacro { path: ast_id.path.clone() }),
         };
 
-        Ok(ResolvedAttr::Macro(attr_macro_as_call_id(db, &ast_id, attr, self.krate, def, false)))
+        Ok(ResolvedAttr::Macro(attr_macro_as_call_id(
+            db,
+            &ast_id,
+            attr,
+            self.krate,
+            macro_id_to_def_id(db, def),
+            false,
+        )))
     }
 
     pub(crate) fn is_builtin_or_registered_attr(&self, path: &ModPath) -> bool {

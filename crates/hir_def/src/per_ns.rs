@@ -3,15 +3,13 @@
 //!
 //! `PerNs` (per namespace) captures this.
 
-use hir_expand::MacroDefId;
-
-use crate::{item_scope::ItemInNs, visibility::Visibility, ModuleDefId};
+use crate::{item_scope::ItemInNs, visibility::Visibility, MacroId, ModuleDefId};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct PerNs {
     pub types: Option<(ModuleDefId, Visibility)>,
     pub values: Option<(ModuleDefId, Visibility)>,
-    pub macros: Option<(MacroDefId, Visibility)>,
+    pub macros: Option<(MacroId, Visibility)>,
 }
 
 impl Default for PerNs {
@@ -37,7 +35,7 @@ impl PerNs {
         PerNs { types: Some((types, v)), values: Some((values, v)), macros: None }
     }
 
-    pub fn macros(macro_: MacroDefId, v: Visibility) -> PerNs {
+    pub fn macros(macro_: MacroId, v: Visibility) -> PerNs {
         PerNs { types: None, values: None, macros: Some((macro_, v)) }
     }
 
@@ -57,7 +55,7 @@ impl PerNs {
         self.values.map(|it| it.0)
     }
 
-    pub fn take_macros(self) -> Option<MacroDefId> {
+    pub fn take_macros(self) -> Option<MacroId> {
         self.macros.map(|it| it.0)
     }
 

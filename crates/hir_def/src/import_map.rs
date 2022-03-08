@@ -271,6 +271,7 @@ pub enum ImportKind {
     TypeAlias,
     BuiltinType,
     AssociatedItem,
+    Macro,
 }
 
 /// A way to match import map contents against the search query.
@@ -464,6 +465,7 @@ fn item_import_kind(item: ItemInNs) -> Option<ImportKind> {
         ModuleDefId::TraitId(_) => ImportKind::Trait,
         ModuleDefId::TypeAliasId(_) => ImportKind::TypeAlias,
         ModuleDefId::BuiltinType(_) => ImportKind::BuiltinType,
+        ModuleDefId::MacroId(_) => ImportKind::Macro,
     })
 }
 

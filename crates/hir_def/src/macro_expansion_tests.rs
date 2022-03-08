@@ -33,8 +33,8 @@ use syntax::{
 use tt::{Subtree, TokenId};
 
 use crate::{
-    db::DefDatabase, nameres::ModuleSource, resolver::HasResolver, src::HasSource, test_db::TestDB,
-    AdtId, AsMacroCall, Lookup, ModuleDefId,
+    db::DefDatabase, macro_id_to_def_id, nameres::ModuleSource, resolver::HasResolver,
+    src::HasSource, test_db::TestDB, AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
 #[track_caller]
@@ -128,7 +128,9 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             .as_call_id_with_errors(
                 &db,
                 krate,
-                |path| resolver.resolve_path_as_macro(&db, &path),
+                |path| {
+                    resolver.resolve_path_as_macro(&db, &path).map(|it| macro_id_to_def_id(&db, it))
+                },
                 &mut |err| error = Some(err),
             )
             .unwrap()

@@ -13,7 +13,7 @@ use drop_bomb::DropBomb;
 use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap, hygiene::Hygiene, AstId, ExpandError, ExpandResult, HirFileId, InFile,
-    MacroCallId, MacroDefId,
+    MacroCallId,
 };
 use la_arena::{Arena, ArenaMap};
 use limit::Limit;
@@ -26,10 +26,11 @@ use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Label, LabelId, Pat, PatId},
     item_scope::BuiltinShadowMode,
+    macro_id_to_def_id,
     nameres::DefMap,
     path::{ModPath, Path},
     src::HasSource,
-    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleId,
+    AsMacroCall, BlockId, DefWithBodyId, HasModule, LocalModuleId, Lookup, MacroId, ModuleId,
     UnresolvedMacro,
 };
 
@@ -105,7 +106,7 @@ impl Expander {
         let macro_call = InFile::new(self.current_file_id, &macro_call);
 
         let resolver =
-            |path: ModPath| -> Option<MacroDefId> { self.resolve_path_as_macro(db, &path) };
+            |path| self.resolve_path_as_macro(db, &path).map(|it| macro_id_to_def_id(db, it));
 
         let mut err = None;
         let call_id =
@@ -208,7 +209,7 @@ impl Expander {
         Path::from_src(path, &ctx)
     }
 
-    fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroDefId> {
+    fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroId> {
         self.def_map.resolve_path(db, self.module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
