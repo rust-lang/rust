@@ -352,7 +352,7 @@ impl AtomicBool {
     /// let a = &*AtomicBool::from_mut_slice(&mut some_bools);
     /// std::thread::scope(|s| {
     ///     for i in 0..a.len() {
-    ///         s.spawn(move |_| a[i].store(true, Ordering::Relaxed));
+    ///         s.spawn(move || a[i].store(true, Ordering::Relaxed));
     ///     }
     /// });
     /// assert_eq!(some_bools, [true; 10]);
@@ -984,7 +984,7 @@ impl<T> AtomicPtr<T> {
     /// let a = &*AtomicPtr::from_mut_slice(&mut some_ptrs);
     /// std::thread::scope(|s| {
     ///     for i in 0..a.len() {
-    ///         s.spawn(move |_| {
+    ///         s.spawn(move || {
     ///             let name = Box::new(format!("thread{i}"));
     ///             a[i].store(Box::into_raw(name), Ordering::Relaxed);
     ///         });
@@ -1533,7 +1533,7 @@ macro_rules! atomic_int {
             #[doc = concat!("let a = &*", stringify!($atomic_type), "::from_mut_slice(&mut some_ints);")]
             /// std::thread::scope(|s| {
             ///     for i in 0..a.len() {
-            ///         s.spawn(move |_| a[i].store(i as _, Ordering::Relaxed));
+            ///         s.spawn(move || a[i].store(i as _, Ordering::Relaxed));
             ///     }
             /// });
             /// for (i, n) in some_ints.into_iter().enumerate() {
