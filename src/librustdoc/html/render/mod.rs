@@ -699,7 +699,13 @@ fn short_item_info(
 
 // Render the list of items inside one of the sections "Trait Implementations",
 // "Auto Trait Implementations," "Blanket Trait Implementations" (on struct/enum pages).
-fn render_impls(cx: &Context<'_>, w: &mut Buffer, impls: &[&&Impl], containing_item: &clean::Item) {
+fn render_impls(
+    cx: &Context<'_>,
+    w: &mut Buffer,
+    impls: &[&&Impl],
+    containing_item: &clean::Item,
+    toggle_open_by_default: bool,
+) {
     let tcx = cx.tcx();
     let mut rendered_impls = impls
         .iter()
@@ -722,7 +728,7 @@ fn render_impls(cx: &Context<'_>, w: &mut Buffer, impls: &[&&Impl], containing_i
                     is_on_foreign_type: false,
                     show_default_items: true,
                     show_non_assoc_items: true,
-                    toggle_open_by_default: true,
+                    toggle_open_by_default,
                 },
             );
             buffer.into_inner()
@@ -1143,7 +1149,7 @@ fn render_assoc_items_inner(
             concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
 
         let mut impls = Buffer::empty_from(w);
-        render_impls(cx, &mut impls, &concrete, containing_item);
+        render_impls(cx, &mut impls, &concrete, containing_item, true);
         let impls = impls.into_inner();
         if !impls.is_empty() {
             write!(
@@ -1165,7 +1171,7 @@ fn render_assoc_items_inner(
                  </h2>\
                  <div id=\"synthetic-implementations-list\">",
             );
-            render_impls(cx, w, &synthetic, containing_item);
+            render_impls(cx, w, &synthetic, containing_item, false);
             w.write_str("</div>");
         }
 
@@ -1177,7 +1183,7 @@ fn render_assoc_items_inner(
                  </h2>\
                  <div id=\"blanket-implementations-list\">",
             );
-            render_impls(cx, w, &blanket_impl, containing_item);
+            render_impls(cx, w, &blanket_impl, containing_item, false);
             w.write_str("</div>");
         }
     }
