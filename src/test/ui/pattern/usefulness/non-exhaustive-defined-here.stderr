@@ -46,10 +46,6 @@ help: you might want to use `if let` to ignore the variants that aren't matched
    |
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variants that aren't matched
-   |
-LL |     let E::A = e else { todo!() };
-   |                  ++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:52:11
@@ -99,10 +95,6 @@ help: you might want to use `if let` to ignore the variants that aren't matched
    |
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variants that aren't matched
-   |
-LL |     let E::A = e else { todo!() };
-   |                  ++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:66:11
@@ -152,10 +144,6 @@ help: you might want to use `if let` to ignore the variants that aren't matched
    |
 LL |     if let E::A = e { todo!() }
    |     ++              ~~~~~~~~~~~
-help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variants that aren't matched
-   |
-LL |     let E::A = e else { todo!() };
-   |                  ++++++++++++++++
 
 error[E0004]: non-exhaustive patterns: `None` not covered
   --> $DIR/non-exhaustive-defined-here.rs:92:11
