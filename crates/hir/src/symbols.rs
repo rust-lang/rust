@@ -1,7 +1,6 @@
 //! File symbol extraction.
 
 use base_db::FileRange;
-use either::Either;
 use hir_def::{
     item_tree::ItemTreeNode, src::HasSource, AdtId, AssocItemId, AssocItemLoc, DefWithBodyId,
     ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
@@ -10,7 +9,7 @@ use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
 use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
-use crate::{HasSource as _, Macro, Module, Semantics};
+use crate::{Module, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -175,10 +174,6 @@ impl<'a> SymbolCollector<'a> {
         for const_id in scope.unnamed_consts() {
             self.collect_from_body(const_id);
         }
-
-        for macro_def_id in scope.macro_declarations() {
-            self.push_decl_macro(macro_def_id.into());
-        }
     }
 
     fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>) {
@@ -329,29 +324,6 @@ impl<'a> SymbolCollector<'a> {
                     ptr: SyntaxNodePtr::new(module.syntax()),
                     name_ptr: SyntaxNodePtr::new(name_node.syntax()),
                 },
-            })
-        })
-    }
-
-    fn push_decl_macro(&mut self, macro_def: Macro) {
-        self.push_file_symbol(|s| {
-            let name = macro_def.name(s.db)?.as_text()?;
-            let source = macro_def.source(s.db)?;
-
-            let (ptr, name_ptr) = match source.value {
-                Either::Left(m) => {
-                    (SyntaxNodePtr::new(m.syntax()), SyntaxNodePtr::new(m.name()?.syntax()))
-                }
-                Either::Right(f) => {
-                    (SyntaxNodePtr::new(f.syntax()), SyntaxNodePtr::new(f.name()?.syntax()))
-                }
-            };
-
-            Some(FileSymbol {
-                name,
-                kind: FileSymbolKind::Macro,
-                container_name: s.current_container_name(),
-                loc: DeclarationLocation { hir_file_id: source.file_id, name_ptr, ptr },
             })
         })
     }

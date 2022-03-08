@@ -1767,11 +1767,13 @@ impl Macro {
     }
 
     pub fn name(self, _db: &dyn HirDatabase) -> Option<Name> {
-        match self.id {
-            MacroId::Macro2Id(_id) => todo!(),
-            MacroId::MacroRulesId(_id) => todo!(),
-            MacroId::ProcMacroId(_id) => todo!(),
-        }
+        // match self.id {
+        //     MacroId::Macro2Id(id) => db.macro2_data(id).name.clone(),
+        //     MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
+        //     MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
+        // }
+        // FIXME
+        None
     }
 
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {

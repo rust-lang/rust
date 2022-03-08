@@ -448,7 +448,7 @@ pub enum ModuleDefId {
     MacroId(MacroId),
 }
 impl_from!(
-    MacroId,
+    MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ModuleId,
     FunctionId,
     AdtId(StructId, EnumId, UnionId),

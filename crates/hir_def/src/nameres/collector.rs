@@ -606,16 +606,16 @@ impl DefCollector<'_> {
     ) {
         // Textual scoping
         self.define_legacy_macro(module_id, name.clone(), macro_);
-        let macro_ = macro_.into();
-        self.def_map.modules[module_id].scope.declare_macro(macro_);
 
         // Module scoping
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
         // crate root, even if the parent modules is **not** visible.
         if export {
+            let module_id = self.def_map.root;
+            self.def_map.modules[module_id].scope.declare(macro_.into());
             self.update(
-                self.def_map.root,
-                &[(Some(name), PerNs::macros(macro_, Visibility::Public))],
+                module_id,
+                &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
                 Visibility::Public,
                 ImportType::Named,
             );
@@ -646,9 +646,13 @@ impl DefCollector<'_> {
     ) {
         let vis =
             self.def_map.resolve_visibility(self.db, module_id, vis).unwrap_or(Visibility::Public);
-        let macro_ = macro_.into();
-        self.def_map.modules[module_id].scope.declare_macro(macro_);
-        self.update(module_id, &[(Some(name), PerNs::macros(macro_, vis))], vis, ImportType::Named);
+        self.def_map.modules[module_id].scope.declare(macro_.into());
+        self.update(
+            module_id,
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
+            vis,
+            ImportType::Named,
+        );
     }
 
     /// Define a proc macro
@@ -656,11 +660,11 @@ impl DefCollector<'_> {
     /// A proc macro is similar to normal macro scope, but it would not visible in legacy textual scoped.
     /// And unconditionally exported.
     fn define_proc_macro(&mut self, name: Name, macro_: ProcMacroId) {
-        let macro_ = macro_.into();
-        self.def_map.modules[self.def_map.root].scope.declare_macro(macro_);
+        let module_id = self.def_map.root;
+        self.def_map.modules[module_id].scope.declare(macro_.into());
         self.update(
-            self.def_map.root,
-            &[(Some(name), PerNs::macros(macro_, Visibility::Public))],
+            module_id,
+            &[(Some(name), PerNs::macros(macro_.into(), Visibility::Public))],
             Visibility::Public,
             ImportType::Named,
         );

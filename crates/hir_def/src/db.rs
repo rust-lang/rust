@@ -93,6 +93,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
+
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
