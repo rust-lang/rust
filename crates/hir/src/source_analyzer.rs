@@ -17,6 +17,7 @@ use hir_def::{
         Body, BodySourceMap,
     },
     expr::{ExprId, Pat, PatId},
+    macro_id_to_def_id,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, ModuleDefId, VariantId,
@@ -33,8 +34,7 @@ use syntax::{
 
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, BuiltinAttr, BuiltinType, Const, Field,
-    Function, Local, MacroDef, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
-    Variant,
+    Function, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias, Variant,
 };
 use base_db::CrateId;
 
@@ -248,7 +248,7 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
-    ) -> Option<MacroDef> {
+    ) -> Option<Macro> {
         let ctx = body::LowerCtx::new(db.upcast(), macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &ctx))?;
         self.resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(|it| it.into())
@@ -371,7 +371,7 @@ impl SourceAnalyzer {
                 return builtin.map(PathResolution::BuiltinAttr);
             }
             return match resolve_hir_path_as_macro(db, &self.resolver, &hir_path) {
-                Some(m) => Some(PathResolution::Macro(m)),
+                Some(m) => Some(PathResolution::Def(ModuleDef::Macro(m))),
                 // this labels any path that starts with a tool module as the tool itself, this is technically wrong
                 // but there is no benefit in differentiating these two cases for the time being
                 None => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
@@ -453,7 +453,9 @@ impl SourceAnalyzer {
     ) -> Option<HirFileId> {
         let krate = self.resolver.krate()?;
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
-            self.resolver.resolve_path_as_macro(db.upcast(), &path)
+            self.resolver
+                .resolve_path_as_macro(db.upcast(), &path)
+                .map(|it| macro_id_to_def_id(db.upcast(), it))
         })?;
         Some(macro_call_id.as_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
@@ -571,7 +573,7 @@ pub(crate) fn resolve_hir_path_as_macro(
     db: &dyn HirDatabase,
     resolver: &Resolver,
     path: &Path,
-) -> Option<MacroDef> {
+) -> Option<Macro> {
     resolver.resolve_path_as_macro(db.upcast(), path.mod_path()).map(Into::into)
 }
 
@@ -666,7 +668,7 @@ fn resolve_hir_path_(
     let macros = || {
         resolver
             .resolve_path_as_macro(db.upcast(), path.mod_path())
-            .map(|def| PathResolution::Macro(def.into()))
+            .map(|def| PathResolution::Def(ModuleDef::Macro(def.into())))
     };
 
     if prefer_value_ns { values().or_else(types) } else { types().or_else(values) }

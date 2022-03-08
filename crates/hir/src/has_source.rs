@@ -4,13 +4,13 @@ use either::Either;
 use hir_def::{
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource as _},
-    Lookup, VariantId,
+    Lookup, MacroId, VariantId,
 };
 use hir_expand::InFile;
 use syntax::ast;
 
 use crate::{
-    db::HirDatabase, Adt, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam, MacroDef,
+    db::HirDatabase, Adt, Const, Enum, Field, FieldSource, Function, Impl, LifetimeParam, Macro,
     Module, Static, Struct, Trait, TypeAlias, TypeOrConstParam, Union, Variant,
 };
 
@@ -123,13 +123,26 @@ impl HasSource for TypeAlias {
         Some(self.id.lookup(db.upcast()).source(db.upcast()))
     }
 }
-impl HasSource for MacroDef {
+impl HasSource for Macro {
     type Ast = Either<ast::Macro, ast::Fn>;
     fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
-        Some(self.id.ast_id().either(
-            |id| id.with_value(Either::Left(id.to_node(db.upcast()))),
-            |id| id.with_value(Either::Right(id.to_node(db.upcast()))),
-        ))
+        match self.id {
+            MacroId::Macro2Id(it) => Some(
+                it.lookup(db.upcast())
+                    .source(db.upcast())
+                    .map(ast::Macro::MacroDef)
+                    .map(Either::Left),
+            ),
+            MacroId::MacroRulesId(it) => Some(
+                it.lookup(db.upcast())
+                    .source(db.upcast())
+                    .map(ast::Macro::MacroRules)
+                    .map(Either::Left),
+            ),
+            MacroId::ProcMacroId(it) => {
+                Some(it.lookup(db.upcast()).source(db.upcast()).map(Either::Right))
+            }
+        }
     }
 }
 impl HasSource for Impl {

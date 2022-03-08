@@ -6,11 +6,12 @@ use std::{cell::RefCell, fmt, iter};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
-    body,
+    body, macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
-    AsMacroCall, FunctionId, TraitId, VariantId,
+    AsMacroCall, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
+    db::AstDatabase,
     name::{known, AsName},
     ExpansionInfo, MacroCallId,
 };
@@ -29,7 +30,7 @@ use crate::{
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
-    HirFileId, Impl, InFile, Label, LifetimeParam, Local, MacroDef, Module, ModuleDef, Name, Path,
+    HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path,
     ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
@@ -44,7 +45,6 @@ pub enum PathResolution {
     /// A const parameter
     ConstParam(ConstParam),
     SelfType(Impl),
-    Macro(MacroDef),
     AssocItem(AssocItem),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
@@ -60,6 +60,7 @@ impl PathResolution {
             PathResolution::Def(
                 ModuleDef::Const(_)
                 | ModuleDef::Variant(_)
+                | ModuleDef::Macro(_)
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
                 | ModuleDef::Static(_)
@@ -71,7 +72,6 @@ impl PathResolution {
             PathResolution::BuiltinAttr(_)
             | PathResolution::ToolModule(_)
             | PathResolution::Local(_)
-            | PathResolution::Macro(_)
             | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
@@ -151,7 +151,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
-    pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<Option<MacroDef>>> {
+    pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<Option<Macro>>> {
         self.imp.resolve_derive_macro(derive)
     }
 
@@ -331,11 +331,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_record_pat_field(field)
     }
 
-    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
+    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<Macro> {
         self.imp.resolve_macro_call(macro_call)
     }
 
-    pub fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
+    pub fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<Macro> {
         self.imp.resolve_attr_macro_call(item)
     }
 
@@ -443,13 +443,18 @@ impl<'db> SemanticsImpl<'db> {
         Some(node)
     }
 
-    fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<MacroDef>>> {
-        let res = self
-            .derive_macro_calls(attr)?
-            .into_iter()
-            .map(|call| Some(MacroDef { id: self.db.lookup_intern_macro_call(call?).def }))
-            .collect();
-        Some(res)
+    fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
+        let calls = self.derive_macro_calls(attr)?;
+        self.with_ctx(|ctx| {
+            Some(
+                calls
+                    .into_iter()
+                    .map(|call| {
+                        macro_call_to_macro_id(ctx, self.db.upcast(), call?).map(|id| Macro { id })
+                    })
+                    .collect(),
+            )
+        })
     }
 
     fn expand_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<SyntaxNode>> {
@@ -500,7 +505,9 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = InFile::new(file_id, actual_macro_call);
         let krate = resolver.krate()?;
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            resolver.resolve_path_as_macro(self.db.upcast(), &path)
+            resolver
+                .resolve_path_as_macro(self.db.upcast(), &path)
+                .map(|it| macro_id_to_def_id(self.db.upcast(), it))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -895,16 +902,19 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax()).resolve_record_pat_field(self.db, field)
     }
 
-    fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroDef> {
+    fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<Macro> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
     }
 
-    fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<MacroDef> {
+    fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<Macro> {
         let item_in_file = self.wrap_node_infile(item.clone());
-        let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(item_in_file))?;
-        Some(MacroDef { id: self.db.lookup_intern_macro_call(macro_call_id).def })
+        let id = self.with_ctx(|ctx| {
+            let macro_call_id = ctx.item_to_macro_call(item_in_file)?;
+            macro_call_to_macro_id(ctx, self.db.upcast(), macro_call_id)
+        })?;
+        Some(Macro { id })
     }
 
     fn resolve_path(&self, path: &ast::Path) -> Option<PathResolution> {
@@ -1152,6 +1162,26 @@ impl<'db> SemanticsImpl<'db> {
     }
 }
 
+fn macro_call_to_macro_id(
+    ctx: &mut SourceToDefCtx,
+    db: &dyn AstDatabase,
+    macro_call_id: MacroCallId,
+) -> Option<MacroId> {
+    let loc = db.lookup_intern_macro_call(macro_call_id);
+    match loc.def.kind {
+        hir_expand::MacroDefKind::Declarative(it)
+        | hir_expand::MacroDefKind::BuiltIn(_, it)
+        | hir_expand::MacroDefKind::BuiltInAttr(_, it)
+        | hir_expand::MacroDefKind::BuiltInDerive(_, it)
+        | hir_expand::MacroDefKind::BuiltInEager(_, it) => {
+            ctx.macro_to_def(InFile::new(it.file_id, it.to_node(db)))
+        }
+        hir_expand::MacroDefKind::ProcMacro(_, _, it) => {
+            ctx.proc_macro_to_def(InFile::new(it.file_id, it.to_node(db)))
+        }
+    }
+}
+
 pub trait ToDef: AstNode + Clone {
     type Def;
 
@@ -1188,7 +1218,7 @@ to_def_impls![
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::ConstParam, ast::ConstParam, const_param_to_def),
     (crate::GenericParam, ast::GenericParam, generic_param_to_def),
-    (crate::MacroDef, ast::Macro, macro_to_def),
+    (crate::Macro, ast::Macro, macro_to_def),
     (crate::Local, ast::IdentPat, bind_pat_to_def),
     (crate::Local, ast::SelfParam, self_param_to_def),
     (crate::Label, ast::Label, label_to_def),
@@ -1250,7 +1280,6 @@ impl<'a> SemanticsScope<'a> {
             for entry in entries {
                 let def = match entry {
                     resolver::ScopeDef::ModuleDef(it) => ScopeDef::ModuleDef(it.into()),
-                    resolver::ScopeDef::MacroDef(it) => ScopeDef::MacroDef(it.into()),
                     resolver::ScopeDef::Unknown => ScopeDef::Unknown,
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),

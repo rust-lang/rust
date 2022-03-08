@@ -45,7 +45,7 @@ from_id![
     (hir_def::TypeParamId, crate::TypeParam),
     (hir_def::ConstParamId, crate::ConstParam),
     (hir_def::LifetimeParamId, crate::LifetimeParam),
-    (hir_expand::MacroDefId, crate::MacroDef)
+    (hir_def::MacroId, crate::Macro)
 ];
 
 impl From<AdtId> for Adt {
@@ -112,6 +112,7 @@ impl From<ModuleDefId> for ModuleDef {
             ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
             ModuleDefId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
             ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it.into()),
+            ModuleDefId::MacroId(it) => ModuleDef::Macro(it.into()),
         }
     }
 }
@@ -128,6 +129,7 @@ impl From<ModuleDef> for ModuleDefId {
             ModuleDef::Trait(it) => ModuleDefId::TraitId(it.into()),
             ModuleDef::TypeAlias(it) => ModuleDefId::TypeAliasId(it.into()),
             ModuleDef::BuiltinType(it) => ModuleDefId::BuiltinType(it.into()),
+            ModuleDef::Macro(it) => ModuleDefId::MacroId(it.into()),
         }
     }
 }

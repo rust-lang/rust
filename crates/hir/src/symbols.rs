@@ -4,13 +4,13 @@ use base_db::FileRange;
 use either::Either;
 use hir_def::{
     item_tree::ItemTreeNode, src::HasSource, AdtId, AssocItemId, AssocItemLoc, DefWithBodyId,
-    ImplId, ItemContainerId, ItemLoc, Lookup, ModuleDefId, ModuleId, TraitId,
+    ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
 use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
 
-use crate::{HasSource as _, MacroDef, Module, Semantics};
+use crate::{HasSource as _, Macro, Module, Semantics};
 
 /// The actual data that is stored in the index. It should be as compact as
 /// possible.
@@ -157,6 +157,11 @@ impl<'a> SymbolCollector<'a> {
                 ModuleDefId::TypeAliasId(id) => {
                     self.push_decl_assoc(id, FileSymbolKind::TypeAlias);
                 }
+                ModuleDefId::MacroId(id) => match id {
+                    MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                },
                 // Don't index these.
                 ModuleDefId::BuiltinType(_) => {}
                 ModuleDefId::EnumVariantId(_) => {}
@@ -283,11 +288,11 @@ impl<'a> SymbolCollector<'a> {
         })
     }
 
-    fn push_decl<L, T>(&mut self, id: L, kind: FileSymbolKind)
+    fn push_decl<L>(&mut self, id: L, kind: FileSymbolKind)
     where
-        L: Lookup<Data = ItemLoc<T>>,
-        T: ItemTreeNode,
-        <T as ItemTreeNode>::Source: HasName,
+        L: Lookup,
+        <L as Lookup>::Data: HasSource,
+        <<L as Lookup>::Data as HasSource>::Value: HasName,
     {
         self.push_file_symbol(|s| {
             let loc = id.lookup(s.db.upcast());
@@ -328,7 +333,7 @@ impl<'a> SymbolCollector<'a> {
         })
     }
 
-    fn push_decl_macro(&mut self, macro_def: MacroDef) {
+    fn push_decl_macro(&mut self, macro_def: Macro) {
         self.push_file_symbol(|s| {
             let name = macro_def.name(s.db)?.as_text()?;
             let source = macro_def.source(s.db)?;
