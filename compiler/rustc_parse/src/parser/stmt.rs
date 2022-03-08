@@ -18,7 +18,7 @@ use rustc_ast::{
 };
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym};
 
@@ -48,15 +48,13 @@ impl<'a> Parser<'a> {
 
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtStmt(stmt) = &**nt {
-                let mut stmt = stmt.clone();
-                self.bump();
-                stmt.visit_attrs(|stmt_attrs| {
-                    attrs.prepend_to_nt_inner(stmt_attrs);
-                });
-                return Ok(Some(stmt));
-            }
+        if let token::Interpolated(nt) = &self.token.kind && let token::NtStmt(stmt) = &**nt {
+            let mut stmt = stmt.clone();
+            self.bump();
+            stmt.visit_attrs(|stmt_attrs| {
+                attrs.prepend_to_nt_inner(stmt_attrs);
+            });
+            return Ok(Some(stmt));
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
@@ -103,6 +101,16 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs))
             }?;
+            if matches!(e.kind, ExprKind::Assign(..)) && self.eat_keyword(kw::Else) {
+                let bl = self.parse_block()?;
+                // Destructuring assignment ... else.
+                // This is not allowed, but point it out in a nice way.
+                let mut err = self.struct_span_err(
+                    e.span.to(bl.span),
+                    "<assignment> ... else { ... } is not allowed",
+                );
+                err.emit();
+            }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
             self.error_outer_attrs(&attrs.take_for_recovery());
@@ -286,7 +294,7 @@ impl<'a> Parser<'a> {
                 // extra noise.
                 init
             }
-            (Err(mut init_err), Some((snapshot, _, ty_err))) => {
+            (Err(init_err), Some((snapshot, _, ty_err))) => {
                 // init error, ty error
                 init_err.cancel();
                 // Couldn't parse the type nor the initializer, only raise the type error and
@@ -404,7 +412,10 @@ impl<'a> Parser<'a> {
         Ok(block)
     }
 
-    fn error_block_no_opening_brace_msg(&mut self, msg: &str) -> DiagnosticBuilder<'a> {
+    fn error_block_no_opening_brace_msg(
+        &mut self,
+        msg: &str,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let sp = self.token.span;
         let mut e = self.struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
@@ -421,6 +432,8 @@ impl<'a> Parser<'a> {
             Ok(Some(_))
                 if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
                     || do_not_suggest_help => {}
+            // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
+            Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
             Ok(Some(stmt)) => {
                 let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
                 let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
@@ -429,17 +442,17 @@ impl<'a> Parser<'a> {
                 } else {
                     stmt.span
                 };
-                if let Ok(snippet) = self.span_to_snippet(stmt_span) {
-                    e.span_suggestion(
-                        stmt_span,
-                        "try placing this code inside a block",
-                        format!("{{ {} }}", snippet),
-                        // Speculative; has been misleading in the past (#46836).
-                        Applicability::MaybeIncorrect,
-                    );
-                }
+                e.multipart_suggestion(
+                    "try placing this code inside a block",
+                    vec![
+                        (stmt_span.shrink_to_lo(), "{ ".to_string()),
+                        (stmt_span.shrink_to_hi(), " }".to_string()),
+                    ],
+                    // Speculative; has been misleading in the past (#46836).
+                    Applicability::MaybeIncorrect,
+                );
             }
-            Err(mut e) => {
+            Err(e) => {
                 self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
                 e.cancel();
             }
@@ -470,15 +483,15 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, (Vec<Attribute>, P<Block>)> {
         maybe_whole!(self, NtBlock, |x| (Vec::new(), x));
 
+        self.maybe_recover_unexpected_block_label();
         if !self.eat(&token::OpenDelim(token::Brace)) {
             return self.error_block_no_opening_brace();
         }
 
         let attrs = self.parse_inner_attributes()?;
-        let tail = if let Some(tail) = self.maybe_suggest_struct_literal(lo, blk_mode) {
-            tail?
-        } else {
-            self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?
+        let tail = match self.maybe_suggest_struct_literal(lo, blk_mode) {
+            Some(tail) => tail?,
+            None => self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?,
         };
         Ok((attrs, tail))
     }
@@ -524,9 +537,8 @@ impl<'a> Parser<'a> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
         maybe_whole!(self, NtStmt, |x| Some(x));
 
-        let mut stmt = match self.parse_stmt_without_recovery(true, ForceCollect::No)? {
-            Some(stmt) => stmt,
-            None => return Ok(None),
+        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
+            return Ok(None);
         };
 
         let mut eat_semi = true;
@@ -575,11 +587,11 @@ impl<'a> Parser<'a> {
                 // We might be at the `,` in `let x = foo<bar, baz>;`. Try to recover.
                 match &mut local.kind {
                     LocalKind::Init(expr) | LocalKind::InitElse(expr, _) => {
-                            self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
-                            // We found `foo<bar, baz>`, have we fully recovered?
-                            self.expect_semi()?;
-                        }
-                        LocalKind::Decl => return Err(e),
+                        self.check_mistyped_turbofish_with_multiple_type_params(e, expr)?;
+                        // We found `foo<bar, baz>`, have we fully recovered?
+                        self.expect_semi()?;
+                    }
+                    LocalKind::Decl => return Err(e),
                 }
                 eat_semi = false;
             }

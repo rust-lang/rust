@@ -16,10 +16,10 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_strs, notable_traits_decl,
-    render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
-    render_impl, render_stability_since_raw, write_srclink, AssocItemLink, Context,
-    ImplRenderingParameters,
+    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
+    notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
+    render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
+    AssocItemLink, Context, ImplRenderingParameters,
 };
 use crate::clean;
 use crate::formats::item_type::ItemType;
@@ -139,8 +139,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut Buffer,
         src_href: src_href.as_deref(),
     };
 
-    let heading = item_vars.render().unwrap();
-    buf.write_str(&heading);
+    item_vars.render_into(buf).unwrap();
 
     match *item.kind {
         clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
@@ -222,7 +221,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     ) -> Ordering {
         let ty1 = i1.type_();
         let ty2 = i2.type_();
-        if ty1 != ty2 {
+        if item_ty_to_section(ty1) != item_ty_to_section(ty2)
+            || (ty1 != ty2 && (ty1 == ItemType::ExternCrate || ty2 == ItemType::ExternCrate))
+        {
             return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
         }
         let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
@@ -271,7 +272,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
     });
 
     debug!("{:?}", indices);
-    let mut curty = None;
+    let mut last_section = None;
 
     for &idx in &indices {
         let myitem = &items[idx];
@@ -279,24 +280,20 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
             continue;
         }
 
-        let myty = Some(myitem.type_());
-        if curty == Some(ItemType::ExternCrate) && myty == Some(ItemType::Import) {
-            // Put `extern crate` and `use` re-exports in the same section.
-            curty = myty;
-        } else if myty != curty {
-            if curty.is_some() {
+        let my_section = item_ty_to_section(myitem.type_());
+        if Some(my_section) != last_section {
+            if last_section.is_some() {
                 w.write_str(ITEM_TABLE_CLOSE);
             }
-            curty = myty;
-            let (short, name) = item_ty_to_strs(myty.unwrap());
+            last_section = Some(my_section);
             write!(
                 w,
                 "<h2 id=\"{id}\" class=\"small-section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>\n{}",
                 ITEM_TABLE_OPEN,
-                id = cx.derive_id(short.to_owned()),
-                name = name
+                id = cx.derive_id(my_section.id().to_owned()),
+                name = my_section.name(),
             );
         }
 
@@ -408,7 +405,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         }
     }
 
-    if curty.is_some() {
+    if last_section.is_some() {
         w.write_str(ITEM_TABLE_CLOSE);
     }
 }
@@ -1713,11 +1710,11 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
-    fn write_size_of_layout(w: &mut Buffer, layout: &Layout, tag_size: u64) {
-        if layout.abi.is_unsized() {
+    fn write_size_of_layout(w: &mut Buffer, layout: Layout<'_>, tag_size: u64) {
+        if layout.abi().is_unsized() {
             write!(w, "(unsized)");
         } else {
-            let bytes = layout.size.bytes() - tag_size;
+            let bytes = layout.size().bytes() - tag_size;
             write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
         }
     }
@@ -1747,7 +1744,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             write_size_of_layout(w, ty_layout.layout, 0);
             writeln!(w, "</p>");
             if let Variants::Multiple { variants, tag, tag_encoding, .. } =
-                &ty_layout.layout.variants
+                &ty_layout.layout.variants()
             {
                 if !variants.is_empty() {
                     w.write_str(
@@ -1755,9 +1752,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                             <ul>",
                     );
 
-                    let adt = if let Adt(adt, _) = ty_layout.ty.kind() {
-                        adt
-                    } else {
+                    let Adt(adt, _) = ty_layout.ty.kind() else {
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
 
@@ -1772,7 +1767,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     for (index, layout) in variants.iter_enumerated() {
                         let name = adt.variants[index].name;
                         write!(w, "<li><code>{name}</code>: ", name = name);
-                        write_size_of_layout(w, layout, tag_size);
+                        write_size_of_layout(w, *layout, tag_size);
                         writeln!(w, "</li>");
                     }
                     w.write_str("</ul>");

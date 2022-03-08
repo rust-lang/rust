@@ -317,7 +317,7 @@ fn fat_lto(
             info!("linking {:?}", name);
             let data = bc_decoded.data();
             linker.add(data).map_err(|()| {
-                let msg = format!("failed to load bc of {:?}", name);
+                let msg = format!("failed to load bitcode of module {:?}", name);
                 write::llvm_err(diag_handler, &msg)
             })?;
             serialized_bitcode.push(bc_decoded);

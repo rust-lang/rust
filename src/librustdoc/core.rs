@@ -4,9 +4,9 @@ use rustc_errors::emitter::{Emitter, EmitterWriter};
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{HirId, Path};
+use rustc_hir::{HirId, Path, TraitCandidate};
 use rustc_interface::interface;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::AccessLevels;
@@ -33,8 +33,11 @@ use crate::passes::{self, Condition::*};
 crate use rustc_session::config::{DebuggingOptions, Input, Options};
 
 crate struct ResolverCaches {
-    pub all_traits: Option<Vec<DefId>>,
-    pub all_trait_impls: Option<Vec<DefId>>,
+    /// Traits in scope for a given module.
+    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
+    crate traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
+    crate all_traits: Option<Vec<DefId>>,
+    crate all_trait_impls: Option<Vec<DefId>>,
 }
 
 crate struct DocContext<'tcx> {
@@ -67,11 +70,6 @@ crate struct DocContext<'tcx> {
     crate auto_traits: Vec<DefId>,
     /// The options given to rustdoc that could be relevant to a pass.
     crate render_options: RenderOptions,
-    /// The traits in scope for a given module.
-    ///
-    /// See `collect_intra_doc_links::traits_implemented_by` for more details.
-    /// `map<module, set<trait>>`
-    crate module_trait_cache: FxHashMap<DefId, FxHashSet<DefId>>,
     /// This same cache is used throughout rustdoc, including in [`crate::html::render`].
     crate cache: Cache,
     /// Used by [`clean::inline`] to tell if an item has already been inlined.
@@ -194,6 +192,7 @@ crate fn create_config(
         libs,
         externs,
         mut cfgs,
+        check_cfgs,
         codegen_options,
         debugging_opts,
         target,
@@ -202,6 +201,7 @@ crate fn create_config(
         lint_opts,
         describe_lints,
         lint_cap,
+        scrape_examples_options,
         ..
     }: RustdocOptions,
 ) -> rustc_interface::Config {
@@ -220,6 +220,7 @@ crate fn create_config(
         // these are definitely not part of rustdoc, but we want to warn on them anyway.
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
+        rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
     ];
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
@@ -229,6 +230,7 @@ crate fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
+    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
@@ -246,19 +248,20 @@ crate fn create_config(
         edition,
         describe_lints,
         crate_name,
+        test,
         ..Options::default()
     };
 
     interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_check_cfg: interface::parse_check_cfg(check_cfgs),
         input,
         input_path: cpath,
         output_file: None,
         output_dir: None,
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
-        stderr: None,
         lint_caps,
         parse_sess_created: None,
         register_lints: Some(box crate::lint::register_lints),
@@ -350,7 +353,6 @@ crate fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        module_trait_cache: FxHashMap::default(),
         cache: Cache::new(access_levels, render_options.document_private),
         inlined: FxHashSet::default(),
         output_format,

@@ -273,16 +273,3 @@ pub const fn utf8_char_width(b: u8) -> usize {
 
 /// Mask of the value bits of a continuation byte.
 const CONT_MASK: u8 = 0b0011_1111;
-
-// truncate `&str` to length at most equal to `max`
-// return `true` if it were truncated, and the new str.
-pub(super) fn truncate_to_char_boundary(s: &str, mut max: usize) -> (bool, &str) {
-    if max >= s.len() {
-        (false, s)
-    } else {
-        while !s.is_char_boundary(max) {
-            max -= 1;
-        }
-        (true, &s[..max])
-    }
-}

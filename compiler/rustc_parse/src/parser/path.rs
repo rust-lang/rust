@@ -1,5 +1,5 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
-use super::{Parser, TokenType};
+use super::{Parser, Restrictions, TokenType};
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Token};
@@ -394,7 +394,7 @@ impl<'a> Parser<'a> {
         debug!("parse_generic_args_with_leading_angle_bracket_recovery: (snapshotting)");
         match self.parse_angle_args(ty_generics) {
             Ok(args) => Ok(args),
-            Err(mut e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
+            Err(e) if is_first_invocation && self.unmatched_angle_bracket_count > 0 => {
                 // Swap `self` with our backup of the parser state before attempting to parse
                 // generic arguments.
                 let snapshot = mem::replace(self, snapshot.unwrap());
@@ -634,7 +634,22 @@ impl<'a> Parser<'a> {
         } else if self.token.is_keyword(kw::Const) {
             return self.recover_const_param_declaration(ty_generics);
         } else {
-            return Ok(None);
+            // Fall back by trying to parse a const-expr expression. If we successfully do so,
+            // then we should report an error that it needs to be wrapped in braces.
+            let snapshot = self.clone();
+            match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
+                Ok(expr) => {
+                    return Ok(Some(self.dummy_const_arg_needs_braces(
+                        self.struct_span_err(expr.span, "invalid const generic expression"),
+                        expr.span,
+                    )));
+                }
+                Err(err) => {
+                    *self = snapshot;
+                    err.cancel();
+                    return Ok(None);
+                }
+            }
         };
         Ok(Some(arg))
     }
@@ -643,13 +658,13 @@ impl<'a> Parser<'a> {
         &self,
         gen_arg: GenericArg,
     ) -> Result<(Ident, Option<GenericArgs>), GenericArg> {
-        if let GenericArg::Type(ty) = &gen_arg {
-            if let ast::TyKind::Path(qself, path) = &ty.kind {
-                if qself.is_none() && path.segments.len() == 1 {
-                    let seg = &path.segments[0];
-                    return Ok((seg.ident, seg.args.as_deref().cloned()));
-                }
-            }
+        if let GenericArg::Type(ty) = &gen_arg
+            && let ast::TyKind::Path(qself, path) = &ty.kind
+            && qself.is_none()
+            && path.segments.len() == 1
+        {
+            let seg = &path.segments[0];
+            return Ok((seg.ident, seg.args.as_deref().cloned()));
         }
         Err(gen_arg)
     }

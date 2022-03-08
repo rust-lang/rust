@@ -12,10 +12,10 @@ fn non_const_context() {
 }
 
 const fn const_context() {
-    NonConst.func();
-    //~^ ERROR: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+    NonConst.func(); //~ ERROR: cannot call non-const fn
+    //[gated]~^ ERROR: the trait bound
     Const.func();
-    //[stock]~^ ERROR: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+    //[stock]~^ ERROR: cannot call non-const fn
 }
 
 fn main() {}

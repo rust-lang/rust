@@ -8,7 +8,7 @@ use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
-        r: Result<(DefKind, DefId), ErrorReported>,
+        r: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
@@ -182,7 +182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `foo.bar::<u32>(...)` -- the `Self` type here will be the
         // type of `foo` (possibly adjusted), but we don't want to
         // include that. We want just the `[_, u32]` part.
-        if !method.substs.is_noop() {
+        if !method.substs.is_empty() {
             let method_generics = self.tcx.generics_of(method.def_id);
             if !method_generics.params.is_empty() {
                 let user_type_annotation = self.infcx.probe(|_| {
@@ -211,7 +211,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn write_substs(&self, node_id: hir::HirId, substs: SubstsRef<'tcx>) {
-        if !substs.is_noop() {
+        if !substs.is_empty() {
             debug!("write_substs({:?}, {:?}) in fcx {}", node_id, substs, self.tag());
 
             self.typeck_results.borrow_mut().node_substs_mut().insert(node_id, substs);
@@ -315,11 +315,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ => bug!(
-                        "while adjusting {:?}, can't compose {:?} and {:?}",
-                        expr,
-                        entry.get(),
-                        adj
+                    _ => self.tcx.sess.delay_span_bug(
+                        expr.span,
+                        &format!(
+                            "while adjusting {:?}, can't compose {:?} and {:?}",
+                            expr,
+                            entry.get(),
+                            adj
+                        ),
                     ),
                 };
                 *entry.get_mut() = adj;
@@ -429,6 +432,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
+    pub(in super::super) fn normalize_op_associated_types_in_as_infer_ok<T>(
+        &self,
+        span: Span,
+        value: T,
+        opt_input_expr: Option<&hir::Expr<'_>>,
+    ) -> InferOk<'tcx, T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        self.inh.partially_normalize_associated_types_in(
+            ObligationCause::new(
+                span,
+                self.body_id,
+                traits::BinOp {
+                    rhs_span: opt_input_expr.map(|expr| expr.span),
+                    is_lit: opt_input_expr
+                        .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                },
+            ),
+            self.param_env,
+            value,
+        )
+    }
+
     pub fn require_type_meets(
         &self,
         ty: Ty<'tcx>,
@@ -498,14 +525,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> &'tcx ty::Const<'tcx> {
+    pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
             hir::ArrayLen::Body(anon_const) => self.to_const(anon_const),
         }
     }
 
-    pub fn to_const(&self, ast_c: &hir::AnonConst) -> &'tcx ty::Const<'tcx> {
+    pub fn to_const(&self, ast_c: &hir::AnonConst) -> ty::Const<'tcx> {
         let const_def_id = self.tcx.hir().local_def_id(ast_c.hir_id);
         let c = ty::Const::from_anon_const(self.tcx, const_def_id);
         self.register_wf_obligation(
@@ -520,7 +547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ast_c: &hir::AnonConst,
         param_def_id: DefId,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         let const_def = ty::WithOptConstParam {
             did: self.tcx.hir().local_def_id(ast_c.hir_id),
             const_param_did: Some(param_def_id),
@@ -605,7 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         substs: SubstsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize_associated_types_in(span, &field.ty(self.tcx, substs))
+        self.normalize_associated_types_in(span, field.ty(self.tcx, substs))
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {
@@ -745,10 +772,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_args: &[Ty<'tcx>],
     ) -> Vec<Ty<'tcx>> {
         let formal_ret = self.resolve_vars_with_obligations(formal_ret);
-        let ret_ty = match expected_ret.only_has_type(self) {
-            Some(ret) => ret,
-            None => return Vec::new(),
-        };
+        let Some(ret_ty) = expected_ret.only_has_type(self) else { return Vec::new() };
         let expect_args = self
             .fudge_inference_if_ok(|| {
                 // Attempt to apply a subtyping relationship between the formal
@@ -756,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is polymorphic) and the expected return type.
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
-                let ures = self.at(&origin, self.param_env).sup(ret_ty, &formal_ret);
+                let ures = self.at(&origin, self.param_env).sup(ret_ty, formal_ret);
 
                 // FIXME(#27336) can't use ? here, Try::from_error doesn't default
                 // to identity so the resulting type is not constrained.
@@ -879,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorReported),
+                    _ => Err(ErrorGuaranteed),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register
@@ -956,7 +980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn note_internal_mutation_in_method(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -964,7 +988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if found != self.tcx.types.unit {
             return;
         }
-        if let ExprKind::MethodCall(path_segment, _, [rcvr, ..], _) = expr.kind {
+        if let ExprKind::MethodCall(path_segment, [rcvr, ..], _) = expr.kind {
             if self
                 .typeck_results
                 .borrow()
@@ -1001,7 +1025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn note_need_for_fn_pointer(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -1044,9 +1068,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Be helpful when the user wrote `{... expr;}` and
         // taking the `;` off is enough to fix the error.
         let last_stmt = blk.stmts.last()?;
-        let last_expr = match last_stmt.kind {
-            hir::StmtKind::Semi(ref e) => e,
-            _ => return None,
+        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+            return None;
         };
         let last_expr_ty = self.node_ty(last_expr.hir_id);
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
@@ -1061,11 +1084,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     last_def_id, last_bounds, exp_def_id, exp_bounds
                 );
 
-                let (last_local_id, exp_local_id) =
-                    match (last_def_id.as_local(), exp_def_id.as_local()) {
-                        (Some(last_hir_id), Some(exp_hir_id)) => (last_hir_id, exp_hir_id),
-                        (_, _) => return None,
-                    };
+                let last_local_id = last_def_id.as_local()?;
+                let exp_local_id = exp_def_id.as_local()?;
 
                 match (
                     &self.tcx.hir().expect_item(last_local_id).kind,
@@ -1383,7 +1403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, .. } => {
+                    GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
                                 .subst_spanned(tcx, substs.unwrap(), Some(self.span))

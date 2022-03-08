@@ -63,10 +63,10 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Ok` variant of the iterator element is used
-  --> $DIR/manual_flatten.rs:32:5
+  --> $DIR/manual_flatten.rs:30:5
    |
 LL |       for n in z {
-   |       ^        - help: try: `z.into_iter().flatten()`
+   |       ^        - help: try: `z.iter().flatten()`
    |  _____|
    | |
 LL | |         if let Ok(n) = n {
@@ -76,7 +76,7 @@ LL | |     }
    | |_____^
    |
 help: ...and remove the `if let` statement in the for loop
-  --> $DIR/manual_flatten.rs:33:9
+  --> $DIR/manual_flatten.rs:31:9
    |
 LL | /         if let Ok(n) = n {
 LL | |             println!("{}", n);
@@ -84,7 +84,7 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> $DIR/manual_flatten.rs:41:5
+  --> $DIR/manual_flatten.rs:39:5
    |
 LL |       for n in z {
    |       ^        - help: try: `z.flatten()`
@@ -97,7 +97,7 @@ LL | |     }
    | |_____^
    |
 help: ...and remove the `if let` statement in the for loop
-  --> $DIR/manual_flatten.rs:42:9
+  --> $DIR/manual_flatten.rs:40:9
    |
 LL | /         if let Some(m) = n {
 LL | |             println!("{}", m);
@@ -105,7 +105,7 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> $DIR/manual_flatten.rs:74:5
+  --> $DIR/manual_flatten.rs:72:5
    |
 LL |       for n in &vec_of_ref {
    |       ^        ----------- help: try: `vec_of_ref.iter().copied().flatten()`
@@ -118,7 +118,7 @@ LL | |     }
    | |_____^
    |
 help: ...and remove the `if let` statement in the for loop
-  --> $DIR/manual_flatten.rs:75:9
+  --> $DIR/manual_flatten.rs:73:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -126,10 +126,10 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> $DIR/manual_flatten.rs:81:5
+  --> $DIR/manual_flatten.rs:79:5
    |
 LL |       for n in vec_of_ref {
-   |       ^        ---------- help: try: `vec_of_ref.into_iter().copied().flatten()`
+   |       ^        ---------- help: try: `vec_of_ref.iter().copied().flatten()`
    |  _____|
    | |
 LL | |         if let Some(n) = n {
@@ -139,7 +139,7 @@ LL | |     }
    | |_____^
    |
 help: ...and remove the `if let` statement in the for loop
-  --> $DIR/manual_flatten.rs:82:9
+  --> $DIR/manual_flatten.rs:80:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);
@@ -147,10 +147,10 @@ LL | |         }
    | |_________^
 
 error: unnecessary `if let` since only the `Some` variant of the iterator element is used
-  --> $DIR/manual_flatten.rs:88:5
+  --> $DIR/manual_flatten.rs:86:5
    |
 LL |       for n in slice_of_ref {
-   |       ^        ------------ help: try: `slice_of_ref.into_iter().copied().flatten()`
+   |       ^        ------------ help: try: `slice_of_ref.iter().copied().flatten()`
    |  _____|
    | |
 LL | |         if let Some(n) = n {
@@ -160,7 +160,7 @@ LL | |     }
    | |_____^
    |
 help: ...and remove the `if let` statement in the for loop
-  --> $DIR/manual_flatten.rs:89:9
+  --> $DIR/manual_flatten.rs:87:9
    |
 LL | /         if let Some(n) = n {
 LL | |             println!("{:?}", n);

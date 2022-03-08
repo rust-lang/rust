@@ -55,6 +55,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             reachable_blocks: traversal::reachable_as_bitset(body),
             storage_liveness,
             place_cache: Vec::new(),
+            value_cache: Vec::new(),
         }
         .visit_body(body);
     }
@@ -109,6 +110,7 @@ struct TypeChecker<'a, 'tcx> {
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive>,
     place_cache: Vec<PlaceRef<'tcx>>,
+    value_cache: Vec<u128>,
 }
 
 impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
@@ -398,6 +400,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.check_edge(location, target, EdgeKind::Normal);
                 }
                 self.check_edge(location, targets.otherwise(), EdgeKind::Normal);
+
+                self.value_cache.clear();
+                self.value_cache.extend(targets.iter().map(|(value, _)| value));
+                let all_len = self.value_cache.len();
+                self.value_cache.sort_unstable();
+                self.value_cache.dedup();
+                let has_duplicates = all_len != self.value_cache.len();
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "duplicated values in `SwitchInt` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
             }
             TerminatorKind::Drop { target, unwind, .. } => {
                 self.check_edge(location, *target, EdgeKind::Normal);

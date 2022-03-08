@@ -24,6 +24,7 @@ const NULL: &u16 = unsafe { mem::transmute(0usize) };
 const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
 //~^ ERROR it is undefined behavior to use this value
 
+
 // It is very important that we reject this: We do promote `&(4 * REF_AS_USIZE)`,
 // but that would fail to compile; so we ended up breaking user code that would
 // have worked fine had we not promoted.
@@ -44,7 +45,14 @@ const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
 
 const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
 //~^ ERROR it is undefined behavior to use this value
+
+const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
+//~^ ERROR it is undefined behavior to use this value
 const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
+//~^ ERROR it is undefined behavior to use this value
+const DANGLING_FN_PTR: fn() = unsafe { mem::transmute(13usize) };
+//~^ ERROR it is undefined behavior to use this value
+const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 //~^ ERROR it is undefined behavior to use this value
 
 fn main() {}

@@ -1,3 +1,4 @@
+// This test checks that code blocks in list are supported.
 goto: file://|DOC_PATH|/test_docs/index.html
 goto: ./fn.check_list_code_block.html
 assert: ("pre.rust.fn")

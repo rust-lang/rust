@@ -390,11 +390,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         bx
     }
 
-    fn build_sibling_block(&mut self, name: &str) -> Self {
-        let block = self.append_sibling_block(name);
-        Self::build(self.cx, block)
-    }
-
     fn llbb(&self) -> Block<'gcc> {
         self.block.expect("block")
     }
@@ -407,6 +402,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn append_sibling_block(&mut self, name: &str) -> Block<'gcc> {
         let func = self.current_func();
         func.new_block(name)
+    }
+
+    fn switch_to_block(&mut self, block: Self::BasicBlock) {
+        *self.cx.current_block.borrow_mut() = Some(block);
+        self.block = Some(block);
     }
 
     fn ret_void(&mut self) {
@@ -880,28 +880,31 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let start = dest.project_index(&mut self, zero).llval;
         let end = dest.project_index(&mut self, count).llval;
 
-        let mut header_bx = self.build_sibling_block("repeat_loop_header");
-        let mut body_bx = self.build_sibling_block("repeat_loop_body");
-        let next_bx = self.build_sibling_block("repeat_loop_next");
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
 
         let ptr_type = start.get_type();
         let current = self.llbb().get_function().new_local(None, ptr_type, "loop_var");
         let current_val = current.to_rvalue();
         self.assign(current, start);
 
-        self.br(header_bx.llbb());
+        self.br(header_bb);
 
-        let keep_going = header_bx.icmp(IntPredicate::IntNE, current_val, end);
-        header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
+        self.switch_to_block(header_bb);
+        let keep_going = self.icmp(IntPredicate::IntNE, current_val, end);
+        self.cond_br(keep_going, body_bb, next_bb);
 
+        self.switch_to_block(body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
-        cg_elem.val.store(&mut body_bx, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
+        cg_elem.val.store(&mut self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = body_bx.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
-        body_bx.llbb().add_assignment(None, current, next);
-        body_bx.br(header_bx.llbb());
+        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[self.const_usize(1)]);
+        self.llbb().add_assignment(None, current, next);
+        self.br(header_bb);
 
-        next_bx
+        self.switch_to_block(next_bb);
+        self
     }
 
     fn range_metadata(&mut self, _load: RValue<'gcc>, _range: WrappingRange) {
@@ -1061,7 +1064,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let val_type = value.get_type();
         match (type_is_pointer(val_type), type_is_pointer(dest_ty)) {
             (false, true) => {
-                // NOTE: Projecting a field of a pointer type will attemp a cast from a signed char to
+                // NOTE: Projecting a field of a pointer type will attempt a cast from a signed char to
                 // a pointer, which is not supported by gccjit.
                 return self.cx.context.new_cast(None, self.inttoptr(value, val_type.make_pointer()), dest_ty);
             },
@@ -1256,7 +1259,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>, _num_clauses: usize) -> RValue<'gcc> {
+    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
+        // TODO(antoyo)
+    }
+
+    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         let field1 = self.context.new_field(None, self.u8_type, "landing_pad_field_1");
         let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
         let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
@@ -1267,11 +1274,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // rustc_codegen_ssa now calls the unwinding builder methods even on panic=abort.
     }
 
-    fn set_cleanup(&mut self, _landing_pad: RValue<'gcc>) {
-        // TODO(antoyo)
-    }
-
-    fn resume(&mut self, _exn: RValue<'gcc>) -> RValue<'gcc> {
+    fn resume(&mut self, _exn: RValue<'gcc>) {
         unimplemented!();
     }
 
@@ -1279,7 +1282,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) -> RValue<'gcc> {
+    fn cleanup_ret(&mut self, _funclet: &Funclet, _unwind: Option<Block<'gcc>>) {
         unimplemented!();
     }
 
@@ -1287,16 +1290,13 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         unimplemented!();
     }
 
-    fn catch_switch(&mut self, _parent: Option<RValue<'gcc>>, _unwind: Option<Block<'gcc>>, _num_handlers: usize) -> RValue<'gcc> {
+    fn catch_switch(
+        &mut self,
+        _parent: Option<RValue<'gcc>>,
+        _unwind: Option<Block<'gcc>>,
+        _handlers: &[Block<'gcc>],
+    ) -> RValue<'gcc> {
         unimplemented!();
-    }
-
-    fn add_handler(&mut self, _catch_switch: RValue<'gcc>, _handler: Block<'gcc>) {
-        unimplemented!();
-    }
-
-    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
-        // TODO(antoyo)
     }
 
     // Atomic Operations
@@ -1403,7 +1403,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cx
     }
 
-    fn apply_attrs_to_cleanup_callsite(&mut self, _llret: RValue<'gcc>) {
+    fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
         unimplemented!();
     }
 

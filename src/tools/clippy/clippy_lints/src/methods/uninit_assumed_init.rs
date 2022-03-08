@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{is_expr_path_def_path, paths, ty::is_uninit_value_valid_for_ty};
+use clippy_utils::{is_expr_diagnostic_item, ty::is_uninit_value_valid_for_ty};
 use if_chain::if_chain;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
+use rustc_span::sym;
 
 use super::UNINIT_ASSUMED_INIT;
 
@@ -11,7 +12,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
     if_chain! {
         if let hir::ExprKind::Call(callee, args) = recv.kind;
         if args.is_empty();
-        if is_expr_path_def_path(cx, callee, &paths::MEM_MAYBEUNINIT_UNINIT);
+        if is_expr_diagnostic_item(cx, callee, sym::maybe_uninit_uninit);
         if !is_uninit_value_valid_for_ty(cx, cx.typeck_results().expr_ty_adjusted(expr));
         then {
             span_lint(

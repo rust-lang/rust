@@ -302,6 +302,7 @@ pub trait Try: FromResidual {
         enclosing_scope = "this function should return `Result` or `Option` to accept `?`"
     ),
 )]
+#[rustc_diagnostic_item = "FromResidual"]
 #[unstable(feature = "try_trait_v2", issue = "84277")]
 pub trait FromResidual<R = <Self as Try>::Residual> {
     /// Constructs the type from a compatible `Residual` type.
@@ -358,6 +359,14 @@ pub(crate) type ChangeOutputType<T, V> = <<T as Try>::Residual as Residual<V>>::
 /// Not currently planned to be exposed publicly, so just `pub(crate)`.
 #[repr(transparent)]
 pub(crate) struct NeverShortCircuit<T>(pub T);
+
+impl<T> NeverShortCircuit<T> {
+    /// Wrap a binary `FnMut` to return its result wrapped in a `NeverShortCircuit`.
+    #[inline]
+    pub fn wrap_mut_2<A, B>(mut f: impl FnMut(A, B) -> T) -> impl FnMut(A, B) -> Self {
+        move |a, b| NeverShortCircuit(f(a, b))
+    }
+}
 
 pub(crate) enum NeverShortCircuitResidual {}
 

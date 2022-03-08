@@ -258,14 +258,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let vars = vars.iter().copied().chain(fallback_var);
 
         for var in vars {
-            let dbg_var = match var.dbg_var {
-                Some(dbg_var) => dbg_var,
-                None => continue,
-            };
-            let dbg_loc = match self.dbg_loc(var.source_info) {
-                Some(dbg_loc) => dbg_loc,
-                None => continue,
-            };
+            let Some(dbg_var) = var.dbg_var else { continue };
+            let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
             let mut direct_offset = Size::ZERO;
             // FIXME(eddyb) use smallvec here.
@@ -410,10 +404,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::VarDebugInfoContents::Const(c) => {
                     if let Some(dbg_var) = dbg_var {
-                        let dbg_loc = match self.dbg_loc(var.source_info) {
-                            Some(dbg_loc) => dbg_loc,
-                            None => continue,
-                        };
+                        let Some(dbg_loc) = self.dbg_loc(var.source_info) else { continue };
 
                         if let Ok(operand) = self.eval_mir_constant_to_operand(bx, &c) {
                             let base = Self::spill_operand_to_stack(

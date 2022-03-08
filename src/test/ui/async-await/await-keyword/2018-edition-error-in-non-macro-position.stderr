@@ -4,10 +4,10 @@ error: expected identifier, found keyword `await`
 LL |     pub mod await {
    |             ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL |     pub mod r#await {
-   |             ~~~~~~~
+   |             ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:7:20
@@ -15,10 +15,10 @@ error: expected identifier, found keyword `await`
 LL |         pub struct await;
    |                    ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL |         pub struct r#await;
-   |                    ~~~~~~~
+   |                    ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:10:22
@@ -26,10 +26,10 @@ error: expected identifier, found keyword `await`
 LL | use self::outer_mod::await::await;
    |                      ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL | use self::outer_mod::r#await::await;
-   |                      ~~~~~~~
+   |                      ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:10:29
@@ -37,10 +37,10 @@ error: expected identifier, found keyword `await`
 LL | use self::outer_mod::await::await;
    |                             ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL | use self::outer_mod::await::r#await;
-   |                             ~~~~~~~
+   |                             ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:13:14
@@ -48,10 +48,10 @@ error: expected identifier, found keyword `await`
 LL | struct Foo { await: () }
    |              ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL | struct Foo { r#await: () }
-   |              ~~~~~~~
+   |              ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:16:15
@@ -59,10 +59,10 @@ error: expected identifier, found keyword `await`
 LL | impl Foo { fn await() {} }
    |               ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL | impl Foo { fn r#await() {} }
-   |               ~~~~~~~
+   |               ++
 
 error: expected identifier, found keyword `await`
   --> $DIR/2018-edition-error-in-non-macro-position.rs:19:14
@@ -70,10 +70,10 @@ error: expected identifier, found keyword `await`
 LL | macro_rules! await {
    |              ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `await` to use it as an identifier
    |
 LL | macro_rules! r#await {
-   |              ~~~~~~~
+   |              ++
 
 error: aborting due to 7 previous errors
 

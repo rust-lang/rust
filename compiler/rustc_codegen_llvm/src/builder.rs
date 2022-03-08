@@ -1,3 +1,4 @@
+use crate::attributes;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
 use crate::llvm::{self, BasicBlock, False};
@@ -166,9 +167,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Self::append_block(self.cx, self.llfn(), name)
     }
 
-    fn build_sibling_block(&mut self, name: &str) -> Self {
-        let llbb = self.append_sibling_block(name);
-        Self::build(self.cx, llbb)
+    fn switch_to_block(&mut self, llbb: Self::BasicBlock) {
+        *self = Self::build(self.cx, llbb)
     }
 
     fn ret_void(&mut self) {
@@ -477,17 +477,31 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             bx: &mut Builder<'a, 'll, 'tcx>,
             load: &'ll Value,
             scalar: abi::Scalar,
+            layout: TyAndLayout<'tcx>,
+            offset: Size,
         ) {
+            if !scalar.is_always_valid(bx) {
+                bx.noundef_metadata(load);
+            }
+
             match scalar.value {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
                         bx.range_metadata(load, scalar.valid_range);
                     }
                 }
-                abi::Pointer if !scalar.valid_range.contains(0) => {
-                    bx.nonnull_metadata(load);
+                abi::Pointer => {
+                    if !scalar.valid_range.contains(0) {
+                        bx.nonnull_metadata(load);
+                    }
+
+                    if let Some(pointee) = layout.pointee_info_at(bx, offset) {
+                        if let Some(_) = pointee.safe {
+                            bx.align_metadata(load, pointee.align);
+                        }
+                    }
                 }
-                _ => {}
+                abi::F32 | abi::F64 => {}
             }
         }
 
@@ -505,7 +519,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let llval = const_llval.unwrap_or_else(|| {
                 let load = self.load(place.layout.llvm_type(self), place.llval, place.align);
                 if let abi::Abi::Scalar(scalar) = place.layout.abi {
-                    scalar_load_metadata(self, load, scalar);
+                    scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
                 }
                 load
             });
@@ -514,17 +528,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
             let pair_ty = place.layout.llvm_type(self);
 
-            let mut load = |i, scalar: abi::Scalar, align| {
+            let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = self.struct_gep(pair_ty, place.llval, i as u64);
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
-                scalar_load_metadata(self, load, scalar);
+                scalar_load_metadata(self, load, scalar, layout, offset);
                 self.to_immediate_scalar(load, scalar)
             };
 
             OperandValue::Pair(
-                load(0, a, place.align),
-                load(1, b, place.align.restrict_for_offset(b_offset)),
+                load(0, a, place.layout, place.align, Size::ZERO),
+                load(1, b, place.layout, place.align.restrict_for_offset(b_offset), b_offset),
             )
         } else {
             OperandValue::Ref(place.llval, None, place.align)
@@ -544,16 +558,19 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let start = dest.project_index(&mut self, zero).llval;
         let end = dest.project_index(&mut self, count).llval;
 
-        let mut header_bx = self.build_sibling_block("repeat_loop_header");
-        let mut body_bx = self.build_sibling_block("repeat_loop_body");
-        let next_bx = self.build_sibling_block("repeat_loop_next");
+        let header_bb = self.append_sibling_block("repeat_loop_header");
+        let body_bb = self.append_sibling_block("repeat_loop_body");
+        let next_bb = self.append_sibling_block("repeat_loop_next");
 
-        self.br(header_bx.llbb());
+        self.br(header_bb);
+
+        let mut header_bx = Self::build(self.cx, header_bb);
         let current = header_bx.phi(self.val_ty(start), &[start], &[self.llbb()]);
 
         let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
-        header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
+        header_bx.cond_br(keep_going, body_bb, next_bb);
 
+        let mut body_bx = Self::build(self.cx, body_bb);
         let align = dest.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem
             .val
@@ -564,10 +581,10 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             current,
             &[self.const_usize(1)],
         );
-        body_bx.br(header_bx.llbb());
-        header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
+        body_bx.br(header_bb);
+        header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        next_bx
+        Self::build(self.cx, next_bb)
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -956,29 +973,24 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildInsertValue(self.llbuilder, agg_val, elt, idx as c_uint, UNNAMED) }
     }
 
-    fn landing_pad(
-        &mut self,
-        ty: &'ll Type,
-        pers_fn: &'ll Value,
-        num_clauses: usize,
-    ) -> &'ll Value {
-        // Use LLVMSetPersonalityFn to set the personality. It supports arbitrary Consts while,
-        // LLVMBuildLandingPad requires the argument to be a Function (as of LLVM 12). The
-        // personality lives on the parent function anyway.
-        self.set_personality_fn(pers_fn);
+    fn set_personality_fn(&mut self, personality: &'ll Value) {
         unsafe {
-            llvm::LLVMBuildLandingPad(self.llbuilder, ty, None, num_clauses as c_uint, UNNAMED)
+            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
         }
     }
 
-    fn set_cleanup(&mut self, landing_pad: &'ll Value) {
+    fn cleanup_landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value) -> &'ll Value {
+        let landing_pad = self.landing_pad(ty, pers_fn, 1 /* FIXME should this be 0? */);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
+        landing_pad
     }
 
-    fn resume(&mut self, exn: &'ll Value) -> &'ll Value {
-        unsafe { llvm::LLVMBuildResume(self.llbuilder, exn) }
+    fn resume(&mut self, exn: &'ll Value) {
+        unsafe {
+            llvm::LLVMBuildResume(self.llbuilder, exn);
+        }
     }
 
     fn cleanup_pad(&mut self, parent: Option<&'ll Value>, args: &[&'ll Value]) -> Funclet<'ll> {
@@ -995,14 +1007,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
     }
 
-    fn cleanup_ret(
-        &mut self,
-        funclet: &Funclet<'ll>,
-        unwind: Option<&'ll BasicBlock>,
-    ) -> &'ll Value {
-        let ret =
-            unsafe { llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind) };
-        ret.expect("LLVM does not have support for cleanupret")
+    fn cleanup_ret(&mut self, funclet: &Funclet<'ll>, unwind: Option<&'ll BasicBlock>) {
+        unsafe {
+            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
+                .expect("LLVM does not have support for cleanupret");
+        }
     }
 
     fn catch_pad(&mut self, parent: &'ll Value, args: &[&'ll Value]) -> Funclet<'ll> {
@@ -1023,7 +1032,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         &mut self,
         parent: Option<&'ll Value>,
         unwind: Option<&'ll BasicBlock>,
-        num_handlers: usize,
+        handlers: &[&'ll BasicBlock],
     ) -> &'ll Value {
         let name = cstr!("catchswitch");
         let ret = unsafe {
@@ -1031,23 +1040,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 self.llbuilder,
                 parent,
                 unwind,
-                num_handlers as c_uint,
+                handlers.len() as c_uint,
                 name.as_ptr(),
             )
         };
-        ret.expect("LLVM does not have support for catchswitch")
-    }
-
-    fn add_handler(&mut self, catch_switch: &'ll Value, handler: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMRustAddHandler(catch_switch, handler);
+        let ret = ret.expect("LLVM does not have support for catchswitch");
+        for handler in handlers {
+            unsafe {
+                llvm::LLVMRustAddHandler(ret, handler);
+            }
         }
-    }
-
-    fn set_personality_fn(&mut self, personality: &'ll Value) {
-        unsafe {
-            llvm::LLVMSetPersonalityFn(self.llfn(), personality);
-        }
+        ret
     }
 
     // Atomic Operations
@@ -1185,15 +1188,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
-        // Cleanup is always the cold path.
-        llvm::Attribute::Cold.apply_callsite(llvm::AttributePlace::Function, llret);
-
-        // In LLVM versions with deferred inlining (currently, system LLVM < 14),
-        // inlining drop glue can lead to exponential size blowup, see #41696 and #92110.
-        if !llvm_util::is_rust_llvm() && llvm_util::get_version() < (14, 0, 0) {
-            llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
-        }
+    fn do_not_inline(&mut self, llret: &'ll Value) {
+        let noinline = llvm::AttributeKind::NoInline.create_attr(self.llcx);
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[noinline]);
     }
 }
 
@@ -1218,6 +1215,28 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn position_at_start(&mut self, llbb: &'ll BasicBlock) {
         unsafe {
             llvm::LLVMRustPositionBuilderAtStart(self.llbuilder, llbb);
+        }
+    }
+
+    fn align_metadata(&mut self, load: &'ll Value, align: Align) {
+        unsafe {
+            let v = [self.cx.const_u64(align.bytes())];
+
+            llvm::LLVMSetMetadata(
+                load,
+                llvm::MD_align as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, v.as_ptr(), v.len() as c_uint),
+            );
+        }
+    }
+
+    fn noundef_metadata(&mut self, load: &'ll Value) {
+        unsafe {
+            llvm::LLVMSetMetadata(
+                load,
+                llvm::MD_noundef as c_uint,
+                llvm::LLVMMDNodeInContext(self.cx.llcx, ptr::null(), 0),
+            );
         }
     }
 
@@ -1476,6 +1495,21 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             Some(self.call(self.type_func(&[src_ty], dest_ty), f, &[val], None))
         } else {
             None
+        }
+    }
+
+    pub(crate) fn landing_pad(
+        &mut self,
+        ty: &'ll Type,
+        pers_fn: &'ll Value,
+        num_clauses: usize,
+    ) -> &'ll Value {
+        // Use LLVMSetPersonalityFn to set the personality. It supports arbitrary Consts while,
+        // LLVMBuildLandingPad requires the argument to be a Function (as of LLVM 12). The
+        // personality lives on the parent function anyway.
+        self.set_personality_fn(pers_fn);
+        unsafe {
+            llvm::LLVMBuildLandingPad(self.llbuilder, ty, None, num_clauses as c_uint, UNNAMED)
         }
     }
 }

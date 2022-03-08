@@ -6,17 +6,18 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
-#![feature(cfg_panic)]
-#![feature(cfg_target_has_atomic)]
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]
 #![feature(const_cell_into_inner)]
 #![feature(const_convert)]
+#![feature(const_heap)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_maybe_uninit_assume_init)]
 #![feature(const_maybe_uninit_assume_init_read)]
+#![feature(const_nonnull_new)]
 #![feature(const_num_from_num)]
+#![feature(const_ptr_as_ref)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_ptr_offset)]
@@ -42,9 +43,10 @@
 #![feature(inline_const)]
 #![feature(is_sorted)]
 #![feature(pattern)]
+#![feature(pin_macro)]
 #![feature(sort_internals)]
-#![feature(slice_partition_at_index)]
 #![feature(slice_take)]
+#![feature(slice_from_ptr_range)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_array_assume_init)]
 #![feature(maybe_uninit_write_slice)]
@@ -64,6 +66,7 @@
 #![feature(iter_intersperse)]
 #![feature(iter_is_partitioned)]
 #![feature(iter_order_by)]
+#![feature(iterator_try_collect)]
 #![feature(iterator_try_reduce)]
 #![feature(const_mut_refs)]
 #![feature(const_pin)]
@@ -88,6 +91,7 @@
 #![feature(unzip_option)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(waker_getters)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;
@@ -119,6 +123,7 @@ mod ops;
 mod option;
 mod pattern;
 mod pin;
+mod pin_macro;
 mod ptr;
 mod result;
 mod simd;
@@ -129,3 +134,4 @@ mod task;
 mod time;
 mod tuple;
 mod unicode;
+mod waker;

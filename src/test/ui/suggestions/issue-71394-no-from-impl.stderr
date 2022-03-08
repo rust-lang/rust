@@ -4,6 +4,9 @@ error[E0277]: the trait bound `&[i8]: From<&[u8]>` is not satisfied
 LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
+   = help: the following implementations were found:
+             <[T; LANES] as From<Simd<T, LANES>>>
+             <[bool; LANES] as From<Mask<T, LANES>>>
    = note: required because of the requirements on the impl of `Into<&[i8]>` for `&[u8]`
 
 error: aborting due to previous error

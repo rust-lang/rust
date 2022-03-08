@@ -1,6 +1,6 @@
 [$DIR/dbg-macro-expected-behavior.rs:20] Unit = Unit
 [$DIR/dbg-macro-expected-behavior.rs:21] a = Unit
-[$DIR/dbg-macro-expected-behavior.rs:27] Point{x: 42, y: 24,} = Point {
+[$DIR/dbg-macro-expected-behavior.rs:27] Point { x: 42, y: 24 } = Point {
     x: 42,
     y: 24,
 }

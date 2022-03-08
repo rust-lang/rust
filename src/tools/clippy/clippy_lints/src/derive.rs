@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note, span_lint_and_then};
 use clippy_utils::paths;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{get_trait_def_id, is_automatically_derived, is_lint_allowed, match_def_path};
+use clippy_utils::{is_automatically_derived, is_lint_allowed, match_def_path};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{walk_expr, walk_fn, walk_item, FnKind, Visitor};
 use rustc_hir::{
@@ -12,6 +12,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -196,7 +197,7 @@ fn check_hash_peq<'tcx>(
     if_chain! {
         if let Some(peq_trait_def_id) = cx.tcx.lang_items().eq_trait();
         if let Some(def_id) = trait_ref.trait_def_id();
-        if match_def_path(cx, def_id, &paths::HASH);
+        if cx.tcx.is_diagnostic_item(sym::Hash, def_id);
         then {
             // Look for the PartialEq implementations for `ty`
             cx.tcx.for_each_relevant_impl(peq_trait_def_id, ty, |impl_id| {
@@ -247,7 +248,7 @@ fn check_ord_partial_ord<'tcx>(
     ord_is_automatically_derived: bool,
 ) {
     if_chain! {
-        if let Some(ord_trait_def_id) = get_trait_def_id(cx, &paths::ORD);
+        if let Some(ord_trait_def_id) = cx.tcx.get_diagnostic_item(sym::Ord);
         if let Some(partial_ord_trait_def_id) = cx.tcx.lang_items().partial_ord_trait();
         if let Some(def_id) = &trait_ref.trait_def_id();
         if *def_id == ord_trait_def_id;

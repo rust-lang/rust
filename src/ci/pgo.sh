@@ -14,10 +14,10 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --llvm-profile-generate
 
 # Profile libcore compilation in opt-level=0 and opt-level=3
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
-    --crate-type=lib ../library/core/src/lib.rs
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
-    --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
+RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
+    --edition=2021 --crate-type=lib ../library/core/src/lib.rs
+RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
+    --edition=2021 --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
 
 # Merge the profile data we gathered for LLVM
 # Note that this uses the profdata from the clang we used to build LLVM,
@@ -37,10 +37,10 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --rust-profile-generate=/tmp/rustc-pgo
 
 # Profile libcore compilation in opt-level=0 and opt-level=3
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
-    --crate-type=lib ../library/core/src/lib.rs
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc --edition=2018 \
-    --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
+RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
+    --edition=2021 --crate-type=lib ../library/core/src/lib.rs
+RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
+    --edition=2021 --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
 
 cp -r /tmp/rustc-perf ./
 chown -R $(whoami): ./rustc-perf

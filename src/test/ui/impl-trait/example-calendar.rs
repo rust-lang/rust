@@ -1,5 +1,4 @@
 // run-pass
-// ignore-compare-mode-chalk
 
 #![feature(fn_traits,
            step_trait,

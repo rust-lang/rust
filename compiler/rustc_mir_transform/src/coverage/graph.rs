@@ -1,5 +1,6 @@
 use super::Error;
 
+use itertools::Itertools;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
@@ -280,7 +281,7 @@ impl graph::WithPredecessors for CoverageGraph {
 }
 
 rustc_index::newtype_index! {
-    /// A node in the [control-flow graph][CFG] of CoverageGraph.
+    /// A node in the control-flow graph of CoverageGraph.
     pub(super) struct BasicCoverageBlock {
         DEBUG_FORMAT = "bcb{}",
         const START_BCB = 0,
@@ -418,18 +419,11 @@ impl BasicCoverageBlockData {
     pub fn take_edge_counters(
         &mut self,
     ) -> Option<impl Iterator<Item = (BasicCoverageBlock, CoverageKind)>> {
-        self.edge_from_bcbs.take().map_or(None, |m| Some(m.into_iter()))
+        self.edge_from_bcbs.take().map(|m| m.into_iter())
     }
 
     pub fn id(&self) -> String {
-        format!(
-            "@{}",
-            self.basic_blocks
-                .iter()
-                .map(|bb| bb.index().to_string())
-                .collect::<Vec<_>>()
-                .join(ID_SEPARATOR)
-        )
+        format!("@{}", self.basic_blocks.iter().map(|bb| bb.index().to_string()).join(ID_SEPARATOR))
     }
 }
 

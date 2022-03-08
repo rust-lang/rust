@@ -1,16 +1,16 @@
-error: using `writeln!(&mut v, "")`
+error: using `writeln!(v, "")`
   --> $DIR/writeln_empty_string.rs:11:5
    |
-LL |     writeln!(&mut v, "");
-   |     ^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut v)`
+LL |     writeln!(v, "");
+   |     ^^^^^^^^^^^^^^^ help: replace it with: `writeln!(v)`
    |
    = note: `-D clippy::writeln-empty-string` implied by `-D warnings`
 
-error: using `writeln!(&mut suggestion, "")`
+error: using `writeln!(suggestion, "")`
   --> $DIR/writeln_empty_string.rs:14:5
    |
-LL |     writeln!(&mut suggestion, "");
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(&mut suggestion)`
+LL |     writeln!(suggestion, "");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `writeln!(suggestion)`
 
 error: aborting due to 2 previous errors
 

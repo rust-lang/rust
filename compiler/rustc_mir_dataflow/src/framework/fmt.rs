@@ -1,7 +1,7 @@
 //! Custom formatting traits used when outputting Graphviz diagrams with the results of a dataflow
 //! analysis.
 
-use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use std::fmt;
 
@@ -130,6 +130,19 @@ where
         }
 
         Ok(())
+    }
+}
+
+impl<T, C> DebugWithContext<C> for ChunkedBitSet<T>
+where
+    T: Idx + DebugWithContext<C>,
+{
+    fn fmt_with(&self, _ctxt: &C, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unimplemented!("implement when/if needed");
+    }
+
+    fn fmt_diff_with(&self, _old: &Self, _ctxt: &C, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        unimplemented!("implement when/if needed");
     }
 }
 

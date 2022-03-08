@@ -1,3 +1,4 @@
+// Ensures that the theme change is working as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
 click: "#theme-picker"
 click: "#theme-choices > button:first-child"
@@ -8,3 +9,19 @@ click: "#theme-choices > button:last-child"
 wait-for: 500
 // should be the light theme so let's check the color
 assert-css: ("body", { "background-color": "rgb(255, 255, 255)" })
+
+goto: file://|DOC_PATH|/settings.html
+click: "#theme-light"
+wait-for: 500
+assert-css: ("body", { "background-color": "rgb(255, 255, 255)" })
+assert-local-storage: { "rustdoc-theme": "light" }
+
+click: "#theme-dark"
+wait-for: 500
+assert-css: ("body", { "background-color": "rgb(53, 53, 53)" })
+assert-local-storage: { "rustdoc-theme": "dark" }
+
+click: "#theme-ayu"
+wait-for: 500
+assert-css: ("body", { "background-color": "rgb(15, 20, 25)" })
+assert-local-storage: { "rustdoc-theme": "ayu" }

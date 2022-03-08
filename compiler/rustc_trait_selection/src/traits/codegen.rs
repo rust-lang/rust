@@ -8,7 +8,7 @@ use crate::traits::{
     FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
     Unimplemented,
 };
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -18,12 +18,11 @@ use rustc_middle::ty::{self, TyCtxt};
 /// that type check should guarantee to us that all nested
 /// obligations *could be* resolved if we wanted to.
 ///
-/// Assumes that this is run after the entire crate has been successfully type-checked.
 /// This also expects that `trait_ref` is fully normalized.
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Result<ImplSource<'tcx, ()>, ErrorReported> {
+) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorGuaranteed> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
@@ -60,11 +59,13 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
             Err(Unimplemented) => {
                 // This can trigger when we probe for the source of a `'static` lifetime requirement
                 // on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
+                // This can also trigger when we have a global bound that is not actually satisfied,
+                // but was included during typeck due to the trivial_bounds feature.
                 infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
@@ -72,7 +73,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)
@@ -92,7 +93,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
         debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
-        Ok(impl_source)
+        Ok(&*tcx.arena.alloc(impl_source))
     })
 }
 
@@ -101,7 +102,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
 /// Finishes processes any obligations that remain in the
 /// fulfillment context, and then returns the result with all type
 /// variables removed and regions erased. Because this is intended
-/// for use after type-check has completed, if any errors occur,
+/// for use outside of type inference, if any errors occur,
 /// it will panic. It is used during normalization and other cases
 /// where processing the obligations in `fulfill_cx` may cause
 /// type inference variables that appear in `result` to be
@@ -124,7 +125,10 @@ where
     if !errors.is_empty() {
         infcx.tcx.sess.delay_span_bug(
             rustc_span::DUMMY_SP,
-            &format!("Encountered errors `{:?}` resolving bounds after type-checking", errors),
+            &format!(
+                "Encountered errors `{:?}` resolving bounds outside of type inference",
+                errors
+            ),
         );
     }
 

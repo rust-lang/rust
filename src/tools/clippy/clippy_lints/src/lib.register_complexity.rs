@@ -71,7 +71,6 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(redundant_closure_call::REDUNDANT_CLOSURE_CALL),
     LintId::of(redundant_slicing::REDUNDANT_SLICING),
     LintId::of(reference::DEREF_ADDROF),
-    LintId::of(reference::REF_IN_DEREF),
     LintId::of(repeat_once::REPEAT_ONCE),
     LintId::of(strings::STRING_FROM_UTF8_AS_BYTES),
     LintId::of(strlen_on_c_strings::STRLEN_ON_C_STRINGS),

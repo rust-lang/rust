@@ -30,7 +30,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     }
 
     match expr.kind {
-        ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) => {
+        ExprKind::Call(_, args) | ExprKind::MethodCall(_, args, _) => {
             let args_to_recover = args
                 .iter()
                 .filter(|arg| {

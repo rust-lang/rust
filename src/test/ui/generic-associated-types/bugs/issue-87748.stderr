@@ -1,0 +1,20 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/issue-87748.rs:18:5
+   |
+LL |     fn do_sth(_: u32) {}
+   |     ^^^^^^^^^^^^^^^^^
+   |
+note: lifetime parameter instantiated with the anonymous lifetime #2 defined here
+  --> $DIR/issue-87748.rs:18:5
+   |
+LL |     fn do_sth(_: u32) {}
+   |     ^^^^^^^^^^^^^^^^^
+note: but lifetime parameter must outlive the anonymous lifetime #1 defined here
+  --> $DIR/issue-87748.rs:18:5
+   |
+LL |     fn do_sth(_: u32) {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0478`.

@@ -14,7 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
@@ -130,6 +130,7 @@ impl RegionckMode {
 /// `RefCell` and are involved with taking/rolling back snapshots. Snapshot
 /// operations are hot enough that we want only one call to `borrow_mut` per
 /// call to `start_snapshot` and `rollback_to`.
+#[derive(Clone)]
 pub struct InferCtxtInner<'tcx> {
     /// Cache for projections. This cache is snapshotted along with the infcx.
     ///
@@ -195,7 +196,7 @@ pub struct InferCtxtInner<'tcx> {
     // Opaque types found in explicit return types and their
     // associated fresh inference variable. Writeback resolves these
     // variables to get the concrete type, which can be used to
-    // 'de-opaque' OpaqueTypeDecl, after typeck is done with all functions.
+    // 'de-opaque' OpaqueTypeDecl outside of type inference.
     pub opaque_types: OpaqueTypeMap<'tcx>,
 
     /// A map from inference variables created from opaque
@@ -368,11 +369,24 @@ pub struct InferCtxt<'a, 'tcx> {
 /// See the `error_reporting` module for more details.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
-    Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
-    Consts(ExpectedFound<&'tcx ty::Const<'tcx>>),
+    Terms(ExpectedFound<ty::Term<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
+}
+
+impl<'tcx> ValuePairs<'tcx> {
+    pub fn ty(&self) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
+        if let ValuePairs::Terms(ExpectedFound {
+            expected: ty::Term::Ty(expected),
+            found: ty::Term::Ty(found),
+        }) = self
+        {
+            Some((*expected, *found))
+        } else {
+            None
+        }
+    }
 }
 
 /// The trace designates the path through inference that we took to
@@ -424,6 +438,13 @@ pub enum SubregionOrigin<'tcx> {
     /// Comparing the signature and requirements of an impl associated type
     /// against the containing trait
     CompareImplTypeObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+
+    /// Checking that the bounds of a trait's associated type hold for a given impl
+    CheckAssociatedTypeBounds {
+        parent: Box<SubregionOrigin<'tcx>>,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+    },
 }
 
 // `SubregionOrigin` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -1065,11 +1086,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.tcx.mk_ty_var(vid)
     }
 
-    pub fn next_const_var(
-        &self,
-        ty: Ty<'tcx>,
-        origin: ConstVariableOrigin,
-    ) -> &'tcx ty::Const<'tcx> {
+    pub fn next_const_var(&self, ty: Ty<'tcx>, origin: ConstVariableOrigin) -> ty::Const<'tcx> {
         self.tcx.mk_const_var(self.next_const_var_id(origin), ty)
     }
 
@@ -1078,7 +1095,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         origin: ConstVariableOrigin,
         universe: ty::UniverseIndex,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         let vid = self
             .inner
             .borrow_mut()
@@ -1421,7 +1438,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn probe_const_var(
         &self,
         vid: ty::ConstVid<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
+    ) -> Result<ty::Const<'tcx>, ty::UniverseIndex> {
         match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
@@ -1458,19 +1475,21 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         sp: Span,
         mk_diag: M,
         actual_ty: Ty<'tcx>,
-    ) -> DiagnosticBuilder<'tcx>
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>
     where
-        M: FnOnce(String) -> DiagnosticBuilder<'tcx>,
+        M: FnOnce(String) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
     {
         let actual_ty = self.resolve_vars_if_possible(actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
+        let mut err = mk_diag(self.ty_to_string(actual_ty));
+
         // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
-            return self.tcx.sess.diagnostic().struct_dummy();
+            err.downgrade_to_delayed_bug();
         }
 
-        mk_diag(self.ty_to_string(actual_ty))
+        err
     }
 
     pub fn report_mismatched_types(
@@ -1479,7 +1498,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let trace = TypeTrace::types(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }
@@ -1487,10 +1506,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn report_mismatched_consts(
         &self,
         cause: &ObligationCause<'tcx>,
-        expected: &'tcx ty::Const<'tcx>,
-        actual: &'tcx ty::Const<'tcx>,
+        expected: ty::Const<'tcx>,
+        actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let trace = TypeTrace::consts(cause, true, expected, actual);
         self.report_and_explain_type_error(trace, &err)
     }
@@ -1742,8 +1761,8 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
     /// Tries to extract an inference variable from a constant, returns `None`
     /// for constants other than `ty::ConstKind::Infer(_)` (or `InferConst::Fresh`).
-    pub fn maybe_from_const(ct: &'tcx ty::Const<'tcx>) -> Option<Self> {
-        match ct.val {
+    pub fn maybe_from_const(ct: ty::Const<'tcx>) -> Option<Self> {
+        match ct.val() {
             ty::ConstKind::Infer(InferConst::Var(v)) => Some(TyOrConstInferVar::Const(v)),
             _ => None,
         }
@@ -1763,13 +1782,13 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
         self.infcx.shallow_resolve_ty(ty)
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.val() {
             self.infcx
                 .inner
                 .borrow_mut()
                 .const_unification_table()
-                .probe_value(*vid)
+                .probe_value(vid)
                 .val
                 .known()
                 .unwrap_or(ct)
@@ -1790,16 +1809,22 @@ impl<'tcx> TypeTrace<'tcx> {
         a: Ty<'tcx>,
         b: Ty<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 
     pub fn consts(
         cause: &ObligationCause<'tcx>,
         a_is_expected: bool,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
@@ -1816,6 +1841,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplMethodObligation { span, .. } => span,
             CompareImplTypeObligation { span, .. } => span,
+            CheckAssociatedTypeBounds { ref parent, .. } => parent.span(),
         }
     }
 
@@ -1844,6 +1870,15 @@ impl<'tcx> SubregionOrigin<'tcx> {
                 span: cause.span,
                 impl_item_def_id,
                 trait_item_def_id,
+            },
+
+            traits::ObligationCauseCode::CheckAssociatedTypeBounds {
+                impl_item_def_id,
+                trait_item_def_id,
+            } => SubregionOrigin::CheckAssociatedTypeBounds {
+                impl_item_def_id,
+                trait_item_def_id,
+                parent: Box::new(default()),
             },
 
             _ => default(),

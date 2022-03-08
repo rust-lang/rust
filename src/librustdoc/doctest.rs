@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{ColorConfig, ErrorReported, FatalError};
+use rustc_errors::{ColorConfig, ErrorGuaranteed, FatalError};
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::intravisit;
@@ -44,7 +44,7 @@ crate struct GlobalTestOptions {
     crate attrs: Vec<String>,
 }
 
-crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
+crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
     let input = config::Input::File(options.input.clone());
 
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
@@ -91,13 +91,13 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
     let config = interface::Config {
         opts: sessopts,
         crate_cfg: interface::parse_cfgspecs(cfgs),
+        crate_check_cfg: interface::parse_check_cfg(options.check_cfgs.clone()),
         input,
         input_path: None,
         output_file: None,
         output_dir: None,
         file_loader: None,
         diagnostic_output: DiagnosticOutput::Default,
-        stderr: None,
         lint_caps,
         parse_sess_created: None,
         register_lints: Some(box crate::lint::register_lints),
@@ -111,58 +111,55 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorReported> {
     let externs = options.externs.clone();
     let json_unused_externs = options.json_unused_externs;
 
-    let res = interface::run_compiler(config, |compiler| {
-        compiler.enter(|queries| {
-            let mut global_ctxt = queries.global_ctxt()?.take();
+    let (tests, unused_extern_reports, compiling_test_count) =
+        interface::run_compiler(config, |compiler| {
+            compiler.enter(|queries| {
+                let mut global_ctxt = queries.global_ctxt()?.take();
 
-            let collector = global_ctxt.enter(|tcx| {
-                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+                let collector = global_ctxt.enter(|tcx| {
+                    let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
 
-                let opts = scrape_test_config(crate_attrs);
-                let enable_per_target_ignores = options.enable_per_target_ignores;
-                let mut collector = Collector::new(
-                    tcx.crate_name(LOCAL_CRATE),
-                    options,
-                    false,
-                    opts,
-                    Some(compiler.session().parse_sess.clone_source_map()),
-                    None,
-                    enable_per_target_ignores,
-                );
+                    let opts = scrape_test_config(crate_attrs);
+                    let enable_per_target_ignores = options.enable_per_target_ignores;
+                    let mut collector = Collector::new(
+                        tcx.crate_name(LOCAL_CRATE),
+                        options,
+                        false,
+                        opts,
+                        Some(compiler.session().parse_sess.clone_source_map()),
+                        None,
+                        enable_per_target_ignores,
+                    );
 
-                let mut hir_collector = HirCollector {
-                    sess: compiler.session(),
-                    collector: &mut collector,
-                    map: tcx.hir(),
-                    codes: ErrorCodes::from(
-                        compiler.session().opts.unstable_features.is_nightly_build(),
-                    ),
-                    tcx,
-                };
-                hir_collector.visit_testable(
-                    "".to_string(),
-                    CRATE_HIR_ID,
-                    tcx.hir().span(CRATE_HIR_ID),
-                    |this| tcx.hir().walk_toplevel_module(this),
-                );
+                    let mut hir_collector = HirCollector {
+                        sess: compiler.session(),
+                        collector: &mut collector,
+                        map: tcx.hir(),
+                        codes: ErrorCodes::from(
+                            compiler.session().opts.unstable_features.is_nightly_build(),
+                        ),
+                        tcx,
+                    };
+                    hir_collector.visit_testable(
+                        "".to_string(),
+                        CRATE_HIR_ID,
+                        tcx.hir().span(CRATE_HIR_ID),
+                        |this| tcx.hir().walk_toplevel_module(this),
+                    );
 
-                collector
-            });
-            if compiler.session().diagnostic().has_errors_or_lint_errors() {
-                FatalError.raise();
-            }
+                    collector
+                });
+                if compiler.session().diagnostic().has_errors_or_lint_errors() {
+                    FatalError.raise();
+                }
 
-            let unused_extern_reports = collector.unused_extern_reports.clone();
-            let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
-            let ret: Result<_, ErrorReported> =
-                Ok((collector.tests, unused_extern_reports, compiling_test_count));
-            ret
-        })
-    });
-    let (tests, unused_extern_reports, compiling_test_count) = match res {
-        Ok(res) => res,
-        Err(ErrorReported) => return Err(ErrorReported),
-    };
+                let unused_extern_reports = collector.unused_extern_reports.clone();
+                let compiling_test_count = collector.compiling_test_count.load(Ordering::SeqCst);
+                let ret: Result<_, ErrorGuaranteed> =
+                    Ok((collector.tests, unused_extern_reports, compiling_test_count));
+                ret
+            })
+        })?;
 
     run_tests(test_args, nocapture, tests);
 
@@ -320,6 +317,12 @@ fn run_test(
     compiler.arg("--crate-type").arg("bin");
     for cfg in &rustdoc_options.cfgs {
         compiler.arg("--cfg").arg(&cfg);
+    }
+    if !rustdoc_options.check_cfgs.is_empty() {
+        compiler.arg("-Z").arg("unstable-options");
+        for check_cfg in &rustdoc_options.check_cfgs {
+            compiler.arg("--check-cfg").arg(&check_cfg);
+        }
     }
     if let Some(sysroot) = rustdoc_options.maybe_sysroot {
         compiler.arg("--sysroot").arg(sysroot);
@@ -551,10 +554,7 @@ crate fn make_test(
             let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
-                    for mut err in errs {
-                        err.cancel();
-                    }
-
+                    drop(errs);
                     return (found_main, found_extern_crate, found_macro);
                 }
             };
@@ -594,7 +594,7 @@ crate fn make_test(
                         }
                     }
                     Ok(None) => break,
-                    Err(mut e) => {
+                    Err(e) => {
                         e.cancel();
                         break;
                     }
@@ -616,7 +616,7 @@ crate fn make_test(
     });
     let (already_has_main, already_has_extern_crate, found_macro) = match result {
         Ok(result) => result,
-        Err(ErrorReported) => {
+        Err(ErrorGuaranteed) => {
             // If the parser panicked due to a fatal error, pass the test code through unchanged.
             // The error will be reported during compilation.
             return (s.to_owned(), 0, false);
@@ -659,7 +659,7 @@ crate fn make_test(
     } else {
         let returns_result = everything_else.trim_end().ends_with("(())");
         // Give each doctest main function a unique name.
-        // This is for example needed for the tooling around `-Z instrument-coverage`.
+        // This is for example needed for the tooling around `-C instrument-coverage`.
         let inner_fn_name = if let Some(test_id) = test_id {
             format!("_doctest_main_{}", test_id)
         } else {
@@ -684,7 +684,7 @@ crate fn make_test(
         };
         // Note on newlines: We insert a line/newline *before*, and *after*
         // the doctest and adjust the `line_offset` accordingly.
-        // In the case of `-Z instrument-coverage`, this means that the generated
+        // In the case of `-C instrument-coverage`, this means that the generated
         // inner `main` function spans from the doctest opening codeblock to the
         // closing one. For example
         // /// ``` <- start of the inner main
@@ -949,9 +949,10 @@ impl Tester for Collector {
                     Ignore::None => false,
                     Ignore::Some(ref ignores) => ignores.iter().any(|s| target_str.contains(s)),
                 },
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 // compiler failures are test failures
                 should_panic: test::ShouldPanic::No,
-                allow_fail: config.allow_fail,
                 compile_fail: config.compile_fail,
                 no_run,
                 test_type: test::TestType::DocTest,
@@ -1163,7 +1164,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
 
     fn visit_item(&mut self, item: &'hir hir::Item<'_>) {
         let name = match &item.kind {
-            hir::ItemKind::Macro(ref macro_def) => {
+            hir::ItemKind::Macro(ref macro_def, _) => {
                 // FIXME(#88038): Non exported macros have historically not been tested,
                 // but we really ought to start testing them.
                 let def_id = item.def_id.to_def_id();

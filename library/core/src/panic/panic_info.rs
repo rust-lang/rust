@@ -31,6 +31,7 @@ pub struct PanicInfo<'a> {
     payload: &'a (dyn Any + Send),
     message: Option<&'a fmt::Arguments<'a>>,
     location: &'a Location<'a>,
+    can_unwind: bool,
 }
 
 impl<'a> PanicInfo<'a> {
@@ -44,9 +45,10 @@ impl<'a> PanicInfo<'a> {
     pub fn internal_constructor(
         message: Option<&'a fmt::Arguments<'a>>,
         location: &'a Location<'a>,
+        can_unwind: bool,
     ) -> Self {
         struct NoPayload;
-        PanicInfo { location, message, payload: &NoPayload }
+        PanicInfo { location, message, payload: &NoPayload, can_unwind }
     }
 
     #[unstable(
@@ -126,6 +128,22 @@ impl<'a> PanicInfo<'a> {
         // NOTE: If this is changed to sometimes return None,
         // deal with that case in std::panicking::default_hook and core::panicking::panic_fmt.
         Some(&self.location)
+    }
+
+    /// Returns whether the panic handler is allowed to unwind the stack from
+    /// the point where the panic occurred.
+    ///
+    /// This is true for most kinds of panics with the exception of panics
+    /// caused by trying to unwind out of a `Drop` implementation or a function
+    /// whose ABI does not support unwinding.
+    ///
+    /// It is safe for a panic handler to unwind even when this function returns
+    /// true, however this will simply cause the panic handler to be called
+    /// again.
+    #[must_use]
+    #[unstable(feature = "panic_can_unwind", issue = "92988")]
+    pub fn can_unwind(&self) -> bool {
+        self.can_unwind
     }
 }
 

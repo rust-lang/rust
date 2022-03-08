@@ -14,7 +14,7 @@ pub use self::MethodError::*;
 use crate::check::FnCtxt;
 use crate::ObligationCause;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
 use rustc_hir::def_id::DefId;
@@ -141,7 +141,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(level = "debug", skip(self, err, call_expr))]
     crate fn suggest_method_call(
         &self,
-        err: &mut DiagnosticBuilder<'a>,
+        err: &mut Diagnostic,
         msg: &str,
         method_name: Ident,
         self_ty: Ty<'tcx>,
@@ -227,7 +227,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let ty::Ref(region, t_type, mutability) = self_ty.kind() {
                 let trait_type = self
                     .tcx
-                    .mk_ref(region, ty::TypeAndMut { ty: t_type, mutbl: mutability.invert() });
+                    .mk_ref(*region, ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() });
                 // We probe again to see if there might be a borrow mutability discrepancy.
                 match self.lookup_probe(
                     span,
@@ -333,15 +333,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
+    pub(super) fn obligation_for_op_method(
+        &self,
+        span: Span,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        opt_input_type: Option<Ty<'tcx>>,
+        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+    ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
+    {
+        // Construct a trait-reference `self_ty : Trait<input_tys>`
+        let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
+            match param.kind {
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => {}
+                GenericParamDefKind::Type { .. } => {
+                    if param.index == 0 {
+                        return self_ty.into();
+                    } else if let Some(input_type) = opt_input_type {
+                        return input_type.into();
+                    }
+                }
+            }
+            self.var_for_def(span, param)
+        });
+
+        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
+
+        // Construct an obligation
+        let poly_trait_ref = ty::Binder::dummy(trait_ref);
+        (
+            traits::Obligation::new(
+                traits::ObligationCause::new(
+                    span,
+                    self.body_id,
+                    traits::BinOp {
+                        rhs_span: opt_input_expr.map(|expr| expr.span),
+                        is_lit: opt_input_expr
+                            .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                    },
+                ),
+                self.param_env,
+                poly_trait_ref.without_const().to_predicate(self.tcx),
+            ),
+            substs,
+        )
+    }
+
     /// `lookup_method_in_trait` is used for overloaded operators.
     /// It does a very narrow slice of what the normal probe/confirm path does.
     /// In particular, it doesn't really do any probing: it simply constructs
     /// an obligation for a particular trait with the given self type and checks
     /// whether that trait is implemented.
-    //
-    // FIXME(#18741): it seems likely that we can consolidate some of this
-    // code with the other method-lookup code. In particular, the second half
-    // of this method is basically the same as confirmation.
     #[instrument(level = "debug", skip(self, span, opt_input_types))]
     pub(super) fn lookup_method_in_trait(
         &self,
@@ -358,7 +400,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let (obligation, substs) =
             self.obligation_for_method(span, trait_def_id, self_ty, opt_input_types);
+        self.construct_obligation_for_trait(
+            span,
+            m_name,
+            trait_def_id,
+            obligation,
+            substs,
+            None,
+            false,
+        )
+    }
 
+    pub(super) fn lookup_op_method_in_trait(
+        &self,
+        span: Span,
+        m_name: Ident,
+        trait_def_id: DefId,
+        self_ty: Ty<'tcx>,
+        opt_input_type: Option<Ty<'tcx>>,
+        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
+        let (obligation, substs) = self.obligation_for_op_method(
+            span,
+            trait_def_id,
+            self_ty,
+            opt_input_type,
+            opt_input_expr,
+        );
+        self.construct_obligation_for_trait(
+            span,
+            m_name,
+            trait_def_id,
+            obligation,
+            substs,
+            opt_input_expr,
+            true,
+        )
+    }
+
+    // FIXME(#18741): it seems likely that we can consolidate some of this
+    // code with the other method-lookup code. In particular, the second half
+    // of this method is basically the same as confirmation.
+    fn construct_obligation_for_trait(
+        &self,
+        span: Span,
+        m_name: Ident,
+        trait_def_id: DefId,
+        obligation: traits::PredicateObligation<'tcx>,
+        substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
+        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+        is_op: bool,
+    ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!(?obligation);
 
         // Now we want to know if this can be matched
@@ -371,15 +463,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item = match self.associated_value(trait_def_id, m_name) {
-            Some(method_item) => method_item,
-            None => {
-                tcx.sess.delay_span_bug(
-                    span,
-                    "operator trait does not have corresponding operator method",
-                );
-                return None;
-            }
+        let Some(method_item) = self.associated_value(trait_def_id, m_name) else {
+            tcx.sess.delay_span_bug(
+                span,
+                "operator trait does not have corresponding operator method",
+            );
+            return None;
         };
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
@@ -398,8 +487,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig).0;
         let fn_sig = fn_sig.subst(self.tcx, substs);
 
-        let InferOk { value, obligations: o } =
-            self.normalize_associated_types_in_as_infer_ok(span, fn_sig);
+        let InferOk { value, obligations: o } = if is_op {
+            self.normalize_op_associated_types_in_as_infer_ok(span, fn_sig, opt_input_expr)
+        } else {
+            self.normalize_associated_types_in_as_infer_ok(span, fn_sig)
+        };
         let fn_sig = {
             obligations.extend(o);
             value
@@ -415,8 +507,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
 
-        let InferOk { value, obligations: o } =
-            self.normalize_associated_types_in_as_infer_ok(span, bounds);
+        let InferOk { value, obligations: o } = if is_op {
+            self.normalize_op_associated_types_in_as_infer_ok(span, bounds, opt_input_expr)
+        } else {
+            self.normalize_associated_types_in_as_infer_ok(span, bounds)
+        };
         let bounds = {
             obligations.extend(o);
             value
@@ -424,7 +519,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert!(!bounds.has_escaping_bound_vars());
 
-        let cause = traits::ObligationCause::misc(span, self.body_id);
+        let cause = if is_op {
+            ObligationCause::new(
+                span,
+                self.body_id,
+                traits::BinOp {
+                    rhs_span: opt_input_expr.map(|expr| expr.span),
+                    is_lit: opt_input_expr
+                        .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                },
+            )
+        } else {
+            traits::ObligationCause::misc(span, self.body_id)
+        };
         obligations.extend(traits::predicates_for_generics(cause.clone(), self.param_env, bounds));
 
         // Also add an obligation for the method type being well-formed.

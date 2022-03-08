@@ -1,0 +1,59 @@
+error[E0308]: mismatched types
+  --> $DIR/return-impl-trait-bad.rs:5:5
+   |
+LL | fn bad_echo<T>(_t: T) -> T {
+   |             -            - expected `T` because of return type
+   |             |
+   |             this type parameter
+LL |     "this should not suggest impl Trait"
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |
+   = note: expected type parameter `T`
+                   found reference `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/return-impl-trait-bad.rs:9:5
+   |
+LL | fn bad_echo_2<T: Trait>(_t: T) -> T {
+   |               -                   - expected `T` because of return type
+   |               |
+   |               this type parameter
+LL |     "this will not suggest it, because that would probably be wrong"
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |
+   = note: expected type parameter `T`
+                   found reference `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/return-impl-trait-bad.rs:17:5
+   |
+LL | fn other_bounds_bad<T>() -> T
+   |                     -       - expected `T` because of return type
+   |                     |
+   |                     this type parameter
+...
+LL |     "don't suggest this, because Option<T> places additional constraints"
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |
+   = note: expected type parameter `T`
+                   found reference `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/return-impl-trait-bad.rs:28:5
+   |
+LL | fn used_in_trait<T>() -> T
+   |                  -       -
+   |                  |       |
+   |                  |       expected `T` because of return type
+   |                  |       help: consider using an impl return type: `impl Send`
+   |                  this type parameter
+...
+LL |     "don't suggest this, because the generic param is used in the bound."
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `T`, found `&str`
+   |
+   = note: expected type parameter `T`
+                   found reference `&'static str`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

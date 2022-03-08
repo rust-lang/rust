@@ -139,7 +139,7 @@ impl<'a> PrintState<'a> for State<'a> {
     }
 }
 
-pub const INDENT_UNIT: usize = 4;
+pub const INDENT_UNIT: isize = 4;
 
 /// Requires you to pass an input filename and reader so that
 /// it can scan the input text for comments to copy forward.
@@ -570,8 +570,8 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ItemKind::Macro(ref macro_def) => {
-                self.print_mac_def(macro_def, &item.ident, &item.span, |state| {
+            hir::ItemKind::Macro(ref macro_def, _) => {
+                self.print_mac_def(macro_def, &item.ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
             }
@@ -923,7 +923,6 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
         self.print_outer_attributes(self.attrs(ii.hir_id()));
-        self.print_defaultness(ii.defaultness);
 
         match ii.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {
@@ -1427,7 +1426,7 @@ impl<'a> State<'a> {
             hir::ExprKind::Call(ref func, ref args) => {
                 self.print_expr_call(&func, args);
             }
-            hir::ExprKind::MethodCall(ref segment, _, ref args, _) => {
+            hir::ExprKind::MethodCall(ref segment, ref args, _) => {
                 self.print_expr_method_call(segment, args);
             }
             hir::ExprKind::Binary(op, ref lhs, ref rhs) => {

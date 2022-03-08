@@ -237,10 +237,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
-                (
-                    GenericArgKind::Lifetime(ty::ReErased),
-                    GenericArgKind::Lifetime(ty::ReErased),
-                ) => {
+                (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                    if re1.is_erased() && re2.is_erased() =>
+                {
                     // No action needed.
                 }
 
@@ -429,7 +428,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 }
                 GenericArgKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let &ty::RegionKind::ReLateBound(debruijn, br) = result_value {
+                    if let ty::ReLateBound(debruijn, br) = *result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
@@ -438,12 +437,12 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::Const { val: ty::ConstKind::Bound(debrujin, b), .. } = result_value {
+                    if let ty::ConstKind::Bound(debrujin, b) = result_value.val() {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(*debrujin, ty::INNERMOST);
-                        opt_values[*b] = Some(*original_value);
+                        assert_eq!(debrujin, ty::INNERMOST);
+                        opt_values[b] = Some(*original_value);
                     }
                 }
             }
@@ -558,10 +557,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
-                    (
-                        GenericArgKind::Lifetime(ty::ReErased),
-                        GenericArgKind::Lifetime(ty::ReErased),
-                    ) => {
+                    (GenericArgKind::Lifetime(re1), GenericArgKind::Lifetime(re2))
+                        if re1.is_erased() && re2.is_erased() =>
+                    {
                         // no action needed
                     }
                     (GenericArgKind::Lifetime(v1), GenericArgKind::Lifetime(v2)) => {
@@ -672,7 +670,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         });
     }
 
-    fn const_equate(&mut self, _a: &'tcx Const<'tcx>, _b: &'tcx Const<'tcx>) {
+    fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
         span_bug!(
             self.cause.span(self.infcx.tcx),
             "generic_const_exprs: unreachable `const_equate`"

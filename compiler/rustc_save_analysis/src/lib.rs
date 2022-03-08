@@ -1,7 +1,9 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(if_let_guard)]
 #![feature(nll)]
+#![feature(let_else)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
 
 mod dump_visitor;
 mod dumper;
@@ -113,12 +115,9 @@ impl<'tcx> SaveContext<'tcx> {
         let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
         for &n in self.tcx.crates(()).iter() {
-            let span = match self.tcx.extern_crate(n.as_def_id()) {
-                Some(&ExternCrate { span, .. }) => span,
-                None => {
-                    debug!("skipping crate {}, no data", n);
-                    continue;
-                }
+            let Some(&ExternCrate { span, .. }) = self.tcx.extern_crate(n.as_def_id()) else {
+                debug!("skipping crate {}, no data", n);
+                continue;
             };
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
@@ -564,12 +563,9 @@ impl<'tcx> SaveContext<'tcx> {
                 }
             },
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    Some(id) => id,
-                    None => {
-                        debug!("could not resolve method id for {:?}", expr);
-                        return None;
-                    }
+                let Some(method_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) else {
+                    debug!("could not resolve method id for {:?}", expr);
+                    return None;
                 };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
                     ty::ImplContainer(_) => (Some(method_id), None),
@@ -747,7 +743,7 @@ impl<'tcx> SaveContext<'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::ToolMod
             | Res::NonMacroAttr(..)
             | Res::SelfCtor(..)
@@ -812,7 +808,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     fn lookup_def_id(&self, ref_id: hir::HirId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
-            Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
+            Res::PrimTy(_) | Res::SelfTy { .. } | Res::Err => None,
             def => def.opt_def_id(),
         }
     }
@@ -821,9 +817,9 @@ impl<'tcx> SaveContext<'tcx> {
         let mut result = String::new();
 
         for attr in attrs {
-            if let Some(val) = attr.doc_str() {
+            if let Some((val, kind)) = attr.doc_str_and_comment_kind() {
                 // FIXME: Should save-analysis beautify doc strings itself or leave it to users?
-                result.push_str(beautify_doc_string(val).as_str());
+                result.push_str(beautify_doc_string(val, kind).as_str());
                 result.push('\n');
             }
         }
@@ -980,11 +976,11 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     config: Option<Config>,
     mut handler: H,
 ) {
-    with_no_trimmed_paths(|| {
+    with_no_trimmed_paths!({
         tcx.dep_graph.with_ignore(|| {
             info!("Dumping crate {}", cratename);
 
-            // Privacy checking requires and is done after type checking; use a
+            // Privacy checking must be done outside of type inference; use a
             // fallback in case the access levels couldn't have been correctly computed.
             let access_levels = match tcx.sess.compile_status() {
                 Ok(..) => tcx.privacy_access_levels(()),

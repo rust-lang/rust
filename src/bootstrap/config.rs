@@ -12,12 +12,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
 use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
-use crate::util::exe;
-use build_helper::t;
+use crate::util::{exe, t};
 use serde::Deserialize;
 
 macro_rules! check_ci_llvm {
@@ -62,7 +62,7 @@ pub struct Config {
     pub sanitizers: bool,
     pub profiler: bool,
     pub ignore_git: bool,
-    pub exclude: Vec<PathBuf>,
+    pub exclude: Vec<TaskPath>,
     pub include_default_paths: bool,
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
@@ -107,6 +107,7 @@ pub struct Config {
     pub llvm_polly: bool,
     pub llvm_clang: bool,
     pub llvm_from_ci: bool,
+    pub llvm_build_config: HashMap<String, String>,
 
     pub use_lld: bool,
     pub lld_enabled: bool,
@@ -385,7 +386,7 @@ macro_rules! derive_merge {
 
 derive_merge! {
     /// TOML representation of various global build decisions.
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize, Default)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Build {
         build: Option<String>,
@@ -432,7 +433,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of various global install decisions.
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Install {
         prefix: Option<String>,
@@ -447,7 +448,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of how the LLVM build is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Llvm {
         skip_rebuild: Option<bool>,
@@ -476,11 +477,12 @@ derive_merge! {
         polly: Option<bool>,
         clang: Option<bool>,
         download_ci_llvm: Option<StringOrBool>,
+        build_config: Option<HashMap<String, String>>,
     }
 }
 
 derive_merge! {
-    #[derive(Deserialize, Default, Clone)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Dist {
         sign_folder: Option<String>,
@@ -507,7 +509,7 @@ impl Default for StringOrBool {
 
 derive_merge! {
     /// TOML representation of how the Rust build is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Rust {
         optimize: Option<bool>,
@@ -562,7 +564,7 @@ derive_merge! {
 
 derive_merge! {
     /// TOML representation of how each build target is configured.
-    #[derive(Deserialize, Default)]
+    #[derive(Deserialize)]
     #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct TomlTarget {
         cc: Option<String>,
@@ -635,7 +637,7 @@ impl Config {
         let flags = Flags::parse(&args);
 
         let mut config = Config::default_opts();
-        config.exclude = flags.exclude;
+        config.exclude = flags.exclude.into_iter().map(|path| TaskPath::parse(path)).collect();
         config.include_default_paths = flags.include_default_paths;
         config.rustc_error_format = flags.rustc_error_format;
         config.json_output = flags.json_output;
@@ -806,6 +808,7 @@ impl Config {
             config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
             config.llvm_polly = llvm.polly.unwrap_or(false);
             config.llvm_clang = llvm.clang.unwrap_or(false);
+            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
             config.llvm_from_ci = match llvm.download_ci_llvm {
                 Some(StringOrBool::String(s)) => {
                     assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
@@ -875,6 +878,7 @@ impl Config {
                 check_ci_llvm!(llvm.allow_old_toolchain);
                 check_ci_llvm!(llvm.polly);
                 check_ci_llvm!(llvm.clang);
+                check_ci_llvm!(llvm.build_config);
                 check_ci_llvm!(llvm.plugins);
 
                 // CI-built LLVM can be either dynamic or static.
@@ -1182,7 +1186,7 @@ fn set<T>(field: &mut T, val: Option<T>) {
 
 fn threads_from_config(v: u32) -> u32 {
     match v {
-        0 => num_cpus::get() as u32,
+        0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
         n => n,
     }
 }

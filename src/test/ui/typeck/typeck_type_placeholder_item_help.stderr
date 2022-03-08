@@ -1,4 +1,4 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/typeck_type_placeholder_item_help.rs:4:15
    |
 LL | fn test1() -> _ { Some(42) }
@@ -7,7 +7,7 @@ LL | fn test1() -> _ { Some(42) }
    |               not allowed in type signatures
    |               help: replace with the correct return type: `Option<i32>`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:7:14
    |
 LL | const TEST2: _ = 42u32;
@@ -16,7 +16,7 @@ LL | const TEST2: _ = 42u32;
    |              not allowed in type signatures
    |              help: replace with the correct type: `u32`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:10:14
    |
 LL | const TEST3: _ = Some(42);
@@ -25,13 +25,13 @@ LL | const TEST3: _ = Some(42);
    |              not allowed in type signatures
    |              help: replace with the correct type: `Option<i32>`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item_help.rs:13:22
    |
 LL | const TEST4: fn() -> _ = 42;
    |                      ^ not allowed in type signatures
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:17:18
    |
 LL |     const TEST5: _ = 42;
@@ -40,7 +40,7 @@ LL |     const TEST5: _ = 42;
    |                  not allowed in type signatures
    |                  help: replace with the correct type: `i32`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for constants
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:24:18
    |
 LL |     const TEST6: _ = 13;

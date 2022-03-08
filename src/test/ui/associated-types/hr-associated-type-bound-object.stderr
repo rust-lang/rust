@@ -4,8 +4,6 @@ error[E0277]: the trait bound `for<'b> <T as X<'b>>::U: Clone` is not satisfied
 LL | fn f<'a, T: X<'a> + ?Sized>(x: &<T as X<'a>>::U) {
    |             ^^^^^ the trait `for<'b> Clone` is not implemented for `<T as X<'b>>::U`
    |
-   = help: the following implementations were found:
-             <&T as Clone>
 note: required by a bound in `X`
   --> $DIR/hr-associated-type-bound-object.rs:3:33
    |

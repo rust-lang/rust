@@ -2,13 +2,13 @@
 
 // @has foo/trait.Foo.html
 // @has - '//*[@class="sidebar-title"]/a[@href="#required-methods"]' 'Required Methods'
-// @has - '//*[@class="sidebar-links"]/a' 'bar'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'bar'
 // @has - '//*[@class="sidebar-title"]/a[@href="#provided-methods"]' 'Provided Methods'
-// @has - '//*[@class="sidebar-links"]/a' 'foo'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'foo'
 // @has - '//*[@class="sidebar-title"]/a[@href="#associated-const"]' 'Associated Constants'
-// @has - '//*[@class="sidebar-links"]/a' 'BAR'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'BAR'
 // @has - '//*[@class="sidebar-title"]/a[@href="#associated-types"]' 'Associated Types'
-// @has - '//*[@class="sidebar-links"]/a' 'Output'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'Output'
 pub trait Foo {
     const BAR: u32 = 0;
     type Output: ?Sized;
@@ -19,9 +19,9 @@ pub trait Foo {
 
 // @has foo/struct.Bar.html
 // @has - '//*[@class="sidebar-title"]/a[@href="#fields"]' 'Fields'
-// @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f"]' 'f'
-// @has - '//*[@class="sidebar-links"]/a[@href="#structfield.u"]' 'u'
-// @!has - '//*[@class="sidebar-links"]/a' 'waza'
+// @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f"]' 'f'
+// @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.u"]' 'u'
+// @!has - '//*[@class="sidebar-elems"]//section//a' 'waza'
 pub struct Bar {
     pub f: u32,
     pub u: u32,
@@ -30,8 +30,8 @@ pub struct Bar {
 
 // @has foo/enum.En.html
 // @has - '//*[@class="sidebar-title"]/a[@href="#variants"]' 'Variants'
-// @has - '//*[@class="sidebar-links"]/a' 'Foo'
-// @has - '//*[@class="sidebar-links"]/a' 'Bar'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'Foo'
+// @has - '//*[@class="sidebar-elems"]//section//a' 'Bar'
 pub enum En {
     Foo,
     Bar,
@@ -39,9 +39,9 @@ pub enum En {
 
 // @has foo/union.MyUnion.html
 // @has - '//*[@class="sidebar-title"]/a[@href="#fields"]' 'Fields'
-// @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f1"]' 'f1'
-// @has - '//*[@class="sidebar-links"]/a[@href="#structfield.f2"]' 'f2'
-// @!has - '//*[@class="sidebar-links"]/a' 'waza'
+// @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f1"]' 'f1'
+// @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f2"]' 'f2'
+// @!has - '//*[@class="sidebar-elems"]//section//a' 'waza'
 pub union MyUnion {
     pub f1: u32,
     pub f2: f32,

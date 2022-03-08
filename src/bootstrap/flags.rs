@@ -7,12 +7,12 @@ use std::env;
 use std::path::PathBuf;
 use std::process;
 
-use build_helper::t;
 use getopts::Options;
 
 use crate::builder::Builder;
 use crate::config::{Config, TargetSelection};
 use crate::setup::Profile;
+use crate::util::t;
 use crate::{Build, DocTests};
 
 pub enum Color {
@@ -208,7 +208,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
         let j_msg = format!(
             "number of jobs to run in parallel; \
              defaults to {} (this host's logical CPU count)",
-            num_cpus::get()
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get)
         );
         opts.optopt("j", "jobs", &j_msg, "JOBS");
         opts.optflag("h", "help", "print this help message");

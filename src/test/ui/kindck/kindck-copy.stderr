@@ -6,6 +6,10 @@ LL |     assert_copy::<&'static mut isize>();
    |
    = help: the following implementations were found:
              <isize as Copy>
+             <f32 as Copy>
+             <f64 as Copy>
+             <i128 as Copy>
+           and 10 others
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |
@@ -20,6 +24,10 @@ LL |     assert_copy::<&'a mut isize>();
    |
    = help: the following implementations were found:
              <isize as Copy>
+             <f32 as Copy>
+             <f64 as Copy>
+             <i128 as Copy>
+           and 10 others
 note: required by a bound in `assert_copy`
   --> $DIR/kindck-copy.rs:5:18
    |

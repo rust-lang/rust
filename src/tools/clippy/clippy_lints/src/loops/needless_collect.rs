@@ -12,7 +12,7 @@ use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node,
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
 use rustc_span::{MultiSpan, Span};
 
@@ -24,8 +24,8 @@ pub(super) fn check<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
 }
 fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
-        if let ExprKind::MethodCall(chain_method, method0_span, _, _) = args[0].kind;
+        if let ExprKind::MethodCall(method, args, _) = expr.kind;
+        if let ExprKind::MethodCall(chain_method, _, _) = args[0].kind;
         if chain_method.ident.name == sym!(collect) && is_trait_method(cx, &args[0], sym::Iterator);
         then {
             let ty = cx.typeck_results().expr_ty(&args[0]);
@@ -62,7 +62,7 @@ fn check_needless_collect_direct_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCont
             span_lint_and_sugg(
                 cx,
                 NEEDLESS_COLLECT,
-                method0_span.with_hi(expr.span.hi()),
+                chain_method.ident.span.with_hi(expr.span.hi()),
                 NEEDLESS_COLLECT_MSG,
                 "replace with",
                 sugg,
@@ -79,7 +79,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                 if let StmtKind::Local(local) = stmt.kind;
                 if let PatKind::Binding(_, id, ..) = local.pat.kind;
                 if let Some(init_expr) = local.init;
-                if let ExprKind::MethodCall(method_name, collect_span, &[ref iter_source], ..) = init_expr.kind;
+                if let ExprKind::MethodCall(method_name, &[ref iter_source], ..) = init_expr.kind;
                 if method_name.ident.name == sym!(collect) && is_trait_method(cx, init_expr, sym::Iterator);
                 let ty = cx.typeck_results().expr_ty(init_expr);
                 if is_type_diagnostic_item(cx, ty, sym::Vec) ||
@@ -101,7 +101,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
                     }
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
-                    let mut span = MultiSpan::from_span(collect_span);
+                    let mut span = MultiSpan::from_span(method_name.ident.span);
                     span.push_span_label(iter_call.span, "the iterator could be used here instead".into());
                     span_lint_hir_and_then(
                         cx,
@@ -193,7 +193,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         // Check function calls on our collection
-        if let ExprKind::MethodCall(method_name, _, [recv, args @ ..], _) = &expr.kind {
+        if let ExprKind::MethodCall(method_name, [recv, args @ ..], _) = &expr.kind {
             if method_name.ident.name == sym!(collect) && is_trait_method(self.cx, expr, sym::Iterator) {
                 self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
                 self.visit_expr(recv);
@@ -334,8 +334,8 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     }
 }
 
-fn get_captured_ids(cx: &LateContext<'_>, ty: &'_ TyS<'_>) -> HirIdSet {
-    fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: &'_ TyS<'_>, set: &mut HirIdSet) {
+fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
+    fn get_captured_ids_recursive(cx: &LateContext<'_>, ty: Ty<'_>, set: &mut HirIdSet) {
         match ty.kind() {
             ty::Adt(_, generics) => {
                 for generic in *generics {

@@ -3,7 +3,7 @@
 use super::method::MethodCallee;
 use super::{has_expected_num_generic_args, FnCtxt};
 use rustc_ast as ast;
-use rustc_errors::{self, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{self, struct_span_err, Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::ty::adjustment::{
@@ -36,7 +36,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty =
             if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
-                self.enforce_builtin_binop_types(&lhs.span, lhs_ty, &rhs.span, rhs_ty, op);
+                self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, op);
                 self.tcx.mk_unit()
             } else {
                 return_ty
@@ -98,9 +98,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && is_builtin_binop(lhs_ty, rhs_ty, op)
                 {
                     let builtin_return_ty = self.enforce_builtin_binop_types(
-                        &lhs_expr.span,
+                        lhs_expr.span,
                         lhs_ty,
-                        &rhs_expr.span,
+                        rhs_expr.span,
                         rhs_ty,
                         op,
                     );
@@ -114,9 +114,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enforce_builtin_binop_types(
         &self,
-        lhs_span: &Span,
+        lhs_span: Span,
         lhs_ty: Ty<'tcx>,
-        rhs_span: &Span,
+        rhs_span: Span,
         rhs_ty: Ty<'tcx>,
         op: hir::BinOp,
     ) -> Ty<'tcx> {
@@ -129,8 +129,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         match BinOpCategory::from(op) {
             BinOpCategory::Shortcircuit => {
-                self.demand_suptype(*lhs_span, tcx.types.bool, lhs_ty);
-                self.demand_suptype(*rhs_span, tcx.types.bool, rhs_ty);
+                self.demand_suptype(lhs_span, tcx.types.bool, lhs_ty);
+                self.demand_suptype(rhs_span, tcx.types.bool, rhs_ty);
                 tcx.types.bool
             }
 
@@ -141,13 +141,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             BinOpCategory::Math | BinOpCategory::Bitwise => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
                 lhs_ty
             }
 
             BinOpCategory::Comparison => {
                 // both LHS and RHS and result will have the same type
-                self.demand_suptype(*rhs_span, lhs_ty, rhs_ty);
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
                 tcx.types.bool
             }
         }
@@ -201,7 +201,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: rhs_expr.span,
         });
 
-        let result = self.lookup_op_method(lhs_ty, &[rhs_ty_var], Op::Binary(op, is_assign));
+        let result = self.lookup_op_method(
+            lhs_ty,
+            Some(rhs_ty_var),
+            Some(rhs_expr),
+            Op::Binary(op, is_assign),
+        );
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var, Some(lhs_expr));
@@ -221,7 +226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                         };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[0],
                         };
                         self.apply_adjustments(lhs_expr, vec![autoref]);
@@ -238,7 +243,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                         };
                         let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
+                            kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
                             target: method.sig.inputs()[1],
                         };
                         // HACK(eddyb) Bypass checks due to reborrows being in
@@ -382,6 +387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 lhs_expr.span,
                                 lhs_ty,
                                 rhs_ty,
+                                rhs_expr,
                                 op,
                                 is_assign,
                             );
@@ -390,6 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 rhs_expr.span,
                                 rhs_ty,
                                 lhs_ty,
+                                lhs_expr,
                                 op,
                                 is_assign,
                             );
@@ -399,8 +406,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 };
                 if let Ref(_, rty, _) = lhs_ty.kind() {
-                    if self.infcx.type_is_copy_modulo_regions(self.param_env, rty, lhs_expr.span)
-                        && self.lookup_op_method(rty, &[rhs_ty], Op::Binary(op, is_assign)).is_ok()
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, *rty, lhs_expr.span)
+                        && self
+                            .lookup_op_method(
+                                *rty,
+                                Some(rhs_ty),
+                                Some(rhs_expr),
+                                Op::Binary(op, is_assign),
+                            )
+                            .is_ok()
                     {
                         if let Ok(lstring) = source_map.span_to_snippet(lhs_expr.span) {
                             let msg = &format!(
@@ -443,7 +457,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let needs_bound = self
                                 .lookup_op_method(
                                     eraser.fold_ty(lhs_ty),
-                                    &[eraser.fold_ty(rhs_ty)],
+                                    Some(eraser.fold_ty(rhs_ty)),
+                                    Some(rhs_expr),
                                     Op::Binary(op, is_assign),
                                 )
                                 .is_ok();
@@ -452,7 +467,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     self.tcx,
                                     self.body_id,
                                     &mut err,
-                                    ty,
+                                    *ty,
                                     rhs_ty,
                                     missing_trait,
                                     p,
@@ -483,10 +498,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// suggest calling the function. Returns `true` if suggestion would apply (even if not given).
     fn add_type_neq_err_label(
         &self,
-        err: &mut rustc_errors::DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         span: Span,
         ty: Ty<'tcx>,
         other_ty: Ty<'tcx>,
+        other_expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
     ) -> bool /* did we suggest to call a function because of missing parentheses? */ {
@@ -513,7 +529,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             if self
-                .lookup_op_method(fn_sig.output(), &[other_ty], Op::Binary(op, is_assign))
+                .lookup_op_method(
+                    fn_sig.output(),
+                    Some(other_ty),
+                    Some(other_expr),
+                    Op::Binary(op, is_assign),
+                )
                 .is_ok()
             {
                 let (variable_snippet, applicability) = if !fn_sig.inputs().is_empty() {
@@ -545,20 +566,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         is_assign: IsAssign,
         op: hir::BinOp,
     ) -> bool {
-        let source_map = self.tcx.sess.source_map();
-        let remove_borrow_msg = "String concatenation appends the string on the right to the \
-                                 string on the left and may require reallocation. This \
-                                 requires ownership of the string on the left";
-
-        let msg = "`to_owned()` can be used to create an owned `String` \
-                   from a string reference. String concatenation \
-                   appends the string on the right to the string \
-                   on the left and may require reallocation. This \
-                   requires ownership of the string on the left";
+        let str_concat_note = "string concatenation requires an owned `String` on the left";
+        let rm_borrow_msg = "remove the borrow to obtain an owned `String`";
+        let to_owned_msg = "create an owned `String` from a string reference";
 
         let string_type = self.tcx.get_diagnostic_item(sym::String);
         let is_std_string = |ty: Ty<'tcx>| match ty.ty_adt_def() {
@@ -574,31 +588,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
-                    err.span_label(
-                        op.span,
-                        "`+` cannot be used to concatenate two `&str` strings",
-                    );
-                    match source_map.span_to_snippet(lhs_expr.span) {
-                        Ok(lstring) => {
-                            err.span_suggestion(
-                                lhs_expr.span,
-                                if lstring.starts_with('&') {
-                                    remove_borrow_msg
-                                } else {
-                                    msg
-                                },
-                                if let Some(stripped) = lstring.strip_prefix('&') {
-                                    // let a = String::new();
-                                    // let _ = &a + "bar";
-                                    stripped.to_string()
-                                } else {
-                                    format!("{}.to_owned()", lstring)
-                                },
-                                Applicability::MachineApplicable,
-                            )
-                        }
-                        _ => err.help(msg),
-                    };
+                    err.span_label(op.span, "`+` cannot be used to concatenate two `&str` strings");
+                    err.note(str_concat_note);
+                    if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.until(lhs_inner_expr.span),
+                            rm_borrow_msg,
+                            "".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    } else {
+                        err.span_suggestion_verbose(
+                            lhs_expr.span.shrink_to_hi(),
+                            to_owned_msg,
+                            ".to_owned()".to_owned(),
+                            Applicability::MachineApplicable
+                        );
+                    }
                 }
                 true
             }
@@ -609,32 +615,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     op.span,
                     "`+` cannot be used to concatenate a `&str` with a `String`",
                 );
-                match (
-                    source_map.span_to_snippet(lhs_expr.span),
-                    source_map.span_to_snippet(rhs_expr.span),
-                    is_assign,
-                ) {
-                    (Ok(l), Ok(r), IsAssign::No) => {
-                        let to_string = if let Some(stripped) = l.strip_prefix('&') {
-                            // let a = String::new(); let b = String::new();
-                            // let _ = &a + b;
-                            stripped.to_string()
+                match is_assign {
+                    IsAssign::No => {
+                        let sugg_msg;
+                        let lhs_sugg = if let hir::ExprKind::AddrOf(_, _, lhs_inner_expr) = lhs_expr.kind {
+                            sugg_msg = "remove the borrow on the left and add one on the right";
+                            (lhs_expr.span.until(lhs_inner_expr.span), "".to_owned())
                         } else {
-                            format!("{}.to_owned()", l)
+                            sugg_msg = "create an owned `String` on the left and add a borrow on the right";
+                            (lhs_expr.span.shrink_to_hi(), ".to_owned()".to_owned())
                         };
-                        err.multipart_suggestion(
-                            msg,
-                            vec![
-                                (lhs_expr.span, to_string),
-                                (rhs_expr.span, format!("&{}", r)),
-                            ],
+                        let suggestions = vec![
+                            lhs_sugg,
+                            (rhs_expr.span.shrink_to_lo(), "&".to_owned()),
+                        ];
+                        err.multipart_suggestion_verbose(
+                            sugg_msg,
+                            suggestions,
                             Applicability::MachineApplicable,
                         );
                     }
-                    _ => {
-                        err.help(msg);
+                    IsAssign::Yes => {
+                        err.note(str_concat_note);
                     }
-                };
+                }
                 true
             }
             _ => false,
@@ -648,7 +652,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: hir::UnOp,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method(operand_ty, &[], Op::Unary(op, ex.span)) {
+        match self.lookup_op_method(operand_ty, None, None, Op::Unary(op, ex.span)) {
             Ok(method) => {
                 self.write_method_call(ex.hir_id, method);
                 method.sig.output()
@@ -722,7 +726,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn lookup_op_method(
         &self,
         lhs_ty: Ty<'tcx>,
-        other_tys: &[Ty<'tcx>],
+        other_ty: Option<Ty<'tcx>>,
+        other_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         op: Op,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
         let lang = self.tcx.lang_items();
@@ -808,7 +813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let opname = Ident::with_dummy_span(opname);
         let method = trait_did.and_then(|trait_did| {
-            self.lookup_method_in_trait(span, opname, trait_did, lhs_ty, Some(other_tys))
+            self.lookup_op_method_in_trait(span, opname, trait_did, lhs_ty, other_ty, other_ty_expr)
         });
 
         match (method, trait_did) {
@@ -820,7 +825,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, None) => Err(vec![]),
             (None, Some(trait_did)) => {
                 let (obligation, _) =
-                    self.obligation_for_method(span, trait_did, lhs_ty, Some(other_tys));
+                    self.obligation_for_op_method(span, trait_did, lhs_ty, other_ty, other_ty_expr);
                 let mut fulfill = <dyn TraitEngine<'_>>::new(self.tcx);
                 fulfill.register_predicate_obligation(self, obligation);
                 Err(fulfill.select_where_possible(&self.infcx))
@@ -895,7 +900,7 @@ enum Op {
 /// Dereferences a single level of immutable referencing.
 fn deref_ty_if_possible<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.kind() {
-        ty::Ref(_, ty, hir::Mutability::Not) => ty,
+        ty::Ref(_, ty, hir::Mutability::Not) => *ty,
         _ => ty,
     }
 }
@@ -954,7 +959,7 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
 fn suggest_constraining_param(
     tcx: TyCtxt<'_>,
     body_id: hir::HirId,
-    mut err: &mut DiagnosticBuilder<'_>,
+    mut err: &mut Diagnostic,
     lhs_ty: Ty<'_>,
     rhs_ty: Ty<'_>,
     missing_trait: &str,

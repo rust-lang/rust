@@ -1,5 +1,3 @@
-#![feature(in_band_lifetimes)]
-
 struct Foo<'a, 'b> {
     x: &'a u32,
     y: &'b u32,

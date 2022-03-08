@@ -54,9 +54,6 @@ impl<'tcx> LateLintPass<'tcx> for DeepCodeInspector {
             ),
             hir::VisibilityKind::Inherited => println!("visibility inherited from outer item"),
         }
-        if item.defaultness.is_default() {
-            println!("default");
-        }
         match item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 println!("associated constant");
@@ -149,7 +146,7 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             }
             print_expr(cx, init, indent + 1);
         },
-        hir::ExprKind::MethodCall(path, _, args, _) => {
+        hir::ExprKind::MethodCall(path, args, _) => {
             println!("{}MethodCall", ind);
             println!("{}method name: {}", ind, path.ident.name);
             for arg in args {
@@ -376,7 +373,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
-        hir::ItemKind::Macro(ref macro_def) => {
+        hir::ItemKind::Macro(ref macro_def, _) => {
             if macro_def.macro_rules {
                 println!("macro introduced by `macro_rules!`");
             } else {

@@ -21,9 +21,10 @@ use std::lazy::SyncLazy;
 
 pub enum LangItemGroup {
     Op,
+    Fn,
 }
 
-const NUM_GROUPS: usize = 1;
+const NUM_GROUPS: usize = 2;
 
 macro_rules! expand_group {
     () => {
@@ -98,11 +99,12 @@ macro_rules! language_item_table {
             /// Construct an empty collection of lang items and no missing ones.
             pub fn new() -> Self {
                 fn init_none(_: LangItem) -> Option<DefId> { None }
+                const EMPTY: Vec<DefId> = Vec::new();
 
                 Self {
                     items: vec![$(init_none(LangItem::$variant)),*],
                     missing: Vec::new(),
-                    groups: [vec![]; NUM_GROUPS],
+                    groups: [EMPTY; NUM_GROUPS],
                 }
             }
 
@@ -251,9 +253,9 @@ language_item_table! {
     DerefTarget,             sym::deref_target,        deref_target,               Target::AssocTy,        GenericRequirement::None;
     Receiver,                sym::receiver,            receiver_trait,             Target::Trait,          GenericRequirement::None;
 
-    Fn,                      kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    FnMut,                   sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
-    FnOnce,                  sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
+    Fn(Fn),                  kw::Fn,                   fn_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    FnMut(Fn),               sym::fn_mut,              fn_mut_trait,               Target::Trait,          GenericRequirement::Exact(1);
+    FnOnce(Fn),              sym::fn_once,             fn_once_trait,              Target::Trait,          GenericRequirement::Exact(1);
 
     FnOnceOutput,            sym::fn_once_output,      fn_once_output,             Target::AssocTy,        GenericRequirement::None;
 
@@ -264,8 +266,8 @@ language_item_table! {
     Unpin,                   sym::unpin,               unpin_trait,                Target::Trait,          GenericRequirement::None;
     Pin,                     sym::pin,                 pin_type,                   Target::Struct,         GenericRequirement::None;
 
-    PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
-    PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
+    PartialEq(Op),           sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
+    PartialOrd(Op),          sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and
     // various panic cases with `match`. The `panic_bounds_check` item is for indexing arrays.
@@ -277,12 +279,12 @@ language_item_table! {
     Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
     PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
-    PanicStr,                sym::panic_str,           panic_str,                  Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
     PanicBoundsCheck,        sym::panic_bounds_check,  panic_bounds_check_fn,      Target::Fn,             GenericRequirement::Exact(0);
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
+    PanicNoUnwind,           sym::panic_no_unwind,     panic_no_unwind,            Target::Fn,             GenericRequirement::Exact(0);
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 

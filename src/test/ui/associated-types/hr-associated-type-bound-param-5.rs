@@ -1,4 +1,3 @@
-// ignore-compare-mode-chalk
 trait Cycle: Sized {
     type Next: Cycle<Next = Self>;
 }

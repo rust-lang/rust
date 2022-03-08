@@ -416,23 +416,21 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
-                if let ty::Adt(adt_def, _) = lhs.ty.kind() {
-                    if adt_def.is_union() {
-                        if let Some((assigned_ty, assignment_span)) = self.assignment_info {
-                            // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
-                            if !(assigned_ty
-                                .ty_adt_def()
-                                .map_or(false, |adt| adt.is_manually_drop())
-                                || assigned_ty
-                                    .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
-                            {
-                                self.requires_unsafe(assignment_span, AssignToDroppingUnionField);
-                            } else {
-                                // write to non-drop union field, safe
-                            }
+                if let ty::Adt(adt_def, _) = lhs.ty.kind() && adt_def.is_union() {
+                    if let Some((assigned_ty, assignment_span)) = self.assignment_info {
+                        // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
+                        if !(assigned_ty
+                            .ty_adt_def()
+                            .map_or(false, |adt| adt.is_manually_drop())
+                            || assigned_ty
+                                .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
+                        {
+                            self.requires_unsafe(assignment_span, AssignToDroppingUnionField);
                         } else {
-                            self.requires_unsafe(expr.span, AccessToUnionField);
+                            // write to non-drop union field, safe
                         }
+                    } else {
+                        self.requires_unsafe(expr.span, AccessToUnionField);
                     }
                 }
             }
@@ -476,10 +474,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             }
             ExprKind::Let { expr: expr_id, .. } => {
                 let let_expr = &self.thir[expr_id];
-                if let ty::Adt(adt_def, _) = let_expr.ty.kind() {
-                    if adt_def.is_union() {
-                        self.requires_unsafe(expr.span, AccessToUnionField);
-                    }
+                if let ty::Adt(adt_def, _) = let_expr.ty.kind() && adt_def.is_union() {
+                    self.requires_unsafe(expr.span, AccessToUnionField);
                 }
             }
             _ => {}

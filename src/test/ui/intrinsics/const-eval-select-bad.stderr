@@ -1,4 +1,4 @@
-error[E0277]: expected a `FnOnce<()>` closure, found `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]`
+error[E0277]: the trait bound `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]: ~const FnOnce<()>` is not satisfied
   --> $DIR/const-eval-select-bad.rs:6:27
    |
 LL |     const_eval_select((), || {}, || {});
@@ -6,7 +6,12 @@ LL |     const_eval_select((), || {}, || {});
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]`
+   = help: the trait `~const FnOnce<()>` is not implemented for `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]`
+note: the trait `FnOnce<()>` is implemented for `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]`, but that implementation is not `const`
+  --> $DIR/const-eval-select-bad.rs:6:27
+   |
+LL |     const_eval_select((), || {}, || {});
+   |                           ^^^^^
    = note: wrap the `[closure@$DIR/const-eval-select-bad.rs:6:27: 6:32]` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
@@ -14,7 +19,7 @@ note: required by a bound in `const_eval_select`
 LL |     F: ~const FnOnce<ARG, Output = RET>,
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
-error[E0277]: expected a `FnOnce<()>` closure, found `{integer}`
+error[E0277]: the trait bound `{integer}: ~const FnOnce<()>` is not satisfied
   --> $DIR/const-eval-select-bad.rs:8:27
    |
 LL |     const_eval_select((), 42, 0xDEADBEEF);
@@ -22,7 +27,7 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `{integer}`
+   = help: the trait `~const FnOnce<()>` is not implemented for `{integer}`
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL

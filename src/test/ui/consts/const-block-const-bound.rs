@@ -1,5 +1,5 @@
 #![allow(unused)]
-#![feature(const_fn_trait_bound, const_trait_impl, inline_const, negative_impls)]
+#![feature(const_trait_impl, inline_const, negative_impls)]
 
 const fn f<T: ~const Drop>(x: T) {}
 
@@ -16,8 +16,8 @@ impl !Drop for NonDrop {}
 fn main() {
     const {
         f(UnconstDrop);
-        //~^ ERROR the trait bound `UnconstDrop: Drop` is not satisfied
+        //~^ ERROR the trait bound `UnconstDrop: ~const Drop` is not satisfied
         f(NonDrop);
-        //~^ ERROR the trait bound `NonDrop: Drop` is not satisfied
+        //~^ ERROR the trait bound `NonDrop: ~const Drop` is not satisfied
     }
 }

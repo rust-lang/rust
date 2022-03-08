@@ -2230,3 +2230,137 @@ fn utf8_chars() {
     assert!((!from_utf8(&[0xf0, 0xff, 0x10]).is_ok()));
     assert!((!from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok()));
 }
+
+#[test]
+fn utf8_char_counts() {
+    let strs = [("e", 1), ("é", 1), ("€", 1), ("\u{10000}", 1), ("eé€\u{10000}", 4)];
+    let mut reps =
+        [8, 64, 256, 512, 1024].iter().copied().flat_map(|n| n - 8..=n + 8).collect::<Vec<usize>>();
+    if cfg!(not(miri)) {
+        let big = 1 << 16;
+        reps.extend(big - 8..=big + 8);
+    }
+    let counts = if cfg!(miri) { 0..1 } else { 0..8 };
+    let padding = counts.map(|len| " ".repeat(len)).collect::<Vec<String>>();
+
+    for repeat in reps {
+        for (tmpl_str, tmpl_char_count) in strs {
+            for pad_start in &padding {
+                for pad_end in &padding {
+                    // Create a string with padding...
+                    let with_padding =
+                        format!("{}{}{}", pad_start, tmpl_str.repeat(repeat), pad_end);
+                    // ...and then skip past that padding. This should ensure
+                    // that we test several different alignments for both head
+                    // and tail.
+                    let si = pad_start.len();
+                    let ei = with_padding.len() - pad_end.len();
+                    let target = &with_padding[si..ei];
+
+                    assert!(!target.starts_with(" ") && !target.ends_with(" "));
+                    let expected_count = tmpl_char_count * repeat;
+                    assert_eq!(
+                        expected_count,
+                        target.chars().count(),
+                        "wrong count for `{:?}.repeat({})` (padding: `{:?}`)",
+                        tmpl_str,
+                        repeat,
+                        (pad_start.len(), pad_end.len()),
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn floor_char_boundary() {
+    fn check_many(s: &str, arg: impl IntoIterator<Item = usize>, ret: usize) {
+        for idx in arg {
+            assert_eq!(
+                s.floor_char_boundary(idx),
+                ret,
+                "{:?}.floor_char_boundary({:?}) != {:?}",
+                s,
+                idx,
+                ret
+            );
+        }
+    }
+
+    // edge case
+    check_many("", [0, 1, isize::MAX as usize, usize::MAX], 0);
+
+    // basic check
+    check_many("x", [0], 0);
+    check_many("x", [1, isize::MAX as usize, usize::MAX], 1);
+
+    // 1-byte chars
+    check_many("jp", [0], 0);
+    check_many("jp", [1], 1);
+    check_many("jp", 2..4, 2);
+
+    // 2-byte chars
+    check_many("ĵƥ", 0..2, 0);
+    check_many("ĵƥ", 2..4, 2);
+    check_many("ĵƥ", 4..6, 4);
+
+    // 3-byte chars
+    check_many("日本", 0..3, 0);
+    check_many("日本", 3..6, 3);
+    check_many("日本", 6..8, 6);
+
+    // 4-byte chars
+    check_many("🇯🇵", 0..4, 0);
+    check_many("🇯🇵", 4..8, 4);
+    check_many("🇯🇵", 8..10, 8);
+}
+
+#[test]
+fn ceil_char_boundary() {
+    fn check_many(s: &str, arg: impl IntoIterator<Item = usize>, ret: usize) {
+        for idx in arg {
+            assert_eq!(
+                s.ceil_char_boundary(idx),
+                ret,
+                "{:?}.ceil_char_boundary({:?}) != {:?}",
+                s,
+                idx,
+                ret
+            );
+        }
+    }
+
+    // edge case
+    check_many("", [0], 0);
+
+    // basic check
+    check_many("x", [0], 0);
+    check_many("x", [1], 1);
+
+    // 1-byte chars
+    check_many("jp", [0], 0);
+    check_many("jp", [1], 1);
+    check_many("jp", [2], 2);
+
+    // 2-byte chars
+    check_many("ĵƥ", 0..=0, 0);
+    check_many("ĵƥ", 1..=2, 2);
+    check_many("ĵƥ", 3..=4, 4);
+
+    // 3-byte chars
+    check_many("日本", 0..=0, 0);
+    check_many("日本", 1..=3, 3);
+    check_many("日本", 4..=6, 6);
+
+    // 4-byte chars
+    check_many("🇯🇵", 0..=0, 0);
+    check_many("🇯🇵", 1..=4, 4);
+    check_many("🇯🇵", 5..=8, 8);
+}
+
+#[test]
+#[should_panic]
+fn ceil_char_boundary_above_len_panic() {
+    let _ = "x".ceil_char_boundary(2);
+}

@@ -1,11 +1,13 @@
 error[E0277]: the trait bound `str: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-2.rs:4:8
+  --> $DIR/hr-associated-type-bound-param-2.rs:3:8
    |
 LL |     T: Z<'a, u16>,
    |        ^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
+   = help: the following implementations were found:
+             <String as Clone>
 note: required by a bound in `Z`
-  --> $DIR/hr-associated-type-bound-param-2.rs:7:35
+  --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
    |       - required by a bound in this
@@ -14,13 +16,15 @@ LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-2.rs:4:8
+  --> $DIR/hr-associated-type-bound-param-2.rs:3:8
    |
 LL |     T: Z<'a, u16>,
    |        ^^^^^^^^^^ the trait `Clone` is not implemented for `str`
    |
+   = help: the following implementations were found:
+             <String as Clone>
 note: required by a bound in `Z`
-  --> $DIR/hr-associated-type-bound-param-2.rs:7:35
+  --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
    |       - required by a bound in this
@@ -29,13 +33,15 @@ LL |     for<'b> <T as Z<'b, u16>>::W: Clone,
    |                                   ^^^^^ required by this bound in `Z`
 
 error[E0277]: the trait bound `str: Clone` is not satisfied
-  --> $DIR/hr-associated-type-bound-param-2.rs:16:14
+  --> $DIR/hr-associated-type-bound-param-2.rs:15:14
    |
 LL |     type W = str;
    |              ^^^ the trait `Clone` is not implemented for `str`
    |
+   = help: the following implementations were found:
+             <String as Clone>
 note: required by a bound in `Z`
-  --> $DIR/hr-associated-type-bound-param-2.rs:7:35
+  --> $DIR/hr-associated-type-bound-param-2.rs:6:35
    |
 LL | trait Z<'a, T: ?Sized>
    |       - required by a bound in this

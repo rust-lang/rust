@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `override`
 LL |     let override = ();
    |         ^^^^^^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `override` to use it as an identifier
    |
 LL |     let r#override = ();
-   |         ~~~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

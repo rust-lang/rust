@@ -116,7 +116,7 @@ struct SymbolMangler<'tcx> {
     /// The values are start positions in `out`, in bytes.
     paths: FxHashMap<(DefId, &'tcx [GenericArg<'tcx>]), usize>,
     types: FxHashMap<Ty<'tcx>, usize>,
-    consts: FxHashMap<&'tcx ty::Const<'tcx>, usize>,
+    consts: FxHashMap<ty::Const<'tcx>, usize>,
 }
 
 impl<'tcx> SymbolMangler<'tcx> {
@@ -420,7 +420,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     hir::Mutability::Not => "R",
                     hir::Mutability::Mut => "Q",
                 });
-                if *r != ty::ReErased {
+                if !r.is_erased() {
                     self = r.print(self)?;
                 }
                 self = ty.print(self)?;
@@ -446,7 +446,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
             ty::Tuple(tys) => {
                 self.push("T");
-                for ty in tys.iter().map(|k| k.expect_ty()) {
+                for ty in tys.iter() {
                     self = ty.print(self)?;
                 }
                 self.push("E");
@@ -556,7 +556,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                         cx = cx.print_def_path(trait_ref.def_id, trait_ref.substs)?;
                     }
                     ty::ExistentialPredicate::Projection(projection) => {
-                        let name = cx.tcx.associated_item(projection.item_def_id).ident;
+                        let name = cx.tcx.associated_item(projection.item_def_id).name;
                         cx.push("p");
                         cx.push_ident(name.as_str());
                         cx = match projection.term {
@@ -576,10 +576,10 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         Ok(self)
     }
 
-    fn print_const(mut self, ct: &'tcx ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
+    fn print_const(mut self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error> {
         // We only mangle a typed value if the const can be evaluated.
         let ct = ct.eval(self.tcx, ty::ParamEnv::reveal_all());
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Value(_) => {}
 
             // Placeholders (should be demangled as `_`).
@@ -603,14 +603,14 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         }
         let start = self.out.len();
 
-        match ct.ty.kind() {
+        match ct.ty().kind() {
             ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Char => {
-                self = ct.ty.print(self)?;
+                self = ct.ty().print(self)?;
 
-                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty);
+                let mut bits = ct.eval_bits(self.tcx, ty::ParamEnv::reveal_all(), ct.ty());
 
                 // Negative integer values are mangled using `n` as a "sign prefix".
-                if let ty::Int(ity) = ct.ty.kind() {
+                if let ty::Int(ity) = ct.ty().kind() {
                     let val =
                         Integer::from_int_ty(&self.tcx, *ity).size().sign_extend(bits) as i128;
                     if val < 0 {
@@ -627,14 +627,15 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             // handle `&str` and include both `&` ("R") and `str` ("e") prefixes.
             ty::Ref(_, ty, hir::Mutability::Not) if *ty == self.tcx.types.str_ => {
                 self.push("R");
-                match ct.val {
+                match ct.val() {
                     ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
                         // NOTE(eddyb) the following comment was kept from `ty::print::pretty`:
                         // The `inspect` here is okay since we checked the bounds, and there are no
                         // relocations (we have an active `str` reference here). We don't use this
                         // result to affect interpreter execution.
-                        let slice =
-                            data.inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                        let slice = data
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
                         let s = std::str::from_utf8(slice).expect("non utf8 str from miri");
 
                         self.push("e");
@@ -671,7 +672,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     Ok(this)
                 };
 
-                match *ct.ty.kind() {
+                match *ct.ty().kind() {
                     ty::Array(..) => {
                         self.push("A");
                         self = print_field_list(self)?;
@@ -721,7 +722,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
             }
 
             _ => {
-                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty, ct);
+                bug!("symbol_names: unsupported constant of type `{}` ({:?})", ct.ty(), ct);
             }
         }
 
@@ -772,9 +773,9 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
         let ns = match disambiguated_data.data {
-            // FIXME: It shouldn't be necessary to add anything for extern block segments,
-            // but we add 't' for backward compatibility.
-            DefPathData::ForeignMod => 't',
+            // Extern block segments can be skipped, names from extern blocks
+            // are effectively living in their parent modules.
+            DefPathData::ForeignMod => return print_prefix(self),
 
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
@@ -811,7 +812,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
     ) -> Result<Self::Path, Self::Error> {
         // Don't print any regions if they're all erased.
         let print_regions = args.iter().any(|arg| match arg.unpack() {
-            GenericArgKind::Lifetime(r) => *r != ty::ReErased,
+            GenericArgKind::Lifetime(r) => !r.is_erased(),
             _ => false,
         });
         let args = args.iter().cloned().filter(|arg| match arg.unpack() {

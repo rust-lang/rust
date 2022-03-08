@@ -4,10 +4,10 @@ error: expected identifier, found keyword `move`
 LL |     let move = "foo";
    |         ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `move` to use it as an identifier
    |
 LL |     let r#move = "foo";
-   |         ~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

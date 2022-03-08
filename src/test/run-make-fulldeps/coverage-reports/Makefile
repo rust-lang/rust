@@ -81,13 +81,13 @@ endif
 	# Compile the test library with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/lib/$@.rs \
 			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/lib/$@.rs ) \
-			--crate-type rlib -Zinstrument-coverage
+			--crate-type rlib -Cinstrument-coverage
 
 %: $(SOURCEDIR)/%.rs
 	# Compile the test program with coverage instrumentation
 	$(RUSTC) $(SOURCEDIR)/$@.rs \
 			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
-			-L "$(TMPDIR)" -Zinstrument-coverage
+			-L "$(TMPDIR)" -Cinstrument-coverage
 
 	# Run it in order to generate some profiling data,
 	# with `LLVM_PROFILE_FILE=<profdata_file>` environment variable set to
@@ -109,7 +109,7 @@ endif
 	LLVM_PROFILE_FILE="$(TMPDIR)"/$@-%p-%m.profraw \
 			$(RUSTDOC) --crate-name workaround_for_79771 --test $(SOURCEDIR)/$@.rs \
 			$$( sed -n 's/^\/\/ compile-flags: \([^#]*\).*/\1/p' $(SOURCEDIR)/$@.rs ) \
-			-L "$(TMPDIR)" -Zinstrument-coverage \
+			-L "$(TMPDIR)" -Cinstrument-coverage \
 			-Z unstable-options --persist-doctests=$(TMPDIR)/rustdoc-$@
 
 	# Postprocess the profiling data so it can be used by the llvm-cov tool

@@ -1,11 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_lang_ctor, single_segment_path};
+use clippy_utils::{is_lang_ctor, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
+use rustc_middle::ty::DefIdTree;
 use rustc_span::symbol::sym;
 
 use super::OPTION_MAP_OR_NONE;
@@ -76,13 +77,11 @@ pub(super) fn check<'tcx>(
         if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind;
             let arg_snippet = snippet(cx, span, "..");
             let body = cx.tcx.hir().body(id);
-                if let Some((func, arg_char)) = reduce_unit_expression(cx, &body.value);
-                if arg_char.len() == 1;
-                if let hir::ExprKind::Path(ref qpath) = func.kind;
-                if let Some(segment) = single_segment_path(qpath);
-                if segment.ident.name == sym::Some;
+                if let Some((func, [arg_char])) = reduce_unit_expression(cx, &body.value);
+                if let Some(id) = path_def_id(cx, func).and_then(|ctor_id| cx.tcx.parent(ctor_id));
+                if Some(id) == cx.tcx.lang_items().option_some_variant();
                 then {
-                    let func_snippet = snippet(cx, arg_char[0].span, "..");
+                    let func_snippet = snippet(cx, arg_char.span, "..");
                     let msg = "called `map_or(None, ..)` on an `Option` value. This can be done more directly by calling \
                        `map(..)` instead";
                     return span_lint_and_sugg(

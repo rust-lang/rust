@@ -4,7 +4,7 @@ error[E0703]: invalid ABI: found `invalid-ab_isize`
 LL |   "invalid-ab_isize"
    |   ^^^^^^^^^^^^^^^^^^ invalid ABI
    |
-   = help: valid ABIs: Rust, C, C-unwind, cdecl, stdcall, stdcall-unwind, fastcall, vectorcall, thiscall, thiscall-unwind, aapcs, win64, sysv64, ptx-kernel, msp430-interrupt, x86-interrupt, amdgpu-kernel, efiapi, avr-interrupt, avr-non-blocking-interrupt, C-cmse-nonsecure-call, wasm, system, system-unwind, rust-intrinsic, rust-call, platform-intrinsic, unadjusted
+   = help: valid ABIs: Rust, C, C-unwind, cdecl, cdecl-unwind, stdcall, stdcall-unwind, fastcall, fastcall-unwind, vectorcall, vectorcall-unwind, thiscall, thiscall-unwind, aapcs, aapcs-unwind, win64, win64-unwind, sysv64, sysv64-unwind, ptx-kernel, msp430-interrupt, x86-interrupt, amdgpu-kernel, efiapi, avr-interrupt, avr-non-blocking-interrupt, C-cmse-nonsecure-call, wasm, system, system-unwind, rust-intrinsic, rust-call, platform-intrinsic, unadjusted
 
 error: aborting due to previous error
 

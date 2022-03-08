@@ -52,7 +52,7 @@ pub fn uncached_gcc_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLa
         ty::Adt(..) | ty::Closure(..) | ty::Foreign(..) | ty::Generator(..) | ty::Str
             if !cx.sess().fewer_names() =>
         {
-            let mut name = with_no_trimmed_paths(|| layout.ty.to_string());
+            let mut name = with_no_trimmed_paths!(layout.ty.to_string());
             if let (&ty::Adt(def, _), &Variants::Single { index }) =
                 (layout.ty.kind(), &layout.variants)
             {

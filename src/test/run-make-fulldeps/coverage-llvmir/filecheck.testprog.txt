@@ -1,5 +1,5 @@
 # Check for metadata, variables, declarations, and function definitions injected
-# into LLVM IR when compiling with -Zinstrument-coverage.
+# into LLVM IR when compiling with -Cinstrument-coverage.
 
 WINDOWS:      $__llvm_profile_runtime_user = comdat any
 
@@ -15,14 +15,14 @@ CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = {{private|i
 CHECK-SAME:   section "[[INSTR_PROF_CNTS]]"{{.*}}, align 8
 
 CHECK:        @__profd__R{{[a-zA-Z0-9_]+}}testprog14will_be_called = {{private|internal}} global
-CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called,
+CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog14will_be_called
 CHECK-SAME:   section "[[INSTR_PROF_DATA]]"{{.*}}, align 8
 
 CHECK:        @__profc__R{{[a-zA-Z0-9_]+}}testprog4main = {{private|internal}} global
 CHECK-SAME:   section "[[INSTR_PROF_CNTS]]"{{.*}}, align 8
 
 CHECK:        @__profd__R{{[a-zA-Z0-9_]+}}testprog4main = {{private|internal}} global
-CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog4main,
+CHECK-SAME:   @__profc__R{{[a-zA-Z0-9_]+}}testprog4main
 CHECK-SAME:   section "[[INSTR_PROF_DATA]]"{{.*}}, align 8
 
 CHECK:        @__llvm_prf_nm = private constant

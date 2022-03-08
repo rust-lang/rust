@@ -6,6 +6,6 @@ fn bar() -> Foo {
 }
 
 static foo: Foo = bar();
-//~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants
+//~^ ERROR cannot call non-const fn
 
 fn main() {}

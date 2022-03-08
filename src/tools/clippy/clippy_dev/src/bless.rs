@@ -5,13 +5,16 @@ use std::ffi::OsStr;
 use std::fs;
 use std::lazy::SyncLazy;
 use std::path::{Path, PathBuf};
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
-use crate::clippy_project_root;
+#[cfg(not(windows))]
+static CARGO_CLIPPY_EXE: &str = "cargo-clippy";
+#[cfg(windows)]
+static CARGO_CLIPPY_EXE: &str = "cargo-clippy.exe";
 
 static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::new(|| {
     let mut path = std::env::current_exe().unwrap();
-    path.set_file_name("cargo-clippy");
+    path.set_file_name(CARGO_CLIPPY_EXE);
     fs::metadata(path).ok()?.modified().ok()
 });
 
@@ -19,43 +22,25 @@ static CLIPPY_BUILD_TIME: SyncLazy<Option<std::time::SystemTime>> = SyncLazy::ne
 ///
 /// Panics if the path to a test file is broken
 pub fn bless(ignore_timestamp: bool) {
-    let test_suite_dirs = [
-        clippy_project_root().join("tests").join("ui"),
-        clippy_project_root().join("tests").join("ui-internal"),
-        clippy_project_root().join("tests").join("ui-toml"),
-        clippy_project_root().join("tests").join("ui-cargo"),
-    ];
-    for test_suite_dir in &test_suite_dirs {
-        WalkDir::new(test_suite_dir)
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|f| f.path().extension() == Some(OsStr::new("rs")))
-            .for_each(|f| {
-                let test_name = f.path().strip_prefix(test_suite_dir).unwrap();
-                for &ext in &["stdout", "stderr", "fixed"] {
-                    let test_name_ext = format!("stage-id.{}", ext);
-                    update_reference_file(
-                        f.path().with_extension(ext),
-                        test_name.with_extension(test_name_ext),
-                        ignore_timestamp,
-                    );
-                }
-            });
-    }
+    let extensions = ["stdout", "stderr", "fixed"].map(OsStr::new);
+
+    WalkDir::new(build_dir())
+        .into_iter()
+        .map(Result::unwrap)
+        .filter(|entry| entry.path().extension().map_or(false, |ext| extensions.contains(&ext)))
+        .for_each(|entry| update_reference_file(&entry, ignore_timestamp));
 }
 
-fn update_reference_file(reference_file_path: PathBuf, test_name: PathBuf, ignore_timestamp: bool) {
-    let test_output_path = build_dir().join(test_name);
-    let relative_reference_file_path = reference_file_path.strip_prefix(clippy_project_root()).unwrap();
+fn update_reference_file(test_output_entry: &DirEntry, ignore_timestamp: bool) {
+    let test_output_path = test_output_entry.path();
 
-    // If compiletest did not write any changes during the test run,
-    // we don't have to update anything
-    if !test_output_path.exists() {
-        return;
-    }
+    let reference_file_name = test_output_entry.file_name().to_str().unwrap().replace(".stage-id", "");
+    let reference_file_path = Path::new("tests")
+        .join(test_output_path.strip_prefix(build_dir()).unwrap())
+        .with_file_name(reference_file_name);
 
     // If the test output was not updated since the last clippy build, it may be outdated
-    if !ignore_timestamp && !updated_since_clippy_build(&test_output_path).unwrap_or(true) {
+    if !ignore_timestamp && !updated_since_clippy_build(test_output_entry).unwrap_or(true) {
         return;
     }
 
@@ -64,23 +49,14 @@ fn update_reference_file(reference_file_path: PathBuf, test_name: PathBuf, ignor
 
     if test_output_file != reference_file {
         // If a test run caused an output file to change, update the reference file
-        println!("updating {}", &relative_reference_file_path.display());
+        println!("updating {}", reference_file_path.display());
         fs::copy(test_output_path, &reference_file_path).expect("Could not update reference file");
-
-        // We need to re-read the file now because it was potentially updated from copying
-        let reference_file = fs::read(&reference_file_path).unwrap_or_default();
-
-        if reference_file.is_empty() {
-            // If we copied over an empty output file, we remove the now empty reference file
-            println!("removing {}", &relative_reference_file_path.display());
-            fs::remove_file(reference_file_path).expect("Could not remove reference file");
-        }
     }
 }
 
-fn updated_since_clippy_build(path: &Path) -> Option<bool> {
+fn updated_since_clippy_build(entry: &DirEntry) -> Option<bool> {
     let clippy_build_time = (*CLIPPY_BUILD_TIME)?;
-    let modified = fs::metadata(path).ok()?.modified().ok()?;
+    let modified = entry.metadata().ok()?.modified().ok()?;
     Some(modified >= clippy_build_time)
 }
 

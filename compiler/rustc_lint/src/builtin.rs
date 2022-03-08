@@ -31,7 +31,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -51,7 +51,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::misc::can_type_implement_copy;
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -764,7 +764,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
             return;
         }
-        if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
+        if can_type_implement_copy(
+            cx.tcx,
+            param_env,
+            ty,
+            traits::ObligationCause::misc(item.span, item.hir_id()),
+        )
+        .is_ok()
+        {
             cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(
                     "type could implement `Copy`; consider adding `impl \
@@ -912,7 +919,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for AnonymousParameters {
     fn check_trait_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
-        if cx.sess.edition() != Edition::Edition2015 {
+        if cx.sess().edition() != Edition::Edition2015 {
             // This is a hard error in future editions; avoid linting and erroring
             return;
         }
@@ -921,7 +928,7 @@ impl EarlyLintPass for AnonymousParameters {
                 if let ast::PatKind::Ident(_, ident, None) = arg.pat.kind {
                     if ident.name == kw::Empty {
                         cx.struct_span_lint(ANONYMOUS_PARAMETERS, arg.pat.span, |lint| {
-                            let ty_snip = cx.sess.source_map().span_to_snippet(arg.ty.span);
+                            let ty_snip = cx.sess().source_map().span_to_snippet(arg.ty.span);
 
                             let (ty_snip, appl) = if let Ok(ref snip) = ty_snip {
                                 (snip.as_str(), Applicability::MachineApplicable)
@@ -1078,6 +1085,16 @@ impl EarlyLintPass for UnusedDocComment {
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
         warn_if_doc(cx, param.ident.span, "generic parameters", &param.attrs);
+    }
+
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
+        warn_if_doc(cx, block.span, "block", &block.attrs());
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::ForeignMod(_) = item.kind {
+            warn_if_doc(cx, item.span, "extern block", &item.attrs);
+        }
     }
 }
 
@@ -1247,7 +1264,7 @@ declare_lint! {
     /// [`UnsafeCell`]: https://doc.rust-lang.org/std/cell/struct.UnsafeCell.html
     MUTABLE_TRANSMUTES,
     Deny,
-    "mutating transmuted &mut T from &T may cause undefined behavior"
+    "transmuting &T to &mut T is undefined behavior, even if the reference is unused"
 }
 
 declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
@@ -1259,8 +1276,8 @@ impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
             if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
-                let msg = "mutating transmuted &mut T from &T may cause undefined behavior, \
-                               consider instead using an UnsafeCell";
+                let msg = "transmuting &T to &mut T is undefined behavior, \
+                    even if the reference is unused, consider instead using an UnsafeCell";
                 cx.struct_span_lint(MUTABLE_TRANSMUTES, expr.span, |lint| lint.build(msg).emit());
             }
         }
@@ -1469,17 +1486,17 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut Diagnostic) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a, 'db> {
-            err: &'a mut DiagnosticBuilder<'db>,
+        struct WalkAssocTypes<'a> {
+            err: &'a mut Diagnostic,
         }
-        impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
+        impl Visitor<'_> for WalkAssocTypes<'_> {
+            fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(
                         span,
@@ -1775,7 +1792,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 };
                 if join.edition() >= Edition::Edition2021 {
                     let mut err =
-                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
                     err.span_suggestion(
                         pat.span,
                         suggestion,
@@ -1799,7 +1816,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 let replace = "..=".to_owned();
                 if join.edition() >= Edition::Edition2021 {
                     let mut err =
-                        rustc_errors::struct_span_err!(cx.sess, pat.span, E0783, "{}", msg,);
+                        rustc_errors::struct_span_err!(cx.sess(), pat.span, E0783, "{}", msg,);
                     err.span_suggestion_short(
                         join,
                         suggestion,
@@ -1983,7 +2000,7 @@ impl KeywordIdents {
         UnderMacro(under_macro): UnderMacro,
         ident: Ident,
     ) {
-        let next_edition = match cx.sess.edition() {
+        let next_edition = match cx.sess().edition() {
             Edition::Edition2015 => {
                 match ident.name {
                     kw::Async | kw::Await | kw::Try => Edition::Edition2018,
@@ -2011,7 +2028,7 @@ impl KeywordIdents {
         };
 
         // Don't lint `r#foo`.
-        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
+        if cx.sess().parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
             return;
         }
 
@@ -2050,7 +2067,7 @@ impl ExplicitOutlivesRequirements {
         inferred_outlives
             .iter()
             .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a {
+                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.index == index => Some(b),
                     _ => None,
                 },
@@ -2111,10 +2128,10 @@ impl ExplicitOutlivesRequirements {
                 if let hir::GenericBound::Outlives(lifetime) = bound {
                     let is_inferred = match tcx.named_region(lifetime.hir_id) {
                         Some(Region::Static) if infer_static => {
-                            inferred_outlives.iter().any(|r| matches!(r, ty::ReStatic))
+                            inferred_outlives.iter().any(|r| matches!(**r, ty::ReStatic))
                         }
                         Some(Region::EarlyBound(index, ..)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = r { ebr.index == index } else { false }
+                            if let ty::ReEarlyBound(ebr) = **r { ebr.index == index } else { false }
                         }),
                         _ => false,
                     };
@@ -2379,7 +2396,7 @@ declare_lint_pass!(
 
 impl EarlyLintPass for IncompleteFeatures {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &ast::Crate) {
-        let features = cx.sess.features_untracked();
+        let features = cx.sess().features_untracked();
         features
             .declared_lang_features
             .iter()
@@ -2494,7 +2511,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         _ => {}
                     }
                 }
-            } else if let hir::ExprKind::MethodCall(_, _, ref args, _) = expr.kind {
+            } else if let hir::ExprKind::MethodCall(_, ref args, _) = expr.kind {
                 // Find problematic calls to `MaybeUninit::assume_init`.
                 let def_id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
                 if cx.tcx.is_diagnostic_item(sym::assume_init, def_id) {
@@ -2621,7 +2638,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 }
                 Tuple(..) => {
                     // Proceed recursively, check all fields.
-                    ty.tuple_fields().find_map(|field| ty_find_init_error(tcx, field, init))
+                    ty.tuple_fields().iter().find_map(|field| ty_find_init_error(tcx, field, init))
                 }
                 // Conservative fallback.
                 _ => None,
@@ -2634,7 +2651,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
             if let Some((msg, span)) =
-                with_no_trimmed_paths(|| ty_find_init_error(cx.tcx, conjured_ty, init))
+                with_no_trimmed_paths!(ty_find_init_error(cx.tcx, conjured_ty, init))
             {
                 cx.struct_span_lint(INVALID_VALUE, expr.span, |lint| {
                     let mut err = lint.build(&format!(
@@ -2833,7 +2850,7 @@ impl ClashingExternDeclarations {
                 return true;
             }
             let tcx = cx.tcx;
-            if a == b || rustc_middle::ty::TyS::same_type(a, b) {
+            if a == b {
                 // All nominally-same types are structurally same, too.
                 true
             } else {
@@ -2844,8 +2861,8 @@ impl ClashingExternDeclarations {
 
                 let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
                     debug!("compare_layouts({:?}, {:?})", a, b);
-                    let a_layout = &cx.layout_of(a)?.layout.abi;
-                    let b_layout = &cx.layout_of(b)?.layout.abi;
+                    let a_layout = &cx.layout_of(a)?.layout.abi();
+                    let b_layout = &cx.layout_of(b)?.layout.abi();
                     debug!(
                         "comparing layouts: {:?} == {:?} = {}",
                         a_layout,
@@ -2895,26 +2912,22 @@ impl ClashingExternDeclarations {
                         }
                         (Array(a_ty, a_const), Array(b_ty, b_const)) => {
                             // For arrays, we also check the constness of the type.
-                            a_const.val == b_const.val
-                                && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                            a_const.val() == b_const.val()
+                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (Slice(a_ty), Slice(b_ty)) => {
-                            structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                            structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (RawPtr(a_tymut), RawPtr(b_tymut)) => {
                             a_tymut.mutbl == b_tymut.mutbl
                                 && structurally_same_type_impl(
-                                    seen_types,
-                                    cx,
-                                    &a_tymut.ty,
-                                    &b_tymut.ty,
-                                    ckind,
+                                    seen_types, cx, a_tymut.ty, b_tymut.ty, ckind,
                                 )
                         }
                         (Ref(_a_region, a_ty, a_mut), Ref(_b_region, b_ty, b_mut)) => {
                             // For structural sameness, we don't need the region to be same.
                             a_mut == b_mut
-                                && structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
+                                && structurally_same_type_impl(seen_types, cx, *a_ty, *b_ty, ckind)
                         }
                         (FnDef(..), FnDef(..)) => {
                             let a_poly_sig = a.fn_sig(tcx);
@@ -2927,7 +2940,7 @@ impl ClashingExternDeclarations {
                             (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
                                 == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)
                                 && a_sig.inputs().iter().eq_by(b_sig.inputs().iter(), |a, b| {
-                                    structurally_same_type_impl(seen_types, cx, a, b, ckind)
+                                    structurally_same_type_impl(seen_types, cx, *a, *b, ckind)
                                 })
                                 && structurally_same_type_impl(
                                     seen_types,
@@ -2938,7 +2951,7 @@ impl ClashingExternDeclarations {
                                 )
                         }
                         (Tuple(a_substs), Tuple(b_substs)) => {
-                            a_substs.types().eq_by(b_substs.types(), |a_ty, b_ty| {
+                            a_substs.iter().eq_by(b_substs.iter(), |a_ty, b_ty| {
                                 structurally_same_type_impl(seen_types, cx, a_ty, b_ty, ckind)
                             })
                         }
@@ -3158,7 +3171,10 @@ declare_lint! {
     /// of this, GNU assembler [local labels] *must* be used instead of labels
     /// with a name. Using named labels might cause assembler or linker errors.
     ///
+    /// See the explanation in [Rust By Example] for more details.
+    ///
     /// [local labels]: https://sourceware.org/binutils/docs/as/Symbol-Names.html#Local-Labels
+    /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels
     pub NAMED_ASM_LABELS,
     Deny,
     "named labels in inline assembly",

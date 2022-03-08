@@ -1,0 +1,20 @@
+error[E0631]: type mismatch in function arguments
+  --> $DIR/issue-88382.rs:28:40
+   |
+LL |     do_something(SomeImplementation(), test);
+   |     ------------                       ^^^^ expected signature of `for<'r> fn(&'r mut std::iter::Empty<usize>) -> _`
+   |     |
+   |     required by a bound introduced by this call
+...
+LL | fn test<'a, I: Iterable>(_: &mut I::Iterator<'a>) {}
+   | ------------------------------------------------- found signature of `for<'r, 'a> fn(&'r mut <_ as Iterable>::Iterator<'a>) -> _`
+   |
+note: required by a bound in `do_something`
+  --> $DIR/issue-88382.rs:22:48
+   |
+LL | fn do_something<I: Iterable>(i: I, mut f: impl for<'a> Fn(&mut I::Iterator<'a>)) {
+   |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `do_something`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0631`.

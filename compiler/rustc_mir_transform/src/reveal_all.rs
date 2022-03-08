@@ -39,6 +39,6 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
         // We have to use `try_normalize_erasing_regions` here, since it's
         // possible that we visit impossible-to-satisfy where clauses here,
         // see #91745
-        *ty = self.tcx.try_normalize_erasing_regions(self.param_env, *ty).unwrap_or(ty);
+        *ty = self.tcx.try_normalize_erasing_regions(self.param_env, *ty).unwrap_or(*ty);
     }
 }

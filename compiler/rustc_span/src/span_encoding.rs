@@ -61,6 +61,7 @@ use rustc_data_structures::fx::FxIndexSet;
 /// using the callback `SPAN_TRACK` to access the query engine.
 ///
 #[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[rustc_pass_by_value]
 pub struct Span {
     base_or_index: u32,
     len_or_tag: u16,

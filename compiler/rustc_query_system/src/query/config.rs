@@ -4,10 +4,10 @@ use crate::dep_graph::DepNode;
 use crate::dep_graph::SerializedDepNodeIndex;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
-use crate::query::{QueryCacheStore, QueryContext, QueryState};
+use crate::query::{QueryContext, QueryState};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -27,7 +27,7 @@ pub struct QueryVtable<CTX: QueryContext, K, V> {
 
     pub compute: fn(CTX::DepContext, K) -> V,
     pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_>) -> V,
+    pub handle_cycle_error: fn(CTX, DiagnosticBuilder<'_, ErrorGuaranteed>) -> V,
     pub try_load_from_disk: Option<fn(CTX, SerializedDepNodeIndex) -> Option<V>>,
 }
 
@@ -59,12 +59,12 @@ pub trait QueryDescription<CTX: QueryContext>: QueryConfig {
     fn describe(tcx: CTX, key: Self::Key) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: CTX) -> &'a QueryState<CTX::DepKind, Self::Key>
+    fn query_state<'a>(tcx: CTX) -> &'a QueryState<Self::Key>
     where
         CTX: 'a;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: CTX) -> &'a QueryCacheStore<Self::Cache>
+    fn query_cache<'a>(tcx: CTX) -> &'a Self::Cache
     where
         CTX: 'a;
 

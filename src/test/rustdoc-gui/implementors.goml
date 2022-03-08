@@ -14,3 +14,7 @@ assert: ("#implementors-list .impl:nth-child(2) > a.anchor")
 assert-attribute: ("#implementors-list .impl:nth-child(2)", {"id": "impl-Whatever-1"})
 assert-attribute: ("#implementors-list .impl:nth-child(2) > a.anchor", {"href": "#impl-Whatever-1"})
 assert: "#implementors-list .impl:nth-child(2) > .code-header.in-band"
+
+goto: file://|DOC_PATH|/test_docs/struct.HasEmptyTraits.html
+compare-elements-position-near-false: ("#impl-EmptyTrait1", "#impl-EmptyTrait2", {"y": 30})
+compare-elements-position-near: ("#impl-EmptyTrait3 h3", "#impl-EmptyTrait3 .item-info", {"y": 30})

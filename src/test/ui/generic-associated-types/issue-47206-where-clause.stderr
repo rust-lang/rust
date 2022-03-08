@@ -4,7 +4,7 @@ error[E0276]: impl has stricter requirements than trait
 LL |     type Assoc3<T>;
    |     --------------- definition of `Assoc3` from trait
 ...
-LL |     type Assoc3<T> where T: Iterator = Vec<T>;
+LL |     type Assoc3<T> = Vec<T> where T: Iterator;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `T: Iterator`
 
 error: aborting due to previous error

@@ -5,10 +5,10 @@ LL |     produces_async! {}
    |     ^^^^^^^^^^^^^^^^^^ expected identifier, found keyword
    |
    = note: this error originates in the macro `produces_async` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: you can escape reserved keywords to use them as identifiers
+help: escape `async` to use it as an identifier
    |
 LL |     () => (pub fn r#async() {})
-   |                   ~~~~~~~
+   |                   ++
 
 error: aborting due to previous error
 

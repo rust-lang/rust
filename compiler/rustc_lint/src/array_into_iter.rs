@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
         }
 
         // We only care about method call expressions.
-        if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
+        if let hir::ExprKind::MethodCall(call, args, _) = &expr.kind {
             if call.ident.name != sym::into_iter {
                 return;
             }
@@ -119,7 +119,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
+            cx.struct_span_lint(ARRAY_INTO_ITER, call.ident.span, |lint| {
                 let mut diag = lint.build(&format!(
                     "this method call resolves to `<&{} as IntoIterator>::into_iter` \
                     (due to backwards compatibility), \

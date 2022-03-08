@@ -496,7 +496,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if matches!(kind, CastKind::Misc) {
                     let operand_ty = operand.ty(self.body, self.tcx);
                     let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                    let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
+                    let cast_out = CastTy::from_ty(*cast_ty).expect("bad output type for cast");
                     if let (CastTy::Ptr(_) | CastTy::FnPtr, CastTy::Int(_)) = (cast_in, cast_out) {
                         // ptr-to-int casts are not possible in consts and thus not promotable
                         return Err(Unpromotable);
@@ -747,15 +747,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         if loc.statement_index < num_stmts {
             let (mut rvalue, source_info) = {
                 let statement = &mut self.source[loc.block].statements[loc.statement_index];
-                let rhs = match statement.kind {
-                    StatementKind::Assign(box (_, ref mut rhs)) => rhs,
-                    _ => {
-                        span_bug!(
-                            statement.source_info.span,
-                            "{:?} is not an assignment",
-                            statement
-                        );
-                    }
+                let StatementKind::Assign(box (_, ref mut rhs)) = statement.kind else {
+                    span_bug!(
+                        statement.source_info.span,
+                        "{:?} is not an assignment",
+                        statement
+                    );
                 };
 
                 (
@@ -839,7 +836,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     span,
                     user_ty: None,
                     literal: tcx
-                        .mk_const(ty::Const {
+                        .mk_const(ty::ConstS {
                             ty,
                             val: ty::ConstKind::Unevaluated(ty::Unevaluated {
                                 def,
@@ -974,6 +971,7 @@ pub fn promote_candidates<'tcx>(
             vec![],
             body.span,
             body.generator_kind(),
+            body.tainted_by_errors,
         );
 
         let promoter = Promoter {

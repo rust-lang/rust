@@ -1,7 +1,7 @@
 fn xyz() -> u8 { 42 }
 
 const NUM: u8 = xyz();
-//~^ ERROR calls in constants are limited to constant functions, tuple structs and tuple variants
+//~^ ERROR cannot call non-const fn
 
 fn main() {
     match 1 {

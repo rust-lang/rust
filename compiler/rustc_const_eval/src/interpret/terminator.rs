@@ -39,7 +39,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let mut target_block = targets.otherwise();
 
                 for (const_int, target) in targets.iter() {
-                    // Compare using binary_op, to also support pointer values
+                    // Compare using MIR BinOp::Eq, to also support pointer values.
+                    // (Avoiding `self.binary_op` as that does some redundant layout computation.)
                     let res = self
                         .overflowing_binary_op(
                             mir::BinOp::Eq,
@@ -321,10 +322,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | ty::InstanceDef::CloneShim(..)
             | ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let (body, instance) =
-                    match M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? {
-                        Some(body) => body,
-                        None => return Ok(()),
+                let Some((body, instance)) =
+                    M::find_mir_or_eval_fn(self, instance, caller_abi, args, ret, unwind)? else {
+                        return Ok(());
                     };
 
                 // Compute callee information using the `instance` returned by

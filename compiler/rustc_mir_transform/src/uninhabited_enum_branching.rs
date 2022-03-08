@@ -3,7 +3,7 @@
 use crate::MirPass;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_middle::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets,
+    BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, SwitchTargets, Terminator,
     TerminatorKind,
 };
 use rustc_middle::ty::layout::TyAndLayout;
@@ -56,17 +56,42 @@ fn variant_discriminants<'tcx>(
     match &layout.variants {
         Variants::Single { index } => {
             let mut res = FxHashSet::default();
-            res.insert(index.as_u32() as u128);
+            res.insert(
+                ty.discriminant_for_variant(tcx, *index)
+                    .map_or(index.as_u32() as u128, |discr| discr.val),
+            );
             res
         }
         Variants::Multiple { variants, .. } => variants
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
-                (layout.abi != Abi::Uninhabited)
+                (layout.abi() != Abi::Uninhabited)
                     .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),
     }
+}
+
+/// Ensures that the `otherwise` branch leads to an unreachable bb, returning `None` if so and a new
+/// bb to use as the new target if not.
+fn ensure_otherwise_unreachable<'tcx>(
+    body: &Body<'tcx>,
+    targets: &SwitchTargets,
+) -> Option<BasicBlockData<'tcx>> {
+    let otherwise = targets.otherwise();
+    let bb = &body.basic_blocks()[otherwise];
+    if bb.terminator().kind == TerminatorKind::Unreachable
+        && bb.statements.iter().all(|s| matches!(&s.kind, StatementKind::StorageDead(_)))
+    {
+        return None;
+    }
+
+    let mut new_block = BasicBlockData::new(Some(Terminator {
+        source_info: bb.terminator().source_info,
+        kind: TerminatorKind::Unreachable,
+    }));
+    new_block.is_cleanup = bb.is_cleanup;
+    Some(new_block)
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
@@ -75,16 +100,9 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if body.source.promoted.is_some() {
-            return;
-        }
-
         trace!("UninhabitedEnumBranching starting for {:?}", body.source);
 
-        let basic_block_count = body.basic_blocks().len();
-
-        for bb in 0..basic_block_count {
-            let bb = BasicBlock::from_usize(bb);
+        for bb in body.basic_blocks().indices() {
             trace!("processing block {:?}", bb);
 
             let Some(discriminant_ty) = get_switched_on_type(&body.basic_blocks()[bb], tcx, body) else {
@@ -104,12 +122,25 @@ impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
             if let TerminatorKind::SwitchInt { targets, .. } =
                 &mut body.basic_blocks_mut()[bb].terminator_mut().kind
             {
-                let new_targets = SwitchTargets::new(
+                let mut new_targets = SwitchTargets::new(
                     targets.iter().filter(|(val, _)| allowed_variants.contains(val)),
                     targets.otherwise(),
                 );
 
-                *targets = new_targets;
+                if new_targets.iter().count() == allowed_variants.len() {
+                    if let Some(updated) = ensure_otherwise_unreachable(body, &new_targets) {
+                        let new_otherwise = body.basic_blocks_mut().push(updated);
+                        *new_targets.all_targets_mut().last_mut().unwrap() = new_otherwise;
+                    }
+                }
+
+                if let TerminatorKind::SwitchInt { targets, .. } =
+                    &mut body.basic_blocks_mut()[bb].terminator_mut().kind
+                {
+                    *targets = new_targets;
+                } else {
+                    unreachable!()
+                }
             } else {
                 unreachable!()
             }

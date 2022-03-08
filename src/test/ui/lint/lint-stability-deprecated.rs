@@ -115,18 +115,18 @@ mod cross_crate {
         let _ = UnstableStruct { i: 0 };
         let _ = StableStruct { i: 0 };
 
-        let _ = DeprecatedUnitStruct; //~ WARN use of deprecated struct `lint_stability::DeprecatedUnitStruct`
-        let _ = DeprecatedUnstableUnitStruct; //~ WARN use of deprecated struct `lint_stability::DeprecatedUnstableUnitStruct`
+        let _ = DeprecatedUnitStruct; //~ WARN use of deprecated unit struct `lint_stability::DeprecatedUnitStruct`
+        let _ = DeprecatedUnstableUnitStruct; //~ WARN use of deprecated unit struct `lint_stability::DeprecatedUnstableUnitStruct`
         let _ = UnstableUnitStruct;
         let _ = StableUnitStruct;
 
-        let _ = Enum::DeprecatedVariant; //~ WARN use of deprecated variant `lint_stability::Enum::DeprecatedVariant`
-        let _ = Enum::DeprecatedUnstableVariant; //~ WARN use of deprecated variant `lint_stability::Enum::DeprecatedUnstableVariant`
+        let _ = Enum::DeprecatedVariant; //~ WARN use of deprecated unit variant `lint_stability::Enum::DeprecatedVariant`
+        let _ = Enum::DeprecatedUnstableVariant; //~ WARN use of deprecated unit variant `lint_stability::Enum::DeprecatedUnstableVariant`
         let _ = Enum::UnstableVariant;
         let _ = Enum::StableVariant;
 
-        let _ = DeprecatedTupleStruct (1); //~ WARN use of deprecated struct `lint_stability::DeprecatedTupleStruct`
-        let _ = DeprecatedUnstableTupleStruct (1); //~ WARN use of deprecated struct `lint_stability::DeprecatedUnstableTupleStruct`
+        let _ = DeprecatedTupleStruct (1); //~ WARN use of deprecated tuple struct `lint_stability::DeprecatedTupleStruct`
+        let _ = DeprecatedUnstableTupleStruct (1); //~ WARN use of deprecated tuple struct `lint_stability::DeprecatedUnstableTupleStruct`
         let _ = UnstableTupleStruct (1);
         let _ = StableTupleStruct (1);
 

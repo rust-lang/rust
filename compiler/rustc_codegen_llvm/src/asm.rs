@@ -1,3 +1,4 @@
+use crate::attributes;
 use crate::builder::Builder;
 use crate::common::Funclet;
 use crate::context::CodegenCx;
@@ -18,6 +19,7 @@ use rustc_target::abi::*;
 use rustc_target::asm::*;
 
 use libc::{c_char, c_uint};
+use smallvec::SmallVec;
 use tracing::debug;
 
 impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
@@ -232,6 +234,9 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 InlineAsmArch::SpirV => {}
                 InlineAsmArch::Wasm32 | InlineAsmArch::Wasm64 => {}
                 InlineAsmArch::Bpf => {}
+                InlineAsmArch::Msp430 => {
+                    constraints.push("~{sr}".to_string());
+                }
             }
         }
         if !options.contains(InlineAsmOptions::NOMEM) {
@@ -270,19 +275,20 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         )
         .unwrap_or_else(|| span_bug!(line_spans[0], "LLVM asm constraint validation failed"));
 
+        let mut attrs = SmallVec::<[_; 2]>::new();
         if options.contains(InlineAsmOptions::PURE) {
             if options.contains(InlineAsmOptions::NOMEM) {
-                llvm::Attribute::ReadNone.apply_callsite(llvm::AttributePlace::Function, result);
+                attrs.push(llvm::AttributeKind::ReadNone.create_attr(self.cx.llcx));
             } else if options.contains(InlineAsmOptions::READONLY) {
-                llvm::Attribute::ReadOnly.apply_callsite(llvm::AttributePlace::Function, result);
+                attrs.push(llvm::AttributeKind::ReadOnly.create_attr(self.cx.llcx));
             }
-            llvm::Attribute::WillReturn.apply_callsite(llvm::AttributePlace::Function, result);
+            attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
-            llvm::Attribute::InaccessibleMemOnly
-                .apply_callsite(llvm::AttributePlace::Function, result);
+            attrs.push(llvm::AttributeKind::InaccessibleMemOnly.create_attr(self.cx.llcx));
         } else {
             // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
         }
+        attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
         // Write results to outputs
         for (idx, op) in operands.iter().enumerate() {
@@ -580,6 +586,7 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => "e",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
+            InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
                 bug!("LLVM backend does not support SPIR-V")
             }
@@ -666,6 +673,7 @@ fn modifier_to_llvm(
         },
         InlineAsmRegClass::Avr(_) => None,
         InlineAsmRegClass::S390x(_) => None,
+        InlineAsmRegClass::Msp430(_) => None,
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }
@@ -734,6 +742,7 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         InlineAsmRegClass::Avr(AvrInlineAsmRegClass::reg_ptr) => cx.type_i16(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => cx.type_i32(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
+        InlineAsmRegClass::Msp430(Msp430InlineAsmRegClass::reg) => cx.type_i16(),
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         }

@@ -309,6 +309,33 @@ fn test_decode_utf16() {
 }
 
 #[test]
+fn test_decode_utf16_size_hint() {
+    fn check(s: &[u16]) {
+        let mut iter = char::decode_utf16(s.iter().cloned());
+
+        loop {
+            let count = iter.clone().count();
+            let (lower, upper) = iter.size_hint();
+
+            assert!(
+                lower <= count && count <= upper.unwrap(),
+                "lower = {lower}, count = {count}, upper = {upper:?}"
+            );
+
+            if let None = iter.next() {
+                break;
+            }
+        }
+    }
+
+    check(&[0xD800, 0xD800, 0xDC00]);
+    check(&[0xD800, 0xD800, 0x0]);
+    check(&[0xD800, 0x41, 0x42]);
+    check(&[0xD800, 0]);
+    check(&[0xD834, 0x006d]);
+}
+
+#[test]
 fn ed_iterator_specializations() {
     // Check counting
     assert_eq!('\n'.escape_default().count(), 2);

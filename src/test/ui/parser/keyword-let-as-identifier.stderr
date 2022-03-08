@@ -4,10 +4,10 @@ error: expected identifier, found keyword `let`
 LL |     let let = "foo";
    |         ^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `let` to use it as an identifier
    |
 LL |     let r#let = "foo";
-   |         ~~~~~
+   |         ++
 
 error: aborting due to previous error
 

@@ -114,7 +114,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
+            Err(io::const_io_error!(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer",))
         } else {
             Ok(())
         }
@@ -196,9 +196,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {
@@ -966,7 +966,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let f = std::fs::File::open("/file")?;
-///     fs::fchown(f, Some(0), Some(0))?;
+///     fs::fchown(&f, Some(0), Some(0))?;
 ///     Ok(())
 /// }
 /// ```

@@ -120,9 +120,34 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.iter.size_hint();
-        // we could be entirely valid surrogates (2 elements per
-        // char), or entirely non-surrogates (1 element per char)
-        (low / 2, high)
+
+        let (low_buf, high_buf) = match self.buf {
+            // buf is empty, no additional elements from it.
+            None => (0, 0),
+            // `u` is a non surrogate, so it's always an additional character.
+            Some(u) if u < 0xD800 || 0xDFFF < u => (1, 1),
+            // `u` is a leading surrogate (it can never be a trailing surrogate and
+            // it's a surrogate due to the previous branch) and `self.iter` is empty.
+            //
+            // `u` can't be paired, since the `self.iter` is empty,
+            // so it will always become an additional element (error).
+            Some(_u) if high == Some(0) => (1, 1),
+            // `u` is a leading surrogate and `iter` may be non-empty.
+            //
+            // `u` can either pair with a trailing surrogate, in which case no additional elements
+            // are produced, or it can become an error, in which case it's an additional character (error).
+            Some(_u) => (0, 1),
+        };
+
+        // `self.iter` could contain entirely valid surrogates (2 elements per
+        // char), or entirely non-surrogates (1 element per char).
+        //
+        // On odd lower bound, at least one element must stay unpaired
+        // (with other elements from `self.iter`), so we round up.
+        let low = low.div_ceil(2) + low_buf;
+        let high = high.and_then(|h| h.checked_add(high_buf));
+
+        (low, high)
     }
 }
 

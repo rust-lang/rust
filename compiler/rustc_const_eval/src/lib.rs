@@ -22,6 +22,7 @@ Rust MIR: a lowered representation of Rust.
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -40,9 +41,9 @@ pub fn provide(providers: &mut Providers) {
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
-    providers.destructure_const = |tcx, param_env_and_value| {
+    providers.try_destructure_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::destructure_const(tcx, param_env, value)
+        const_eval::try_destructure_const(tcx, param_env, value).ok()
     };
     providers.const_to_valtree = |tcx, param_env_and_value| {
         let (param_env, raw) = param_env_and_value.into_parts();

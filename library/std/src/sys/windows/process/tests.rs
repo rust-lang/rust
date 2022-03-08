@@ -135,6 +135,8 @@ fn windows_env_unicode_case() {
 fn windows_exe_resolver() {
     use super::resolve_exe;
     use crate::io;
+    use crate::sys::fs::symlink;
+    use crate::sys_common::io::test::tmpdir;
 
     let env_paths = || env::var_os("PATH");
 
@@ -178,4 +180,13 @@ fn windows_exe_resolver() {
     // The application's directory is also searched.
     let current_exe = env::current_exe().unwrap();
     assert!(resolve_exe(current_exe.file_name().unwrap().as_ref(), empty_paths, None).is_ok());
+
+    // Create a temporary path and add a broken symlink.
+    let temp = tmpdir();
+    let mut exe_path = temp.path().to_owned();
+    exe_path.push("exists.exe");
+    symlink("<DOES NOT EXIST>".as_ref(), &exe_path).unwrap();
+
+    // A broken symlink should still be resolved.
+    assert!(resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok());
 }

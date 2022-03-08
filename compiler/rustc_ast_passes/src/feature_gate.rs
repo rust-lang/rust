@@ -196,6 +196,54 @@ impl<'a> PostExpansionVisitor<'a> {
                     "thiscall-unwind ABI is experimental and subject to change"
                 );
             }
+            "cdecl-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "cdecl-unwind ABI is experimental and subject to change"
+                );
+            }
+            "fastcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "fastcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "vectorcall-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "vectorcall-unwind ABI is experimental and subject to change"
+                );
+            }
+            "aapcs-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "aapcs-unwind ABI is experimental and subject to change"
+                );
+            }
+            "win64-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "win64-unwind ABI is experimental and subject to change"
+                );
+            }
+            "sysv64-unwind" => {
+                gate_feature_post!(
+                    &self,
+                    c_unwind,
+                    span,
+                    "sysv64-unwind ABI is experimental and subject to change"
+                );
+            }
             "wasm" => {
                 gate_feature_post!(
                     &self,
@@ -370,6 +418,31 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         }
                     }
                 }
+            }
+        }
+
+        // Emit errors for non-staged-api crates.
+        if !self.features.staged_api {
+            if attr.has_name(sym::rustc_deprecated)
+                || attr.has_name(sym::unstable)
+                || attr.has_name(sym::stable)
+                || attr.has_name(sym::rustc_const_unstable)
+                || attr.has_name(sym::rustc_const_stable)
+            {
+                struct_span_err!(
+                    self.sess,
+                    attr.span,
+                    E0734,
+                    "stability attributes may not be used outside of the standard library",
+                )
+                .emit();
+            }
+        } else {
+            if attr.has_name(sym::deprecated) {
+                self.sess
+                    .struct_span_err(attr.span, "`#[deprecated]` cannot be used in staged API")
+                    .span_label(attr.span, "use `#[rustc_deprecated]` instead")
+                    .emit();
             }
         }
     }
@@ -707,11 +780,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
         "`if let` guards are experimental",
         "you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`"
     );
-    gate_all!(
-        let_chains,
-        "`let` expressions in this position are experimental",
-        "you can write `matches!(<expr>, <pattern>)` instead of `let <pattern> = <expr>`"
-    );
+    gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
         async_closure,
         "async closures are unstable",
@@ -779,7 +848,7 @@ fn maybe_stage_features(sess: &Session, krate: &ast::Crate) {
             );
             let mut all_stable = true;
             for ident in
-                attr.meta_item_list().into_iter().flatten().map(|nested| nested.ident()).flatten()
+                attr.meta_item_list().into_iter().flatten().flat_map(|nested| nested.ident())
             {
                 let name = ident.name;
                 let stable_since = lang_features

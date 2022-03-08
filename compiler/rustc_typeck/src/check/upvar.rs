@@ -533,19 +533,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 base => bug!("Expected upvar, found={:?}", base),
             };
 
-            let min_cap_list = match root_var_min_capture_list.get_mut(&var_hir_id) {
-                None => {
-                    let mutability = self.determine_capture_mutability(&typeck_results, &place);
-                    let min_cap_list = vec![ty::CapturedPlace {
-                        place,
-                        info: capture_info,
-                        mutability,
-                        region: None,
-                    }];
-                    root_var_min_capture_list.insert(var_hir_id, min_cap_list);
-                    continue;
-                }
-                Some(min_cap_list) => min_cap_list,
+            let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
+                let mutability = self.determine_capture_mutability(&typeck_results, &place);
+                let min_cap_list = vec![ty::CapturedPlace {
+                    place,
+                    info: capture_info,
+                    mutability,
+                    region: None,
+                }];
+                root_var_min_capture_list.insert(var_hir_id, min_cap_list);
+                continue;
             };
 
             // Go through each entry in the current list of min_captures
@@ -966,7 +963,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     ty,
                     max_capture_info.capture_kind,
-                    Some(&ty::ReErased),
+                    Some(self.tcx.lifetimes.re_erased),
                 )
             }
         };
@@ -997,7 +994,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx,
                 capture.place.ty(),
                 capture.info.capture_kind,
-                Some(&ty::ReErased),
+                Some(self.tcx.lifetimes.re_erased),
             );
 
             // Checks if a capture implements any of the auto traits
@@ -1451,7 +1448,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
 
-            ty::Tuple(..) => {
+            ty::Tuple(fields) => {
                 // Only Field projections can be applied to a tuple.
                 assert!(
                     captured_by_move_projs.iter().all(|projs| matches!(
@@ -1460,7 +1457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ))
                 );
 
-                base_path_ty.tuple_fields().enumerate().any(|(i, element_ty)| {
+                fields.iter().enumerate().any(|(i, element_ty)| {
                     let paths_using_field = captured_by_move_projs
                         .iter()
                         .filter_map(|projs| {
@@ -1499,7 +1496,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_upvar_borrow_kind_for_consume` and then moved into
             // the closure.
-            hir::CaptureBy::Value if !place.deref_tys().any(ty::TyS::is_ref) => {
+            hir::CaptureBy::Value if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
             hir::CaptureBy::Value | hir::CaptureBy::Ref => ty::UpvarCapture::ByRef(ty::ImmBorrow),
@@ -1653,7 +1650,8 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
         match p.kind {
             ProjectionKind::Field(..) => match ty.kind() {
                 ty::Adt(def, _) if def.repr.packed() => {
-                    match tcx.layout_of(param_env.and(p.ty)) {
+                    // We erase regions here because they cannot be hashed
+                    match tcx.layout_of(param_env.and(tcx.erase_regions(p.ty))) {
                         Ok(layout) if layout.align.abi.bytes() == 1 => {
                             // if the alignment is 1, the type can't be further
                             // disaligned.
@@ -1812,7 +1810,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
         );
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::ImmBorrow);
         }
 

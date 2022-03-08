@@ -1,3 +1,202 @@
+Version 1.59.0 (2022-02-24)
+==========================
+
+Language
+--------
+
+- [Stabilize default arguments for const parameters and remove the ordering restriction for type and const parameters][90207]
+- [Stabilize destructuring assignment][90521]
+- [Relax private in public lint on generic bounds and where clauses of trait impls][90586]
+- [Stabilize asm! and global_asm! for x86, x86_64, ARM, Aarch64, and RISC-V][91728]
+
+Compiler
+--------
+
+- [Stabilize new symbol mangling format, leaving it opt-in (-Csymbol-mangling-version=v0)][90128]
+- [Emit LLVM optimization remarks when enabled with `-Cremark`][90833]
+- [Fix sparc64 ABI for aggregates with floating point members][91003]
+- [Warn when a `#[test]`-like built-in attribute macro is present multiple times.][91172]
+- [Add support for riscv64gc-unknown-freebsd][91284]
+- [Stabilize `-Z emit-future-incompat` as `--json future-incompat`][91535]
+- [Soft disable incremental compilation][94124]
+
+This release disables incremental compilation, unless the user has explicitly
+opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
+This is due to a known and relatively frequently occurring bug in incremental
+compilation, which causes builds to issue internal compiler errors. This
+particular bug is already fixed on nightly, but that fix has not yet rolled out
+to stable and is deemed too risky for a direct stable backport.
+
+As always, we encourage users to test with nightly and report bugs so that we
+can track failures and fix issues earlier.
+
+See [94124] for more details.
+
+[94124]: https://github.com/rust-lang/rust/issues/94124
+
+Libraries
+---------
+
+- [Remove unnecessary bounds for some Hash{Map,Set} methods][91593]
+
+Stabilized APIs
+---------------
+
+- [`std::thread::available_parallelism`][available_parallelism]
+- [`Result::copied`][result-copied]
+- [`Result::cloned`][result-cloned]
+- [`arch::asm!`][asm]
+- [`arch::global_asm!`][global_asm]
+- [`ops::ControlFlow::is_break`][is_break]
+- [`ops::ControlFlow::is_continue`][is_continue]
+- [`TryFrom<char> for u8`][try_from_char_u8]
+- [`char::TryFromCharError`][try_from_char_err]
+  implementing `Clone`, `Debug`, `Display`, `PartialEq`, `Copy`, `Eq`, `Error`
+- [`iter::zip`][zip]
+- [`NonZeroU8::is_power_of_two`][is_power_of_two8]
+- [`NonZeroU16::is_power_of_two`][is_power_of_two16]
+- [`NonZeroU32::is_power_of_two`][is_power_of_two32]
+- [`NonZeroU64::is_power_of_two`][is_power_of_two64]
+- [`NonZeroU128::is_power_of_two`][is_power_of_two128]
+- [`NonZeroUsize::is_power_of_two`][is_power_of_two_usize]
+- [`DoubleEndedIterator for ToLowercase`][lowercase]
+- [`DoubleEndedIterator for ToUppercase`][uppercase]
+- [`TryFrom<&mut [T]> for [T; N]`][tryfrom_ref_arr]
+- [`UnwindSafe for Once`][unwindsafe_once]
+- [`RefUnwindSafe for Once`][refunwindsafe_once]
+- [armv8 neon intrinsics for aarch64][stdarch/1266]
+
+Const-stable:
+
+- [`mem::MaybeUninit::as_ptr`][muninit_ptr]
+- [`mem::MaybeUninit::assume_init`][muninit_init]
+- [`mem::MaybeUninit::assume_init_ref`][muninit_init_ref]
+- [`ffi::CStr::from_bytes_with_nul_unchecked`][cstr_from_bytes]
+
+Cargo
+-----
+
+- [Stabilize the `strip` profile option][cargo/10088]
+- [Stabilize future-incompat-report][cargo/10165]
+- [Support abbreviating `--release` as `-r`][cargo/10133]
+- [Support `term.quiet` configuration][cargo/10152]
+- [Remove `--host` from cargo {publish,search,login}][cargo/10145]
+
+Compatibility Notes
+-------------------
+
+- [Refactor weak symbols in std::sys::unix][90846]
+  This may add new, versioned, symbols when building with a newer glibc, as the
+  standard library uses weak linkage rather than dynamically attempting to load
+  certain symbols at runtime.
+- [Deprecate crate_type and crate_name nested inside `#![cfg_attr]`][83744]
+  This adds a future compatibility lint to supporting the use of cfg_attr
+  wrapping either crate_type or crate_name specification within Rust files;
+  it is recommended that users migrate to setting the equivalent command line
+  flags.
+- [Remove effect of `#[no_link]` attribute on name resolution][92034]
+  This may expose new names, leading to conflicts with preexisting names in a
+  given namespace and a compilation failure.
+- [Cargo will document libraries before binaries.][cargo/10172]
+- [Respect doc=false in dependencies, not just the root crate][cargo/10201]
+- [Weaken guarantee around advancing underlying iterators in zip][83791]
+- [Make split_inclusive() on an empty slice yield an empty output][89825]
+- [Update std::env::temp_dir to use GetTempPath2 on Windows when available.][89999]
+- [unreachable! was updated to match other formatting macro behavior on Rust 2021][92137]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+- [Fix many cases of normalization-related ICEs][91255]
+- [Replace dominators algorithm with simple Lengauer-Tarjan][85013]
+- [Store liveness in interval sets for region inference][90637]
+
+- [Remove `in_band_lifetimes` from the compiler and standard library, in preparation for removing this
+  unstable feature.][91867]
+
+[91867]: https://github.com/rust-lang/rust/issues/91867
+[83744]: https://github.com/rust-lang/rust/pull/83744/
+[83791]: https://github.com/rust-lang/rust/pull/83791/
+[85013]: https://github.com/rust-lang/rust/pull/85013/
+[89825]: https://github.com/rust-lang/rust/pull/89825/
+[89999]: https://github.com/rust-lang/rust/pull/89999/
+[90128]: https://github.com/rust-lang/rust/pull/90128/
+[90207]: https://github.com/rust-lang/rust/pull/90207/
+[90521]: https://github.com/rust-lang/rust/pull/90521/
+[90586]: https://github.com/rust-lang/rust/pull/90586/
+[90637]: https://github.com/rust-lang/rust/pull/90637/
+[90833]: https://github.com/rust-lang/rust/pull/90833/
+[90846]: https://github.com/rust-lang/rust/pull/90846/
+[91003]: https://github.com/rust-lang/rust/pull/91003/
+[91172]: https://github.com/rust-lang/rust/pull/91172/
+[91255]: https://github.com/rust-lang/rust/pull/91255/
+[91284]: https://github.com/rust-lang/rust/pull/91284/
+[91535]: https://github.com/rust-lang/rust/pull/91535/
+[91593]: https://github.com/rust-lang/rust/pull/91593/
+[91728]: https://github.com/rust-lang/rust/pull/91728/
+[91878]: https://github.com/rust-lang/rust/pull/91878/
+[91896]: https://github.com/rust-lang/rust/pull/91896/
+[91926]: https://github.com/rust-lang/rust/pull/91926/
+[91984]: https://github.com/rust-lang/rust/pull/91984/
+[92020]: https://github.com/rust-lang/rust/pull/92020/
+[92034]: https://github.com/rust-lang/rust/pull/92034/
+[92137]: https://github.com/rust-lang/rust/pull/92137/
+[92483]: https://github.com/rust-lang/rust/pull/92483/
+[cargo/10088]: https://github.com/rust-lang/cargo/pull/10088/
+[cargo/10133]: https://github.com/rust-lang/cargo/pull/10133/
+[cargo/10145]: https://github.com/rust-lang/cargo/pull/10145/
+[cargo/10152]: https://github.com/rust-lang/cargo/pull/10152/
+[cargo/10165]: https://github.com/rust-lang/cargo/pull/10165/
+[cargo/10172]: https://github.com/rust-lang/cargo/pull/10172/
+[cargo/10201]: https://github.com/rust-lang/cargo/pull/10201/
+[cargo/10269]: https://github.com/rust-lang/cargo/pull/10269/
+
+[cstr_from_bytes]: https://doc.rust-lang.org/stable/std/ffi/struct.CStr.html#method.from_bytes_with_nul_unchecked
+[muninit_ptr]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.as_ptr
+[muninit_init]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init
+[muninit_init_ref]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_ref
+[unwindsafe_once]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#impl-UnwindSafe
+[refunwindsafe_once]: https://doc.rust-lang.org/stable/std/sync/struct.Once.html#impl-RefUnwindSafe
+[tryfrom_ref_arr]: https://doc.rust-lang.org/stable/std/convert/trait.TryFrom.html#impl-TryFrom%3C%26%27_%20mut%20%5BT%5D%3E
+[lowercase]: https://doc.rust-lang.org/stable/std/char/struct.ToLowercase.html#impl-DoubleEndedIterator
+[uppercase]: https://doc.rust-lang.org/stable/std/char/struct.ToUppercase.html#impl-DoubleEndedIterator
+[try_from_char_err]: https://doc.rust-lang.org/stable/std/char/struct.TryFromCharError.html
+[available_parallelism]: https://doc.rust-lang.org/stable/std/thread/fn.available_parallelism.html
+[result-copied]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.copied
+[result-cloned]: https://doc.rust-lang.org/stable/std/result/enum.Result.html#method.cloned
+[asm]: https://doc.rust-lang.org/stable/core/arch/macro.asm.html
+[global_asm]: https://doc.rust-lang.org/stable/core/arch/macro.global_asm.html
+[is_break]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html#method.is_break
+[is_continue]: https://doc.rust-lang.org/stable/std/ops/enum.ControlFlow.html#method.is_continue
+[try_from_char_u8]: https://doc.rust-lang.org/stable/std/primitive.char.html#impl-TryFrom%3Cchar%3E
+[zip]: https://doc.rust-lang.org/stable/std/iter/fn.zip.html
+[is_power_of_two8]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU8.html#method.is_power_of_two
+[is_power_of_two16]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU16.html#method.is_power_of_two
+[is_power_of_two32]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU32.html#method.is_power_of_two
+[is_power_of_two64]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU64.html#method.is_power_of_two
+[is_power_of_two128]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroU128.html#method.is_power_of_two
+[is_power_of_two_usize]: https://doc.rust-lang.org/stable/core/num/struct.NonZeroUsize.html#method.is_power_of_two
+[stdarch/1266]: https://github.com/rust-lang/stdarch/pull/1266
+
+Version 1.58.1 (2022-01-19)
+===========================
+
+* Fix race condition in `std::fs::remove_dir_all` ([CVE-2022-21658])
+* [Handle captured arguments in the `useless_format` Clippy lint][clippy/8295]
+* [Move `non_send_fields_in_send_ty` Clippy lint to nursery][clippy/8075]
+* [Fix wrong error message displayed when some imports are missing][91254]
+* [Fix rustfmt not formatting generated files from stdin][92912]
+
+[CVE-2022-21658]: https://www.cve.org/CVERecord?id=CVE-2022-21658
+[91254]: https://github.com/rust-lang/rust/pull/91254
+[92912]: https://github.com/rust-lang/rust/pull/92912
+[clippy/8075]: https://github.com/rust-lang/rust-clippy/pull/8075
+[clippy/8295]: https://github.com/rust-lang/rust-clippy/pull/8295
+
 Version 1.58.0 (2022-01-13)
 ==========================
 
@@ -141,6 +340,7 @@ Language
 - [Macro attributes may follow `#[derive]` and will see the original (pre-`cfg`) input.][87220]
 - [Accept curly-brace macros in expressions, like `m!{ .. }.method()` and `m!{ .. }?`.][88690]
 - [Allow panicking in constant evaluation.][89508]
+- [Ignore derived `Clone` and `Debug` implementations during dead code analysis.][85200]
 
 Compiler
 --------
@@ -201,6 +401,9 @@ Cargo
 Compatibility notes
 -------------------
 
+- [Ignore derived `Clone` and `Debug` implementations during dead code analysis.][85200]
+  This will break some builds that set `#![deny(dead_code)]`.
+
 Internal changes
 ----------------
 These changes provide no direct user facing benefits, but represent significant
@@ -209,6 +412,7 @@ and related tools.
 
 - [Added an experimental backend for codegen with `libgccjit`.][87260]
 
+[85200]: https://github.com/rust-lang/rust/pull/85200/
 [86191]: https://github.com/rust-lang/rust/pull/86191/
 [87220]: https://github.com/rust-lang/rust/pull/87220/
 [87260]: https://github.com/rust-lang/rust/pull/87260/
@@ -856,7 +1060,7 @@ Version 1.52.1 (2021-05-10)
 This release disables incremental compilation, unless the user has explicitly
 opted in via the newly added RUSTC_FORCE_INCREMENTAL=1 environment variable.
 
-This is due to the widespread, and frequently occuring, breakage encountered by
+This is due to the widespread, and frequently occurring, breakage encountered by
 Rust users due to newly enabled incremental verification in 1.52.0. Notably,
 Rust users **should** upgrade to 1.52.0 or 1.52.1: the bugs that are detected by
 newly added incremental verification are still present in past stable versions,

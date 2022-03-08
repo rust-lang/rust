@@ -1,6 +1,6 @@
 // build-pass
 // ignore-pass
-// no-system-llvm
+// min-llvm-version: 14.0.0
 // revisions: all inline merge1 merge2
 // compile-flags: --crate-type=lib -Cdebuginfo=1 -Copt-level=2
 //
@@ -14,7 +14,7 @@
 // [merge1] compile-flags: -Cremark=all    -Cremark=giraffe
 // [merge2] compile-flags: -Cremark=inline -Cremark=giraffe
 //
-// error-pattern: inline: f not inlined into g
+// error-pattern: inline: 'f' not inlined into 'g'
 // dont-check-compiler-stderr
 
 #[no_mangle]

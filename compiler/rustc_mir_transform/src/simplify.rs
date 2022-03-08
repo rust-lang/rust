@@ -172,9 +172,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         let mut terminators: SmallVec<[_; 1]> = Default::default();
         let mut current = *start;
         while let Some(terminator) = self.take_terminator_if_simple_goto(current) {
-            let target = match terminator {
-                Terminator { kind: TerminatorKind::Goto { target }, .. } => target,
-                _ => unreachable!(),
+            let Terminator { kind: TerminatorKind::Goto { target }, .. } = terminator else {
+                unreachable!();
             };
             terminators.push((current, terminator));
             current = target;
@@ -182,9 +181,8 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         let last = current;
         *start = last;
         while let Some((current, mut terminator)) = terminators.pop() {
-            let target = match terminator {
-                Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } => target,
-                _ => unreachable!(),
+            let Terminator { kind: TerminatorKind::Goto { ref mut target }, .. } = terminator else {
+                unreachable!();
             };
             *changed |= *target != last;
             *target = last;
@@ -303,7 +301,7 @@ pub fn remove_dead_blocks<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 /// evaluation: `if false { ... }`.
 ///
 /// Those statements are bypassed by redirecting paths in the CFG around the
-/// `dead blocks`; but with `-Z instrument-coverage`, the dead blocks usually
+/// `dead blocks`; but with `-C instrument-coverage`, the dead blocks usually
 /// include `Coverage` statements representing the Rust source code regions to
 /// be counted at runtime. Without these `Coverage` statements, the regions are
 /// lost, and the Rust source code will show no coverage information.

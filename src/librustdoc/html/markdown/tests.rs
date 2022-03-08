@@ -70,7 +70,6 @@ fn test_lang_string_parse() {
         compile_fail: true,
         ..Default::default()
     });
-    t(LangString { original: "allow_fail".into(), allow_fail: true, ..Default::default() });
     t(LangString { original: "no_run,example".into(), no_run: true, ..Default::default() });
     t(LangString {
         original: "sh,should_panic".into(),
@@ -160,25 +159,22 @@ fn test_header() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
-    t(
-        "# Foo bar",
-        "<h2 id=\"foo-bar\" class=\"section-header\"><a href=\"#foo-bar\">Foo bar</a></h2>",
-    );
+    t("# Foo bar", "<h2 id=\"foo-bar\"><a href=\"#foo-bar\">Foo bar</a></h2>");
     t(
         "## Foo-bar_baz qux",
-        "<h3 id=\"foo-bar_baz-qux\" class=\"section-header\">\
+        "<h3 id=\"foo-bar_baz-qux\">\
          <a href=\"#foo-bar_baz-qux\">Foo-bar_baz qux</a></h3>",
     );
     t(
         "### **Foo** *bar* baz!?!& -_qux_-%",
-        "<h4 id=\"foo-bar-baz--qux-\" class=\"section-header\">\
+        "<h4 id=\"foo-bar-baz--qux-\">\
             <a href=\"#foo-bar-baz--qux-\"><strong>Foo</strong> \
             <em>bar</em> baz!?!&amp; -<em>qux</em>-%</a>\
          </h4>",
     );
     t(
         "#### **Foo?** & \\*bar?!*  _`baz`_ ❤ #qux",
-        "<h5 id=\"foo--bar--baz--qux\" class=\"section-header\">\
+        "<h5 id=\"foo--bar--baz--qux\">\
              <a href=\"#foo--bar--baz--qux\"><strong>Foo?</strong> &amp; *bar?!*  \
              <em><code>baz</code></em> ❤ #qux</a>\
          </h5>",
@@ -202,36 +198,12 @@ fn test_header_ids_multiple_blocks() {
         assert_eq!(output, expect, "original: {}", input);
     }
 
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example\" class=\"section-header\"><a href=\"#example\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Panics",
-        "<h2 id=\"panics\" class=\"section-header\"><a href=\"#panics\">Panics</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example-1\" class=\"section-header\"><a href=\"#example-1\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Search",
-        "<h2 id=\"search-1\" class=\"section-header\"><a href=\"#search-1\">Search</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Example",
-        "<h2 id=\"example-2\" class=\"section-header\"><a href=\"#example-2\">Example</a></h2>",
-    );
-    t(
-        &mut map,
-        "# Panics",
-        "<h2 id=\"panics-1\" class=\"section-header\"><a href=\"#panics-1\">Panics</a></h2>",
-    );
+    t(&mut map, "# Example", "<h2 id=\"example\"><a href=\"#example\">Example</a></h2>");
+    t(&mut map, "# Panics", "<h2 id=\"panics\"><a href=\"#panics\">Panics</a></h2>");
+    t(&mut map, "# Example", "<h2 id=\"example-1\"><a href=\"#example-1\">Example</a></h2>");
+    t(&mut map, "# Search", "<h2 id=\"search-1\"><a href=\"#search-1\">Search</a></h2>");
+    t(&mut map, "# Example", "<h2 id=\"example-2\"><a href=\"#example-2\">Example</a></h2>");
+    t(&mut map, "# Panics", "<h2 id=\"panics-1\"><a href=\"#panics-1\">Panics</a></h2>");
 }
 
 #[test]

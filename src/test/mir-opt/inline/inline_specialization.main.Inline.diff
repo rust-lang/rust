@@ -15,11 +15,11 @@
 -         _1 = <Vec<()> as Foo>::bar() -> bb1; // scope 0 at $DIR/inline-specialization.rs:5:13: 5:38
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline-specialization.rs:5:13: 5:36
--                                          // + literal: Const { ty: fn() -> u32 {<std::vec::Vec<()> as Foo>::bar}, val: Value(Scalar(<ZST>)) }
+-                                          // + literal: Const { ty: fn() -> u32 {<Vec<()> as Foo>::bar}, val: Value(Scalar(<ZST>)) }
 -     }
 - 
 -     bb1: {
-+         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:5:13: 5:38
++         _1 = const 123_u32;              // scope 2 at $DIR/inline-specialization.rs:14:31: 14:34
           _0 = const ();                   // scope 0 at $DIR/inline-specialization.rs:4:11: 6:2
           StorageDead(_1);                 // scope 0 at $DIR/inline-specialization.rs:6:1: 6:2
           return;                          // scope 0 at $DIR/inline-specialization.rs:6:2: 6:2

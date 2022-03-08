@@ -16,11 +16,13 @@ This feature allows for use of one of following sanitizers:
   AddressSanitizer, but based on partial hardware assistance.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
+* [MemTagSanitizer][clang-memtag] fast memory error detector based on
+  Armv8.5-A Memory Tagging Extension.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
 
 To enable a sanitizer compile with `-Zsanitizer=address`,`-Zsanitizer=cfi`,
-`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory` or
-`-Zsanitizer=thread`.
+`-Zsanitizer=hwaddress`, `-Zsanitizer=leak`, `-Zsanitizer=memory`,
+`-Zsanitizer=memtag`, or `-Zsanitizer=thread`.
 
 # AddressSanitizer
 
@@ -493,6 +495,20 @@ $ cargo run -Zbuild-std --target x86_64-unknown-linux-gnu
   Uninitialized value was created by an allocation of 'a' in the stack frame of function '_ZN6memory4main17hd2333c1899d997f5E'
     #0 0x560c04b2bc50 in memory::main::hd2333c1899d997f5 $CWD/src/main.rs:3
 ```
+
+# MemTagSanitizer
+
+MemTagSanitizer detects a similar class of errors as AddressSanitizer and HardwareAddressSanitizer, but with lower overhead suitable for use as hardening for production binaries.
+
+MemTagSanitizer is supported on the following targets:
+
+* `aarch64-linux-android`
+* `aarch64-unknown-linux-gnu`
+
+MemTagSanitizer requires hardware support and the `mte` target feature.
+To enable this target feature compile with `-C target-feature="+mte"`.
+
+More information can be found in the associated [LLVM documentation](https://llvm.org/docs/MemTagSanitizer.html).
 
 # ThreadSanitizer
 

@@ -1,5 +1,5 @@
 use crate::iter::{InPlaceIterable, Iterator};
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
 mod chain;
 mod cloned;
@@ -128,41 +128,45 @@ pub unsafe trait SourceIter {
 }
 
 /// An iterator adapter that produces output as long as the underlying
-/// iterator produces `Result::Ok` values.
+/// iterator produces values where `Try::branch` says to `ControlFlow::Continue`.
 ///
-/// If an error is encountered, the iterator stops and the error is
-/// stored.
-pub(crate) struct ResultShunt<'a, I, E> {
+/// If a `ControlFlow::Break` is encountered, the iterator stops and the
+/// residual is stored.
+pub(crate) struct GenericShunt<'a, I, R> {
     iter: I,
-    error: &'a mut Result<(), E>,
+    residual: &'a mut Option<R>,
 }
 
-/// Process the given iterator as if it yielded a `T` instead of a
-/// `Result<T, _>`. Any errors will stop the inner iterator and
-/// the overall result will be an error.
-pub(crate) fn process_results<I, T, E, F, U>(iter: I, mut f: F) -> Result<U, E>
+/// Process the given iterator as if it yielded a the item's `Try::Output`
+/// type instead. Any `Try::Residual`s encountered will stop the inner iterator
+/// and be propagated back to the overall result.
+pub(crate) fn try_process<I, T, R, F, U>(iter: I, mut f: F) -> ChangeOutputType<I::Item, U>
 where
-    I: Iterator<Item = Result<T, E>>,
-    for<'a> F: FnMut(ResultShunt<'a, I, E>) -> U,
+    I: Iterator<Item: Try<Output = T, Residual = R>>,
+    for<'a> F: FnMut(GenericShunt<'a, I, R>) -> U,
+    R: Residual<U>,
 {
-    let mut error = Ok(());
-    let shunt = ResultShunt { iter, error: &mut error };
+    let mut residual = None;
+    let shunt = GenericShunt { iter, residual: &mut residual };
     let value = f(shunt);
-    error.map(|()| value)
+    match residual {
+        Some(r) => FromResidual::from_residual(r),
+        None => Try::from_output(value),
+    }
 }
 
-impl<I, T, E> Iterator for ResultShunt<'_, I, E>
+impl<I, R> Iterator for GenericShunt<'_, I, R>
 where
-    I: Iterator<Item = Result<T, E>>,
+    I: Iterator<Item: Try<Residual = R>>,
 {
-    type Item = T;
+    type Item = <I::Item as Try>::Output;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.find(|_| true)
+        self.try_for_each(ControlFlow::Break).break_value()
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.error.is_err() {
+        if self.residual.is_some() {
             (0, Some(0))
         } else {
             let (_, upper) = self.iter.size_hint();
@@ -170,17 +174,16 @@ where
         }
     }
 
-    fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
+    fn try_fold<B, F, T>(&mut self, init: B, mut f: F) -> T
     where
-        F: FnMut(B, Self::Item) -> R,
-        R: Try<Output = B>,
+        F: FnMut(B, Self::Item) -> T,
+        T: Try<Output = B>,
     {
-        let error = &mut *self.error;
         self.iter
-            .try_fold(init, |acc, x| match x {
-                Ok(x) => ControlFlow::from_try(f(acc, x)),
-                Err(e) => {
-                    *error = Err(e);
+            .try_fold(init, |acc, x| match Try::branch(x) {
+                ControlFlow::Continue(x) => ControlFlow::from_try(f(acc, x)),
+                ControlFlow::Break(r) => {
+                    *self.residual = Some(r);
                     ControlFlow::Break(try { acc })
                 }
             })
@@ -192,17 +195,12 @@ where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(fold)).unwrap()
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(fold)).0
     }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, E> SourceIter for ResultShunt<'_, I, E>
+unsafe impl<I, R> SourceIter for GenericShunt<'_, I, R>
 where
     I: SourceIter,
 {
@@ -215,11 +213,11 @@ where
     }
 }
 
-// SAFETY: ResultShunt::next calls I::find, which has to advance `iter` in order to
-// return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's guaranteed that
-// at least one item will be moved out from the underlying source.
+// SAFETY: GenericShunt::next calls `I::try_for_each`, which has to advance `iter`
+// in order to return `Some(_)`. Since `iter` has type `I: InPlaceIterable` it's
+// guaranteed that at least one item will be moved out from the underlying source.
 #[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, T, E> InPlaceIterable for ResultShunt<'_, I, E> where
-    I: Iterator<Item = Result<T, E>> + InPlaceIterable
+unsafe impl<I, T, R> InPlaceIterable for GenericShunt<'_, I, R> where
+    I: Iterator<Item: Try<Output = T, Residual = R>> + InPlaceIterable
 {
 }

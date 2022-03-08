@@ -4,7 +4,7 @@
 use std::convert::TryFrom;
 use std::fmt::Write;
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_macros::HashStable;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
@@ -109,11 +109,11 @@ rustc_data_structures::static_assert_size!(ImmTy<'_>, 72);
 impl<Tag: Provenance> std::fmt::Display for ImmTy<'_, Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /// Helper function for printing a scalar to a FmtPrinter
-        fn p<'a, 'tcx, F: std::fmt::Write, Tag: Provenance>(
-            cx: FmtPrinter<'a, 'tcx, F>,
+        fn p<'a, 'tcx, Tag: Provenance>(
+            cx: FmtPrinter<'a, 'tcx>,
             s: ScalarMaybeUninit<Tag>,
             ty: Ty<'tcx>,
-        ) -> Result<FmtPrinter<'a, 'tcx, F>, std::fmt::Error> {
+        ) -> Result<FmtPrinter<'a, 'tcx>, std::fmt::Error> {
             match s {
                 ScalarMaybeUninit::Scalar(Scalar::Int(int)) => {
                     cx.pretty_print_const_scalar_int(int, ty, true)
@@ -138,15 +138,15 @@ impl<Tag: Provenance> std::fmt::Display for ImmTy<'_, Tag> {
             match self.imm {
                 Immediate::Scalar(s) => {
                     if let Some(ty) = tcx.lift(self.layout.ty) {
-                        let cx = FmtPrinter::new(tcx, f, Namespace::ValueNS);
-                        p(cx, s, ty)?;
+                        let cx = FmtPrinter::new(tcx, Namespace::ValueNS);
+                        f.write_str(&p(cx, s, ty)?.into_buffer())?;
                         return Ok(());
                     }
-                    write!(f, "{}: {}", s, self.layout.ty)
+                    write!(f, "{:x}: {}", s, self.layout.ty)
                 }
                 Immediate::ScalarPair(a, b) => {
                     // FIXME(oli-obk): at least print tuples and slices nicely
-                    write!(f, "({}, {}): {}", a, b, self.layout.ty,)
+                    write!(f, "({:x}, {:x}): {}", a, b, self.layout.ty,)
                 }
             }
         })
@@ -258,15 +258,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(None);
         }
 
-        let alloc = match self.get_alloc(mplace)? {
-            Some(ptr) => ptr,
-            None => {
-                return Ok(Some(ImmTy {
-                    // zero-sized type
-                    imm: Scalar::ZST.into(),
-                    layout: mplace.layout,
-                }));
-            }
+        let Some(alloc) = self.get_alloc(mplace)? else {
+            return Ok(Some(ImmTy {
+                // zero-sized type
+                imm: Scalar::ZST.into(),
+                layout: mplace.layout,
+            }));
         };
 
         match mplace.layout.abi {
@@ -408,10 +405,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         op: &OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
         Ok(match op.try_as_mplace() {
             Ok(ref mplace) => self.mplace_downcast(mplace, variant)?.into(),
             Err(..) => {
+                // Downcasts only change the layout.
+                // (In particular, no check about whether this is even the active variant -- that's by design,
+                // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
                 let layout = op.layout.for_variant(self, variant);
                 OpTy { layout, ..*op }
             }
@@ -536,7 +535,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let val =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
                 // This can still fail:
-                // * During ConstProp, with `TooGeneric` or since the `requried_consts` were not all
+                // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
 
@@ -561,12 +560,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// "universe" (param_env).
     pub fn const_to_op(
         &self,
-        val: &ty::Const<'tcx>,
+        val: ty::Const<'tcx>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        match val.val {
+        match val.val() {
             ty::ConstKind::Param(_) | ty::ConstKind::Bound(..) => throw_inval!(TooGeneric),
-            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorReported)),
+            ty::ConstKind::Error(_) => throw_inval!(AlreadyReported(ErrorGuaranteed)),
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
@@ -574,7 +573,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Infer(..) | ty::ConstKind::Placeholder(..) => {
                 span_bug!(self.cur_span(), "const_to_op: Unexpected ConstKind {:?}", val)
             }
-            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty, layout),
+            ty::ConstKind::Value(val_val) => self.const_val_to_op(val_val, val.ty(), layout),
         }
     }
 
@@ -584,8 +583,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         match val {
-            mir::ConstantKind::Ty(ct) => self.const_to_op(ct, layout),
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, ty, layout),
+            mir::ConstantKind::Ty(ct) => self.const_to_op(*ct, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
         }
     }
 
@@ -682,18 +681,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let tag_val = self.read_immediate(&self.operand_field(op, tag_field)?)?;
         assert_eq!(tag_layout.size, tag_val.layout.size);
         assert_eq!(tag_layout.abi.is_signed(), tag_val.layout.abi.is_signed());
-        let tag_val = tag_val.to_scalar()?;
-        trace!("tag value: {:?}", tag_val);
+        trace!("tag value: {}", tag_val);
 
         // Figure out which discriminant and variant this corresponds to.
         Ok(match *tag_encoding {
             TagEncoding::Direct => {
+                // Generate a specific error if `tag_val` is not an integer.
+                // (`tag_bits` itself is only used for error messages below.)
                 let tag_bits = tag_val
+                    .to_scalar()?
                     .try_to_int()
                     .map_err(|dbg_val| err_ub!(InvalidTag(dbg_val)))?
                     .assert_bits(tag_layout.size);
                 // Cast bits from tag layout to discriminant layout.
-                let discr_val = self.cast_from_scalar(tag_bits, tag_layout, discr_layout.ty);
+                // After the checks we did above, this cannot fail.
+                let discr_val =
+                    self.misc_cast(&tag_val, discr_layout.ty).unwrap().to_scalar().unwrap();
                 let discr_bits = discr_val.assert_bits(discr_layout.size);
                 // Convert discriminant to variant index, and catch invalid discriminants.
                 let index = match *op.layout.ty.kind() {
@@ -713,6 +716,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (discr_val, index.0)
             }
             TagEncoding::Niche { dataful_variant, ref niche_variants, niche_start } => {
+                let tag_val = tag_val.to_scalar()?;
                 // Compute the variant this niche value/"tag" corresponds to. With niche layout,
                 // discriminant (encoded in niche/tag) and variant index are the same.
                 let variants_start = niche_variants.start().as_u32();
@@ -721,12 +725,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Err(dbg_val) => {
                         // So this is a pointer then, and casting to an int failed.
                         // Can only happen during CTFE.
-                        let ptr = self.scalar_to_ptr(tag_val);
                         // The niche must be just 0, and the ptr not null, then we know this is
                         // okay. Everything else, we conservatively reject.
                         let ptr_valid = niche_start == 0
                             && variants_start == variants_end
-                            && !self.memory.ptr_may_be_null(ptr);
+                            && !self.scalar_may_be_null(tag_val);
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
                         }

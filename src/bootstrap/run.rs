@@ -1,7 +1,7 @@
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::dist::distdir;
 use crate::tool::Tool;
-use build_helper::output;
+use crate::util::output;
 use std::process::Command;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

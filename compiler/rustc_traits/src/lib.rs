@@ -2,6 +2,7 @@
 //! the guts are broken up into modules; see the comments in those modules.
 
 #![feature(crate_visibility_modifier)]
+#![feature(let_else)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

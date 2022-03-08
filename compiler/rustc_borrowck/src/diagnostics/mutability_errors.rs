@@ -17,7 +17,7 @@ use rustc_span::{BytePos, Span};
 use crate::diagnostics::BorrowedContentSource;
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -488,12 +488,32 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     // don't create labels for compiler-generated spans
                                     Some(_) => None,
                                     None => {
-                                        let (span, suggestion) = suggest_ampmut(
-                                            self.infcx.tcx,
-                                            local_decl,
-                                            opt_assignment_rhs_span,
-                                            *opt_ty_info,
-                                        );
+                                        let (span, suggestion) = if name != kw::SelfLower {
+                                            suggest_ampmut(
+                                                self.infcx.tcx,
+                                                local_decl,
+                                                opt_assignment_rhs_span,
+                                                *opt_ty_info,
+                                            )
+                                        } else {
+                                            match local_decl.local_info.as_deref() {
+                                                Some(LocalInfo::User(ClearCrossCrate::Set(
+                                                    mir::BindingForm::Var(mir::VarBindingForm {
+                                                        opt_ty_info: None,
+                                                        ..
+                                                    }),
+                                                ))) => {
+                                                    suggest_ampmut_self(self.infcx.tcx, local_decl)
+                                                }
+                                                // explicit self (eg `self: &'a Self`)
+                                                _ => suggest_ampmut(
+                                                    self.infcx.tcx,
+                                                    local_decl,
+                                                    opt_assignment_rhs_span,
+                                                    *opt_ty_info,
+                                                ),
+                                            }
+                                        };
                                         Some((true, span, suggestion))
                                     }
                                 }
@@ -606,7 +626,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        err.buffer(&mut self.errors_buffer);
+        self.buffer_error(err);
     }
 
     /// User cannot make signature of a trait mutable without changing the
@@ -619,11 +639,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let hir_map = self.infcx.tcx.hir();
         let my_def = self.body.source.def_id();
         let my_hir = hir_map.local_def_id_to_hir_id(my_def.as_local().unwrap());
-        let td = if let Some(a) =
+        let Some(td) =
             self.infcx.tcx.impl_of_method(my_def).and_then(|x| self.infcx.tcx.trait_id_of_impl(x))
-        {
-            a
-        } else {
+        else {
             return (false, None);
         };
         (
@@ -671,7 +689,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         tcx: TyCtxt<'_>,
         id: &hir::def_id::DefId,
         the_place_err: PlaceRef<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         let closure_local_def_id = id.expect_local();
         let tables = tcx.typeck(closure_local_def_id);
@@ -736,14 +754,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic) {
         use hir::{
             BodyId, Expr,
             ExprKind::{Block, Call, DropTemps, Match, MethodCall},
             HirId, ImplItem, ImplItemKind, Item, ItemKind,
         };
 
-        fn maybe_body_id_of_fn(hir_map: &Map<'_>, id: HirId) -> Option<BodyId> {
+        fn maybe_body_id_of_fn(hir_map: Map<'_>, id: HirId) -> Option<BodyId> {
             match hir_map.find(id) {
                 Some(Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. }))
                 | Some(Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })) => {
@@ -754,7 +772,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         }
         let hir_map = self.infcx.tcx.hir();
         let mir_body_hir_id = self.mir_hir_id();
-        if let Some(fn_body_id) = maybe_body_id_of_fn(&hir_map, mir_body_hir_id) {
+        if let Some(fn_body_id) = maybe_body_id_of_fn(hir_map, mir_body_hir_id) {
             if let Block(
                 hir::Block {
                     expr:
@@ -798,7 +816,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .map(|assoc_items| {
                         assoc_items
                             .in_definition_order()
-                            .map(|assoc_item_def| assoc_item_def.ident)
+                            .map(|assoc_item_def| assoc_item_def.ident(self.infcx.tcx))
                             .filter(|&ident| {
                                 let original_method_ident = path_segment.ident;
                                 original_method_ident != ident
@@ -825,7 +843,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
@@ -1068,21 +1086,17 @@ fn get_mut_span_in_struct_field<'tcx>(
     field: &mir::Field,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.kind() {
-        if let ty::Adt(def, _) = ty.kind() {
-            let field = def.all_fields().nth(field.index())?;
-            // Use the HIR types to construct the diagnostic message.
-            let node = tcx.hir().find_by_def_id(field.did.as_local()?)?;
-            // Now we're dealing with the actual struct that we're going to suggest a change to,
-            // we can expect a field that is an immutable reference to a type.
-            if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, ty }) =
-                    field.ty.kind
-                {
-                    return Some(lifetime.span.between(ty.span));
-                }
-            }
-        }
+    if let ty::Ref(_, ty, _) = ty.kind()
+        && let ty::Adt(def, _) = ty.kind()
+        && let field = def.all_fields().nth(field.index())?
+        // Use the HIR types to construct the diagnostic message.
+        && let node = tcx.hir().find_by_def_id(field.did.as_local()?)?
+        // Now we're dealing with the actual struct that we're going to suggest a change to,
+        // we can expect a field that is an immutable reference to a type.
+        && let hir::Node::Field(field) = node
+        && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+    {
+        return Some(lt.span.between(ty.span));
     }
 
     None

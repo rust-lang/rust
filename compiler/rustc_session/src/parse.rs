@@ -1,12 +1,13 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
+use crate::config::CheckCfg;
 use crate::lint::{BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId};
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder};
+use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
@@ -18,6 +19,7 @@ use std::str;
 /// The set of keys (and, optionally, values) that define the compilation
 /// environment of the crate, used to drive conditional compilation.
 pub type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
+pub type CrateCheckConfig = CheckCfg<Symbol>;
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -80,7 +82,7 @@ pub fn feature_err<'a>(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: &str,
-) -> DiagnosticBuilder<'a> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -94,7 +96,7 @@ pub fn feature_err_issue<'a>(
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
-) -> DiagnosticBuilder<'a> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     let mut err = sess.span_diagnostic.struct_span_err_with_code(span, explain, error_code!(E0658));
 
     if let Some(n) = find_feature_issue(feature, issue) {
@@ -117,6 +119,7 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
+    pub check_config: CrateCheckConfig,
     pub edition: Edition,
     pub missing_fragment_specifiers: Lock<FxHashMap<Span, NodeId>>,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
@@ -162,6 +165,7 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(None),
             config: FxHashSet::default(),
+            check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
             missing_fragment_specifiers: Default::default(),
             raw_identifier_spans: Lock::new(Vec::new()),
@@ -239,7 +243,7 @@ impl ParseSess {
 
     /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
     /// parser to continue parsing the following operation as part of the same expression.
-    pub fn expr_parentheses_needed(&self, err: &mut DiagnosticBuilder<'_>, span: Span) {
+    pub fn expr_parentheses_needed(&self, err: &mut Diagnostic, span: Span) {
         err.multipart_suggestion(
             "parentheses are required to parse this as an expression",
             vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],

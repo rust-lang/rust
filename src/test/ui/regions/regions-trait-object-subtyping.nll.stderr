@@ -7,7 +7,7 @@ LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
    |         lifetime `'a` defined here
 LL |     // Without knowing 'a:'b, we can't coerce
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
    = note: requirement occurs because of a mutable reference to dyn Dummy
@@ -23,7 +23,7 @@ LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dum
    |         lifetime `'a` defined here
 LL |     // We can't coerce because it is packed in `Wrapper`
 LL |     x
-   |     ^ returning this value requires that `'b` must outlive `'a`
+   |     ^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'a`
    = note: requirement occurs because of a mutable reference to dyn Dummy

@@ -332,12 +332,11 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         let def_id = local_def_id.to_def_id();
 
         // Don't run unused pass for #[derive()]
-        if let Some(parent) = self.tcx.parent(def_id) {
-            if let DefKind::Impl = self.tcx.def_kind(parent.expect_local()) {
-                if self.tcx.has_attr(parent, sym::automatically_derived) {
-                    return;
-                }
-            }
+        if let Some(parent) = self.tcx.parent(def_id)
+            && let DefKind::Impl = self.tcx.def_kind(parent.expect_local())
+            && self.tcx.has_attr(parent, sym::automatically_derived)
+        {
+            return;
         }
 
         // Don't run unused pass for #[naked]
@@ -1430,9 +1429,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_upvars(&self, entry_ln: LiveNode) {
-        let closure_min_captures = match self.closure_min_captures {
-            None => return,
-            Some(closure_min_captures) => closure_min_captures,
+        let Some(closure_min_captures) = self.closure_min_captures else {
+            return;
         };
 
         // If closure_min_captures is Some(), upvars must be Some() too.

@@ -4,7 +4,7 @@ error: `impl` associated type signature for `Assoc` doesn't match `trait` associ
 LL |     type Assoc<'a, 'b>;
    |     ------------------- expected
 ...
-LL |     type Assoc<'a, 'b> where 'a: 'b = ();
+LL |     type Assoc<'a, 'b> = () where 'a: 'b;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
 error: aborting due to previous error

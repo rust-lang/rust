@@ -1,3 +1,5 @@
+#![allow(clippy::needless_borrow)]
+
 #[deny(clippy::naive_bytecount)]
 fn main() {
     let x = vec![0_u8; 16];

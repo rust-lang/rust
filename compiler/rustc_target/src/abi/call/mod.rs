@@ -1,6 +1,7 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
+use rustc_span::Symbol;
 use std::fmt;
 
 mod aarch64;
@@ -73,6 +74,7 @@ mod attr_impl {
             // or not to actually emit the attribute. It can also be controlled
             // with the `-Zmutable-noalias` debugging option.
             const NoAliasMutRef = 1 << 6;
+            const NoUndef = 1 << 7;
         }
     }
 }
@@ -494,7 +496,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
-        attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
+        attrs
+            .set(ArgAttribute::NoAlias)
+            .set(ArgAttribute::NoCapture)
+            .set(ArgAttribute::NonNull)
+            .set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
@@ -623,10 +629,10 @@ pub struct FnAbi<'a, Ty> {
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-#[derive(Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: String, abi: spec::abi::Abi },
+    Unsupported { arch: Symbol, abi: spec::abi::Abi },
 }
 
 impl fmt::Display for AdjustForForeignAbiError {
@@ -658,22 +664,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         match &cx.target_spec().arch[..] {
             "x86" => {
-                let flavor = if abi == spec::abi::Abi::Fastcall {
+                let flavor = if let spec::abi::Abi::Fastcall { .. } = abi {
                     x86::Flavor::Fastcall
                 } else {
                     x86::Flavor::General
                 };
                 x86::compute_abi_info(cx, self, flavor);
             }
-            "x86_64" => {
-                if abi == spec::abi::Abi::SysV64 {
-                    x86_64::compute_abi_info(cx, self);
-                } else if abi == spec::abi::Abi::Win64 || cx.target_spec().is_like_windows {
-                    x86_win64::compute_abi_info(self);
-                } else {
-                    x86_64::compute_abi_info(cx, self);
+            "x86_64" => match abi {
+                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(self),
+                _ => {
+                    if cx.target_spec().is_like_windows {
+                        x86_win64::compute_abi_info(self)
+                    } else {
+                        x86_64::compute_abi_info(cx, self)
+                    }
                 }
-            }
+            },
             "aarch64" => aarch64::compute_abi_info(cx, self),
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
@@ -701,7 +709,10 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "asmjs" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
             arch => {
-                return Err(AdjustForForeignAbiError::Unsupported { arch: arch.to_string(), abi });
+                return Err(AdjustForForeignAbiError::Unsupported {
+                    arch: Symbol::intern(arch),
+                    abi,
+                });
             }
         }
 

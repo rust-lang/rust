@@ -70,7 +70,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         // unconstrained opaque type variables, in addition to performing
         // other kinds of fallback.
         for ty in &self.unsolved_variables() {
-            fallback_has_occurred |= self.fallback_opaque_type_vars(ty);
+            fallback_has_occurred |= self.fallback_opaque_type_vars(*ty);
         }
 
         // See if we can make any more progress.
@@ -176,7 +176,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .type_var_origin(ty)
             .map(|origin| origin.span)
             .unwrap_or(rustc_span::DUMMY_SP);
-        let oty = self.inner.borrow().opaque_types_vars.get(ty).copied();
+        let oty = self.inner.borrow().opaque_types_vars.get(&ty).copied();
         if let Some(opaque_ty) = oty {
             debug!(
                 "fallback_opaque_type_vars(ty={:?}): falling back to opaque type {:?}",

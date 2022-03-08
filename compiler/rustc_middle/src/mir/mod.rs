@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
-use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
+use crate::mir::interpret::{ConstAllocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -13,6 +13,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -162,7 +163,7 @@ impl MirPhase {
 }
 
 /// Where a specific `mir::Body` comes from.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeFoldable)]
 pub struct MirSource<'tcx> {
     pub instance: InstanceDef<'tcx>,
@@ -284,6 +285,8 @@ pub struct Body<'tcx> {
 
     predecessor_cache: PredecessorCache,
     is_cyclic: GraphIsCyclicCache,
+
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -297,6 +300,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         generator_kind: Option<GeneratorKind>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -329,6 +333,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            tainted_by_errors,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -356,6 +361,7 @@ impl<'tcx> Body<'tcx> {
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
+            tainted_by_errors: None,
         };
         body.is_polymorphic = body.has_param_types_or_consts();
         body
@@ -619,20 +625,20 @@ impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate
 }
 impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
-    fn decode(d: &mut D) -> Result<ClearCrossCrate<T>, D::Error> {
+    fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {
-            return Ok(ClearCrossCrate::Clear);
+            return ClearCrossCrate::Clear;
         }
 
-        let discr = u8::decode(d)?;
+        let discr = u8::decode(d);
 
         match discr {
-            TAG_CLEAR_CROSS_CRATE_CLEAR => Ok(ClearCrossCrate::Clear),
+            TAG_CLEAR_CROSS_CRATE_CLEAR => ClearCrossCrate::Clear,
             TAG_CLEAR_CROSS_CRATE_SET => {
-                let val = T::decode(d)?;
-                Ok(ClearCrossCrate::Set(val))
+                let val = T::decode(d);
+                ClearCrossCrate::Set(val)
             }
-            tag => Err(d.error(&format!("Invalid tag for ClearCrossCrate: {:?}", tag))),
+            tag => panic!("Invalid tag for ClearCrossCrate: {:?}", tag),
         }
     }
 }
@@ -894,7 +900,7 @@ pub struct LocalDecl<'tcx> {
     /// across a suspension point against the type components of the generator
     /// which type checking knows are live across a suspension point. We need to
     /// flag drop flags to avoid triggering this check as they are introduced
-    /// after typeck.
+    /// outside of type inference.
     ///
     /// This should be sound because the drop flags are fully algebraic, and
     /// therefore don't affect the auto-trait or outlives properties of the
@@ -1255,17 +1261,7 @@ pub enum AssertKind<O> {
     ResumedAfterPanic(GeneratorKind),
 }
 
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    PartialOrd,
-    TyEncodable,
-    TyDecodable,
-    Hash,
-    HashStable,
-    TypeFoldable
-)]
+#[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum InlineAsmOperand<'tcx> {
     In {
         reg: InlineAsmRegOrRegClass,
@@ -1587,7 +1583,7 @@ pub enum StatementKind<'tcx> {
     /// - `Bivariant` -- no effect
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
-    /// Marks the start of a "coverage region", injected with '-Zinstrument-coverage'. A
+    /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
     /// `Coverage` statement carries metadata about the coverage region, used to inject a coverage
     /// map into the binary. If `Coverage::kind` is a `Counter`, the statement also generates
     /// executable code, to increment a counter variable at runtime, each time the code region is
@@ -1652,7 +1648,7 @@ pub enum FakeReadCause {
     ForMatchedPlace(Option<DefId>),
 
     /// A fake read of the RefWithinGuard version of a bind-by-value variable
-    /// in a match guard to ensure that it's value hasn't change by the time
+    /// in a match guard to ensure that its value hasn't change by the time
     /// we create the OutsideGuard version.
     ForGuardBinding,
 
@@ -1747,7 +1743,7 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// A path to a value; something that can be evaluated without
 /// changing or disturbing program state.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, TyEncodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
 pub struct Place<'tcx> {
     pub local: Local,
 
@@ -1845,6 +1841,16 @@ static_assert_size!(PlaceElem<'_>, 24);
 pub type ProjectionKind = ProjectionElem<(), ()>;
 
 rustc_index::newtype_index! {
+    /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
+    ///
+    /// A field (e.g., `f` in `_1.f`) is one variant of [`ProjectionElem`]. Conceptually,
+    /// rustc can identify that a field projection refers to either two different regions of memory
+    /// or the same one between the base and the 'projection element'.
+    /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
+    ///
+    /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
+    /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
+    /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
     pub struct Field {
         derive [HashStable]
         DEBUG_FORMAT = "field[{}]"
@@ -2072,7 +2078,7 @@ pub struct SourceScopeLocalData {
 
 /// These are values that can appear inside an rvalue. They are intentionally
 /// limited to prevent rvalues from being nested in one another.
-#[derive(Clone, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
     /// Copy: The value must be available for use afterwards.
     ///
@@ -2189,7 +2195,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, &'tcx ty::Const<'tcx>),
+    Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
     /// &x or &mut x
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
@@ -2274,11 +2280,13 @@ pub enum BinOp {
     Mul,
     /// The `/` operator (division)
     ///
-    /// Division by zero is UB.
+    /// Division by zero is UB, because the compiler should have inserted checks
+    /// prior to this.
     Div,
     /// The `%` operator (modulus)
     ///
-    /// Using zero as the modulus (second operand) is UB.
+    /// Using zero as the modulus (second operand) is UB, because the compiler
+    /// should have inserted checks prior to this.
     Rem,
     /// The `^` operator (bitwise xor)
     BitXor,
@@ -2339,7 +2347,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
         match *self {
             Use(ref place) => write!(fmt, "{:?}", place),
-            Repeat(ref a, ref b) => {
+            Repeat(ref a, b) => {
                 write!(fmt, "[{:?}; ", a)?;
                 pretty_print_const(b, fmt, false)?;
                 write!(fmt, "]")
@@ -2414,11 +2422,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
                         ty::tls::with(|tcx| {
-                            let mut name = String::new();
                             let variant_def = &tcx.adt_def(adt_did).variants[variant];
                             let substs = tcx.lift(substs).expect("could not lift for printing");
-                            FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, substs)?;
+                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
+                                .print_def_path(variant_def.def_id, substs)?
+                                .into_buffer();
 
                             match variant_def.ctor_kind {
                                 CtorKind::Const => fmt.write_str(&name),
@@ -2500,7 +2508,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are `==` in Rust. In
 /// particular, one must be wary of `NaN`!
 
-#[derive(Clone, Copy, PartialEq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, Copy, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct Constant<'tcx> {
     pub span: Span,
 
@@ -2514,11 +2522,11 @@ pub struct Constant<'tcx> {
     pub literal: ConstantKind<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable, Debug)]
 #[derive(Lift)]
 pub enum ConstantKind<'tcx> {
     /// This constant came from the type system
-    Ty(&'tcx ty::Const<'tcx>),
+    Ty(ty::Const<'tcx>),
     /// This constant cannot go back into the type system, as it represents
     /// something the type system cannot handle (e.g. pointers).
     Val(interpret::ConstValue<'tcx>, Ty<'tcx>),
@@ -2526,7 +2534,7 @@ pub enum ConstantKind<'tcx> {
 
 impl<'tcx> Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.const_for_ty()?.val.try_to_scalar() {
+        match self.literal.const_for_ty()?.val().try_to_scalar() {
             Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2543,33 +2551,33 @@ impl<'tcx> Constant<'tcx> {
     }
 }
 
-impl<'tcx> From<&'tcx ty::Const<'tcx>> for ConstantKind<'tcx> {
+impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
-    fn from(ct: &'tcx ty::Const<'tcx>) -> Self {
+    fn from(ct: ty::Const<'tcx>) -> Self {
         Self::Ty(ct)
     }
 }
 
 impl<'tcx> ConstantKind<'tcx> {
     /// Returns `None` if the constant is not trivially safe for use in the type system.
-    pub fn const_for_ty(&self) -> Option<&'tcx ty::Const<'tcx>> {
+    pub fn const_for_ty(&self) -> Option<ty::Const<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => Some(c),
+            ConstantKind::Ty(c) => Some(*c),
             ConstantKind::Val(..) => None,
         }
     }
 
     pub fn ty(&self) -> Ty<'tcx> {
         match self {
-            ConstantKind::Ty(c) => c.ty,
-            ConstantKind::Val(_, ty) => ty,
+            ConstantKind::Ty(c) => c.ty(),
+            ConstantKind::Val(_, ty) => *ty,
         }
     }
 
     #[inline]
     pub fn try_to_value(self) -> Option<interpret::ConstValue<'tcx>> {
         match self {
-            ConstantKind::Ty(c) => c.val.try_to_value(),
+            ConstantKind::Ty(c) => c.val().try_to_value(),
             ConstantKind::Val(val, _) => Some(val),
         }
     }
@@ -2833,16 +2841,17 @@ impl<'tcx> Display for ConstantKind<'tcx> {
 }
 
 fn pretty_print_const<'tcx>(
-    c: &ty::Const<'tcx>,
+    c: ty::Const<'tcx>,
     fmt: &mut Formatter<'_>,
     print_types: bool,
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
         let literal = tcx.lift(c).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const(literal, print_types)?;
+        let cx = cx.pretty_print_const(literal, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }
@@ -2857,9 +2866,10 @@ fn pretty_print_const_value<'tcx>(
     ty::tls::with(|tcx| {
         let val = tcx.lift(val).unwrap();
         let ty = tcx.lift(ty).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const_value(val, ty, print_types)?;
+        let cx = cx.pretty_print_const_value(val, ty, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }
@@ -2949,7 +2959,7 @@ impl Location {
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
-            // If we haven't visited this block before, then make sure we visit it's predecessors.
+            // If we haven't visited this block before, then make sure we visit its predecessors.
             if visited.insert(block) {
                 queue.extend(predecessors[block].iter().cloned());
             } else {

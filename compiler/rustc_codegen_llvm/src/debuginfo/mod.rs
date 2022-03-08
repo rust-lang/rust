@@ -25,7 +25,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TypeFoldable};
 use rustc_session::config::{self, DebugInfo};
@@ -38,6 +38,7 @@ use libc::c_uint;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::iter;
+use std::lazy::OnceCell;
 use tracing::debug;
 
 mod create_scope_map;
@@ -63,8 +64,10 @@ pub struct CrateDebugContext<'a, 'tcx> {
     created_files: RefCell<FxHashMap<(Option<String>, Option<String>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, Primitive), &'a DIType>>,
 
-    type_map: RefCell<TypeMap<'a, 'tcx>>,
+    type_map: TypeMap<'a, 'tcx>,
     namespace_map: RefCell<DefIdMap<&'a DIScope>>,
+
+    recursion_marker_type: OnceCell<&'a DIType>,
 
     // This collection is used to assert that composite types (structs, enums,
     // ...) have their members only set once:
@@ -93,6 +96,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             created_enum_disr_types: Default::default(),
             type_map: Default::default(),
             namespace_map: RefCell::new(Default::default()),
+            recursion_marker_type: OnceCell::new(),
             composite_types_completed: Default::default(),
         }
     }
@@ -108,18 +112,29 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             // This can be overridden using --llvm-opts -dwarf-version,N.
             // Android has the same issue (#22398)
             if let Some(version) = sess.target.dwarf_version {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "Dwarf Version\0".as_ptr().cast(), version)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "Dwarf Version\0".as_ptr().cast(),
+                    version,
+                )
             }
 
             // Indicate that we want CodeView debug information on MSVC
             if sess.target.is_like_msvc {
-                llvm::LLVMRustAddModuleFlag(self.llmod, "CodeView\0".as_ptr().cast(), 1)
+                llvm::LLVMRustAddModuleFlag(
+                    self.llmod,
+                    llvm::LLVMModFlagBehavior::Warning,
+                    "CodeView\0".as_ptr().cast(),
+                    1,
+                )
             }
 
             // Prevent bitcode readers from deleting the debug info.
             let ptr = "Debug Info Version\0".as_ptr();
             llvm::LLVMRustAddModuleFlag(
                 self.llmod,
+                llvm::LLVMModFlagBehavior::Warning,
                 ptr.cast(),
                 llvm::LLVMRustDebugMetadataVersion(),
             );
@@ -307,9 +322,11 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         maybe_definition_llfn: Option<&'ll Value>,
     ) -> &'ll DIScope {
+        let tcx = self.tcx;
+
         let def_id = instance.def_id();
         let containing_scope = get_containing_scope(self, instance);
-        let span = self.tcx.def_span(def_id);
+        let span = tcx.def_span(def_id);
         let loc = self.lookup_debug_loc(span.lo());
         let file_metadata = file_metadata(self, &loc.file);
 
@@ -319,16 +336,24 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         };
 
         let mut name = String::new();
-        type_names::push_item_name(self.tcx(), def_id, false, &mut name);
+        type_names::push_item_name(tcx, def_id, false, &mut name);
 
         // Find the enclosing function, in case this is a closure.
-        let enclosing_fn_def_id = self.tcx().typeck_root_def_id(def_id);
+        let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
 
-        // Get_template_parameters() will append a `<...>` clause to the function
-        // name if necessary.
-        let generics = self.tcx().generics_of(enclosing_fn_def_id);
-        let substs = instance.substs.truncate_to(self.tcx(), generics);
-        let template_parameters = get_template_parameters(self, generics, substs, &mut name);
+        // We look up the generics of the enclosing function and truncate the substs
+        // to their length in order to cut off extra stuff that might be in there for
+        // closures or generators.
+        let generics = tcx.generics_of(enclosing_fn_def_id);
+        let substs = instance.substs.truncate_to(tcx, generics);
+
+        type_names::push_generic_params(
+            tcx,
+            tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
+            &mut name,
+        );
+
+        let template_parameters = get_template_parameters(self, generics, substs);
 
         let linkage_name = &mangled_name_of_instance(self, instance).name;
         // Omit the linkage_name if it is the same as subprogram name.
@@ -350,7 +375,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.sess().opts.optimize != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
         }
-        if let Some((id, _)) = self.tcx.entry_fn(()) {
+        if let Some((id, _)) = tcx.entry_fn(()) {
             if id == def_id {
                 spflags |= DISPFlags::SPFlagMainSubprogram;
             }
@@ -409,9 +434,9 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     let t = arg.layout.ty;
                     let t = match t.kind() {
                         ty::Array(ct, _)
-                            if (*ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() =>
+                            if (*ct == cx.tcx.types.u8) || cx.layout_of(*ct).is_zst() =>
                         {
-                            cx.tcx.mk_imm_ptr(ct)
+                            cx.tcx.mk_imm_ptr(*ct)
                         }
                         _ => t,
                     };
@@ -429,14 +454,7 @@ impl<'ll, 'tcx> DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             cx: &CodegenCx<'ll, 'tcx>,
             generics: &ty::Generics,
             substs: SubstsRef<'tcx>,
-            name_to_append_suffix_to: &mut String,
         ) -> &'ll DIArray {
-            type_names::push_generic_params(
-                cx.tcx,
-                cx.tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), substs),
-                name_to_append_suffix_to,
-            );
-
             if substs.types().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }

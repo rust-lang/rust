@@ -1,5 +1,4 @@
 // build-pass (FIXME(62277): could be check-pass?)
-// ignore-compare-mode-chalk
 
 #![feature(associated_type_bounds)]
 

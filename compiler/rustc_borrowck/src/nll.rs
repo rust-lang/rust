@@ -1,7 +1,6 @@
 //! The entry point of the NLL borrow checker.
 
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::Diagnostic;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::{create_dump_file, dump_enabled, dump_mir, PassWhere};
@@ -9,7 +8,7 @@ use rustc_middle::mir::{
     BasicBlock, Body, ClosureOutlivesSubject, ClosureRegionRequirements, LocalKind, Location,
     Promoted,
 };
-use rustc_middle::ty::{self, OpaqueTypeKey, RegionKind, RegionVid, Ty};
+use rustc_middle::ty::{self, OpaqueTypeKey, Region, RegionVid, Ty};
 use rustc_span::symbol::sym;
 use std::env;
 use std::fmt::Debug;
@@ -189,6 +188,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
+            use_polonius,
         );
 
     if let Some(all_facts) = &mut all_facts {
@@ -373,7 +373,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'_>>,
     opaque_type_values: &VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
-    errors_buffer: &mut Vec<Diagnostic>,
+    errors: &mut crate::error::BorrowckErrors<'tcx>,
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.typeck_root_def_id(body.source.def_id());
@@ -418,7 +418,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
-    err.buffer(errors_buffer);
+    errors.buffer_non_error_diag(err);
 }
 
 fn for_each_region_constraint(
@@ -444,9 +444,9 @@ pub trait ToRegionVid {
     fn to_region_vid(self) -> RegionVid;
 }
 
-impl<'tcx> ToRegionVid for &'tcx RegionKind {
+impl<'tcx> ToRegionVid for Region<'tcx> {
     fn to_region_vid(self) -> RegionVid {
-        if let ty::ReVar(vid) = self { *vid } else { bug!("region is not an ReVar: {:?}", self) }
+        if let ty::ReVar(vid) = *self { vid } else { bug!("region is not an ReVar: {:?}", self) }
     }
 }
 

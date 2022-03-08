@@ -1,0 +1,15 @@
+error[E0477]: the type `impl Stream<Item = i32>` does not fulfill the required lifetime
+  --> $DIR/issue-86218.rs:23:28
+   |
+LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: type must outlive the lifetime `'s` as defined here as required by this binding
+  --> $DIR/issue-86218.rs:23:22
+   |
+LL |     type InnerStream<'s> = impl Stream<Item = i32> + 's;
+   |                      ^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0477`.

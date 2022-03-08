@@ -9,7 +9,6 @@ use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
@@ -59,7 +58,7 @@ struct ProbeContext<'a, 'tcx> {
     /// This is the OriginalQueryValues for the steps queries
     /// that are answered in steps.
     orig_steps_var_values: OriginalQueryValues<'tcx>,
-    steps: Lrc<Vec<CandidateStep<'tcx>>>,
+    steps: &'tcx [CandidateStep<'tcx>],
 
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
@@ -364,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     param_env_and_self_ty, self_ty
                 );
                 MethodAutoderefStepsResult {
-                    steps: Lrc::new(vec![CandidateStep {
+                    steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
                         self_ty: self.make_query_response_ignoring_pending_obligations(
                             canonical_inference_vars,
                             self_ty,
@@ -516,7 +515,7 @@ fn method_autoderef_steps<'tcx>(
                 steps.push(CandidateStep {
                     self_ty: infcx.make_query_response_ignoring_pending_obligations(
                         inference_vars,
-                        infcx.tcx.mk_slice(elem_ty),
+                        infcx.tcx.mk_slice(*elem_ty),
                     ),
                     autoderefs: dereferences,
                     // this could be from an unsafe deref if we had
@@ -533,8 +532,8 @@ fn method_autoderef_steps<'tcx>(
         debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
 
         MethodAutoderefStepsResult {
-            steps: Lrc::new(steps),
-            opt_bad_ty: opt_bad_ty.map(Lrc::new),
+            steps: tcx.arena.alloc_from_iter(steps),
+            opt_bad_ty: opt_bad_ty.map(|ty| &*tcx.arena.alloc(ty)),
             reached_recursion_limit: autoderef.reached_recursion_limit(),
         }
     })
@@ -548,7 +547,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
         orig_steps_var_values: OriginalQueryValues<'tcx>,
-        steps: Lrc<Vec<CandidateStep<'tcx>>>,
+        steps: &'tcx [CandidateStep<'tcx>],
         is_suggestion: IsSuggestion,
         scope_expr_id: hir::HirId,
     ) -> ProbeContext<'a, 'tcx> {
@@ -605,8 +604,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn assemble_inherent_candidates(&mut self) {
-        let steps = Lrc::clone(&self.steps);
-        for step in steps.iter() {
+        for step in self.steps.iter() {
             self.assemble_probe(&step.self_ty);
         }
     }
@@ -1033,7 +1031,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     true
                 }
             })
-            .map(|candidate| candidate.item.ident)
+            .map(|candidate| candidate.item.ident(self.tcx))
             .filter(|&name| set.insert(name))
             .collect();
 
@@ -1248,9 +1246,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             return None;
         }
 
-        let ty = match self_ty.kind() {
-            ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) => ty,
-            _ => return None,
+        let &ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut }) = self_ty.kind() else {
+            return None;
         };
 
         let const_self_ty = ty::TypeAndMut { ty, mutbl: hir::Mutability::Not };
@@ -1438,7 +1435,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                                 "<{} as {}>::{}",
                                 stable_pick.self_ty,
                                 self.tcx.def_path_str(def_id),
-                                stable_pick.item.ident
+                                stable_pick.item.name
                             ),
                             Applicability::MachineApplicable,
                         );
@@ -1748,14 +1745,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let best_name = {
                     let names = applicable_close_candidates
                         .iter()
-                        .map(|cand| cand.ident.name)
+                        .map(|cand| cand.name)
                         .collect::<Vec<Symbol>>();
                     find_best_match_for_name(&names, self.method_name.unwrap().name, None)
                 }
                 .unwrap();
-                Ok(applicable_close_candidates
-                    .into_iter()
-                    .find(|method| method.ident.name == best_name))
+                Ok(applicable_close_candidates.into_iter().find(|method| method.name == best_name))
             }
         })
     }
@@ -1906,8 +1901,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .associated_items(def_id)
                     .in_definition_order()
                     .filter(|x| {
-                        let dist = lev_distance(name.as_str(), x.ident.as_str());
-                        x.kind.namespace() == Namespace::ValueNS && dist > 0 && dist <= max_dist
+                        if x.kind.namespace() != Namespace::ValueNS {
+                            return false;
+                        }
+                        match lev_distance(name.as_str(), x.name.as_str(), max_dist) {
+                            Some(d) => d > 0,
+                            None => false,
+                        }
                     })
                     .copied()
                     .collect()

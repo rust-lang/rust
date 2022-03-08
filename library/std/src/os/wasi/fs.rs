@@ -87,7 +87,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
+            Err(io::const_io_error!(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -153,9 +153,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {
@@ -250,6 +250,21 @@ impl FileExt for fs::File {
     }
 
     fn advise(&self, offset: u64, len: u64, advice: u8) -> io::Result<()> {
+        let advice = match advice {
+            a if a == wasi::ADVICE_NORMAL.raw() => wasi::ADVICE_NORMAL,
+            a if a == wasi::ADVICE_SEQUENTIAL.raw() => wasi::ADVICE_SEQUENTIAL,
+            a if a == wasi::ADVICE_RANDOM.raw() => wasi::ADVICE_RANDOM,
+            a if a == wasi::ADVICE_WILLNEED.raw() => wasi::ADVICE_WILLNEED,
+            a if a == wasi::ADVICE_DONTNEED.raw() => wasi::ADVICE_DONTNEED,
+            a if a == wasi::ADVICE_NOREUSE.raw() => wasi::ADVICE_NOREUSE,
+            _ => {
+                return Err(io::const_io_error!(
+                    io::ErrorKind::InvalidInput,
+                    "invalid parameter 'advice'",
+                ));
+            }
+        };
+
         self.as_inner().as_inner().advise(offset, len, advice)
     }
 
@@ -539,5 +554,5 @@ pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) ->
 
 fn osstr2str(f: &OsStr) -> io::Result<&str> {
     f.to_str()
-        .ok_or_else(|| io::Error::new_const(io::ErrorKind::Uncategorized, &"input must be utf-8"))
+        .ok_or_else(|| io::const_io_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }

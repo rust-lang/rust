@@ -1953,6 +1953,8 @@ impl<T: Hash> Hash for LinkedList<T> {
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T, const N: usize> From<[T; N]> for LinkedList<T> {
+    /// Converts a `[T; N]` into a `LinkedList<T>`.
+    ///
     /// ```
     /// use std::collections::LinkedList;
     ///

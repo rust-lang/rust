@@ -26,3 +26,6 @@ features = ["alloc"]
 
 [dev-dependencies.test_helpers]
 path = "../test_helpers"
+
+[dev-dependencies]
+std_float = { path = "../std_float/", features = ["as_crate"] }

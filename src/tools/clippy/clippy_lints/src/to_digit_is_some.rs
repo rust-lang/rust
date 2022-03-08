@@ -39,12 +39,12 @@ declare_lint_pass!(ToDigitIsSome => [TO_DIGIT_IS_SOME]);
 impl<'tcx> LateLintPass<'tcx> for ToDigitIsSome {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            if let hir::ExprKind::MethodCall(is_some_path, _, is_some_args, _) = &expr.kind;
+            if let hir::ExprKind::MethodCall(is_some_path, is_some_args, _) = &expr.kind;
             if is_some_path.ident.name.as_str() == "is_some";
             if let [to_digit_expr] = &**is_some_args;
             then {
                 let match_result = match &to_digit_expr.kind {
-                    hir::ExprKind::MethodCall(to_digits_path, _, to_digit_args, _) => {
+                    hir::ExprKind::MethodCall(to_digits_path, to_digit_args, _) => {
                         if_chain! {
                             if let [char_arg, radix_arg] = &**to_digit_args;
                             if to_digits_path.ident.name.as_str() == "to_digit";

@@ -192,18 +192,15 @@ fn fulfill_implication<'a, 'tcx>(
         impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
 
     // do the impls unify? If not, no specialization.
-    let more_obligations =
-        match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
-        {
-            Ok(InferOk { obligations, .. }) => obligations,
-            Err(_) => {
-                debug!(
-                    "fulfill_implication: {:?} does not unify with {:?}",
-                    source_trait_ref, target_trait_ref
-                );
-                return Err(());
-            }
-        };
+    let Ok(InferOk { obligations: more_obligations, .. }) =
+        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+    else {
+        debug!(
+            "fulfill_implication: {:?} does not unify with {:?}",
+            source_trait_ref, target_trait_ref
+        );
+        return Err(());
+    };
 
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
@@ -257,6 +254,7 @@ pub(super) fn specialization_graph_provider(
     trait_id: DefId,
 ) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
+    let overlap_mode = specialization_graph::OverlapMode::get(tcx, trait_id);
 
     let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 
@@ -270,7 +268,7 @@ pub(super) fn specialization_graph_provider(
     for impl_def_id in trait_impls {
         if let Some(impl_def_id) = impl_def_id.as_local() {
             // This is where impl overlap checking happens:
-            let insert_result = sg.insert(tcx, impl_def_id.to_def_id());
+            let insert_result = sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
                 Err(overlap) => (Some(overlap), None),
@@ -449,7 +447,7 @@ fn report_conflicting_impls(
             sg.has_errored = true;
             if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
                 let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-                decorate(LintDiagnosticBuilder::new(err));
+                decorate(LintDiagnosticBuilder::new(err.forget_guarantee()));
             } else {
                 tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check");
             }
@@ -484,7 +482,7 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
     let mut types_without_default_bounds = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
-    if !substs.is_noop() {
+    if !substs.is_empty() {
         types_without_default_bounds.extend(substs.types());
         w.push('<');
         w.push_str(
@@ -506,11 +504,20 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
     let mut pretty_predicates =
         Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
 
-    for (p, _) in predicates {
+    for (mut p, _) in predicates {
         if let Some(poly_trait_ref) = p.to_opt_poly_trait_pred() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.self_ty().skip_binder());
+                types_without_default_bounds.remove(&poly_trait_ref.self_ty().skip_binder());
                 continue;
+            }
+
+            if ty::BoundConstness::ConstIfConst == poly_trait_ref.skip_binder().constness {
+                let new_trait_pred = poly_trait_ref.map_bound(|mut trait_pred| {
+                    trait_pred.constness = ty::BoundConstness::NotConst;
+                    trait_pred
+                });
+
+                p = tcx.mk_predicate(new_trait_pred.map_bound(ty::PredicateKind::Trait))
             }
         }
         pretty_predicates.push(p.to_string());

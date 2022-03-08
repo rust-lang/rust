@@ -439,7 +439,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 }
             }
             Err(mod_err) if !mods_outside_ast.is_empty() => {
-                if let ModError::ParserError(mut e) = mod_err {
+                if let ModError::ParserError(e) = mod_err {
                     e.cancel();
                 }
                 Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))

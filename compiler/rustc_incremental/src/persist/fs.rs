@@ -106,7 +106,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
 
@@ -204,7 +204,7 @@ pub fn prepare_session_directory(
     sess: &Session,
     crate_name: &str,
     stable_crate_id: StableCrateId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
         return Ok(());
     }
@@ -230,7 +230,7 @@ pub fn prepare_session_directory(
                 crate_dir.display(),
                 err
             ));
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
     };
 
@@ -421,9 +421,8 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
         return Err(());
     };
 
-    let source_dir_iterator = match source_dir.read_dir() {
-        Ok(it) => it,
-        Err(_) => return Err(()),
+    let Ok(source_dir_iterator) = source_dir.read_dir() else {
+        return Err(());
     };
 
     let mut files_linked = 0;
@@ -483,7 +482,7 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorReported> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGuaranteed> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
@@ -497,7 +496,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
                 path.display(),
                 err
             ));
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }
@@ -506,7 +505,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
 fn lock_directory(
     sess: &Session,
     session_dir: &Path,
-) -> Result<(flock::Lock, PathBuf), ErrorReported> {
+) -> Result<(flock::Lock, PathBuf), ErrorGuaranteed> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -547,7 +546,7 @@ fn lock_directory(
                 }
             }
             err.emit();
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }
@@ -700,12 +699,9 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut lock_files = FxHashSet::default();
 
     for dir_entry in crate_directory.read_dir()? {
-        let dir_entry = match dir_entry {
-            Ok(dir_entry) => dir_entry,
-            _ => {
-                // Ignore any errors
-                continue;
-            }
+        let Ok(dir_entry) = dir_entry else {
+            // Ignore any errors
+            continue;
         };
 
         let entry_name = dir_entry.file_name();
@@ -740,16 +736,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     // be some kind of leftover
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
         if directory_name.is_none() {
-            let timestamp = match extract_timestamp_from_session_dir(lock_file_name) {
-                Ok(timestamp) => timestamp,
-                Err(()) => {
-                    debug!(
-                        "found lock-file with malformed timestamp: {}",
-                        crate_directory.join(&lock_file_name).display()
-                    );
-                    // Ignore it
-                    continue;
-                }
+            let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
+                debug!(
+                    "found lock-file with malformed timestamp: {}",
+                    crate_directory.join(&lock_file_name).display()
+                );
+                // Ignore it
+                continue;
             };
 
             let lock_file_path = crate_directory.join(&**lock_file_name);
@@ -798,16 +791,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
         debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
-        let timestamp = match extract_timestamp_from_session_dir(directory_name) {
-            Ok(timestamp) => timestamp,
-            Err(()) => {
-                debug!(
-                    "found session-dir with malformed timestamp: {}",
-                    crate_directory.join(directory_name).display()
-                );
-                // Ignore it
-                continue;
-            }
+        let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
+            debug!(
+                "found session-dir with malformed timestamp: {}",
+                crate_directory.join(directory_name).display()
+            );
+            // Ignore it
+            continue;
         };
 
         if is_finalized(directory_name) {

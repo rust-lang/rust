@@ -1,0 +1,27 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dealloc_intrinsic_incorrect_layout.rs:8:5
+   |
+LL |     intrinsics::const_deallocate(ptr, 4, 2);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: alloc2 has size 4 and alignment 4, but gave size 4 and alignment 2
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dealloc_intrinsic_incorrect_layout.rs:13:5
+   |
+LL |     intrinsics::const_deallocate(ptr, 2, 4);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: alloc4 has size 4 and alignment 4, but gave size 2 and alignment 4
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dealloc_intrinsic_incorrect_layout.rs:19:5
+   |
+LL |     intrinsics::const_deallocate(ptr, 3, 4);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect layout on deallocation: alloc6 has size 4 and alignment 4, but gave size 3 and alignment 4
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dealloc_intrinsic_incorrect_layout.rs:25:5
+   |
+LL |     intrinsics::const_deallocate(ptr, 4, 3);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ align has to be a power of 2, `3` is not a power of 2
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

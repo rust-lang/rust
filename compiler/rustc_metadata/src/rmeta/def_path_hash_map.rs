@@ -39,11 +39,11 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefPathHashMapRef<'tcx> {
 }
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static> {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Result<DefPathHashMapRef<'static>, String> {
+    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefPathHashMapRef<'static> {
         // Import TyDecoder so we can access the DecodeContext::position() method
         use crate::rustc_middle::ty::codec::TyDecoder;
 
-        let len = d.read_usize()?;
+        let len = d.read_usize();
         let pos = d.position();
         let o = OwningRef::new(d.blob().clone()).map(|x| &x[pos..pos + len]);
 
@@ -52,7 +52,9 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefPathHashMapRef<'static>
         // the method. We use read_raw_bytes() for that.
         let _ = d.read_raw_bytes(len);
 
-        let inner = odht::HashTable::from_raw_bytes(o).map_err(|e| format!("{}", e))?;
-        Ok(DefPathHashMapRef::OwnedFromMetadata(inner))
+        let inner = odht::HashTable::from_raw_bytes(o).unwrap_or_else(|e| {
+            panic!("decode error: {}", e);
+        });
+        DefPathHashMapRef::OwnedFromMetadata(inner)
     }
 }

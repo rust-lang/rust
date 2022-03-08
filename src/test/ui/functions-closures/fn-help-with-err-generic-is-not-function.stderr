@@ -1,0 +1,32 @@
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:2:13
+   |
+LL | impl Struct<T>
+   |     -       ^ not found in this scope
+   |     |
+   |     help: you might be missing a type parameter: `<T>`
+
+error[E0412]: cannot find type `T` in this scope
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:7:5
+   |
+LL |     T: Copy,
+   |     ^ not found in this scope
+
+error[E0282]: type annotations needed
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:14:31
+   |
+LL |     fn method(v: Vec<u8>) { v.len(); }
+   |                               ^^^ cannot infer type
+   |
+   = note: type must be known at this point
+
+error[E0599]: no method named `len` found for struct `Vec<u8>` in the current scope
+  --> $DIR/fn-help-with-err-generic-is-not-function.rs:14:31
+   |
+LL |     fn method(v: Vec<u8>) { v.len(); }
+   |                               ^^^ private field, not a method
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0412, E0599.
+For more information about an error, try `rustc --explain E0282`.

@@ -430,7 +430,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     pub fn as_switch(&self) -> Option<(&Operand<'tcx>, Ty<'tcx>, &SwitchTargets)> {
         match self {
             TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
-                Some((discr, switch_ty, targets))
+                Some((discr, *switch_ty, targets))
             }
             _ => None,
         }

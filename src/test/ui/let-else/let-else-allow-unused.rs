@@ -1,4 +1,3 @@
-// check-pass
 // issue #89807
 
 #![feature(let_else)]
@@ -10,5 +9,7 @@ fn main() {
     #[allow(unused)]
     let banana = 1;
     #[allow(unused)]
-    let Some(chaenomeles) = value else { return }; // OK
+    let Some(chaenomeles) = value.clone() else { return }; // OK
+
+    let Some(chaenomeles) = value else { return }; //~ ERROR unused variable: `chaenomeles`
 }

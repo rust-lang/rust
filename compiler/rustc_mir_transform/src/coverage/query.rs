@@ -140,7 +140,7 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
     let body = mir_body(tcx, def_id);
     body.basic_blocks()
         .iter()
-        .map(|data| {
+        .flat_map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {
                 StatementKind::Coverage(box ref coverage) => {
                     if is_inlined(body, statement) {
@@ -152,7 +152,6 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
                 _ => None,
             })
         })
-        .flatten()
         .collect()
 }
 

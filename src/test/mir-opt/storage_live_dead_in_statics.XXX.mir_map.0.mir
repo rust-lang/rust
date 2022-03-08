@@ -190,9 +190,6 @@ static XXX: &Foo = {
         _3 = move _4 as &[(u32, u32)] (Pointer(Unsize)); // scope 0 at $DIR/storage_live_dead_in_statics.rs:7:11: 22:6
         StorageDead(_4);                 // scope 0 at $DIR/storage_live_dead_in_statics.rs:22:5: 22:6
         _2 = Foo { tup: const "hi", data: move _3 }; // scope 0 at $DIR/storage_live_dead_in_statics.rs:5:29: 23:2
-                                         // ty::Const
-                                         // + ty: &str
-                                         // + val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 })
                                          // mir::Constant
                                          // + span: $DIR/storage_live_dead_in_statics.rs:6:10: 6:14
                                          // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [104, 105], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [3], len: Size { raw: 2 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 2 }) }

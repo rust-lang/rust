@@ -8,7 +8,7 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, AssocItemContainer, AssocKind, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, AssocItemContainer, AssocKind, Ty, TyCtxt, TypeFoldable};
 
 use rustc_ast::ast;
 use rustc_attr as attr;
@@ -20,11 +20,10 @@ use rustc_span::symbol::sym;
 use std::fmt;
 use std::sync::Arc;
 
-use crate::chalk::lowering::{self, LowerInto};
+use crate::chalk::lowering::LowerInto;
 
 pub struct RustIrDatabase<'tcx> {
     pub(crate) interner: RustInterner<'tcx>,
-    pub(crate) reempty_placeholder: ty::Region<'tcx>,
 }
 
 impl fmt::Debug for RustIrDatabase<'_> {
@@ -40,12 +39,9 @@ impl<'tcx> RustIrDatabase<'tcx> {
         bound_vars: SubstsRef<'tcx>,
     ) -> Vec<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>> {
         let predicates = self.interner.tcx.predicates_defined_on(def_id).predicates;
-        let mut regions_substitutor =
-            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
         predicates
             .iter()
             .map(|(wc, _)| wc.subst(self.interner.tcx, bound_vars))
-            .map(|wc| wc.fold_with(&mut regions_substitutor))
             .filter_map(|wc| LowerInto::<
                     Option<chalk_ir::QuantifiedWhereClause<RustInterner<'tcx>>>
                     >::lower_into(wc, self.interner)).collect()
@@ -76,9 +72,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyDatum<RustInterner<'tcx>>> {
         let def_id = assoc_type_id.0;
         let assoc_item = self.interner.tcx.associated_item(def_id);
-        let trait_def_id = match assoc_item.container {
-            AssocItemContainer::TraitContainer(def_id) => def_id,
-            _ => unimplemented!("Not possible??"),
+        let AssocItemContainer::TraitContainer(trait_def_id) = assoc_item.container else {
+            unimplemented!("Not possible??");
         };
         match assoc_item.kind {
             AssocKind::Type => {}
@@ -287,9 +282,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let trait_ref = self.interner.tcx.impl_trait_ref(def_id).expect("not an impl");
         let trait_ref = trait_ref.subst(self.interner.tcx, bound_vars);
-        let mut regions_substitutor =
-            lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-        let trait_ref = trait_ref.fold_with(&mut regions_substitutor);
 
         let where_clauses = self.where_clauses_for(def_id, bound_vars);
 
@@ -335,9 +327,6 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
             let self_ty = trait_ref.self_ty();
             let self_ty = self_ty.subst(self.interner.tcx, bound_vars);
-            let mut regions_substitutor =
-                lowering::RegionsSubstitutor::new(self.interner.tcx, self.reempty_placeholder);
-            let self_ty = self_ty.fold_with(&mut regions_substitutor);
             let lowered_ty = self_ty.lower_into(self.interner);
 
             parameters[0].assert_ty_ref(self.interner).could_match(
@@ -493,21 +482,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 .iter()
                 .map(|(bound, _)| bound.subst(self.interner.tcx, &bound_vars))
                 .map(|bound| {
-                    bound.fold_with(&mut ty::fold::BottomUpFolder {
+                    bound.fold_with(&mut ReplaceOpaqueTyFolder {
                         tcx: self.interner.tcx,
-                        ty_op: |ty| {
-                            if let ty::Opaque(def_id, substs) = *ty.kind() {
-                                if def_id == opaque_ty_id.0 && substs == identity_substs {
-                                    return self.interner.tcx.mk_ty(ty::Bound(
-                                        ty::INNERMOST,
-                                        ty::BoundTy::from(ty::BoundVar::from_u32(0)),
-                                    ));
-                                }
-                            }
-                            ty
-                        },
-                        lt_op: |lt| lt,
-                        ct_op: |ct| ct,
+                        opaque_ty_id,
+                        identity_substs,
+                        binder_index: ty::INNERMOST,
                     })
                 })
                 .filter_map(|bound| {
@@ -556,11 +535,11 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Fn => lang_items.fn_trait(),
             FnMut => lang_items.fn_mut_trait(),
             FnOnce => lang_items.fn_once_trait(),
+            Generator => lang_items.gen_trait(),
             Unsize => lang_items.unsize_trait(),
             Unpin => lang_items.unpin_trait(),
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
-            Generator => lang_items.generator_return(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -576,7 +555,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         // FIXME(chalk): actually get hidden ty
         self.interner
             .tcx
-            .mk_ty(ty::Tuple(self.interner.tcx.intern_substs(&[])))
+            .mk_ty(ty::Tuple(self.interner.tcx.intern_type_list(&[])))
             .lower_into(self.interner)
     }
 
@@ -684,28 +663,18 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
         let variances = self.interner.tcx.variances_of(def_id.0);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 
     fn adt_variance(
         &self,
-        def_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
     ) -> chalk_ir::Variances<RustInterner<'tcx>> {
-        let variances = self.interner.tcx.variances_of(def_id.0.did);
+        let variances = self.interner.tcx.variances_of(adt_id.0.did);
         chalk_ir::Variances::from_iter(
             self.interner,
-            variances.iter().map(|v| match v {
-                ty::Variance::Invariant => chalk_ir::Variance::Invariant,
-                ty::Variance::Covariant => chalk_ir::Variance::Covariant,
-                ty::Variance::Contravariant => chalk_ir::Variance::Contravariant,
-                ty::Variance::Bivariant => unimplemented!(),
-            }),
+            variances.iter().map(|v| v.lower_into(self.interner)),
         )
     }
 }
@@ -731,11 +700,11 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
                 var: ty::BoundVar::from_usize(substs.len()),
                 kind: ty::BrAnon(substs.len() as u32),
             };
-            tcx.mk_region(ty::RegionKind::ReLateBound(ty::INNERMOST, br)).into()
+            tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
-            .mk_const(ty::Const {
+            .mk_const(ty::ConstS {
                 val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
                 ty: tcx.type_of(param.def_id),
             })
@@ -755,8 +724,43 @@ fn binders_for<'tcx>(
                 chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
             }
             ty::subst::GenericArgKind::Const(c) => {
-                chalk_ir::VariableKind::Const(c.ty.lower_into(interner))
+                chalk_ir::VariableKind::Const(c.ty().lower_into(interner))
             }
         }),
     )
+}
+
+struct ReplaceOpaqueTyFolder<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    opaque_ty_id: chalk_ir::OpaqueTyId<RustInterner<'tcx>>,
+    identity_substs: SubstsRef<'tcx>,
+    binder_index: ty::DebruijnIndex,
+}
+
+impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.binder_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.binder_index.shift_out(1);
+        t
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Opaque(def_id, substs) = *ty.kind() {
+            if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
+                return self.tcx.mk_ty(ty::Bound(
+                    self.binder_index,
+                    ty::BoundTy::from(ty::BoundVar::from_u32(0)),
+                ));
+            }
+        }
+        ty
+    }
 }

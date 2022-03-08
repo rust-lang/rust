@@ -78,7 +78,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, PrimTy, QPath, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, TraitRef, Ty, TyS};
+use rustc_middle::ty::{self, TraitRef, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
@@ -566,17 +566,20 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Readability, this can be written more concisely as
-    /// `_.flat_map(_)`
+    /// `_.flat_map(_)` for `Iterator` or `_.and_then(_)` for `Option`
     ///
     /// ### Example
     /// ```rust
     /// let vec = vec![vec![1]];
+    /// let opt = Some(5);
     ///
     /// // Bad
     /// vec.iter().map(|x| x.iter()).flatten();
+    /// opt.map(|x| Some(x * 2)).flatten();
     ///
     /// // Good
     /// vec.iter().flat_map(|x| x.iter());
+    /// opt.and_then(|x| Some(x * 2));
     /// ```
     #[clippy::version = "1.31.0"]
     pub MAP_FLATTEN,
@@ -2039,10 +2042,10 @@ impl_lint_pass!(Methods => [
 
 /// Extracts a method call name, args, and `Span` of the method name.
 fn method_call<'tcx>(recv: &'tcx hir::Expr<'tcx>) -> Option<(&'tcx str, &'tcx [hir::Expr<'tcx>], Span)> {
-    if let ExprKind::MethodCall(path, span, args, _) = recv.kind {
+    if let ExprKind::MethodCall(path, args, _) = recv.kind {
         if !args.iter().any(|e| e.span.from_expansion()) {
             let name = path.ident.name.as_str();
-            return Some((name, args, span));
+            return Some((name, args, path.ident.span));
         }
     }
     None
@@ -2060,14 +2063,15 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             hir::ExprKind::Call(func, args) => {
                 from_iter_instead_of_collect::check(cx, expr, args, func);
             },
-            hir::ExprKind::MethodCall(method_call, ref method_span, args, _) => {
-                or_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
-                expect_fun_call::check(cx, expr, *method_span, method_call.ident.as_str(), args);
+            hir::ExprKind::MethodCall(method_call, args, _) => {
+                let method_span = method_call.ident.span;
+                or_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
+                expect_fun_call::check(cx, expr, method_span, method_call.ident.as_str(), args);
                 clone_on_copy::check(cx, expr, method_call.ident.name, args);
                 clone_on_ref_ptr::check(cx, expr, method_call.ident.name, args);
                 inefficient_to_string::check(cx, expr, method_call.ident.name, args);
                 single_char_add_str::check(cx, expr, args);
-                into_iter_on_ref::check(cx, expr, *method_span, method_call.ident.name, args);
+                into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
                 unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
             },
@@ -2102,7 +2106,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let method_sig = cx.tcx.fn_sig(impl_item.def_id);
             let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
 
-            let first_arg_ty = &method_sig.inputs().iter().next();
+            let first_arg_ty = method_sig.inputs().iter().next();
 
             // check conventions w.r.t. conversion method names and predicates
             if let Some(first_arg_ty) = first_arg_ty;
@@ -2115,7 +2119,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                         if name == method_config.method_name &&
                             sig.decl.inputs.len() == method_config.param_count &&
                             method_config.output_type.matches(&sig.decl.output) &&
-                            method_config.self_kind.matches(cx, self_ty, first_arg_ty) &&
+                            method_config.self_kind.matches(cx, self_ty, *first_arg_ty) &&
                             fn_header_equals(method_config.fn_header, sig.header) &&
                             method_config.lifetime_param_cond(impl_item)
                         {
@@ -2147,7 +2151,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                         cx,
                         name,
                         self_ty,
-                        first_arg_ty,
+                        *first_arg_ty,
                         first_arg.pat.span,
                         implements_trait,
                         false
@@ -2179,8 +2183,8 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     if let ty::PredicateKind::Projection(projection_predicate) = predicate.kind().skip_binder() {
                         let assoc_ty = match projection_predicate.term {
-                          ty::Term::Ty(ty) => ty,
-                          ty::Term::Const(_c) => continue,
+                            ty::Term::Ty(ty) => ty,
+                            ty::Term::Const(_c) => continue,
                         };
                         // walk the associated type and check for Self
                         if let Some(self_adt) = self_ty.ty_adt_def() {
@@ -2194,7 +2198,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 }
             }
 
-            if name == "new" && !TyS::same_type(ret_ty, self_ty) {
+            if name == "new" && ret_ty != self_ty {
                 span_lint(
                     cx,
                     NEW_RET_NO_SELF,
@@ -2398,10 +2402,17 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("to_os_string" | "to_owned" | "to_path_buf" | "to_vec", []) => {
                 implicit_clone::check(cx, name, expr, recv);
             },
-            ("unwrap", []) => match method_call(recv) {
-                Some(("get", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, false),
-                Some(("get_mut", [recv, get_arg], _)) => get_unwrap::check(cx, expr, recv, get_arg, true),
-                _ => unwrap_used::check(cx, expr, recv),
+            ("unwrap", []) => {
+                match method_call(recv) {
+                    Some(("get", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, false);
+                    },
+                    Some(("get_mut", [recv, get_arg], _)) => {
+                        get_unwrap::check(cx, expr, recv, get_arg, true);
+                    },
+                    _ => {},
+                }
+                unwrap_used::check(cx, expr, recv);
             },
             ("unwrap_or", [u_arg]) => match method_call(recv) {
                 Some((arith @ ("checked_add" | "checked_sub" | "checked_mul"), [lhs, rhs], _)) => {

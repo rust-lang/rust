@@ -79,7 +79,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
         let instance = ty::Instance::mono(self, def_id);
@@ -92,10 +92,18 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         gid: GlobalId<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         let param_env = param_env.with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;
         Ok(self.global_alloc(raw_const.alloc_id).unwrap_memory())
+    }
+
+    /// Destructure a constant ADT or array into its variant index and its field values.
+    pub fn destructure_const(
+        self,
+        param_env_and_val: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>,
+    ) -> mir::DestructuredConst<'tcx> {
+        self.try_destructure_const(param_env_and_val).unwrap()
     }
 }

@@ -32,9 +32,11 @@ impl<'tcx> From<ty::RegionVid> for RegionVidKey<'tcx> {
 
 impl<'tcx> UnifyKey for RegionVidKey<'tcx> {
     type Value = UnifiedRegion<'tcx>;
+    #[inline]
     fn index(&self) -> u32 {
         self.vid.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         RegionVidKey::from(ty::RegionVid::from_u32(i))
     }
@@ -95,14 +97,14 @@ pub enum ConstVariableOriginKind {
 
 #[derive(Copy, Clone, Debug)]
 pub enum ConstVariableValue<'tcx> {
-    Known { value: &'tcx ty::Const<'tcx> },
+    Known { value: ty::Const<'tcx> },
     Unknown { universe: ty::UniverseIndex },
 }
 
 impl<'tcx> ConstVariableValue<'tcx> {
     /// If this value is known, returns the const it is known to be.
     /// Otherwise, `None`.
-    pub fn known(&self) -> Option<&'tcx ty::Const<'tcx>> {
+    pub fn known(&self) -> Option<ty::Const<'tcx>> {
         match *self {
             ConstVariableValue::Unknown { .. } => None,
             ConstVariableValue::Known { value } => Some(value),
@@ -118,9 +120,11 @@ pub struct ConstVarValue<'tcx> {
 
 impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
     type Value = ConstVarValue<'tcx>;
+    #[inline]
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> Self {
         ty::ConstVid { index: i, phantom: PhantomData }
     }
@@ -130,7 +134,7 @@ impl<'tcx> UnifyKey for ty::ConstVid<'tcx> {
 }
 
 impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
-    type Error = (&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>);
+    type Error = (ty::Const<'tcx>, ty::Const<'tcx>);
 
     fn unify_values(&value1: &Self, &value2: &Self) -> Result<Self, Self::Error> {
         Ok(match (value1.val, value2.val) {
@@ -162,18 +166,18 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
     }
 }
 
-impl<'tcx> EqUnifyValue for &'tcx ty::Const<'tcx> {}
+impl<'tcx> EqUnifyValue for ty::Const<'tcx> {}
 
 pub fn replace_if_possible<'tcx, V, L>(
     table: &mut UnificationTable<InPlace<ty::ConstVid<'tcx>, V, L>>,
-    c: &'tcx ty::Const<'tcx>,
-) -> &'tcx ty::Const<'tcx>
+    c: ty::Const<'tcx>,
+) -> ty::Const<'tcx>
 where
     V: snapshot_vec::VecLike<unify::Delegate<ty::ConstVid<'tcx>>>,
     L: UndoLogs<snapshot_vec::UndoLog<unify::Delegate<ty::ConstVid<'tcx>>>>,
 {
-    if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
-        match table.probe_value(*vid).val.known() {
+    if let ty::ConstKind::Infer(InferConst::Var(vid)) = c.val() {
+        match table.probe_value(vid).val.known() {
             Some(c) => c,
             None => c,
         }

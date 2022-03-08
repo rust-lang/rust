@@ -1,4 +1,4 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/issue-86642.rs:1:11
    |
 LL | static x: impl Fn(&str) -> Result<&str, ()> = move |source| {

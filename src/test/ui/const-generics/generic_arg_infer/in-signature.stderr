@@ -1,0 +1,119 @@
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:7:21
+   |
+LL | fn arr_fn() -> [u8; _] {
+   |                -----^-
+   |                |    |
+   |                |    not allowed in type signatures
+   |                help: replace with the correct return type: `[u8; 3]`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:12:24
+   |
+LL | fn ty_fn() -> Bar<i32, _> {
+   |               ---------^-
+   |               |        |
+   |               |        not allowed in type signatures
+   |               help: replace with the correct return type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/in-signature.rs:17:25
+   |
+LL | fn ty_fn_mixed() -> Bar<_, _> {
+   |                     ----^--^-
+   |                     |   |  |
+   |                     |   |  not allowed in type signatures
+   |                     |   not allowed in type signatures
+   |                     help: replace with the correct return type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:22:15
+   |
+LL | const ARR_CT: [u8; _] = [0; 3];
+   |               ^^^^^^^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/in-signature.rs:24:20
+   |
+LL | static ARR_STATIC: [u8; _] = [0; 3];
+   |                    ^^^^^^^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:26:14
+   |
+LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+   |              ^^^^^^^^^^^
+   |              |
+   |              not allowed in type signatures
+   |              help: replace with the correct type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/in-signature.rs:28:19
+   |
+LL | static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
+   |                   ^^^^^^^^^^^
+   |                   |
+   |                   not allowed in type signatures
+   |                   help: replace with the correct type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:30:20
+   |
+LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   |                    ^^^^^^^^^
+   |                    |
+   |                    not allowed in type signatures
+   |                    help: replace with the correct type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
+  --> $DIR/in-signature.rs:32:25
+   |
+LL | static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+   |                         ^^^^^^^^^
+   |                         |
+   |                         not allowed in type signatures
+   |                         help: replace with the correct type: `Bar<i32, 3_usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:35:21
+   |
+LL |     const ARR: [u8; _];
+   |                     ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:39:25
+   |
+LL |     const ARR: Bar<i32, _>;
+   |                         ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/in-signature.rs:43:20
+   |
+LL |     const ARR: Bar<_, _>;
+   |                    ^  ^ not allowed in type signatures
+   |                    |
+   |                    not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:51:23
+   |
+LL |     type Assoc = [u8; _];
+   |                       ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:55:27
+   |
+LL |     type Assoc = Bar<i32, _>;
+   |                           ^ not allowed in type signatures
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
+  --> $DIR/in-signature.rs:59:22
+   |
+LL |     type Assoc = Bar<_, _>;
+   |                      ^  ^ not allowed in type signatures
+   |                      |
+   |                      not allowed in type signatures
+
+error: aborting due to 15 previous errors
+
+For more information about this error, try `rustc --explain E0121`.

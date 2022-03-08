@@ -4,6 +4,24 @@ error: malformed `rustc_must_implement_one_of` attribute input
 LL | #[rustc_must_implement_one_of]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
 
+error: attribute can only be applied to a trait
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:38:1
+   |
+LL | #[rustc_must_implement_one_of(abc, xyz)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn function() {}
+   | ---------------- not a trait
+
+error: attribute can only be applied to a trait
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:42:1
+   |
+LL | #[rustc_must_implement_one_of(abc, xyz)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | struct Struct {}
+   | ---------------- not a trait
+
 error: Function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31
    |
@@ -78,5 +96,5 @@ note: required by this annotation
 LL | #[rustc_must_implement_one_of(a, b)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: aborting due to 11 previous errors
 

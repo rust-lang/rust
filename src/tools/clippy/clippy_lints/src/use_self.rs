@@ -11,7 +11,7 @@ use rustc_hir::{
     intravisit::{walk_inf, walk_ty, Visitor},
     Expr, ExprKind, FnRetTy, FnSig, GenericArg, HirId, Impl, ImplItemKind, Item, ItemKind, Path, QPath, TyKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -204,7 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 ref types_to_skip,
             }) = self.stack.last();
             if let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind;
-            if !matches!(path.res, Res::SelfTy(..) | Res::Def(DefKind::TyParam, _));
+            if !matches!(path.res, Res::SelfTy { .. } | Res::Def(DefKind::TyParam, _));
             if !types_to_skip.contains(&hir_ty.hir_id);
             let ty = if in_body > 0 {
                 cx.typeck_results().node_type(hir_ty.hir_id)
@@ -231,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
         }
         match expr.kind {
             ExprKind::Struct(QPath::Resolved(_, path), ..) => match path.res {
-                Res::SelfTy(..) => (),
+                Res::SelfTy { .. } => (),
                 Res::Def(DefKind::Variant, _) => lint_path_to_variant(cx, path),
                 _ => span_lint(cx, path.span),
             },

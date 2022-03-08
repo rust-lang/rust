@@ -1,68 +1,38 @@
 #![allow(rustc::internal)]
 
-use json::DecoderError::*;
 use json::ErrorCode::*;
 use json::Json::*;
 use json::JsonEvent::*;
 use json::ParserError::*;
-use json::{
-    from_str, DecodeResult, Decoder, DecoderError, Encoder, EncoderError, Json, JsonEvent, Parser,
-    StackElement,
-};
-use rustc_macros::{Decodable, Encodable};
+use json::{from_str, Encoder, EncoderError, Json, JsonEvent, Parser, StackElement};
+use rustc_macros::Encodable;
 use rustc_serialize::json;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::Encodable;
 
 use std::collections::BTreeMap;
 use std::io::prelude::*;
 use std::string;
 use Animal::*;
 
-#[derive(Decodable, Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug)]
 struct OptionData {
     opt: Option<usize>,
 }
 
-#[test]
-fn test_decode_option_none() {
-    let s = "{}";
-    let obj: OptionData = json::decode(s).unwrap();
-    assert_eq!(obj, OptionData { opt: None });
-}
-
-#[test]
-fn test_decode_option_some() {
-    let s = "{ \"opt\": 10 }";
-    let obj: OptionData = json::decode(s).unwrap();
-    assert_eq!(obj, OptionData { opt: Some(10) });
-}
-
-#[test]
-fn test_decode_option_malformed() {
-    check_err::<OptionData>(
-        "{ \"opt\": [] }",
-        ExpectedError("Number".to_string(), "[]".to_string()),
-    );
-    check_err::<OptionData>(
-        "{ \"opt\": false }",
-        ExpectedError("Number".to_string(), "false".to_string()),
-    );
-}
-
-#[derive(PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Debug)]
 enum Animal {
     Dog,
     Frog(string::String, isize),
 }
 
-#[derive(PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Debug)]
 struct Inner {
     a: (),
     b: usize,
     c: Vec<string::String>,
 }
 
-#[derive(PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Debug)]
 struct Outer {
     inner: Vec<Inner>,
 }
@@ -328,18 +298,6 @@ fn test_read_identifiers() {
 }
 
 #[test]
-fn test_decode_identifiers() {
-    let v: () = json::decode("null").unwrap();
-    assert_eq!(v, ());
-
-    let v: bool = json::decode("true").unwrap();
-    assert_eq!(v, true);
-
-    let v: bool = json::decode("false").unwrap();
-    assert_eq!(v, false);
-}
-
-#[test]
 fn test_read_number() {
     assert_eq!(from_str("+"), Err(SyntaxError(InvalidSyntax, 1, 1)));
     assert_eq!(from_str("."), Err(SyntaxError(InvalidSyntax, 1, 1)));
@@ -368,45 +326,6 @@ fn test_read_number() {
 }
 
 #[test]
-fn test_decode_numbers() {
-    let v: f64 = json::decode("3").unwrap();
-    assert_eq!(v, 3.0);
-
-    let v: f64 = json::decode("3.1").unwrap();
-    assert_eq!(v, 3.1);
-
-    let v: f64 = json::decode("-1.2").unwrap();
-    assert_eq!(v, -1.2);
-
-    let v: f64 = json::decode("0.4").unwrap();
-    assert_eq!(v, 0.4);
-
-    let v: f64 = json::decode("0.4e5").unwrap();
-    assert_eq!(v, 0.4e5);
-
-    let v: f64 = json::decode("0.4e15").unwrap();
-    assert_eq!(v, 0.4e15);
-
-    let v: f64 = json::decode("0.4e-01").unwrap();
-    assert_eq!(v, 0.4e-01);
-
-    let v: u64 = json::decode("0").unwrap();
-    assert_eq!(v, 0);
-
-    let v: u64 = json::decode("18446744073709551615").unwrap();
-    assert_eq!(v, u64::MAX);
-
-    let v: i64 = json::decode("-9223372036854775808").unwrap();
-    assert_eq!(v, i64::MIN);
-
-    let v: i64 = json::decode("9223372036854775807").unwrap();
-    assert_eq!(v, i64::MAX);
-
-    let res: DecodeResult<i64> = json::decode("765.25");
-    assert_eq!(res, Err(ExpectedError("Integer".to_string(), "765.25".to_string())));
-}
-
-#[test]
 fn test_read_str() {
     assert_eq!(from_str("\""), Err(SyntaxError(EOFWhileParsingString, 1, 2)));
     assert_eq!(from_str("\"lol"), Err(SyntaxError(EOFWhileParsingString, 1, 5)));
@@ -421,26 +340,6 @@ fn test_read_str() {
     assert_eq!(from_str(" \"foo\" "), Ok(String("foo".to_string())));
     assert_eq!(from_str("\"\\u12ab\""), Ok(String("\u{12ab}".to_string())));
     assert_eq!(from_str("\"\\uAB12\""), Ok(String("\u{AB12}".to_string())));
-}
-
-#[test]
-fn test_decode_str() {
-    let s = [
-        ("\"\"", ""),
-        ("\"foo\"", "foo"),
-        ("\"\\\"\"", "\""),
-        ("\"\\b\"", "\x08"),
-        ("\"\\n\"", "\n"),
-        ("\"\\r\"", "\r"),
-        ("\"\\t\"", "\t"),
-        ("\"\\u12ab\"", "\u{12ab}"),
-        ("\"\\uAB12\"", "\u{AB12}"),
-    ];
-
-    for (i, o) in s {
-        let v: string::String = json::decode(i).unwrap();
-        assert_eq!(v, o);
-    }
 }
 
 #[test]
@@ -459,43 +358,6 @@ fn test_read_array() {
     assert_eq!(from_str("[3, 1]"), Ok(Array(vec![U64(3), U64(1)])));
     assert_eq!(from_str("\n[3, 2]\n"), Ok(Array(vec![U64(3), U64(2)])));
     assert_eq!(from_str("[2, [4, 1]]"), Ok(Array(vec![U64(2), Array(vec![U64(4), U64(1)])])));
-}
-
-#[test]
-fn test_decode_array() {
-    let v: Vec<()> = json::decode("[]").unwrap();
-    assert_eq!(v, []);
-
-    let v: Vec<()> = json::decode("[null]").unwrap();
-    assert_eq!(v, [()]);
-
-    let v: Vec<bool> = json::decode("[true]").unwrap();
-    assert_eq!(v, [true]);
-
-    let v: Vec<isize> = json::decode("[3, 1]").unwrap();
-    assert_eq!(v, [3, 1]);
-
-    let v: Vec<Vec<usize>> = json::decode("[[3], [1, 2]]").unwrap();
-    assert_eq!(v, [vec![3], vec![1, 2]]);
-}
-
-#[test]
-fn test_decode_tuple() {
-    let t: (usize, usize, usize) = json::decode("[1, 2, 3]").unwrap();
-    assert_eq!(t, (1, 2, 3));
-
-    let t: (usize, string::String) = json::decode("[1, \"two\"]").unwrap();
-    assert_eq!(t, (1, "two".to_string()));
-}
-
-#[test]
-fn test_decode_tuple_malformed_types() {
-    assert!(json::decode::<(usize, string::String)>("[1, 2]").is_err());
-}
-
-#[test]
-fn test_decode_tuple_malformed_length() {
-    assert!(json::decode::<(usize, usize)>("[1, 2, 3]").is_err());
 }
 
 #[test]
@@ -555,134 +417,8 @@ fn test_read_object() {
 }
 
 #[test]
-fn test_decode_struct() {
-    let s = "{
-        \"inner\": [
-            { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
-        ]
-    }";
-
-    let v: Outer = json::decode(s).unwrap();
-    assert_eq!(
-        v,
-        Outer { inner: vec![Inner { a: (), b: 2, c: vec!["abc".to_string(), "xyz".to_string()] }] }
-    );
-}
-
-#[derive(Decodable)]
-struct FloatStruct {
-    f: f64,
-    a: Vec<f64>,
-}
-#[test]
-fn test_decode_struct_with_nan() {
-    let s = "{\"f\":null,\"a\":[null,123]}";
-    let obj: FloatStruct = json::decode(s).unwrap();
-    assert!(obj.f.is_nan());
-    assert!(obj.a[0].is_nan());
-    assert_eq!(obj.a[1], 123f64);
-}
-
-#[test]
-fn test_decode_option() {
-    let value: Option<string::String> = json::decode("null").unwrap();
-    assert_eq!(value, None);
-
-    let value: Option<string::String> = json::decode("\"jodhpurs\"").unwrap();
-    assert_eq!(value, Some("jodhpurs".to_string()));
-}
-
-#[test]
-fn test_decode_enum() {
-    let value: Animal = json::decode("\"Dog\"").unwrap();
-    assert_eq!(value, Dog);
-
-    let s = "{\"variant\":\"Frog\",\"fields\":[\"Henry\",349]}";
-    let value: Animal = json::decode(s).unwrap();
-    assert_eq!(value, Frog("Henry".to_string(), 349));
-}
-
-#[test]
-fn test_decode_map() {
-    let s = "{\"a\": \"Dog\", \"b\": {\"variant\":\"Frog\",\
-              \"fields\":[\"Henry\", 349]}}";
-    let mut map: BTreeMap<string::String, Animal> = json::decode(s).unwrap();
-
-    assert_eq!(map.remove(&"a".to_string()), Some(Dog));
-    assert_eq!(map.remove(&"b".to_string()), Some(Frog("Henry".to_string(), 349)));
-}
-
-#[test]
 fn test_multiline_errors() {
     assert_eq!(from_str("{\n  \"foo\":\n \"bar\""), Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
-}
-
-#[derive(Decodable)]
-#[allow(dead_code)]
-struct DecodeStruct {
-    x: f64,
-    y: bool,
-    z: string::String,
-    w: Vec<DecodeStruct>,
-}
-#[derive(Decodable)]
-enum DecodeEnum {
-    A(f64),
-    B(string::String),
-}
-fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected: DecoderError) {
-    let res: DecodeResult<T> = match from_str(to_parse) {
-        Err(e) => Err(ParseError(e)),
-        Ok(json) => Decodable::decode(&mut Decoder::new(json)),
-    };
-    match res {
-        Ok(_) => panic!("`{:?}` parsed & decoded ok, expecting error `{:?}`", to_parse, expected),
-        Err(ParseError(e)) => panic!("`{:?}` is not valid json: {:?}", to_parse, e),
-        Err(e) => {
-            assert_eq!(e, expected);
-        }
-    }
-}
-#[test]
-fn test_decode_errors_struct() {
-    check_err::<DecodeStruct>("[]", ExpectedError("Object".to_string(), "[]".to_string()));
-    check_err::<DecodeStruct>(
-        "{\"x\": true, \"y\": true, \"z\": \"\", \"w\": []}",
-        ExpectedError("Number".to_string(), "true".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": [], \"z\": \"\", \"w\": []}",
-        ExpectedError("Boolean".to_string(), "[]".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": {}, \"w\": []}",
-        ExpectedError("String".to_string(), "{}".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": \"\", \"w\": null}",
-        ExpectedError("Array".to_string(), "null".to_string()),
-    );
-    check_err::<DecodeStruct>(
-        "{\"x\": 1, \"y\": true, \"z\": \"\"}",
-        MissingFieldError("w".to_string()),
-    );
-}
-#[test]
-fn test_decode_errors_enum() {
-    check_err::<DecodeEnum>("{}", MissingFieldError("variant".to_string()));
-    check_err::<DecodeEnum>(
-        "{\"variant\": 1}",
-        ExpectedError("String".to_string(), "1".to_string()),
-    );
-    check_err::<DecodeEnum>("{\"variant\": \"A\"}", MissingFieldError("fields".to_string()));
-    check_err::<DecodeEnum>(
-        "{\"variant\": \"A\", \"fields\": null}",
-        ExpectedError("Array".to_string(), "null".to_string()),
-    );
-    check_err::<DecodeEnum>(
-        "{\"variant\": \"C\", \"fields\": []}",
-        UnknownVariantError("C".to_string()),
-    );
 }
 
 #[test]
@@ -934,7 +670,7 @@ fn test_prettyencoder_indent_level_param() {
 #[test]
 fn test_hashmap_with_enum_key() {
     use std::collections::HashMap;
-    #[derive(Encodable, Eq, Hash, PartialEq, Decodable, Debug)]
+    #[derive(Encodable, Eq, Hash, PartialEq, Debug)]
     enum Enum {
         Foo,
         #[allow(dead_code)]
@@ -944,33 +680,6 @@ fn test_hashmap_with_enum_key() {
     map.insert(Enum::Foo, 0);
     let result = json::encode(&map).unwrap();
     assert_eq!(&result[..], r#"{"Foo":0}"#);
-    let decoded: HashMap<Enum, _> = json::decode(&result).unwrap();
-    assert_eq!(map, decoded);
-}
-
-#[test]
-fn test_hashmap_with_numeric_key_can_handle_double_quote_delimited_key() {
-    use std::collections::HashMap;
-    let json_str = "{\"1\":true}";
-    let json_obj = match from_str(json_str) {
-        Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-        Ok(o) => o,
-    };
-    let mut decoder = Decoder::new(json_obj);
-    let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder).unwrap();
-}
-
-#[test]
-fn test_hashmap_with_numeric_key_will_error_with_string_keys() {
-    use std::collections::HashMap;
-    let json_str = "{\"a\":true}";
-    let json_obj = match from_str(json_str) {
-        Err(_) => panic!("Unable to parse json_str: {:?}", json_str),
-        Ok(o) => o,
-    };
-    let mut decoder = Decoder::new(json_obj);
-    let result: Result<HashMap<usize, bool>, DecoderError> = Decodable::decode(&mut decoder);
-    assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
 }
 
 fn assert_stream_equal(src: &str, expected: Vec<(JsonEvent, Vec<StackElement<'_>>)>) {

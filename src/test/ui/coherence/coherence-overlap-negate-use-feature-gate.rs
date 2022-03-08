@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(negative_impls)]
+#![feature(with_negative_coherence)]
 
 use std::ops::DerefMut;
 

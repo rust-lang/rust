@@ -7,9 +7,10 @@ use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, ConstKind, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
-use rustc_span::{hygiene::ExpnKind, ExpnData, Span};
+use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::spec::abi::Abi;
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
@@ -75,10 +76,18 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         return false;
     }
 
+    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let param_env = rustc_trait_selection::traits::normalize_param_env_or_error(
+        tcx,
+        def_id,
+        param_env,
+        ObligationCause::misc(body.span, hir_id),
+    );
+
     let mut this = Inliner {
         tcx,
-        param_env: tcx.param_env_reveal_all_normalized(body.source.def_id()),
-        codegen_fn_attrs: tcx.codegen_fn_attrs(body.source.def_id()),
+        param_env,
+        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
         hir_id,
         history: Vec::new(),
         changed: false,
@@ -109,9 +118,8 @@ impl<'tcx> Inliner<'tcx> {
                 continue;
             }
 
-            let callsite = match self.resolve_callsite(caller_body, bb, bb_data) {
-                None => continue,
-                Some(it) => it,
+            let Some(callsite) = self.resolve_callsite(caller_body, bb, bb_data) else {
+                continue;
             };
 
             let span = trace_span!("process_blocks", %callsite.callee, ?bb);
@@ -535,6 +543,16 @@ impl<'tcx> Inliner<'tcx> {
                 // Copy the arguments if needed.
                 let args: Vec<_> = self.make_call_args(args, &callsite, caller_body, &callee_body);
 
+                let mut expn_data = ExpnData::default(
+                    ExpnKind::Inlined,
+                    callsite.source_info.span,
+                    self.tcx.sess.edition(),
+                    None,
+                    None,
+                );
+                expn_data.def_site = callee_body.span;
+                let expn_data =
+                    LocalExpnId::fresh(expn_data, self.tcx.create_stable_hashing_context());
                 let mut integrator = Integrator {
                     args: &args,
                     new_locals: Local::new(caller_body.local_decls.len())..,
@@ -545,8 +563,7 @@ impl<'tcx> Inliner<'tcx> {
                     cleanup_block: cleanup,
                     in_cleanup_block: false,
                     tcx: self.tcx,
-                    callsite_span: callsite.source_info.span,
-                    body_span: callee_body.span,
+                    expn_data,
                     always_live_locals: BitSet::new_filled(callee_body.local_decls.len()),
                 };
 
@@ -625,7 +642,7 @@ impl<'tcx> Inliner<'tcx> {
                 caller_body.required_consts.extend(
                     callee_body.required_consts.iter().copied().filter(|&ct| {
                         match ct.literal.const_for_ty() {
-                            Some(ct) => matches!(ct.val, ConstKind::Unevaluated(_)),
+                            Some(ct) => matches!(ct.val(), ConstKind::Unevaluated(_)),
                             None => true,
                         }
                     }),
@@ -684,8 +701,7 @@ impl<'tcx> Inliner<'tcx> {
             // The `tmp0`, `tmp1`, and `tmp2` in our example abonve.
             let tuple_tmp_args = tuple_tys.iter().enumerate().map(|(i, ty)| {
                 // This is e.g., `tuple_tmp.0` in our example above.
-                let tuple_field =
-                    Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty.expect_ty()));
+                let tuple_field = Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty));
 
                 // Spill to a local to make e.g., `tmp0`.
                 self.create_temp_if_necessary(tuple_field, callsite, caller_body)
@@ -708,12 +724,11 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &mut Body<'tcx>,
     ) -> Local {
         // Reuse the operand if it is a moved temporary.
-        if let Operand::Move(place) = &arg {
-            if let Some(local) = place.as_local() {
-                if caller_body.local_kind(local) == LocalKind::Temp {
-                    return local;
-                }
-            }
+        if let Operand::Move(place) = &arg
+            && let Some(local) = place.as_local()
+            && caller_body.local_kind(local) == LocalKind::Temp
+        {
+            return local;
         }
 
         // Otherwise, create a temporary for the argument.
@@ -780,8 +795,7 @@ struct Integrator<'a, 'tcx> {
     cleanup_block: Option<BasicBlock>,
     in_cleanup_block: bool,
     tcx: TyCtxt<'tcx>,
-    callsite_span: Span,
-    body_span: Span,
+    expn_data: LocalExpnId,
     always_live_locals: BitSet<Local>,
 }
 
@@ -828,12 +842,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
     }
 
     fn visit_span(&mut self, span: &mut Span) {
-        let mut expn_data =
-            ExpnData::default(ExpnKind::Inlined, *span, self.tcx.sess.edition(), None, None);
-        expn_data.def_site = self.body_span;
         // Make sure that all spans track the fact that they were inlined.
-        *span =
-            self.callsite_span.fresh_expansion(expn_data, self.tcx.create_stable_hashing_context());
+        *span = span.fresh_expansion(self.expn_data);
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {

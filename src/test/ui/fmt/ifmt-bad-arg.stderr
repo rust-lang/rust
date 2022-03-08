@@ -263,34 +263,34 @@ LL |     println!("{:.*}");
    = note: for information about formatting flags, visit https://doc.rust-lang.org/std/fmt/index.html
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/ifmt-bad-arg.rs:27:17
+  --> $DIR/ifmt-bad-arg.rs:27:18
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |                 ^^^^^ not found in this scope
+   |                  ^^^ not found in this scope
 
 error[E0425]: cannot find value `bar` in this scope
-  --> $DIR/ifmt-bad-arg.rs:27:26
+  --> $DIR/ifmt-bad-arg.rs:27:27
    |
 LL |     format!("{} {foo} {} {bar} {}", 1, 2, 3);
-   |                          ^^^^^ not found in this scope
+   |                           ^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/ifmt-bad-arg.rs:31:14
+  --> $DIR/ifmt-bad-arg.rs:31:15
    |
 LL |     format!("{foo}");
-   |              ^^^^^ not found in this scope
+   |               ^^^ not found in this scope
 
 error[E0425]: cannot find value `valueb` in this scope
-  --> $DIR/ifmt-bad-arg.rs:45:23
+  --> $DIR/ifmt-bad-arg.rs:45:24
    |
 LL |     format!("{valuea} {valueb}", valuea=5, valuec=7);
-   |                       ^^^^^^^^ not found in this scope
+   |                        ^^^^^^ not found in this scope
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/ifmt-bad-arg.rs:60:9
+  --> $DIR/ifmt-bad-arg.rs:60:10
    |
 LL |         {foo}
-   |         ^^^^^ not found in this scope
+   |          ^^^ not found in this scope
 
 error[E0308]: mismatched types
   --> $DIR/ifmt-bad-arg.rs:78:32

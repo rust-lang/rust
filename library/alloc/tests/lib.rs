@@ -29,6 +29,7 @@
 #![feature(binary_heap_as_slice)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
+#![feature(round_char_boundary)]
 #![feature(slice_group_by)]
 #![feature(slice_partition_dedup)]
 #![feature(string_remove_matches)]

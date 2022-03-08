@@ -7,7 +7,7 @@ LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait +
    |                    lifetime `'a` defined here
 LL |     // A outlives 'a AND 'b...but not 'c.
 LL |     Box::new(v) as Box<dyn SomeTrait + 'a>
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'c` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'c`
 

@@ -8,6 +8,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeVisitor};
 use crate::ty::print::{with_no_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, InferConst, Lift, Term, Ty, TyCtxt};
 use rustc_data_structures::functor::IdFunctor;
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
@@ -21,10 +22,13 @@ use std::sync::Arc;
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths(|| {
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.def_id, &[])
-            })?;
-            Ok(())
+            with_no_trimmed_paths!({
+                f.write_str(
+                    &FmtPrinter::new(tcx, Namespace::TypeNS)
+                        .print_def_path(self.def_id, &[])?
+                        .into_buffer(),
+                )
+            })
         })
     }
 }
@@ -32,10 +36,13 @@ impl fmt::Debug for ty::TraitDef {
 impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            with_no_trimmed_paths(|| {
-                FmtPrinter::new(tcx, f, Namespace::TypeNS).print_def_path(self.did, &[])
-            })?;
-            Ok(())
+            with_no_trimmed_paths!({
+                f.write_str(
+                    &FmtPrinter::new(tcx, Namespace::TypeNS)
+                        .print_def_path(self.did, &[])?
+                        .into_buffer(),
+                )
+            })
         })
     }
 }
@@ -49,7 +56,7 @@ impl fmt::Debug for ty::UpvarId {
 
 impl<'tcx> fmt::Debug for ty::ExistentialTraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 
@@ -125,13 +132,13 @@ impl fmt::Debug for ty::RegionVid {
 
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 
 impl<'tcx> fmt::Debug for Ty<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        with_no_trimmed_paths(|| fmt::Display::fmt(self, f))
+        with_no_trimmed_paths!(fmt::Display::fmt(self, f))
     }
 }
 
@@ -253,6 +260,7 @@ TrivialTypeFoldableAndLiftImpls! {
     crate::ty::UniverseIndex,
     crate::ty::Variance,
     ::rustc_span::Span,
+    ::rustc_errors::ErrorGuaranteed,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -662,14 +670,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
 
 ///////////////////////////////////////////////////////////////////////////
 // TypeFoldable implementations.
-//
-// Ideally, each type should invoke `folder.fold_foo(self)` and
-// nothing else. In some cases, though, we haven't gotten around to
-// adding methods on the `folder` yet, and thus the folding is
-// hard-coded here. This is less-flexible, because folders cannot
-// override the behavior, but there are a lot of random types and one
-// can easily refactor the folding into the TypeFolder trait as
-// needed.
 
 /// AdtDefs are basically the same as a DefId.
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::AdtDef {
@@ -895,19 +895,6 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::Binder<'tcx, ty::Existentia
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<Ty<'tcx>> {
-    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
-        self,
-        folder: &mut F,
-    ) -> Result<Self, F::Error> {
-        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_type_list(v))
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.iter().try_for_each(|t| t.visit_with(visitor))
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ProjectionKind> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
@@ -1077,7 +1064,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_ty(self)
+        visitor.visit_ty(*self)
     }
 }
 
@@ -1111,12 +1098,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let new = self.inner.kind.try_fold_with(folder)?;
+        let new = self.kind().try_fold_with(folder)?;
         Ok(folder.tcx().reuse_or_mk_predicate(self, new))
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.inner.kind.visit_with(visitor)
+        self.kind().visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
@@ -1124,11 +1111,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     }
 
     fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.inner.outer_exclusive_binder > binder
+        self.outer_exclusive_binder() > binder
     }
 
     fn has_type_flags(&self, flags: ty::TypeFlags) -> bool {
-        self.inner.flags.intersects(flags)
+        self.flags().intersects(flags)
     }
 }
 
@@ -1158,15 +1145,15 @@ impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> 
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::Const<'tcx> {
     fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        let ty = self.ty.try_fold_with(folder)?;
-        let val = self.val.try_fold_with(folder)?;
-        if ty != self.ty || val != self.val {
-            Ok(folder.tcx().mk_const(ty::Const { ty, val }))
+        let ty = self.ty().try_fold_with(folder)?;
+        let val = self.val().try_fold_with(folder)?;
+        if ty != self.ty() || val != self.val() {
+            Ok(folder.tcx().mk_const(ty::ConstS { ty, val }))
         } else {
             Ok(self)
         }
@@ -1177,12 +1164,12 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        self.ty.visit_with(visitor)?;
-        self.val.visit_with(visitor)
+        self.ty().visit_with(visitor)?;
+        self.val().visit_with(visitor)
     }
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
-        visitor.visit_const(self)
+        visitor.visit_const(*self)
     }
 }
 
@@ -1267,5 +1254,15 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Unevaluated<'tcx, ()> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         self.substs.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for hir::Constness {
+    fn try_super_fold_with<F: FallibleTypeFolder<'tcx>>(self, _: &mut F) -> Result<Self, F::Error> {
+        Ok(self)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> ControlFlow<V::BreakTy> {
+        ControlFlow::CONTINUE
     }
 }

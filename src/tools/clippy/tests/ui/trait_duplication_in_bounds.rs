@@ -1,5 +1,6 @@
 #![deny(clippy::trait_duplication_in_bounds)]
 
+use std::collections::BTreeMap;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 fn bad_foo<T: Clone + Default, Z: Copy>(arg0: T, arg1: Z)
@@ -71,6 +72,27 @@ impl T for Life {
 impl U for Life {
     // this should not warn
     fn f() {}
+}
+
+// should not warn
+trait Iter: Iterator {
+    fn into_group_btreemap<K, V>(self) -> BTreeMap<K, Vec<V>>
+    where
+        Self: Iterator<Item = (K, V)> + Sized,
+        K: Ord + Eq,
+    {
+        unimplemented!();
+    }
+}
+
+struct Foo {}
+
+trait FooIter: Iterator<Item = Foo> {
+    fn bar()
+    where
+        Self: Iterator<Item = Foo>,
+    {
+    }
 }
 
 fn main() {}

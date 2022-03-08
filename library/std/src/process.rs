@@ -1277,7 +1277,7 @@ impl fmt::Debug for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdin> for Stdio {
-    /// Converts a `ChildStdin` into a `Stdio`
+    /// Converts a [`ChildStdin`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1306,7 +1306,7 @@ impl From<ChildStdin> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStdout> for Stdio {
-    /// Converts a `ChildStdout` into a `Stdio`
+    /// Converts a [`ChildStdout`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1335,7 +1335,7 @@ impl From<ChildStdout> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<ChildStderr> for Stdio {
-    /// Converts a `ChildStderr` into a `Stdio`
+    /// Converts a [`ChildStderr`] into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1366,7 +1366,7 @@ impl From<ChildStderr> for Stdio {
 
 #[stable(feature = "stdio_from", since = "1.20.0")]
 impl From<fs::File> for Stdio {
-    /// Converts a `File` into a `Stdio`
+    /// Converts a [`File`](fs::File) into a [`Stdio`].
     ///
     /// # Examples
     ///
@@ -1674,6 +1674,29 @@ impl ExitCode {
     /// return the same codes (but will also `eprintln!` the error).
     #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+}
+
+impl ExitCode {
+    // This should not be stabilized when stabilizing ExitCode, we don't know that i32 will serve
+    // all usecases, for example windows seems to use u32, unix uses the 8-15th bits of an i32, we
+    // likely want to isolate users anything that could restrict the platform specific
+    // representation of an ExitCode
+    //
+    // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
+    /// Convert an ExitCode into an i32
+    #[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+    #[inline]
+    pub fn to_i32(self) -> i32 {
+        self.0.as_i32()
+    }
+}
+
+#[unstable(feature = "process_exitcode_placeholder", issue = "48711")]
+impl From<u8> for ExitCode {
+    /// Construct an exit code from an arbitrary u8 value.
+    fn from(code: u8) -> Self {
+        ExitCode(imp::ExitCode::from(code))
+    }
 }
 
 impl Child {
@@ -2016,20 +2039,20 @@ pub fn id() -> u32 {
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
-    fn report(self) -> i32;
+    fn report(self) -> ExitCode;
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for () {
     #[inline]
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         ExitCode::SUCCESS.report()
     }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         match self {
             Ok(()) => ().report(),
             Err(err) => Err::<!, _>(err).report(),
@@ -2039,14 +2062,14 @@ impl<E: fmt::Debug> Termination for Result<(), E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ! {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         self
     }
 }
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
         eprintln!("Error: {:?}", err);
         ExitCode::FAILURE.report()
@@ -2055,7 +2078,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
 
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
-    fn report(self) -> i32 {
+    fn report(self) -> ExitCode {
         let Err(err) = self;
         Err::<!, _>(err).report()
     }
@@ -2064,7 +2087,7 @@ impl<E: fmt::Debug> Termination for Result<Infallible, E> {
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 impl Termination for ExitCode {
     #[inline]
-    fn report(self) -> i32 {
-        self.0.as_i32()
+    fn report(self) -> ExitCode {
+        self
     }
 }

@@ -1,0 +1,12 @@
+error[E0195]: lifetime parameters or bounds on method `scan` do not match the trait declaration
+  --> $DIR/issue-87803.rs:22:12
+   |
+LL |     fn scan<'a>(&mut self, i : Self::Input<'a>) -> Self::Token<'a>;
+   |            ---- lifetimes in impl do not match this method in trait
+...
+LL |     fn scan<'a>(&mut self, s : &'a str) -> &'a str {
+   |            ^^^^ lifetimes do not match method in trait
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0195`.

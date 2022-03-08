@@ -14,9 +14,6 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/byte_slice.rs:5:9: 5:10
         _1 = const b"foo";               // scope 0 at $DIR/byte_slice.rs:5:13: 5:19
-                                         // ty::Const
-                                         // + ty: &[u8; 3]
-                                         // + val: Value(Scalar(alloc1))
                                          // mir::Constant
                                          // + span: $DIR/byte_slice.rs:5:13: 5:19
                                          // + literal: Const { ty: &[u8; 3], val: Value(Scalar(alloc1)) }

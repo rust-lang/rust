@@ -267,7 +267,7 @@ Controls the format of the output. Valid options:
 
 Writes the results of the tests to the given file.
 
-#### `--report-time` _FORMAT_
+#### `--report-time`
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
 unstable-options` flag. See [tracking issue

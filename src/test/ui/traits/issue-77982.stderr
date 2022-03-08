@@ -44,6 +44,7 @@ LL |     opts.get(<String as AsRef<[u8]>>::as_ref(opt));
    |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     opts.get(<String as AsRef<str>>::as_ref(opt));
    |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     and 4 other candidates
 
 error[E0283]: type annotations needed
   --> $DIR/issue-77982.rs:13:44

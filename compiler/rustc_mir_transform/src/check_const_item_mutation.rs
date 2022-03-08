@@ -64,7 +64,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
         place: &Place<'tcx>,
         const_item: DefId,
         location: Location,
-        decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b>,
+        decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b, ()>,
     ) {
         // Don't lint on borrowing/assigning when a dereference is involved.
         // If we 'leave' the temporary via a dereference, we must

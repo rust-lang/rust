@@ -1,5 +1,5 @@
 use crate::traits::specialization_graph;
-use crate::ty::fast_reject::{self, SimplifiedType, SimplifyParams, StripReferences};
+use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ident, Ty, TyCtxt};
 use rustc_hir as hir;
@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
@@ -110,7 +110,7 @@ impl<'tcx> TraitDef {
         &self,
         tcx: TyCtxt<'tcx>,
         of_impl: DefId,
-    ) -> Result<specialization_graph::Ancestors<'tcx>, ErrorReported> {
+    ) -> Result<specialization_graph::Ancestors<'tcx>, ErrorGuaranteed> {
         specialization_graph::ancestors(tcx, self.def_id, of_impl)
     }
 }
@@ -144,6 +144,21 @@ impl<'tcx> TyCtxt<'tcx> {
         });
     }
 
+    pub fn non_blanket_impls_for_ty(
+        self,
+        def_id: DefId,
+        self_ty: Ty<'tcx>,
+    ) -> impl Iterator<Item = DefId> + 'tcx {
+        let impls = self.trait_impls_of(def_id);
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsPlaceholders) {
+            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+                return impls.iter().copied();
+            }
+        }
+
+        [].iter().copied()
+    }
+
     /// Applies function to every impl that could possibly match the self type `self_ty` and returns
     /// the first non-none value.
     pub fn find_map_relevant_impl<T, F: FnMut(DefId) -> Option<T>>(
@@ -165,16 +180,14 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
 
-        // Note that we're using `SimplifyParams::Yes` to query `non_blanket_impls` while using
-        // `SimplifyParams::No` while actually adding them.
+        // Note that we're using `TreatParams::AsBoundTypes` to query `non_blanket_impls` while using
+        // `TreatParams::AsPlaceholders` while actually adding them.
         //
         // This way, when searching for some impl for `T: Trait`, we do not look at any impls
         // whose outer level is not a parameter or projection. Especially for things like
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
-        if let Some(simp) =
-            fast_reject::simplify_type(self, self_ty, SimplifyParams::Yes, StripReferences::No)
-        {
+        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsBoundTypes) {
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     if let result @ Some(_) = f(impl_def_id) {
@@ -197,7 +210,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn all_impls(self, def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(def_id);
 
-        blanket_impls.iter().chain(non_blanket_impls.iter().map(|(_, v)| v).flatten()).cloned()
+        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
     }
 }
 
@@ -234,7 +247,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
 
         if let Some(simplified_self_ty) =
-            fast_reject::simplify_type(tcx, impl_self_ty, SimplifyParams::No, StripReferences::No)
+            fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsPlaceholders)
         {
             impls.non_blanket_impls.entry(simplified_self_ty).or_default().push(impl_def_id);
         } else {

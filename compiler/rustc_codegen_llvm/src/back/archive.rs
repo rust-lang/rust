@@ -27,7 +27,6 @@ pub struct LlvmArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     removals: Vec<String>,
     additions: Vec<Addition>,
-    should_update_symbols: bool,
     src_archive: Option<Option<ArchiveRO>>,
 }
 
@@ -75,7 +74,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             config,
             removals: Vec::new(),
             additions: Vec::new(),
-            should_update_symbols: false,
             src_archive: None,
         }
     }
@@ -129,12 +127,6 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             .push(Addition::File { path: file.to_path_buf(), name_in_archive: name.to_owned() });
     }
 
-    /// Indicate that the next call to `build` should update all symbols in
-    /// the archive (equivalent to running 'ar s' over it).
-    fn update_symbols(&mut self) {
-        self.should_update_symbols = true;
-    }
-
     /// Combine the provided files, rlibs, and native libraries into a single
     /// `Archive`.
     fn build(mut self) {
@@ -159,7 +151,9 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
             output_path.with_extension("lib")
         };
 
-        let mingw_gnu_toolchain = self.config.sess.target.llvm_target.ends_with("pc-windows-gnu");
+        let target = &self.config.sess.target;
+        let mingw_gnu_toolchain =
+            target.vendor == "pc" && target.os == "windows" && target.env == "gnu";
 
         let import_name_and_ordinal_vector: Vec<(String, Option<u16>)> = dll_imports
             .iter()
@@ -219,7 +213,7 @@ impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
 
             match result {
                 Err(e) => {
-                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e.to_string()));
+                    self.config.sess.fatal(&format!("Error calling dlltool: {}", e));
                 }
                 Ok(output) if !output.status.success() => self.config.sess.fatal(&format!(
                     "Dlltool could not create import library: {}\n{}",
@@ -313,16 +307,12 @@ impl<'a> LlvmArchiveBuilder<'a> {
         let mut members = Vec::new();
 
         let dst = CString::new(self.config.dst.to_str().unwrap())?;
-        let should_update_symbols = self.should_update_symbols;
 
         unsafe {
             if let Some(archive) = self.src_archive() {
                 for child in archive.iter() {
                     let child = child.map_err(string_to_io_error)?;
-                    let child_name = match child.name() {
-                        Some(s) => s,
-                        None => continue,
-                    };
+                    let Some(child_name) = child.name() else { continue };
                     if removals.iter().any(|r| r == child_name) {
                         continue;
                     }
@@ -385,7 +375,7 @@ impl<'a> LlvmArchiveBuilder<'a> {
                 dst.as_ptr(),
                 members.len() as libc::size_t,
                 members.as_ptr() as *const &_,
-                should_update_symbols,
+                true,
                 kind,
             );
             let ret = if r.into_result().is_err() {

@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::is_hir_ty_cfg_dependant;
+use clippy_utils::ty::is_c_void;
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, GenericArg};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::sym;
 
 use super::CAST_PTR_ALIGNMENT;
 
@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             cx.typeck_results().expr_ty(expr),
         );
         lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
-    } else if let ExprKind::MethodCall(method_path, _, [self_arg, ..], _) = &expr.kind {
+    } else if let ExprKind::MethodCall(method_path, [self_arg, ..], _) = &expr.kind {
         if_chain! {
             if method_path.ident.name == sym!(cast);
             if let Some(generic_args) = method_path.args;
@@ -61,20 +61,4 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
             );
         }
     }
-}
-
-/// Check if the given type is either `core::ffi::c_void` or
-/// one of the platform specific `libc::<platform>::c_void` of libc.
-fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
-    if let ty::Adt(adt, _) = ty.kind() {
-        let names = cx.get_def_path(adt.did);
-
-        if names.is_empty() {
-            return false;
-        }
-        if names[0] == sym::libc || names[0] == sym::core && *names.last().unwrap() == sym!(c_void) {
-            return true;
-        }
-    }
-    false
 }

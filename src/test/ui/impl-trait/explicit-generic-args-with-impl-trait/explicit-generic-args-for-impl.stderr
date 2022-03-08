@@ -11,6 +11,7 @@ note: function defined here, with 1 generic parameter: `T`
    |
 LL | fn foo<T: ?Sized>(_f: impl AsRef<T>) {}
    |    ^^^ -
+   = note: `impl Trait` cannot be explicitly specified as a generic argument
 
 error: aborting due to previous error
 

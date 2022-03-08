@@ -1,58 +1,56 @@
-// does not test any rustfixable lints
+// compile-flags: --test
 
-#[rustfmt::skip]
-#[warn(clippy::eq_op)]
-#[allow(clippy::identity_op, clippy::double_parens)]
-#[allow(clippy::no_effect, unused_variables, clippy::unnecessary_operation, clippy::short_circuit_statement)]
-#[allow(clippy::nonminimal_bool)]
-#[allow(unused)]
-#[allow(clippy::unnecessary_cast)]
+#![warn(clippy::eq_op)]
+#![allow(clippy::double_parens, clippy::identity_op, clippy::nonminimal_bool)]
+
 fn main() {
     // simple values and comparisons
-    1 == 1;
-    "no" == "no";
+    let _ = 1 == 1;
+    let _ = "no" == "no";
     // even though I agree that no means no ;-)
-    false != false;
-    1.5 < 1.5;
-    1u64 >= 1u64;
+    let _ = false != false;
+    let _ = 1.5 < 1.5;
+    let _ = 1u64 >= 1u64;
 
     // casts, methods, parentheses
-    (1 as u64) & (1 as u64);
-    1 ^ ((((((1))))));
+    let _ = (1u32 as u64) & (1u32 as u64);
+    #[rustfmt::skip]
+    {
+        let _ = 1 ^ ((((((1))))));
+    };
 
     // unary and binary operators
-    (-(2) < -(2));
-    ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
-    (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
+    let _ = (-(2) < -(2));
+    let _ = ((1 + 1) & (1 + 1) == (1 + 1) & (1 + 1));
+    let _ = (1 * 2) + (3 * 4) == 1 * 2 + 3 * 4;
 
     // various other things
-    ([1] != [1]);
-    ((1, 2) != (1, 2));
-    vec![1, 2, 3] == vec![1, 2, 3]; //no error yet, as we don't match macros
+    let _ = ([1] != [1]);
+    let _ = ((1, 2) != (1, 2));
+    let _ = vec![1, 2, 3] == vec![1, 2, 3]; //no error yet, as we don't match macros
 
     // const folding
-    1 + 1 == 2;
-    1 - 1 == 0;
+    let _ = 1 + 1 == 2;
+    let _ = 1 - 1 == 0;
 
-    1 - 1;
-    1 / 1;
-    true && true;
+    let _ = 1 - 1;
+    let _ = 1 / 1;
+    let _ = true && true;
 
-    true || true;
-
+    let _ = true || true;
 
     let a: u32 = 0;
     let b: u32 = 0;
 
-    a == b && b == a;
-    a != b && b != a;
-    a < b && b > a;
-    a <= b && b >= a;
+    let _ = a == b && b == a;
+    let _ = a != b && b != a;
+    let _ = a < b && b > a;
+    let _ = a <= b && b >= a;
 
     let mut a = vec![1];
-    a == a;
-    2*a.len() == 2*a.len(); // ok, functions
-    a.pop() == a.pop(); // ok, functions
+    let _ = a == a;
+    let _ = 2 * a.len() == 2 * a.len(); // ok, functions
+    let _ = a.pop() == a.pop(); // ok, functions
 
     check_ignore_macro();
 
@@ -63,15 +61,14 @@ fn main() {
     const D: u32 = A / A;
 }
 
-#[rustfmt::skip]
 macro_rules! check_if_named_foo {
-    ($expression:expr) => (
+    ($expression:expr) => {
         if stringify!($expression) == "foo" {
             println!("foo!");
         } else {
             println!("not foo.");
         }
-    )
+    };
 }
 
 macro_rules! bool_macro {
@@ -80,11 +77,10 @@ macro_rules! bool_macro {
     };
 }
 
-#[allow(clippy::short_circuit_statement)]
 fn check_ignore_macro() {
     check_if_named_foo!(foo);
     // checks if the lint ignores macros with `!` operator
-    !bool_macro!(1) && !bool_macro!("");
+    let _ = !bool_macro!(1) && !bool_macro!("");
 }
 
 struct Nested {
@@ -94,4 +90,19 @@ struct Nested {
 fn check_nested(n1: &Nested, n2: &Nested) -> bool {
     // `n2.inner.0.0` mistyped as `n1.inner.0.0`
     (n1.inner.0).0 == (n1.inner.0).0 && (n1.inner.1).0 == (n2.inner.1).0 && (n1.inner.2).0 == (n2.inner.2).0
+}
+
+#[test]
+fn eq_op_shouldnt_trigger_in_tests() {
+    let a = 1;
+    let result = a + 1 == 1 + a;
+    assert!(result);
+}
+
+#[test]
+fn eq_op_macros_shouldnt_trigger_in_tests() {
+    let a = 1;
+    let b = 2;
+    assert_eq!(a, a);
+    assert_eq!(a + b, b + a);
 }

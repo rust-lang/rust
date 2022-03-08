@@ -256,6 +256,7 @@ impl Once {
     ///
     /// [poison]: struct.Mutex.html#poisoning
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[track_caller]
     pub fn call_once<F>(&self, f: F)
     where
         F: FnOnce(),
@@ -390,6 +391,7 @@ impl Once {
     // currently no way to take an `FnOnce` and call it via virtual dispatch
     // without some allocation overhead.
     #[cold]
+    #[track_caller]
     fn call_inner(&self, ignore_poisoning: bool, init: &mut dyn FnMut(&OnceState)) {
         let mut state_and_queue = self.state_and_queue.load(Ordering::Acquire);
         loop {

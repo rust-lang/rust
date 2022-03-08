@@ -400,9 +400,11 @@ pub enum InferTy {
 /// they carry no values.
 impl UnifyKey for TyVid {
     type Value = ();
+    #[inline]
     fn index(&self) -> u32 {
         self.as_u32()
     }
+    #[inline]
     fn from_index(i: u32) -> TyVid {
         TyVid::from_u32(i)
     }
@@ -419,6 +421,7 @@ impl UnifyKey for IntVid {
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> IntVid {
         IntVid { index: i }
     }
@@ -431,9 +434,11 @@ impl EqUnifyValue for FloatVarValue {}
 
 impl UnifyKey for FloatVid {
     type Value = Option<FloatVarValue>;
+    #[inline]
     fn index(&self) -> u32 {
         self.index
     }
+    #[inline]
     fn from_index(i: u32) -> FloatVid {
         FloatVid { index: i }
     }

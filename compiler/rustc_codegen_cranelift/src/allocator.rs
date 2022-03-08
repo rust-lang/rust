@@ -3,7 +3,6 @@
 
 use crate::prelude::*;
 
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 
 /// Returns whether an allocator shim was created
@@ -91,9 +90,7 @@ fn codegen_inner(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        module
-            .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap();
+        module.define_function(func_id, &mut ctx).unwrap();
         unwind_context.add_function(func_id, &ctx, module.isa());
     }
 
@@ -130,8 +127,6 @@ fn codegen_inner(
         bcx.seal_all_blocks();
         bcx.finalize();
     }
-    module
-        .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-        .unwrap();
+    module.define_function(func_id, &mut ctx).unwrap();
     unwind_context.add_function(func_id, &ctx, module.isa());
 }

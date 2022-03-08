@@ -1,7 +1,8 @@
+// Checks that the elements in the sidebar are alphabetically sorted.
 goto: file://|DOC_PATH|/test_docs/trait.AnotherOne.html
-assert-text: (".sidebar-links a:nth-of-type(1)", "another")
-assert-text: (".sidebar-links a:nth-of-type(2)", "func1")
-assert-text: (".sidebar-links a:nth-of-type(3)", "func2")
-assert-text: (".sidebar-links a:nth-of-type(4)", "func3")
-assert-text: (".sidebar-links a:nth-of-type(5)", "hello")
-assert-text: (".sidebar-links a:nth-of-type(6)", "why_not")
+assert-text: (".sidebar-elems section .block li:nth-of-type(1) > a", "another")
+assert-text: (".sidebar-elems section .block li:nth-of-type(2) > a", "func1")
+assert-text: (".sidebar-elems section .block li:nth-of-type(3) > a", "func2")
+assert-text: (".sidebar-elems section .block li:nth-of-type(4) > a", "func3")
+assert-text: (".sidebar-elems section .block li:nth-of-type(5) > a", "hello")
+assert-text: (".sidebar-elems section .block li:nth-of-type(6) > a", "why_not")

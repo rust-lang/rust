@@ -256,7 +256,7 @@ fn to_upvars_resolved_place_builder<'a, 'tcx>(
             // We must have inferred the capture types since we are building MIR, therefore
             // it's safe to call `tuple_element_ty` and we can unwrap here because
             // we know that the capture exists and is the `capture_index`-th capture.
-            let var_ty = substs.tupled_upvars_ty().tuple_element_ty(capture_index).unwrap();
+            let var_ty = substs.tupled_upvars_ty().tuple_fields()[capture_index];
 
             upvar_resolved_place_builder =
                 upvar_resolved_place_builder.field(Field::new(capture_index), var_ty);

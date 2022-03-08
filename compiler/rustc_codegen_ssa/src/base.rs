@@ -407,20 +407,20 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().erase_regions(main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = cx.tcx().normalize_erasing_regions(
+            ty::ParamEnv::reveal_all(),
+            main_ret_ty.no_bound_vars().unwrap(),
+        );
 
-        let llfn = match cx.declare_c_main(llfty) {
-            Some(llfn) => llfn,
-            None => {
-                // FIXME: We should be smart and show a better diagnostic here.
-                let span = cx.tcx().def_span(rust_main_def_id);
-                cx.sess()
-                    .struct_span_err(span, "entry symbol `main` declared multiple times")
-                    .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
-                    .emit();
-                cx.sess().abort_if_errors();
-                bug!();
-            }
+        let Some(llfn) = cx.declare_c_main(llfty) else {
+            // FIXME: We should be smart and show a better diagnostic here.
+            let span = cx.tcx().def_span(rust_main_def_id);
+            cx.sess()
+                .struct_span_err(span, "entry symbol `main` declared multiple times")
+                .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
+                .emit();
+            cx.sess().abort_if_errors();
+            bug!();
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code
@@ -843,7 +843,7 @@ impl CrateInfo {
             used_crate_source: Default::default(),
             lang_item_to_crate: Default::default(),
             missing_lang_items: Default::default(),
-            dependency_formats: tcx.dependency_formats(()),
+            dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
         };
         let lang_items = tcx.lang_items();
@@ -860,7 +860,7 @@ impl CrateInfo {
             info.native_libraries
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
             info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
+            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum).clone());
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);
             }

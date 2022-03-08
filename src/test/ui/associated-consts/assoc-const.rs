@@ -1,4 +1,6 @@
+// run-pass
 #![feature(associated_const_equality)]
+#![allow(unused)]
 
 pub trait Foo {
   const N: usize;
@@ -13,9 +15,8 @@ impl Foo for Bar {
 const TEST:usize = 3;
 
 
-fn foo<F: Foo<N=3>>() {}
-//~^ ERROR associated const equality is incomplete
-fn bar<F: Foo<N={TEST}>>() {}
-//~^ ERROR associated const equality is incomplete
+fn foo<F: Foo<N=3usize>>() {}
 
-fn main() {}
+fn main() {
+  foo::<Bar>()
+}

@@ -1,5 +1,4 @@
 use crate::consts::{constant_context, constant_simple};
-use crate::differing_macro_contexts;
 use crate::source::snippet_opt;
 use rustc_ast::ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHasher;
@@ -102,7 +101,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 if let Some(typeck) = self.inner.maybe_typeck_results {
                     let l_ty = typeck.pat_ty(l.pat);
                     let r_ty = typeck.pat_ty(r.pat);
-                    if !rustc_middle::ty::TyS::same_type(l_ty, r_ty) {
+                    if l_ty != r_ty {
                         return false;
                     }
                 }
@@ -186,7 +185,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     #[allow(clippy::similar_names)]
     pub fn eq_expr(&mut self, left: &Expr<'_>, right: &Expr<'_>) -> bool {
-        if !self.inner.allow_side_effects && differing_macro_contexts(left.span, right.span) {
+        if !self.inner.allow_side_effects && left.span.ctxt() != right.span.ctxt() {
             return false;
         }
 
@@ -258,7 +257,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                             && self.eq_expr(l.body, r.body)
                     })
             },
-            (&ExprKind::MethodCall(l_path, _, l_args, _), &ExprKind::MethodCall(r_path, _, r_args, _)) => {
+            (&ExprKind::MethodCall(l_path, l_args, _), &ExprKind::MethodCall(r_path, r_args, _)) => {
                 self.inner.allow_side_effects && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
             },
             (&ExprKind::Repeat(le, ll), &ExprKind::Repeat(re, rl)) => {
@@ -713,7 +712,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
 
                 s.hash(&mut self.s);
             },
-            ExprKind::MethodCall(path, ref _tys, args, ref _fn_span) => {
+            ExprKind::MethodCall(path, args, ref _fn_span) => {
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },

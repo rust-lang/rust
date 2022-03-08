@@ -9,10 +9,5 @@ extern crate std;
 // pp-exact:dollar-crate.pp
 
 fn main() {
-    {
-        ::std::io::_print(::core::fmt::Arguments::new_v1(&["rust\n"],
-                                                         &match () {
-                                                              _args => [],
-                                                          }));
-    };
+    { ::std::io::_print(::core::fmt::Arguments::new_v1(&["rust\n"], &[])); };
 }

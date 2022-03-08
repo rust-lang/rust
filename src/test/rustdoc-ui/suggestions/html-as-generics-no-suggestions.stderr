@@ -1,0 +1,38 @@
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:11:13
+   |
+LL | /// This Vec<i32 class="test"> thing!
+   |             ^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/html-as-generics-no-suggestions.rs:1:9
+   |
+LL | #![deny(rustdoc::invalid_html_tags)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unopened HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:20:13
+   |
+LL | /// This Vec</i32> thing!
+   |             ^^^^^^
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:25:13
+   |
+LL | /// This 123<i32> thing!
+   |             ^^^^^
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:30:14
+   |
+LL | /// This Vec:<i32> thing!
+   |              ^^^^^
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics-no-suggestions.rs:35:39
+   |
+LL | /// This [link](https://rust-lang.org)<i32> thing!
+   |                                       ^^^^^
+
+error: aborting due to 5 previous errors
+

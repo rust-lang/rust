@@ -8,7 +8,7 @@ source ./scripts/setup_rust_fork.sh
 echo "[TEST] Test suite of rustc"
 pushd rust
 
-cargo install ripgrep
+command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r src/test/ui/{extern/,panics/,unsized-locals/,lto/,simd*,linkage*,unwind-*.rs} || true
 for test in $(rg --files-with-matches "asm!|catch_unwind|should_panic|lto|// needs-asm-support" src/test/ui); do
@@ -78,6 +78,8 @@ rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # same
 rm src/test/ui/match/issue-82392.rs # differing error
 rm src/test/ui/consts/min_const_fn/address_of_const.rs # same
 rm src/test/ui/consts/issue-miri-1910.rs # same
+rm src/test/ui/generic-associated-types/bugs/issue-80626.rs # same
+rm src/test/ui/generic-associated-types/bugs/issue-89008.rs # same
 rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
@@ -98,6 +100,7 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 rm src/test/incremental/issue-80691-bad-eval-cache.rs # wrong exit code
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
+rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
 
 rm src/test/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 

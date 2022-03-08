@@ -7,7 +7,6 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sync::atomic::{self, Ordering};
 use crate::sys_common::mutex::StaticMutex;
 
 /// Max number of frames to print.
@@ -142,51 +141,6 @@ where
     crate::hint::black_box(());
 
     result
-}
-
-pub enum RustBacktrace {
-    Print(PrintFmt),
-    Disabled,
-    RuntimeDisabled,
-}
-
-// For now logging is turned off by default, and this function checks to see
-// whether the magical environment variable is present to see if it's turned on.
-pub fn rust_backtrace_env() -> RustBacktrace {
-    // If the `backtrace` feature of this crate isn't enabled quickly return
-    // `None` so this can be constant propagated all over the place to turn
-    // optimize away callers.
-    if !cfg!(feature = "backtrace") {
-        return RustBacktrace::Disabled;
-    }
-
-    // Setting environment variables for Fuchsia components isn't a standard
-    // or easily supported workflow. For now, always display backtraces.
-    if cfg!(target_os = "fuchsia") {
-        return RustBacktrace::Print(PrintFmt::Full);
-    }
-
-    static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
-    match ENABLED.load(Ordering::SeqCst) {
-        0 => {}
-        1 => return RustBacktrace::RuntimeDisabled,
-        2 => return RustBacktrace::Print(PrintFmt::Short),
-        _ => return RustBacktrace::Print(PrintFmt::Full),
-    }
-
-    let (format, cache) = env::var_os("RUST_BACKTRACE")
-        .map(|x| {
-            if &x == "0" {
-                (RustBacktrace::RuntimeDisabled, 1)
-            } else if &x == "full" {
-                (RustBacktrace::Print(PrintFmt::Full), 3)
-            } else {
-                (RustBacktrace::Print(PrintFmt::Short), 2)
-            }
-        })
-        .unwrap_or((RustBacktrace::RuntimeDisabled, 1));
-    ENABLED.store(cache, Ordering::SeqCst);
-    format
 }
 
 /// Prints the filename of the backtrace frame.

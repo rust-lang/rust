@@ -1,8 +1,9 @@
 use rustc_arena::TypedArena;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -23,7 +24,7 @@ use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Ta
 use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
-use super::metadata::create_rmeta_file;
+use super::metadata::{create_rmeta_file, MetadataPosition};
 use super::rpath::{self, RPathConfig};
 use crate::{
     looks_like_rust_object_file, CodegenResults, CompiledModule, CrateInfo, NativeLib,
@@ -57,7 +58,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types().iter() {
@@ -216,17 +217,18 @@ pub fn each_linked_rlib(
         }
         let name = &info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
-        let path = if let Some((path, _)) = &used_crate_source.rlib {
-            path
-        } else if used_crate_source.rmeta.is_some() {
-            return Err(format!(
-                "could not find rlib for: `{}`, found rmeta (metadata) file",
-                name
-            ));
+        if let Some((path, _)) = &used_crate_source.rlib {
+            f(cnum, &path);
         } else {
-            return Err(format!("could not find rlib for: `{}`", name));
-        };
-        f(cnum, &path);
+            if used_crate_source.rmeta.is_some() {
+                return Err(format!(
+                    "could not find rlib for: `{}`, found rmeta (metadata) file",
+                    name
+                ));
+            } else {
+                return Err(format!("could not find rlib for: `{}`", name));
+            }
+        }
     }
     Ok(())
 }
@@ -259,12 +261,34 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     flavor: RlibFlavor,
     out_filename: &Path,
     tmpdir: &MaybeTempDir,
-) -> Result<B, ErrorReported> {
+) -> Result<B, ErrorGuaranteed> {
     info!("preparing rlib to {:?}", out_filename);
 
     let lib_search_paths = archive_search_paths(sess);
 
     let mut ab = <B as ArchiveBuilder>::new(sess, out_filename, None);
+
+    let trailing_metadata = match flavor {
+        RlibFlavor::Normal => {
+            let (metadata, metadata_position) =
+                create_rmeta_file(sess, codegen_results.metadata.raw_data());
+            let metadata = emit_metadata(sess, &metadata, tmpdir);
+            match metadata_position {
+                MetadataPosition::First => {
+                    // Most of the time metadata in rlib files is wrapped in a "dummy" object
+                    // file for the target platform so the rlib can be processed entirely by
+                    // normal linkers for the platform. Sometimes this is not possible however.
+                    // If it is possible however, placing the metadata object first improves
+                    // performance of getting metadata from rlibs.
+                    ab.add_file(&metadata);
+                    None
+                }
+                MetadataPosition::Last => Some(metadata),
+            }
+        }
+
+        RlibFlavor::StaticlibBase => None,
+    };
 
     for m in &codegen_results.modules {
         if let Some(obj) = m.object.as_ref() {
@@ -273,6 +297,16 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 
         if let Some(dwarf_obj) = m.dwarf_object.as_ref() {
             ab.add_file(dwarf_obj);
+        }
+    }
+
+    match flavor {
+        RlibFlavor::Normal => {}
+        RlibFlavor::StaticlibBase => {
+            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+            if let Some(obj) = obj {
+                ab.add_file(obj);
+            }
         }
     }
 
@@ -333,54 +367,35 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
         ab.inject_dll_import_lib(&raw_dylib_name, &raw_dylib_imports, tmpdir);
     }
 
-    // After adding all files to the archive, we need to update the
-    // symbol table of the archive.
-    ab.update_symbols();
-
-    // Note that it is important that we add all of our non-object "magical
-    // files" *after* all of the object files in the archive. The reason for
-    // this is as follows:
-    //
-    // * When performing LTO, this archive will be modified to remove
-    //   objects from above. The reason for this is described below.
-    //
-    // * When the system linker looks at an archive, it will attempt to
-    //   determine the architecture of the archive in order to see whether its
-    //   linkable.
-    //
-    //   The algorithm for this detection is: iterate over the files in the
-    //   archive. Skip magical SYMDEF names. Interpret the first file as an
-    //   object file. Read architecture from the object file.
-    //
-    // * As one can probably see, if "metadata" and "foo.bc" were placed
-    //   before all of the objects, then the architecture of this archive would
-    //   not be correctly inferred once 'foo.o' is removed.
-    //
-    // Basically, all this means is that this code should not move above the
-    // code above.
-    match flavor {
-        RlibFlavor::Normal => {
-            // metadata in rlib files is wrapped in a "dummy" object file for
-            // the target platform so the rlib can be processed entirely by
-            // normal linkers for the platform.
-            let metadata = create_rmeta_file(sess, codegen_results.metadata.raw_data());
-            ab.add_file(&emit_metadata(sess, &metadata, tmpdir));
-
-            // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on macOS (see
-            // #11162), and isn't necessary there anyway
-            if !sess.target.is_like_osx {
-                ab.update_symbols();
-            }
-        }
-
-        RlibFlavor::StaticlibBase => {
-            let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
-            if let Some(obj) = obj {
-                ab.add_file(obj);
-            }
-        }
+    if let Some(trailing_metadata) = trailing_metadata {
+        // Note that it is important that we add all of our non-object "magical
+        // files" *after* all of the object files in the archive. The reason for
+        // this is as follows:
+        //
+        // * When performing LTO, this archive will be modified to remove
+        //   objects from above. The reason for this is described below.
+        //
+        // * When the system linker looks at an archive, it will attempt to
+        //   determine the architecture of the archive in order to see whether its
+        //   linkable.
+        //
+        //   The algorithm for this detection is: iterate over the files in the
+        //   archive. Skip magical SYMDEF names. Interpret the first file as an
+        //   object file. Read architecture from the object file.
+        //
+        // * As one can probably see, if "metadata" and "foo.bc" were placed
+        //   before all of the objects, then the architecture of this archive would
+        //   not be correctly inferred once 'foo.o' is removed.
+        //
+        // * Most of the time metadata in rlib files is wrapped in a "dummy" object
+        //   file for the target platform so the rlib can be processed entirely by
+        //   normal linkers for the platform. Sometimes this is not possible however.
+        //
+        // Basically, all this means is that this code should not move above the
+        // code above.
+        ab.add_file(&trailing_metadata);
     }
+
     return Ok(ab);
 }
 
@@ -393,7 +408,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 fn collate_raw_dylibs(
     sess: &Session,
     used_libraries: &[NativeLib],
-) -> Result<Vec<(String, Vec<DllImport>)>, ErrorReported> {
+) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
@@ -445,7 +460,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let mut ab =
         link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir)?;
     let mut all_native_libs = vec![];
@@ -509,7 +524,6 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
         sess.fatal(&e);
     }
 
-    ab.update_symbols();
     ab.build();
 
     if !all_native_libs.is_empty() {
@@ -667,7 +681,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         cmd.env_remove(k);
     }
 
-    if sess.opts.debugging_opts.print_link_args {
+    if sess.opts.prints.contains(&PrintRequest::LinkArgs) {
         println!("{:?}", &cmd);
     }
 
@@ -684,9 +698,8 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     loop {
         i += 1;
         prog = sess.time("run_linker", || exec_linker(sess, &cmd, out_filename, tmpdir));
-        let output = match prog {
-            Ok(ref output) => output,
-            Err(_) => break,
+        let Ok(ref output) = prog else {
+            break;
         };
         if output.status.success() {
             break;
@@ -932,7 +945,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
                      but `link.exe` was not found",
                 );
                 sess.note_without_error(
-                    "please ensure that VS 2013, VS 2015, VS 2017 or VS 2019 \
+                    "please ensure that VS 2013, VS 2015, VS 2017, VS 2019 or VS 2022 \
                      was installed with the Visual C++ option",
                 );
             }
@@ -977,7 +990,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
         //
-        // We cannot rely on the .o paths in the exectuable because they may have been
+        // We cannot rely on the .o paths in the executable because they may have been
         // remapped by --remap-path-prefix and therefore invalid, so we need to provide
         // the .o/.dwo paths explicitly.
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
@@ -1159,6 +1172,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                     LinkerFlavor::Lld(_) => "lld",
                     LinkerFlavor::PtxLinker => "rust-ptx-linker",
                     LinkerFlavor::BpfLinker => "bpf-linker",
+                    LinkerFlavor::L4Bender => "l4-bender",
                 }),
                 flavor,
             )),
@@ -2034,9 +2048,8 @@ fn add_local_native_libraries(
     let search_path = OnceCell::new();
     let mut last = (NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
-        let name = match lib.name {
-            Some(l) => l,
-            None => continue,
+        let Some(name) = lib.name else {
+            continue;
         };
 
         // Skip if this library is the same as the last.
@@ -2309,7 +2322,6 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
 
         sess.prof.generic_activity_with_arg("link_altering_rlib", name).run(|| {
             let mut archive = <B as ArchiveBuilder>::new(sess, &dst, Some(cratepath));
-            archive.update_symbols();
 
             let mut any_objects = false;
             for f in archive.src_files() {
@@ -2392,9 +2404,8 @@ fn add_upstream_native_libraries(
     let mut last = (NativeLibKind::Unspecified, None);
     for &cnum in &codegen_results.crate_info.used_crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
-            let name = match lib.name {
-                Some(l) => l,
-                None => continue,
+            let Some(name) = lib.name else {
+                continue;
             };
             if !relevant_lib(sess, &lib) {
                 continue;
@@ -2424,7 +2435,7 @@ fn add_upstream_native_libraries(
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }

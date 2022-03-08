@@ -137,14 +137,13 @@ pub struct TestTimeOptions {
     /// Denotes if the test critical execution time limit excess should be considered
     /// a test failure.
     pub error_on_excess: bool,
-    pub colored: bool,
     pub unit_threshold: TimeThreshold,
     pub integration_threshold: TimeThreshold,
     pub doctest_threshold: TimeThreshold,
 }
 
 impl TestTimeOptions {
-    pub fn new_from_env(error_on_excess: bool, colored: bool) -> Self {
+    pub fn new_from_env(error_on_excess: bool) -> Self {
         let unit_threshold = TimeThreshold::from_env_var(time_constants::UNIT_ENV_NAME)
             .unwrap_or_else(Self::default_unit);
 
@@ -155,7 +154,7 @@ impl TestTimeOptions {
         let doctest_threshold = TimeThreshold::from_env_var(time_constants::DOCTEST_ENV_NAME)
             .unwrap_or_else(Self::default_doctest);
 
-        Self { error_on_excess, colored, unit_threshold, integration_threshold, doctest_threshold }
+        Self { error_on_excess, unit_threshold, integration_threshold, doctest_threshold }
     }
 
     pub fn is_warn(&self, test: &TestDesc, exec_time: &TestExecTime) -> bool {

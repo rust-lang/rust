@@ -1,5 +1,3 @@
-#![feature(question_mark, question_mark_carrier)]
-
 // Test that type inference fails where there are multiple possible return types
 // for the `?` operator.
 

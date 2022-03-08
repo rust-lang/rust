@@ -9,7 +9,7 @@ note: generator is not `Send` as this value is used across a yield
   --> $DIR/generator-print-verbose-1.rs:35:9
    |
 LL |         let _non_send_gen = make_non_send_generator();
-   |             ------------- has type `Opaque(DefId(0:34 ~ generator_print_verbose_1[HASH]::make_non_send_generator::{opaque#0}), [])` which is not `Send`
+   |             ------------- has type `Opaque(DefId(0:34 ~ generator_print_verbose_1[749a]::make_non_send_generator::{opaque#0}), [])` which is not `Send`
 LL |         yield;
    |         ^^^^^ yield occurs here, with `_non_send_gen` maybe used later
 LL |     };
@@ -29,10 +29,10 @@ LL |     require_send(send_gen);
    = help: the trait `Sync` is not implemented for `RefCell<i32>`
    = note: required because of the requirements on the impl of `Send` for `Arc<RefCell<i32>>`
    = note: required because it appears within the type `[make_gen2<Arc<RefCell<i32>>>::{closure#0} upvar_tys=(Arc<RefCell<i32>>) {()}]`
-   = note: required because it appears within the type `Opaque(DefId(0:39 ~ generator_print_verbose_1[HASH]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
-   = note: required because it appears within the type `Opaque(DefId(0:42 ~ generator_print_verbose_1[HASH]::make_non_send_generator2::{opaque#0}), [])`
-   = note: required because it appears within the type `{Opaque(DefId(0:42 ~ generator_print_verbose_1[HASH]::make_non_send_generator2::{opaque#0}), []), ()}`
-   = note: required because it appears within the type `[test2::{closure#0} upvar_tys=() {Opaque(DefId(0:42 ~ generator_print_verbose_1[HASH]::make_non_send_generator2::{opaque#0}), []), ()}]`
+   = note: required because it appears within the type `Opaque(DefId(0:39 ~ generator_print_verbose_1[749a]::make_gen2::{opaque#0}), [std::sync::Arc<std::cell::RefCell<i32>>])`
+   = note: required because it appears within the type `Opaque(DefId(0:42 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), [])`
+   = note: required because it appears within the type `{Opaque(DefId(0:42 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), []), ()}`
+   = note: required because it appears within the type `[test2::{closure#0} upvar_tys=() {Opaque(DefId(0:42 ~ generator_print_verbose_1[749a]::make_non_send_generator2::{opaque#0}), []), ()}]`
 note: required by a bound in `require_send`
   --> $DIR/generator-print-verbose-1.rs:26:25
    |

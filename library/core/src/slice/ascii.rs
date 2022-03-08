@@ -68,7 +68,6 @@ impl [u8] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(inherent_ascii_escape)]
     ///
     /// let s = b"0\t\r\n'\"\\\x9d";
     /// let escaped = s.escape_ascii().to_string();
@@ -76,9 +75,87 @@ impl [u8] {
     /// ```
     #[must_use = "this returns the escaped bytes as an iterator, \
                   without modifying the original"]
-    #[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+    #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
     pub fn escape_ascii(&self) -> EscapeAscii<'_> {
         EscapeAscii { inner: self.iter().flat_map(EscapeByte) }
+    }
+
+    /// Returns a byte slice with leading ASCII whitespace bytes removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b" \t hello world\n".trim_ascii_start(), b"hello world\n");
+    /// assert_eq!(b"  ".trim_ascii_start(), b"");
+    /// assert_eq!(b"".trim_ascii_start(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii_start(&self) -> &[u8] {
+        let mut bytes = self;
+        // Note: A pattern matching based approach (instead of indexing) allows
+        // making the function const.
+        while let [first, rest @ ..] = bytes {
+            if first.is_ascii_whitespace() {
+                bytes = rest;
+            } else {
+                break;
+            }
+        }
+        bytes
+    }
+
+    /// Returns a byte slice with trailing ASCII whitespace bytes removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b"\r hello world\n ".trim_ascii_end(), b"\r hello world");
+    /// assert_eq!(b"  ".trim_ascii_end(), b"");
+    /// assert_eq!(b"".trim_ascii_end(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii_end(&self) -> &[u8] {
+        let mut bytes = self;
+        // Note: A pattern matching based approach (instead of indexing) allows
+        // making the function const.
+        while let [rest @ .., last] = bytes {
+            if last.is_ascii_whitespace() {
+                bytes = rest;
+            } else {
+                break;
+            }
+        }
+        bytes
+    }
+
+    /// Returns a byte slice with leading and trailing ASCII whitespace bytes
+    /// removed.
+    ///
+    /// 'Whitespace' refers to the definition used by
+    /// `u8::is_ascii_whitespace`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(byte_slice_trim_ascii)]
+    ///
+    /// assert_eq!(b"\r hello world\n ".trim_ascii(), b"hello world");
+    /// assert_eq!(b"  ".trim_ascii(), b"");
+    /// assert_eq!(b"".trim_ascii(), b"");
+    /// ```
+    #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    pub const fn trim_ascii(&self) -> &[u8] {
+        self.trim_ascii_start().trim_ascii_end()
     }
 }
 
@@ -93,13 +170,13 @@ impl_fn_for_zst! {
 ///
 /// This `struct` is created by the [`slice::escape_ascii`] method. See its
 /// documentation for more information.
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 #[derive(Clone)]
 pub struct EscapeAscii<'a> {
     inner: iter::FlatMap<super::Iter<'a, u8>, ascii::EscapeDefault, EscapeByte>,
 }
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::Iterator for EscapeAscii<'a> {
     type Item = u8;
     #[inline]
@@ -131,23 +208,23 @@ impl<'a> iter::Iterator for EscapeAscii<'a> {
     }
 }
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::DoubleEndedIterator for EscapeAscii<'a> {
     fn next_back(&mut self) -> Option<u8> {
         self.inner.next_back()
     }
 }
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::ExactSizeIterator for EscapeAscii<'a> {}
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> iter::FusedIterator for EscapeAscii<'a> {}
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Display for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.clone().try_for_each(|b| f.write_char(b as char))
     }
 }
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 impl<'a> fmt::Debug for EscapeAscii<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("EscapeAscii").finish_non_exhaustive()

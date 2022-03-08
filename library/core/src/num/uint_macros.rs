@@ -17,7 +17,7 @@ macro_rules! uint_impl {
         pub const MIN: Self = 0;
 
         /// The largest value that can be represented by this integer type,
-        #[doc = concat!("2<sup>", $BITS, "</sup> - 1.")]
+        #[doc = concat!("2<sup>", $BITS, "</sup> &minus; 1.")]
         ///
         /// # Examples
         ///
@@ -1132,6 +1132,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[stable(feature = "saturating_div", since = "1.58.0")]
+        #[rustc_const_stable(feature = "saturating_div", since = "1.58.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
@@ -1634,11 +1635,11 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(int_abs_diff)]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(80), 20", stringify!($SelfT), ");")]
         #[doc = concat!("assert_eq!(100", stringify!($SelfT), ".abs_diff(110), 10", stringify!($SelfT), ");")]
         /// ```
-        #[unstable(feature = "int_abs_diff", issue = "89492")]
+        #[stable(feature = "int_abs_diff", since = "1.60.0")]
+        #[rustc_const_stable(feature = "int_abs_diff", since = "1.60.0")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]

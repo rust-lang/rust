@@ -1,0 +1,25 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/issue-93282.rs:2:9
+   |
+LL |     f<'a,>
+   |         ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: expected one of `.`, `:`, `;`, `?`, `for`, `loop`, `while`, `{`, `}`, or an operator, found `,`
+  --> $DIR/issue-93282.rs:2:9
+   |
+LL |     f<'a,>
+   |         ^ expected one of 10 possible tokens
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     f::<'a,>
+   |      ++
+
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/issue-93282.rs:13:11
+   |
+LL |     bar('y, x);
+   |           ^ expected `while`, `for`, `loop` or `{` after a label
+
+error: aborting due to 3 previous errors
+

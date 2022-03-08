@@ -4,6 +4,7 @@
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
 
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
@@ -279,8 +280,8 @@ where
         }
     }
 
-    fn visit_const(&mut self, c: &'tcx Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        self.visit_ty(c.ty)?;
+    fn visit_const(&mut self, c: Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+        self.visit_ty(c.ty())?;
         let tcx = self.def_id_visitor.tcx();
         if let Ok(Some(ct)) = AbstractConst::from_const(tcx, c) {
             self.visit_abstract_const_expr(tcx, ct)?;
@@ -563,7 +564,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
                 let item = self.tcx.hir().expect_item(def_id);
-                if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }) = item.kind {
+                if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }, _) = item.kind {
                     if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                         self.update(def_id, level);
                     }
@@ -685,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Macro(ref macro_def) => {
+            hir::ItemKind::Macro(ref macro_def, _) => {
                 self.update_reachability_from_macro(item.def_id, macro_def);
             }
             hir::ItemKind::ForeignMod { items, .. } => {
@@ -851,7 +852,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const { has_default, .. } => {
+                GenericParamDefKind::Const { has_default } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
                     if has_default {
                         self.visit(self.ev.tcx.const_param_default(param.def_id));
@@ -1148,19 +1149,11 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 if self.visit(ty).is_break() {
                     return;
                 }
+            } else {
+                // We don't do anything for const infers here.
             }
         } else {
-            let local_id = self.tcx.hir().local_def_id(inf.hir_id);
-            if let Some(did) = self.tcx.opt_const_param_of(local_id) {
-                if self.visit_def_id(did, "inferred", &"").is_break() {
-                    return;
-                }
-            }
-
-            // FIXME see above note for same issue.
-            if self.visit(rustc_typeck::hir_ty_to_ty(self.tcx, &inf.to_ty())).is_break() {
-                return;
-            }
+            bug!("visit_infer without typeck_results");
         }
         intravisit::walk_inf(self, inf);
     }
@@ -1211,9 +1204,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     return;
                 }
             }
-            hir::ExprKind::MethodCall(_, span, _, _) => {
+            hir::ExprKind::MethodCall(segment, ..) => {
                 // Method calls have to be checked specially.
-                self.span = span;
+                self.span = segment.ident.span;
                 if let Some(def_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) {
                     if self.visit(self.tcx.type_of(def_id)).is_break() {
                         return;
@@ -1357,7 +1350,7 @@ struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
 impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path: &hir::Path<'_>) -> bool {
         let did = match path.res {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => return false,
+            Res::PrimTy(..) | Res::SelfTy { .. } | Res::Err => return false,
             res => res.def_id(),
         };
 

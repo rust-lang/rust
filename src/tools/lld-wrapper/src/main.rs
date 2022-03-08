@@ -8,7 +8,7 @@
 //! In Rust with `-Z gcc-ld=lld` we have gcc or clang invoke rust-lld. Since there is no way to
 //! make gcc/clang pass `-flavor <flavor>` as the first two arguments in the linker invocation
 //! and since Windows does not support symbolic links for files this wrapper is used in place of a
-//! symblic link. It execs `../rust-lld -flavor ld` if the feature `ld` is enabled and
+//! symbolic link. It execs `../rust-lld -flavor ld` if the feature `ld` is enabled and
 //! `../rust-lld -flavor ld64` if `ld64` is enabled. On Windows it spawns a `..\rust-lld.exe`
 //! child process.
 

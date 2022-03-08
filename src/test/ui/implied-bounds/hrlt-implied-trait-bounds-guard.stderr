@@ -1,0 +1,12 @@
+error[E0623]: lifetime mismatch
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:29:29
+   |
+LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
+   |                             ^^^^^^^^^^^^^^^^^^                       -------
+   |                             |
+   |                             this parameter and the return type are declared with different lifetimes...
+   |                             ...but data from `x` is returned here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0623`.

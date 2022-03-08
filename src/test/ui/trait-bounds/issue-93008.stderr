@@ -1,0 +1,12 @@
+error[E0277]: the trait bound `&'static mut (): Clone` is not satisfied
+  --> $DIR/issue-93008.rs:5:5
+   |
+LL |     &'static mut (): Clone,
+   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `&'static mut ()`
+   |
+   = help: see issue #48214
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

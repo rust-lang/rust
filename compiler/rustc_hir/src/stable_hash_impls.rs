@@ -164,13 +164,11 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for TraitItem<'_> {
 
 impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for ImplItem<'_> {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let ImplItem { def_id: _, ident, ref vis, defaultness, ref generics, ref kind, span } =
-            *self;
+        let ImplItem { def_id: _, ident, ref vis, ref generics, ref kind, span } = *self;
 
         hcx.hash_hir_item_like(|hcx| {
             ident.name.hash_stable(hcx, hasher);
             vis.hash_stable(hcx, hasher);
-            defaultness.hash_stable(hcx, hasher);
             generics.hash_stable(hcx, hasher);
             kind.hash_stable(hcx, hasher);
             span.hash_stable(hcx, hasher);
@@ -208,8 +206,16 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for OwnerNodes<'
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `nodes` and `bodies` fields since these refer to information included in
         // `hash` which is hashed in the collector and used for the crate hash.
-        let OwnerNodes { hash_including_bodies, hash_without_bodies: _, nodes: _, bodies: _ } =
-            *self;
+        // `local_id_to_def_id` is also ignored because is dependent on the body, then just hashing
+        // the body satisfies the condition of two nodes being different have different
+        // `hash_stable` results.
+        let OwnerNodes {
+            hash_including_bodies,
+            hash_without_bodies: _,
+            nodes: _,
+            bodies: _,
+            local_id_to_def_id: _,
+        } = *self;
         hash_including_bodies.hash_stable(hcx, hasher);
     }
 }

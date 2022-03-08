@@ -1,9 +1,8 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
-use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::ast::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
@@ -135,7 +134,7 @@ impl EarlyLintPass for Formatting {
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
     if let ExprKind::Assign(ref lhs, ref rhs, _) = expr.kind {
-        if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion() {
+        if !lhs.span.from_expansion() && !rhs.span.from_expansion() {
             let eq_span = lhs.span.between(rhs.span);
             if let ExprKind::Unary(op, ref sub_rhs) = rhs.kind {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
@@ -165,7 +164,7 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &Expr) {
 fn check_unop(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
         if let ExprKind::Binary(ref binop, ref lhs, ref rhs) = expr.kind;
-        if !differing_macro_contexts(lhs.span, rhs.span) && !lhs.span.from_expansion();
+        if !lhs.span.from_expansion() && !rhs.span.from_expansion();
         // span between BinOp LHS and RHS
         let binop_span = lhs.span.between(rhs.span);
         // if RHS is an UnOp
@@ -206,8 +205,8 @@ fn check_else(cx: &EarlyContext<'_>, expr: &Expr) {
     if_chain! {
         if let ExprKind::If(_, then, Some(else_)) = &expr.kind;
         if is_block(else_) || is_if(else_);
-        if !differing_macro_contexts(then.span, else_.span);
-        if !then.span.from_expansion() && !in_external_macro(cx.sess, expr.span);
+        if !then.span.from_expansion() && !else_.span.from_expansion();
+        if !in_external_macro(cx.sess(), expr.span);
 
         // workaround for rust-lang/rust#43081
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
@@ -259,7 +258,7 @@ fn has_unary_equivalent(bin_op: BinOpKind) -> bool {
 }
 
 fn indentation(cx: &EarlyContext<'_>, span: Span) -> usize {
-    cx.sess.source_map().lookup_char_pos(span.lo()).col.0
+    cx.sess().source_map().lookup_char_pos(span.lo()).col.0
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
@@ -268,7 +267,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
         for element in array {
             if_chain! {
                 if let ExprKind::Binary(ref op, ref lhs, _) = element.kind;
-                if has_unary_equivalent(op.node) && !differing_macro_contexts(lhs.span, op.span);
+                if has_unary_equivalent(op.node) && lhs.span.ctxt() == op.span.ctxt();
                 let space_span = lhs.span.between(op.span);
                 if let Some(space_snippet) = snippet_opt(cx, space_span);
                 let lint_span = lhs.span.with_lo(lhs.span.hi());
@@ -291,8 +290,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &Expr) {
 
 fn check_missing_else(cx: &EarlyContext<'_>, first: &Expr, second: &Expr) {
     if_chain! {
-        if !differing_macro_contexts(first.span, second.span);
-        if !first.span.from_expansion();
+        if !first.span.from_expansion() && !second.span.from_expansion();
         if let ExprKind::If(cond_expr, ..) = &first.kind;
         if is_block(second) || is_if(second);
 

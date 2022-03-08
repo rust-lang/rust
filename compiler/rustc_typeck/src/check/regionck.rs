@@ -689,7 +689,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         let rptr_ty = self.resolve_node_type(id);
         if let ty::Ref(r, _, _) = rptr_ty.kind() {
             debug!("rptr_ty={}", rptr_ty);
-            self.link_region(span, r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
+            self.link_region(span, *r, ty::BorrowKind::from_mutbl(mutbl), cmt_borrowed);
         }
     }
 

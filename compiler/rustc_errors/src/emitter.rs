@@ -227,7 +227,8 @@ pub trait Emitter {
         diag: &'a Diagnostic,
     ) -> (MultiSpan, &'a [CodeSuggestion]) {
         let mut primary_span = diag.span.clone();
-        if let Some((sugg, rest)) = diag.suggestions.split_first() {
+        let suggestions = diag.suggestions.as_ref().map_or(&[][..], |suggestions| &suggestions[..]);
+        if let Some((sugg, rest)) = suggestions.split_first() {
             if rest.is_empty() &&
                // ^ if there is only one suggestion
                // don't display multi-suggestions as labels
@@ -282,10 +283,10 @@ pub trait Emitter {
                 // to be consistent. We could try to figure out if we can
                 // make one (or the first one) inline, but that would give
                 // undue importance to a semi-random suggestion
-                (primary_span, &diag.suggestions)
+                (primary_span, suggestions)
             }
         } else {
-            (primary_span, &diag.suggestions)
+            (primary_span, suggestions)
         }
     }
 
@@ -407,8 +408,8 @@ pub trait Emitter {
                             "this derive macro expansion".into()
                         }
                         ExpnKind::Macro(MacroKind::Bang, _) => "this macro invocation".into(),
-                        ExpnKind::Inlined => "the inlined copy of this code".into(),
-                        ExpnKind::Root => "in the crate root".into(),
+                        ExpnKind::Inlined => "this inlined function call".into(),
+                        ExpnKind::Root => "the crate root".into(),
                         ExpnKind::AstPass(kind) => kind.descr().into(),
                         ExpnKind::Desugaring(kind) => {
                             format!("this {} desugaring", kind.descr()).into()
@@ -1137,9 +1138,8 @@ impl EmitterWriter {
     }
 
     fn get_multispan_max_line_num(&mut self, msp: &MultiSpan) -> usize {
-        let sm = match self.sm {
-            Some(ref sm) => sm,
-            None => return 0,
+        let Some(ref sm) = self.sm else {
+            return 0;
         };
 
         let mut max = 0;
@@ -1589,9 +1589,8 @@ impl EmitterWriter {
         level: &Level,
         max_line_num_len: usize,
     ) -> io::Result<()> {
-        let sm = match self.sm {
-            Some(ref sm) => sm,
-            None => return Ok(()),
+        let Some(ref sm) = self.sm else {
+            return Ok(());
         };
 
         // Render the replacements for each suggestion

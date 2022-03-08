@@ -117,8 +117,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             // the post-inference `trait_ref`, as it's more accurate.
                             trait_: Some(trait_ref.clean(cx)),
                             for_: ty.clean(cx),
-                            items: cx
-                                .tcx
+                            items: cx.tcx
                                 .associated_items(impl_def_id)
                                 .in_definition_order()
                                 .map(|x| x.clean(cx))

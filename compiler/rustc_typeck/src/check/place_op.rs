@@ -31,7 +31,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.apply_adjustments(
                 oprnd_expr,
                 vec![Adjustment {
-                    kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
+                    kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
                     target: method.sig.inputs()[0],
                 }],
             );
@@ -142,7 +142,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unsize {
                 // We only unsize arrays here.
                 if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = self.tcx.mk_slice(element_ty);
+                    self_ty = self.tcx.mk_slice(*element_ty);
                 } else {
                     continue;
                 }
@@ -165,9 +165,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(region, AutoBorrowMutability::Not)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
                         target: self.tcx.mk_ref(
-                            region,
+                            *region,
                             ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: adjusted_ty },
                         ),
                     });
@@ -432,9 +432,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // not the case today.
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
-                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(region, mutbl));
-                    adjustment.target =
-                        self.tcx.mk_ref(region, ty::TypeAndMut { ty: source, mutbl: mutbl.into() });
+                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
+                    adjustment.target = self
+                        .tcx
+                        .mk_ref(*region, ty::TypeAndMut { ty: source, mutbl: mutbl.into() });
                 }
                 source = adjustment.target;
             }

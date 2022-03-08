@@ -4,10 +4,10 @@ error: expected identifier, found keyword `break`
 LL |     let break = "foo";
    |         ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `break` to use it as an identifier
    |
 LL |     let r#break = "foo";
-   |         ~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

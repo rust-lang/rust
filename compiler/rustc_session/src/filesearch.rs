@@ -1,13 +1,11 @@
 //! A module for searching for libraries
 
-pub use self::FileMatch::*;
-
 use std::env;
 use std::fs;
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 
-use crate::search_paths::{PathKind, SearchPath, SearchPathFile};
+use crate::search_paths::{PathKind, SearchPath};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use tracing::debug;
 
@@ -41,36 +39,6 @@ impl<'a> FileSearch<'a> {
 
     pub fn get_self_contained_lib_path(&self) -> PathBuf {
         self.get_lib_path().join("self-contained")
-    }
-
-    pub fn search<F>(&self, mut pick: F)
-    where
-        F: FnMut(&SearchPathFile, PathKind) -> FileMatch,
-    {
-        for search_path in self.search_paths() {
-            debug!("searching {}", search_path.dir.display());
-            fn is_rlib(spf: &SearchPathFile) -> bool {
-                if let Some(f) = &spf.file_name_str { f.ends_with(".rlib") } else { false }
-            }
-            // Reading metadata out of rlibs is faster, and if we find both
-            // an rlib and a dylib we only read one of the files of
-            // metadata, so in the name of speed, bring all rlib files to
-            // the front of the search list.
-            let files1 = search_path.files.iter().filter(|spf| is_rlib(&spf));
-            let files2 = search_path.files.iter().filter(|spf| !is_rlib(&spf));
-            for spf in files1.chain(files2) {
-                debug!("testing {}", spf.path.display());
-                let maybe_picked = pick(spf, search_path.kind);
-                match maybe_picked {
-                    FileMatches => {
-                        debug!("picked {}", spf.path.display());
-                    }
-                    FileDoesntMatch => {
-                        debug!("rejected {}", spf.path.display());
-                    }
-                }
-            }
-        }
     }
 
     pub fn new(

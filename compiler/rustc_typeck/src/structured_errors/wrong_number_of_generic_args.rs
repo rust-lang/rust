@@ -1,5 +1,7 @@
 use crate::structured_errors::StructuredDiagnostic;
-use rustc_errors::{pluralize, Applicability, DiagnosticBuilder, DiagnosticId};
+use rustc_errors::{
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
@@ -82,6 +84,9 @@ pub enum GenericArgsInfo {
         // us infer the position of type and const generic arguments
         // in the angle brackets
         args_offset: usize,
+
+        // if synthetic type arguments (e.g. `impl Trait`) are specified
+        synth_provided: bool,
     },
 }
 
@@ -252,6 +257,13 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
+    fn is_synth_provided(&self) -> bool {
+        match self.gen_args_info {
+            ExcessTypesOrConsts { synth_provided, .. } => synth_provided,
+            _ => false,
+        }
+    }
+
     // Helper function to choose a quantifier word for the number of expected arguments
     // and to give a bound for the number of expected arguments
     fn get_quantifier_and_bound(&self) -> (&'static str, usize) {
@@ -362,7 +374,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx> {
+    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
@@ -370,7 +382,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.
-    fn notify(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn notify(&self, err: &mut Diagnostic) {
         let (quantifier, bound) = self.get_quantifier_and_bound();
         let provided_args = self.num_provided_args();
 
@@ -422,7 +434,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest(&self, err: &mut Diagnostic) {
         debug!(
             "suggest(self.provided {:?}, self.gen_args.span(): {:?})",
             self.num_provided_args(),
@@ -449,7 +461,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String>;
     /// ```
-    fn suggest_adding_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_args(&self, err: &mut Diagnostic) {
         if self.gen_args.parenthesized {
             return;
         }
@@ -465,7 +477,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_lifetime_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_lifetime_args(&self, err: &mut Diagnostic) {
         debug!("suggest_adding_lifetime_args(path_segment: {:?})", self.path_segment);
         let num_missing_args = self.num_missing_lifetime_args();
         let num_params_to_take = num_missing_args;
@@ -547,7 +559,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn suggest_adding_type_and_const_args(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_adding_type_and_const_args(&self, err: &mut Diagnostic) {
         let num_missing_args = self.num_missing_type_or_const_args();
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
@@ -602,7 +614,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     /// ```text
     /// type Map = HashMap<String, String, String, String>;
     /// ```
-    fn suggest_removing_args_or_generics(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_removing_args_or_generics(&self, err: &mut Diagnostic) {
         let num_provided_lt_args = self.num_provided_lifetime_args();
         let num_provided_type_const_args = self.num_provided_type_or_const_args();
         let num_provided_args = num_provided_lt_args + num_provided_type_const_args;
@@ -617,7 +629,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         let remove_entire_generics = num_redundant_args >= self.gen_args.args.len();
 
-        let remove_lifetime_args = |err: &mut DiagnosticBuilder<'_>| {
+        let remove_lifetime_args = |err: &mut Diagnostic| {
             let mut lt_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -659,7 +671,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             );
         };
 
-        let remove_type_or_const_args = |err: &mut DiagnosticBuilder<'_>| {
+        let remove_type_or_const_args = |err: &mut Diagnostic| {
             let mut gen_arg_spans = Vec::new();
             let mut found_redundant = false;
             for arg in self.gen_args.args {
@@ -729,7 +741,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     }
 
     /// Builds the `type defined here` message.
-    fn show_definition(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn show_definition(&self, err: &mut Diagnostic) {
         let mut spans: MultiSpan = if let Some(def_span) = self.tcx.def_ident_span(self.def_id) {
             if self.tcx.sess.source_map().span_to_snippet(def_span).is_ok() {
                 def_span.into()
@@ -778,6 +790,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
         err.span_note(spans, &msg);
     }
+
+    /// Add note if `impl Trait` is explicitly specified.
+    fn note_synth_provided(&self, err: &mut Diagnostic) {
+        if !self.is_synth_provided() {
+            return;
+        }
+
+        err.note("`impl Trait` cannot be explicitly specified as a generic argument");
+    }
 }
 
 impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
@@ -789,12 +810,13 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         rustc_errors::error_code!(E0107)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = self.start_diagnostics();
 
         self.notify(&mut err);
         self.suggest(&mut err);
         self.show_definition(&mut err);
+        self.note_synth_provided(&mut err);
 
         err
     }

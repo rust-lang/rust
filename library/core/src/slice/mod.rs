@@ -16,7 +16,7 @@ use crate::option::Option::{None, Some};
 use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
-#[cfg(not(miri))] // Miri does not support all SIMD intrinsics
+#[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
 use crate::simd::{self, Simd};
 use crate::slice;
 
@@ -71,6 +71,9 @@ pub use raw::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "from_ref", since = "1.28.0")]
 pub use raw::{from_mut, from_ref};
 
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+pub use raw::{from_mut_ptr_range, from_ptr_range};
+
 // This function is public only because there is no other way to unit test heapsort.
 #[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "none")]
 pub use sort::heapsort;
@@ -81,7 +84,7 @@ pub use index::SliceIndex;
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use index::range;
 
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use ascii::EscapeAscii;
 
 /// Calculates the direction and split point of a one-sided range.
@@ -587,11 +590,17 @@ impl<T> [T] {
     #[inline]
     #[track_caller]
     pub const fn swap(&mut self, a: usize, b: usize) {
-        let _ = &self[a];
-        let _ = &self[b];
-
-        // SAFETY: we just checked that both `a` and `b` are in bounds
-        unsafe { self.swap_unchecked(a, b) }
+        // FIXME: use swap_unchecked here (https://github.com/rust-lang/rust/pull/88540#issuecomment-944344343)
+        // Can't take two mutable loans from one vector, so instead use raw pointers.
+        let pa = ptr::addr_of_mut!(self[a]);
+        let pb = ptr::addr_of_mut!(self[b]);
+        // SAFETY: `pa` and `pb` have been created from safe mutable references and refer
+        // to elements in the slice and therefore are guaranteed to be valid and aligned.
+        // Note that accessing the elements behind `a` and `b` is checked and will
+        // panic when out of bounds.
+        unsafe {
+            ptr::swap(pa, pb);
+        }
     }
 
     /// Swaps two elements in the slice, without doing bounds checking.
@@ -2559,50 +2568,6 @@ impl<T> [T] {
     }
 
     /// Reorder the slice such that the element at `index` is at its final sorted position.
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
-    #[rustc_deprecated(since = "1.49.0", reason = "use the select_nth_unstable() instead")]
-    #[inline]
-    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
-    where
-        T: Ord,
-    {
-        self.select_nth_unstable(index)
-    }
-
-    /// Reorder the slice with a comparator function such that the element at `index` is at its
-    /// final sorted position.
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
-    #[rustc_deprecated(since = "1.49.0", reason = "use select_nth_unstable_by() instead")]
-    #[inline]
-    pub fn partition_at_index_by<F>(
-        &mut self,
-        index: usize,
-        compare: F,
-    ) -> (&mut [T], &mut T, &mut [T])
-    where
-        F: FnMut(&T, &T) -> Ordering,
-    {
-        self.select_nth_unstable_by(index, compare)
-    }
-
-    /// Reorder the slice with a key extraction function such that the element at `index` is at its
-    /// final sorted position.
-    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
-    #[rustc_deprecated(since = "1.49.0", reason = "use the select_nth_unstable_by_key() instead")]
-    #[inline]
-    pub fn partition_at_index_by_key<K, F>(
-        &mut self,
-        index: usize,
-        f: F,
-    ) -> (&mut [T], &mut T, &mut [T])
-    where
-        F: FnMut(&T) -> K,
-        K: Ord,
-    {
-        self.select_nth_unstable_by_key(index, f)
-    }
-
-    /// Reorder the slice such that the element at `index` is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
@@ -3575,7 +3540,7 @@ impl<T> [T] {
     /// assert_eq!(basic_simd_sum(&numbers[1..99]), 4949.0);
     /// ```
     #[unstable(feature = "portable_simd", issue = "86656")]
-    #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
+    #[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
     pub fn as_simd<const LANES: usize>(&self) -> (&[T], &[Simd<T, LANES>], &[T])
     where
         Simd<T, LANES>: AsRef<[T; LANES]>,
@@ -3619,7 +3584,7 @@ impl<T> [T] {
     /// be lifted in a way that would make it possible to see panics from this
     /// method for something like `LANES == 3`.
     #[unstable(feature = "portable_simd", issue = "86656")]
-    #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
+    #[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
     pub fn as_simd_mut<const LANES: usize>(&mut self) -> (&mut [T], &mut [Simd<T, LANES>], &mut [T])
     where
         Simd<T, LANES>: AsMut<[T; LANES]>,

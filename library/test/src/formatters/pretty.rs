@@ -49,10 +49,6 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_short_result("ignored", term::color::YELLOW)
     }
 
-    pub fn write_allowed_fail(&mut self) -> io::Result<()> {
-        self.write_short_result("FAILED (allowed)", term::color::YELLOW)
-    }
-
     pub fn write_time_failed(&mut self) -> io::Result<()> {
         self.write_short_result("FAILED (time limit exceeded)", term::color::RED)
     }
@@ -102,7 +98,7 @@ impl<T: Write> PrettyFormatter<T> {
         if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
             let time_str = format!(" <{}>", time);
 
-            let color = if opts.colored {
+            let color = if self.use_color {
                 if opts.is_critical(desc, time) {
                     Some(term::color::RED)
                 } else if opts.is_warn(desc, time) {
@@ -219,7 +215,6 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
             TestResult::TrOk => self.write_ok()?,
             TestResult::TrFailed | TestResult::TrFailedMsg(_) => self.write_failed()?,
             TestResult::TrIgnored => self.write_ignored()?,
-            TestResult::TrAllowedFail => self.write_allowed_fail()?,
             TestResult::TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
@@ -263,22 +258,10 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
             self.write_pretty("FAILED", term::color::RED)?;
         }
 
-        let s = if state.allowed_fail > 0 {
-            format!(
-                ". {} passed; {} failed ({} allowed); {} ignored; {} measured; {} filtered out",
-                state.passed,
-                state.failed + state.allowed_fail,
-                state.allowed_fail,
-                state.ignored,
-                state.measured,
-                state.filtered_out
-            )
-        } else {
-            format!(
-                ". {} passed; {} failed; {} ignored; {} measured; {} filtered out",
-                state.passed, state.failed, state.ignored, state.measured, state.filtered_out
-            )
-        };
+        let s = format!(
+            ". {} passed; {} failed; {} ignored; {} measured; {} filtered out",
+            state.passed, state.failed, state.ignored, state.measured, state.filtered_out
+        );
 
         self.write_plain(&s)?;
 

@@ -26,7 +26,7 @@ Sometimes you may want to retrieve the type `Ty` of an expression `Expr`, for ex
 - does it implement a trait?
 
 This operation is performed using the [`expr_ty()`][expr_ty] method from the [`TypeckResults`][TypeckResults] struct,
-that gives you access to the underlying structure [`TyS`][TyS].
+that gives you access to the underlying structure [`Ty`][Ty].
 
 Example of use:
 ```rust
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for MyStructLint {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
             // Check our expr is calling a method
-            if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..], _) = &expr.kind;
+            if let hir::ExprKind::MethodCall(path, _, [_self_arg, ..]) = &expr.kind;
             // Check the name of this method is `some_method`
             if path.ident.name == sym!(some_method);
             // Optionally, check the type of the self argument.
@@ -235,7 +235,11 @@ Use the following functions to deal with macros:
    assert_eq!(in_external_macro(cx.sess(), match_span), true);
    ```
 
-- `differing_macro_contexts()`: returns true if the two given spans are not from the same context
+- `span.ctxt()`: the span's context represents whether it is from expansion, and if so, what expanded it
+
+One thing `SpanContext` is useful for is to check if two spans are in the same context. For example,
+in `a == b`, `a` and `b` have the same context. In a `macro_rules!` with `a == $b`, `$b` is expanded to some
+expression with a different context from `a`.
 
    ```rust
    macro_rules! m {
@@ -252,10 +256,10 @@ Use the following functions to deal with macros:
    // These spans are not from the same context
    // x.is_some() is from inside the macro
    // x.unwrap() is from outside the macro
-   assert_eq!(differing_macro_contexts(x_is_some_span, x_unwrap_span), true);
+   assert_eq!(x_is_some_span.ctxt(), x_unwrap_span.ctxt());
    ```
 
-[TyS]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyS.html
+[Ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Ty.html
 [TyKind]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 [TypeckResults]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html
 [expr_ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TypeckResults.html#method.expr_ty

@@ -78,7 +78,7 @@ impl Handle {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {
             c::ReadFile(
-                self.as_raw_handle(),
+                self.as_handle(),
                 buf.as_mut_ptr() as c::LPVOID,
                 len,
                 &mut read,
@@ -116,7 +116,7 @@ impl Handle {
             overlapped.Offset = offset as u32;
             overlapped.OffsetHigh = (offset >> 32) as u32;
             cvt(c::ReadFile(
-                self.as_raw_handle(),
+                self.as_handle(),
                 buf.as_mut_ptr() as c::LPVOID,
                 len,
                 &mut read,
@@ -135,7 +135,7 @@ impl Handle {
         let len = cmp::min(buf.remaining(), <c::DWORD>::MAX as usize) as c::DWORD;
         let res = cvt(unsafe {
             c::ReadFile(
-                self.as_raw_handle(),
+                self.as_handle(),
                 buf.unfilled_mut().as_mut_ptr() as c::LPVOID,
                 len,
                 &mut read,
@@ -171,7 +171,7 @@ impl Handle {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         let mut amt = 0;
         let res = cvt(c::ReadFile(
-            self.as_raw_handle(),
+            self.as_handle(),
             buf.as_ptr() as c::LPVOID,
             len,
             &mut amt,
@@ -225,7 +225,7 @@ impl Handle {
         let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
         cvt(unsafe {
             c::WriteFile(
-                self.as_raw_handle(),
+                self.as_handle(),
                 buf.as_ptr() as c::LPVOID,
                 len,
                 &mut amt,
@@ -252,7 +252,7 @@ impl Handle {
             overlapped.Offset = offset as u32;
             overlapped.OffsetHigh = (offset >> 32) as u32;
             cvt(c::WriteFile(
-                self.as_raw_handle(),
+                self.as_handle(),
                 buf.as_ptr() as c::LPVOID,
                 len,
                 &mut written,
@@ -262,26 +262,17 @@ impl Handle {
         Ok(written as usize)
     }
 
+    pub fn try_clone(&self) -> io::Result<Self> {
+        Ok(Self(self.0.try_clone()?))
+    }
+
     pub fn duplicate(
         &self,
         access: c::DWORD,
         inherit: bool,
         options: c::DWORD,
-    ) -> io::Result<Handle> {
-        let mut ret = 0 as c::HANDLE;
-        cvt(unsafe {
-            let cur_proc = c::GetCurrentProcess();
-            c::DuplicateHandle(
-                cur_proc,
-                self.as_raw_handle(),
-                cur_proc,
-                &mut ret,
-                access,
-                inherit as c::BOOL,
-                options,
-            )
-        })?;
-        unsafe { Ok(Handle::from_raw_handle(ret)) }
+    ) -> io::Result<Self> {
+        Ok(Self(self.0.duplicate(access, inherit, options)?))
     }
 }
 

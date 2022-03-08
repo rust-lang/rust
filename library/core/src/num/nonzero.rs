@@ -972,6 +972,7 @@ macro_rules! nonzero_unsigned_is_power_of_two {
                 /// ```
                 #[must_use]
                 #[stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
+                #[rustc_const_stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
                 #[inline]
                 pub const fn is_power_of_two(self) -> bool {
                     // LLVM 11 normalizes `unchecked_sub(x, 1) & x == 0` to the implementation seen here.

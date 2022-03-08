@@ -7,27 +7,25 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
-use rustc_middle::ty::{self, TypeVisitor};
+use rustc_middle::ty::TypeVisitor;
 use rustc_span::MultiSpan;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorGuaranteed> {
         let error = self.error.as_ref()?;
         debug!("try_report_mismatched_static_lifetime {:?}", error);
 
-        let (origin, sub, sup) = match error.clone() {
-            RegionResolutionError::ConcreteFailure(origin, sub, sup) => (origin, sub, sup),
-            _ => return None,
+        let RegionResolutionError::ConcreteFailure(origin, sub, sup) = error.clone() else {
+            return None;
         };
-        if *sub != ty::RegionKind::ReStatic {
+        if !sub.is_static() {
             return None;
         }
-        let cause = match origin {
-            SubregionOrigin::Subtype(box TypeTrace { ref cause, .. }) => cause,
-            _ => return None,
+        let SubregionOrigin::Subtype(box TypeTrace { ref cause, .. }) = origin else {
+            return None;
         };
         // If we added a "points at argument expression" obligation, we remove it here, we care
         // about the original obligation only.
@@ -35,13 +33,11 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
             _ => cause.code(),
         };
-        let (parent, impl_def_id) = match code {
-            ObligationCauseCode::MatchImpl(parent, impl_def_id) => (parent, impl_def_id),
-            _ => return None,
+        let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
+            return None;
         };
-        let binding_span = match *parent.code() {
-            ObligationCauseCode::BindingObligation(_def_id, binding_span) => binding_span,
-            _ => return None,
+        let ObligationCauseCode::BindingObligation(_def_id, binding_span) = *parent.code() else {
+            return None;
         };
         let mut err = self.tcx().sess.struct_span_err(cause.span, "incompatible lifetime on type");
         // FIXME: we should point at the lifetime
@@ -55,15 +51,14 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // be as helpful as possible with implicit lifetimes.
 
             // First, let's get the hir self type of the impl
-            let impl_self_ty = match impl_node {
-                hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
-                    ..
-                }) => self_ty,
-                _ => bug!("Node not an impl."),
+            let hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, .. }),
+                ..
+            }) = impl_node else {
+                bug!("Node not an impl.");
             };
 
-            // Next, let's figure out the set of trait objects with implict static bounds
+            // Next, let's figure out the set of trait objects with implicit static bounds
             let ty = self.tcx().type_of(*impl_def_id);
             let mut v = super::static_impl_trait::TraitObjectVisitor(FxHashSet::default());
             v.visit_ty(ty);
@@ -104,6 +99,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 }

@@ -61,8 +61,9 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
             desc: TestDesc {
                 name: StaticTestName("1"),
                 ignore: true,
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
@@ -73,8 +74,9 @@ fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
             desc: TestDesc {
                 name: StaticTestName("2"),
                 ignore: false,
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
@@ -93,8 +95,9 @@ pub fn do_not_run_ignored_tests() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: true,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -114,8 +117,9 @@ pub fn ignored_tests_result_in_ignored() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: true,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -139,8 +143,9 @@ fn test_should_panic() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::Yes,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -164,8 +169,9 @@ fn test_should_panic_good_message() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::YesWithMessage("error message"),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -194,8 +200,9 @@ fn test_should_panic_bad_message() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::YesWithMessage(expected),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -228,8 +235,9 @@ fn test_should_panic_non_string_message_type() {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::YesWithMessage(expected),
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -254,8 +262,9 @@ fn test_should_panic_but_succeeds() {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 should_panic,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
@@ -288,8 +297,9 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -323,8 +333,9 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
         desc: TestDesc {
             name: StaticTestName("whatever"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::No,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type,
@@ -362,8 +373,9 @@ fn typed_test_desc(test_type: TestType) -> TestDesc {
     TestDesc {
         name: StaticTestName("whatever"),
         ignore: false,
+        #[cfg(not(bootstrap))]
+        ignore_message: None,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type,
@@ -382,7 +394,6 @@ fn test_time_options_threshold() {
 
     let options = TestTimeOptions {
         error_on_excess: false,
-        colored: false,
         unit_threshold: unit.clone(),
         integration_threshold: integration.clone(),
         doctest_threshold: doc.clone(),
@@ -475,8 +486,9 @@ pub fn exclude_should_panic_option() {
         desc: TestDesc {
             name: StaticTestName("3"),
             ignore: false,
+            #[cfg(not(bootstrap))]
+            ignore_message: None,
             should_panic: ShouldPanic::Yes,
-            allow_fail: false,
             compile_fail: false,
             no_run: false,
             test_type: TestType::Unknown,
@@ -499,8 +511,9 @@ pub fn exact_filter_match() {
                 desc: TestDesc {
                     name: StaticTestName(name),
                     ignore: false,
+                    #[cfg(not(bootstrap))]
+                    ignore_message: None,
                     should_panic: ShouldPanic::No,
-                    allow_fail: false,
                     compile_fail: false,
                     no_run: false,
                     test_type: TestType::Unknown,
@@ -588,8 +601,9 @@ fn sample_tests() -> Vec<TestDescAndFn> {
             desc: TestDesc {
                 name: DynTestName((*name).clone()),
                 ignore: false,
+                #[cfg(not(bootstrap))]
+                ignore_message: None,
                 should_panic: ShouldPanic::No,
-                allow_fail: false,
                 compile_fail: false,
                 no_run: false,
                 test_type: TestType::Unknown,
@@ -739,8 +753,9 @@ pub fn test_bench_no_iter() {
     let desc = TestDesc {
         name: StaticTestName("f"),
         ignore: false,
+        #[cfg(not(bootstrap))]
+        ignore_message: None,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
@@ -761,8 +776,9 @@ pub fn test_bench_iter() {
     let desc = TestDesc {
         name: StaticTestName("f"),
         ignore: false,
+        #[cfg(not(bootstrap))]
+        ignore_message: None,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
@@ -777,8 +793,9 @@ fn should_sort_failures_before_printing_them() {
     let test_a = TestDesc {
         name: StaticTestName("a"),
         ignore: false,
+        #[cfg(not(bootstrap))]
+        ignore_message: None,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
@@ -787,8 +804,9 @@ fn should_sort_failures_before_printing_them() {
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
+        #[cfg(not(bootstrap))]
+        ignore_message: None,
         should_panic: ShouldPanic::No,
-        allow_fail: false,
         compile_fail: false,
         no_run: false,
         test_type: TestType::Unknown,
@@ -802,7 +820,6 @@ fn should_sort_failures_before_printing_them() {
         passed: 0,
         failed: 0,
         ignored: 0,
-        allowed_fail: 0,
         filtered_out: 0,
         measured: 0,
         exec_time: None,

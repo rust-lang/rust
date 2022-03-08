@@ -16,6 +16,6 @@ scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"
 tracing = "0.1"
-sha1 = { package = "sha-1", version = "0.9" }
-sha2 = "0.9"
-md5 = { package = "md-5", version = "0.9" }
+sha1 = { package = "sha-1", version = "0.10.0" }
+sha2 = "0.10.1"
+md5 = { package = "md-5", version = "0.10.0" }

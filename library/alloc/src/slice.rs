@@ -108,7 +108,7 @@ pub use core::slice::ArrayChunks;
 pub use core::slice::ArrayChunksMut;
 #[unstable(feature = "array_windows", issue = "75027")]
 pub use core::slice::ArrayWindows;
-#[unstable(feature = "inherent_ascii_escape", issue = "77174")]
+#[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use core::slice::EscapeAscii;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
@@ -375,7 +375,10 @@ impl<T> [T] {
 
     /// Sorts the slice with a key extraction function.
     ///
-    /// During sorting, the key function is called only once per element.
+    /// During sorting, the key function is called at most once per element, by using
+    /// temporary storage to remember the results of key evaluation.
+    /// The order of calls to the key function is unspecified and may change in future versions
+    /// of the standard library.
     ///
     /// This sort is stable (i.e., does not reorder equal elements) and *O*(*m* \* *n* + *n* \* log(*n*))
     /// worst-case, where the key function is *O*(*m*).

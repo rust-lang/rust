@@ -1,0 +1,173 @@
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:3:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | mod test {}
+   | ----------- expected a non-associated function, found a module
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:6:1
+   |
+LL |   #[test]
+   |   ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | / mod loooooooooooooong_teeeeeeeeeest {
+LL | |     /*
+LL | |     this is a comment
+LL | |     this comment goes on for a very long time
+...  |
+LL | |     */
+LL | | }
+   | |_- expected a non-associated function, found a module
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:20:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | extern "C" {}
+   | ------------- expected a non-associated function, found an extern block
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:23:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | trait Foo {}
+   | ------------ expected a non-associated function, found a trait
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:26:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | impl Foo for i32 {}
+   | ------------------- expected a non-associated function, found an implementation
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:29:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | const FOO: i32 = -1_i32;
+   | ------------------------ expected a non-associated function, found a constant item
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:32:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | static BAR: u64 = 10_000_u64;
+   | ----------------------------- expected a non-associated function, found a static item
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:35:1
+   |
+LL |   #[test]
+   |   ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | / enum MyUnit {
+LL | |     Unit,
+LL | | }
+   | |_- expected a non-associated function, found an enum
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:40:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | struct NewI32(i32);
+   | ------------------- expected a non-associated function, found a struct
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:43:1
+   |
+LL |   #[test]
+   |   ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | / union Spooky {
+LL | |     x: i32,
+LL | |     y: u32,
+LL | | }
+   | |_- expected a non-associated function, found a union
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:50:1
+   |
+LL |   #[test]
+   |   ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL |   #[derive(Copy, Clone, Debug)]
+LL | / struct MoreAttrs {
+LL | |     a: i32,
+LL | |     b: u64,
+LL | | }
+   | |_- expected a non-associated function, found a struct
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+warning: the `#[test]` attribute may only be used on a non-associated function
+  --> $DIR/test-on-not-fn.rs:61:1
+   |
+LL | #[test]
+   | ^^^^^^^ the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions
+LL | foo!();
+   | ------- expected a non-associated function, found an item macro invocation
+   |
+help: replace with conditional compilation to make the item only exist when tests are being run
+   |
+LL | #[cfg(test)]
+   | ~~~~~~~~~~~~
+
+error: aborting due to 11 previous errors; 1 warning emitted
+

@@ -26,7 +26,7 @@ pub struct Hyperdulia;
 
 // @has 'oud/struct.Oystercatcher.html'
 // @count   - '//*[@class="stab portability"]' 1
-// @matches - '//*[@class="stab portability"]' 'crate features solecism and oystercatcher'
+// @matches - '//*[@class="stab portability"]' 'crate feature oystercatcher only'
 // compile-flags:--cfg feature="oystercatcher"
 #[cfg(all(feature = "solecism", feature = "oystercatcher"))]
 pub struct Oystercatcher;

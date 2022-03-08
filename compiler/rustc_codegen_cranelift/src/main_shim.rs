@@ -1,4 +1,3 @@
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_hir::LangItem;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::AssocKind;
@@ -52,7 +51,10 @@ pub(crate) fn maybe_create_entry_wrapper(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = tcx.erase_regions(main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = tcx.normalize_erasing_regions(
+            ty::ParamEnv::reveal_all(),
+            main_ret_ty.no_bound_vars().unwrap(),
+        );
 
         let cmain_sig = Signature {
             params: vec![
@@ -152,8 +154,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        m.define_function(cmain_func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap();
+        m.define_function(cmain_func_id, &mut ctx).unwrap();
         unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

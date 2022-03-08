@@ -8,6 +8,8 @@ LL |     takes_type_parameter(&string);  // Error
    |     |                    help: consider adding dereference here: `&*string`
    |     required by a bound introduced by this call
    |
+   = help: the following implementations were found:
+             <&str as SomeTrait>
 note: required by a bound in `takes_type_parameter`
   --> $DIR/issue-62530.rs:4:44
    |

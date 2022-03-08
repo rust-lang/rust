@@ -1,15 +1,16 @@
-error[E0603]: module `intrinsics` is private
-  --> $DIR/portable-intrinsics-arent-exposed.rs:4:16
+error[E0433]: failed to resolve: maybe a missing crate `core`?
+  --> $DIR/portable-intrinsics-arent-exposed.rs:4:5
+   |
+LL | use core::simd::intrinsics;
+   |     ^^^^ maybe a missing crate `core`?
+
+error[E0432]: unresolved import `std::simd::intrinsics`
+  --> $DIR/portable-intrinsics-arent-exposed.rs:5:5
    |
 LL | use std::simd::intrinsics;
-   |                ^^^^^^^^^^ private module
-   |
-note: the module `intrinsics` is defined here
-  --> $SRC_DIR/core/src/lib.rs:LL:COL
-   |
-LL |     pub use crate::core_simd::simd::*;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^ no `intrinsics` in `simd`
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0603`.
+Some errors have detailed explanations: E0432, E0433.
+For more information about an error, try `rustc --explain E0432`.

@@ -86,6 +86,48 @@ option:
 rustc -Clinker-plugin-lto="/path/to/LLVMgold.so" -L. -Copt-level=2 ./main.rs
 ```
 
+### Usage with clang-cl and x86_64-pc-windows-msvc
+
+Cross language LTO can be used with the x86_64-pc-windows-msvc target, but this requires using the
+clang-cl compiler instead of the MSVC cl.exe included with Visual Studio Build Tools, and linking
+with lld-link. Both clang-cl and lld-link can be downloaded from [LLVM's download page](https://releases.llvm.org/download.html).
+Note that most crates in the ecosystem are likely to assume you are using cl.exe if using this target
+and that some things, like for example vcpkg, [don't work very well with clang-cl](https://github.com/microsoft/vcpkg/issues/2087).
+
+You will want to make sure your rust major LLVM version matches your installed LLVM tooling version,
+otherwise it is likely you will get linker errors:
+
+```bat
+rustc -V --verbose
+clang-cl --version
+```
+
+If you are compiling any proc-macros, you will get this error:
+
+```bash
+error: Linker plugin based LTO is not supported together with `-C prefer-dynamic` when
+targeting Windows-like targets
+```
+
+This is fixed if you explicitly set the target, for example
+`cargo build --target x86_64-pc-windows-msvc`
+Without an explicit --target the flags will be passed to all compiler invocations (including build
+scripts and proc macros), see [cargo docs on rustflags](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags)
+
+If you have dependencies using the `cc` crate, you will need to set these
+environment variables:
+```bat
+set CC=clang-cl
+set CXX=clang-cl
+set CFLAGS=/clang:-flto=thin /clang:-fuse-ld=lld-link
+set CXXFLAGS=/clang:-flto=thin /clang:-fuse-ld=lld-link
+REM Needed because msvc's lib.exe crashes on LLVM LTO .obj files
+set AR=llvm-lib
+```
+
+If you are specifying lld-link as your linker by setting `linker = "lld-link.exe"` in your cargo config,
+you may run into issues with some crates that compile code with separate cargo invocations. You should be
+able to get around this problem by setting `-Clinker=lld-link` in RUSTFLAGS
 
 ## Toolchain Compatibility
 

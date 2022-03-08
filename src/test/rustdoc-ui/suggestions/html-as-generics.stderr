@@ -1,0 +1,73 @@
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:4:13
+   |
+LL | /// This Vec<i32> thing!
+   |             ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/html-as-generics.rs:2:9
+   |
+LL | #![deny(rustdoc::invalid_html_tags)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try marking as source code
+   |
+LL | /// This `Vec<i32>` thing!
+   |          +        +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:9:18
+   |
+LL | /// This vec::Vec<i32> thing!
+   |                  ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This `vec::Vec<i32>` thing!
+   |          +             +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:14:13
+   |
+LL | /// This i32<i32> thing!
+   |             ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This `i32<i32>` thing!
+   |          +        +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:19:15
+   |
+LL | /// This Vec::<i32> thing!
+   |               ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This `Vec::<i32>` thing!
+   |          +          +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:24:41
+   |
+LL | /// This [link](https://rust-lang.org)::<i32> thing!
+   |                                         ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This [link](https://rust-lang.org)`::<i32>` thing!
+   |                                       +       +
+
+error: unclosed HTML tag `i32`
+  --> $DIR/html-as-generics.rs:29:21
+   |
+LL | /// This <span>Vec::<i32></span> thing!
+   |                     ^^^^^
+   |
+help: try marking as source code
+   |
+LL | /// This <span>`Vec::<i32>`</span> thing!
+   |                +          +
+
+error: aborting due to 6 previous errors
+

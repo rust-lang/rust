@@ -164,7 +164,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
         let has_repr_c = it
             .attrs
             .iter()
-            .any(|attr| attr::find_repr_attrs(&cx.sess, attr).contains(&attr::ReprC));
+            .any(|attr| attr::find_repr_attrs(cx.sess(), attr).contains(&attr::ReprC));
 
         if has_repr_c {
             return;

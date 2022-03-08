@@ -14,6 +14,7 @@ pub fn target() -> Target {
                 | SanitizerSet::CFI
                 | SanitizerSet::LEAK
                 | SanitizerSet::MEMORY
+                | SanitizerSet::MEMTAG
                 | SanitizerSet::THREAD
                 | SanitizerSet::HWADDRESS,
             ..super::linux_gnu_base::opts()

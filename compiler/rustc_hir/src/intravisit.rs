@@ -141,22 +141,22 @@ pub trait Map<'hir> {
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
     fn find(&self, _: HirId) -> Option<Node<'hir>> {
-        unreachable!()
+        *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
-        unreachable!()
+        *self;
     }
     fn item(&self, _: ItemId) -> &'hir Item<'hir> {
-        unreachable!()
+        *self;
     }
     fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        unreachable!()
+        *self;
     }
     fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        unreachable!()
+        *self;
     }
     fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        unreachable!()
+        *self;
     }
 }
 
@@ -575,7 +575,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             item.span,
             item.hir_id(),
         ),
-        ItemKind::Macro(_) => {
+        ItemKind::Macro(..) => {
             visitor.visit_id(item.hir_id());
         }
         ItemKind::Mod(ref module) => {
@@ -1020,12 +1020,10 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItem { def_id: _, ident, ref vis, ref defaultness, ref generics, ref kind, span: _ } =
-        *impl_item;
+    let ImplItem { def_id: _, ident, ref vis, ref generics, ref kind, span: _ } = *impl_item;
 
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);
-    visitor.visit_defaultness(defaultness);
     visitor.visit_generics(generics);
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
@@ -1149,7 +1147,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, _, arguments, _) => {
+        ExprKind::MethodCall(ref segment, arguments, _) => {
             visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }

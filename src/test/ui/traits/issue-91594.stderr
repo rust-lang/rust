@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `Foo: HasComponent<()>` is not satisfied
+  --> $DIR/issue-91594.rs:10:6
+   |
+LL | impl HasComponent<<Foo as Component<Foo>>::Interface> for Foo {}
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `HasComponent<()>` is not implemented for `Foo`
+   |
+   = help: the following implementations were found:
+             <Foo as HasComponent<<Foo as Component<Foo>>::Interface>>
+note: required because of the requirements on the impl of `Component<Foo>` for `Foo`
+  --> $DIR/issue-91594.rs:13:27
+   |
+LL | impl<M: HasComponent<()>> Component<M> for Foo {
+   |                           ^^^^^^^^^^^^     ^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

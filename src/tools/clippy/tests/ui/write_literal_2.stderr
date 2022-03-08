@@ -1,62 +1,62 @@
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:9:28
+  --> $DIR/write_literal_2.rs:9:23
    |
-LL |     writeln!(&mut v, "{}", "{hello}");
-   |                            ^^^^^^^^^
+LL |     writeln!(v, "{}", "{hello}");
+   |                       ^^^^^^^^^
    |
    = note: `-D clippy::write-literal` implied by `-D warnings`
 help: try this
    |
-LL -     writeln!(&mut v, "{}", "{hello}");
-LL +     writeln!(&mut v, "{{hello}}");
+LL -     writeln!(v, "{}", "{hello}");
+LL +     writeln!(v, "{{hello}}");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:10:29
+  --> $DIR/write_literal_2.rs:10:24
    |
-LL |     writeln!(&mut v, r"{}", r"{hello}");
-   |                             ^^^^^^^^^^
+LL |     writeln!(v, r"{}", r"{hello}");
+   |                        ^^^^^^^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, r"{}", r"{hello}");
-LL +     writeln!(&mut v, r"{{hello}}");
+LL -     writeln!(v, r"{}", r"{hello}");
+LL +     writeln!(v, r"{{hello}}");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:11:28
+  --> $DIR/write_literal_2.rs:11:23
    |
-LL |     writeln!(&mut v, "{}", '/'');
-   |                            ^^^^
+LL |     writeln!(v, "{}", '/'');
+   |                       ^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{}", '/'');
-LL +     writeln!(&mut v, "'");
+LL -     writeln!(v, "{}", '/'');
+LL +     writeln!(v, "'");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:12:28
+  --> $DIR/write_literal_2.rs:12:23
    |
-LL |     writeln!(&mut v, "{}", '"');
-   |                            ^^^
+LL |     writeln!(v, "{}", '"');
+   |                       ^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, "{}", '"');
-LL +     writeln!(&mut v, "/"");
+LL -     writeln!(v, "{}", '"');
+LL +     writeln!(v, "/"");
    | 
 
 error: literal with an empty format string
-  --> $DIR/write_literal_2.rs:14:29
+  --> $DIR/write_literal_2.rs:14:24
    |
-LL |     writeln!(&mut v, r"{}", '/'');
-   |                             ^^^^
+LL |     writeln!(v, r"{}", '/'');
+   |                        ^^^^
    |
 help: try this
    |
-LL -     writeln!(&mut v, r"{}", '/'');
-LL +     writeln!(&mut v, r"'");
+LL -     writeln!(v, r"{}", '/'');
+LL +     writeln!(v, r"'");
    | 
 
 error: literal with an empty format string

@@ -141,6 +141,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     })
                     .collect::<Vec<_>>()
             })
+            .chain([Cfg::Cfg(sym::test, None)].into_iter())
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
@@ -187,9 +188,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
-        let res_did = if let Some(did) = res.opt_def_id() {
-            did
-        } else {
+        let Some(res_did) = res.opt_def_id() else {
             return false;
         };
 
@@ -326,7 +325,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 om.items.push((item, renamed))
             }
-            hir::ItemKind::Macro(ref macro_def) => {
+            hir::ItemKind::Macro(ref macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled seperately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:

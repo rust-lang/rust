@@ -1,5 +1,5 @@
 // ignore-emscripten vectors passed directly
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -O -C no-prepopulate-passes
 
 // This test that using union forward the abi of the inner type, as
 // discussed in #54668
@@ -63,19 +63,14 @@ pub union UnionU128{a:u128}
 #[no_mangle]
 pub fn test_UnionU128(_: UnionU128) -> UnionU128 { loop {} }
 
-pub union UnionU128x2{a:(u128, u128)}
-// CHECK: define void @test_UnionU128x2(i128 %_1.0, i128 %_1.1)
-#[no_mangle]
-pub fn test_UnionU128x2(_: UnionU128x2) { loop {} }
-
 #[repr(C)]
-pub union CUnionU128x2{a:(u128, u128)}
-// CHECK: define void @test_CUnionU128x2(%CUnionU128x2* {{.*}} %_1)
+pub union CUnionU128{a:u128}
+// CHECK: define void @test_CUnionU128(%CUnionU128* {{.*}} %_1)
 #[no_mangle]
-pub fn test_CUnionU128x2(_: CUnionU128x2) { loop {} }
+pub fn test_CUnionU128(_: CUnionU128) { loop {} }
 
 pub union UnionBool { b:bool }
-// CHECK: define zeroext i1 @test_UnionBool(i8 %b)
+// CHECK: define noundef zeroext i1 @test_UnionBool(i8 %b)
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool { unsafe { b.b }  }
 // CHECK: %0 = trunc i8 %b to i1

@@ -107,7 +107,7 @@ impl FileDesc {
     }
 
     fn duplicate(&self) -> io::Result<FileDesc> {
-        super::unsupported()
+        cvt(unsafe { netc::dup(self.fd) }).map(Self::new)
     }
 }
 
@@ -243,9 +243,9 @@ impl Socket {
         }
 
         if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 io::ErrorKind::InvalidInput,
-                &"cannot set a 0 duration timeout",
+                "cannot set a 0 duration timeout",
             ));
         }
 
@@ -271,7 +271,7 @@ impl Socket {
         };
 
         match n {
-            0 => Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out")),
+            0 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out")),
             _ => {
                 let can_write = writefds.num_fds != 0;
                 if !can_write {
@@ -364,9 +364,9 @@ impl Socket {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
 

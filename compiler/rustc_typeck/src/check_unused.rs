@@ -82,8 +82,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
             // The `def_id` here actually was calculated during resolution (at least
             // at the time of this writing) and is being shipped to us via a side
             // channel of the tcx. There may have been extra expansion phases,
-            // however, which ended up removing the `def_id` *after* expansion such
-            // as the `ReplaceBodyWithLoop` pass (which is a bit of a hack, but hey)
+            // however, which ended up removing the `def_id` *after* expansion.
             //
             // As a result we need to verify that `def_id` is indeed still valid for
             // our AST and actually present in the HIR map. If it's not there then

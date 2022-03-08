@@ -84,9 +84,8 @@ fn add_move_for_packed_drop<'tcx>(
     is_cleanup: bool,
 ) {
     debug!("add_move_for_packed_drop({:?} @ {:?})", terminator, loc);
-    let (place, target, unwind) = match terminator.kind {
-        TerminatorKind::Drop { ref place, target, unwind } => (place, target, unwind),
-        _ => unreachable!(),
+    let TerminatorKind::Drop { ref place, target, unwind } = terminator.kind else {
+        unreachable!();
     };
 
     let source_info = terminator.source_info;

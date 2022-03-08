@@ -10,9 +10,8 @@ pub fn binary_search_slice<'d, E, K>(data: &'d [E], key_fn: impl Fn(&E) -> K, ke
 where
     K: Ord,
 {
-    let mid = match data.binary_search_by_key(key, &key_fn) {
-        Ok(mid) => mid,
-        Err(_) => return &[],
+    let Ok(mid) = data.binary_search_by_key(key, &key_fn) else {
+        return &[];
     };
     let size = data.len();
 

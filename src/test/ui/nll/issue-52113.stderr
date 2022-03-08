@@ -7,7 +7,7 @@ LL | fn produce_err<'a, 'b: 'a>(data: &'b mut Vec<&'b u32>, value: &'a u32) -> i
    |                lifetime `'a` defined here
 ...
 LL |     x
-   |     ^ returning this value requires that `'a` must outlive `'b`
+   |     ^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'b`
 

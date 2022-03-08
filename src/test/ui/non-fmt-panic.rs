@@ -11,6 +11,7 @@ static S: &str = "{bla}";
 #[allow(unreachable_code)]
 fn main() {
     panic!("here's a brace: {"); //~ WARN panic message contains a brace
+    unreachable!("here's a brace: {"); //~ WARN panic message contains a brace
     std::panic!("another one: }"); //~ WARN panic message contains a brace
     core::panic!("Hello {}"); //~ WARN panic message contains an unused formatting placeholder
     assert!(false, "{:03x} {test} bla");
@@ -24,6 +25,8 @@ fn main() {
     debug_assert!(false, "{{}} bla"); //~ WARN panic message contains braces
     panic!(C); //~ WARN panic message is not a string literal
     panic!(S); //~ WARN panic message is not a string literal
+    unreachable!(S); //~ WARN panic message is not a string literal
+    unreachable!(S); //~ WARN panic message is not a string literal
     std::panic!(123); //~ WARN panic message is not a string literal
     core::panic!(&*"abc"); //~ WARN panic message is not a string literal
     panic!(Some(123)); //~ WARN panic message is not a string literal
@@ -41,8 +44,10 @@ fn main() {
     }
 
     panic!(a!()); //~ WARN panic message is not a string literal
+    unreachable!(a!()); //~ WARN panic message is not a string literal
 
     panic!(format!("{}", 1)); //~ WARN panic message is not a string literal
+    unreachable!(format!("{}", 1)); //~ WARN panic message is not a string literal
     assert!(false, format!("{}", 1)); //~ WARN panic message is not a string literal
     debug_assert!(false, format!("{}", 1)); //~ WARN panic message is not a string literal
 

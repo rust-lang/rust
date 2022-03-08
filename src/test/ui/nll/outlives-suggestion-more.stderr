@@ -6,7 +6,7 @@ LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usiz
    |         |
    |         lifetime `'a` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |     ^^^^^^ function was supposed to return data with lifetime `'c` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'c`
 
@@ -18,7 +18,7 @@ LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usiz
    |             |
    |             lifetime `'b` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'b` must outlive `'d`
+   |     ^^^^^^ function was supposed to return data with lifetime `'d` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'd`
 
@@ -35,7 +35,7 @@ LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usi
    |         |
    |         lifetime `'a` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |     ^^^^^^ function was supposed to return data with lifetime `'c` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'c`
 

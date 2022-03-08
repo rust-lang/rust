@@ -9,7 +9,7 @@ LL | fn foo() -> Option<_> {}
    = note:   expected enum `Option<_>`
            found unit type `()`
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for return types
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
   --> $DIR/issue-91450-inner-ty-error.rs:4:20
    |
 LL | fn foo() -> Option<_> {}

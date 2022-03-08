@@ -15,6 +15,7 @@ LL | fn uwu<const N: u8>() -> impl Traitor<N> {
    |
    = help: the following implementations were found:
              <u32 as Traitor<N, 2_u8>>
+             <u64 as Traitor<1_u8, 2_u8>>
 
 error[E0277]: the trait bound `u64: Traitor<1_u8, 1_u8>` is not satisfied
   --> $DIR/rp_impl_trait_fail.rs:22:13
@@ -24,6 +25,7 @@ LL | fn owo() -> impl Traitor {
    |
    = help: the following implementations were found:
              <u64 as Traitor<1_u8, 2_u8>>
+             <u32 as Traitor<N, 2_u8>>
 
 error: aborting due to 3 previous errors
 

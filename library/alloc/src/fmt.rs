@@ -74,7 +74,7 @@
 //! identifier '=' expression
 //! ```
 //!
-//! For example, the following [`format!`] expressions all use named argument:
+//! For example, the following [`format!`] expressions all use named arguments:
 //!
 //! ```
 //! format!("{argument}", argument = "test");   // => "test"

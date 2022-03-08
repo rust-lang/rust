@@ -11,7 +11,7 @@
    10|      1|}
 
 ../coverage/lib/inline_always_with_dead_code.rs:
-    1|       |// compile-flags: -Zinstrument-coverage -Ccodegen-units=4 -Copt-level=0
+    1|       |// compile-flags: -Cinstrument-coverage -Ccodegen-units=4 -Copt-level=0
     2|       |
     3|       |#![allow(dead_code)]
     4|       |

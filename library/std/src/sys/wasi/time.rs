@@ -10,7 +10,7 @@ pub struct SystemTime(Duration);
 
 pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
 
-fn current_time(clock: u32) -> Duration {
+fn current_time(clock: wasi::Clockid) -> Duration {
     let ts = unsafe {
         wasi::clock_time_get(
             clock, 1, // precision... seems ignored though?
@@ -23,14 +23,6 @@ fn current_time(clock: u32) -> Duration {
 impl Instant {
     pub fn now() -> Instant {
         Instant(current_time(wasi::CLOCKID_MONOTONIC))
-    }
-
-    pub const fn zero() -> Instant {
-        Instant(Duration::from_secs(0))
-    }
-
-    pub fn actually_monotonic() -> bool {
-        true
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {

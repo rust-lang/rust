@@ -496,6 +496,39 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `unfulfilled_lint_expectations` lint detects lint trigger expectations
+    /// that have not been fulfilled.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #[expect(unused_variables)]
+    /// let x = 10;
+    /// println!("{}", x);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It was expected that the marked code would emit a lint. This expectation
+    /// has not been fulfilled.
+    ///
+    /// The `expect` attribute can be removed if this is intended behavior otherwise
+    /// it should be investigated why the expected lint is no longer issued.
+    ///
+    /// Part of RFC 2383. The progress is being tracked in [#54503]
+    ///
+    /// [#54503]: https://github.com/rust-lang/rust/issues/54503
+    pub UNFULFILLED_LINT_EXPECTATIONS,
+    Warn,
+    "unfulfilled lint expectation",
+    @feature_gate = rustc_span::sym::lint_reasons;
+}
+
+declare_lint! {
     /// The `unused_variables` lint detects variables which are not used in
     /// any way.
     ///
@@ -1793,6 +1826,10 @@ declare_lint! {
     Warn,
     "detects name collision with an existing but unstable method",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "once this associated item is added to the standard library, \
+             the ambiguity may cause an error or change in behavior!"
+        ),
         reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
         // Note: this item represents future incompatibility of all unstable functions in the
         //       standard library, and thus should never be removed or changed to an error.
@@ -2335,6 +2372,10 @@ declare_lint! {
     Warn,
     "reservation of a two-phased borrow conflicts with other shared borrows",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "this borrowing pattern was not meant to be accepted, \
+            and may become a hard error in the future"
+        ),
         reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
     };
 }
@@ -2456,6 +2497,10 @@ declare_lint! {
     /// register size, to alert you of possibly using the incorrect width. To
     /// fix this, add the suggested modifier to the template, or cast the
     /// value to the correct size.
+    ///
+    /// See [register template modifiers] in the reference for more details.
+    ///
+    /// [register template modifiers]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html#template-modifiers
     pub ASM_SUB_REGISTER,
     Warn,
     "using only a subset of a register for inline asm inputs",
@@ -2760,52 +2805,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_naked_functions` lint detects naked function
-    /// definitions that are unsupported but were previously accepted.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(naked_functions)]
-    ///
-    /// #[naked]
-    /// pub extern "C" fn f() -> u32 {
-    ///     42
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The naked functions must be defined using a single inline assembly
-    /// block.
-    ///
-    /// The execution must never fall through past the end of the assembly
-    /// code so the block must use `noreturn` option. The asm block can also
-    /// use `att_syntax` option, but other options are not allowed.
-    ///
-    /// The asm block must not contain any operands other than `const` and
-    /// `sym`. Additionally, naked function should specify a non-Rust ABI.
-    ///
-    /// Naked functions cannot be inlined. All forms of the `inline` attribute
-    /// are prohibited.
-    ///
-    /// While other definitions of naked functions were previously accepted,
-    /// they are unsupported and might not work reliably. This is a
-    /// [future-incompatible] lint that will transition into hard error in
-    /// the future.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub UNSUPPORTED_NAKED_FUNCTIONS,
-    Warn,
-    "unsupported naked function definitions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #32408 <https://github.com/rust-lang/rust/issues/32408>",
-    };
-}
-
-declare_lint! {
     /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
     ///
     /// ### Example
@@ -2991,6 +2990,43 @@ declare_lint! {
     };
 }
 
+declare_lint! {
+    /// The `unexpected_cfgs` lint detects unexpected conditional compilation conditions.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --check-cfg 'names()'
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// #[cfg(widnows)]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: unknown condition name used
+    ///  --> lint_example.rs:1:7
+    ///   |
+    /// 1 | #[cfg(widnows)]
+    ///   |       ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(unexpected_cfgs)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is only active when a `--check-cfg='names(...)'` option has been passed
+    /// to the compiler and triggers whenever an unknown condition name or value is used.
+    /// The known condition include names or values passed in `--check-cfg`, `--cfg`, and some
+    /// well-knows names and values built into the compiler.
+    pub UNEXPECTED_CFGS,
+    Warn,
+    "detects unexpected names and values in `#[cfg]` conditions",
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -3004,6 +3040,7 @@ declare_lint_pass! {
         UNUSED_CRATE_DEPENDENCIES,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
+        UNFULFILLED_LINT_EXPECTATIONS,
         UNUSED_VARIABLES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
@@ -3070,7 +3107,6 @@ declare_lint_pass! {
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
-        UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         INVALID_DOC_ATTRIBUTES,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -3089,6 +3125,9 @@ declare_lint_pass! {
         DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
+        SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        UNEXPECTED_CFGS,
+        DEPRECATED_WHERE_CLAUSE_LOCATION,
     ]
 }
 
@@ -3664,4 +3703,71 @@ declare_lint! {
     pub DUPLICATE_MACRO_ATTRIBUTES,
     Warn,
     "duplicated attribute"
+}
+
+declare_lint! {
+    /// The `suspicious_auto_trait_impls` lint checks for potentially incorrect
+    /// implementations of auto traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct Foo<T>(T);
+    ///
+    /// unsafe impl<T> Send for Foo<*const T> {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A type can implement auto traits, e.g. `Send`, `Sync` and `Unpin`,
+    /// in two different ways: either by writing an explicit impl or if
+    /// all fields of the type implement that auto trait.
+    ///
+    /// The compiler disables the automatic implementation if an explicit one
+    /// exists for given type constructor. The exact rules governing this
+    /// are currently unsound and quite subtle and and will be modified in the future.
+    /// This change will cause the automatic implementation to be disabled in more
+    /// cases, potentially breaking some code.
+    pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
+    Warn,
+    "the rules governing auto traits will change in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_where_clause_location` lint detects when a where clause in front of the equals
+    /// in an associated type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(generic_associated_types)]
+    ///
+    /// trait Trait {
+    ///   type Assoc<'a> where Self: 'a;
+    /// }
+    ///
+    /// impl Trait for () {
+    ///   type Assoc<'a> where Self: 'a = ();
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The preferred location for where clauses on associated types in impls
+    /// is after the type. However, for most of generic associated types development,
+    /// it was only accepted before the equals. To provide a transition period and
+    /// further evaluate this change, both are currently accepted. At some point in
+    /// the future, this may be disallowed at an edition boundary; but, that is
+    /// undecided currently.
+    pub DEPRECATED_WHERE_CLAUSE_LOCATION,
+    Warn,
+    "deprecated where clause location"
 }

@@ -39,6 +39,7 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
+use std::mem;
 
 #[cfg(test)]
 mod tests;
@@ -53,7 +54,7 @@ mod tests;
 /// ```
 ///
 /// `'outer` is a label.
-#[derive(Clone, Encodable, Decodable, Copy, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Copy, HashStable_Generic, Eq, PartialEq)]
 pub struct Label {
     pub ident: Ident,
 }
@@ -284,7 +285,7 @@ impl ParenthesizedArgs {
 
 pub use crate::node_id::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 
-/// A modifier on a bound, e.g., `?Sized` or `~const Trait`.
+/// A modifier on a bound, e.g., `?Trait` or `~const Trait`.
 ///
 /// Negative bounds should also be handled here.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
@@ -1275,6 +1276,19 @@ impl Expr {
             ExprKind::Yield(..) => ExprPrecedence::Yield,
             ExprKind::Err => ExprPrecedence::Err,
         }
+    }
+
+    pub fn take(&mut self) -> Self {
+        mem::replace(
+            self,
+            Expr {
+                id: DUMMY_NODE_ID,
+                kind: ExprKind::Err,
+                span: DUMMY_SP,
+                attrs: ThinVec::new(),
+                tokens: None,
+            },
+        )
     }
 }
 
@@ -2404,8 +2418,8 @@ impl<S: Encoder> rustc_serialize::Encodable<S> for AttrId {
 }
 
 impl<D: Decoder> rustc_serialize::Decodable<D> for AttrId {
-    fn decode(d: &mut D) -> Result<AttrId, D::Error> {
-        d.read_nil().map(|_| crate::attr::mk_attr_id())
+    fn decode(_: &mut D) -> AttrId {
+        crate::attr::mk_attr_id()
     }
 }
 
@@ -2648,10 +2662,37 @@ pub struct Trait {
     pub items: Vec<P<AssocItem>>,
 }
 
+/// The location of a where clause on a `TyAlias` (`Span`) and whether there was
+/// a `where` keyword (`bool`). This is split out from `WhereClause`, since there
+/// are two locations for where clause on type aliases, but their predicates
+/// are concatenated together.
+///
+/// Take this example:
+/// ```ignore (only-for-syntax-highlight)
+/// trait Foo {
+///   type Assoc<'a, 'b> where Self: 'a, Self: 'b;
+/// }
+/// impl Foo for () {
+///   type Assoc<'a, 'b> where Self: 'a = () where Self: 'b;
+///   //                 ^^^^^^^^^^^^^^ first where clause
+///   //                                     ^^^^^^^^^^^^^^ second where clause
+/// }
+/// ```
+///
+/// If there is no where clause, then this is `false` with `DUMMY_SP`.
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
+pub struct TyAliasWhereClause(pub bool, pub Span);
+
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct TyAlias {
     pub defaultness: Defaultness,
     pub generics: Generics,
+    /// The span information for the two where clauses (before equals, after equals)
+    pub where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    /// The index in `generics.where_clause.predicates` that would split into
+    /// predicates from the where clause before the equals and the predicates
+    /// from the where clause after the equals
+    pub where_predicates_split: usize,
     pub bounds: GenericBounds,
     pub ty: Option<P<Ty>>,
 }

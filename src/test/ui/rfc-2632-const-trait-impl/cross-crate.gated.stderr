@@ -1,9 +1,24 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/cross-crate.rs:15:5
+error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrait` is not satisfied
+  --> $DIR/cross-crate.rs:15:14
    |
 LL |     NonConst.func();
-   |     ^^^^^^^^^^^^^^^
+   |              ^^^^^^ the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
+   |
+note: the trait `cross_crate::MyTrait` is implemented for `cross_crate::NonConst`, but that implementation is not `const`
+  --> $DIR/cross-crate.rs:15:14
+   |
+LL |     NonConst.func();
+   |              ^^^^^^
 
-error: aborting due to previous error
+error[E0015]: cannot call non-const fn `<cross_crate::NonConst as cross_crate::MyTrait>::func` in constant functions
+  --> $DIR/cross-crate.rs:15:14
+   |
+LL |     NonConst.func();
+   |              ^^^^^^
+   |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0015, E0277.
+For more information about an error, try `rustc --explain E0015`.

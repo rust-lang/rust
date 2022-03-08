@@ -180,7 +180,7 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, _, args, _) = &semi_stmt.kind;
+            if let ExprKind::MethodCall(path, args, _) = &semi_stmt.kind;
             // Figure out the parameters for the method call
             if let Some(self_expr) = args.get(0);
             if let Some(pushed_item) = args.get(1);

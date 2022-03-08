@@ -66,10 +66,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             if block.is_cleanup {
                 continue;
             }
-            let terminator = match &block.terminator {
-                Some(terminator) => terminator,
-                None => continue,
-            };
+            let Some(terminator) = &block.terminator else { continue };
             let span = terminator.source_info.span;
 
             let call_can_unwind = match &terminator.kind {

@@ -136,6 +136,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     move_data: &MoveData<'tcx>,
     elements: &Rc<RegionValueElements>,
     upvars: &[Upvar<'tcx>],
+    use_polonius: bool,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = infcx.tcx.mk_region(ty::ReVar(universal_regions.fr_fn_body));
     let mut universe_causes = FxHashMap::default();
@@ -187,7 +188,15 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut borrowck_context,
         |mut cx| {
             cx.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
-            liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
+            liveness::generate(
+                &mut cx,
+                body,
+                elements,
+                flow_inits,
+                move_data,
+                location_table,
+                use_polonius,
+            );
 
             translate_outlives_facts(&mut cx);
             let opaque_type_values = mem::take(&mut infcx.inner.borrow_mut().opaque_types);
@@ -383,7 +392,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         } else {
             let tcx = self.tcx();
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.val {
+                ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Unevaluated(uv) => Some(uv),
                     _ => None,
                 },
@@ -482,7 +491,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     // then remove the outermost reference so we can check the
                     // type annotation for the remaining type.
                     if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                        rty
+                        *rty
                     } else {
                         bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
                     }
@@ -716,7 +725,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 PlaceTy::from_ty(match base_ty.kind() {
                     ty::Array(inner, _) => {
                         assert!(!from_end, "array subslices should not use from_end");
-                        tcx.mk_array(inner, to - from)
+                        tcx.mk_array(*inner, to - from)
                     }
                     ty::Slice(..) => {
                         assert!(from_end, "slice subslices should use from_end");
@@ -758,6 +767,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
             ProjectionElem::Field(field, fty) => {
                 let fty = self.sanitize_type(place, fty);
+                let fty = self.cx.normalize(fty, location);
                 match self.field_ty(place, base, field, location) {
                     Ok(ty) => {
                         let ty = self.cx.normalize(ty, location);
@@ -809,13 +819,12 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
-                    let mut variant = match variants.nth(variant_index.into()) {
-                        Some(v) => v,
-                        None => bug!(
+                    let Some(mut variant) = variants.nth(variant_index.into()) else {
+                        bug!(
                             "variant_index of generator out of range: {:?}/{:?}",
                             variant_index,
                             substs.as_generator().state_tys(def_id, tcx).count()
-                        ),
+                        );
                     };
                     return match variant.nth(field.index()) {
                         Some(ty) => Ok(ty),
@@ -832,9 +841,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                     return match substs
                         .as_closure()
                         .tupled_upvars_ty()
-                        .tuple_element_ty(field.index())
+                        .tuple_fields()
+                        .get(field.index())
                     {
-                        Some(ty) => Ok(ty),
+                        Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: substs.as_closure().upvar_tys().count(),
                         }),
@@ -852,7 +862,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 }
                 ty::Tuple(tys) => {
                     return match tys.get(field.index()) {
-                        Some(&ty) => Ok(ty.expect_ty()),
+                        Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange { field_count: tys.len() }),
                     };
                 }
@@ -1736,7 +1746,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ConstraintCategory::Boring
             };
             if let Err(terr) =
-                self.sub_types(op_arg_ty, fn_arg, term_location.to_locations(), category)
+                self.sub_types(op_arg_ty, *fn_arg, term_location.to_locations(), category)
             {
                 span_mirbug!(
                     self,
@@ -1955,7 +1965,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     fn check_operand(&mut self, op: &Operand<'tcx>, location: Location) {
         if let Operand::Constant(constant) = op {
             let maybe_uneval = match constant.literal {
-                ConstantKind::Ty(ct) => match ct.val {
+                ConstantKind::Ty(ct) => match ct.val() {
                     ty::ConstKind::Unevaluated(uv) => Some(uv),
                     _ => None,
                 },
@@ -2047,7 +2057,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            Rvalue::NullaryOp(_, ty) => {
+            &Rvalue::NullaryOp(_, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
@@ -2065,7 +2075,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
-                    substs: tcx.mk_substs_trait(ty, &[]),
+                    substs: tcx.mk_substs_trait(*ty, &[]),
                 };
 
                 self.prove_trait_ref(
@@ -2092,7 +2102,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(fn_sig);
 
                         if let Err(terr) = self.eq_types(
-                            ty,
+                            *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,
@@ -2116,7 +2126,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from = tcx.mk_fn_ptr(tcx.signature_unclosure(sig, *unsafety));
 
                         if let Err(terr) = self.eq_types(
-                            ty,
+                            *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,
@@ -2145,7 +2155,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
 
                         if let Err(terr) = self.eq_types(
-                            ty,
+                            *ty,
                             ty_fn_ptr_from,
                             location.to_locations(),
                             ConstraintCategory::Cast,
@@ -2177,39 +2187,33 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body, tcx).kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_from,
-                                mutbl: hir::Mutability::Mut,
-                            }) => ty_from,
-                            _ => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "unexpected base type for cast {:?}",
-                                    ty,
-                                );
-                                return;
-                            }
+                        let ty::RawPtr(ty::TypeAndMut {
+                            ty: ty_from,
+                            mutbl: hir::Mutability::Mut,
+                        }) = op.ty(body, tcx).kind() else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "unexpected base type for cast {:?}",
+                                ty,
+                            );
+                            return;
                         };
-                        let ty_to = match ty.kind() {
-                            ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_to,
-                                mutbl: hir::Mutability::Not,
-                            }) => ty_to,
-                            _ => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "unexpected target type for cast {:?}",
-                                    ty,
-                                );
-                                return;
-                            }
+                        let ty::RawPtr(ty::TypeAndMut {
+                            ty: ty_to,
+                            mutbl: hir::Mutability::Not,
+                        }) = ty.kind() else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "unexpected target type for cast {:?}",
+                                ty,
+                            );
+                            return;
                         };
                         if let Err(terr) = self.sub_types(
-                            ty_from,
-                            ty_to,
+                            *ty_from,
+                            *ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast,
                         ) {
@@ -2237,17 +2241,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             _ => None,
                         };
 
-                        let (ty_elem, ty_mut) = match opt_ty_elem_mut {
-                            Some(ty_elem_mut) => ty_elem_mut,
-                            None => {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "ArrayToPointer cast from unexpected type {:?}",
-                                    ty_from,
-                                );
-                                return;
-                            }
+                        let Some((ty_elem, ty_mut)) = opt_ty_elem_mut else {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "ArrayToPointer cast from unexpected type {:?}",
+                                ty_from,
+                            );
+                            return;
                         };
 
                         let (ty_to, ty_to_mut) = match ty.kind() {
@@ -2277,8 +2278,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
 
                         if let Err(terr) = self.sub_types(
-                            ty_elem,
-                            ty_to,
+                            *ty_elem,
+                            *ty_to,
                             location.to_locations(),
                             ConstraintCategory::Cast,
                         ) {
@@ -2296,7 +2297,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     CastKind::Misc => {
                         let ty_from = op.ty(body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
-                        let cast_ty_to = CastTy::from_ty(ty);
+                        let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
                             (None, _)
                             | (_, None | Some(CastTy::FnPtr))
@@ -2317,7 +2318,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(&body, location, region, borrowed_place);
+                self.add_reborrow_constraint(&body, location, *region, borrowed_place);
             }
 
             Rvalue::BinaryOp(
@@ -2529,9 +2530,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             body,
         );
         let category = if let Some(field) = field {
-            let var_hir_id = self.borrowck_context.upvars[field.index()].place.get_root_variable();
-            // FIXME(project-rfc-2229#8): Use Place for better diagnostics
-            ConstraintCategory::ClosureUpvar(var_hir_id)
+            ConstraintCategory::ClosureUpvar(field)
         } else {
             ConstraintCategory::Boring
         };

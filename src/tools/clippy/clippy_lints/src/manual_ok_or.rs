@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualOkOr {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(method_segment, _, args, _) = scrutinee.kind;
+            if let ExprKind::MethodCall(method_segment, args, _) = scrutinee.kind;
             if method_segment.ident.name == sym!(map_or);
             if args.len() == 3;
             let method_receiver = &args[0];

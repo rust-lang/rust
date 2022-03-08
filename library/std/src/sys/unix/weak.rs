@@ -73,12 +73,14 @@ impl<F> ExternWeak<F> {
 
 pub(crate) macro dlsym {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+         dlsym!(fn $name($($t),*) -> $ret, stringify!($name));
+    ),
+    (fn $name:ident($($t:ty),*) -> $ret:ty, $sym:expr) => (
         static DLSYM: DlsymWeak<unsafe extern "C" fn($($t),*) -> $ret> =
-            DlsymWeak::new(concat!(stringify!($name), '\0'));
+            DlsymWeak::new(concat!($sym, '\0'));
         let $name = &DLSYM;
     )
 }
-
 pub(crate) struct DlsymWeak<F> {
     name: &'static str,
     addr: AtomicUsize,

@@ -1,4 +1,4 @@
-#![feature(const_impl_trait, generators, generator_trait, rustc_attrs)]
+#![feature(generators, generator_trait, rustc_attrs)]
 #![feature(type_alias_impl_trait)]
 
 use std::ops::Generator;

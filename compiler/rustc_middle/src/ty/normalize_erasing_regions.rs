@@ -34,8 +34,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Erase the regions in `value` and then fully normalize all the
     /// types found within. The result will also have regions erased.
     ///
-    /// This is appropriate to use only after type-check: it assumes
-    /// that normalization will succeed, for example.
+    /// This should only be used outside of type inference. For example,
+    /// it assumes that normalization will succeed.
     pub fn normalize_erasing_regions<T>(self, param_env: ty::ParamEnv<'tcx>, value: T) -> T
     where
         T: TypeFoldable<'tcx>,
@@ -192,7 +192,7 @@ impl<'tcx> TypeFolder<'tcx> for NormalizeAfterErasingRegionsFolder<'tcx> {
         self.normalize_generic_arg_after_erasing_regions(ty.into()).expect_ty()
     }
 
-    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
         self.normalize_generic_arg_after_erasing_regions(c.into()).expect_const()
     }
 
@@ -244,13 +244,10 @@ impl<'tcx> FallibleTypeFolder<'tcx> for TryNormalizeAfterErasingRegionsFolder<'t
         }
     }
 
-    fn try_fold_const(
-        &mut self,
-        c: &'tcx ty::Const<'tcx>,
-    ) -> Result<&'tcx ty::Const<'tcx>, Self::Error> {
+    fn try_fold_const(&mut self, c: ty::Const<'tcx>) -> Result<ty::Const<'tcx>, Self::Error> {
         match self.try_normalize_generic_arg_after_erasing_regions(c.into()) {
             Ok(t) => Ok(t.expect_const()),
-            Err(_) => Err(NormalizationError::Const(*c)),
+            Err(_) => Err(NormalizationError::Const(c)),
         }
     }
 

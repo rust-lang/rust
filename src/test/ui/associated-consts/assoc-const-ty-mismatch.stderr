@@ -1,0 +1,26 @@
+error: mismatch in bind of associated constant, got type
+  --> $DIR/assoc-const-ty-mismatch.rs:23:15
+   |
+LL | fn foo<F: Foo<N=usize>>() {}
+   |               ^^^^^^^
+   |
+note: associated constant defined here does not match type
+  --> $DIR/assoc-const-ty-mismatch.rs:5:3
+   |
+LL |   const N: usize;
+   |   ^^^^^^^^^^^^^^^
+
+error: mismatch in bind of associated type, got const
+  --> $DIR/assoc-const-ty-mismatch.rs:25:18
+   |
+LL | fn foo2<F: FooTy<T=3usize>>() {}
+   |                  ^^^^^^^^
+   |
+note: associated type defined here does not match const
+  --> $DIR/assoc-const-ty-mismatch.rs:9:3
+   |
+LL |   type T;
+   |   ^^^^^^^
+
+error: aborting due to 2 previous errors
+

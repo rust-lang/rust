@@ -5,7 +5,7 @@ use crate::alloc::Allocator;
 use crate::cmp;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, Error, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
+    self, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, ReadBuf, Seek, SeekFrom, Write,
 };
 use crate::mem;
 
@@ -279,7 +279,10 @@ impl Read for &[u8] {
     #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"));
+            return Err(io::const_io_error!(
+                ErrorKind::UnexpectedEof,
+                "failed to fill whole buffer"
+            ));
         }
         let (a, b) = self.split_at(buf.len());
 
@@ -361,7 +364,7 @@ impl Write for &mut [u8] {
         if self.write(data)? == data.len() {
             Ok(())
         } else {
-            Err(Error::new_const(ErrorKind::WriteZero, &"failed to write whole buffer"))
+            Err(io::const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer"))
         }
     }
 

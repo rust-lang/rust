@@ -251,7 +251,6 @@ fn test_set_memory() {
 }
 
 #[test]
-#[cfg(not(bootstrap))]
 fn test_set_memory_const() {
     const XS: [u8; 20] = {
         let mut xs = [0u8; 20];
@@ -272,6 +271,21 @@ fn test_unsized_nonnull() {
     let ys = unsafe { ptr.as_ref() };
     let zs: &[i32] = &[1, 2, 3];
     assert!(ys == zs);
+}
+
+#[test]
+fn test_const_nonnull_new() {
+    const {
+        assert!(NonNull::new(core::ptr::null_mut::<()>()).is_none());
+
+        let value = &mut 0u32;
+        let mut ptr = NonNull::new(value).unwrap();
+        unsafe { *ptr.as_mut() = 42 };
+
+        let reference = unsafe { &*ptr.as_ref() };
+        assert!(*reference == *value);
+        assert!(*reference == 42);
+    };
 }
 
 #[test]

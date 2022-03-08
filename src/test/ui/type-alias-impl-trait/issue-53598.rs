@@ -1,4 +1,3 @@
-// ignore-compare-mode-chalk
 #![feature(type_alias_impl_trait)]
 
 use std::fmt::Debug;

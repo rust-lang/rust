@@ -106,8 +106,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::fs::{self, File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 use std::str;
@@ -117,11 +116,13 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{mtime, output, run, run_suppressed, t, try_run, try_run_suppressed};
 use filetime::FileTime;
 
+use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{exe, libdir, CiEnv};
+use crate::util::{
+    exe, libdir, mtime, output, run, run_suppressed, t, try_run, try_run_suppressed, CiEnv,
+};
 
 mod builder;
 mod cache;
@@ -185,6 +186,34 @@ const LLVM_TOOLS: &[&str] = &[
 ];
 
 pub const VERSION: usize = 2;
+
+/// Extra --check-cfg to add when building
+/// (Mode restriction, config name, config values (if any))
+const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)] = &[
+    (None, "bootstrap", None),
+    (Some(Mode::Rustc), "parallel_compiler", None),
+    (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::Std), "miri", None),
+    (Some(Mode::Std), "stdarch_intel_sde", None),
+    (Some(Mode::Std), "no_fp_fmt_parse", None),
+    (Some(Mode::Std), "no_global_oom_handling", None),
+    (Some(Mode::Std), "freebsd12", None),
+    (Some(Mode::Std), "backtrace_in_libstd", None),
+    // FIXME: Used by rustfmt is their test but is invalid (neither cargo nor bootstrap ever set
+    // this config) should probably by removed or use a allow attribute.
+    (Some(Mode::ToolRustc), "release", None),
+    // FIXME: Used by stdarch in their test, should use a allow attribute instead.
+    (Some(Mode::Std), "dont_compile_me", None),
+    // FIXME: Used by serde_json, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "no_btreemap_remove_entry", None),
+    (Some(Mode::ToolRustc), "no_btreemap_remove_entry", None),
+    // FIXME: Used by crossbeam-utils, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "crossbeam_loom", None),
+    (Some(Mode::ToolRustc), "crossbeam_loom", None),
+    // FIXME: Used by proc-macro2, but we should not be triggering on external dependencies.
+    (Some(Mode::Rustc), "span_locations", None),
+    (Some(Mode::ToolRustc), "span_locations", None),
+];
 
 /// A structure representing a Rust compiler.
 ///
@@ -337,6 +366,11 @@ impl Mode {
     pub fn must_support_dlopen(&self) -> bool {
         matches!(self, Mode::Std | Mode::Codegen)
     }
+}
+
+pub enum CLang {
+    C,
+    Cxx,
 }
 
 impl Build {
@@ -527,7 +561,7 @@ impl Build {
         // Try passing `--progress` to start, then run git again without if that fails.
         let update = |progress: bool| {
             let mut git = Command::new("git");
-            git.args(&["submodule", "update", "--init", "--recursive"]);
+            git.args(&["submodule", "update", "--init", "--recursive", "--depth=1"]);
             if progress {
                 git.arg("--progress");
             }
@@ -670,12 +704,12 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the compiler.
-    fn rustc_features(&self) -> String {
+    fn rustc_features(&self, kind: Kind) -> String {
         let mut features = String::new();
         if self.config.jemalloc {
             features.push_str("jemalloc");
         }
-        if self.config.llvm_enabled() {
+        if self.config.llvm_enabled() || kind == Kind::Check {
             features.push_str(" llvm");
         }
 
@@ -851,7 +885,7 @@ impl Build {
             return;
         }
         self.verbose(&format!("running: {:?}", cmd));
-        run(cmd)
+        run(cmd, self.is_verbose())
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -871,7 +905,7 @@ impl Build {
             return true;
         }
         self.verbose(&format!("running: {:?}", cmd));
-        try_run(cmd)
+        try_run(cmd, self.is_verbose())
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -917,7 +951,9 @@ impl Build {
     /// Returns the number of parallel jobs that have been configured for this
     /// build.
     fn jobs(&self) -> u32 {
-        self.config.jobs.unwrap_or_else(|| num_cpus::get() as u32)
+        self.config.jobs.unwrap_or_else(|| {
+            std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32
+        })
     }
 
     fn debuginfo_map_to(&self, which: GitRepo) -> Option<String> {
@@ -941,10 +977,15 @@ impl Build {
 
     /// Returns a list of flags to pass to the C compiler for the target
     /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo) -> Vec<String> {
+    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+        let base = match c {
+            CLang::C => &self.cc[&target],
+            CLang::Cxx => &self.cxx[&target],
+        };
+
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[&target]
+        let mut base = base
             .args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
@@ -1261,13 +1302,10 @@ impl Build {
                 }
                 // Don't include optional deps if their features are not
                 // enabled. Ideally this would be computed from `cargo
-                // metadata --features …`, but that is somewhat slow. Just
-                // skip `build_helper` since there aren't any operations we
-                // want to perform on it. In the future, we may want to
-                // consider just filtering all build and dev dependencies in
-                // metadata::build.
+                // metadata --features …`, but that is somewhat slow. In
+                // the future, we may want to consider just filtering all
+                // build and dev dependencies in metadata::build.
                 if visited.insert(dep)
-                    && dep != "build_helper"
                     && (dep != "profiler_builtins"
                         || target
                             .map(|t| self.config.profiler_enabled(t))
@@ -1333,23 +1371,6 @@ impl Build {
             let mtime = FileTime::from_last_modification_time(&metadata);
             t!(filetime::set_file_times(dst, atime, mtime));
         }
-    }
-
-    /// Search-and-replaces within a file. (Not maximally efficiently: allocates a
-    /// new string for each replacement.)
-    pub fn replace_in_file(&self, path: &Path, replacements: &[(&str, &str)]) {
-        if self.config.dry_run {
-            return;
-        }
-        let mut contents = String::new();
-        let mut file = t!(OpenOptions::new().read(true).write(true).open(path));
-        t!(file.read_to_string(&mut contents));
-        for &(target, replacement) in replacements {
-            contents = contents.replace(target, replacement);
-        }
-        t!(file.seek(SeekFrom::Start(0)));
-        t!(file.set_len(0));
-        t!(file.write_all(contents.as_bytes()));
     }
 
     /// Copies the `src` directory recursively to `dst`. Both are assumed to exist

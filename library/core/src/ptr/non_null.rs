@@ -211,8 +211,9 @@ impl<T: ?Sized> NonNull<T> {
     /// }
     /// ```
     #[stable(feature = "nonnull", since = "1.25.0")]
+    #[rustc_const_unstable(feature = "const_nonnull_new", issue = "93235")]
     #[inline]
-    pub fn new(ptr: *mut T) -> Option<Self> {
+    pub const fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
             // SAFETY: The pointer is already checked and is not null
             Some(unsafe { Self::new_unchecked(ptr) })
@@ -720,6 +721,9 @@ impl<T: ?Sized> const From<Unique<T>> for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T: ?Sized> const From<&mut T> for NonNull<T> {
+    /// Converts a `&mut T` to a `NonNull<T>`.
+    ///
+    /// This conversion is safe and infallible since references cannot be null.
     #[inline]
     fn from(reference: &mut T) -> Self {
         // SAFETY: A mutable reference cannot be null.
@@ -730,6 +734,9 @@ impl<T: ?Sized> const From<&mut T> for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T: ?Sized> const From<&T> for NonNull<T> {
+    /// Converts a `&T` to a `NonNull<T>`.
+    ///
+    /// This conversion is safe and infallible since references cannot be null.
     #[inline]
     fn from(reference: &T) -> Self {
         // SAFETY: A reference cannot be null, so the conditions for

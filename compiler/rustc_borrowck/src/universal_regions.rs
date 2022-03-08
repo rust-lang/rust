@@ -14,7 +14,7 @@
 
 use either::Either;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -180,8 +180,9 @@ pub enum RegionClassification {
     /// anywhere. There is only one, `'static`.
     Global,
 
-    /// An **external** region is only relevant for closures. In that
-    /// case, it refers to regions that are free in the closure type
+    /// An **external** region is only relevant for
+    /// closures, generators, and inline consts. In that
+    /// case, it refers to regions that are free in the type
     /// -- basically, something bound in the surrounding context.
     ///
     /// Consider this example:
@@ -198,8 +199,8 @@ pub enum RegionClassification {
     /// Here, the lifetimes `'a` and `'b` would be **external** to the
     /// closure.
     ///
-    /// If we are not analyzing a closure, there are no external
-    /// lifetimes.
+    /// If we are not analyzing a closure/generator/inline-const,
+    /// there are no external lifetimes.
     External,
 
     /// A **local** lifetime is one about which we know the full set
@@ -322,7 +323,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// See `UniversalRegionIndices::to_region_vid`.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = r {
+        if let ty::ReEmpty(ty::UniverseIndex::ROOT) = *r {
             self.root_empty
         } else {
             self.indices.to_region_vid(r)
@@ -335,7 +336,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// that this region imposes on others. The methods in this file
     /// handle the part about dumping the inference context internal
     /// state.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 err.note(&format!(
@@ -424,22 +425,30 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        // If this is a closure or generator, then the late-bound regions from the enclosing
-        // function are actually external regions to us. For example, here, 'a is not local
-        // to the closure c (although it is local to the fn foo):
-        // fn foo<'a>() {
-        //     let c = || { let x: &'a u32 = ...; }
-        // }
-        if self.mir_def.did.to_def_id() != typeck_root_def_id {
+        // If this is is a 'root' body (not a closure/generator/inline const), then
+        // there are no extern regions, so the local regions start at the same
+        // position as the (empty) sub-list of extern regions
+        let first_local_index = if self.mir_def.did.to_def_id() == typeck_root_def_id {
+            first_extern_index
+        } else {
+            // If this is a closure, generator, or inline-const, then the late-bound regions from the enclosing
+            // function are actually external regions to us. For example, here, 'a is not local
+            // to the closure c (although it is local to the fn foo):
+            // fn foo<'a>() {
+            //     let c = || { let x: &'a u32 = ...; }
+            // }
             self.infcx
-                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices)
-        }
-
-        let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
+                .replace_late_bound_regions_with_nll_infer_vars(self.mir_def.did, &mut indices);
+            // Any regions created during the execution of `defining_ty` or during the above
+            // late-bound region replacement are all considered 'extern' regions
+            self.infcx.num_region_vars()
+        };
 
         // "Liberate" the late-bound regions. These correspond to
         // "local" free regions.
-        let first_local_index = self.infcx.num_region_vars();
+
+        let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
+
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
             FR,
             self.mir_def.did,
@@ -503,7 +512,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             first_local_index,
             num_universals,
             defining_ty,
-            unnormalized_output_ty,
+            unnormalized_output_ty: *unnormalized_output_ty,
             unnormalized_input_tys,
             yield_ty,
         }
@@ -632,16 +641,13 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 let (&output, tuplized_inputs) =
                     inputs_and_output.skip_binder().split_last().unwrap();
                 assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                let inputs = match tuplized_inputs[0].kind() {
-                    ty::Tuple(inputs) => inputs,
-                    _ => bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]),
+                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
+                    bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
                 };
 
                 ty::Binder::bind_with_vars(
                     tcx.mk_type_list(
-                        iter::once(closure_ty)
-                            .chain(inputs.iter().map(|k| k.expect_ty()))
-                            .chain(iter::once(output)),
+                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
                     ),
                     bound_vars,
                 )
@@ -796,7 +802,7 @@ impl<'tcx> UniversalRegionIndices<'tcx> {
     /// during initialization. Relies on the `indices` map having been
     /// fully initialized.
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
-        if let ty::ReVar(..) = r {
+        if let ty::ReVar(..) = *r {
             r.to_region_vid()
         } else {
             *self

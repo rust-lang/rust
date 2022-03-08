@@ -231,7 +231,21 @@ fn check_command(command: Command, cache: &mut Cache) -> Result<(), CkError> {
 
             let val = cache.get_value(&command.args[0])?;
             let results = select(&val, &command.args[1]).unwrap();
-            results.len() == expected
+            let eq = results.len() == expected;
+            if !command.negated && !eq {
+                return Err(CkError::FailedCheck(
+                    format!(
+                        "`{}` matched to `{:?}` with length {}, but expected length {}",
+                        &command.args[1],
+                        results,
+                        results.len(),
+                        expected
+                    ),
+                    command,
+                ));
+            } else {
+                eq
+            }
         }
         CommandKind::Is => {
             // @has <path> <jsonpath> <value> = check *exactly one* item matched by path, and it equals value
@@ -317,6 +331,6 @@ fn string_to_value<'a>(s: &str, cache: &'a Cache) -> Cow<'a, Value> {
             panic!("No variable: `{}`. Current state: `{:?}`", &s[1..], cache.variables)
         }))
     } else {
-        Cow::Owned(serde_json::from_str(s).unwrap())
+        Cow::Owned(serde_json::from_str(s).expect(&format!("Cannot convert `{}` to json", s)))
     }
 }

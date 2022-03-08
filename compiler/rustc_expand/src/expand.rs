@@ -20,7 +20,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, PResult};
 use rustc_feature::Features;
 use rustc_parse::parser::{
-    AttemptLocalParseRecovery, ForceCollect, Parser, RecoverColon, RecoverComma,
+    AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
 };
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
@@ -551,11 +551,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 // attribute is expanded. Therefore, we don't need to configure the tokens
                 // Derive macros *can* see the results of cfg-expansion - they are handled
                 // specially in `fully_expand_fragment`
-                cfg: StripUnconfigured {
-                    sess: &self.cx.sess,
-                    features: self.cx.ecfg.features,
-                    config_tokens: false,
-                },
                 cx: self.cx,
                 invocations: Vec::new(),
                 monotonic: self.monotonic,
@@ -641,9 +636,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let tok_result = match expander.expand(self.cx, span, mac.args.inner_tokens()) {
-                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
-                        Ok(ts) => ts,
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.inner_tokens()) else {
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
@@ -698,9 +692,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
-                    let tok_result = match expander.expand(self.cx, span, inner_tokens, tokens) {
-                        Err(_) => return ExpandResult::Ready(fragment_kind.dummy(span)),
-                        Ok(ts) => ts,
+                    let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
+                        return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &attr_item.path, span)
                 }
@@ -913,6 +906,7 @@ pub fn parse_ast_fragment<'a>(
             None,
             RecoverComma::No,
             RecoverColon::Yes,
+            CommaRecoveryMode::LikelyTuple,
         )?),
         AstFragmentKind::Crate => AstFragment::Crate(this.parse_crate_mod()?),
         AstFragmentKind::Arms
@@ -1097,7 +1091,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
                 let old_attrs_len = attrs.len();
-                let ParsedExternalMod { mut items, inner_span, file_path, dir_path, dir_ownership } =
+                let ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership } =
                     parse_external_mod(
                         &ecx.sess,
                         ident,
@@ -1107,8 +1101,15 @@ impl InvocationCollectorNode for P<ast::Item> {
                         &mut attrs,
                     );
 
-                if let Some(extern_mod_loaded) = ecx.extern_mod_loaded {
-                    (attrs, items) = extern_mod_loaded(ident, attrs, items, inner_span);
+                if let Some(lint_store) = ecx.lint_store {
+                    lint_store.pre_expansion_lint(
+                        ecx.sess,
+                        ecx.resolver.registered_tools(),
+                        ecx.current_expansion.lint_node_id,
+                        &attrs,
+                        &items,
+                        ident.name.as_str(),
+                    );
                 }
 
                 *mod_kind = ModKind::Loaded(items, Inline::No, inner_span);
@@ -1532,12 +1533,20 @@ impl InvocationCollectorNode for AstLikeWrapper<P<ast::Expr>, OptExprTag> {
 
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
-    cfg: StripUnconfigured<'a>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
+    fn cfg(&self) -> StripUnconfigured<'_> {
+        StripUnconfigured {
+            sess: &self.cx.sess,
+            features: self.cx.ecfg.features,
+            config_tokens: false,
+            lint_node_id: self.cx.current_expansion.lint_node_id,
+        }
+    }
+
     fn collect(&mut self, fragment_kind: AstFragmentKind, kind: InvocationKind) -> AstFragment {
         let expn_id = LocalExpnId::fresh_empty();
         let vis = kind.placeholder_visibility();
@@ -1677,7 +1686,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         attr: ast::Attribute,
         pos: usize,
     ) -> bool {
-        let res = self.cfg.cfg_true(&attr);
+        let res = self.cfg().cfg_true(&attr);
         if res {
             // FIXME: `cfg(TRUE)` attributes do not currently remove themselves during expansion,
             // and some tools like rustdoc and clippy rely on that. Find a way to remove them
@@ -1690,7 +1699,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_attr(&self, node: &mut impl AstLike, attr: ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
-            attrs.splice(pos..pos, self.cfg.expand_cfg_attr(attr, false));
+            attrs.splice(pos..pos, self.cfg().expand_cfg_attr(attr, false));
         });
     }
 
@@ -1712,7 +1721,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         continue;
                     }
                     _ => {
-                        Node::pre_flat_map_node_collect_attr(&self.cfg, &attr);
+                        Node::pre_flat_map_node_collect_attr(&self.cfg(), &attr);
                         self.collect_attr((attr, pos, derives), node.to_annotatable(), Node::KIND)
                             .make_ast::<Node>()
                     }
@@ -1832,7 +1841,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_stmt(&mut self, mut node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
         // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
         // changing that requires some compatibility measures.
         if node.is_expr() {
@@ -1854,7 +1863,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.is_trailing_mac = false;
                     res
                 }
-                _ => assign_id!(self, &mut node.id, || noop_flat_map_stmt(node, self)),
+                _ => noop_flat_map_stmt(node, self),
             };
         }
 
@@ -1876,7 +1885,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_expr(&mut self, node: &mut P<ast::Expr>) {
         // FIXME: Feature gating is performed inconsistently between `Expr` and `OptExpr`.
         if let Some(attr) = node.attrs.first() {
-            self.cfg.maybe_emit_expr_attr_err(attr);
+            self.cfg().maybe_emit_expr_attr_err(attr);
         }
         self.visit_node(node)
     }

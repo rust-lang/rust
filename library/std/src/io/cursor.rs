@@ -4,7 +4,7 @@ mod tests;
 use crate::io::prelude::*;
 
 use crate::cmp;
-use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
+use crate::io::{self, ErrorKind, IoSlice, IoSliceMut, ReadBuf, SeekFrom};
 
 use core::convert::TryInto;
 
@@ -297,9 +297,9 @@ where
                 self.pos = n;
                 Ok(self.pos)
             }
-            None => Err(Error::new_const(
+            None => Err(io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"invalid seek to a negative or overflowing position",
+                "invalid seek to a negative or overflowing position",
             )),
         }
     }
@@ -400,9 +400,9 @@ fn slice_write_vectored(
 // Resizing write implementation
 fn vec_write(pos_mut: &mut u64, vec: &mut Vec<u8>, buf: &[u8]) -> io::Result<usize> {
     let pos: usize = (*pos_mut).try_into().map_err(|_| {
-        Error::new_const(
+        io::const_io_error!(
             ErrorKind::InvalidInput,
-            &"cursor position exceeds maximum possible vector length",
+            "cursor position exceeds maximum possible vector length",
         )
     })?;
     // Make sure the internal buffer is as least as big as where we

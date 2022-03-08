@@ -5,7 +5,7 @@ LL | /     for i in 0..x {
 LL | |
 LL | |
 LL | |
-...  |
+LL | |
 LL | |         sum += i;
 LL | |     }
    | |_____^
@@ -13,11 +13,18 @@ LL | |     }
    = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
    = help: add `#![feature(const_for)]` to the crate attributes to enable
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot convert `std::ops::Range<usize>` into an iterator in constant functions
   --> $DIR/const-fn-error.rs:5:14
    |
 LL |     for i in 0..x {
    |              ^^^^
+   |
+note: impl defined here, but it is not `const`
+  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+   |
+LL | impl<I: Iterator> IntoIterator for I {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
 error[E0658]: mutable references are not allowed in constant functions
   --> $DIR/const-fn-error.rs:5:14
@@ -28,25 +35,15 @@ LL |     for i in 0..x {
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const fn `<std::ops::Range<usize> as Iterator>::next` in constant functions
   --> $DIR/const-fn-error.rs:5:14
    |
 LL |     for i in 0..x {
    |              ^^^^
-
-error[E0080]: evaluation of constant value failed
-  --> $DIR/const-fn-error.rs:5:14
    |
-LL |     for i in 0..x {
-   |              ^^^^
-   |              |
-   |              calling non-const function `<std::ops::Range<usize> as IntoIterator>::into_iter`
-   |              inside `f` at $DIR/const-fn-error.rs:5:14
-...
-LL |     let a : [i32; f(X)];
-   |                   ---- inside `main::{constant#0}` at $DIR/const-fn-error.rs:18:19
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0015, E0080, E0658.
+Some errors have detailed explanations: E0015, E0658.
 For more information about an error, try `rustc --explain E0015`.

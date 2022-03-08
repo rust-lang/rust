@@ -14,10 +14,14 @@
 //! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
+//!
+//! Rust disables inheritance of socket objects to child processes by default when possible.  For
+//! example, through the use of the `CLOEXEC` flag in UNIX systems or the `HANDLE_FLAG_INHERIT`
+//! flag on Windows.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, ErrorKind};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
@@ -90,6 +94,6 @@ where
         }
     }
     Err(last_err.unwrap_or_else(|| {
-        Error::new_const(ErrorKind::InvalidInput, &"could not resolve to any addresses")
+        io::const_io_error!(ErrorKind::InvalidInput, "could not resolve to any addresses")
     }))
 }

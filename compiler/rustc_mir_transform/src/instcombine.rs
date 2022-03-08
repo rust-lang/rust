@@ -77,10 +77,8 @@ impl<'tcx> InstCombineContext<'tcx, '_> {
                     _ => None,
                 };
 
-                if let Some(new) = new {
-                    if self.should_combine(source_info, rvalue) {
-                        *rvalue = new;
-                    }
+                if let Some(new) = new && self.should_combine(source_info, rvalue) {
+                    *rvalue = new;
                 }
             }
 

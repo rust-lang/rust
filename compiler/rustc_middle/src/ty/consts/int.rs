@@ -147,8 +147,8 @@ impl<S: Encoder> Encodable<S> for ScalarInt {
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
-    fn decode(d: &mut D) -> Result<ScalarInt, D::Error> {
-        Ok(ScalarInt { data: d.read_u128()?, size: d.read_u8()? })
+    fn decode(d: &mut D) -> ScalarInt {
+        ScalarInt { data: d.read_u128(), size: d.read_u8() }
     }
 }
 
@@ -294,12 +294,22 @@ impl From<char> for ScalarInt {
     }
 }
 
+/// Error returned when a conversion from ScalarInt to char fails.
+#[derive(Debug)]
+pub struct CharTryFromScalarInt;
+
 impl TryFrom<ScalarInt> for char {
-    type Error = Size;
+    type Error = CharTryFromScalarInt;
+
     #[inline]
-    fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(std::mem::size_of::<char>()))
-            .map(|u| char::from_u32(u.try_into().unwrap()).unwrap())
+    fn try_from(int: ScalarInt) -> Result<Self, Self::Error> {
+        let Ok(bits) = int.to_bits(Size::from_bytes(std::mem::size_of::<char>())) else  {
+            return Err(CharTryFromScalarInt);
+        };
+        match char::from_u32(bits.try_into().unwrap()) {
+            Some(c) => Ok(c),
+            None => Err(CharTryFromScalarInt),
+        }
     }
 }
 
@@ -372,5 +382,12 @@ impl fmt::UpperHex for ScalarInt {
         // is a packed struct, that would create a possibly unaligned reference, which
         // is UB.
         write!(f, "{:01$X}", { self.data }, self.size as usize * 2)
+    }
+}
+
+impl fmt::Display for ScalarInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.check_data();
+        write!(f, "{}", { self.data })
     }
 }

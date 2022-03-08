@@ -24,7 +24,7 @@ fn sized_constraint_for_ty<'tcx>(
 
         Tuple(ref tys) => match tys.last() {
             None => vec![],
-            Some(ty) => sized_constraint_for_ty(tcx, adtdef, ty.expect_ty()),
+            Some(&ty) => sized_constraint_for_ty(tcx, adtdef, ty),
         },
 
         Adt(adt, substs) => {
@@ -49,10 +49,7 @@ fn sized_constraint_for_ty<'tcx>(
             // we know that `T` is Sized and do not need to check
             // it on the impl.
 
-            let sized_trait = match tcx.lang_items().sized_trait() {
-                Some(x) => x,
-                _ => return vec![ty],
-            };
+            let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let sized_predicate = ty::Binder::dummy(ty::TraitRef {
                 def_id: sized_trait,
                 substs: tcx.mk_substs_trait(ty, &[]),
@@ -149,7 +146,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // kind of an "idempotent" action, but I'm not sure where would be
     // a better place. In practice, we construct environments for
     // every fn once during type checking, and we'll abort if there
-    // are any errors at that point, so after type checking you can be
+    // are any errors at that point, so outside of type inference you can be
     // sure that this will succeed without errors anyway.
 
     if tcx.sess.opts.debugging_opts.chalk {
@@ -410,7 +407,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, ty::ReStatic) => data.principal().is_none(),
+        ty::Dynamic(ref data, re) if re.is_static() => data.principal().is_none(),
         _ => false,
     };
 
@@ -464,9 +461,9 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
                 })
             })
         }
-        ty::Tuple(..) => {
+        ty::Tuple(fields) => {
             debug!("ty::Tuple(..) =>");
-            ty.tuple_fields().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
+            fields.iter().any(|ty| tcx.conservative_is_privately_uninhabited(param_env.and(ty)))
         }
         ty::Array(ty, len) => {
             debug!("ty::Array(ty, len) =>");
@@ -474,7 +471,7 @@ pub fn conservative_is_privately_uninhabited_raw<'tcx>(
                 Some(0) | None => false,
                 // If the array is definitely non-empty, it's uninhabited if
                 // the type of its elements is uninhabited.
-                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(ty)),
+                Some(1..) => tcx.conservative_is_privately_uninhabited(param_env.and(*ty)),
             }
         }
         ty::Ref(..) => {

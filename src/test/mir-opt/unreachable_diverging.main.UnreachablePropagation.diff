@@ -24,7 +24,7 @@
           _2 = empty() -> bb1;             // scope 1 at $DIR/unreachable_diverging.rs:14:25: 14:32
                                            // mir::Constant
                                            // + span: $DIR/unreachable_diverging.rs:14:25: 14:30
-                                           // + literal: Const { ty: fn() -> std::option::Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
+                                           // + literal: Const { ty: fn() -> Option<Empty> {empty}, val: Value(Scalar(<ZST>)) }
       }
   
       bb1: {

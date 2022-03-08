@@ -22,9 +22,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar,
-    ScalarMaybeUninit, StackPopJump,
+    AllocCheck, AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine,
+    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance,
+    Scalar, ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -440,6 +440,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.scalar_to_ptr(scalar)
     }
 
+    /// Test if this value might be null.
+    /// If the machine does not support ptr-to-int casts, this is conservative.
+    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> bool {
+        match scalar.try_to_int() {
+            Ok(int) => int.is_null(),
+            Err(_) => {
+                let ptr = self.scalar_to_ptr(scalar);
+                match self.memory.ptr_try_get_alloc(ptr) {
+                    Ok((alloc_id, offset, _)) => {
+                        let (size, _align) = self
+                            .memory
+                            .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
+                            .expect("alloc info with MaybeDead cannot fail");
+                        // If the pointer is out-of-bounds, it may be null.
+                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                        offset > size
+                    }
+                    Err(offset) => offset == 0,
+                }
+            }
+        }
+    }
+
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
     /// the machine pointer to the allocation.  Must never be used
     /// for any other pointers, nor for TLS statics.
@@ -509,20 +532,18 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        // do not continue if typeck errors occurred (can only occur in local crate)
         let def = instance.with_opt_param();
-        if let Some(def) = def.as_local() {
-            if self.tcx.has_typeck_results(def.did) {
-                if let Some(error_reported) = self.tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                    throw_inval!(AlreadyReported(error_reported))
-                }
-            }
-        }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
-        if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir_opt_const_arg(def)[promoted]);
+        let body = if let Some(promoted) = promoted {
+            &self.tcx.promoted_mir_opt_const_arg(def)[promoted]
+        } else {
+            M::load_mir(self, instance)?
+        };
+        // do not continue if typeck errors occurred (can only occur in local crate)
+        if let Some(err) = body.tainted_by_errors {
+            throw_inval!(AlreadyReported(err));
         }
-        M::load_mir(self, instance)
+        Ok(body)
     }
 
     /// Call this on things you got out of the MIR (so it is as generic as the current
@@ -633,15 +654,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let (unsized_size, unsized_align) =
-                    match self.size_and_align_of(metadata, &field)? {
-                        Some(size_and_align) => size_and_align,
-                        None => {
-                            // A field with an extern type. We don't know the actual dynamic size
-                            // or the alignment.
-                            return Ok(None);
-                        }
-                    };
+                let Some((unsized_size, unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                    // A field with an extern type. We don't know the actual dynamic size
+                    // or the alignment.
+                    return Ok(None);
+                };
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`

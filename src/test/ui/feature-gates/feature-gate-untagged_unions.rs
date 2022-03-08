@@ -13,7 +13,7 @@ union U22<T> { // OK
 }
 
 union U3 {
-    a: String, //~ ERROR unions may not contain fields that need dropping
+    a: String, //~ ERROR unions cannot contain fields that may need dropping
 }
 
 union U32 { // field that does not drop but is not `Copy`, either -- this is the real feature gate test!
@@ -21,7 +21,7 @@ union U32 { // field that does not drop but is not `Copy`, either -- this is the
 }
 
 union U4<T> {
-    a: T, //~ ERROR unions may not contain fields that need dropping
+    a: T, //~ ERROR unions cannot contain fields that may need dropping
 }
 
 union U5 { // Having a drop impl is OK

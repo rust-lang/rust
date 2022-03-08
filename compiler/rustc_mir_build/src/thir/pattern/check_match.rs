@@ -6,7 +6,9 @@ use super::{PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
@@ -17,6 +19,7 @@ use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
 use rustc_session::Session;
+use rustc_span::source_map::Spanned;
 use rustc_span::{DesugaringKind, ExpnKind, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
@@ -35,7 +38,11 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(
+    sess: &Session,
+    sp: Span,
+    error_message: String,
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -280,12 +287,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
 /// A path pattern was interpreted as a constant, not a new variable.
 /// This caused an irrefutable match failure in e.g. `let`.
-fn const_not_var(
-    err: &mut DiagnosticBuilder<'_>,
-    tcx: TyCtxt<'_>,
-    pat: &Pat<'_>,
-    path: &hir::Path<'_>,
-) {
+fn const_not_var(err: &mut Diagnostic, tcx: TyCtxt<'_>, pat: &Pat<'_>, path: &hir::Path<'_>) {
     let descr = path.res.descr();
     err.span_label(
         pat.span,
@@ -313,47 +315,43 @@ fn check_for_bindings_named_same_as_variants(
     rf: RefutableFlag,
 ) {
     pat.walk_always(|p| {
-        if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
-            if let Some(ty::BindByValue(hir::Mutability::Not)) =
+        if let hir::PatKind::Binding(_, _, ident, None) = p.kind
+            && let Some(ty::BindByValue(hir::Mutability::Not)) =
                 cx.typeck_results.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
-            {
-                let pat_ty = cx.typeck_results.pat_ty(p).peel_refs();
-                if let ty::Adt(edef, _) = pat_ty.kind() {
-                    if edef.is_enum()
-                        && edef.variants.iter().any(|variant| {
-                            variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
-                        })
-                    {
-                        let variant_count = edef.variants.len();
-                        cx.tcx.struct_span_lint_hir(
-                            BINDINGS_WITH_VARIANT_NAME,
-                            p.hir_id,
+            && let pat_ty = cx.typeck_results.pat_ty(p).peel_refs()
+            && let ty::Adt(edef, _) = pat_ty.kind()
+            && edef.is_enum()
+            && edef.variants.iter().any(|variant| {
+                variant.ident(cx.tcx) == ident && variant.ctor_kind == CtorKind::Const
+            })
+        {
+            let variant_count = edef.variants.len();
+            cx.tcx.struct_span_lint_hir(
+                BINDINGS_WITH_VARIANT_NAME,
+                p.hir_id,
+                p.span,
+                |lint| {
+                    let ty_path = cx.tcx.def_path_str(edef.did);
+                    let mut err = lint.build(&format!(
+                        "pattern binding `{}` is named the same as one \
+                                        of the variants of the type `{}`",
+                        ident, ty_path
+                    ));
+                    err.code(error_code!(E0170));
+                    // If this is an irrefutable pattern, and there's > 1 variant,
+                    // then we can't actually match on this. Applying the below
+                    // suggestion would produce code that breaks on `check_irrefutable`.
+                    if rf == Refutable || variant_count == 1 {
+                        err.span_suggestion(
                             p.span,
-                            |lint| {
-                                let ty_path = cx.tcx.def_path_str(edef.did);
-                                let mut err = lint.build(&format!(
-                                    "pattern binding `{}` is named the same as one \
-                                                    of the variants of the type `{}`",
-                                    ident, ty_path
-                                ));
-                                err.code(error_code!(E0170));
-                                // If this is an irrefutable pattern, and there's > 1 variant,
-                                // then we can't actually match on this. Applying the below
-                                // suggestion would produce code that breaks on `check_irrefutable`.
-                                if rf == Refutable || variant_count == 1 {
-                                    err.span_suggestion(
-                                        p.span,
-                                        "to match on the variant, qualify the path",
-                                        format!("{}::{}", ty_path, ident),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                err.emit();
-                            },
-                        )
+                            "to match on the variant, qualify the path",
+                            format!("{}::{}", ty_path, ident),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                }
-            }
+                    err.emit();
+                },
+            )
         }
     });
 }
@@ -445,6 +443,10 @@ fn check_let_reachability<'p, 'tcx>(
     pat: &'p DeconstructedPat<'p, 'tcx>,
     span: Span,
 ) {
+    if is_let_chain(cx.tcx, pat_id) {
+        return;
+    }
+
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
 
@@ -551,7 +553,7 @@ fn non_exhaustive_match<'p, 'tcx>(
         }
     }
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if cx.tcx.is_ty_uninhabited_from(cx.module, sub_ty, cx.param_env) {
+        if cx.tcx.is_ty_uninhabited_from(cx.module, *sub_ty, cx.param_env) {
             err.note("references are always considered inhabited");
         }
     }
@@ -589,7 +591,7 @@ crate fn pattern_not_covered_label(
 /// Point at the definition of non-covered `enum` variants.
 fn adt_defined_here<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     ty: Ty<'tcx>,
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) {
@@ -616,10 +618,8 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
     let mut covered = vec![];
     for pattern in patterns {
         if let Variant(variant_index) = pattern.ctor() {
-            if let ty::Adt(this_def, _) = pattern.ty().kind() {
-                if this_def.did != def.did {
-                    continue;
-                }
+            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did != def.did {
+                continue;
             }
             let sp = def.variants[*variant_index].ident(cx.tcx).span;
             if covered.contains(&sp) {
@@ -764,8 +764,11 @@ pub enum LetSource {
 
 fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     let hir = tcx.hir();
+
     let parent = hir.get_parent_node(pat_id);
-    match hir.get(parent) {
+    let parent_node = hir.get(parent);
+
+    match parent_node {
         hir::Node::Arm(hir::Arm {
             guard: Some(hir::Guard::IfLet(&hir::Pat { hir_id, .. }, _)),
             ..
@@ -780,6 +783,7 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
         }
         _ => {}
     }
+
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
 
@@ -792,12 +796,30 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
         ..
     }) = parent_parent_parent_parent_node
     {
-        LetSource::WhileLet
-    } else if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. }) =
-        parent_parent_node
-    {
-        LetSource::IfLet
-    } else {
-        LetSource::GenericLet
+        return LetSource::WhileLet;
     }
+
+    if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If(..), .. }) = parent_parent_node {
+        return LetSource::IfLet;
+    }
+
+    LetSource::GenericLet
+}
+
+// Since this function is called within a let context, it is reasonable to assume that any parent
+// `&&` infers a let chain
+fn is_let_chain(tcx: TyCtxt<'_>, pat_id: HirId) -> bool {
+    let hir = tcx.hir();
+    let parent = hir.get_parent_node(pat_id);
+    let parent_parent = hir.get_parent_node(parent);
+    matches!(
+        hir.get(parent_parent),
+        hir::Node::Expr(
+            hir::Expr {
+                kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, ..),
+                ..
+            },
+            ..
+        )
+    )
 }

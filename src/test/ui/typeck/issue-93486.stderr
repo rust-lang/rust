@@ -1,0 +1,11 @@
+error[E0070]: invalid left-hand side of assignment
+  --> $DIR/issue-93486.rs:3:36
+   |
+LL |         vec![].last_mut().unwrap() = 3_u8;
+   |         -------------------------- ^
+   |         |
+   |         cannot assign to this expression
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0070`.

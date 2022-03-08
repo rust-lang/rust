@@ -895,7 +895,7 @@ impl<T> BTreeSet<T> {
         self.drain_filter(|v| !f(v));
     }
 
-    /// Moves all elements from `other` into `Self`, leaving `other` empty.
+    /// Moves all elements from `other` into `self`, leaving `other` empty.
     ///
     /// # Examples
     ///
@@ -1097,6 +1097,8 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 
 #[stable(feature = "std_collections_from_array", since = "1.56.0")]
 impl<T: Ord, const N: usize> From<[T; N]> for BTreeSet<T> {
+    /// Converts a `[T; N]` into a `BTreeSet<T>`.
+    ///
     /// ```
     /// use std::collections::BTreeSet;
     ///
@@ -1537,7 +1539,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_len, b_len) = self.0.lens();
         // No checked_add, because even if a and b refer to the same set,
-        // and T is an empty type, the storage overhead of sets limits
+        // and T is a zero-sized type, the storage overhead of sets limits
         // the number of elements to less than half the range of usize.
         (0, Some(a_len + b_len))
     }

@@ -1,31 +1,34 @@
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const operator in constant functions
   --> $DIR/issue-90870.rs:8:5
    |
 LL |     a == b
    |     ^^^^^^
    |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider dereferencing here
    |
 LL |     *a == *b
    |     +     +
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const operator in constant functions
   --> $DIR/issue-90870.rs:14:5
    |
 LL |     a == b
    |     ^^^^^^
    |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider dereferencing here
    |
 LL |     ****a == ****b
    |     ++++     ++++
 
-error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+error[E0015]: cannot call non-const operator in constant functions
   --> $DIR/issue-90870.rs:21:12
    |
 LL |         if l == r {
    |            ^^^^^^
    |
+   = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 help: consider dereferencing here
    |
 LL |         if *l == *r {

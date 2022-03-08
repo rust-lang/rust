@@ -7,6 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod converts;
+mod count;
 mod error;
 mod iter;
 mod traits;
@@ -75,15 +76,14 @@ use iter::MatchIndicesInternal;
 use iter::SplitInternal;
 use iter::{MatchesInternal, SplitNInternal};
 
-use validations::truncate_to_char_boundary;
-
 #[inline(never)]
 #[cold]
 #[track_caller]
 fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
-    let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
-    let ellipsis = if truncated { "[...]" } else { "" };
+    let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
+    let s_trunc = &s[..trunc_len];
+    let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
 
     // 1. out of bounds
     if begin > s.len() || end > s.len() {
@@ -104,10 +104,7 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     // 3. character boundary
     let index = if !s.is_char_boundary(begin) { begin } else { end };
     // find the character
-    let mut char_start = index;
-    while !s.is_char_boundary(char_start) {
-        char_start -= 1;
-    }
+    let char_start = s.floor_char_boundary(index);
     // `char_start` must be less than len and a char boundary
     let ch = s[char_start..].chars().next().unwrap();
     let char_range = char_start..char_start + ch.len_utf8();
@@ -214,8 +211,80 @@ impl str {
             // code on higher opt-levels. See PR #84751 for more details.
             None => index == self.len(),
 
-            // This is bit magic equivalent to: b < 128 || b >= 192
-            Some(&b) => (b as i8) >= -0x40,
+            Some(&b) => b.is_utf8_char_boundary(),
+        }
+    }
+
+    /// Finds the closest `x` not exceeding `index` where `is_char_boundary(x)` is `true`.
+    ///
+    /// This method can help you truncate a string so that it's still valid UTF-8, but doesn't
+    /// exceed a given number of bytes. Note that this is done purely at the character level
+    /// and can still visually split graphemes, even though the underlying characters aren't
+    /// split. For example, the emoji 🧑‍🔬 (scientist) could be split so that the string only
+    /// includes 🧑 (person) instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_char_boundary)]
+    /// let s = "❤️🧡💛💚💙💜";
+    /// assert_eq!(s.len(), 26);
+    /// assert!(!s.is_char_boundary(13));
+    ///
+    /// let closest = s.floor_char_boundary(13);
+    /// assert_eq!(closest, 10);
+    /// assert_eq!(&s[..closest], "❤️🧡");
+    /// ```
+    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[inline]
+    pub fn floor_char_boundary(&self, index: usize) -> usize {
+        if index >= self.len() {
+            self.len()
+        } else {
+            let lower_bound = index.saturating_sub(3);
+            let new_index = self.as_bytes()[lower_bound..=index]
+                .iter()
+                .rposition(|b| b.is_utf8_char_boundary());
+
+            // SAFETY: we know that the character boundary will be within four bytes
+            unsafe { lower_bound + new_index.unwrap_unchecked() }
+        }
+    }
+
+    /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
+    ///
+    /// This method is the natural complement to [`floor_char_boundary`]. See that method
+    /// for more details.
+    ///
+    /// [`floor_char_boundary`]: str::floor_char_boundary
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index > self.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_char_boundary)]
+    /// let s = "❤️🧡💛💚💙💜";
+    /// assert_eq!(s.len(), 26);
+    /// assert!(!s.is_char_boundary(13));
+    ///
+    /// let closest = s.ceil_char_boundary(13);
+    /// assert_eq!(closest, 14);
+    /// assert_eq!(&s[..closest], "❤️🧡💛");
+    /// ```
+    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[inline]
+    pub fn ceil_char_boundary(&self, index: usize) -> usize {
+        if index > self.len() {
+            slice_error_fail(self, index, index)
+        } else {
+            let upper_bound = Ord::min(index + 4, self.len());
+            self.as_bytes()[index..upper_bound]
+                .iter()
+                .position(|b| b.is_utf8_char_boundary())
+                .map_or(upper_bound, |pos| pos + index)
         }
     }
 

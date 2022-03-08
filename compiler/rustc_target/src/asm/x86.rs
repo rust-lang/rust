@@ -1,5 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{RelocModel, Target};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::Symbol;
@@ -139,8 +139,10 @@ impl X86InlineAsmRegClass {
 
 fn x86_64_only(
     arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Err("register is only available on x86_64"),
@@ -151,8 +153,10 @@ fn x86_64_only(
 
 fn high_byte(
     arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86_64 => Err("high byte registers cannot be used as an operand on x86_64"),
@@ -162,8 +166,10 @@ fn high_byte(
 
 fn rbx_reserved(
     arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => Ok(()),
@@ -176,8 +182,10 @@ fn rbx_reserved(
 
 fn esi_reserved(
     arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     _target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     match arch {
         InlineAsmArch::X86 => {

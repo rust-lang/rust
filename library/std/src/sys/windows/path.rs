@@ -260,3 +260,19 @@ pub(crate) fn maybe_verbatim(path: &Path) -> io::Result<Vec<u16>> {
     )?;
     Ok(path)
 }
+
+/// Make a Windows path absolute.
+pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
+    if path.as_os_str().bytes().starts_with(br"\\?\") {
+        return Ok(path.into());
+    }
+    let path = to_u16s(path)?;
+    let lpfilename = path.as_ptr();
+    fill_utf16_buf(
+        // SAFETY: `fill_utf16_buf` ensures the `buffer` and `size` are valid.
+        // `lpfilename` is a pointer to a null terminated string that is not
+        // invalidated until after `GetFullPathNameW` returns successfully.
+        |buffer, size| unsafe { c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()) },
+        super::os2path,
+    )
+}

@@ -3,7 +3,7 @@
 use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::{
@@ -60,7 +60,7 @@ impl BorrowExplanation {
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         borrow_desc: &str,
         borrow_span: Option<Span>,
         multiple_borrow_span: Option<(Span, Span)>,
@@ -275,7 +275,7 @@ impl BorrowExplanation {
     }
     pub(crate) fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         category: &ConstraintCategory,
         span: Span,
         region_name: &RegionName,
@@ -375,15 +375,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
             Some(Cause::DropVar(local, location)) => {
                 let mut should_note_order = false;
-                if self.local_names[local].is_some() {
-                    if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
-                        if let Some(borrowed_local) = place.as_local() {
-                            if self.local_names[borrowed_local].is_some() && local != borrowed_local
-                            {
-                                should_note_order = true;
-                            }
-                        }
-                    }
+                if self.local_names[local].is_some()
+                    && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
+                    && let Some(borrowed_local) = place.as_local()
+                    && self.local_names[borrowed_local].is_some() && local != borrowed_local
+                {
+                    should_note_order = true;
                 }
 
                 BorrowExplanation::UsedLaterWhenDropped {
@@ -650,13 +647,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 // The only kind of statement that we care about is assignments...
                 if let StatementKind::Assign(box (place, rvalue)) = &stmt.kind {
-                    let into = match place.local_or_deref_local() {
-                        Some(into) => into,
-                        None => {
-                            // Continue at the next location.
-                            queue.push(current_location.successor_within_block());
-                            continue;
-                        }
+                    let Some(into) = place.local_or_deref_local() else {
+                        // Continue at the next location.
+                        queue.push(current_location.successor_within_block());
+                        continue;
                     };
 
                     match rvalue {

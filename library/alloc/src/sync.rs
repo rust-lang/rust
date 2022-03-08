@@ -351,30 +351,51 @@ impl<T> Arc<T> {
         unsafe { Self::from_inner(Box::leak(x).into()) }
     }
 
-    /// Constructs a new `Arc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function returns will result
-    /// in a `None` value. However, the weak reference may be cloned freely and
-    /// stored for use at a later time.
+    /// Constructs a new `Arc<T>` using a closure `data_fn` that has access to
+    /// a weak reference to the constructing `Arc<T>`.
     ///
-    /// # Examples
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to prevent a memory leak.
+    /// In `data_fn`, initialization of `T` can make use of the weak reference
+    /// by cloning and storing it inside `T` for use at a later time.
+    ///
+    /// Since the new `Arc<T>` is not fully-constructed until
+    /// `Arc<T>::new_cyclic` returns, calling [`upgrade`] on the weak
+    /// reference inside `data_fn` will fail and result in a `None` value.
+    ///
+    /// # Panics
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T>`] is dropped normally.
+    ///
+    /// # Example
     /// ```
-    /// #![feature(arc_new_cyclic)]
     /// #![allow(dead_code)]
-    ///
     /// use std::sync::{Arc, Weak};
     ///
-    /// struct Foo {
-    ///     me: Weak<Foo>,
+    /// struct Gadget {
+    ///     me: Weak<Gadget>,
     /// }
     ///
-    /// let foo = Arc::new_cyclic(|me| Foo {
-    ///     me: me.clone(),
-    /// });
+    /// impl Gadget {
+    ///     /// Construct a reference counted Gadget.
+    ///     fn new() -> Arc<Self> {
+    ///         Arc::new_cyclic(|me| Gadget { me: me.clone() })
+    ///     }
+    ///
+    ///     /// Return a reference counted pointer to Self.
+    ///     fn me(&self) -> Arc<Self> {
+    ///         self.me.upgrade().unwrap()
+    ///     }
+    /// }
     /// ```
+    /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Arc<T> {
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
+    pub fn new_cyclic<F>(data_fn: F) -> Arc<T>
+    where
+        F: FnOnce(&Weak<T>) -> T,
+    {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box ArcInner {
@@ -437,12 +458,10 @@ impl<T> Arc<T> {
     ///
     /// let mut five = Arc::<u32>::new_uninit();
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Arc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -545,12 +564,10 @@ impl<T> Arc<T> {
     ///
     /// let mut five = Arc::<u32>::try_new_uninit()?;
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Arc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -652,14 +669,13 @@ impl<T> Arc<[T]> {
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
     ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     Arc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
-    ///     Arc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
-    ///     Arc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    /// // Deferred initialization:
+    /// let data = Arc::get_mut(&mut values).unwrap();
+    /// data[0].write(1);
+    /// data[1].write(2);
+    /// data[2].write(3);
     ///
-    ///     values.assume_init()
-    /// };
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -730,12 +746,10 @@ impl<T> Arc<mem::MaybeUninit<T>> {
     ///
     /// let mut five = Arc::<u32>::new_uninit();
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Arc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Arc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -770,14 +784,13 @@ impl<T> Arc<[mem::MaybeUninit<T>]> {
     ///
     /// let mut values = Arc::<[u32]>::new_uninit_slice(3);
     ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     Arc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
-    ///     Arc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
-    ///     Arc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    /// // Deferred initialization:
+    /// let data = Arc::get_mut(&mut values).unwrap();
+    /// data[0].write(1);
+    /// data[1].write(2);
+    /// data[2].write(3);
     ///
-    ///     values.assume_init()
-    /// };
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -1463,6 +1476,41 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe { Self::get_mut_unchecked(this) }
+    }
+
+    /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
+    /// clone.
+    ///
+    /// Assuming `arc_t` is of type `Arc<T>`, this function is functionally equivalent to
+    /// `(*arc_t).clone()`, but will avoid cloning the inner value where possible.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_unwrap_or_clone)]
+    /// # use std::{ptr, sync::Arc};
+    /// let inner = String::from("test");
+    /// let ptr = inner.as_ptr();
+    ///
+    /// let arc = Arc::new(inner);
+    /// let inner = Arc::unwrap_or_clone(arc);
+    /// // The inner value was not cloned
+    /// assert!(ptr::eq(ptr, inner.as_ptr()));
+    ///
+    /// let arc = Arc::new(inner);
+    /// let arc2 = arc.clone();
+    /// let inner = Arc::unwrap_or_clone(arc);
+    /// // Because there were 2 references, we had to clone the inner value.
+    /// assert!(!ptr::eq(ptr, inner.as_ptr()));
+    /// // `arc2` is the last reference, so when we unwrap it we get back
+    /// // the original `String`.
+    /// let inner = Arc::unwrap_or_clone(arc2);
+    /// assert!(ptr::eq(ptr, inner.as_ptr()));
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
+    pub fn unwrap_or_clone(this: Self) -> T {
+        Arc::try_unwrap(this).unwrap_or_else(|arc| (*arc).clone())
     }
 }
 

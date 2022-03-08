@@ -1,3 +1,5 @@
+use crate::ImplTraitPosition;
+
 use super::{AnonymousLifetimeMode, ImplTraitContext, LoweringContext, ParamMode};
 use super::{GenericArgsCtor, ParenthesizedGenericArgs};
 
@@ -184,7 +186,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     param_mode,
                     0,
                     ParenthesizedGenericArgs::Err,
-                    ImplTraitContext::disallowed(),
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 )
             })),
             span: self.lower_span(p.span),
@@ -392,11 +394,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // we generally don't permit such things (see #51008).
         self.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
             let ParenthesizedArgs { span, inputs, inputs_span, output } = data;
-            let inputs = this.arena.alloc_from_iter(
-                inputs.iter().map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed())),
-            );
+            let inputs = this.arena.alloc_from_iter(inputs.iter().map(|ty| {
+                this.lower_ty_direct(
+                    ty,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam),
+                )
+            }));
             let output_ty = match output {
-                FnRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
+                FnRetTy::Ty(ty) => this
+                    .lower_ty(&ty, ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn)),
                 FnRetTy::Default(_) => this.arena.alloc(this.ty_tup(*span, &[])),
             };
             let args = smallvec![GenericArg::Type(this.ty_tup(*inputs_span, inputs))];

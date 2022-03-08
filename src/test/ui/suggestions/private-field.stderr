@@ -1,0 +1,11 @@
+error[E0609]: no field `cap` on type `S`
+  --> $DIR/private-field.rs:7:12
+   |
+LL |     dbg!(s.cap)
+   |            ^^^ unknown field
+   |
+   = note: available fields are: `val`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0609`.

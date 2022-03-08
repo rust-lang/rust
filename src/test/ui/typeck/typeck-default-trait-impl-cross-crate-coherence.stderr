@@ -1,5 +1,5 @@
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:13:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:14:1
    |
 LL | impl DefaultedTrait for (A,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^----
@@ -10,7 +10,7 @@ LL | impl DefaultedTrait for (A,) { }
    = note: define and implement a trait or new type instead
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:16:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:17:1
    |
 LL | impl !DefaultedTrait for (B,) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^----
@@ -21,13 +21,13 @@ LL | impl !DefaultedTrait for (B,) { }
    = note: define and implement a trait or new type instead
 
 error[E0321]: cross-crate traits with a default impl, like `DefaultedTrait`, can only be implemented for a struct/enum type defined in the current crate
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:20:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:21:1
    |
 LL | impl DefaultedTrait for Box<C> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait for type in another crate
 
 error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:21:1
+  --> $DIR/typeck-default-trait-impl-cross-crate-coherence.rs:22:1
    |
 LL | impl DefaultedTrait for lib::Something<C> { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^-----------------

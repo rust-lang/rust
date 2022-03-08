@@ -1,5 +1,6 @@
 use crate::clean::auto_trait::AutoTraitFinder;
 use crate::clean::blanket_impl::BlanketImplFinder;
+use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     inline, Clean, Crate, ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item,
     ItemKind, Lifetime, Path, PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
@@ -17,8 +18,6 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
-use rustc_session::parse::ParseSess;
-use rustc_span::source_map::FilePathMapping;
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
@@ -78,6 +77,30 @@ crate fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, primitives, external_traits: cx.external_traits.clone() }
 }
 
+crate fn substs_to_args(
+    cx: &mut DocContext<'_>,
+    substs: &[ty::subst::GenericArg<'_>],
+    mut skip_first: bool,
+) -> Vec<GenericArg> {
+    substs
+        .iter()
+        .filter_map(|kind| match kind.unpack() {
+            GenericArgKind::Lifetime(lt) => match *lt {
+                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
+                    Some(GenericArg::Lifetime(Lifetime::elided()))
+                }
+                _ => lt.clean(cx).map(GenericArg::Lifetime),
+            },
+            GenericArgKind::Type(_) if skip_first => {
+                skip_first = false;
+                None
+            }
+            GenericArgKind::Type(ty) => Some(GenericArg::Type(ty.clean(cx))),
+            GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
+        })
+        .collect()
+}
+
 fn external_generic_args(
     cx: &mut DocContext<'_>,
     did: DefId,
@@ -85,34 +108,15 @@ fn external_generic_args(
     bindings: Vec<TypeBinding>,
     substs: SubstsRef<'_>,
 ) -> GenericArgs {
-    let mut skip_self = has_self;
-    let mut ty_kind = None;
-    let args: Vec<_> = substs
-        .iter()
-        .filter_map(|kind| match kind.unpack() {
-            GenericArgKind::Lifetime(lt) => match lt {
-                ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrAnon(_), .. }) => {
-                    Some(GenericArg::Lifetime(Lifetime::elided()))
-                }
-                _ => lt.clean(cx).map(GenericArg::Lifetime),
-            },
-            GenericArgKind::Type(_) if skip_self => {
-                skip_self = false;
-                None
-            }
-            GenericArgKind::Type(ty) => {
-                ty_kind = Some(ty.kind());
-                Some(GenericArg::Type(ty.clean(cx)))
-            }
-            GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(ct.clean(cx)))),
-        })
-        .collect();
+    let args = substs_to_args(cx, &substs, has_self);
 
     if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
-        let inputs = match ty_kind.unwrap() {
-            ty::Tuple(tys) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
-            _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
-        };
+        let inputs =
+            // The trait's first substitution is the one after self, if there is one.
+            match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
+                ty::Tuple(tys) => tys.iter().map(|t| t.clean(cx)).collect(),
+                _ => return GenericArgs::AngleBracketed { args, bindings: bindings.into() },
+            };
         let output = None;
         // FIXME(#20299) return type comes from a projection now
         // match types[1].kind {
@@ -227,8 +231,8 @@ crate fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     })
 }
 
-crate fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
-    match n.val {
+crate fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
+    match n.val() {
         ty::ConstKind::Unevaluated(ty::Unevaluated { def, substs: _, promoted }) => {
             let mut s = if let Some(def) = def.as_local() {
                 let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def.did);
@@ -298,15 +302,15 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: &ty::Const<'_>) -> String {
+fn print_const_with_custom_print_scalar(tcx: TyCtxt<'_>, ct: ty::Const<'_>) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
     // For all other types, fallback to the original `pretty_print_const`.
-    match (ct.val, ct.ty.kind()) {
+    match (ct.val(), ct.ty().kind()) {
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Uint(ui)) => {
             format!("{}{}", format_integer_with_underscore_sep(&int.to_string()), ui.name_str())
         }
         (ty::ConstKind::Value(ConstValue::Scalar(int)), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty).unwrap();
+            let ty = tcx.lift(ct.ty()).unwrap();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
@@ -356,7 +360,7 @@ crate fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 
     match path.res {
         Res::PrimTy(p) => Primitive(PrimitiveType::from(p)),
-        Res::SelfTy(..) if path.segments.len() == 1 => Generic(kw::SelfUpper),
+        Res::SelfTy { .. } if path.segments.len() == 1 => Generic(kw::SelfUpper),
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => Generic(path.segments[0].name),
         _ => {
             let _ = register_res(cx, path.res);
@@ -398,11 +402,11 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
-        // This is part of a trait definition; document the trait.
-        Res::SelfTy(Some(trait_def_id), _) => (trait_def_id, ItemType::Trait),
-        // This is an inherent impl; it doesn't have its own page.
-        Res::SelfTy(None, Some((impl_def_id, _))) => return impl_def_id,
-        Res::SelfTy(None, None)
+        // This is part of a trait definition or trait impl; document the trait.
+        Res::SelfTy { trait_: Some(trait_def_id), alias_to: _ } => (trait_def_id, ItemType::Trait),
+        // This is an inherent impl or a type definition; it doesn't have its own page.
+        Res::SelfTy { trait_: None, alias_to: Some((item_def_id, _)) } => return item_def_id,
+        Res::SelfTy { trait_: None, alias_to: None }
         | Res::PrimTy(_)
         | Res::ToolMod
         | Res::SelfCtor(_)
@@ -498,57 +502,6 @@ pub(super) fn render_macro_arms<'a>(
             .unwrap();
     }
     out
-}
-
-/// Render a macro matcher in a format suitable for displaying to the user
-/// as part of an item declaration.
-pub(super) fn render_macro_matcher(tcx: TyCtxt<'_>, matcher: &TokenTree) -> String {
-    if let Some(snippet) = snippet_equal_to_token(tcx, matcher) {
-        snippet
-    } else {
-        rustc_ast_pretty::pprust::tt_to_string(matcher)
-    }
-}
-
-/// Find the source snippet for this token's Span, reparse it, and return the
-/// snippet if the reparsed TokenTree matches the argument TokenTree.
-fn snippet_equal_to_token(tcx: TyCtxt<'_>, matcher: &TokenTree) -> Option<String> {
-    // Find what rustc thinks is the source snippet.
-    // This may not actually be anything meaningful if this matcher was itself
-    // generated by a macro.
-    let source_map = tcx.sess.source_map();
-    let span = matcher.span();
-    let snippet = source_map.span_to_snippet(span).ok()?;
-
-    // Create a Parser.
-    let sess = ParseSess::new(FilePathMapping::empty());
-    let file_name = source_map.span_to_filename(span);
-    let mut parser =
-        match rustc_parse::maybe_new_parser_from_source_str(&sess, file_name, snippet.clone()) {
-            Ok(parser) => parser,
-            Err(diagnostics) => {
-                for mut diagnostic in diagnostics {
-                    diagnostic.cancel();
-                }
-                return None;
-            }
-        };
-
-    // Reparse a single token tree.
-    let mut reparsed_trees = match parser.parse_all_token_trees() {
-        Ok(reparsed_trees) => reparsed_trees,
-        Err(mut diagnostic) => {
-            diagnostic.cancel();
-            return None;
-        }
-    };
-    if reparsed_trees.len() != 1 {
-        return None;
-    }
-    let reparsed_tree = reparsed_trees.pop().unwrap();
-
-    // Compare against the original tree.
-    if reparsed_tree.eq_unspanned(matcher) { Some(snippet) } else { None }
 }
 
 pub(super) fn display_macro_source(

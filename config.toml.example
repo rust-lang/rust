@@ -157,6 +157,9 @@ changelog-seen = 2
 # Whether to build the clang compiler.
 #clang = false
 
+# Custom CMake defines to set when building LLVM.
+#build-config = {}
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
@@ -289,7 +292,7 @@ changelog-seen = 2
 #sanitizers = false
 
 # Build the profiler runtime (required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
@@ -548,7 +551,9 @@ changelog-seen = 2
 
 # This is an array of the codegen backends that will be compiled for the rustc
 # that's being compiled. The default is to only build the LLVM codegen backend,
-# and currently the only standard options supported are `"llvm"` and `"cranelift"`.
+# and currently the only standard options supported are `"llvm"`, `"cranelift"`
+# and `"gcc"`. The first backend in this list will be used as default by rustc
+# when no explicit backend is specified.
 #codegen-backends = ["llvm"]
 
 # Indicates whether LLD will be compiled and made available in the sysroot for
@@ -671,7 +676,7 @@ changelog-seen = 2
 #sanitizers = build.sanitizers (bool)
 
 # Build the profiler runtime for this target(required when compiling with options that depend
-# on this runtime, such as `-C profile-generate` or `-Z instrument-coverage`).
+# on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 # This option will override the same option under [build] section.
 #profiler = build.profiler (bool)
 

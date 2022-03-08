@@ -64,12 +64,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut clobber_abis = FxHashMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
-                match asm::InlineAsmClobberAbi::parse(
-                    asm_arch,
-                    &self.sess.target_features,
-                    &self.sess.target,
-                    *abi_name,
-                ) {
+                match asm::InlineAsmClobberAbi::parse(asm_arch, &self.sess.target, *abi_name) {
                     Ok(abi) => {
                         // If the abi was already in the list, emit an error
                         match clobber_abis.get(&abi) {
@@ -132,13 +127,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let lower_reg = |reg| match reg {
                     InlineAsmRegOrRegClass::Reg(s) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
-                            asm::InlineAsmReg::parse(
-                                asm_arch,
-                                &sess.target_features,
-                                &sess.target,
-                                s,
-                            )
-                            .unwrap_or_else(|e| {
+                            asm::InlineAsmReg::parse(asm_arch, s).unwrap_or_else(|e| {
                                 let msg = format!("invalid register `{}`: {}", s.as_str(), e);
                                 sess.struct_span_err(*op_sp, &msg).emit();
                                 asm::InlineAsmReg::Err
@@ -338,9 +327,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
                                     let idx2 = *o.get();
                                     let &(ref op2, op_sp2) = &operands[idx2];
-                                    let reg2 = match op2.reg() {
-                                        Some(asm::InlineAsmRegOrRegClass::Reg(r)) => r,
-                                        _ => unreachable!(),
+                                    let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg() else {
+                                        unreachable!();
                                     };
 
                                     let msg = format!(
@@ -373,7 +361,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     err.emit();
                                 }
                                 Entry::Vacant(v) => {
-                                    v.insert(idx);
+                                    if r == reg {
+                                        v.insert(idx);
+                                    }
                                 }
                             }
                         };

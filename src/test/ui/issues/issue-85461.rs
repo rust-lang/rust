@@ -1,4 +1,4 @@
-// compile-flags: -Zinstrument-coverage -Ccodegen-units=4 --crate-type dylib -Copt-level=0
+// compile-flags: -Cinstrument-coverage -Ccodegen-units=4 --crate-type dylib -Copt-level=0
 // build-pass
 // needs-profiler-support
 

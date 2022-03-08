@@ -1,0 +1,13 @@
+warning: unexpected `cfg` condition value
+  --> $DIR/empty-values.rs:6:7
+   |
+LL | #[cfg(test = "value")]
+   |       ^^^^----------
+   |           |
+   |           help: remove the value
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: no expected value for `test`
+
+warning: 1 warning emitted
+

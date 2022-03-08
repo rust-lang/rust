@@ -1,12 +1,19 @@
 #![warn(clippy::unnecessary_cast)]
 #![allow(clippy::no_effect)]
 
+#[rustfmt::skip]
 fn main() {
     // Test cast_unnecessary
     1i32 as i32;
     1f32 as f32;
     false as bool;
     &1i32 as &i32;
+
+    -1_i32 as i32;
+    - 1_i32 as i32;
+    -1f32 as f32;
+    1_i32 as i32;
+    1_f32 as f32;
 
     // macro version
     macro_rules! foo {

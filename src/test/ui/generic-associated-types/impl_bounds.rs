@@ -12,12 +12,12 @@ trait Foo {
 struct Fooy<T>(T);
 
 impl<T> Foo for Fooy<T> {
-    type A<'a> where Self: 'static = (&'a ());
+    type A<'a> = (&'a ()) where Self: 'static;
     //~^ ERROR `impl` associated type
-    type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+    type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
     //~^ ERROR `impl` associated type
     //~| ERROR lifetime bound not satisfied
-    type C where Self: Copy = String;
+    type C = String where Self: Copy;
     //~^ ERROR the trait bound `T: Copy` is not satisfied
     fn d() where Self: Copy {}
     //~^ ERROR the trait bound `T: Copy` is not satisfied

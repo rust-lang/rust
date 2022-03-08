@@ -6,12 +6,12 @@ pub use self::StabilityLevel::*;
 use crate::ty::{self, DefIdTree, TyCtxt};
 use rustc_ast::NodeId;
 use rustc_attr::{self as attr, ConstStability, Deprecation, Stability};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX};
+use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -29,7 +29,7 @@ pub enum StabilityLevel {
 }
 
 /// An entry in the `depr_map`.
-#[derive(Clone, HashStable, Debug)]
+#[derive(Copy, Clone, HashStable, Debug)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
@@ -57,26 +57,20 @@ impl DeprecationEntry {
 
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
-pub struct Index<'tcx> {
+pub struct Index {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, &'tcx Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, &'tcx ConstStability>,
+    pub stab_map: FxHashMap<LocalDefId, Stability>,
+    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
-
-    /// Maps for each crate whether it is part of the staged API.
-    pub staged_api: FxHashMap<CrateNum, bool>,
-
-    /// Features enabled for this crate.
-    pub active_features: FxHashSet<Symbol>,
 }
 
-impl<'tcx> Index<'tcx> {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<&'tcx Stability> {
+impl Index {
+    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
         self.stab_map.get(&def_id).copied()
     }
 
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<&'tcx ConstStability> {
+    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
         self.const_stab_map.get(&def_id).copied()
     }
 
@@ -167,7 +161,7 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
 }
 
 pub fn deprecation_suggestion(
-    diag: &mut DiagnosticBuilder<'_>,
+    diag: &mut Diagnostic,
     kind: &str,
     suggestion: Option<Symbol>,
     span: Span,
@@ -198,7 +192,7 @@ fn deprecation_message(
     } else {
         let since = since.as_ref().map(Symbol::as_str);
 
-        if since.as_deref() == Some("TBD") {
+        if since == Some("TBD") {
             format!("use of {} `{}` that will be deprecated in a future Rust version", kind, path)
         } else {
             format!(
@@ -367,7 +361,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     let is_in_effect = deprecation_in_effect(depr_attr);
                     let lint = deprecation_lint(is_in_effect);
                     if self.lint_level_at_node(lint, id).0 != Level::Allow {
-                        let def_path = &with_no_trimmed_paths(|| self.def_path_str(def_id));
+                        let def_path = with_no_trimmed_paths!(self.def_path_str(def_id));
                         let def_kind = self.def_kind(def_id).descr(def_id);
 
                         late_report_deprecation(
@@ -377,7 +371,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                 depr_attr.since,
                                 depr_attr.note,
                                 def_kind,
-                                def_path,
+                                &def_path,
                             ),
                             depr_attr.suggestion,
                             lint,
@@ -416,14 +410,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(&Stability {
+            Some(Stability {
                 level: attr::Unstable { reason, issue, is_soft }, feature, ..
             }) => {
                 if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
-                if self.stability().active_features.contains(&feature) {
+                if self.features().active(feature) {
                     return EvalResult::Allow;
                 }
 

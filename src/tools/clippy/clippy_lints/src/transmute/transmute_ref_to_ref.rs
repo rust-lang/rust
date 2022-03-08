@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
     const_context: bool,
 ) -> bool {
     let mut triggered = false;
@@ -41,7 +41,7 @@ pub(super) fn check<'tcx>(
                     format!(
                         "std::str::from_utf8{}({}).unwrap()",
                         postfix,
-                        snippet(cx, args[0].span, ".."),
+                        snippet(cx, arg.span, ".."),
                     ),
                     Applicability::Unspecified,
                 );
@@ -54,12 +54,12 @@ pub(super) fn check<'tcx>(
                         TRANSMUTE_PTR_TO_PTR,
                         e.span,
                         "transmute from a reference to a reference",
-                        |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                        |diag| if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                             let ty_from_and_mut = ty::TypeAndMut {
-                                ty: ty_from,
+                                ty: *ty_from,
                                 mutbl: *from_mutbl
                             };
-                            let ty_to_and_mut = ty::TypeAndMut { ty: ty_to, mutbl: *to_mutbl };
+                            let ty_to_and_mut = ty::TypeAndMut { ty: *ty_to, mutbl: *to_mutbl };
                             let sugg_paren = arg
                                 .as_ty(cx.tcx.mk_ptr(ty_from_and_mut))
                                 .as_ty(cx.tcx.mk_ptr(ty_to_and_mut));

@@ -1,5 +1,5 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{RelocModel, Target};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_macros::HashStable_Generic;
 use rustc_span::{sym, Symbol};
@@ -50,8 +50,11 @@ impl ArmInlineAsmRegClass {
         match self {
             Self::reg => types! { _: I8, I16, I32, F32; },
             Self::sreg | Self::sreg_low16 => types! { vfp2: I32, F32; },
-            Self::dreg | Self::dreg_low16 | Self::dreg_low8 => types! {
+            Self::dreg_low16 | Self::dreg_low8 => types! {
                 vfp2: I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
+            },
+            Self::dreg => types! {
+                d32: I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
             },
             Self::qreg | Self::qreg_low8 | Self::qreg_low4 => types! {
                 neon: VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4);
@@ -66,10 +69,14 @@ fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> 
 }
 
 fn frame_pointer_r11(
-    _arch: InlineAsmArch,
+    arch: InlineAsmArch,
+    reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
+
     if !frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
     } else {
@@ -79,8 +86,10 @@ fn frame_pointer_r11(
 
 fn frame_pointer_r7(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
     if frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r7) cannot be used as an operand for inline asm")
@@ -91,11 +100,16 @@ fn frame_pointer_r7(
 
 fn not_thumb1(
     _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     _target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if target_features.contains(&sym::thumb_mode) && !target_features.contains(&sym::thumb2) {
-        Err("high registers (r8+) cannot be used in Thumb-1 code")
+    if !is_clobber
+        && target_features.contains(&sym::thumb_mode)
+        && !target_features.contains(&sym::thumb2)
+    {
+        Err("high registers (r8+) can only be used as clobbers in Thumb-1 code")
     } else {
         Ok(())
     }
@@ -103,17 +117,18 @@ fn not_thumb1(
 
 fn reserved_r9(
     arch: InlineAsmArch,
+    reloc_model: RelocModel,
     target_features: &FxHashSet<Symbol>,
     target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    not_thumb1(arch, target_features, target)?;
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
 
-    // We detect this using the reserved-r9 feature instead of using the target
-    // because the relocation model can be changed with compiler options.
-    if target_features.contains(&sym::reserved_r9) {
-        Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
-    } else {
-        Ok(())
+    match reloc_model {
+        RelocModel::Rwpi | RelocModel::RopiRwpi => {
+            Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
+        }
+        _ => Ok(()),
     }
 }
 

@@ -18,7 +18,6 @@
 // To that end, we check some positions which is not part of the language above.
 
 #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
-//~^ WARN the feature `let_chains` is incomplete
 
 #![allow(irrefutable_let_patterns)]
 

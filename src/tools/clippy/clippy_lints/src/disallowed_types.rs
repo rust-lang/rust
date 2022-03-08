@@ -96,7 +96,7 @@ impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
                 ),
             };
             let segs: Vec<_> = path.split("::").collect();
-            match clippy_utils::path_to_res(cx, &segs) {
+            match clippy_utils::def_path_res(cx, &segs) {
                 Res::Def(_, id) => {
                     self.def_ids.insert(id, reason);
                 },

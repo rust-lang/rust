@@ -4,7 +4,6 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::TyS;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::sym;
 
@@ -46,10 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for OptionNeedlessDeref {
 
         if_chain! {
             if is_type_diagnostic_item(cx,outer_ty,sym::Option);
-            if let ExprKind::MethodCall(path, _, [sub_expr], _) = expr.kind;
+            if let ExprKind::MethodCall(path, [sub_expr], _) = expr.kind;
             let symbol = path.ident.as_str();
             if symbol == "as_deref" || symbol == "as_deref_mut";
-            if TyS::same_type( outer_ty, typeck.expr_ty(sub_expr) );
+            if outer_ty == typeck.expr_ty(sub_expr);
             then{
                 span_lint_and_sugg(
                     cx,

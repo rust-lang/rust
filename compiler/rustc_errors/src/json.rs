@@ -345,7 +345,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let sugg = diag.suggestions.iter().map(|sugg| Diagnostic {
+        let sugg = diag.suggestions.iter().flatten().map(|sugg| Diagnostic {
             message: sugg.msg.clone(),
             code: None,
             level: "help",
@@ -454,8 +454,14 @@ impl DiagnosticSpan {
         let end = je.sm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site = Self::from_span_full(bt.call_site, false, None, None, backtrace, je);
-            let def_site_span =
-                Self::from_span_full(bt.def_site, false, None, None, [].into_iter(), je);
+            let def_site_span = Self::from_span_full(
+                je.sm.guess_head_span(bt.def_site),
+                false,
+                None,
+                None,
+                [].into_iter(),
+                je,
+            );
             Box::new(DiagnosticSpanMacroExpansion {
                 span: call_site,
                 macro_decl_name: bt.kind.descr(),

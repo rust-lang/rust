@@ -463,10 +463,8 @@ fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results = MaybeBorrowedLocals::all_borrows()
-        .into_engine(tcx, body_ref)
-        .pass_name("generator")
-        .iterate_to_fixpoint();
+    let borrowed_locals_results =
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
@@ -1241,9 +1239,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let yield_ty = if let Some(yield_ty) = body.yield_ty() {
-            yield_ty
-        } else {
+        let Some(yield_ty) = body.yield_ty() else {
             // This only applies to generators
             return;
         };
@@ -1415,22 +1411,16 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
 
 impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        let lhs = match self.assigned_local {
-            Some(l) => l,
-            None => {
-                // This visitor only invokes `visit_place` for the right-hand side of an assignment
-                // and only after setting `self.assigned_local`. However, the default impl of
-                // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
-                // with debuginfo. Ignore them here.
-                assert!(!context.is_use());
-                return;
-            }
+        let Some(lhs) = self.assigned_local else {
+            // This visitor only invokes `visit_place` for the right-hand side of an assignment
+            // and only after setting `self.assigned_local`. However, the default impl of
+            // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
+            // with debuginfo. Ignore them here.
+            assert!(!context.is_use());
+            return;
         };
 
-        let rhs = match self.saved_local_for_direct_place(*place) {
-            Some(l) => l,
-            None => return,
-        };
+        let Some(rhs) = self.saved_local_for_direct_place(*place) else { return };
 
         if !self.storage_conflicts.contains(lhs, rhs) {
             bug!(

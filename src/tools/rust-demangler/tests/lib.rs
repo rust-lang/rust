@@ -29,14 +29,14 @@ cc[4d6468d6c9fd4bb3]::spawn::{closure#0}::{closure#0}
 <core[846817f741e54dfd]::slice::Iter<u8> as core[846817f741e54dfd]::iter::iterator::Iterator>::rposition::<core[846817f741e54dfd]::slice::memchr::memrchr::{closure#1}>::{closure#0}
 alloc[f15a878b47eb696b]::alloc::box_free::<dyn alloc[f15a878b47eb696b]::boxed::FnBox<(), Output = ()>>
 INtC8arrayvec8ArrayVechKj7b_E
-<const_generic[317d481089b8c8fe]::Unsigned<11: u8>>
-<const_generic[317d481089b8c8fe]::Signed<152: i16>>
-<const_generic[317d481089b8c8fe]::Signed<-11: i8>>
-<const_generic[317d481089b8c8fe]::Bool<false: bool>>
-<const_generic[317d481089b8c8fe]::Bool<true: bool>>
-<const_generic[317d481089b8c8fe]::Char<'v': char>>
-<const_generic[317d481089b8c8fe]::Char<'\n': char>>
-<const_generic[317d481089b8c8fe]::Char<'∂': char>>
+<const_generic[317d481089b8c8fe]::Unsigned<11u8>>
+<const_generic[317d481089b8c8fe]::Signed<152i16>>
+<const_generic[317d481089b8c8fe]::Signed<-11i8>>
+<const_generic[317d481089b8c8fe]::Bool<false>>
+<const_generic[317d481089b8c8fe]::Bool<true>>
+<const_generic[317d481089b8c8fe]::Char<'v'>>
+<const_generic[317d481089b8c8fe]::Char<'\n'>>
+<const_generic[317d481089b8c8fe]::Char<'∂'>>
 <const_generic[317d481089b8c8fe]::Foo<_>>::foo::FOO
 foo[0]
 foo[0]
@@ -51,14 +51,14 @@ cc::spawn::{closure#0}::{closure#0}
 <core::slice::Iter<u8> as core::iter::iterator::Iterator>::rposition::<core::slice::memchr::memrchr::{closure#1}>::{closure#0}
 alloc::alloc::box_free::<dyn alloc::boxed::FnBox<(), Output = ()>>
 INtC8arrayvec8ArrayVechKj7b_E
-<const_generic::Unsigned<11: u8>>
-<const_generic::Signed<152: i16>>
-<const_generic::Signed<-11: i8>>
-<const_generic::Bool<false: bool>>
-<const_generic::Bool<true: bool>>
-<const_generic::Char<'v': char>>
-<const_generic::Char<'\n': char>>
-<const_generic::Char<'∂': char>>
+<const_generic::Unsigned<11u8>>
+<const_generic::Signed<152i16>>
+<const_generic::Signed<-11i8>>
+<const_generic::Bool<false>>
+<const_generic::Bool<true>>
+<const_generic::Char<'v'>>
+<const_generic::Char<'\n'>>
+<const_generic::Char<'∂'>>
 <const_generic::Foo<_>>::foo::FOO
 foo[0]
 foo[0]

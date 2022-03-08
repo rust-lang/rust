@@ -2,8 +2,9 @@ use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{self, TyCtxt};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
+use rustc_span::symbol::sym;
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes
@@ -42,6 +43,41 @@ impl Graph {
     /// impl is a "specialization root".
     pub fn parent(&self, child: DefId) -> DefId {
         *self.parent.get(&child).unwrap_or_else(|| panic!("Failed to get parent for {:?}", child))
+    }
+}
+
+/// What kind of overlap check are we doing -- this exists just for testing and feature-gating
+/// purposes.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable, Debug, TyEncodable, TyDecodable)]
+pub enum OverlapMode {
+    /// The 1.0 rules (either types fail to unify, or where clauses are not implemented for crate-local types)
+    Stable,
+    /// Feature-gated test: Stable, *or* there is an explicit negative impl that rules out one of the where-clauses.
+    WithNegative,
+    /// Just check for negative impls, not for "where clause not implemented": used for testing.
+    Strict,
+}
+
+impl OverlapMode {
+    pub fn get<'tcx>(tcx: TyCtxt<'tcx>, trait_id: DefId) -> OverlapMode {
+        let with_negative_coherence = tcx.features().with_negative_coherence;
+        let strict_coherence = tcx.has_attr(trait_id, sym::rustc_strict_coherence);
+
+        if with_negative_coherence {
+            if strict_coherence { OverlapMode::Strict } else { OverlapMode::WithNegative }
+        } else if strict_coherence {
+            bug!("To use strict_coherence you need to set with_negative_coherence feature flag");
+        } else {
+            OverlapMode::Stable
+        }
+    }
+
+    pub fn use_negative_impl(&self) -> bool {
+        *self == OverlapMode::Strict || *self == OverlapMode::WithNegative
+    }
+
+    pub fn use_implicit_negative(&self) -> bool {
+        *self == OverlapMode::Stable || *self == OverlapMode::WithNegative
     }
 }
 
@@ -207,11 +243,11 @@ pub fn ancestors<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_def_id: DefId,
     start_from_impl: DefId,
-) -> Result<Ancestors<'tcx>, ErrorReported> {
+) -> Result<Ancestors<'tcx>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
 
     if specialization_graph.has_errored || tcx.type_of(start_from_impl).references_error() {
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     } else {
         Ok(Ancestors {
             trait_def_id,

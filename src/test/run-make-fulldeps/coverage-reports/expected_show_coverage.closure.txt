@@ -116,8 +116,8 @@
   116|      1|
   117|      1|    let
   118|      1|        _unused_closure
-  119|      1|    =
-  120|      1|        |
+  119|       |    =
+  120|       |        |
   121|       |            mut countdown
   122|       |        |
   123|      0|    {
@@ -173,7 +173,7 @@
   169|       |    ;
   170|       |
   171|      1|    let short_used_not_covered_closure_line_break_no_block_embedded_branch =
-  172|      1|        | _unused_arg: u8 |
+  172|       |        | _unused_arg: u8 |
   173|      0|            println!(
   174|      0|                "not called: {}",
   175|      0|                if is_true { "check" } else { "me" }

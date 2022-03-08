@@ -101,9 +101,8 @@ fn default_enum_substructure(
     trait_span: Span,
     enum_def: &EnumDef,
 ) -> P<Expr> {
-    let default_variant = match extract_default_variant(cx, enum_def, trait_span) {
-        Ok(value) => value,
-        Err(()) => return DummyResult::raw_expr(trait_span, true),
+    let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span) else {
+        return DummyResult::raw_expr(trait_span, true);
     };
 
     // At this point, we know that there is exactly one variant with a `#[default]` attribute. The
@@ -222,9 +221,6 @@ fn validate_default_attribute(
             "this method must only be called with a variant that has a `#[default]` attribute",
         ),
         [first, rest @ ..] => {
-            // FIXME(jhpratt) Do we want to perform this check? It doesn't exist
-            // for `#[inline]`, `#[non_exhaustive]`, and presumably others.
-
             let suggestion_text =
                 if rest.len() == 1 { "try removing this" } else { "try removing these" };
 

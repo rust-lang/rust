@@ -151,9 +151,9 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         self.fields.infcx.super_combine_consts(self, a, b)
     }
 
@@ -170,7 +170,7 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ConstEquateRelation<'tcx> for Sub<'_, '_, 'tcx> {
-    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
+    fn const_equate_obligation(&mut self, a: ty::Const<'tcx>, b: ty::Const<'tcx>) {
         self.fields.add_const_equate_obligation(self.a_is_expected, a, b);
     }
 }

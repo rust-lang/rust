@@ -78,7 +78,7 @@ fn use_this_lib_crate() {
 // generic functions with:
 //
 // ```shell
-// $ `rustc -Z instrument-coverage=except-unused-generics ...`
+// $ `rustc -Zunstable-options -C instrument-coverage=except-unused-generics ...`
 // ```
 //
 // Even though this function is used by `uses_crate.rs` (and

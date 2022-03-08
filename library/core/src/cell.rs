@@ -315,6 +315,7 @@ impl<T: Ord + Copy> Ord for Cell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for Cell<T> {
+    /// Creates a new `Cell<T>` containing the given value.
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
@@ -1244,6 +1245,7 @@ impl<T: ?Sized + Ord> Ord for RefCell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for RefCell<T> {
+    /// Creates a new `RefCell<T>` containing the given value.
     fn from(t: T) -> RefCell<T> {
         RefCell::new(t)
     }
@@ -1310,11 +1312,7 @@ impl Clone for BorrowRef<'_> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a Ref across suspend \
-                      points can cause BorrowErrors"
-)]
+#[must_not_suspend = "holding a Ref across suspend points can cause BorrowErrors"]
 pub struct Ref<'b, T: ?Sized + 'b> {
     value: &'b T,
     borrow: BorrowRef<'b>,
@@ -1692,11 +1690,7 @@ impl<'b> BorrowRefMut<'b> {
 ///
 /// See the [module-level documentation](self) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a RefMut across suspend \
-                      points can cause BorrowErrors"
-)]
+#[must_not_suspend = "holding a RefMut across suspend points can cause BorrowErrors"]
 pub struct RefMut<'b, T: ?Sized + 'b> {
     value: &'b mut T,
     borrow: BorrowRefMut<'b>,
@@ -1967,6 +1961,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline(always)]
     #[stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
+    #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
         // #[repr(transparent)]. This exploits libstd's special status, there is
@@ -1986,6 +1981,7 @@ impl<T: Default> Default for UnsafeCell<T> {
 #[stable(feature = "cell_from", since = "1.12.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for UnsafeCell<T> {
+    /// Creates a new `UnsafeCell<T>` containing the given value.
     fn from(t: T) -> UnsafeCell<T> {
         UnsafeCell::new(t)
     }

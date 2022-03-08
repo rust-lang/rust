@@ -140,8 +140,16 @@ trait NotInReturn {
 // We obviously error for `Iterator`, but we should also error for `Item`
 trait IterableTwo {
     type Item<'a>;
+    //~^ missing required
     type Iterator<'a>: Iterator<Item = Self::Item<'a>>;
     //~^ missing required
+    fn iter<'a>(&'a self) -> Self::Iterator<'a>;
+}
+
+trait IterableTwoWhere {
+    type Item<'a>;
+    //~^ missing required
+    type Iterator<'a>: Iterator<Item = Self::Item<'a>> where Self: 'a;
     fn iter<'a>(&'a self) -> Self::Iterator<'a>;
 }
 

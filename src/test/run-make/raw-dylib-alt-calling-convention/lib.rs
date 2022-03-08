@@ -62,9 +62,12 @@ pub fn library_function() {
         fastcall_fn_2(16, 3.5);
         fastcall_fn_3(3.5);
         fastcall_fn_4(1, 2, 3.0);
-        fastcall_fn_5(S { x: 1, y: 2 }, 16);
+        // FIXME: 91167
+        // rustc generates incorrect code for the calls to fastcall_fn_5 and fastcall_fn_7
+        // on i686-pc-windows-gnu; commenting these out until the indicated issue is fixed.
+        //fastcall_fn_5(S { x: 1, y: 2 }, 16);
         fastcall_fn_6(Some(&S { x: 10, y: 12 }));
-        fastcall_fn_7(S2 { x: 15, y: 16 }, 3);
+        //fastcall_fn_7(S2 { x: 15, y: 16 }, 3);
         fastcall_fn_8(S3 { x: [1, 2, 3, 4, 5] }, S3 { x: [6, 7, 8, 9, 10] });
         fastcall_fn_9(1, 3.0);
     }

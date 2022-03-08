@@ -374,33 +374,51 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Constructs a new `Rc<T>` using a weak reference to itself. Attempting
-    /// to upgrade the weak reference before this function returns will result
-    /// in a `None` value. However, the weak reference may be cloned freely and
-    /// stored for use at a later time.
+    /// Constructs a new `Rc<T>` using a closure `data_fn` that has access to a
+    /// weak reference to the constructing `Rc<T>`.
+    ///
+    /// Generally, a structure circularly referencing itself, either directly or
+    /// indirectly, should not hold a strong reference to prevent a memory leak.
+    /// In `data_fn`, initialization of `T` can make use of the weak reference
+    /// by cloning and storing it inside `T` for use at a later time.
+    ///
+    /// Since the new `Rc<T>` is not fully-constructed until `Rc<T>::new_cyclic`
+    /// returns, calling [`upgrade`] on the weak reference inside `data_fn` will
+    /// fail and result in a `None` value.
+    ///
+    /// # Panics
+    /// If `data_fn` panics, the panic is propagated to the caller, and the
+    /// temporary [`Weak<T>`] is dropped normally.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_new_cyclic)]
     /// #![allow(dead_code)]
     /// use std::rc::{Rc, Weak};
     ///
     /// struct Gadget {
-    ///     self_weak: Weak<Self>,
-    ///     // ... more fields
+    ///     me: Weak<Gadget>,
     /// }
+    ///
     /// impl Gadget {
-    ///     pub fn new() -> Rc<Self> {
-    ///         Rc::new_cyclic(|self_weak| {
-    ///             Gadget { self_weak: self_weak.clone(), /* ... */ }
-    ///         })
+    ///     /// Construct a reference counted Gadget.
+    ///     fn new() -> Rc<Self> {
+    ///         Rc::new_cyclic(|me| Gadget { me: me.clone() })
+    ///     }
+    ///
+    ///     /// Return a reference counted pointer to Self.
+    ///     fn me(&self) -> Rc<Self> {
+    ///         self.me.upgrade().unwrap()
     ///     }
     /// }
     /// ```
+    /// [`upgrade`]: Weak::upgrade
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "arc_new_cyclic", issue = "75861")]
-    pub fn new_cyclic(data_fn: impl FnOnce(&Weak<T>) -> T) -> Rc<T> {
+    #[stable(feature = "arc_new_cyclic", since = "1.60.0")]
+    pub fn new_cyclic<F>(data_fn: F) -> Rc<T>
+    where
+        F: FnOnce(&Weak<T>) -> T,
+    {
         // Construct the inner in the "uninitialized" state with a single
         // weak reference.
         let uninit_ptr: NonNull<_> = Box::leak(box RcBox {
@@ -451,12 +469,10 @@ impl<T> Rc<T> {
     ///
     /// let mut five = Rc::<u32>::new_uninit();
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Rc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -543,12 +559,10 @@ impl<T> Rc<T> {
     ///
     /// let mut five = Rc::<u32>::try_new_uninit()?;
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Rc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -660,14 +674,13 @@ impl<T> Rc<[T]> {
     ///
     /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
     ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
-    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
-    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    /// // Deferred initialization:
+    /// let data = Rc::get_mut(&mut values).unwrap();
+    /// data[0].write(1);
+    /// data[1].write(2);
+    /// data[2].write(3);
     ///
-    ///     values.assume_init()
-    /// };
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -738,12 +751,10 @@ impl<T> Rc<mem::MaybeUninit<T>> {
     ///
     /// let mut five = Rc::<u32>::new_uninit();
     ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut five).as_mut_ptr().write(5);
+    /// // Deferred initialization:
+    /// Rc::get_mut(&mut five).unwrap().write(5);
     ///
-    ///     five.assume_init()
-    /// };
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -777,14 +788,13 @@ impl<T> Rc<[mem::MaybeUninit<T>]> {
     ///
     /// let mut values = Rc::<[u32]>::new_uninit_slice(3);
     ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     Rc::get_mut_unchecked(&mut values)[0].as_mut_ptr().write(1);
-    ///     Rc::get_mut_unchecked(&mut values)[1].as_mut_ptr().write(2);
-    ///     Rc::get_mut_unchecked(&mut values)[2].as_mut_ptr().write(3);
+    /// // Deferred initialization:
+    /// let data = Rc::get_mut(&mut values).unwrap();
+    /// data[0].write(1);
+    /// data[1].write(2);
+    /// data[2].write(3);
     ///
-    ///     values.assume_init()
-    /// };
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -1192,6 +1202,41 @@ impl<T: Clone> Rc<T> {
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the allocation.
         unsafe { &mut this.ptr.as_mut().value }
+    }
+
+    /// If we have the only reference to `T` then unwrap it. Otherwise, clone `T` and return the
+    /// clone.
+    ///
+    /// Assuming `rc_t` is of type `Rc<T>`, this function is functionally equivalent to
+    /// `(*rc_t).clone()`, but will avoid cloning the inner value where possible.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(arc_unwrap_or_clone)]
+    /// # use std::{ptr, rc::Rc};
+    /// let inner = String::from("test");
+    /// let ptr = inner.as_ptr();
+    ///
+    /// let rc = Rc::new(inner);
+    /// let inner = Rc::unwrap_or_clone(rc);
+    /// // The inner value was not cloned
+    /// assert!(ptr::eq(ptr, inner.as_ptr()));
+    ///
+    /// let rc = Rc::new(inner);
+    /// let rc2 = rc.clone();
+    /// let inner = Rc::unwrap_or_clone(rc);
+    /// // Because there were 2 references, we had to clone the inner value.
+    /// assert!(!ptr::eq(ptr, inner.as_ptr()));
+    /// // `rc2` is the last reference, so when we unwrap it we get back
+    /// // the original `String`.
+    /// let inner = Rc::unwrap_or_clone(rc2);
+    /// assert!(ptr::eq(ptr, inner.as_ptr()));
+    /// ```
+    #[inline]
+    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
+    pub fn unwrap_or_clone(this: Self) -> T {
+        Rc::try_unwrap(this).unwrap_or_else(|rc| (*rc).clone())
     }
 }
 

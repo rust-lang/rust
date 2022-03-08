@@ -95,7 +95,8 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             // If this codegen unit contains the main function, also create the
             // wrapper here
             if let Some(entry) = maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx) {
-                attributes::sanitize(&cx, SanitizerSet::empty(), entry);
+                let attrs = attributes::sanitize_attrs(&cx, SanitizerSet::empty());
+                attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
             // Run replace-all-uses-with for statics that need it
@@ -138,10 +139,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
 }
 
 pub fn set_link_section(llval: &Value, attrs: &CodegenFnAttrs) {
-    let sect = match attrs.link_section {
-        Some(name) => name,
-        None => return,
-    };
+    let Some(sect) = attrs.link_section else { return };
     unsafe {
         let buf = SmallCStr::new(sect.as_str());
         llvm::LLVMSetSection(llval, buf.as_ptr());

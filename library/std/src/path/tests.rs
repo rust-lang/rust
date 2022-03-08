@@ -1498,6 +1498,20 @@ pub fn test_compare() {
     relative_from: Some("")
     );
 
+    tc!("foo/.", "foo",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
+    tc!("foo/./bar", "foo/bar",
+    eq: true,
+    starts_with: true,
+    ends_with: true,
+    relative_from: Some("")
+    );
+
     tc!("foo/bar", "foo",
     eq: false,
     starts_with: true,
@@ -1540,6 +1554,27 @@ pub fn test_compare() {
         starts_with: true,
         ends_with: true,
         relative_from: Some("")
+        );
+
+        tc!(r"C:\foo\.\bar.txt", r"C:\foo\bar.txt",
+        eq: true,
+        starts_with: true,
+        ends_with: true,
+        relative_from: Some("")
+        );
+
+        tc!(r"C:\foo\.", r"C:\foo",
+        eq: true,
+        starts_with: true,
+        ends_with: true,
+        relative_from: Some("")
+        );
+
+        tc!(r"\\?\C:\foo\.\bar.txt", r"\\?\C:\foo\bar.txt",
+        eq: false,
+        starts_with: false,
+        ends_with: false,
+        relative_from: None
         );
     }
 }
@@ -1663,6 +1698,72 @@ fn test_ord() {
     ord!(Equal, "foo/bar", "foo/bar/");
     ord!(Equal, "foo/bar", "foo/bar/.");
     ord!(Equal, "foo/bar", "foo/bar//");
+}
+
+#[test]
+#[cfg(unix)]
+fn test_unix_absolute() {
+    use crate::path::absolute;
+
+    assert!(absolute("").is_err());
+
+    let relative = "a/b";
+    let mut expected = crate::env::current_dir().unwrap();
+    expected.push(relative);
+    assert_eq!(absolute(relative).unwrap().as_os_str(), expected.as_os_str());
+
+    // Test how components are collected.
+    assert_eq!(absolute("/a/b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("/a//b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("//a/b/c").unwrap().as_os_str(), Path::new("//a/b/c").as_os_str());
+    assert_eq!(absolute("///a/b/c").unwrap().as_os_str(), Path::new("/a/b/c").as_os_str());
+    assert_eq!(absolute("/a/b/c/").unwrap().as_os_str(), Path::new("/a/b/c/").as_os_str());
+    assert_eq!(
+        absolute("/a/./b/../c/.././..").unwrap().as_os_str(),
+        Path::new("/a/b/../c/../..").as_os_str()
+    );
+
+    // Test leading `.` and `..` components
+    let curdir = crate::env::current_dir().unwrap();
+    assert_eq!(absolute("./a").unwrap().as_os_str(), curdir.join("a").as_os_str());
+    assert_eq!(absolute("../a").unwrap().as_os_str(), curdir.join("../a").as_os_str()); // return /pwd/../a
+}
+
+#[test]
+#[cfg(windows)]
+fn test_windows_absolute() {
+    use crate::path::absolute;
+    // An empty path is an error.
+    assert!(absolute("").is_err());
+
+    let relative = r"a\b";
+    let mut expected = crate::env::current_dir().unwrap();
+    expected.push(relative);
+    assert_eq!(absolute(relative).unwrap(), expected);
+
+    macro_rules! unchanged(
+        ($path:expr) => {
+            assert_eq!(absolute($path).unwrap(), Path::new($path));
+        }
+    );
+
+    unchanged!(r"C:\path\to\file");
+    unchanged!(r"C:\path\to\file\");
+    unchanged!(r"\\server\share\to\file");
+    unchanged!(r"\\server.\share.\to\file");
+    unchanged!(r"\\.\PIPE\name");
+    unchanged!(r"\\.\C:\path\to\COM1");
+    unchanged!(r"\\?\C:\path\to\file");
+    unchanged!(r"\\?\UNC\server\share\to\file");
+    unchanged!(r"\\?\PIPE\name");
+    // Verbatim paths are always unchanged, no matter what.
+    unchanged!(r"\\?\path.\to/file..");
+
+    assert_eq!(absolute(r"C:\path..\to.\file.").unwrap(), Path::new(r"C:\path..\to\file"));
+    assert_eq!(absolute(r"C:\path\to\COM1").unwrap(), Path::new(r"\\.\COM1"));
+    assert_eq!(absolute(r"C:\path\to\COM1.txt").unwrap(), Path::new(r"\\.\COM1"));
+    assert_eq!(absolute(r"C:\path\to\COM1  .txt").unwrap(), Path::new(r"\\.\COM1"));
+    assert_eq!(absolute(r"C:\path\to\cOnOuT$").unwrap(), Path::new(r"\\.\cOnOuT$"));
 }
 
 #[bench]

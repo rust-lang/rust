@@ -149,7 +149,7 @@ impl AsRef<OsStr> for EnvKey {
 
 fn ensure_no_nuls<T: AsRef<OsStr>>(str: T) -> io::Result<T> {
     if str.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::Error::new_const(ErrorKind::InvalidInput, &"nul byte found in provided data"))
+        Err(io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
     } else {
         Ok(str)
     }
@@ -369,9 +369,9 @@ fn resolve_exe<'a>(
 ) -> io::Result<PathBuf> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
-        return Err(io::Error::new_const(
+        return Err(io::const_io_error!(
             io::ErrorKind::InvalidInput,
-            &"program path has no file name",
+            "program path has no file name",
         ));
     }
     // Test if the file name has the `exe` extension.
@@ -394,7 +394,7 @@ fn resolve_exe<'a>(
 
         // Append `.exe` if not already there.
         path = path::append_suffix(path, EXE_SUFFIX.as_ref());
-        if path.try_exists().unwrap_or(false) {
+        if program_exists(&path) {
             return Ok(path);
         } else {
             // It's ok to use `set_extension` here because the intent is to
@@ -415,14 +415,14 @@ fn resolve_exe<'a>(
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }
-            if let Ok(true) = path.try_exists() { Some(path) } else { None }
+            if program_exists(&path) { Some(path) } else { None }
         });
         if let Some(path) = result {
             return Ok(path);
         }
     }
     // If we get here then the executable cannot be found.
-    Err(io::Error::new_const(io::ErrorKind::NotFound, &"program not found"))
+    Err(io::const_io_error!(io::ErrorKind::NotFound, "program not found"))
 }
 
 // Calls `f` for every path that should be used to find an executable.
@@ -483,6 +483,21 @@ where
         }
     }
     None
+}
+
+/// Check if a file exists without following symlinks.
+fn program_exists(path: &Path) -> bool {
+    unsafe {
+        to_u16s(path)
+            .map(|path| {
+                // Getting attributes using `GetFileAttributesW` does not follow symlinks
+                // and it will almost always be successful if the link exists.
+                // There are some exceptions for special system files (e.g. the pagefile)
+                // but these are not executable.
+                c::GetFileAttributesW(path.as_ptr()) != c::INVALID_FILE_ATTRIBUTES
+            })
+            .unwrap_or(false)
+    }
 }
 
 impl Stdio {
@@ -663,6 +678,12 @@ impl ExitCode {
     #[inline]
     pub fn as_i32(&self) -> i32 {
         self.0 as i32
+    }
+}
+
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        ExitCode(c::DWORD::from(code))
     }
 }
 

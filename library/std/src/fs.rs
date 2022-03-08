@@ -2042,12 +2042,16 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to `opendir`, `lstat`, `rm` and `rmdir` functions on Unix
-/// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
-/// on Windows.
-/// Note that, this [may change in the future][changes].
+/// This function currently corresponds to `openat`, `fdopendir`, `unlinkat` and `lstat` functions
+/// on Unix (except for macOS before version 10.10 and REDOX) and the `CreateFileW`,
+/// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile` functions on
+/// Windows. Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+///
+/// On macOS before version 10.10 and REDOX this function is not protected against time-of-check to
+/// time-of-use (TOCTOU) race conditions, and should not be used in security-sensitive code on
+/// those platforms. All other platforms are protected.
 ///
 /// # Errors
 ///
@@ -2259,9 +2263,9 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
-                    &"failed to create whole tree",
+                    "failed to create whole tree",
                 ));
             }
         }
@@ -2284,7 +2288,7 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// This function will traverse symbolic links to query information about the
 /// destination file. In case of broken symbolic links this will return `Ok(false)`.
 ///
-/// As opposed to the `exists()` method, this one doesn't silently ignore errors
+/// As opposed to the [`Path::exists`] method, this one doesn't silently ignore errors
 /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
 /// denied on some of the parent directories.)
 ///
@@ -2297,6 +2301,8 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
 /// assert!(fs::try_exists("/root/secret_file.txt").is_err());
 /// ```
+///
+/// [`Path::exists`]: crate::path::Path::exists
 // FIXME: stabilization should modify documentation of `exists()` to recommend this method
 // instead.
 #[unstable(feature = "path_try_exists", issue = "83186")]

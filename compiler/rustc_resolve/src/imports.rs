@@ -11,7 +11,7 @@ use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBindin
 
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
@@ -134,7 +134,7 @@ impl<'a> Import<'a> {
 pub struct NameResolution<'a> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    single_imports: FxHashSet<PtrKey<'a, Import<'a>>>,
+    single_imports: FxHashSet<Interned<'a, Import<'a>>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     shadowed_glob: Option<&'a NameBinding<'a>>,
@@ -153,7 +153,7 @@ impl<'a> NameResolution<'a> {
     }
 
     crate fn add_single_import(&mut self, import: &'a Import<'a>) {
-        self.single_imports.insert(PtrKey(import));
+        self.single_imports.insert(Interned::new_unchecked(import));
     }
 }
 
@@ -351,13 +351,11 @@ impl<'a> Resolver<'a> {
             if !self.is_accessible_from(single_import.vis.get(), parent_scope.module) {
                 continue;
             }
-            let module = match single_import.imported_module.get() {
-                Some(x) => x,
-                None => return Err((Undetermined, Weak::No)),
+            let Some(module) = single_import.imported_module.get() else {
+                return Err((Undetermined, Weak::No));
             };
-            let ident = match single_import.kind {
-                ImportKind::Single { source, .. } => source,
-                _ => unreachable!(),
+            let ImportKind::Single { source: ident, .. } = single_import.kind else {
+                unreachable!();
             };
             match self.resolve_ident_in_module(
                 module,
@@ -722,7 +720,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     note: Vec::new(),
                     suggestion: None,
                 };
-                errors.push((path, err));
+                if path.contains("::") {
+                    errors.push((path, err))
+                }
             }
         }
 
@@ -850,7 +850,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     Err(Determined) => {
                         let key = this.new_key(target, ns);
                         this.update_resolution(parent, key, |_, resolution| {
-                            resolution.single_imports.remove(&PtrKey(import));
+                            resolution.single_imports.remove(&Interned::new_unchecked(import));
                         });
                     }
                     Ok(binding) if !binding.is_importable() => {
@@ -1347,12 +1347,9 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     }
 
     fn resolve_glob_import(&mut self, import: &'b Import<'b>) {
-        let module = match import.imported_module.get().unwrap() {
-            ModuleOrUniformRoot::Module(module) => module,
-            _ => {
-                self.r.session.span_err(import.span, "cannot glob-import all possible crates");
-                return;
-            }
+        let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
+            self.r.session.span_err(import.span, "cannot glob-import all possible crates");
+            return;
         };
 
         if module.is_trait() {
@@ -1404,14 +1401,22 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         let mut reexports = Vec::new();
 
         module.for_each_child(self.r, |_, ident, _, binding| {
-            // Filter away ambiguous imports and anything that has def-site hygiene.
-            // FIXME: Implement actual cross-crate hygiene.
-            let is_good_import =
-                binding.is_import() && !binding.is_ambiguity() && !ident.span.from_expansion();
-            if is_good_import || binding.is_macro_def() {
+            // FIXME: Consider changing the binding inserted by `#[macro_export] macro_rules`
+            // into the crate root to actual `NameBindingKind::Import`.
+            if binding.is_import()
+                || matches!(binding.kind, NameBindingKind::Res(_, _is_macro_export @ true))
+            {
                 let res = binding.res().expect_non_local();
-                if res != def::Res::Err {
-                    reexports.push(ModChild { ident, res, vis: binding.vis, span: binding.span });
+                // Ambiguous imports are treated as errors at this point and are
+                // not exposed to other crates (see #36837 for more details).
+                if res != def::Res::Err && !binding.is_ambiguity() {
+                    reexports.push(ModChild {
+                        ident,
+                        res,
+                        vis: binding.vis,
+                        span: binding.span,
+                        macro_rules: false,
+                    });
                 }
             }
         });

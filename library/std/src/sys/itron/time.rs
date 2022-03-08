@@ -14,15 +14,6 @@ impl Instant {
         }
     }
 
-    pub const fn zero() -> Instant {
-        Instant(0)
-    }
-
-    pub fn actually_monotonic() -> bool {
-        // There are ways to change the system time
-        false
-    }
-
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.0.checked_sub(other.0).map(|ticks| {
             // `SYSTIM` is measured in microseconds

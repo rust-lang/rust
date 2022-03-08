@@ -54,7 +54,6 @@ function resourcePath(basename, extension) {
     return getVar("root-path") + basename + getVar("resource-suffix") + extension;
 }
 
-
 (function () {
     window.rootPath = getVar("root-path");
     window.currentCrate = getVar("current-crate");
@@ -72,7 +71,7 @@ function resourcePath(basename, extension) {
         var mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
         var locationTitle = document.querySelector(".sidebar h2.location");
         if (mobileLocationTitle && locationTitle) {
-            mobileLocationTitle.innerText = locationTitle.innerText;
+            mobileLocationTitle.innerHTML = locationTitle.innerHTML;
         }
     }
 }());
@@ -232,7 +231,7 @@ function hideThemeButtonState() {
             document.title = searchState.titleBeforeSearch;
             // We also remove the query parameter from the URL.
             if (searchState.browserSupportsHistoryApi()) {
-                history.replaceState("", window.currentCrate + " - Rust",
+                history.replaceState(null, window.currentCrate + " - Rust",
                     getNakedUrl() + window.location.hash);
             }
         },
@@ -245,18 +244,6 @@ function hideThemeButtonState() {
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
             return params;
-        },
-        putBackSearch: function(search_input) {
-            var search = searchState.outputElement();
-            if (search_input.value !== "" && hasClass(search, "hidden")) {
-                searchState.showResults(search);
-                if (searchState.browserSupportsHistoryApi()) {
-                    var extra = "?search=" + encodeURIComponent(search_input.value);
-                    history.replaceState(search_input.value, "",
-                        getNakedUrl() + extra + window.location.hash);
-                }
-                document.title = searchState.title;
-            }
         },
         browserSupportsHistoryApi: function() {
             return window.history && typeof window.history.pushState === "function";
@@ -282,13 +269,9 @@ function hideThemeButtonState() {
             }
 
             search_input.addEventListener("focus", function() {
-                searchState.putBackSearch(this);
-                search_input.origPlaceholder = searchState.input.placeholder;
+                search_input.origPlaceholder = search_input.placeholder;
                 search_input.placeholder = "Type your search here.";
                 loadSearch();
-            });
-            search_input.addEventListener("blur", function() {
-                search_input.placeholder = searchState.input.origPlaceholder;
             });
 
             if (search_input.value != '') {
@@ -330,7 +313,7 @@ function hideThemeButtonState() {
             var hash = ev.newURL.slice(ev.newURL.indexOf("#") + 1);
             if (searchState.browserSupportsHistoryApi()) {
                 // `window.location.search`` contains all the query parameters, not just `search`.
-                history.replaceState(hash, "",
+                history.replaceState(null, "",
                     getNakedUrl() + window.location.search + "#" + hash);
             }
             elem = document.getElementById(hash);
@@ -576,7 +559,15 @@ function hideThemeButtonState() {
             others.appendChild(div);
         }
 
-        function block(shortty, longty) {
+        /**
+         * Append to the sidebar a "block" of links - a heading along with a list (`<ul>`) of items.
+         *
+         * @param {string} shortty - A short type name, like "primitive", "mod", or "macro"
+         * @param {string} id - The HTML id of the corresponding section on the module page.
+         * @param {string} longty - A long, capitalized, plural name, like "Primitive Types",
+         *                          "Modules", or "Macros".
+         */
+        function block(shortty, id, longty) {
             var filtered = items[shortty];
             if (!filtered) {
                 return;
@@ -585,7 +576,7 @@ function hideThemeButtonState() {
             var div = document.createElement("div");
             div.className = "block " + shortty;
             var h3 = document.createElement("h3");
-            h3.textContent = longty;
+            h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
             div.appendChild(h3);
             var ul = document.createElement("ul");
 
@@ -624,20 +615,20 @@ function hideThemeButtonState() {
 
             var isModule = hasClass(document.body, "mod");
             if (!isModule) {
-                block("primitive", "Primitive Types");
-                block("mod", "Modules");
-                block("macro", "Macros");
-                block("struct", "Structs");
-                block("enum", "Enums");
-                block("union", "Unions");
-                block("constant", "Constants");
-                block("static", "Statics");
-                block("trait", "Traits");
-                block("fn", "Functions");
-                block("type", "Type Definitions");
-                block("foreigntype", "Foreign Types");
-                block("keyword", "Keywords");
-                block("traitalias", "Trait Aliases");
+                block("primitive", "primitives", "Primitive Types");
+                block("mod", "modules", "Modules");
+                block("macro", "macros", "Macros");
+                block("struct", "structs", "Structs");
+                block("enum", "enums", "Enums");
+                block("union", "unions", "Unions");
+                block("constant", "constants", "Constants");
+                block("static", "static", "Statics");
+                block("trait", "traits", "Traits");
+                block("fn", "functions", "Functions");
+                block("type", "types", "Type Definitions");
+                block("foreigntype", "foreign-types", "Foreign Types");
+                block("keyword", "keywords", "Keywords");
+                block("traitalias", "trait-aliases", "Trait Aliases");
             }
 
             // `crates{version}.js` should always be loaded before this script, so we can use

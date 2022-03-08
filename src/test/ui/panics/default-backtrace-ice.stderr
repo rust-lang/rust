@@ -1,0 +1,18 @@
+error[E0425]: cannot find value `missing_ident` in this scope
+LL | fn main() { missing_ident; }
+
+
+stack backtrace:
+
+error: internal compiler error: unexpected panic
+
+
+
+
+
+
+
+
+
+query stack during panic:
+end of query stack

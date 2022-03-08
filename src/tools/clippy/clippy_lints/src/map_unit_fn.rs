@@ -129,7 +129,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> 
     }
 
     match expr.kind {
-        hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _, _) => {
+        hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(..) => {
             // Calls can't be reduced any more
             Some(expr.span)
         },

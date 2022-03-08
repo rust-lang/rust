@@ -159,26 +159,8 @@ impl Mode {
     }
 }
 
-fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
-    if first_char != '\\' {
-        // Previous character was not a slash, and we don't expect it to be
-        // an escape-only character.
-        return match first_char {
-            '\t' | '\n' => Err(EscapeError::EscapeOnlyChar),
-            '\r' => Err(EscapeError::BareCarriageReturn),
-            '\'' if mode.in_single_quotes() => Err(EscapeError::EscapeOnlyChar),
-            '"' if mode.in_double_quotes() => Err(EscapeError::EscapeOnlyChar),
-            _ => {
-                if mode.is_bytes() && !first_char.is_ascii() {
-                    // Byte literal can't be a non-ascii character.
-                    return Err(EscapeError::NonAsciiCharInByte);
-                }
-                Ok(first_char)
-            }
-        };
-    }
-
-    // Previous character is '\\', try to unescape it.
+fn scan_escape(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
+    // Previous character was '\\', unescape what follows.
 
     let second_char = chars.next().ok_or(EscapeError::LoneSlash)?;
 
@@ -270,9 +252,24 @@ fn scan_escape(first_char: char, chars: &mut Chars<'_>, mode: Mode) -> Result<ch
     Ok(res)
 }
 
+#[inline]
+fn ascii_check(first_char: char, mode: Mode) -> Result<char, EscapeError> {
+    if mode.is_bytes() && !first_char.is_ascii() {
+        // Byte literal can't be a non-ascii character.
+        Err(EscapeError::NonAsciiCharInByte)
+    } else {
+        Ok(first_char)
+    }
+}
+
 fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
     let first_char = chars.next().ok_or(EscapeError::ZeroChars)?;
-    let res = scan_escape(first_char, chars, mode)?;
+    let res = match first_char {
+        '\\' => scan_escape(chars, mode),
+        '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
+        '\r' => Err(EscapeError::BareCarriageReturn),
+        _ => ascii_check(first_char, mode),
+    }?;
     if chars.next().is_some() {
         return Err(EscapeError::MoreThanOneChar);
     }
@@ -303,12 +300,14 @@ where
                         skip_ascii_whitespace(&mut chars, start, callback);
                         continue;
                     }
-                    _ => scan_escape(first_char, &mut chars, mode),
+                    _ => scan_escape(&mut chars, mode),
                 }
             }
             '\n' => Ok('\n'),
             '\t' => Ok('\t'),
-            _ => scan_escape(first_char, &mut chars, mode),
+            '"' => Err(EscapeError::EscapeOnlyChar),
+            '\r' => Err(EscapeError::BareCarriageReturn),
+            _ => ascii_check(first_char, mode),
         };
         let end = initial_len - chars.as_str().len();
         callback(start..end, unescaped_char);

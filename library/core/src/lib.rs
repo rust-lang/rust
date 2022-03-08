@@ -60,32 +60,29 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(
-    not(bootstrap),
-    doc(cfg_hide(
-        not(test),
-        any(not(feature = "miri-test-libstd"), test, doctest),
-        no_fp_fmt_parse,
-        target_pointer_width = "16",
-        target_pointer_width = "32",
-        target_pointer_width = "64",
-        target_has_atomic = "8",
-        target_has_atomic = "16",
-        target_has_atomic = "32",
-        target_has_atomic = "64",
-        target_has_atomic = "ptr",
-        target_has_atomic_equal_alignment = "8",
-        target_has_atomic_equal_alignment = "16",
-        target_has_atomic_equal_alignment = "32",
-        target_has_atomic_equal_alignment = "64",
-        target_has_atomic_equal_alignment = "ptr",
-        target_has_atomic_load_store = "8",
-        target_has_atomic_load_store = "16",
-        target_has_atomic_load_store = "32",
-        target_has_atomic_load_store = "64",
-        target_has_atomic_load_store = "ptr",
-    ))
-)]
+#![doc(cfg_hide(
+    not(test),
+    any(not(feature = "miri-test-libstd"), test, doctest),
+    no_fp_fmt_parse,
+    target_pointer_width = "16",
+    target_pointer_width = "32",
+    target_pointer_width = "64",
+    target_has_atomic = "8",
+    target_has_atomic = "16",
+    target_has_atomic = "32",
+    target_has_atomic = "64",
+    target_has_atomic = "ptr",
+    target_has_atomic_equal_alignment = "8",
+    target_has_atomic_equal_alignment = "16",
+    target_has_atomic_equal_alignment = "32",
+    target_has_atomic_equal_alignment = "64",
+    target_has_atomic_equal_alignment = "ptr",
+    target_has_atomic_load_store = "8",
+    target_has_atomic_load_store = "16",
+    target_has_atomic_load_store = "32",
+    target_has_atomic_load_store = "64",
+    target_has_atomic_load_store = "ptr",
+))]
 #![no_core]
 //
 // Lints:
@@ -159,10 +156,11 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cfg_target_has_atomic)]
+#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_fn_fn_ptr_basics)]
-#![feature(const_fn_trait_bound)]
-#![feature(const_impl_trait)]
+#![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
+#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
+#![cfg_attr(bootstrap, feature(const_impl_trait))]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
@@ -307,6 +305,8 @@ pub mod ops;
 pub mod any;
 pub mod array;
 pub mod ascii;
+#[unstable(feature = "async_iterator", issue = "79024")]
+pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;
@@ -318,8 +318,6 @@ pub mod panic;
 pub mod panicking;
 pub mod pin;
 pub mod result;
-#[unstable(feature = "async_stream", issue = "79024")]
-pub mod stream;
 pub mod sync;
 
 pub mod fmt;
@@ -374,6 +372,12 @@ pub mod arch {
     pub use crate::core_arch::arch::*;
 
     /// Inline assembly.
+    ///
+    /// Refer to [rust by example] for a usage guide and the [reference] for
+    /// detailed information about the syntax and available options.
+    ///
+    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
     #[stable(feature = "asm", since = "1.59.0")]
     #[rustc_builtin_macro]
     pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
@@ -381,6 +385,12 @@ pub mod arch {
     }
 
     /// Module-level inline assembly.
+    ///
+    /// Refer to [rust by example] for a usage guide and the [reference] for
+    /// detailed information about the syntax and available options.
+    ///
+    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
+    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
     #[stable(feature = "global_asm", since = "1.59.0")]
     #[rustc_builtin_macro]
     pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
@@ -398,12 +408,12 @@ pub mod arch {
 #[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
+#[cfg(not(all(miri, doctest)))] // Skip SIMD doctests in Miri
 mod core_simd;
 
 #[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
+#[cfg(not(all(miri, doctest)))] // Skip SIMD doctests in Miri
 pub mod simd {
     #[unstable(feature = "portable_simd", issue = "86656")]
     pub use crate::core_simd::simd::*;

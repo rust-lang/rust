@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
-use clippy_utils::{is_trait_method, peel_blocks};
+use clippy_utils::{is_trait_method, meets_msrv, msrvs, peel_blocks};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -9,7 +9,8 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_semver::RustcVersion;
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
 
@@ -42,7 +43,17 @@ declare_clippy_lint! {
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
 }
 
-declare_lint_pass!(MapClone => [MAP_CLONE]);
+pub struct MapClone {
+    msrv: Option<RustcVersion>,
+}
+
+impl_lint_pass!(MapClone => [MAP_CLONE]);
+
+impl MapClone {
+    pub fn new(msrv: Option<RustcVersion>) -> Self {
+        Self { msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for MapClone {
     fn check_expr(&mut self, cx: &LateContext<'_>, e: &hir::Expr<'_>) {
@@ -51,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
         }
 
         if_chain! {
-            if let hir::ExprKind::MethodCall(method, _, args, _) = e.kind;
+            if let hir::ExprKind::MethodCall(method, args, _) = e.kind;
             if args.len() == 2;
             if method.ident.name == sym::map;
             let ty = cx.typeck_results().expr_ty(&args[0]);
@@ -65,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.kind {
                         if ident_eq(name, closure_expr) {
-                            lint(cx, e.span, args[0].span, true);
+                            self.lint_explicit_closure(cx, e.span, args[0].span, true);
                         }
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
@@ -73,11 +84,11 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                             hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                                 if ident_eq(name, inner) {
                                     if let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind() {
-                                        lint(cx, e.span, args[0].span, true);
+                                        self.lint_explicit_closure(cx, e.span, args[0].span, true);
                                     }
                                 }
                             },
-                            hir::ExprKind::MethodCall(method, _, [obj], _) => if_chain! {
+                            hir::ExprKind::MethodCall(method, [obj], _) => if_chain! {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone;
                                 if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id);
                                 if let Some(trait_id) = cx.tcx.trait_of_item(fn_id);
@@ -89,8 +100,8 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
                                     let obj_ty = cx.typeck_results().expr_ty(obj);
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                         if matches!(mutability, Mutability::Not) {
-                                            let copy = is_copy(cx, ty);
-                                            lint(cx, e.span, args[0].span, copy);
+                                            let copy = is_copy(cx, *ty);
+                                            self.lint_explicit_closure(cx, e.span, args[0].span, copy);
                                         }
                                     } else {
                                         lint_needless_cloning(cx, e.span, args[0].span);
@@ -105,6 +116,8 @@ impl<'tcx> LateLintPass<'tcx> for MapClone {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }
 
 fn ident_eq(name: Ident, path: &hir::Expr<'_>) -> bool {
@@ -127,31 +140,30 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
     );
 }
 
-fn lint(cx: &LateContext<'_>, replace: Span, root: Span, copied: bool) {
-    let mut applicability = Applicability::MachineApplicable;
-    if copied {
+impl MapClone {
+    fn lint_explicit_closure(&self, cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
+        let mut applicability = Applicability::MachineApplicable;
+        let message = if is_copy {
+            "you are using an explicit closure for copying elements"
+        } else {
+            "you are using an explicit closure for cloning elements"
+        };
+        let sugg_method = if is_copy && meets_msrv(self.msrv.as_ref(), &msrvs::ITERATOR_COPIED) {
+            "copied"
+        } else {
+            "cloned"
+        };
+
         span_lint_and_sugg(
             cx,
             MAP_CLONE,
             replace,
-            "you are using an explicit closure for copying elements",
-            "consider calling the dedicated `copied` method",
+            message,
+            &format!("consider calling the dedicated `{}` method", sugg_method),
             format!(
-                "{}.copied()",
-                snippet_with_applicability(cx, root, "..", &mut applicability)
-            ),
-            applicability,
-        );
-    } else {
-        span_lint_and_sugg(
-            cx,
-            MAP_CLONE,
-            replace,
-            "you are using an explicit closure for cloning elements",
-            "consider calling the dedicated `cloned` method",
-            format!(
-                "{}.cloned()",
-                snippet_with_applicability(cx, root, "..", &mut applicability)
+                "{}.{}()",
+                snippet_with_applicability(cx, root, "..", &mut applicability),
+                sugg_method,
             ),
             applicability,
         );

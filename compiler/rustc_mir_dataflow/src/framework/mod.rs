@@ -30,10 +30,9 @@
 //!
 //! [gen-kill]: https://en.wikipedia.org/wiki/Data-flow_analysis#Bit_vector_problems
 
-use std::borrow::BorrowMut;
 use std::cmp::Ordering;
 
-use rustc_index::bit_set::{BitSet, HybridBitSet};
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty::TyCtxt;
@@ -51,6 +50,51 @@ pub use self::direction::{Backward, Direction, Forward};
 pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
+
+/// Analysis domains are all bitsets of various kinds. This trait holds
+/// operations needed by all of them.
+pub trait BitSetExt<T> {
+    fn domain_size(&self) -> usize;
+    fn contains(&self, elem: T) -> bool;
+    fn union(&mut self, other: &HybridBitSet<T>);
+    fn subtract(&mut self, other: &HybridBitSet<T>);
+}
+
+impl<T: Idx> BitSetExt<T> for BitSet<T> {
+    fn domain_size(&self) -> usize {
+        self.domain_size()
+    }
+
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        self.union(other);
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        self.subtract(other);
+    }
+}
+
+impl<T: Idx> BitSetExt<T> for ChunkedBitSet<T> {
+    fn domain_size(&self) -> usize {
+        self.domain_size()
+    }
+
+    fn contains(&self, elem: T) -> bool {
+        self.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        self.union(other);
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        self.subtract(other);
+    }
+}
 
 /// Define the domain of a dataflow problem.
 ///
@@ -303,7 +347,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
 impl<'tcx, A> Analysis<'tcx> for A
 where
     A: GenKillAnalysis<'tcx>,
-    A::Domain: GenKill<A::Idx> + BorrowMut<BitSet<A::Idx>>,
+    A::Domain: GenKill<A::Idx> + BitSetExt<A::Idx>,
 {
     fn apply_statement_effect(
         &self,
@@ -435,7 +479,7 @@ impl<T: Idx> GenKillSet<T> {
         }
     }
 
-    pub fn apply(&self, state: &mut BitSet<T>) {
+    pub fn apply(&self, state: &mut impl BitSetExt<T>) {
         state.union(&self.gen);
         state.subtract(&self.kill);
     }
@@ -454,6 +498,16 @@ impl<T: Idx> GenKill<T> for GenKillSet<T> {
 }
 
 impl<T: Idx> GenKill<T> for BitSet<T> {
+    fn gen(&mut self, elem: T) {
+        self.insert(elem);
+    }
+
+    fn kill(&mut self, elem: T) {
+        self.remove(elem);
+    }
+}
+
+impl<T: Idx> GenKill<T> for ChunkedBitSet<T> {
     fn gen(&mut self, elem: T) {
         self.insert(elem);
     }

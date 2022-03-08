@@ -41,14 +41,6 @@ impl Instant {
         perf_counter::PerformanceCounterInstant::now().into()
     }
 
-    pub fn actually_monotonic() -> bool {
-        false
-    }
-
-    pub const fn zero() -> Instant {
-        Instant { t: Duration::from_secs(0) }
-    }
-
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,

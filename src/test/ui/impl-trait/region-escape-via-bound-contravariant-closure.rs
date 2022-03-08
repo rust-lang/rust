@@ -8,9 +8,8 @@
 // run-pass
 
 #![allow(dead_code)]
-#![feature(in_band_lifetimes)]
 
-fn foo(x: &'x u32) -> impl Fn() -> &'y u32
+fn foo<'x, 'y>(x: &'x u32) -> impl Fn() -> &'y u32
 where 'x: 'y
 {
     move || x

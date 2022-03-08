@@ -219,7 +219,9 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             required_gates.iter().copied().filter(|&g| !features.enabled(g)).collect();
 
         match missing_gates.as_slice() {
-            [] => struct_span_err!(tcx.sess, span, E0744, "{}", msg).emit(),
+            [] => {
+                struct_span_err!(tcx.sess, span, E0744, "{}", msg).emit();
+            }
 
             [missing_primary, ref missing_secondary @ ..] => {
                 let mut err = feature_err(&tcx.sess.parse_sess, *missing_primary, span, &msg);

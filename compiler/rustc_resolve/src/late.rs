@@ -289,7 +289,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::ForeignTy,
                     _,
                 ) | Res::PrimTy(..)
-                    | Res::SelfTy(..)
+                    | Res::SelfTy { .. }
             ),
             PathSource::Trait(AliasPossibility::No) => matches!(res, Res::Def(DefKind::Trait, _)),
             PathSource::Trait(AliasPossibility::Maybe) => {
@@ -326,7 +326,7 @@ impl<'a> PathSource<'a> {
                         | DefKind::TyAlias
                         | DefKind::AssocTy,
                     _,
-                ) | Res::SelfTy(..)
+                ) | Res::SelfTy { .. }
             ),
             PathSource::TraitItem(ns) => match res {
                 Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) if ns == ValueNS => true,
@@ -400,6 +400,8 @@ struct DiagnosticMetadata<'ast> {
 
     /// Given `where <T as Bar>::Baz: String`, suggest `where T: Bar<Baz = String>`.
     current_where_predicate: Option<&'ast WherePredicate>,
+
+    current_type_path: Option<&'ast Ty>,
 }
 
 struct LateResolutionVisitor<'a, 'b, 'ast> {
@@ -472,8 +474,10 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
     }
     fn visit_ty(&mut self, ty: &'ast Ty) {
         let prev = self.diagnostic_metadata.current_trait_object;
+        let prev_ty = self.diagnostic_metadata.current_type_path;
         match ty.kind {
             TyKind::Path(ref qself, ref path) => {
+                self.diagnostic_metadata.current_type_path = Some(ty);
                 self.smart_resolve_path(ty.id, qself.as_ref(), path, PathSource::Type);
             }
             TyKind::ImplicitSelf => {
@@ -490,6 +494,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
         }
         visit::walk_ty(self, ty);
         self.diagnostic_metadata.current_trait_object = prev;
+        self.diagnostic_metadata.current_type_path = prev_ty;
     }
     fn visit_poly_trait_ref(&mut self, tref: &'ast PolyTraitRef, m: &'ast TraitBoundModifier) {
         self.smart_resolve_path(
@@ -906,9 +911,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         self.with_current_self_item(item, |this| {
             this.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
                 let item_def_id = this.r.local_def_id(item.id).to_def_id();
-                this.with_self_rib(Res::SelfTy(None, Some((item_def_id, false))), |this| {
-                    visit::walk_item(this, item);
-                });
+                this.with_self_rib(
+                    Res::SelfTy { trait_: None, alias_to: Some((item_def_id, false)) },
+                    |this| {
+                        visit::walk_item(this, item);
+                    },
+                );
             });
         });
     }
@@ -994,8 +1002,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                    this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
+                    let def = this.r.local_def_id(item.id).to_def_id();
+                    this.with_self_rib(Res::SelfTy { trait_: Some(def), alias_to: None }, |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
 
@@ -1046,8 +1054,8 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.compute_num_lifetime_params(item.id, generics);
                 // Create a new rib for the trait-wide type parameters.
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
-                    let local_def_id = this.r.local_def_id(item.id).to_def_id();
-                    this.with_self_rib(Res::SelfTy(Some(local_def_id), None), |this| {
+                    let def = this.r.local_def_id(item.id).to_def_id();
+                    this.with_self_rib(Res::SelfTy { trait_: Some(def), alias_to: None }, |this| {
                         this.visit_generics(generics);
                         walk_list!(this, visit_param_bound, bounds);
                     });
@@ -1291,7 +1299,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // If applicable, create a rib for the type parameters.
         self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes), |this| {
             // Dummy self type for better errors if `Self` is used in the trait path.
-            this.with_self_rib(Res::SelfTy(None, None), |this| {
+            this.with_self_rib(Res::SelfTy { trait_: None, alias_to: None }, |this| {
                 // Resolve the trait reference, if necessary.
                 this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
                     let item_def_id = this.r.local_def_id(item_id);
@@ -1302,7 +1310,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
 
                     let item_def_id = item_def_id.to_def_id();
-                    this.with_self_rib(Res::SelfTy(trait_id, Some((item_def_id, false))), |this| {
+                    let res =
+                        Res::SelfTy { trait_: trait_id, alias_to: Some((item_def_id, false)) };
+                    this.with_self_rib(res, |this| {
                         if let Some(trait_ref) = opt_trait_reference.as_ref() {
                             // Resolve type arguments in the trait path.
                             visit::walk_trait_ref(this, trait_ref);
@@ -1936,7 +1946,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let instead = res.is_some();
                 let suggestion =
                     if res.is_none() { this.report_missing_type_error(path) } else { None };
-                // get_from_node_id
 
                 this.r.use_injections.push(UseError {
                     err,
@@ -1992,13 +2001,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // into a single one.
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
-            parent_err.cancel();
-
             err.message = take(&mut parent_err.message);
             err.code = take(&mut parent_err.code);
             err.children = take(&mut parent_err.children);
 
-            drop(parent_err);
+            parent_err.cancel();
 
             let def_id = this.parent_scope.module.nearest_parent_mod();
 
@@ -2516,6 +2523,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             ExprKind::Repeat(ref elem, ref ct) => {
                 self.visit_expr(elem);
                 self.resolve_anon_const(ct, IsRepeatExpr::Yes);
+            }
+            ExprKind::Index(ref elem, ref idx) => {
+                self.resolve_expr(elem, Some(expr));
+                self.visit_expr(idx);
             }
             _ => {
                 visit::walk_expr(self, expr);

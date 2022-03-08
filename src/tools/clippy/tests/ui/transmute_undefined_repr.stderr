@@ -1,0 +1,64 @@
+error: transmute from `Ty2<u32, i32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:26:33
+   |
+LL |         let _: Ty2C<u32, i32> = transmute(value::<Ty2<u32, i32>>()); // Lint, Ty2 is unordered
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::transmute-undefined-repr` implied by `-D warnings`
+
+error: transmute into `Ty2<u32, i32>` which has an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:27:32
+   |
+LL |         let _: Ty2<u32, i32> = transmute(value::<Ty2C<u32, i32>>()); // Lint, Ty2 is unordered
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: transmute from `Ty<Ty2<u32, i32>>` to `Ty2<u32, f32>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:32:32
+   |
+LL |         let _: Ty2<u32, f32> = transmute(value::<Ty<Ty2<u32, i32>>>()); // Lint, different Ty2 instances
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `Ty2<u32, f32>` to `Ty<Ty2<u32, i32>>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:33:36
+   |
+LL |         let _: Ty<Ty2<u32, i32>> = transmute(value::<Ty2<u32, f32>>()); // Lint, different Ty2 instances
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `Ty<&Ty2<u32, i32>>` to `&Ty2<u32, f32>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:38:33
+   |
+LL |         let _: &Ty2<u32, f32> = transmute(value::<Ty<&Ty2<u32, i32>>>()); // Lint, different Ty2 instances
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `&Ty2<u32, f32>` to `Ty<&Ty2<u32, i32>>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:39:37
+   |
+LL |         let _: Ty<&Ty2<u32, i32>> = transmute(value::<&Ty2<u32, f32>>()); // Lint, different Ty2 instances
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `std::boxed::Box<Ty2<u32, u32>>` to `&mut Ty2<u32, f32>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:56:45
+   |
+LL |         let _: &'static mut Ty2<u32, f32> = transmute(value::<Box<Ty2<u32, u32>>>()); // Lint, different Ty2 instances
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: transmute from `&mut Ty2<u32, f32>` to `std::boxed::Box<Ty2<u32, u32>>`, both of which have an undefined layout
+  --> $DIR/transmute_undefined_repr.rs:57:37
+   |
+LL |         let _: Box<Ty2<u32, u32>> = transmute(value::<&'static mut Ty2<u32, f32>>()); // Lint, different Ty2 instances
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: two instances of the same generic type (`Ty2`) may have different layouts
+
+error: aborting due to 8 previous errors
+

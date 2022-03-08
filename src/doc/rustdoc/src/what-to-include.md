@@ -118,7 +118,7 @@ rustdoc --theme awesome.css src/lib.rs
 
 Here is an example of a new theme, [Ayu].
 
-[Ayu]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/themes/ayu.css
+[Ayu]: https://github.com/rust-lang/rust/blob/master/src/librustdoc/html/static/css/themes/ayu.css
 [API Guidelines]: https://rust-lang.github.io/api-guidelines/documentation.html#rustdoc-does-not-show-unhelpful-implementation-details-c-hidden
 [Documentation tests]: documentation-tests.md
 [on this blog]: https://blog.guillaume-gomez.fr/articles/2016-09-16+Generating+doc+with+rustdoc+and+a+custom+theme

@@ -68,7 +68,7 @@ declare_lint_pass!(OptionIfLetElse => [OPTION_IF_LET_ELSE]);
 
 /// Returns true iff the given expression is the result of calling `Result::ok`
 fn is_result_ok(cx: &LateContext<'_>, expr: &'_ Expr<'_>) -> bool {
-    if let ExprKind::MethodCall(path, _, &[ref receiver], _) = &expr.kind {
+    if let ExprKind::MethodCall(path, &[ref receiver], _) = &expr.kind {
         path.ident.name.as_str() == "ok"
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Result)
     } else {

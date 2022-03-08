@@ -173,9 +173,8 @@ impl Scope {
     /// returned span may not correspond to the span of any `NodeId` in
     /// the AST.
     pub fn span(&self, tcx: TyCtxt<'_>, scope_tree: &ScopeTree) -> Span {
-        let hir_id = match self.hir_id(scope_tree) {
-            Some(hir_id) => hir_id,
-            None => return DUMMY_SP,
+        let Some(hir_id) = self.hir_id(scope_tree) else {
+            return DUMMY_SP;
         };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
@@ -308,7 +307,7 @@ pub struct ScopeTree {
     /// The reason is that semantically, until the `box` expression returns,
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
-    pub yield_in_scope: FxHashMap<Scope, YieldData>,
+    pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
 
     /// The number of visit_expr and visit_pat calls done in the body.
     /// Used to sanity check visit_expr/visit_pat call count when
@@ -423,8 +422,8 @@ impl ScopeTree {
 
     /// Checks whether the given scope contains a `yield`. If so,
     /// returns `Some(YieldData)`. If not, returns `None`.
-    pub fn yield_in_scope(&self, scope: Scope) -> Option<YieldData> {
-        self.yield_in_scope.get(&scope).cloned()
+    pub fn yield_in_scope(&self, scope: Scope) -> Option<&Vec<YieldData>> {
+        self.yield_in_scope.get(&scope)
     }
 
     /// Gives the number of expressions visited in a body.

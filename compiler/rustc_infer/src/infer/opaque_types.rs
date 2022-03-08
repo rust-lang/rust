@@ -569,13 +569,15 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
             let predicate = predicate.fold_with(&mut BottomUpFolder {
                 tcx,
                 ty_op: |ty| match ty.kind() {
-                    ty::Projection(projection_ty) => infcx.infer_projection(
-                        self.param_env,
-                        *projection_ty,
-                        traits::ObligationCause::misc(self.value_span, self.body_id),
-                        0,
-                        &mut self.obligations,
-                    ),
+                    ty::Projection(projection_ty) if !projection_ty.has_escaping_bound_vars() => {
+                        infcx.infer_projection(
+                            self.param_env,
+                            *projection_ty,
+                            traits::ObligationCause::misc(self.value_span, self.body_id),
+                            0,
+                            &mut self.obligations,
+                        )
+                    }
                     _ => ty,
                 },
                 lt_op: |lt| lt,

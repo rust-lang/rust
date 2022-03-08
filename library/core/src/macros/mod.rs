@@ -595,19 +595,16 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
+#[rustc_builtin_macro(unreachable)]
+#[allow_internal_unstable(edition_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
-#[allow_internal_unstable(core_panic)]
 macro_rules! unreachable {
-    () => ({
-        $crate::panicking::panic("internal error: entered unreachable code")
-    });
-    ($msg:expr $(,)?) => ({
-        $crate::unreachable!("{}", $msg)
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
-    });
+    // Expands to either `$crate::panic::unreachable_2015` or `$crate::panic::unreachable_2021`
+    // depending on the edition of the caller.
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 /// Indicates unimplemented code by panicking with a message of "not implemented".
@@ -856,7 +853,7 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    /// Same as `format_args`, but can be used in some const contexts.
+    /// Same as [`format_args`], but can be used in some const contexts.
     ///
     /// This macro is used by the panic macros for the `const_panic` feature.
     ///
@@ -870,7 +867,7 @@ pub(crate) mod builtin {
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
-    /// Same as `format_args`, but adds a newline in the end.
+    /// Same as [`format_args`], but adds a newline in the end.
     #[unstable(
         feature = "format_args_nl",
         issue = "none",
@@ -1003,7 +1000,6 @@ pub(crate) mod builtin {
     /// assert_eq!(s, b"ABCDEF");
     /// # }
     /// ```
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "concat_bytes", issue = "87555")]
     #[rustc_builtin_macro]
     #[macro_export]

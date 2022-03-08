@@ -91,6 +91,7 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_middle;

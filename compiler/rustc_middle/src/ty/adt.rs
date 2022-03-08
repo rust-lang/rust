@@ -6,7 +6,7 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -26,7 +26,7 @@ use super::{
     Destructor, FieldDef, GenericPredicates, ReprOptions, Ty, TyCtxt, VariantDef, VariantDiscr,
 };
 
-#[derive(Clone, HashStable, Debug)]
+#[derive(Copy, Clone, HashStable, Debug)]
 pub struct AdtSizedConstraint<'tcx>(pub &'tcx [Ty<'tcx>]);
 
 bitflags! {
@@ -395,7 +395,7 @@ impl<'tcx> AdtDef {
             | Res::Def(DefKind::Union, _)
             | Res::Def(DefKind::TyAlias, _)
             | Res::Def(DefKind::AssocTy, _)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected res {:?} in variant_of_res", res),
         }
@@ -424,7 +424,7 @@ impl<'tcx> AdtDef {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+                    ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
                         "enum discriminant evaluation failed"
                     }
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",

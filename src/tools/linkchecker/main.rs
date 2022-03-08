@@ -182,8 +182,9 @@ impl Checker {
     fn walk(&mut self, dir: &Path, report: &mut Report) {
         for entry in t!(dir.read_dir()).map(|e| t!(e)) {
             let path = entry.path();
-            let kind = t!(entry.file_type());
-            if kind.is_dir() {
+            // Goes through symlinks
+            let metadata = t!(fs::metadata(&path));
+            if metadata.is_dir() {
                 self.walk(&path, report);
             } else {
                 self.check(&path, report);

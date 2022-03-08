@@ -57,7 +57,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, ty_context: TyContext) {
-        *ty = self.renumber_regions(ty);
+        *ty = self.renumber_regions(*ty);
 
         debug!(?ty);
     }
@@ -72,12 +72,12 @@ impl<'a, 'tcx> MutVisitor<'tcx> for NllVisitor<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, location: Location) {
         let old_region = *region;
-        *region = self.renumber_regions(&old_region);
+        *region = self.renumber_regions(old_region);
 
         debug!(?region);
     }
 
-    fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _location: Location) {
-        *constant = self.renumber_regions(&*constant);
+    fn visit_const(&mut self, constant: &mut ty::Const<'tcx>, _location: Location) {
+        *constant = self.renumber_regions(*constant);
     }
 }

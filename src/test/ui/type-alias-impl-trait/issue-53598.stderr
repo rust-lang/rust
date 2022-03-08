@@ -1,5 +1,5 @@
 error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-53598.rs:20:42
+  --> $DIR/issue-53598.rs:19:42
    |
 LL |       fn foo<T: Debug>(_: T) -> Self::Item {
    |  __________________________________________^

@@ -5,9 +5,11 @@
 #![feature(rustc_private)]
 #![feature(array_methods)]
 #![feature(assert_matches)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
+#![feature(drain_filter)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
@@ -16,9 +18,12 @@
 #![feature(once_cell)]
 #![feature(type_ascription)]
 #![feature(iter_intersperse)]
+#![feature(type_alias_impl_trait)]
+#![feature(generic_associated_types)]
 #![recursion_limit = "256"]
 #![warn(rustc::internal)]
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -76,7 +81,7 @@ use std::io;
 use std::process;
 
 use rustc_driver::{abort_on_err, describe_lints};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
@@ -174,7 +179,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorReported),
+        _ => Err(ErrorGuaranteed),
     });
     process::exit(exit_code);
 }
@@ -256,6 +261,7 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optmulti("L", "library-path", "directory to add to crate search path", "DIR")
         }),
         stable("cfg", |o| o.optmulti("", "cfg", "pass a --cfg to rustc", "")),
+        unstable("check-cfg", |o| o.optmulti("", "check-cfg", "pass a --check-cfg to rustc", "")),
         stable("extern", |o| o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")),
         unstable("extern-html-root-url", |o| {
             o.optmulti(
@@ -593,6 +599,9 @@ fn opts() -> Vec<RustcOptGroup> {
                 "collect function call information for functions from the target crate",
             )
         }),
+        unstable("scrape-tests", |o| {
+            o.optflag("", "scrape-tests", "Include test code when scraping examples")
+        }),
         unstable("with-examples", |o| {
             o.optmulti(
                 "",
@@ -663,7 +672,7 @@ fn usage(argv0: &str) {
 }
 
 /// A result type used by several functions under `main()`.
-type MainResult = Result<(), ErrorReported>;
+type MainResult = Result<(), ErrorGuaranteed>;
 
 fn main_args(at_args: &[String]) -> MainResult {
     let args = rustc_driver::args::arg_expand_all(at_args);
@@ -683,12 +692,11 @@ fn main_args(at_args: &[String]) -> MainResult {
     // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorReported) },
+        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorGuaranteed) },
     };
-    rustc_interface::util::setup_callbacks_and_run_in_thread_pool_with_globals(
+    rustc_interface::util::run_in_thread_pool_with_globals(
         options.edition,
         1, // this runs single-threaded, even in a parallel compiler
-        &None,
         move || main_options(options),
     )
 }
@@ -698,7 +706,7 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
         Ok(()) => Ok(()),
         Err(err) => {
             diag.struct_err(&err).emit();
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }
@@ -715,12 +723,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
             let mut msg =
                 tcx.sess.struct_err(&format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
-            if file.is_empty() {
-                msg.emit()
-            } else {
-                msg.note(&format!("failed to create or modify \"{}\"", file)).emit()
+            if !file.is_empty() {
+                msg.note(&format!("failed to create or modify \"{}\"", file));
             }
-            Err(ErrorReported)
+            Err(msg.emit())
         }
     }
 }

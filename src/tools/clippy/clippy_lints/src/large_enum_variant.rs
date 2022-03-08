@@ -84,34 +84,30 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
             if adt.variants.len() <= 1 {
                 return;
             }
-            let mut variants_size: Vec<VariantInfo> = adt
-                .variants
-                .iter()
-                .enumerate()
-                .map(|(i, variant)| {
-                    let mut fields_size = Vec::new();
-                    let size: u64 = variant
-                        .fields
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, f)| {
-                            let ty = cx.tcx.type_of(f.did);
-                            // don't count generics by filtering out everything
-                            // that does not have a layout
-                            cx.layout_of(ty).ok().map(|l| {
-                                let size = l.size.bytes();
-                                fields_size.push(FieldInfo { ind: i, size });
-                                size
-                            })
-                        })
-                        .sum();
-                    VariantInfo {
-                        ind: i,
-                        size,
-                        fields_size,
+            let mut variants_size: Vec<VariantInfo> = Vec::new();
+            for (i, variant) in adt.variants.iter().enumerate() {
+                let mut fields_size = Vec::new();
+                for (i, f) in variant.fields.iter().enumerate() {
+                    let ty = cx.tcx.type_of(f.did);
+                    // don't lint variants which have a field of generic type.
+                    match cx.layout_of(ty) {
+                        Ok(l) => {
+                            let fsize = l.size.bytes();
+                            fields_size.push(FieldInfo { ind: i, size: fsize });
+                        },
+                        Err(_) => {
+                            return;
+                        },
                     }
-                })
-                .collect();
+                }
+                let size: u64 = fields_size.iter().map(|info| info.size).sum();
+
+                variants_size.push(VariantInfo {
+                    ind: i,
+                    size,
+                    fields_size,
+                });
+            }
 
             variants_size.sort_by(|a, b| (b.size.cmp(&a.size)));
 

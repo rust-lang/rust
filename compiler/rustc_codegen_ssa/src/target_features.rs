@@ -4,6 +4,9 @@ use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 
+/// Features that control behaviour of rustc, rather than the codegen.
+pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
+
 // When adding features to the below lists
 // check whether they're named already elsewhere in rust
 // e.g. in stdarch and whether the given name matches LLVM's
@@ -36,7 +39,7 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     // #[target_feature].
     ("thumb-mode", Some(sym::arm_target_feature)),
     ("thumb2", Some(sym::arm_target_feature)),
-    ("reserve-r9", Some(sym::arm_target_feature)),
+    ("d32", Some(sym::arm_target_feature)),
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
@@ -74,8 +77,10 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("ssbs", Some(sym::aarch64_target_feature)),
     // FEAT_SB
     ("sb", Some(sym::aarch64_target_feature)),
-    // FEAT_PAUTH
-    ("pauth", Some(sym::aarch64_target_feature)),
+    // FEAT_PAUTH (address authentication)
+    ("paca", Some(sym::aarch64_target_feature)),
+    // FEAT_PAUTH (generic authentication)
+    ("pacg", Some(sym::aarch64_target_feature)),
     // FEAT_DPB
     ("dpb", Some(sym::aarch64_target_feature)),
     // FEAT_DPB2
@@ -136,6 +141,8 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("v8.6a", Some(sym::aarch64_target_feature)),
     ("v8.7a", Some(sym::aarch64_target_feature)),
 ];
+
+const AARCH64_TIED_FEATURES: &[&[&str]] = &[&["paca", "pacg"]];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("adx", Some(sym::adx_target_feature)),
@@ -252,6 +259,13 @@ pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Opt
         "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
         "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
         "bpf" => BPF_ALLOWED_FEATURES,
+        _ => &[],
+    }
+}
+
+pub fn tied_target_features(sess: &Session) -> &'static [&'static [&'static str]] {
+    match &*sess.target.arch {
+        "aarch64" => AARCH64_TIED_FEATURES,
         _ => &[],
     }
 }

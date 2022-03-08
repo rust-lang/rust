@@ -1,3 +1,4 @@
+// Checks that the result colors are as expected.
 goto: file://|DOC_PATH|/test_docs/index.html
 // We set the theme so we're sure that the correct values will be used, whatever the computer
 // this test is running on.

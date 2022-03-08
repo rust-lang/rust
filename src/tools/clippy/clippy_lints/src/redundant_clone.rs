@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             if let ty::Adt(def, _) = arg_ty.kind() {
-                if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
+                if def.is_manually_drop() {
                     continue;
                 }
             }

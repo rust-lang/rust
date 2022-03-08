@@ -1,5 +1,7 @@
 // run-rustfix
+
 #![allow(unused_mut, clippy::from_iter_instead_of_collect)]
+#![warn(clippy::unwrap_used)]
 #![deny(clippy::get_unwrap)]
 
 use std::collections::BTreeMap;
@@ -37,6 +39,7 @@ fn main() {
         let _ = some_vecdeque.get(0).unwrap();
         let _ = some_hashmap.get(&1).unwrap();
         let _ = some_btreemap.get(&1).unwrap();
+        #[allow(clippy::unwrap_used)]
         let _ = false_positive.get(0).unwrap();
         // Test with deref
         let _: u8 = *boxed_slice.get(1).unwrap();
@@ -49,9 +52,12 @@ fn main() {
         *some_vec.get_mut(0).unwrap() = 1;
         *some_vecdeque.get_mut(0).unwrap() = 1;
         // Check false positives
-        *some_hashmap.get_mut(&1).unwrap() = 'b';
-        *some_btreemap.get_mut(&1).unwrap() = 'b';
-        *false_positive.get_mut(0).unwrap() = 1;
+        #[allow(clippy::unwrap_used)]
+        {
+            *some_hashmap.get_mut(&1).unwrap() = 'b';
+            *some_btreemap.get_mut(&1).unwrap() = 'b';
+            *false_positive.get_mut(0).unwrap() = 1;
+        }
     }
 
     {

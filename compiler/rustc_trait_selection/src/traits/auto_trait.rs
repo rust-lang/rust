@@ -148,7 +148,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
             // SelectionContext to return it back to us.
 
-            let (new_env, user_env) = match self.evaluate_predicates(
+            let Some((new_env, user_env)) = self.evaluate_predicates(
                 &infcx,
                 trait_did,
                 ty,
@@ -156,9 +156,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 orig_env,
                 &mut fresh_preds,
                 false,
-            ) {
-                Some(e) => e,
-                None => return AutoTraitResult::NegativeImpl,
+            ) else {
+                return AutoTraitResult::NegativeImpl;
             };
 
             let (full_env, full_user_env) = self
@@ -437,16 +436,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     for (new_region, old_region) in
                         iter::zip(new_substs.regions(), old_substs.regions())
                     {
-                        match (new_region, old_region) {
+                        match (*new_region, *old_region) {
                             // If both predicates have an `ReLateBound` (a HRTB) in the
                             // same spot, we do nothing.
-                            (
-                                ty::RegionKind::ReLateBound(_, _),
-                                ty::RegionKind::ReLateBound(_, _),
-                            ) => {}
+                            (ty::ReLateBound(_, _), ty::ReLateBound(_, _)) => {}
 
-                            (ty::RegionKind::ReLateBound(_, _), _)
-                            | (_, ty::RegionKind::ReVar(_)) => {
+                            (ty::ReLateBound(_, _), _) | (_, ty::ReVar(_)) => {
                                 // One of these is true:
                                 // The new predicate has a HRTB in a spot where the old
                                 // predicate does not (if they both had a HRTB, the previous
@@ -472,8 +467,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 // `user_computed_preds`.
                                 return false;
                             }
-                            (_, ty::RegionKind::ReLateBound(_, _))
-                            | (ty::RegionKind::ReVar(_), _) => {
+                            (_, ty::ReLateBound(_, _)) | (ty::ReVar(_), _) => {
                                 // This is the opposite situation as the previous arm.
                                 // One of these is true:
                                 //
@@ -814,14 +808,14 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     };
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
-                    let evaluate = |c: &'tcx ty::Const<'tcx>| {
-                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val {
+                    let evaluate = |c: ty::Const<'tcx>| {
+                        if let ty::ConstKind::Unevaluated(unevaluated) = c.val() {
                             match select.infcx().const_eval_resolve(
                                 obligation.param_env,
                                 unevaluated,
                                 Some(obligation.cause.span),
                             ) {
-                                Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty)),
+                                Ok(val) => Ok(ty::Const::from_value(select.tcx(), val, c.ty())),
                                 Err(err) => Err(err),
                             }
                         } else {
@@ -880,8 +874,8 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx> {
     }
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        (match r {
-            ty::ReVar(vid) => self.vid_to_region.get(vid).cloned(),
+        (match *r {
+            ty::ReVar(vid) => self.vid_to_region.get(&vid).cloned(),
             _ => None,
         })
         .unwrap_or_else(|| r.super_fold_with(self))

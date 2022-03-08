@@ -94,4 +94,6 @@ impl<'tcx> LateLintPass<'tcx> for BorrowAsPtr {
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }

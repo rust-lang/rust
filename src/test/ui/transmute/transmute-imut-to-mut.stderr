@@ -1,4 +1,4 @@
-error: mutating transmuted &mut T from &T may cause undefined behavior, consider instead using an UnsafeCell
+error: transmuting &T to &mut T is undefined behavior, even if the reference is unused, consider instead using an UnsafeCell
   --> $DIR/transmute-imut-to-mut.rs:6:32
    |
 LL |     let _a: &mut u8 = unsafe { transmute(&1u8) };

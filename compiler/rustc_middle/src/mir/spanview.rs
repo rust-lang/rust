@@ -230,7 +230,7 @@ where
 }
 
 /// Format a string showing the start line and column, and end line and column within a file.
-pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: &Span) -> String {
+pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
     let source_map = tcx.sess.source_map();
     let start = source_map.lookup_char_pos(span.lo());
     let end = source_map.lookup_char_pos(span.hi());
@@ -629,7 +629,7 @@ fn tooltip<'tcx>(
     let mut text = Vec::new();
     text.push(format!("{}: {}:", spanview_id, &source_map.span_to_embeddable_string(span)));
     for statement in statements {
-        let source_range = source_range_no_file(tcx, &statement.source_info.span);
+        let source_range = source_range_no_file(tcx, statement.source_info.span);
         text.push(format!(
             "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
@@ -639,7 +639,7 @@ fn tooltip<'tcx>(
         ));
     }
     if let Some(term) = terminator {
-        let source_range = source_range_no_file(tcx, &term.source_info.span);
+        let source_range = source_range_no_file(tcx, term.source_info.span);
         text.push(format!(
             "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,

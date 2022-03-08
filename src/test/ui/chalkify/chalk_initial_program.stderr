@@ -4,6 +4,9 @@ error[E0277]: the trait bound `f32: Foo` is not satisfied
 LL |     gimme::<f32>();
    |             ^^^ the trait `Foo` is not implemented for `f32`
    |
+   = help: the following implementations were found:
+             <i32 as Foo>
+             <u32 as Foo>
 note: required by a bound in `gimme`
   --> $DIR/chalk_initial_program.rs:9:13
    |

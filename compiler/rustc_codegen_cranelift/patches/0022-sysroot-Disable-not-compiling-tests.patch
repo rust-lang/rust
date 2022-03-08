@@ -22,7 +22,7 @@ index 0000000..46fd999
 +[package]
 +name = "core"
 +version = "0.0.0"
-+edition = "2018"
++edition = "2021"
 +
 +[lib]
 +name = "coretests"
@@ -44,7 +44,7 @@ index 1a6be3a..42dbd59 100644
 --- a/library/core/tests/ptr.rs
 +++ b/library/core/tests/ptr.rs
 @@ -250,6 +250,7 @@ fn test_unsized_nonnull() {
-     assert!(ys == zs);
+     };
  }
  
 +/*

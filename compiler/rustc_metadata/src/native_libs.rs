@@ -1,3 +1,4 @@
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -21,7 +22,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
 
 crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }
@@ -33,9 +34,8 @@ struct Collector<'tcx> {
 
 impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
     fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
-        let (abi, foreign_mod_items) = match it.kind {
-            hir::ItemKind::ForeignMod { abi, items } => (abi, items),
-            _ => return,
+        let hir::ItemKind::ForeignMod { abi, items: foreign_mod_items } = it.kind else {
+            return;
         };
 
         if abi == Abi::Rust || abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
@@ -45,9 +45,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
-            let items = match m.meta_item_list() {
-                Some(item) => item,
-                None => continue,
+            let Some(items) = m.meta_item_list() else {
+                continue;
             };
             let mut lib = NativeLib {
                 name: None,
@@ -63,9 +62,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
             for item in items.iter() {
                 if item.has_name(sym::kind) {
                     kind_specified = true;
-                    let kind = match item.value_str() {
-                        Some(name) => name,
-                        None => continue, // skip like historical compilers
+                    let Some(kind) = item.value_str() else {
+                        continue; // skip like historical compilers
                     };
                     lib.kind = match kind.as_str() {
                         "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
@@ -101,9 +99,8 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 } else if item.has_name(sym::name) {
                     lib.name = item.value_str();
                 } else if item.has_name(sym::cfg) {
-                    let cfg = match item.meta_item_list() {
-                        Some(list) => list,
-                        None => continue, // skip like historical compilers
+                    let Some(cfg) = item.meta_item_list() else {
+                        continue; // skip like historical compilers
                     };
                     if cfg.is_empty() {
                         sess.span_err(item.span(), "`cfg()` must have an argument");
@@ -247,7 +244,9 @@ impl Collector<'_> {
         if matches!(lib.kind, NativeLibKind::Framework { .. }) && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
+                Some(span) => {
+                    struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
+                }
                 None => self.tcx.sess.err(msg),
             }
         }
@@ -262,11 +261,8 @@ impl Collector<'_> {
         }
         // this just unwraps lib.name; we already established that it isn't empty above.
         if let (NativeLibKind::RawDylib, Some(lib_name)) = (lib.kind, lib.name) {
-            let span = match span {
-                Some(s) => s,
-                None => {
-                    bug!("raw-dylib libraries are not supported on the command line");
-                }
+            let Some(span) = span else {
+                bug!("raw-dylib libraries are not supported on the command line");
             };
 
             if !self.tcx.sess.target.options.is_like_windows {
@@ -396,7 +392,7 @@ impl Collector<'_> {
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
                 // nearest multiple of 4 bytes.
-                (layout.size.bytes_usize() + 3) & !3
+                (layout.size().bytes_usize() + 3) & !3
             })
             .sum()
     }
@@ -404,11 +400,13 @@ impl Collector<'_> {
     fn build_dll_import(&self, abi: Abi, item: &hir::ForeignItemRef) -> DllImport {
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
-                Abi::C { .. } | Abi::Cdecl => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
                 Abi::Stdcall { .. } | Abi::System { .. } => {
                     DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
                 }
-                Abi::Fastcall => DllCallingConvention::Fastcall(self.i686_arg_list_size(item)),
+                Abi::Fastcall { .. } => {
+                    DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
+                }
                 // Vectorcall is intentionally not supported at this time.
                 _ => {
                     self.tcx.sess.span_fatal(
@@ -419,7 +417,7 @@ impl Collector<'_> {
             }
         } else {
             match abi {
-                Abi::C { .. } | Abi::Win64 | Abi::System { .. } => DllCallingConvention::C,
+                Abi::C { .. } | Abi::Win64 { .. } | Abi::System { .. } => DllCallingConvention::C,
                 _ => {
                     self.tcx.sess.span_fatal(
                         item.span,

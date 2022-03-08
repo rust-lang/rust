@@ -1,6 +1,7 @@
 //! Checks validity of naked functions.
 
 use rustc_ast::{Attribute, InlineAsmOptions};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
@@ -8,7 +9,6 @@ use rustc_hir::{ExprKind, HirId, InlineAsmOperand, StmtKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNDEFINED_NAKED_FUNCTION_ABI;
-use rustc_session::lint::builtin::UNSUPPORTED_NAKED_FUNCTIONS;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -64,18 +64,16 @@ impl<'tcx> Visitor<'tcx> for CheckNakedFunctions<'tcx> {
             check_abi(self.tcx, hir_id, fn_header.abi, ident_span);
             check_no_patterns(self.tcx, body.params);
             check_no_parameters_use(self.tcx, body);
-            check_asm(self.tcx, hir_id, body, span);
-            check_inline(self.tcx, hir_id, attrs);
+            check_asm(self.tcx, body, span);
+            check_inline(self.tcx, attrs);
         }
     }
 }
 
 /// Check that the function isn't inlined.
-fn check_inline(tcx: TyCtxt<'_>, hir_id: HirId, attrs: &[Attribute]) {
+fn check_inline(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
     for attr in attrs.iter().filter(|attr| attr.has_name(sym::inline)) {
-        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, attr.span, |lint| {
-            lint.build("naked functions cannot be inlined").emit();
-        });
+        tcx.sess.struct_span_err(attr.span, "naked functions cannot be inlined").emit();
     }
 }
 
@@ -146,31 +144,31 @@ impl<'tcx> Visitor<'tcx> for CheckParameters<'tcx> {
 }
 
 /// Checks that function body contains a single inline assembly block.
-fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
+fn check_asm<'tcx>(tcx: TyCtxt<'tcx>, body: &'tcx hir::Body<'tcx>, fn_span: Span) {
     let mut this = CheckInlineAssembly { tcx, items: Vec::new() };
     this.visit_body(body);
     if let [(ItemKind::Asm, _)] = this.items[..] {
         // Ok.
     } else {
-        tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, fn_span, |lint| {
-            let mut diag = lint.build("naked functions must contain a single asm block");
-            let mut has_asm = false;
-            for &(kind, span) in &this.items {
-                match kind {
-                    ItemKind::Asm if has_asm => {
-                        diag.span_label(
-                            span,
-                            "multiple asm blocks are unsupported in naked functions",
-                        );
-                    }
-                    ItemKind::Asm => has_asm = true,
-                    ItemKind::NonAsm => {
-                        diag.span_label(span, "non-asm is unsupported in naked functions");
-                    }
+        let mut diag = struct_span_err!(
+            tcx.sess,
+            fn_span,
+            E0787,
+            "naked functions must contain a single asm block"
+        );
+        let mut has_asm = false;
+        for &(kind, span) in &this.items {
+            match kind {
+                ItemKind::Asm if has_asm => {
+                    diag.span_label(span, "multiple asm blocks are unsupported in naked functions");
+                }
+                ItemKind::Asm => has_asm = true,
+                ItemKind::NonAsm => {
+                    diag.span_label(span, "non-asm is unsupported in naked functions");
                 }
             }
-            diag.emit();
-        });
+        }
+        diag.emit();
     }
 }
 
@@ -221,7 +219,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
 
             ExprKind::InlineAsm(ref asm) => {
                 self.items.push((ItemKind::Asm, span));
-                self.check_inline_asm(expr.hir_id, asm, span);
+                self.check_inline_asm(asm, span);
             }
 
             ExprKind::DropTemps(..) | ExprKind::Block(..) | ExprKind::Err => {
@@ -230,7 +228,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         }
     }
 
-    fn check_inline_asm(&self, hir_id: HirId, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) {
+    fn check_inline_asm(&self, asm: &'tcx hir::InlineAsm<'tcx>, span: Span) {
         let unsupported_operands: Vec<Span> = asm
             .operands
             .iter()
@@ -243,18 +241,17 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             })
             .collect();
         if !unsupported_operands.is_empty() {
-            self.tcx.struct_span_lint_hir(
-                UNSUPPORTED_NAKED_FUNCTIONS,
-                hir_id,
+            struct_span_err!(
+                self.tcx.sess,
                 unsupported_operands,
-                |lint| {
-                    lint.build("only `const` and `sym` operands are supported in naked functions")
-                        .emit();
-                },
-            );
+                E0787,
+                "only `const` and `sym` operands are supported in naked functions",
+            )
+            .emit();
         }
 
         let unsupported_options: Vec<&'static str> = [
+            (InlineAsmOptions::MAY_UNWIND, "`may_unwind`"),
             (InlineAsmOptions::NOMEM, "`nomem`"),
             (InlineAsmOptions::NOSTACK, "`nostack`"),
             (InlineAsmOptions::PRESERVES_FLAGS, "`preserves_flags`"),
@@ -266,19 +263,24 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         .collect();
 
         if !unsupported_options.is_empty() {
-            self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span, |lint| {
-                lint.build(&format!(
-                    "asm options unsupported in naked functions: {}",
-                    unsupported_options.join(", ")
-                ))
-                .emit();
-            });
+            struct_span_err!(
+                self.tcx.sess,
+                span,
+                E0787,
+                "asm options unsupported in naked functions: {}",
+                unsupported_options.join(", ")
+            )
+            .emit();
         }
 
         if !asm.options.contains(InlineAsmOptions::NORETURN) {
-            self.tcx.struct_span_lint_hir(UNSUPPORTED_NAKED_FUNCTIONS, hir_id, span, |lint| {
-                lint.build("asm in naked functions must use `noreturn` option").emit();
-            });
+            struct_span_err!(
+                self.tcx.sess,
+                span,
+                E0787,
+                "asm in naked functions must use `noreturn` option"
+            )
+            .emit();
         }
     }
 }

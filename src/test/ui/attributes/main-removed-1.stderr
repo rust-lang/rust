@@ -1,0 +1,10 @@
+error: cannot find attribute `main` in this scope
+  --> $DIR/main-removed-1.rs:1:3
+   |
+LL | #[main]
+   |   ^^^^
+   |
+   = note: `main` is in scope, but it is a function, not an attribute
+
+error: aborting due to previous error
+

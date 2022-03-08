@@ -8,14 +8,14 @@ use rustc_middle::ty::subst::SubstsRef;
 pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
-    substs: SubstsRef<'tcx>,
+    _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     destination: Option<(CPlace<'tcx>, BasicBlock)>,
 ) {
     let ret = destination.unwrap().0;
 
     intrinsic_match! {
-        fx, intrinsic, substs, args,
+        fx, intrinsic, args,
         _ => {
             fx.tcx.sess.warn(&format!("unsupported llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
@@ -52,8 +52,8 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         };
         "llvm.x86.sse2.cmp.ps" | "llvm.x86.sse2.cmp.pd", (c x, c y, o kind) {
-            let kind_const = crate::constant::mir_operand_get_const_val(fx, kind).expect("llvm.x86.sse2.cmp.* kind not const");
-            let flt_cc = match kind_const.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind_const)) {
+            let kind = crate::constant::mir_operand_get_const_val(fx, kind).expect("llvm.x86.sse2.cmp.* kind not const");
+            let flt_cc = match kind.try_to_bits(Size::from_bytes(1)).unwrap_or_else(|| panic!("kind not scalar: {:?}", kind)) {
                 0 => FloatCC::Equal,
                 1 => FloatCC::LessThan,
                 2 => FloatCC::LessThanOrEqual,
@@ -73,32 +73,30 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
                 kind => unreachable!("kind {:?}", kind),
             };
 
-            simd_pair_for_each_lane(fx, x, y, ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
-                let res_lane = match lane_layout.ty.kind() {
+            simd_pair_for_each_lane(fx, x, y, ret, &|fx, lane_ty, res_lane_ty, x_lane, y_lane| {
+                let res_lane = match lane_ty.kind() {
                     ty::Float(_) => fx.bcx.ins().fcmp(flt_cc, x_lane, y_lane),
-                    _ => unreachable!("{:?}", lane_layout.ty),
+                    _ => unreachable!("{:?}", lane_ty),
                 };
-                bool_to_zero_or_max_uint(fx, res_lane_layout, res_lane)
+                bool_to_zero_or_max_uint(fx, res_lane_ty, res_lane)
             });
         };
         "llvm.x86.sse2.psrli.d", (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
-            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
-                let res_lane = match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ushr_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),
-                };
-                CValue::by_val(res_lane, res_lane_layout)
+                }
             });
         };
         "llvm.x86.sse2.pslli.d", (c a, o imm8) {
             let imm8 = crate::constant::mir_operand_get_const_val(fx, imm8).expect("llvm.x86.sse2.psrli.d imm8 not const");
-            simd_for_each_lane(fx, a, ret, |fx, _lane_layout, res_lane_layout, lane| {
-                let res_lane = match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                match imm8.try_to_bits(Size::from_bytes(4)).unwrap_or_else(|| panic!("imm8 not scalar: {:?}", imm8)) {
                     imm8 if imm8 < 32 => fx.bcx.ins().ishl_imm(lane, i64::from(imm8 as u8)),
                     _ => fx.bcx.ins().iconst(types::I32, 0),
-                };
-                CValue::by_val(res_lane, res_lane_layout)
+                }
             });
         };
         "llvm.x86.sse2.storeu.dq", (v mem_addr, c a) {

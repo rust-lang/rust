@@ -1,7 +1,7 @@
 use crate::error;
 use crate::fmt;
 use crate::io::{
-    self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
+    self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 use crate::mem;
 use crate::ptr;
@@ -168,9 +168,9 @@ impl<W: Write> BufWriter<W> {
 
             match r {
                 Ok(0) => {
-                    return Err(Error::new_const(
+                    return Err(io::const_io_error!(
                         ErrorKind::WriteZero,
-                        &"failed to write the buffered data",
+                        "failed to write the buffered data",
                     ));
                 }
                 Ok(n) => guard.consume(n),

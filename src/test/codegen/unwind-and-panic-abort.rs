@@ -9,7 +9,7 @@ extern "C-unwind" {
 
 // CHECK: Function Attrs:{{.*}}nounwind
 // CHECK-NEXT: define{{.*}}void @foo
-// CHECK: call void @llvm.trap()
+// CHECK: call void @_ZN4core9panicking15panic_no_unwind
 #[no_mangle]
 pub unsafe extern "C" fn foo() {
     bar();

@@ -8,9 +8,10 @@ struct C {
 
 #[allow()]
 const C: C =
-    C{
-      #[cfg(debug_assertions)]
-      field: 0,
+    C {
+        #[cfg(debug_assertions)]
+        field: 0,
 
-      #[cfg(not(debug_assertions))]
-      field: 1,};
+        #[cfg(not(debug_assertions))]
+        field: 1,
+    };

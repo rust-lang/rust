@@ -197,7 +197,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(path, _, [self_arg, extend_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(path, [self_arg, extend_arg], _) = expr.kind;
             if path_to_local_id(self_arg, self.vec_alloc.local_id);
             if path.ident.name == sym!(extend);
             if self.is_repeat_take(extend_arg);
@@ -212,7 +212,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     fn search_slow_resize_filling(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             if self.initialization_found;
-            if let ExprKind::MethodCall(path, _, [self_arg, len_arg, fill_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(path, [self_arg, len_arg, fill_arg], _) = expr.kind;
             if path_to_local_id(self_arg, self.vec_alloc.local_id);
             if path.ident.name == sym!(resize);
 
@@ -232,7 +232,7 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr<'_>) -> bool {
         if_chain! {
-            if let ExprKind::MethodCall(take_path, _, take_args, _) = expr.kind;
+            if let ExprKind::MethodCall(take_path, take_args, _) = expr.kind;
             if take_path.ident.name == sym!(take);
 
             // Check that take is applied to `repeat(0)`

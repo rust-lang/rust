@@ -48,9 +48,8 @@ pub fn expand_deriving_hash(
 }
 
 fn hash_substructure(cx: &mut ExtCtxt<'_>, trait_span: Span, substr: &Substructure<'_>) -> P<Expr> {
-    let state_expr = match substr.nonself_args {
-        [o_f] => o_f,
-        _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`"),
+    let [state_expr] = substr.nonself_args else {
+        cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`");
     };
     let call_hash = |span, thing_expr| {
         let hash_path = {

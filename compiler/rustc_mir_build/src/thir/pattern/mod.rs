@@ -99,7 +99,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
                 Pat {
                     span: pat.span,
-                    ty: ref_ty,
+                    ty: *ref_ty,
                     kind: Box::new(PatKind::Deref { subpattern: pat }),
                 }
             },
@@ -121,13 +121,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range(
         &mut self,
         ty: Ty<'tcx>,
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
+        lo: ty::Const<'tcx>,
+        hi: ty::Const<'tcx>,
         end: RangeEnd,
         span: Span,
     ) -> PatKind<'tcx> {
-        assert_eq!(lo.ty, ty);
-        assert_eq!(hi.ty, ty);
+        assert_eq!(lo.ty(), ty);
+        assert_eq!(hi.ty(), ty);
         let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
         match (end, cmp) {
             // `x..y` where `x < y`.
@@ -177,16 +177,16 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         lo: Option<&PatKind<'tcx>>,
         hi: Option<&PatKind<'tcx>>,
-    ) -> Option<(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>)> {
+    ) -> Option<(ty::Const<'tcx>, ty::Const<'tcx>)> {
         match (lo, hi) {
             (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
-                Some((lo, hi))
+                Some((*lo, *hi))
             }
             (Some(PatKind::Constant { value: lo }), None) => {
-                Some((lo, ty.numeric_max_val(self.tcx)?))
+                Some((*lo, ty.numeric_max_val(self.tcx)?))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
-                Some((ty.numeric_min_val(self.tcx)?, hi))
+                Some((ty.numeric_min_val(self.tcx)?, *hi))
             }
             _ => None,
         }
@@ -245,9 +245,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
-                let tys = match ty.kind() {
-                    ty::Tuple(ref tys) => tys,
-                    _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
+                let ty::Tuple(ref tys) = ty.kind() else {
+                    span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty);
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
                 PatKind::Leaf { subpatterns }
@@ -275,7 +274,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = rty;
+                        ty = *rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }
@@ -294,9 +293,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
-                let adt_def = match ty.kind() {
-                    ty::Adt(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
+                let ty::Adt(adt_def, _) = ty.kind() else {
+                    span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty);
                 };
                 let variant_def = adt_def.variant_of_res(res);
                 let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
@@ -417,7 +415,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 | DefKind::AssocTy,
                 _,
             )
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
                 let pattern_error = match res {
@@ -493,7 +491,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let const_ =
                     ty::Const::from_value(self.tcx, value, self.typeck_results.node_type(id));
 
-                let pattern = self.const_to_pat(&const_, id, span, mir_structural_match_violation);
+                let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);
 
                 if !is_associated_const {
                     return pattern;
@@ -514,7 +512,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                                 user_ty_span: span,
                             },
                         }),
-                        ty: const_.ty,
+                        ty: const_.ty(),
                     }
                 } else {
                     pattern
@@ -546,7 +544,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Evaluate early like we do in `lower_path`.
         let value = value.eval(self.tcx, self.param_env);
 
-        match value.val {
+        match value.val() {
             ConstKind::Param(_) => {
                 self.errors.push(PatternError::ConstParamInPattern(span));
                 return PatKind::Wild;
@@ -576,9 +574,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::ExprKind::Lit(ref lit) => (lit, false),
             hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
-                let lit = match expr.kind {
-                    hir::ExprKind::Lit(ref lit) => lit,
-                    _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+                let hir::ExprKind::Lit(ref lit) = expr.kind else {
+                    span_bug!(expr.span, "not a literal: {:?}", expr);
                 };
                 (lit, true)
             }
@@ -744,8 +741,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
 
 crate fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
+    a: ty::Const<'tcx>,
+    b: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
@@ -756,13 +753,13 @@ crate fn compare_const_vals<'tcx>(
     let fallback = || from_bool(a == b);
 
     // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty {
+    if a.ty() != b.ty() || a.ty() != ty {
         return fallback();
     }
 
     // Early return for equal constants (so e.g. references to ZSTs can be compared, even if they
     // are just integer addresses).
-    if a.val == b.val {
+    if a.val() == b.val() {
         return from_bool(true);
     }
 
@@ -793,16 +790,14 @@ crate fn compare_const_vals<'tcx>(
         };
     }
 
-    if let ty::Str = ty.kind() {
-        if let (
-            ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
-            ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
-        ) = (a.val, b.val)
-        {
-            let a_bytes = get_slice_bytes(&tcx, a_val);
-            let b_bytes = get_slice_bytes(&tcx, b_val);
-            return from_bool(a_bytes == b_bytes);
-        }
+    if let ty::Str = ty.kind() && let (
+        ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+        ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
+    ) = (a.val(), b.val())
+    {
+        let a_bytes = get_slice_bytes(&tcx, a_val);
+        let b_bytes = get_slice_bytes(&tcx, b_val);
+        return from_bool(a_bytes == b_bytes);
     }
     fallback()
 }

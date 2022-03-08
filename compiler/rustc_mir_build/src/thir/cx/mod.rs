@@ -79,7 +79,7 @@ impl<'tcx> Cx<'tcx> {
         ty: Ty<'tcx>,
         sp: Span,
         neg: bool,
-    ) -> &'tcx ty::Const<'tcx> {
+    ) -> ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
         match self.tcx.at(sp).lit_to_const(LitToConstInput { lit, ty, neg }) {

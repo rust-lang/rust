@@ -2,8 +2,8 @@
 
 | Free Region Mapping
 | '_#0r | Global | ['_#2r, '_#1r, '_#0r, '_#4r, '_#3r]
-| '_#1r | External | ['_#1r, '_#4r]
-| '_#2r | External | ['_#2r, '_#1r, '_#4r]
+| '_#1r | Local | ['_#1r, '_#4r]
+| '_#2r | Local | ['_#2r, '_#1r, '_#4r]
 | '_#3r | Local | ['_#4r, '_#3r]
 | '_#4r | Local | ['_#4r]
 |

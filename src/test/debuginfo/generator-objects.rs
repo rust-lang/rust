@@ -11,31 +11,31 @@
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = generator_objects::main::{generator#0}::Unresumed{_ref__a: 0x[...]}
+// gdb-check:$1 = generator_objects::main::{generator_env#0}::Unresumed{_ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = generator_objects::main::{generator#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
+// gdb-check:$2 = generator_objects::main::{generator_env#0}::Suspend0{c: 6, d: 7, _ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = generator_objects::main::{generator#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
+// gdb-check:$3 = generator_objects::main::{generator_env#0}::Suspend1{c: 7, d: 8, _ref__a: 0x[...]}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = generator_objects::main::{generator#0}::Returned{_ref__a: 0x[...]}
+// gdb-check:$4 = generator_objects::main::{generator_env#0}::Returned{_ref__a: 0x[...]}
 
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $0 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $0 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $1 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $1 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $2 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $2 =
 // lldb-command:continue
 // lldb-command:print b
-// lldbg-check:(generator_objects::main::{generator#0}) $3 =
+// lldbg-check:(generator_objects::main::{generator_env#0}) $3 =
 
 #![feature(omit_gdb_pretty_printer_section, generators, generator_trait)]
 #![omit_gdb_pretty_printer_section]
@@ -66,4 +66,6 @@ fn main() {
     _zzz(); // #break
 }
 
-fn _zzz() {()}
+fn _zzz() {
+    ()
+}

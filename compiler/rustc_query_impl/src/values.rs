@@ -1,5 +1,5 @@
 use super::QueryCtxt;
-use rustc_middle::ty::{self, AdtSizedConstraint, Ty, TyS};
+use rustc_middle::ty::{self, AdtSizedConstraint, Ty};
 
 pub(super) trait Value<'tcx>: Sized {
     fn from_cycle_error(tcx: QueryCtxt<'tcx>) -> Self;
@@ -12,7 +12,7 @@ impl<'tcx, T> Value<'tcx> for T {
     }
 }
 
-impl<'tcx> Value<'tcx> for &'_ TyS<'_> {
+impl<'tcx> Value<'tcx> for Ty<'_> {
     fn from_cycle_error(tcx: QueryCtxt<'tcx>) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.

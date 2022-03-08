@@ -602,7 +602,7 @@ impl Error for char::ParseCharError {
 impl Error for alloc::collections::TryReserveError {}
 
 #[unstable(feature = "duration_checked_float", issue = "83400")]
-impl Error for time::FromSecsError {}
+impl Error for time::FromFloatSecsError {}
 
 // Copied from `any.rs`.
 impl dyn Error + 'static {

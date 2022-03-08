@@ -1,14 +1,8 @@
-use crate::spec::{LinkerFlavor, TargetOptions};
+use crate::spec::TargetOptions;
 
 pub fn opts() -> TargetOptions {
     let mut base = super::linux_base::opts();
     base.os = "android".to_string();
-    // Many of the symbols defined in compiler-rt are also defined in libgcc.
-    // Android's linker doesn't like that by default.
-    base.pre_link_args
-        .entry(LinkerFlavor::Gcc)
-        .or_default()
-        .push("-Wl,--allow-multiple-definition".to_string());
     base.dwarf_version = Some(2);
     base.position_independent_executables = true;
     base.has_thread_local = false;

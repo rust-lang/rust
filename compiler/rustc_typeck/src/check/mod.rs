@@ -139,11 +139,13 @@ pub use self::Expectation::*;
 #[macro_export]
 macro_rules! type_error_struct {
     ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        let mut err = rustc_errors::struct_span_err!($session, $span, $code, $($message)*);
+
         if $typ.references_error() {
-            $session.diagnostic().struct_dummy()
-        } else {
-            rustc_errors::struct_span_err!($session, $span, $code, $($message)*)
+            err.downgrade_to_delayed_bug();
         }
+
+        err
     })
 }
 
@@ -551,7 +553,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId, span: S
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id()) {
-        if alloc.relocations().len() != 0 {
+        if alloc.inner().relocations().len() != 0 {
             let msg = "statics with a custom `#[link_section]` must be a \
                            simple list of bytes on the wasm target with no \
                            extra levels of indirection such as references";
@@ -599,7 +601,7 @@ fn missing_items_err(
 ) {
     let missing_items_msg = missing_items
         .iter()
-        .map(|trait_item| trait_item.ident.to_string())
+        .map(|trait_item| trait_item.name.to_string())
         .collect::<Vec<_>>()
         .join("`, `");
 
@@ -628,7 +630,7 @@ fn missing_items_err(
         let msg = format!("implement the missing item: `{}`", snippet);
         let appl = Applicability::HasPlaceholders;
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
-            err.span_label(span, format!("`{}` from trait", trait_item.ident));
+            err.span_label(span, format!("`{}` from trait", trait_item.name));
             err.tool_only_span_suggestion(sugg_sp, &msg, code, appl);
         } else {
             err.span_suggestion_hidden(sugg_sp, &msg, code, appl);
@@ -805,16 +807,16 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
             fn_sig_suggestion(
                 tcx,
                 tcx.fn_sig(assoc.def_id).skip_binder(),
-                assoc.ident,
+                assoc.ident(tcx),
                 tcx.predicates_of(assoc.def_id),
                 assoc,
             )
         }
-        ty::AssocKind::Type => format!("type {} = Type;", assoc.ident),
+        ty::AssocKind::Type => format!("type {} = Type;", assoc.name),
         ty::AssocKind::Const => {
             let ty = tcx.type_of(assoc.def_id);
             let val = expr::ty_kind_suggestion(ty).unwrap_or("value");
-            format!("const {}: {} = {};", assoc.ident, ty, val)
+            format!("const {}: {} = {};", assoc.name, ty, val)
         }
     }
 }

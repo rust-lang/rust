@@ -8,7 +8,7 @@ use std::fmt::Debug;
 // @has foo/all.html '//a[@href="traitalias.Alias2.html"]' 'Alias2'
 // @has foo/all.html '//a[@href="traitalias.Foo.html"]' 'Foo'
 
-// @has foo/index.html '//h2[@id="trait-aliases"]' 'Trait aliases'
+// @has foo/index.html '//h2[@id="trait-aliases"]' 'Trait Aliases'
 // @has foo/index.html '//a[@class="traitalias"]' 'CopyAlias'
 // @has foo/index.html '//a[@class="traitalias"]' 'Alias2'
 // @has foo/index.html '//a[@class="traitalias"]' 'Foo'

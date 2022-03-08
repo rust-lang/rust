@@ -70,6 +70,8 @@ declare_features! (
     (accepted, cfg_attr_multi, "1.33.0", Some(54881), None),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210), None),
+    /// Enables `#[cfg(panic = "...")]` config key.
+    (accepted, cfg_panic, "1.60.0", Some(77443), None),
     /// Allows `cfg(target_feature = "...")`.
     (accepted, cfg_target_feature, "1.27.0", Some(29717), None),
     /// Allows `cfg(target_vendor = "...")`.
@@ -84,6 +86,10 @@ declare_features! (
     (accepted, conservative_impl_trait, "1.26.0", Some(34511), None),
     /// Allows calling constructor functions in `const fn`.
     (accepted, const_constructor, "1.40.0", Some(61456), None),
+    /// Allows using and casting function pointers in a `const fn`.
+    (accepted, const_fn_fn_ptr_basics, "1.61.0", Some(57563), None),
+    /// Allows trait bounds in `const fn`.
+    (accepted, const_fn_trait_bound, "1.61.0", Some(93706), None),
     /// Allows calling `transmute` in const fn
     (accepted, const_fn_transmute, "1.56.0", Some(53605), None),
     /// Allows accessing fields of unions inside `const` functions.
@@ -94,6 +100,8 @@ declare_features! (
     (accepted, const_generics_defaults, "1.59.0", Some(44580), None),
     /// Allows the use of `if` and `match` in constants.
     (accepted, const_if_match, "1.46.0", Some(49146), None),
+    /// Allows argument and return position `impl Trait` in a `const fn`.
+    (accepted, const_impl_trait, "1.61.0", Some(77463), None),
     /// Allows indexing into constant arrays.
     (accepted, const_indexing, "1.26.0", Some(29947), None),
     /// Allows let bindings, assignments and destructuring in `const` functions and constants.

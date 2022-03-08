@@ -75,12 +75,11 @@ impl NestedMetaItem {
     pub fn name_value_literal(&self) -> Option<(Symbol, &Lit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
-                if meta_item_list.len() == 1 {
-                    if let Some(ident) = meta_item.ident() {
-                        if let Some(lit) = meta_item_list[0].literal() {
-                            return Some((ident.name, lit));
-                        }
-                    }
+                if meta_item_list.len() == 1
+                    && let Some(ident) = meta_item.ident()
+                    && let Some(lit) = meta_item_list[0].literal()
+                {
+                    return Some((ident.name, lit));
                 }
                 None
             })
@@ -230,7 +229,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        Some(MetaItemKind::from_mac_args(&self.args)?)
+        MetaItemKind::from_mac_args(&self.args)
     }
 }
 
@@ -239,6 +238,17 @@ impl Attribute {
         match self.kind {
             AttrKind::Normal(..) => false,
             AttrKind::DocComment(..) => true,
+        }
+    }
+
+    pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
+        match self.kind {
+            AttrKind::DocComment(kind, data) => Some((data, kind)),
+            AttrKind::Normal(ref item, _) if item.path == sym::doc => item
+                .meta_kind()
+                .and_then(|kind| kind.value_str())
+                .map(|data| (data, CommentKind::Line)),
+            _ => None,
         }
     }
 

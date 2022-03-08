@@ -16,8 +16,6 @@ use std::path::{Path, PathBuf};
 use std::process::{exit, Command, Stdio};
 use std::str;
 
-use build_helper::{output, t, up_to_date};
-use filetime::FileTime;
 use serde::Deserialize;
 
 use crate::builder::Cargo;
@@ -27,9 +25,9 @@ use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::dist;
 use crate::native;
 use crate::tool::SourceType;
-use crate::util::{exe, is_debug_info, is_dylib, symlink_dir};
+use crate::util::{exe, is_debug_info, is_dylib, output, symlink_dir, t, up_to_date};
 use crate::LLVM_TOOLS;
-use crate::{Compiler, DependencyType, GitRepo, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, Mode};
 
 #[derive(Debug, PartialOrd, Ord, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -250,7 +248,7 @@ fn copy_self_contained_objects(
         }
     } else if target.contains("windows-gnu") {
         for obj in ["crt2.o", "dllcrt2.o"].iter() {
-            let src = compiler_file(builder, builder.cc(target), target, obj);
+            let src = compiler_file(builder, builder.cc(target), target, CLang::C, obj);
             let target = libdir_self_contained.join(obj);
             builder.copy(&src, &target);
             target_deps.push((target, DependencyType::TargetSelfContained));
@@ -649,7 +647,7 @@ impl Step for Rustc {
 pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelection) {
     cargo
         .arg("--features")
-        .arg(builder.rustc_features())
+        .arg(builder.rustc_features(builder.kind))
         .arg("--manifest-path")
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
     rustc_cargo_env(builder, cargo, target);
@@ -662,6 +660,10 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_RELEASE", builder.rust_release())
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
+
+    if let Some(backend) = builder.config.rust_codegen_backends.get(0) {
+        cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
+    }
 
     let libdir_relative = builder.config.libdir_relative().unwrap_or_else(|| Path::new("lib"));
     let target_config = builder.config.target_config.get(&target);
@@ -724,7 +726,13 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
             && !target.contains("msvc")
             && !target.contains("apple")
         {
-            let file = compiler_file(builder, builder.cxx(target).unwrap(), target, "libstdc++.a");
+            let file = compiler_file(
+                builder,
+                builder.cxx(target).unwrap(),
+                target,
+                CLang::Cxx,
+                "libstdc++.a",
+            );
             cargo.env("LLVM_STATIC_STDCPP", file);
         }
         if builder.config.llvm_link_shared {
@@ -945,10 +953,11 @@ pub fn compiler_file(
     builder: &Builder<'_>,
     compiler: &Path,
     target: TargetSelection,
+    c: CLang,
     file: &str,
 ) -> PathBuf {
     let mut cmd = Command::new(compiler);
-    cmd.args(builder.cflags(target, GitRepo::Rustc));
+    cmd.args(builder.cflags(target, GitRepo::Rustc, c));
     cmd.arg(format!("-print-file-name={}", file));
     let out = output(&mut cmd);
     PathBuf::from(out.trim())
@@ -1334,8 +1343,9 @@ pub fn run_cargo(
                     .map(|s| s.starts_with('-') && s.ends_with(&extension[..]))
                     .unwrap_or(false)
         });
-        let max = candidates
-            .max_by_key(|&&(_, _, ref metadata)| FileTime::from_last_modification_time(metadata));
+        let max = candidates.max_by_key(|&&(_, _, ref metadata)| {
+            metadata.modified().expect("mtime should be available on all relevant OSes")
+        });
         let path_to_add = match max {
             Some(triple) => triple.0.to_str().unwrap(),
             None => panic!("no output generated for {:?} {:?}", prefix, extension),

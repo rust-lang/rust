@@ -166,7 +166,7 @@ impl EarlyLintPass for NonAsciiIdents {
         }
 
         let mut has_non_ascii_idents = false;
-        let symbols = cx.sess.parse_sess.symbol_gallery.symbols.lock();
+        let symbols = cx.sess().parse_sess.symbol_gallery.symbols.lock();
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
@@ -301,10 +301,7 @@ impl EarlyLintPass for NonAsciiIdents {
                     BTreeMap::new();
 
                 'outerloop: for (augment_script_set, usage) in script_states {
-                    let (mut ch_list, sp) = match usage {
-                        ScriptSetUsage::Verified => continue,
-                        ScriptSetUsage::Suspicious(ch_list, sp) => (ch_list, sp),
-                    };
+                    let ScriptSetUsage::Suspicious(mut ch_list, sp) = usage else { continue };
 
                     if augment_script_set.is_all() {
                         continue;

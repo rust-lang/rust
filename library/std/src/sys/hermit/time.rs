@@ -115,14 +115,6 @@ impl Instant {
         Instant { t: time }
     }
 
-    pub const fn zero() -> Instant {
-        Instant { t: Timespec::zero() }
-    }
-
-    pub fn actually_monotonic() -> bool {
-        true
-    }
-
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.t.sub_timespec(&other.t).ok()
     }

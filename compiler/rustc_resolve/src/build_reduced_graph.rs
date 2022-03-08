@@ -108,7 +108,7 @@ impl<'a> Resolver<'a> {
     /// Reachable macros with block module parents exist due to `#[macro_export] macro_rules!`,
     /// but they cannot use def-site hygiene, so the assumption holds
     /// (<https://github.com/rust-lang/rust/pull/77984#issuecomment-712445508>).
-    crate fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'a> {
+    pub fn get_nearest_non_block_module(&mut self, mut def_id: DefId) -> Module<'a> {
         loop {
             match self.get_module(def_id) {
                 Some(module) => return module,
@@ -940,7 +940,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_res(&mut self, child: ModChild) {
         let parent = self.parent_scope.module;
-        let ModChild { ident, res, vis, span } = child;
+        let ModChild { ident, res, vis, span, macro_rules } = child;
         let res = res.expect_non_local();
         let expansion = self.parent_scope.expansion;
         // Record primary definitions.
@@ -972,7 +972,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _,
             ) => self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Macro(..), _) | Res::NonMacroAttr(..) => {
-                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
+                if !macro_rules {
+                    self.r.define(parent, ident, MacroNS, (res, vis, span, expansion))
+                }
             }
             Res::Def(
                 DefKind::TyParam
@@ -991,7 +993,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 _,
             )
             | Res::Local(..)
-            | Res::SelfTy(..)
+            | Res::SelfTy { .. }
             | Res::SelfCtor(..)
             | Res::Err => bug!("unexpected resolution: {:?}", res),
         }
@@ -1068,8 +1070,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                             .emit();
                     }
                 }
-                let ill_formed =
-                    |span| struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                let ill_formed = |span| {
+                    struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
                         MetaItemKind::Word => {

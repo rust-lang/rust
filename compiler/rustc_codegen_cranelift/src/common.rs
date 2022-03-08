@@ -61,7 +61,7 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(_) => pointer_ty(tcx),
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 return None;
             } else {
                 pointer_ty(tcx)
@@ -90,17 +90,16 @@ fn clif_pair_type_from_ty<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind() {
-        ty::Tuple(substs) if substs.len() == 2 => {
-            let mut types = substs.types();
-            let a = clif_type_from_ty(tcx, types.next().unwrap())?;
-            let b = clif_type_from_ty(tcx, types.next().unwrap())?;
+        ty::Tuple(types) if types.len() == 2 => {
+            let a = clif_type_from_ty(tcx, types[0])?;
+            let b = clif_type_from_ty(tcx, types[1])?;
             if a.is_vector() || b.is_vector() {
                 return None;
             }
             (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;

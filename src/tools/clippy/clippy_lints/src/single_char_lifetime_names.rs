@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use rustc_ast::ast::{GenericParam, GenericParamKind};
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -43,7 +43,7 @@ declare_lint_pass!(SingleCharLifetimeNames => [SINGLE_CHAR_LIFETIME_NAMES]);
 
 impl EarlyLintPass for SingleCharLifetimeNames {
     fn check_generic_param(&mut self, ctx: &EarlyContext<'_>, param: &GenericParam) {
-        if in_external_macro(ctx.sess, param.ident.span) {
+        if in_external_macro(ctx.sess(), param.ident.span) {
             return;
         }
 

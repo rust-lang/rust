@@ -94,24 +94,22 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
             _ => None,
         };
 
-        if let Some(res) = res {
-            if let Some(def_id) = res.opt_def_id().and_then(|def_id| def_id.as_local()) {
-                if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
-                    self.worklist.push(def_id);
-                } else {
-                    match res {
-                        // If this path leads to a constant, then we need to
-                        // recurse into the constant to continue finding
-                        // items that are reachable.
-                        Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
-                            self.worklist.push(def_id);
-                        }
+        if let Some(res) = res && let Some(def_id) = res.opt_def_id().and_then(|el| el.as_local()) {
+            if self.def_id_represents_local_inlined_item(def_id.to_def_id()) {
+                self.worklist.push(def_id);
+            } else {
+                match res {
+                    // If this path leads to a constant, then we need to
+                    // recurse into the constant to continue finding
+                    // items that are reachable.
+                    Res::Def(DefKind::Const | DefKind::AssocConst, _) => {
+                        self.worklist.push(def_id);
+                    }
 
-                        // If this wasn't a static, then the destination is
-                        // surely reachable.
-                        _ => {
-                            self.reachable_symbols.insert(def_id);
-                        }
+                    // If this wasn't a static, then the destination is
+                    // surely reachable.
+                    _ => {
+                        self.reachable_symbols.insert(def_id);
                     }
                 }
             }
@@ -354,9 +352,8 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
                 let tcx = self.tcx;
                 self.worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id));
 
-                let trait_def_id = match trait_ref.path.res {
-                    Res::Def(DefKind::Trait, def_id) => def_id,
-                    _ => unreachable!(),
+                let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
+                    unreachable!();
                 };
 
                 if !trait_def_id.is_local() {

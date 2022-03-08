@@ -1,0 +1,66 @@
+error: comparison operators cannot be chained
+  --> $DIR/issue-93835.rs:2:8
+   |
+LL | fn e() {
+   |        - while parsing this struct
+LL |     p:a<p:p<e=6>>
+   |        ^        ^
+   |
+   = help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error[E0425]: cannot find value `p` in this scope
+  --> $DIR/issue-93835.rs:2:5
+   |
+LL |     p:a<p:p<e=6>>
+   |     ^ not found in this scope
+   |
+help: you might have meant to write a `struct` literal
+   |
+LL ~ fn e() { SomeStruct {
+LL |     p:a<p:p<e=6>>
+LL |
+LL |
+LL |
+LL |
+ ...
+help: maybe you meant to write a path separator here
+   |
+LL |     p::a<p:p<e=6>>
+   |      ~~
+help: maybe you meant to write an assignment here
+   |
+LL |     let p:a<p:p<e=6>>
+   |     ~~~~~
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/issue-93835.rs:2:13
+   |
+LL |     p:a<p:p<e=6>>
+   |             ^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+
+error[E0658]: associated const equality is incomplete
+  --> $DIR/issue-93835.rs:2:13
+   |
+LL |     p:a<p:p<e=6>>
+   |             ^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+
+error[E0658]: associated type bounds are unstable
+  --> $DIR/issue-93835.rs:2:9
+   |
+LL |     p:a<p:p<e=6>>
+   |         ^^^^^^^^
+   |
+   = note: see issue #52662 <https://github.com/rust-lang/rust/issues/52662> for more information
+   = help: add `#![feature(associated_type_bounds)]` to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0425, E0658.
+For more information about an error, try `rustc --explain E0425`.

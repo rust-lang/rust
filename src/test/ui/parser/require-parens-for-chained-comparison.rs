@@ -22,10 +22,12 @@ fn main() {
     let _ = f<'_, i8>();
     //~^ ERROR expected one of
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+    //~| ERROR expected
 
     f<'_>();
     //~^ comparison operators cannot be chained
     //~| HELP use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+    //~| ERROR expected
 
     let _ = f<u8>;
     //~^ ERROR comparison operators cannot be chained

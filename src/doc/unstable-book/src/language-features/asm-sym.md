@@ -1,8 +1,8 @@
 # `asm_sym`
 
-The tracking issue for this feature is: [#72016]
+The tracking issue for this feature is: [#93333]
 
-[#72016]: https://github.com/rust-lang/rust/issues/72016
+[#93333]: https://github.com/rust-lang/rust/issues/93333
 
 ------------------------
 

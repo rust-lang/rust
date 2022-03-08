@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{can_mut_borrow_both, differing_macro_contexts, eq_expr_value, std_or_core};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, std_or_core};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
@@ -172,7 +172,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if_chain! {
             if let StmtKind::Semi(first) = w[0].kind;
             if let StmtKind::Semi(second) = w[1].kind;
-            if !differing_macro_contexts(first.span, second.span);
+            if first.span.ctxt() == second.span.ctxt();
             if let ExprKind::Assign(lhs0, rhs0, _) = first.kind;
             if let ExprKind::Assign(lhs1, rhs1, _) = second.kind;
             if eq_expr_value(cx, lhs0, rhs1);

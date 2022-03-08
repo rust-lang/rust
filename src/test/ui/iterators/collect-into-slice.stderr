@@ -1,0 +1,26 @@
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/collect-into-slice.rs:7:9
+   |
+LL |     let some_generated_vec = (0..10).collect();
+   |         ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+   = note: all local variables must have a statically known size
+   = help: unsized locals are gated as an unstable feature
+
+error[E0277]: a value of type `[i32]` cannot be built since `[i32]` has no definite size
+  --> $DIR/collect-into-slice.rs:7:38
+   |
+LL |     let some_generated_vec = (0..10).collect();
+   |                                      ^^^^^^^ try explicitly collecting into a `Vec<{integer}>`
+   |
+   = help: the trait `FromIterator<{integer}>` is not implemented for `[i32]`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+   |
+LL |     fn collect<B: FromIterator<Self::Item>>(self) -> B
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `collect`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -26,8 +26,6 @@ fn main() {
     }
 
     // Test for loop over an implicit reference
-    // Note: if `clippy::manual_flatten` is made autofixable, this case will
-    // lead to a follow-up lint `clippy::into_iter_on_ref`
     let z = &y;
     for n in z {
         if let Ok(n) = n {

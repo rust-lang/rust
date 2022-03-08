@@ -192,20 +192,13 @@ fn dtorck_constraint_for_ty<'tcx>(
         ty::Array(ety, _) | ty::Slice(ety) => {
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ety, constraints)
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, *ety, constraints)
             })?;
         }
 
         ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
-                dtorck_constraint_for_ty(
-                    tcx,
-                    span,
-                    for_ty,
-                    depth + 1,
-                    ty.expect_ty(),
-                    constraints,
-                )?;
+                dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty, constraints)?;
             }
             Ok::<_, NoSolution>(())
         })?,
@@ -278,9 +271,9 @@ fn dtorck_constraint_for_ty<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did)?;
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints.dtorck_types.extend(dtorck_types.subst(tcx, substs));
-            constraints.outlives.extend(outlives.subst(tcx, substs));
-            constraints.overflows.extend(overflows.subst(tcx, substs));
+            constraints.dtorck_types.extend(dtorck_types.iter().map(|t| t.subst(tcx, substs)));
+            constraints.outlives.extend(outlives.iter().map(|t| t.subst(tcx, substs)));
+            constraints.overflows.extend(overflows.iter().map(|t| t.subst(tcx, substs)));
         }
 
         // Objects must be alive in order for their destructor
@@ -308,7 +301,7 @@ fn dtorck_constraint_for_ty<'tcx>(
 crate fn adt_dtorck_constraint(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Result<DtorckConstraint<'_>, NoSolution> {
+) -> Result<&DtorckConstraint<'_>, NoSolution> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     debug!("dtorck_constraint: {:?}", def);
@@ -324,7 +317,7 @@ crate fn adt_dtorck_constraint(
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return Ok(result);
+        return Ok(tcx.arena.alloc(result));
     }
 
     let mut result = DtorckConstraint::empty();
@@ -337,7 +330,7 @@ crate fn adt_dtorck_constraint(
 
     debug!("dtorck_constraint: {:?} => {:?}", def, result);
 
-    Ok(result)
+    Ok(tcx.arena.alloc(result))
 }
 
 fn dedup_dtorck_constraint(c: &mut DtorckConstraint<'_>) {

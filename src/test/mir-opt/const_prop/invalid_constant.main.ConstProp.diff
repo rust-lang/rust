@@ -1,0 +1,60 @@
+- // MIR for `main` before ConstProp
++ // MIR for `main` after ConstProp
+  
+  fn main() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/invalid_constant.rs:15:11: 15:11
+      let _1: main::InvalidChar;           // in scope 0 at $DIR/invalid_constant.rs:21:9: 21:22
+      let mut _3: main::InvalidTag;        // in scope 0 at $DIR/invalid_constant.rs:28:25: 28:46
+      let mut _5: main::NoVariants;        // in scope 0 at $DIR/invalid_constant.rs:35:35: 35:56
+      scope 1 {
+          debug _invalid_char => _1;       // in scope 1 at $DIR/invalid_constant.rs:21:9: 21:22
+          let _2: [main::InvalidTag; 1];   // in scope 1 at $DIR/invalid_constant.rs:28:9: 28:21
+          scope 2 {
+              debug _invalid_tag => _2;    // in scope 2 at $DIR/invalid_constant.rs:28:9: 28:21
+              let _4: [main::NoVariants; 1]; // in scope 2 at $DIR/invalid_constant.rs:35:9: 35:31
+              scope 3 {
+                  debug _enum_without_variants => _4; // in scope 3 at $DIR/invalid_constant.rs:35:9: 35:31
+                  let _6: main::Str<"���">; // in scope 3 at $DIR/invalid_constant.rs:39:9: 39:22
+                  scope 4 {
+                      debug _non_utf8_str => _6; // in scope 4 at $DIR/invalid_constant.rs:39:9: 39:22
+                  }
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 0 at $DIR/invalid_constant.rs:21:9: 21:22
+-         _1 = const { InvalidChar { int: 0x110001 } }; // scope 0 at $DIR/invalid_constant.rs:21:25: 21:64
++         _1 = const InvalidChar { int: 1114113_u32, chr: {transmute(0x00110001): char} }; // scope 0 at $DIR/invalid_constant.rs:21:25: 21:64
+                                           // mir::Constant
+                                           // + span: $DIR/invalid_constant.rs:21:25: 21:64
+-                                          // + literal: Const { ty: InvalidChar, val: Unevaluated(main::{constant#0}, [main::InvalidChar], None) }
++                                          // + literal: Const { ty: InvalidChar, val: Value(Scalar(0x00110001)) }
+          StorageLive(_2);                 // scope 1 at $DIR/invalid_constant.rs:28:9: 28:21
+          StorageLive(_3);                 // scope 1 at $DIR/invalid_constant.rs:28:25: 28:46
+          (_3.0: u32) = const 4_u32;       // scope 1 at $DIR/invalid_constant.rs:28:25: 28:46
+-         _2 = [move _3];                  // scope 1 at $DIR/invalid_constant.rs:28:24: 28:47
++         _2 = [const InvalidTag { int: 4_u32, e: Scalar(0x00000004): E }]; // scope 1 at $DIR/invalid_constant.rs:28:24: 28:47
++                                          // mir::Constant
++                                          // + span: $DIR/invalid_constant.rs:28:24: 28:47
++                                          // + literal: Const { ty: InvalidTag, val: Value(Scalar(0x00000004)) }
+          StorageDead(_3);                 // scope 1 at $DIR/invalid_constant.rs:28:46: 28:47
+          StorageLive(_4);                 // scope 2 at $DIR/invalid_constant.rs:35:9: 35:31
+          StorageLive(_5);                 // scope 2 at $DIR/invalid_constant.rs:35:35: 35:56
+          (_5.0: u32) = const 0_u32;       // scope 2 at $DIR/invalid_constant.rs:35:35: 35:56
+-         _4 = [move _5];                  // scope 2 at $DIR/invalid_constant.rs:35:34: 35:57
++         _4 = [const NoVariants { int: 0_u32, empty: Scalar(<ZST>): Empty }]; // scope 2 at $DIR/invalid_constant.rs:35:34: 35:57
++                                          // mir::Constant
++                                          // + span: $DIR/invalid_constant.rs:35:34: 35:57
++                                          // + literal: Const { ty: NoVariants, val: Value(Scalar(0x00000000)) }
+          StorageDead(_5);                 // scope 2 at $DIR/invalid_constant.rs:35:56: 35:57
+          StorageLive(_6);                 // scope 3 at $DIR/invalid_constant.rs:39:9: 39:22
+          nop;                             // scope 0 at $DIR/invalid_constant.rs:15:11: 42:2
+          StorageDead(_6);                 // scope 3 at $DIR/invalid_constant.rs:42:1: 42:2
+          StorageDead(_4);                 // scope 2 at $DIR/invalid_constant.rs:42:1: 42:2
+          StorageDead(_2);                 // scope 1 at $DIR/invalid_constant.rs:42:1: 42:2
+          StorageDead(_1);                 // scope 0 at $DIR/invalid_constant.rs:42:1: 42:2
+          return;                          // scope 0 at $DIR/invalid_constant.rs:42:2: 42:2
+      }
+  }
+  

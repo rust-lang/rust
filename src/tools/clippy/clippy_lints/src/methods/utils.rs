@@ -19,12 +19,12 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Adt(def, _) if def.is_box() => may_slice(cx, ty.boxed_ty()),
             ty::Adt(..) => is_type_diagnostic_item(cx, ty, sym::Vec),
             ty::Array(_, size) => size.try_eval_usize(cx.tcx, cx.param_env).is_some(),
-            ty::Ref(_, inner, _) => may_slice(cx, inner),
+            ty::Ref(_, inner, _) => may_slice(cx, *inner),
             _ => false,
         }
     }
 
-    if let hir::ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind {
+    if let hir::ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind {
         if path.ident.name == sym::iter && may_slice(cx, cx.typeck_results().expr_ty(self_arg)) {
             Some(self_arg)
         } else {
@@ -35,7 +35,7 @@ pub(super) fn derefs_to_slice<'tcx>(
             ty::Slice(_) => Some(expr),
             ty::Adt(def, _) if def.is_box() && may_slice(cx, ty.boxed_ty()) => Some(expr),
             ty::Ref(_, inner, _) => {
-                if may_slice(cx, inner) {
+                if may_slice(cx, *inner) {
                     Some(expr)
                 } else {
                     None

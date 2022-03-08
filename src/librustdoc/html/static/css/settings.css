@@ -1,5 +1,5 @@
 .setting-line {
-	padding: 5px;
+	margin: 0.6em 0 0.6em 0.3em;
 	position: relative;
 }
 
@@ -15,6 +15,32 @@
 	width: 100%;
 	max-width: none;
 	border-bottom: 1px solid;
+}
+
+.setting-line .radio-line,
+.setting-line .choices {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+.setting-line .radio-line .setting-name {
+	flex-grow: 1;
+	margin-top: auto;
+	margin-bottom: auto;
+}
+
+.setting-line .radio-line input {
+	margin-right: 0.3em;
+}
+
+.radio-line .choice {
+	border-radius: 0.1em;
+	border: 1px solid;
+	margin-left: 0.5em;
+	margin-top: 0.1em;
+	margin-bottom: 0.1em;
+	min-width: 3.8em;
+	padding: 0.3em;
 }
 
 .toggle {

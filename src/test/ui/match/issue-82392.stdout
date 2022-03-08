@@ -7,13 +7,10 @@ extern crate std;
 // check-pass
 
 pub fn main() ({
-                   (if (true as bool)
-                       ({ } as
-                           ()) else if (let Some(a) =
-                                           ((Some as
-                                                fn(i32) -> Option<i32> {Option::<i32>::Some})((3
-                                                                                                  as
-                                                                                                  i32))
-                                               as Option<i32>) as bool)
-                              ({ } as ()) as ())
-                             } as ())
+        (if (true as bool)
+                ({ } as
+                    ()) else if (let Some(a) =
+                       ((Some as
+                               fn(i32) -> Option<i32> {Option::<i32>::Some})((3 as i32)) as
+                           Option<i32>) as bool) ({ } as ()) as ())
+               } as ())

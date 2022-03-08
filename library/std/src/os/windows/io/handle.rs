@@ -6,9 +6,11 @@ use super::raw::{AsRawHandle, FromRawHandle, IntoRawHandle, RawHandle};
 use crate::convert::TryFrom;
 use crate::fmt;
 use crate::fs;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
 use crate::sys::c;
+use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// A borrowed handle.
@@ -25,6 +27,10 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// And, it *may* have the value `NULL` (0), which can occur when consoles are
 /// detached from processes, or when `windows_subsystem` is used.
+///
+/// This type's `.to_owned()` implementation returns another `BorrowedHandle`
+/// rather than an `OwnedHandle`. It just makes a trivial copy of the raw
+/// handle, which is then borrowed under the same lifetime.
 ///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
 #[derive(Copy, Clone)]
@@ -53,6 +59,7 @@ pub struct BorrowedHandle<'handle> {
 /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
 ///
 /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
+#[repr(transparent)]
 #[unstable(feature = "io_safety", issue = "87074")]
 pub struct OwnedHandle {
     handle: RawHandle,
@@ -129,7 +136,7 @@ impl BorrowedHandle<'_> {
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     #[unstable(feature = "io_safety", issue = "87074")]
-    pub unsafe fn borrow_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn borrow_raw(handle: RawHandle) -> Self {
         Self { handle, _phantom: PhantomData }
     }
 }
@@ -141,6 +148,36 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
         let owned_handle = handle_or_null.0;
         if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
+    }
+}
+
+impl OwnedHandle {
+    /// Creates a new `OwnedHandle` instance that shares the same underlying file handle
+    /// as the existing `OwnedHandle` instance.
+    pub fn try_clone(&self) -> crate::io::Result<Self> {
+        self.duplicate(0, false, c::DUPLICATE_SAME_ACCESS)
+    }
+
+    pub(crate) fn duplicate(
+        &self,
+        access: c::DWORD,
+        inherit: bool,
+        options: c::DWORD,
+    ) -> io::Result<Self> {
+        let mut ret = 0 as c::HANDLE;
+        cvt(unsafe {
+            let cur_proc = c::GetCurrentProcess();
+            c::DuplicateHandle(
+                cur_proc,
+                self.as_raw_handle(),
+                cur_proc,
+                &mut ret,
+                access,
+                inherit as c::BOOL,
+                options,
+            )
+        })?;
+        unsafe { Ok(Self::from_raw_handle(ret)) }
     }
 }
 
@@ -178,29 +215,13 @@ impl IntoRawHandle for OwnedHandle {
 }
 
 impl FromRawHandle for OwnedHandle {
-    /// Constructs a new instance of `Self` from the given raw handle.
-    ///
-    /// # Safety
-    ///
-    /// The resource pointed to by `handle` must be open and suitable for
-    /// assuming ownership. The resource must not require any cleanup other
-    /// than `CloseHandle`.
-    ///
-    /// In particular, it must not be used with handles to open registry
-    /// keys which need to be closed with [`RegCloseKey`] instead.
-    ///
-    /// Note that it *may* have the value `INVALID_HANDLE_VALUE` (-1), which is
-    /// sometimes a valid handle value. See [here] for the full story.
-    ///
-    /// [`RegCloseKey`]: https://docs.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regclosekey
-    /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
     unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self { handle }
     }
 }
 
-impl FromRawHandle for HandleOrNull {
+impl HandleOrNull {
     /// Constructs a new instance of `Self` from the given `RawHandle` returned
     /// from a Windows API that uses null to indicate failure, such as
     /// `CreateThread`.
@@ -210,18 +231,18 @@ impl FromRawHandle for HandleOrNull {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `handle` must be either open and otherwise
-    /// unowned, or null. Note that not all Windows APIs use null for errors;
-    /// see [here] for the full story.
+    /// The passed `handle` value must either satisfy the safety requirements
+    /// of [`FromRawHandle::from_raw_handle`], or be null. Note that not all
+    /// Windows APIs use null for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
 
-impl FromRawHandle for HandleOrInvalid {
+impl HandleOrInvalid {
     /// Constructs a new instance of `Self` from the given `RawHandle` returned
     /// from a Windows API that uses `INVALID_HANDLE_VALUE` to indicate
     /// failure, such as `CreateFileW`.
@@ -231,14 +252,14 @@ impl FromRawHandle for HandleOrInvalid {
     ///
     /// # Safety
     ///
-    /// The resource pointed to by `handle` must be either open and otherwise
-    /// unowned, null, or equal to `INVALID_HANDLE_VALUE` (-1). Note that not
-    /// all Windows APIs use `INVALID_HANDLE_VALUE` for errors; see [here] for
-    /// the full story.
+    /// The passed `handle` value must either satisfy the safety requirements
+    /// of [`FromRawHandle::from_raw_handle`], or be
+    /// `INVALID_HANDLE_VALUE` (-1). Note that not all Windows APIs use
+    /// `INVALID_HANDLE_VALUE` for errors; see [here] for the full story.
     ///
     /// [here]: https://devblogs.microsoft.com/oldnewthing/20040302-00/?p=40443
     #[inline]
-    unsafe fn from_raw_handle(handle: RawHandle) -> Self {
+    pub unsafe fn from_raw_handle(handle: RawHandle) -> Self {
         Self(OwnedHandle::from_raw_handle(handle))
     }
 }
@@ -284,6 +305,22 @@ pub trait AsHandle {
     fn as_handle(&self) -> BorrowedHandle<'_>;
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl<T: AsHandle> AsHandle for &mut T {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        T::as_handle(self)
+    }
+}
+
 impl AsHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -297,7 +334,7 @@ impl AsHandle for OwnedHandle {
         // Safety: `OwnedHandle` and `BorrowedHandle` have the same validity
         // invariants, and the `BorrowdHandle` is bounded by the lifetime
         // of `&self`.
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -325,49 +362,49 @@ impl From<OwnedHandle> for fs::File {
 impl AsHandle for crate::io::Stdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StdinLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::io::Stdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StdoutLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::io::Stderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl<'a> AsHandle for crate::io::StderrLock<'a> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
 impl AsHandle for crate::process::ChildStdin {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -381,7 +418,7 @@ impl From<crate::process::ChildStdin> for OwnedHandle {
 impl AsHandle for crate::process::ChildStdout {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -395,7 +432,7 @@ impl From<crate::process::ChildStdout> for OwnedHandle {
 impl AsHandle for crate::process::ChildStderr {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 
@@ -409,7 +446,7 @@ impl From<crate::process::ChildStderr> for OwnedHandle {
 impl<T> AsHandle for crate::thread::JoinHandle<T> {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
-        unsafe { BorrowedHandle::borrow_raw_handle(self.as_raw_handle()) }
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
     }
 }
 

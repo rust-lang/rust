@@ -22,7 +22,7 @@ pub trait CoverageInfoMethods<'tcx>: BackendTypes {
 
 pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     /// Returns true if the function source hash was added to the coverage map (even if it had
-    /// already been added, for this instance). Returns false *only* if `-Z instrument-coverage` is
+    /// already been added, for this instance). Returns false *only* if `-C instrument-coverage` is
     /// not enabled (a coverage map is not being generated).
     fn set_function_source_hash(
         &mut self,
@@ -30,7 +30,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         function_source_hash: u64,
     ) -> bool;
 
-    /// Returns true if the counter was added to the coverage map; false if `-Z instrument-coverage`
+    /// Returns true if the counter was added to the coverage map; false if `-C instrument-coverage`
     /// is not enabled (a coverage map is not being generated).
     fn add_coverage_counter(
         &mut self,
@@ -40,7 +40,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
     ) -> bool;
 
     /// Returns true if the expression was added to the coverage map; false if
-    /// `-Z instrument-coverage` is not enabled (a coverage map is not being generated).
+    /// `-C instrument-coverage` is not enabled (a coverage map is not being generated).
     fn add_coverage_counter_expression(
         &mut self,
         instance: Instance<'tcx>,
@@ -51,7 +51,7 @@ pub trait CoverageInfoBuilderMethods<'tcx>: BackendTypes {
         region: Option<CodeRegion>,
     ) -> bool;
 
-    /// Returns true if the region was added to the coverage map; false if `-Z instrument-coverage`
+    /// Returns true if the region was added to the coverage map; false if `-C instrument-coverage`
     /// is not enabled (a coverage map is not being generated).
     fn add_coverage_unreachable(&mut self, instance: Instance<'tcx>, region: CodeRegion) -> bool;
 }

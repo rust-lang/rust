@@ -18,6 +18,7 @@ use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
+use rustc_span::DUMMY_SP;
 
 use std::convert::TryFrom;
 use std::mem;
@@ -102,14 +103,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<Item>> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtItem(item) = &**nt {
-                let mut item = item.clone();
-                self.bump();
+        if let token::Interpolated(nt) = &self.token.kind && let token::NtItem(item) = &**nt {
+            let mut item = item.clone();
+            self.bump();
 
-                attrs.prepend_to_nt_inner(&mut item.attrs);
-                return Ok(Some(item.into_inner()));
-            }
+            attrs.prepend_to_nt_inner(&mut item.attrs);
+            return Ok(Some(item.into_inner()));
         };
 
         let mut unclosed_delims = vec![];
@@ -423,7 +422,7 @@ impl<'a> Parser<'a> {
                 // Maybe the user misspelled `macro_rules` (issue #91227)
                 if self.token.is_ident()
                     && path.segments.len() == 1
-                    && lev_distance("macro_rules", &path.segments[0].ident.to_string()) <= 3
+                    && lev_distance("macro_rules", &path.segments[0].ident.to_string(), 3).is_some()
                 {
                     err.span_suggestion(
                         path.span,
@@ -439,9 +438,8 @@ impl<'a> Parser<'a> {
 
     /// Recover if we parsed attributes and expected an item but there was none.
     fn recover_attrs_no_item(&mut self, attrs: &[Attribute]) -> PResult<'a, ()> {
-        let (start, end) = match attrs {
-            [] => return Ok(()),
-            [x0 @ xn] | [x0, .., xn] => (x0, xn),
+        let ([start @ end] | [start, .., end]) = attrs else {
+            return Ok(());
         };
         let msg = if end.is_doc_comment() {
             "expected item after doc comment"
@@ -451,6 +449,16 @@ impl<'a> Parser<'a> {
         let mut err = self.struct_span_err(end.span, msg);
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
+        }
+        if end.meta_kind().is_some() {
+            if self.token.kind == TokenKind::Semi {
+                err.span_suggestion_verbose(
+                    self.token.span,
+                    "consider removing this semicolon",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         if let [.., penultimate, _] = attrs {
             err.span_label(start.span.to(penultimate.span), "other attributes here");
@@ -794,44 +802,6 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    /// Emits an error that the where clause at the end of a type alias is not
-    /// allowed and suggests moving it.
-    fn error_ty_alias_where(
-        &self,
-        before_where_clause_present: bool,
-        before_where_clause_span: Span,
-        after_predicates: &[WherePredicate],
-        after_where_clause_span: Span,
-    ) {
-        let mut err =
-            self.struct_span_err(after_where_clause_span, "where clause not allowed here");
-        if !after_predicates.is_empty() {
-            let mut state = crate::pprust::State::new();
-            if !before_where_clause_present {
-                state.space();
-                state.word_space("where");
-            } else {
-                state.word_space(",");
-            }
-            let mut first = true;
-            for p in after_predicates.iter() {
-                if !first {
-                    state.word_space(",");
-                }
-                first = false;
-                state.print_where_predicate(p);
-            }
-            let suggestion = state.s.eof();
-            err.span_suggestion(
-                before_where_clause_span.shrink_to_hi(),
-                "move it here",
-                suggestion,
-                Applicability::MachineApplicable,
-            );
-        }
-        err.emit()
-    }
-
     /// Parses a `type` alias with the following grammar:
     /// ```
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
@@ -844,27 +814,40 @@ impl<'a> Parser<'a> {
         // Parse optional colon and param bounds.
         let bounds =
             if self.eat(&token::Colon) { self.parse_generic_bounds(None)? } else { Vec::new() };
-
-        generics.where_clause = self.parse_where_clause()?;
+        let before_where_clause = self.parse_where_clause()?;
 
         let ty = if self.eat(&token::Eq) { Some(self.parse_ty()?) } else { None };
 
-        if self.token.is_keyword(kw::Where) {
-            let after_where_clause = self.parse_where_clause()?;
+        let after_where_clause = self.parse_where_clause()?;
 
-            self.error_ty_alias_where(
-                generics.where_clause.has_where_token,
-                generics.where_clause.span,
-                &after_where_clause.predicates,
-                after_where_clause.span,
-            );
-
-            generics.where_clause.predicates.extend(after_where_clause.predicates.into_iter());
-        }
+        let where_clauses = (
+            TyAliasWhereClause(before_where_clause.has_where_token, before_where_clause.span),
+            TyAliasWhereClause(after_where_clause.has_where_token, after_where_clause.span),
+        );
+        let where_predicates_split = before_where_clause.predicates.len();
+        let mut predicates = before_where_clause.predicates;
+        predicates.extend(after_where_clause.predicates.into_iter());
+        let where_clause = WhereClause {
+            has_where_token: before_where_clause.has_where_token
+                || after_where_clause.has_where_token,
+            predicates,
+            span: DUMMY_SP,
+        };
+        generics.where_clause = where_clause;
 
         self.expect_semi()?;
 
-        Ok((ident, ItemKind::TyAlias(Box::new(TyAlias { defaultness, generics, bounds, ty }))))
+        Ok((
+            ident,
+            ItemKind::TyAlias(Box::new(TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                where_predicates_split,
+                bounds,
+                ty,
+            })),
+        ))
     }
 
     /// Parses a `UseTree`.
@@ -1115,7 +1098,7 @@ impl<'a> Parser<'a> {
         // Only try to recover if this is implementing a trait for a type
         let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
             Ok(impl_info) => impl_info,
-            Err(mut recovery_error) => {
+            Err(recovery_error) => {
                 // Recovery failed, raise the "expected identifier" error
                 recovery_error.cancel();
                 return Err(err);
@@ -1221,7 +1204,7 @@ impl<'a> Parser<'a> {
 
                 let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct")?;
+                    let (fields, recovered) = this.parse_record_struct_body("struct", false)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(token::Paren)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1275,7 +1258,8 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) = self.parse_record_struct_body("struct")?;
+                let (fields, recovered) =
+                    self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1283,7 +1267,8 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("struct")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -1313,10 +1298,12 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) = self.parse_record_struct_body("union")?;
+            let (fields, recovered) =
+                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1332,6 +1319,7 @@ impl<'a> Parser<'a> {
     fn parse_record_struct_body(
         &mut self,
         adt_ty: &str,
+        parsed_where: bool,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
@@ -1353,9 +1341,19 @@ impl<'a> Parser<'a> {
             self.eat(&token::CloseDelim(token::Brace));
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!("expected `where`, or `{{` after struct name, found {}", token_str);
+            let msg = &format!(
+                "expected {}`{{` after struct name, found {}",
+                if parsed_where { "" } else { "`where`, or " },
+                token_str
+            );
             let mut err = self.struct_span_err(self.token.span, msg);
-            err.span_label(self.token.span, "expected `where`, or `{` after struct name");
+            err.span_label(
+                self.token.span,
+                format!(
+                    "expected {}`{{` after struct name",
+                    if parsed_where { "" } else { "`where`, or " }
+                ),
+            );
             return Err(err);
         }
 
@@ -1462,7 +1460,9 @@ impl<'a> Parser<'a> {
                             // after the comma
                             self.eat(&token::Comma);
                             // `check_trailing_angle_brackets` already emitted a nicer error
-                            err.cancel();
+                            // NOTE(eddyb) this was `.cancel()`, but `err`
+                            // gets returned, so we can't fully defuse it.
+                            err.downgrade_to_delayed_bug();
                         }
                     }
                 }
@@ -2059,7 +2059,7 @@ impl<'a> Parser<'a> {
                         if let Ok(snippet) = self.span_to_snippet(sp) {
                             let current_vis = match self.parse_visibility(FollowedByType::No) {
                                 Ok(v) => v,
-                                Err(mut d) => {
+                                Err(d) => {
                                     d.cancel();
                                     return Err(err);
                                 }
@@ -2202,7 +2202,7 @@ impl<'a> Parser<'a> {
                     // If this is a C-variadic argument and we hit an error, return the error.
                     Err(err) if this.token == token::DotDotDot => return Err(err),
                     // Recover from attempting to parse the argument as a type without pattern.
-                    Err(mut err) => {
+                    Err(err) => {
                         err.cancel();
                         *this = parser_snapshot_before_ty;
                         this.recover_arg_parse()?
@@ -2344,7 +2344,7 @@ impl<'a> Parser<'a> {
         match self
             .parse_outer_attributes()
             .and_then(|_| self.parse_self_param())
-            .map_err(|mut e| e.cancel())
+            .map_err(|e| e.cancel())
         {
             Ok(Some(_)) => "method",
             _ => "function",

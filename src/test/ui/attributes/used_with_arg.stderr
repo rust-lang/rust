@@ -1,0 +1,18 @@
+error: `used(compiler)` and `used(linker)` can't be used together
+  --> $DIR/used_with_arg.rs:9:1
+   |
+LL | #[used(compiler)]
+   | ^^^^^^^^^^^^^^^^^
+LL | #[used(linker)]
+   | ^^^^^^^^^^^^^^^
+
+error: `used(compiler)` and `used(linker)` can't be used together
+  --> $DIR/used_with_arg.rs:13:1
+   |
+LL | #[used(compiler)]
+   | ^^^^^^^^^^^^^^^^^
+LL | #[used(linker)]
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

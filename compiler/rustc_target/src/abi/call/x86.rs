@@ -1,29 +1,11 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{self, HasDataLayout, TyAbiInterface, TyAndLayout};
+use crate::abi::{HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
 pub enum Flavor {
     General,
     Fastcall,
-}
-
-fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyAndLayout<'a, Ty>) -> bool
-where
-    Ty: TyAbiInterface<'a, C> + Copy,
-    C: HasDataLayout,
-{
-    match layout.abi {
-        abi::Abi::Scalar(scalar) => scalar.value.is_float(),
-        abi::Abi::Aggregate { .. } => {
-            if layout.fields.count() == 1 && layout.fields.offset(0).bytes() == 0 {
-                is_single_fp_element(cx, layout.field(cx, 0))
-            } else {
-                false
-            }
-        }
-        _ => false,
-    }
 }
 
 pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>, flavor: Flavor)
@@ -44,7 +26,7 @@ where
             if t.abi_return_struct_as_int {
                 // According to Clang, everyone but MSVC returns single-element
                 // float aggregates directly in a floating-point register.
-                if !t.is_like_msvc && is_single_fp_element(cx, fn_abi.ret.layout) {
+                if !t.is_like_msvc && fn_abi.ret.layout.is_single_fp_element(cx) {
                     match fn_abi.ret.layout.size.bytes() {
                         4 => fn_abi.ret.cast_to(Reg::f32()),
                         8 => fn_abi.ret.cast_to(Reg::f64()),

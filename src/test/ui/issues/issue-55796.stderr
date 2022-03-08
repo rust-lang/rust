@@ -1,22 +1,22 @@
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/issue-55796.rs:18:9
+  --> $DIR/issue-55796.rs:16:9
    |
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/issue-55796.rs:7:17
+  --> $DIR/issue-55796.rs:5:17
    |
 LL | pub trait Graph<'a> {
    |                 ^^
-note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:18:40: 18:54]>` will meet its required lifetime bounds
-  --> $DIR/issue-55796.rs:18:9
+note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:16:40: 16:54]>` will meet its required lifetime bounds
+  --> $DIR/issue-55796.rs:16:9
    |
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the types are compatible
-  --> $DIR/issue-55796.rs:18:9
+  --> $DIR/issue-55796.rs:16:9
    |
 LL |         Box::new(self.out_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,24 +24,24 @@ LL |         Box::new(self.out_edges(u).map(|e| e.target()))
               found `Box<dyn Iterator<Item = <Self as Graph<'a>>::Node>>`
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/issue-55796.rs:23:9
+  --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined here...
-  --> $DIR/issue-55796.rs:7:17
+  --> $DIR/issue-55796.rs:5:17
    |
 LL | pub trait Graph<'a> {
    |                 ^^
-note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:23:39: 23:53]>` will meet its required lifetime bounds
-  --> $DIR/issue-55796.rs:23:9
+note: ...so that the type `Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:21:39: 21:53]>` will meet its required lifetime bounds
+  --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
 note: ...so that the types are compatible
-  --> $DIR/issue-55796.rs:23:9
+  --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

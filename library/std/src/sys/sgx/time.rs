@@ -25,14 +25,6 @@ impl Instant {
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
         Some(Instant(self.0.checked_sub(*other)?))
     }
-
-    pub fn actually_monotonic() -> bool {
-        false
-    }
-
-    pub const fn zero() -> Instant {
-        Instant(Duration::from_secs(0))
-    }
 }
 
 impl SystemTime {

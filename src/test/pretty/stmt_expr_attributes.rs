@@ -48,9 +48,9 @@ fn _4() {
 
     let _ =
         #[rustc_dummy] match () {
-                           #![rustc_dummy]
-                           () => (),
-                       };
+            #![rustc_dummy]
+            () => (),
+        };
 }
 
 fn _5() {
@@ -90,9 +90,9 @@ struct Bar(());
 fn _7() {
 
     #[rustc_dummy]
-    Foo{data: (),};
+    Foo { data: () };
 
-    let _ = #[rustc_dummy] Foo{data: (),};
+    let _ = #[rustc_dummy] Foo { data: () };
 }
 
 fn _8() {
@@ -156,60 +156,60 @@ fn _11() {
     let _ = #[rustc_dummy] 0 as usize;
     let _ =
         #[rustc_dummy] while false {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] while let None = Some(()) {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] for _ in 0..0 {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] loop {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] match false {
-                           #![rustc_dummy]
-                           _ => (),
-                       };
+            #![rustc_dummy]
+            _ => (),
+        };
     let _ = #[rustc_dummy] || #[rustc_dummy] ();
     let _ = #[rustc_dummy] move || #[rustc_dummy] ();
     let _ =
         #[rustc_dummy] ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] move ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                       };
+            #![rustc_dummy]
+            let _ = ();
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                           ()
-                       };
+            #![rustc_dummy]
+            let _ = ();
+            ()
+        };
     let mut x = 0;
     let _ = #[rustc_dummy] x = 15;
     let _ = #[rustc_dummy] x += 15;
-    let s = Foo{data: (),};
+    let s = Foo { data: () };
     let _ = #[rustc_dummy] s.data;
     let _ = (#[rustc_dummy] s).data;
     let t = Bar(());
@@ -235,9 +235,9 @@ fn _11() {
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
     let _ = #[rustc_dummy] expr_mac! {};
-    let _ = #[rustc_dummy] Foo{data: (),};
-    let _ = #[rustc_dummy] Foo{..s};
-    let _ = #[rustc_dummy] Foo{data: (), ..s};
+    let _ = #[rustc_dummy] Foo { data: () };
+    let _ = #[rustc_dummy] Foo { ..s };
+    let _ = #[rustc_dummy] Foo { data: (), ..s };
     let _ = #[rustc_dummy] (0);
 }
 

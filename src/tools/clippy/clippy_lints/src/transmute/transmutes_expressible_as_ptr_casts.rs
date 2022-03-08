@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
 ) -> bool {
     if can_be_expressed_as_pointer_cast(cx, e, from_ty, to_ty) {
         span_lint_and_then(
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(
                 from_ty, to_ty
             ),
             |diag| {
-                if let Some(arg) = sugg::Sugg::hir_opt(cx, &args[0]) {
+                if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                     let sugg = arg.as_ty(&to_ty.to_string()).to_string();
                     diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
                 }

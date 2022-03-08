@@ -5,7 +5,7 @@ use crate::ops;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// A future represents an asynchronous computation.
+/// A future represents an asynchronous computation obtained by use of [`async`].
 ///
 /// A future is a value that might not have finished computing yet. This kind of
 /// "asynchronous value" makes it possible for a thread to continue doing useful
@@ -23,6 +23,7 @@ use crate::task::{Context, Poll};
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `.await` the value.
 ///
+/// [`async`]: ../../std/keyword.async.html
 /// [`Waker`]: crate::task::Waker
 #[doc(notable_trait)]
 #[must_use = "futures do nothing unless you `.await` or poll them"]

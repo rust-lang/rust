@@ -9,6 +9,8 @@ LL |     bar: &'a mut T
    |
    = help: the following implementations were found:
              <&T as Clone>
+             <*const T as Clone>
+             <*mut T as Clone>
    = note: `Clone` is implemented for `&T`, but not for `&mut T`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 

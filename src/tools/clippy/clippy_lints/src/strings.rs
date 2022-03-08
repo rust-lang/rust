@@ -282,7 +282,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, args, _) = &e.kind;
+            if let ExprKind::MethodCall(path, args, _) = &e.kind;
             if path.ident.name == sym!(as_bytes);
             if let ExprKind::Lit(lit) = &args[0].kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
@@ -324,9 +324,9 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if_chain! {
-            if let ExprKind::MethodCall(path, _, [recv], _) = &e.kind;
+            if let ExprKind::MethodCall(path, [recv], _) = &e.kind;
             if path.ident.name == sym!(into_bytes);
-            if let ExprKind::MethodCall(path, _, [recv], _) = &recv.kind;
+            if let ExprKind::MethodCall(path, [recv], _) = &recv.kind;
             if matches!(path.ident.name.as_str(), "to_owned" | "to_string");
             if let ExprKind::Lit(lit) = &recv.kind;
             if let LitKind::Str(lit_content, _) = &lit.node;
@@ -384,7 +384,7 @@ declare_lint_pass!(StrToString => [STR_TO_STRING]);
 impl<'tcx> LateLintPass<'tcx> for StrToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
             if path.ident.name == sym!(to_string);
             let ty = cx.typeck_results().expr_ty(self_arg);
             if let ty::Ref(_, ty, ..) = ty.kind();
@@ -434,7 +434,7 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if_chain! {
-            if let ExprKind::MethodCall(path, _, [self_arg, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(path, [self_arg, ..], _) = &expr.kind;
             if path.ident.name == sym!(to_string);
             let ty = cx.typeck_results().expr_ty(self_arg);
             if is_type_diagnostic_item(cx, ty, sym::String);

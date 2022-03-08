@@ -11,5 +11,4 @@ emscripten = []
 libc = "0.2.73"
 
 [build-dependencies]
-build_helper = { path = "../../src/build_helper" }
 cc = "1.0.69"

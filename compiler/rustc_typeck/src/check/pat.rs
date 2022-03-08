@@ -2,20 +2,21 @@ use crate::check::FnCtxt;
 use rustc_ast as ast;
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::{BytePos, MultiSpan, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -99,7 +100,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         self.demand_eqtype_with_origin(&self.pattern_cause(ti, cause_span), expected, actual)
     }
 
@@ -513,7 +514,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty
     }
 
-    fn endpoint_has_type(&self, err: &mut DiagnosticBuilder<'_>, span: Span, ty: Ty<'_>) {
+    fn endpoint_has_type(&self, err: &mut Diagnostic, span: Span, ty: Ty<'_>) {
         if !ty.references_error() {
             err.span_label(span, &format!("this is of type `{}`", ty));
         }
@@ -646,7 +647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn borrow_pat_suggestion(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         pat: &Pat<'_>,
         inner: &Pat<'_>,
         expected: Ty<'tcx>,
@@ -684,9 +685,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat<'_>) -> bool {
-        if let PatKind::Binding(..) = inner.kind {
-            if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
-                if let ty::Dynamic(..) = mt.ty.kind() {
+        if let PatKind::Binding(..) = inner.kind
+            && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
+            && let ty::Dynamic(..) = mt.ty.kind()
+        {
                     // This is "x = SomeTrait" being reduced from
                     // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                     let type_str = self.ty_to_string(expected);
@@ -704,8 +706,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.emit();
                     return false;
                 }
-            }
-        }
         true
     }
 
@@ -784,7 +784,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_range_literal(
         &self,
-        e: &mut DiagnosticBuilder<'_>,
+        e: &mut Diagnostic,
         opt_def_id: Option<hir::def_id::DefId>,
         ident: Ident,
     ) -> bool {
@@ -818,7 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn emit_bad_pat_path<'b>(
         &self,
-        mut e: DiagnosticBuilder<'_>,
+        mut e: DiagnosticBuilder<'_, ErrorGuaranteed>,
         pat_span: Span,
         res: Res,
         pat_res: Res,
@@ -981,9 +981,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if subpats.len() == variant.fields.len()
             || subpats.len() < variant.fields.len() && ddpos.is_some()
         {
-            let substs = match pat_ty.kind() {
-                ty::Adt(_, substs) => substs,
-                _ => bug!("unexpected pattern type {:?}", pat_ty),
+            let ty::Adt(_, substs) = pat_ty.kind() else {
+                bug!("unexpected pattern type {:?}", pat_ty);
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
                 let field_ty = self.field_ty(subpat.span, &variant.fields[i], substs);
@@ -1073,7 +1072,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (ty::Adt(_, substs), [field], false) => {
                 let field_ty = self.field_ty(pat_span, field, substs);
                 match field_ty.kind() {
-                    ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
+                    ty::Tuple(fields) => fields.len() == subpats.len(),
                     _ => false,
                 }
             }
@@ -1184,13 +1183,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let max_len = cmp::max(expected_len, elements.len());
 
         let element_tys_iter = (0..max_len).map(|_| {
-            GenericArg::from(self.next_ty_var(
+            self.next_ty_var(
                 // FIXME: `MiscVariable` for now -- obtaining the span and name information
                 // from all tuple elements isn't trivial.
                 TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span },
-            ))
+            )
         });
-        let element_tys = tcx.mk_substs(element_tys_iter);
+        let element_tys = tcx.mk_type_list(element_tys_iter);
         let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
         if let Some(mut err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, ti) {
             err.emit();
@@ -1203,7 +1202,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.mk_tup(element_tys_iter)
         } else {
             for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                self.check_pat(elem, element_tys[i].expect_ty(), def_bm, ti);
+                self.check_pat(elem, element_tys[i], def_bm, ti);
             }
             pat_ty
         }
@@ -1221,9 +1220,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         let tcx = self.tcx;
 
-        let (substs, adt) = match adt_ty.kind() {
-            ty::Adt(adt, substs) => (substs, adt),
-            _ => span_bug!(pat.span, "struct pattern is not an ADT"),
+        let ty::Adt(adt, substs) = adt_ty.kind() else {
+            span_bug!(pat.span, "struct pattern is not an ADT");
         };
 
         // Index the struct fields' types.
@@ -1371,7 +1369,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         variant: &VariantDef,
         pat: &'_ Pat<'_>,
         fields: &[hir::PatField<'_>],
-    ) -> Option<DiagnosticBuilder<'_>> {
+    ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // if this is a tuple struct, then all field names will be numbers
         // so if any fields in a struct pattern use shorthand syntax, they will
         // be invalid identifiers (for example, Foo { 0, 1 }).
@@ -1444,7 +1442,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         inexistent_fields: &[Ident],
         unmentioned_fields: &mut Vec<(&ty::FieldDef, Ident)>,
         variant: &ty::VariantDef,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if inexistent_fields.len() == 1 {
             (format!("a field named `{}`", inexistent_fields[0]), "this", "")
@@ -1540,7 +1538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
         variant: &ty::VariantDef,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         if let (CtorKind::Fn, PatKind::Struct(qpath, ..)) = (variant.ctor_kind, &pat.kind) {
             let path = rustc_hir_pretty::to_string(rustc_hir_pretty::NO_ANN, |s| {
                 s.print_qpath(qpath, false)
@@ -1622,7 +1620,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &Pat<'_>,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = self
             .tcx
             .sess
@@ -1714,7 +1712,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         have_inaccessible_fields: bool,
         fields: &'tcx [hir::PatField<'tcx>],
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let inaccessible = if have_inaccessible_fields { " and inaccessible fields" } else { "" };
         let field_names = if unmentioned_fields.len() == 1 {
             format!("field `{}`{}", unmentioned_fields[0].1, inaccessible)
@@ -1935,7 +1933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         element_ty: Ty<'tcx>,
         arr_ty: Ty<'tcx>,
         slice: Option<&'tcx Pat<'tcx>>,
-        len: &ty::Const<'tcx>,
+        len: ty::Const<'tcx>,
         min_len: u64,
     ) -> (Option<Ty<'tcx>>, Ty<'tcx>) {
         if let Some(len) = len.try_eval_usize(self.tcx, self.param_env) {
@@ -2029,16 +2027,51 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help("the semantics of slice patterns changed recently; see issue #62254");
             }
         } else if Autoderef::new(&self.infcx, self.param_env, self.body_id, span, expected_ty, span)
-            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..)))
+            .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
         {
             if let (Some(span), true) = (ti.span, ti.origin_expr) {
                 if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                    err.span_suggestion(
+                    let applicability = Autoderef::new(
+                        &self.infcx,
+                        self.param_env,
+                        self.body_id,
                         span,
-                        "consider slicing here",
-                        format!("{}[..]", snippet),
-                        Applicability::MachineApplicable,
-                    );
+                        self.resolve_vars_if_possible(ti.expected),
+                        span,
+                    )
+                    .find_map(|(ty, _)| {
+                        match ty.kind() {
+                            ty::Adt(adt_def, _)
+                                if self.tcx.is_diagnostic_item(sym::Option, adt_def.did)
+                                    || self.tcx.is_diagnostic_item(sym::Result, adt_def.did) =>
+                            {
+                                // Slicing won't work here, but `.as_deref()` might (issue #91328).
+                                err.span_suggestion(
+                                    span,
+                                    "consider using `as_deref` here",
+                                    format!("{}.as_deref()", snippet),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                Some(None)
+                            }
+
+                            ty::Slice(..) | ty::Array(..) => {
+                                Some(Some(Applicability::MachineApplicable))
+                            }
+
+                            _ => None,
+                        }
+                    })
+                    .unwrap_or(Some(Applicability::MaybeIncorrect));
+
+                    if let Some(applicability) = applicability {
+                        err.span_suggestion(
+                            span,
+                            "consider slicing here",
+                            format!("{}[..]", snippet),
+                            applicability,
+                        );
+                    }
                 }
             }
         }

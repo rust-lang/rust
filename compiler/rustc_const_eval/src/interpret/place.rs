@@ -420,9 +420,8 @@ where
     ) -> InterpResult<'tcx, impl Iterator<Item = InterpResult<'tcx, MPlaceTy<'tcx, Tag>>> + 'a>
     {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        let stride = match base.layout.fields {
-            FieldsShape::Array { stride, .. } => stride,
-            _ => span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout"),
+        let FieldsShape::Array { stride, .. } = base.layout.fields else {
+            span_bug!(self.cur_span(), "mplace_array_fields: expected an array layout");
         };
         let layout = base.layout.field(self, 0);
         let dl = &self.tcx.data_layout;
@@ -462,7 +461,7 @@ where
         let (meta, ty) = match base.layout.ty.kind() {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
-            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(inner, inner_len)),
+            ty::Array(inner, _) => (MemPlaceMeta::None, self.tcx.mk_array(*inner, inner_len)),
             ty::Slice(..) => {
                 let len = Scalar::from_machine_usize(inner_len, self);
                 (MemPlaceMeta::Meta(len), base.layout.ty)
@@ -480,7 +479,9 @@ where
         base: &MPlaceTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // Downcasts only change the layout
+        // Downcasts only change the layout.
+        // (In particular, no check about whether this is even the active variant -- that's by design,
+        // see https://github.com/rust-lang/rust/issues/93688#issuecomment-1032929496.)
         assert!(!base.meta.has_meta());
         Ok(MPlaceTy { layout: base.layout.for_variant(self, variant), ..*base })
     }
@@ -747,9 +748,9 @@ where
 
         // Invalid places are a thing: the return place of a diverging function
         let tcx = *self.tcx;
-        let mut alloc = match self.get_alloc_mut(dest)? {
-            Some(a) => a,
-            None => return Ok(()), // zero-sized access
+        let Some(mut alloc) = self.get_alloc_mut(dest)? else {
+            // zero-sized access
+            return Ok(());
         };
 
         // FIXME: We should check that there are dest.layout.size many bytes available in

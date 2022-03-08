@@ -6,8 +6,6 @@ use crate::interpret::{
     ScalarMaybeUninit, StackPopCleanup,
 };
 
-use rustc_errors::ErrorReported;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -55,7 +53,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
     trace!(
         "eval_body_using_ecx: pushing stack frame for global: {}{}",
-        with_no_trimmed_paths(|| ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()))),
+        with_no_trimmed_paths!(ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()))),
         cid.promoted.map_or_else(String::new, |p| format!("::promoted[{:?}]", p))
     );
 
@@ -216,7 +214,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToConstValueResult<'tcx> {
-    assert!(key.param_env.constness() == hir::Constness::Const);
+    assert!(key.param_env.is_const());
     // see comment in eval_to_allocation_raw_provider for what we're doing here
     if key.param_env.reveal() == Reveal::All {
         let mut key = key;
@@ -233,9 +231,8 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
     // Catch such calls and evaluate them instead of trying to load a constant's MIR.
     if let ty::InstanceDef::Intrinsic(def_id) = key.value.instance.def {
         let ty = key.value.instance.ty(tcx, key.param_env);
-        let substs = match ty.kind() {
-            ty::FnDef(_, substs) => substs,
-            _ => bug!("intrinsic with type {:?}", ty),
+        let ty::FnDef(_, substs) = ty.kind() else {
+            bug!("intrinsic with type {:?}", ty);
         };
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
@@ -251,7 +248,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
-    assert!(key.param_env.constness() == hir::Constness::Const);
+    assert!(key.param_env.is_const());
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -276,31 +273,12 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         // The next two lines concatenated contain some discussion:
         // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
         // subject/anon_const_instance_printing/near/135980032
-        let instance = with_no_trimmed_paths(|| key.value.instance.to_string());
+        let instance = with_no_trimmed_paths!(key.value.instance.to_string());
         trace!("const eval: {:?} ({})", key, instance);
     }
 
     let cid = key.value;
     let def = cid.instance.def.with_opt_param();
-
-    if let Some(def) = def.as_local() {
-        if tcx.has_typeck_results(def.did) {
-            if let Some(error_reported) = tcx.typeck_opt_const_arg(def).tainted_by_errors {
-                return Err(ErrorHandled::Reported(error_reported));
-            }
-        }
-        if !tcx.is_mir_available(def.did) {
-            tcx.sess.delay_span_bug(
-                tcx.def_span(def.did),
-                &format!("no MIR body is available for {:?}", def.did),
-            );
-            return Err(ErrorHandled::Reported(ErrorReported {}));
-        }
-        if let Some(error_reported) = tcx.mir_const_qualif_opt_const_arg(def).error_occured {
-            return Err(ErrorHandled::Reported(error_reported));
-        }
-    }
-
     let is_static = tcx.is_static(def.did);
 
     let mut ecx = InterpCx::new(
@@ -338,7 +316,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     // the expression, leading to the const eval error.
                     let instance = &key.value.instance;
                     if !instance.substs.is_empty() {
-                        let instance = with_no_trimmed_paths(|| instance.to_string());
+                        let instance = with_no_trimmed_paths!(instance.to_string());
                         let msg = format!("evaluation of `{}` failed", instance);
                         Cow::from(msg)
                     } else {
@@ -383,16 +361,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 Err(err.struct_error(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
-                    |mut diag| {
+                    |diag| {
                         diag.note(note_on_undefined_behavior_error());
                         diag.note(&format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(
                                 *ecx.tcx,
-                                ecx.tcx.global_alloc(alloc_id).unwrap_memory()
+                                ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner()
                             )
                         ));
-                        diag.emit();
                     },
                 ))
             } else {

@@ -1,11 +1,13 @@
-#![cfg_attr(feature = "std", feature(portable_simd))]
+#![feature(portable_simd)]
+extern crate std_float;
 
 /// Benchmarks game nbody code
 /// Taken from the `packed_simd` crate
 /// Run this benchmark with `cargo test --example nbody`
-#[cfg(feature = "std")]
 mod nbody {
-    use core_simd::*;
+    use core_simd::simd::*;
+    #[allow(unused)] // False positive?
+    use std_float::StdFloat;
 
     use std::f64::consts::PI;
     const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -167,7 +169,6 @@ mod nbody {
     }
 }
 
-#[cfg(feature = "std")]
 #[cfg(test)]
 mod tests {
     // Good enough for demonstration purposes, not going for strictness here.
@@ -184,7 +185,6 @@ mod tests {
 }
 
 fn main() {
-    #[cfg(feature = "std")]
     {
         let (energy_before, energy_after) = nbody::run(1000);
         println!("Energy before: {}", energy_before);

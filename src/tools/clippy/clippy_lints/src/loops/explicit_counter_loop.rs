@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_block, walk_expr};
 use rustc_hir::{Expr, Pat};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, UintTy};
+use rustc_middle::ty::{self, Ty, UintTy};
 
 // To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
 // incremented exactly once in the loop body, and initialized to zero
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
                 then {
                     let mut applicability = Applicability::MachineApplicable;
 
-                    let int_name = match ty.map(ty::TyS::kind) {
+                    let int_name = match ty.map(Ty::kind) {
                         // usize or inferred
                         Some(ty::Uint(UintTy::Usize)) | None => {
                             span_lint_and_sugg(

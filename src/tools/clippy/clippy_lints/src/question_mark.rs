@@ -58,7 +58,7 @@ impl QuestionMark {
     fn check_is_none_or_err_and_early_return(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if_chain! {
             if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr);
-            if let ExprKind::MethodCall(segment, _, args, _) = &cond.kind;
+            if let ExprKind::MethodCall(segment, args, _) = &cond.kind;
             if let Some(subject) = args.get(0);
             if (Self::option_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_none)) ||
                 (Self::result_check_and_early_return(cx, subject, then) && segment.ident.name == sym!(is_err));

@@ -1,4 +1,4 @@
-error[E0282]: type annotations needed for `Foo<{_: u32}>`
+error[E0282]: type annotations needed for `Foo<N>`
   --> $DIR/doesnt_infer.rs:11:15
    |
 LL |     let foo = Foo::foo();

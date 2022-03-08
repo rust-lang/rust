@@ -98,9 +98,8 @@ pub fn expand_include<'cx>(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
     let sp = cx.with_def_site_ctxt(sp);
-    let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
-        Some(f) => f,
-        None => return DummyResult::any(sp),
+    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include!") else {
+        return DummyResult::any(sp);
     };
     // The file will be added to the code map by the parser
     let file = match cx.resolve_path(file, sp) {
@@ -169,9 +168,8 @@ pub fn expand_include_str(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
-        Some(f) => f,
-        None => return DummyResult::any(sp),
+    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_str!") else {
+        return DummyResult::any(sp);
     };
     let file = match cx.resolve_path(file, sp) {
         Ok(f) => f,
@@ -204,9 +202,8 @@ pub fn expand_include_bytes(
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
     let sp = cx.with_def_site_ctxt(sp);
-    let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
-        Some(f) => f,
-        None => return DummyResult::any(sp),
+    let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_bytes!") else {
+        return DummyResult::any(sp);
     };
     let file = match cx.resolve_path(file, sp) {
         Ok(f) => f,

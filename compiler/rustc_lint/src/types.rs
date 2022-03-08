@@ -16,7 +16,6 @@ use rustc_target::abi::Abi;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
-use if_chain::if_chain;
 use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
@@ -249,7 +248,7 @@ fn report_bin_hex_error(
             ));
         }
         if let Some(sugg_ty) =
-            get_type_suggestion(&cx.typeck_results().node_type(expr.hir_id), val, negative)
+            get_type_suggestion(cx.typeck_results().node_type(expr.hir_id), val, negative)
         {
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                 let (sans_suffix, _) = repr_str.split_at(pos);
@@ -367,7 +366,7 @@ fn lint_int_literal<'tcx>(
                 max,
             ));
             if let Some(sugg_ty) =
-                get_type_suggestion(&cx.typeck_results().node_type(e.hir_id), v, negative)
+                get_type_suggestion(cx.typeck_results().node_type(e.hir_id), v, negative)
             {
                 err.help(&format!("consider using the type `{}` instead", sugg_ty));
             }
@@ -1095,7 +1094,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     }
                 }
                 for arg in sig.inputs() {
-                    let r = self.check_type_for_ffi(cache, arg);
+                    let r = self.check_type_for_ffi(cache, *arg);
                     match r {
                         FfiSafe => {}
                         _ => {
@@ -1257,7 +1256,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.erase_late_bound_regions(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false, false);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, *input_ty, false, false);
         }
 
         if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
@@ -1331,14 +1330,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
         if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
             let t = cx.tcx.type_of(it.def_id);
             let ty = cx.tcx.erase_regions(t);
-            let layout = match cx.layout_of(ty) {
-                Ok(layout) => layout,
-                Err(
-                    ty::layout::LayoutError::Unknown(_)
-                    | ty::layout::LayoutError::SizeOverflow(_)
-                    | ty::layout::LayoutError::NormalizationFailure(_, _),
-                ) => return,
-            };
+            let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple {
                     tag_encoding: TagEncoding::Direct, tag, ref variants, ..
                 } = &layout.variants else {
@@ -1357,7 +1349,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             let (largest, slargest, largest_index) = iter::zip(enum_definition.variants, variants)
                 .map(|(variant, variant_layout)| {
                     // Subtract the size of the enum tag.
-                    let bytes = variant_layout.size.bytes().saturating_sub(tag_size);
+                    let bytes = variant_layout.size().bytes().saturating_sub(tag_size);
 
                     debug!("- variant `{}` is {} bytes large", variant.ident, bytes);
                     bytes
@@ -1463,21 +1455,18 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if_chain! {
-            if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind;
-            if recognized_names.contains(&method_path.ident.name);
-            if let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
-            if let Some(impl_did) = cx.tcx.impl_of_method(m_def_id);
-            if let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def();
+        if let ExprKind::MethodCall(ref method_path, args, _) = &expr.kind
+            && recognized_names.contains(&method_path.ident.name)
+            && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
+            && let Some(adt) = cx.tcx.type_of(impl_did).ty_adt_def()
             // skip extension traits, only lint functions from the standard library
-            if cx.tcx.trait_id_of_impl(impl_did).is_none();
-
-            if let Some(parent) = cx.tcx.parent(adt.did);
-            if cx.tcx.is_diagnostic_item(sym::atomic_mod, parent);
-            if ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did));
-            then {
-                return Some((method_path.ident.name, args));
-            }
+            && cx.tcx.trait_id_of_impl(impl_did).is_none()
+            && let Some(parent) = cx.tcx.parent(adt.did)
+            && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
+            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did))
+        {
+            return Some((method_path.ident.name, args));
         }
         None
     }
@@ -1506,111 +1495,103 @@ impl InvalidAtomicOrdering {
     fn check_atomic_load_store(cx: &LateContext<'_>, expr: &Expr<'_>) {
         use rustc_hir::def::{DefKind, Res};
         use rustc_hir::QPath;
-        if_chain! {
-            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store]);
-            if let Some((ordering_arg, invalid_ordering)) = match method {
+        if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::load, sym::store])
+            && let Some((ordering_arg, invalid_ordering)) = match method {
                 sym::load => Some((&args[1], sym::Release)),
                 sym::store => Some((&args[2], sym::Acquire)),
                 _ => None,
-            };
-
-            if let ExprKind::Path(QPath::Resolved(_, path)) = ordering_arg.kind;
-            if let Res::Def(DefKind::Ctor(..), ctor_id) = path.res;
-            if Self::matches_ordering(cx, ctor_id, &[invalid_ordering, sym::AcqRel]);
-            then {
-                cx.struct_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, |diag| {
-                    if method == sym::load {
-                        diag.build("atomic loads cannot have `Release` or `AcqRel` ordering")
-                            .help("consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`")
-                            .emit()
-                    } else {
-                        debug_assert_eq!(method, sym::store);
-                        diag.build("atomic stores cannot have `Acquire` or `AcqRel` ordering")
-                            .help("consider using ordering modes `Release`, `SeqCst` or `Relaxed`")
-                            .emit();
-                    }
-                });
             }
+            && let ExprKind::Path(QPath::Resolved(_, path)) = ordering_arg.kind
+            && let Res::Def(DefKind::Ctor(..), ctor_id) = path.res
+            && Self::matches_ordering(cx, ctor_id, &[invalid_ordering, sym::AcqRel])
+        {
+            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, ordering_arg.span, |diag| {
+                if method == sym::load {
+                    diag.build("atomic loads cannot have `Release` or `AcqRel` ordering")
+                        .help("consider using ordering modes `Acquire`, `SeqCst` or `Relaxed`")
+                        .emit()
+                } else {
+                    debug_assert_eq!(method, sym::store);
+                    diag.build("atomic stores cannot have `Acquire` or `AcqRel` ordering")
+                        .help("consider using ordering modes `Release`, `SeqCst` or `Relaxed`")
+                        .emit();
+                }
+            });
         }
     }
 
     fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(ref func, ref args) = expr.kind;
-            if let ExprKind::Path(ref func_qpath) = func.kind;
-            if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence));
-            if let ExprKind::Path(ref ordering_qpath) = &args[0].kind;
-            if let Some(ordering_def_id) = cx.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id();
-            if Self::matches_ordering(cx, ordering_def_id, &[sym::Relaxed]);
-            then {
-                cx.struct_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, |diag| {
-                    diag.build("memory fences cannot have `Relaxed` ordering")
-                        .help("consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`")
-                        .emit();
-                });
-            }
+        if let ExprKind::Call(ref func, ref args) = expr.kind
+            && let ExprKind::Path(ref func_qpath) = func.kind
+            && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
+            && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))
+            && let ExprKind::Path(ref ordering_qpath) = &args[0].kind
+            && let Some(ordering_def_id) = cx.qpath_res(ordering_qpath, args[0].hir_id).opt_def_id()
+            && Self::matches_ordering(cx, ordering_def_id, &[sym::Relaxed])
+        {
+            cx.struct_span_lint(INVALID_ATOMIC_ORDERING, args[0].span, |diag| {
+                diag.build("memory fences cannot have `Relaxed` ordering")
+                    .help("consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`")
+                    .emit();
+            });
         }
     }
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if_chain! {
-            if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak]);
-            if let Some((success_order_arg, failure_order_arg)) = match method {
+        if let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak])
+            && let Some((success_order_arg, failure_order_arg)) = match method {
                 sym::fetch_update => Some((&args[1], &args[2])),
                 sym::compare_exchange | sym::compare_exchange_weak => Some((&args[3], &args[4])),
                 _ => None,
-            };
+            }
+            && let Some(fail_ordering_def_id) = Self::opt_ordering_defid(cx, failure_order_arg)
+        {
+            // Helper type holding on to some checking and error reporting data. Has
+            // - (success ordering,
+            // - list of failure orderings forbidden by the success order,
+            // - suggestion message)
+            type OrdLintInfo = (Symbol, &'static [Symbol], &'static str);
+            const RELAXED: OrdLintInfo = (sym::Relaxed, &[sym::SeqCst, sym::Acquire], "ordering mode `Relaxed`");
+            const ACQUIRE: OrdLintInfo = (sym::Acquire, &[sym::SeqCst], "ordering modes `Acquire` or `Relaxed`");
+            const SEQ_CST: OrdLintInfo = (sym::SeqCst, &[], "ordering modes `Acquire`, `SeqCst` or `Relaxed`");
+            const RELEASE: OrdLintInfo = (sym::Release, RELAXED.1, RELAXED.2);
+            const ACQREL: OrdLintInfo = (sym::AcqRel, ACQUIRE.1, ACQUIRE.2);
+            const SEARCH: [OrdLintInfo; 5] = [RELAXED, ACQUIRE, SEQ_CST, RELEASE, ACQREL];
 
-            if let Some(fail_ordering_def_id) = Self::opt_ordering_defid(cx, failure_order_arg);
-            then {
-                // Helper type holding on to some checking and error reporting data. Has
-                // - (success ordering,
-                // - list of failure orderings forbidden by the success order,
-                // - suggestion message)
-                type OrdLintInfo = (Symbol, &'static [Symbol], &'static str);
-                const RELAXED: OrdLintInfo = (sym::Relaxed, &[sym::SeqCst, sym::Acquire], "ordering mode `Relaxed`");
-                const ACQUIRE: OrdLintInfo = (sym::Acquire, &[sym::SeqCst], "ordering modes `Acquire` or `Relaxed`");
-                const SEQ_CST: OrdLintInfo = (sym::SeqCst, &[], "ordering modes `Acquire`, `SeqCst` or `Relaxed`");
-                const RELEASE: OrdLintInfo = (sym::Release, RELAXED.1, RELAXED.2);
-                const ACQREL: OrdLintInfo = (sym::AcqRel, ACQUIRE.1, ACQUIRE.2);
-                const SEARCH: [OrdLintInfo; 5] = [RELAXED, ACQUIRE, SEQ_CST, RELEASE, ACQREL];
-
-                let success_lint_info = Self::opt_ordering_defid(cx, success_order_arg)
-                    .and_then(|success_ord_def_id| -> Option<OrdLintInfo> {
-                        SEARCH
-                            .iter()
-                            .copied()
-                            .find(|(ordering, ..)| {
-                                Self::matches_ordering(cx, success_ord_def_id, &[*ordering])
-                            })
-                    });
-                if Self::matches_ordering(cx, fail_ordering_def_id, &[sym::Release, sym::AcqRel]) {
-                    // If we don't know the success order is, use what we'd suggest
-                    // if it were maximally permissive.
-                    let suggested = success_lint_info.unwrap_or(SEQ_CST).2;
+            let success_lint_info = Self::opt_ordering_defid(cx, success_order_arg)
+                .and_then(|success_ord_def_id| -> Option<OrdLintInfo> {
+                    SEARCH
+                        .iter()
+                        .copied()
+                        .find(|(ordering, ..)| {
+                            Self::matches_ordering(cx, success_ord_def_id, &[*ordering])
+                        })
+                });
+            if Self::matches_ordering(cx, fail_ordering_def_id, &[sym::Release, sym::AcqRel]) {
+                // If we don't know the success order is, use what we'd suggest
+                // if it were maximally permissive.
+                let suggested = success_lint_info.unwrap_or(SEQ_CST).2;
+                cx.struct_span_lint(INVALID_ATOMIC_ORDERING, failure_order_arg.span, |diag| {
+                    let msg = format!(
+                        "{}'s failure ordering may not be `Release` or `AcqRel`",
+                        method,
+                    );
+                    diag.build(&msg)
+                        .help(&format!("consider using {} instead", suggested))
+                        .emit();
+                });
+            } else if let Some((success_ord, bad_ords_given_success, suggested)) = success_lint_info {
+                if Self::matches_ordering(cx, fail_ordering_def_id, bad_ords_given_success) {
                     cx.struct_span_lint(INVALID_ATOMIC_ORDERING, failure_order_arg.span, |diag| {
                         let msg = format!(
-                            "{}'s failure ordering may not be `Release` or `AcqRel`",
+                            "{}'s failure ordering may not be stronger than the success ordering of `{}`",
                             method,
+                            success_ord,
                         );
                         diag.build(&msg)
                             .help(&format!("consider using {} instead", suggested))
                             .emit();
                     });
-                } else if let Some((success_ord, bad_ords_given_success, suggested)) = success_lint_info {
-                    if Self::matches_ordering(cx, fail_ordering_def_id, bad_ords_given_success) {
-                        cx.struct_span_lint(INVALID_ATOMIC_ORDERING, failure_order_arg.span, |diag| {
-                            let msg = format!(
-                                "{}'s failure ordering may not be stronger than the success ordering of `{}`",
-                                method,
-                                success_ord,
-                            );
-                            diag.build(&msg)
-                                .help(&format!("consider using {} instead", suggested))
-                                .emit();
-                        });
-                    }
                 }
             }
         }

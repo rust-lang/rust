@@ -4,7 +4,7 @@
 use ::std::prelude::rust_2015::*;
 #[macro_use]
 extern crate std;
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // compile-flags: -Z unpretty=expanded
 
 fn main() { if let 0 = 1 {} }

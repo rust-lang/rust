@@ -133,7 +133,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         for vid in self.rev_scc_graph.as_ref().unwrap().upper_bounds(scc) {
                             match self.definitions[vid].external_name {
                                 None => {}
-                                Some(&ty::ReStatic) => {}
+                                Some(region) if region.is_static() => {}
                                 Some(region) => return region,
                             }
                         }
@@ -183,7 +183,7 @@ fn check_opaque_type_parameter_valid(
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
-            GenericArgKind::Lifetime(ty::ReStatic) => {
+            GenericArgKind::Lifetime(lt) if lt.is_static() => {
                 tcx.sess
                     .struct_span_err(span, "non-defining opaque type use in defining scope")
                     .span_label(
@@ -196,9 +196,9 @@ fn check_opaque_type_parameter_valid(
                 return false;
             }
             GenericArgKind::Lifetime(lt) => {
-                matches!(lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
             }
-            GenericArgKind::Const(ct) => matches!(ct.val, ty::ConstKind::Param(_)),
+            GenericArgKind::Const(ct) => matches!(ct.val(), ty::ConstKind::Param(_)),
         };
 
         if arg_is_param {

@@ -74,7 +74,8 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     debug!("visit_implementation_of_copy: self_type={:?} (free)", self_type);
 
-    match can_type_implement_copy(tcx, param_env, self_type) {
+    let cause = traits::ObligationCause::misc(span, impl_hir_id);
+    match can_type_implement_copy(tcx, param_env, self_type, cause) {
         Ok(()) => {}
         Err(CopyImplementationError::InfrigingFields(fields)) => {
             let item = tcx.hir().expect_item(impl_did);
@@ -93,7 +94,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             for span in fields.iter().map(|f| tcx.def_span(f.did)) {
                 err.span_label(span, "this field does not implement `Copy`");
             }
-            err.emit()
+            err.emit();
         }
         Err(CopyImplementationError::NotAnAdt) => {
             let item = tcx.hir().expect_item(impl_did);
@@ -147,7 +148,7 @@ fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: 
         use ty::TyKind::*;
         match (source.kind(), target.kind()) {
             (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b))
-                if infcx.at(&cause, param_env).eq(r_a, r_b).is_ok() && mutbl_a == *mutbl_b => {}
+                if infcx.at(&cause, param_env).eq(r_a, *r_b).is_ok() && mutbl_a == *mutbl_b => {}
             (&RawPtr(tm_a), &RawPtr(tm_b)) if tm_a.mutbl == tm_b.mutbl => (),
             (&Adt(def_a, substs_a), &Adt(def_b, substs_b))
                 if def_a.is_struct() && def_b.is_struct() =>

@@ -10,5 +10,5 @@ extern crate std;
 trait Animal { }
 
 fn main() {
-              pub type ServeFut = /*impl Trait*/;
-          }
+        pub type ServeFut = /*impl Trait*/;
+    }

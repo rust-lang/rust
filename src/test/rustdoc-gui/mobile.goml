@@ -1,0 +1,27 @@
+// Test various properties of the mobile UI
+goto: file://|DOC_PATH|/staged_api/struct.Foo.html
+size: (400, 600)
+
+font-size: 18
+
+// The out-of-band info (source, stable version, collapse) should be below the
+// h1 when the screen gets narrow enough.
+assert-css: (".main-heading", {
+  "display": "flex",
+  "flex-direction": "column"
+})
+
+assert-property: (".mobile-topbar h2.location", {"offsetHeight": 36})
+
+// Note: We can't use assert-text here because the 'Since' is set by CSS and
+// is therefore not part of the DOM.
+assert-css: (".content .out-of-band .since::before", { "content": "\"Since \"" })
+
+size: (1000, 1000)
+assert-css-false: (".content .out-of-band .since::before", { "content": "\"Since \"" })
+
+// On the settings page, the theme buttons should not line-wrap. Instead, they should
+// all be placed as a group on a line below the setting name "Theme."
+goto: file://|DOC_PATH|/settings.html
+size: (400, 600)
+compare-elements-position-near-false: ("#preferred-light-theme .setting-name", "#preferred-light-theme .choice", {"y": 16})

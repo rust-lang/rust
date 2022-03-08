@@ -1476,7 +1476,21 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
-            let (fst, snd) = self.v.split_at(self.v.len() - chunksz);
+            // SAFETY: split_at_unchecked requires the argument be less than or
+            // equal to the length. This is guaranteed, but subtle: `chunksz`
+            // will always either be `self.v.len() % self.chunk_size`, which
+            // will always evaluate to strictly less than `self.v.len()` (or
+            // panic, in the case that `self.chunk_size` is zero), or it can be
+            // `self.chunk_size`, in the case that the length is exactly
+            // divisible by the chunk size.
+            //
+            // While it seems like using `self.chunk_size` in this case could
+            // lead to a value greater than `self.v.len()`, it cannot: if
+            // `self.chunk_size` were greater than `self.v.len()`, then
+            // `self.v.len() % self.chunk_size` would return nonzero (note that
+            // in this branch of the `if`, we already know that `self.v` is
+            // non-empty).
+            let (fst, snd) = unsafe { self.v.split_at_unchecked(self.v.len() - chunksz) };
             self.v = fst;
             Some(snd)
         }
@@ -1641,7 +1655,8 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
-            let (head, tail) = tmp.split_at_mut(tmp_len - sz);
+            // SAFETY: Similar to `Chunks::next_back`
+            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(tmp_len - sz) };
             self.v = head;
             Some(tail)
         }
@@ -2410,8 +2425,14 @@ impl<'a, T> Iterator for RChunks<'a, T> {
         if self.v.is_empty() {
             None
         } else {
-            let chunksz = cmp::min(self.v.len(), self.chunk_size);
-            let (fst, snd) = self.v.split_at(self.v.len() - chunksz);
+            let len = self.v.len();
+            let chunksz = cmp::min(len, self.chunk_size);
+            // SAFETY: split_at_unchecked just requires the argument be less
+            // than the length. This could only happen if the expression `len -
+            // chunksz` overflows. This could only happen if `chunksz > len`,
+            // which is impossible as we initialize it as the `min` of `len` and
+            // `self.chunk_size`.
+            let (fst, snd) = unsafe { self.v.split_at_unchecked(len - chunksz) };
             self.v = fst;
             Some(snd)
         }
@@ -2485,7 +2506,8 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
         } else {
             let remainder = self.v.len() % self.chunk_size;
             let chunksz = if remainder != 0 { remainder } else { self.chunk_size };
-            let (fst, snd) = self.v.split_at(chunksz);
+            // SAFETY: similar to Chunks::next_back
+            let (fst, snd) = unsafe { self.v.split_at_unchecked(chunksz) };
             self.v = snd;
             Some(fst)
         }
@@ -2571,7 +2593,12 @@ impl<'a, T> Iterator for RChunksMut<'a, T> {
             let sz = cmp::min(self.v.len(), self.chunk_size);
             let tmp = mem::replace(&mut self.v, &mut []);
             let tmp_len = tmp.len();
-            let (head, tail) = tmp.split_at_mut(tmp_len - sz);
+            // SAFETY: split_at_mut_unchecked just requires the argument be less
+            // than the length. This could only happen if the expression
+            // `tmp_len - sz` overflows. This could only happen if `sz >
+            // tmp_len`, which is impossible as we initialize it as the `min` of
+            // `self.v.len()` (e.g. `tmp_len`) and `self.chunk_size`.
+            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(tmp_len - sz) };
             self.v = head;
             Some(tail)
         }
@@ -2649,7 +2676,8 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
             let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = mem::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.split_at_mut(sz);
+            // SAFETY: Similar to `Chunks::next_back`
+            let (head, tail) = unsafe { tmp.split_at_mut_unchecked(sz) };
             self.v = tail;
             Some(head)
         }

@@ -11,7 +11,7 @@ LL |     Foo::<i32>::bar(&1i8);
              <i8 as Foo<u16>>
              <i8 as Foo<u32>>
              <i8 as Foo<u64>>
-             <i8 as Foo<u8>>
+           and 5 others
 
 error[E0277]: the trait bound `u8: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:25:21
@@ -26,6 +26,7 @@ LL |     Foo::<i32>::bar(&1u8);
              <u8 as Foo<u16>>
              <u8 as Foo<u32>>
              <u8 as Foo<u64>>
+           and 5 others
 
 error[E0277]: the trait bound `bool: Foo<i32>` is not satisfied
   --> $DIR/issue-39802-show-5-trait-impls.rs:26:21

@@ -16,19 +16,39 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::{output, t};
-
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::config::TargetSelection;
-use crate::util::{self, exe};
-use crate::GitRepo;
-use build_helper::up_to_date;
+use crate::util::{self, exe, output, t, up_to_date};
+use crate::{CLang, GitRepo};
 
 pub struct Meta {
     stamp: HashStamp,
     build_llvm_config: PathBuf,
     out_dir: PathBuf,
     root: String,
+}
+
+// Linker flags to pass to LLVM's CMake invocation.
+#[derive(Debug, Clone, Default)]
+struct LdFlags {
+    // CMAKE_EXE_LINKER_FLAGS
+    exe: OsString,
+    // CMAKE_SHARED_LINKER_FLAGS
+    shared: OsString,
+    // CMAKE_MODULE_LINKER_FLAGS
+    module: OsString,
+}
+
+impl LdFlags {
+    fn push_all(&mut self, s: impl AsRef<OsStr>) {
+        let s = s.as_ref();
+        self.exe.push(" ");
+        self.exe.push(s);
+        self.shared.push(" ");
+        self.shared.push(s);
+        self.module.push(" ");
+        self.module.push(s);
+    }
 }
 
 // This returns whether we've already previously built LLVM.
@@ -146,6 +166,7 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/CMake.html
         let mut cfg = cmake::Config::new(builder.src.join(root));
+        let mut ldflags = LdFlags::default();
 
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
             (false, _) => "Debug",
@@ -238,18 +259,19 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        // For distribution we want the LLVM tools to be *statically* linked to libstdc++
-        if builder.config.llvm_tools_enabled {
-            if !target.contains("msvc") {
+        // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
+        // We also do this if the user explicitly requested static libstdc++.
+        if builder.config.llvm_tools_enabled || builder.config.llvm_static_stdcpp {
+            if !target.contains("msvc") && !target.contains("netbsd") {
                 if target.contains("apple") {
-                    cfg.define("CMAKE_EXE_LINKER_FLAGS", "-static-libstdc++");
+                    ldflags.push_all("-static-libstdc++");
                 } else {
-                    cfg.define("CMAKE_EXE_LINKER_FLAGS", "-Wl,-Bsymbolic -static-libstdc++");
+                    ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
                 }
             }
         }
 
-        if !target.contains("freebsd") && target.starts_with("riscv") {
+        if target.starts_with("riscv") && !target.contains("freebsd") {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
             // atomics but the LLVM build system check cannot
@@ -257,12 +279,8 @@ impl Step for Llvm {
             // FreeBSD uses Clang as its system compiler and
             // provides no libatomic in its base system so does
             // not want this.
-            if !builder.config.llvm_tools_enabled {
-                cfg.define("CMAKE_EXE_LINKER_FLAGS", "-latomic");
-            } else {
-                cfg.define("CMAKE_EXE_LINKER_FLAGS", "-latomic -static-libstdc++");
-            }
-            cfg.define("CMAKE_SHARED_LINKER_FLAGS", "-latomic");
+            ldflags.exe.push(" -latomic");
+            ldflags.shared.push(" -latomic");
         }
 
         if target.contains("msvc") {
@@ -309,7 +327,7 @@ impl Step for Llvm {
 
         // Workaround for ppc32 lld limitation
         if target == "powerpc-unknown-freebsd" {
-            cfg.define("CMAKE_EXE_LINKER_FLAGS", "-fuse-ld=bfd");
+            ldflags.exe.push(" -fuse-ld=bfd");
         }
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
@@ -351,7 +369,11 @@ impl Step for Llvm {
             cfg.define("LLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN", "YES");
         }
 
-        configure_cmake(builder, target, &mut cfg, true);
+        configure_cmake(builder, target, &mut cfg, true, ldflags);
+
+        for (key, val) in &builder.config.llvm_build_config {
+            cfg.define(key, val);
+        }
 
         // FIXME: we don't actually need to build all LLVM tools and all LLVM
         //        libraries here, e.g., we just want a few components and a few
@@ -395,6 +417,7 @@ fn configure_cmake(
     target: TargetSelection,
     cfg: &mut cmake::Config,
     use_compiler_launcher: bool,
+    mut ldflags: LdFlags,
 ) {
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
@@ -503,31 +526,30 @@ fn configure_cmake(
     }
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
-    let mut cflags = builder.cflags(target, GitRepo::Llvm).join(" ");
+    let mut cflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::C).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cflags {
-        cflags.push_str(&format!(" {}", s));
+        cflags.push(" ");
+        cflags.push(s);
     }
     // Some compiler features used by LLVM (such as thread locals) will not work on a min version below iOS 10.
     if target.contains("apple-ios") {
         if target.contains("86-") {
-            cflags.push_str(" -miphonesimulator-version-min=10.0");
+            cflags.push(" -miphonesimulator-version-min=10.0");
         } else {
-            cflags.push_str(" -miphoneos-version-min=10.0");
+            cflags.push(" -miphoneos-version-min=10.0");
         }
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cflags.push_str(&format!(" --target={}", target))
+        cflags.push(&format!(" --target={}", target));
     }
     cfg.define("CMAKE_C_FLAGS", cflags);
-    let mut cxxflags = builder.cflags(target, GitRepo::Llvm).join(" ");
-    if builder.config.llvm_static_stdcpp && !target.contains("msvc") && !target.contains("netbsd") {
-        cxxflags.push_str(" -static-libstdc++");
-    }
+    let mut cxxflags: OsString = builder.cflags(target, GitRepo::Llvm, CLang::Cxx).join(" ").into();
     if let Some(ref s) = builder.config.llvm_cxxflags {
-        cxxflags.push_str(&format!(" {}", s));
+        cxxflags.push(" ");
+        cxxflags.push(s);
     }
     if builder.config.llvm_clang_cl.is_some() {
-        cxxflags.push_str(&format!(" --target={}", target))
+        cxxflags.push(&format!(" --target={}", target));
     }
     cfg.define("CMAKE_CXX_FLAGS", cxxflags);
     if let Some(ar) = builder.ar(target) {
@@ -546,15 +568,31 @@ fn configure_cmake(
         }
     }
 
-    if let Some(ref s) = builder.config.llvm_ldflags {
-        cfg.define("CMAKE_SHARED_LINKER_FLAGS", s);
-        cfg.define("CMAKE_MODULE_LINKER_FLAGS", s);
-        cfg.define("CMAKE_EXE_LINKER_FLAGS", s);
+    if let Some(ref flags) = builder.config.llvm_ldflags {
+        ldflags.push_all(flags);
     }
+
+    if let Some(flags) = get_var("LDFLAGS", &builder.config.build.triple, &target.triple) {
+        ldflags.push_all(&flags);
+    }
+
+    cfg.define("CMAKE_SHARED_LINKER_FLAGS", &ldflags.shared);
+    cfg.define("CMAKE_MODULE_LINKER_FLAGS", &ldflags.module);
+    cfg.define("CMAKE_EXE_LINKER_FLAGS", &ldflags.exe);
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
         cfg.env("RUSTC_LOG", "sccache=warn");
     }
+}
+
+// Adapted from https://github.com/alexcrichton/cc-rs/blob/fba7feded71ee4f63cfe885673ead6d7b4f2f454/src/lib.rs#L2347-L2365
+fn get_var(var_base: &str, host: &str, target: &str) -> Option<OsString> {
+    let kind = if host == target { "HOST" } else { "TARGET" };
+    let target_u = target.replace("-", "_");
+    env::var_os(&format!("{}_{}", var_base, target))
+        .or_else(|| env::var_os(&format!("{}_{}", var_base, target_u)))
+        .or_else(|| env::var_os(&format!("{}_{}", kind, var_base)))
+        .or_else(|| env::var_os(var_base))
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -594,7 +632,7 @@ impl Step for Lld {
         t!(fs::create_dir_all(&out_dir));
 
         let mut cfg = cmake::Config::new(builder.src.join("src/llvm-project/lld"));
-        configure_cmake(builder, target, &mut cfg, true);
+        configure_cmake(builder, target, &mut cfg, true, LdFlags::default());
 
         // This is an awful, awful hack. Discovered when we migrated to using
         // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
@@ -612,8 +650,16 @@ impl Step for Lld {
         // there's probably a lot of reasons you can't do that other than this.
         let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
 
+        // Re-use the same flags as llvm to control the level of debug information
+        // generated for lld.
+        let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
+            (false, _) => "Debug",
+            (true, false) => "Release",
+            (true, true) => "RelWithDebInfo",
+        };
+
         cfg.out_dir(&out_dir)
-            .profile("Release")
+            .profile(profile)
             .env("LLVM_CONFIG_REAL", &llvm_config)
             .define("LLVM_CONFIG_PATH", llvm_config_shim)
             .define("LLVM_INCLUDE_TESTS", "OFF");
@@ -784,7 +830,7 @@ impl Step for Sanitizers {
         // Unfortunately sccache currently lacks support to build them successfully.
         // Disable compiler launcher on Darwin targets to avoid potential issues.
         let use_compiler_launcher = !self.target.contains("apple-darwin");
-        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher);
+        configure_cmake(builder, self.target, &mut cfg, use_compiler_launcher, LdFlags::default());
 
         t!(fs::create_dir_all(&out_dir));
         cfg.out_dir(out_dir);

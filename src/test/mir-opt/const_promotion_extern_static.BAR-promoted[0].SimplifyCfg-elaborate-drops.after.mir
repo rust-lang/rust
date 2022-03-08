@@ -8,9 +8,6 @@ promoted[0] in BAR: &[&i32; 1] = {
 
     bb0: {
         _3 = const {alloc1: &i32};       // scope 0 at $DIR/const-promotion-extern-static.rs:9:33: 9:34
-                                         // ty::Const
-                                         // + ty: &i32
-                                         // + val: Value(Scalar(alloc1))
                                          // mir::Constant
                                          // + span: $DIR/const-promotion-extern-static.rs:9:33: 9:34
                                          // + literal: Const { ty: &i32, val: Value(Scalar(alloc1)) }

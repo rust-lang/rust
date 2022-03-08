@@ -6,9 +6,7 @@ use rustc_expand::base::{self, DummyResult};
 
 /// Emits errors for literal expressions that are invalid inside and outside of an array.
 fn invalid_type_err(cx: &mut base::ExtCtxt<'_>, expr: &P<rustc_ast::Expr>, is_nested: bool) {
-    let lit = if let ast::ExprKind::Lit(lit) = &expr.kind {
-        lit
-    } else {
+    let ast::ExprKind::Lit(lit) = &expr.kind else {
         unreachable!();
     };
     match lit.kind {
@@ -123,9 +121,8 @@ pub fn expand_concat_bytes(
     sp: rustc_span::Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'static> {
-    let es = match base::get_exprs_from_tts(cx, sp, tts) {
-        Some(e) => e,
-        None => return DummyResult::any(sp),
+    let Some(es) = base::get_exprs_from_tts(cx, sp, tts) else {
+        return DummyResult::any(sp);
     };
     let mut accumulator = Vec::new();
     let mut missing_literals = vec![];

@@ -82,11 +82,11 @@ function toggleSidebar() {
     if (child.innerText === ">") {
         sidebar.classList.add("expanded");
         child.innerText = "<";
-        updateLocalStorage("rustdoc-source-sidebar-show", "true");
+        updateLocalStorage("source-sidebar-show", "true");
     } else {
         sidebar.classList.remove("expanded");
         child.innerText = ">";
-        updateLocalStorage("rustdoc-source-sidebar-show", "false");
+        updateLocalStorage("source-sidebar-show", "false");
     }
 }
 
@@ -97,7 +97,7 @@ function createSidebarToggle() {
 
     var inner = document.createElement("div");
 
-    if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
+    if (getCurrentValue("source-sidebar-show") === "true") {
         inner.innerText = "<";
     } else {
         inner.innerText = ">";
@@ -120,7 +120,7 @@ function createSourceSidebar() {
 
     var sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
-    if (getCurrentValue("rustdoc-source-sidebar-show") !== "true") {
+    if (getCurrentValue("source-sidebar-show") !== "true") {
         container.classList.remove("expanded");
     } else {
         container.classList.add("expanded");
@@ -149,7 +149,7 @@ function createSourceSidebar() {
 
 var lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
 
-function highlightSourceLines(scrollTo, match) {
+function highlightSourceLines(match) {
     if (typeof match === "undefined") {
         match = window.location.hash.match(lineNumbersRegex);
     }
@@ -170,11 +170,9 @@ function highlightSourceLines(scrollTo, match) {
     if (!elem) {
         return;
     }
-    if (scrollTo) {
-        var x = document.getElementById(from);
-        if (x) {
-            x.scrollIntoView();
-        }
+    var x = document.getElementById(from);
+    if (x) {
+        x.scrollIntoView();
     }
     onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
         onEachLazy(e.getElementsByTagName("span"), function(i_e) {
@@ -198,7 +196,7 @@ var handleSourceHighlight = (function() {
             y = window.scrollY;
         if (searchState.browserSupportsHistoryApi()) {
             history.replaceState(null, null, "#" + name);
-            highlightSourceLines(true);
+            highlightSourceLines();
         } else {
             location.replace("#" + name);
         }
@@ -230,7 +228,7 @@ var handleSourceHighlight = (function() {
 window.addEventListener("hashchange", function() {
     var match = window.location.hash.match(lineNumbersRegex);
     if (match) {
-        return highlightSourceLines(false, match);
+        return highlightSourceLines(match);
     }
 });
 
@@ -238,7 +236,7 @@ onEachLazy(document.getElementsByClassName("line-numbers"), function(el) {
     el.addEventListener("click", handleSourceHighlight);
 });
 
-highlightSourceLines(true);
+highlightSourceLines();
 
 window.createSourceSidebar = createSourceSidebar;
 })();

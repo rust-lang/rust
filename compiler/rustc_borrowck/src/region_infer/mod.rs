@@ -5,6 +5,7 @@ use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
+use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
@@ -510,7 +511,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         self.universal_regions.annotate(tcx, err)
     }
 
@@ -612,7 +613,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn propagate_constraints(&mut self, _body: &Body<'tcx>) {
         debug!("constraints={:#?}", {
             let mut constraints: Vec<_> = self.constraints.outlives().iter().collect();
-            constraints.sort();
+            constraints.sort_by_key(|c| (c.sup, c.sub));
             constraints
                 .into_iter()
                 .map(|c| (c, self.constraint_sccs.scc(c.sup), self.constraint_sccs.scc(c.sub)))
@@ -913,9 +914,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let TypeTest { generic_kind, lower_bound, locations, verify_bound: _ } = type_test;
 
         let generic_ty = generic_kind.to_ty(tcx);
-        let subject = match self.try_promote_type_test_subject(infcx, generic_ty) {
-            Some(s) => s,
-            None => return false,
+        let Some(subject) = self.try_promote_type_test_subject(infcx, generic_ty) else {
+            return false;
         };
 
         // For each region outlived by lower_bound find a non-local,
@@ -1169,7 +1169,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         match verify_bound {
             VerifyBound::IfEq(test_ty, verify_bound1) => {
-                self.eval_if_eq(tcx, body, generic_ty, lower_bound, test_ty, verify_bound1)
+                self.eval_if_eq(tcx, body, generic_ty, lower_bound, *test_ty, verify_bound1)
             }
 
             VerifyBound::IsEmpty => {
@@ -1178,7 +1178,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::OutlivedBy(r) => {
-                let r_vid = self.to_region_vid(r);
+                let r_vid = self.to_region_vid(*r);
                 self.eval_outlives(r_vid, lower_bound)
             }
 
@@ -1623,15 +1623,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // If we have some bound universal region `'a`, then the only
         // elements it can contain is itself -- we don't know anything
         // else about it!
-        let error_element = match {
+        let Some(error_element) = ({
             self.scc_values.elements_contained_in(longer_fr_scc).find(|element| match element {
                 RegionElement::Location(_) => true,
                 RegionElement::RootUniversalRegion(_) => true,
                 RegionElement::PlaceholderRegion(placeholder1) => placeholder != *placeholder1,
             })
-        } {
-            Some(v) => v,
-            None => return,
+        }) else {
+            return;
         };
         debug!("check_bound_universal_region: error_element = {:?}", error_element);
 
@@ -1993,7 +1992,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .find_map(|constraint| {
                 if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
                     // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
-                    // for perforamnce reasons. The error reporting code used by NLL only
+                    // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
                     Some(ObligationCauseCode::BindingObligation(
                         CRATE_DEF_ID.to_def_id(),

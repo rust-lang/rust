@@ -357,6 +357,7 @@ pub struct Config {
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
+    pub cxxflags: String,
     pub ar: String,
     pub linker: Option<String>,
     pub llvm_components: String,

@@ -5,7 +5,7 @@ use clippy_utils::{meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_ast::ast::{FieldDef, Item, ItemKind, Variant, VariantData, VisibilityKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::{sym, Span};
@@ -116,7 +116,7 @@ fn check_manual_non_exhaustive_enum(cx: &EarlyContext<'_>, item: &Item, variants
                 |diag| {
                     if_chain! {
                         if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive));
-                        let header_span = cx.sess.source_map().span_until_char(item.span, '{');
+                        let header_span = cx.sess().source_map().span_until_char(item.span, '{');
                         if let Some(snippet) = snippet_opt(cx, header_span);
                         then {
                             diag.span_suggestion(
@@ -149,7 +149,7 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &Item, data: 
             VariantData::Unit(_) => unreachable!("`VariantData::Unit` is already handled above"),
         };
 
-        cx.sess.source_map().span_until_char(item.span, delimiter)
+        cx.sess().source_map().span_until_char(item.span, delimiter)
     }
 
     let fields = data.fields();

@@ -15,10 +15,12 @@ unsafe impl Sync for Condvar {}
 pub type MovableCondvar = Condvar;
 
 impl Condvar {
+    #[inline]
     pub const fn new() -> Condvar {
         Condvar { waiters: SpinMutex::new(waiter_queue::WaiterQueue::new()) }
     }
 
+    #[inline]
     pub unsafe fn init(&mut self) {}
 
     pub unsafe fn notify_one(&self) {
@@ -190,7 +192,7 @@ mod waiter_queue {
                     let insert_after = {
                         let mut cursor = head.last;
                         loop {
-                            if waiter.priority <= cursor.as_ref().priority {
+                            if waiter.priority >= cursor.as_ref().priority {
                                 // `cursor` and all previous waiters have the same or higher
                                 // priority than `current_task_priority`. Insert the new
                                 // waiter right after `cursor`.
@@ -206,7 +208,7 @@ mod waiter_queue {
 
                     if let Some(mut insert_after) = insert_after {
                         // Insert `waiter` after `insert_after`
-                        let insert_before = insert_after.as_ref().prev;
+                        let insert_before = insert_after.as_ref().next;
 
                         waiter.prev = Some(insert_after);
                         insert_after.as_mut().next = Some(waiter_ptr);
@@ -214,6 +216,8 @@ mod waiter_queue {
                         waiter.next = insert_before;
                         if let Some(mut insert_before) = insert_before {
                             insert_before.as_mut().prev = Some(waiter_ptr);
+                        } else {
+                            head.last = waiter_ptr;
                         }
                     } else {
                         // Insert `waiter` to the front
@@ -240,11 +244,11 @@ mod waiter_queue {
                     match (waiter.prev, waiter.next) {
                         (Some(mut prev), Some(mut next)) => {
                             prev.as_mut().next = Some(next);
-                            next.as_mut().next = Some(prev);
+                            next.as_mut().prev = Some(prev);
                         }
                         (None, Some(mut next)) => {
                             head.first = next;
-                            next.as_mut().next = None;
+                            next.as_mut().prev = None;
                         }
                         (Some(mut prev), None) => {
                             prev.as_mut().next = None;
@@ -271,6 +275,7 @@ mod waiter_queue {
             unsafe { waiter.as_ref().task != 0 }
         }
 
+        #[inline]
         pub fn pop_front(&mut self) -> Option<abi::ID> {
             unsafe {
                 let head = self.head.as_mut()?;

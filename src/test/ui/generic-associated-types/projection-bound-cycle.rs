@@ -24,7 +24,7 @@ impl Foo for Number {
     // }
     // ```
     // which it is :)
-    type Item where str: Sized = str;
+    type Item = str where str: Sized;
 }
 
 struct OnlySized<T> where T: Sized { f: T }

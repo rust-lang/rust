@@ -232,7 +232,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                 fn into_diagnostic(
                     self,
                     #sess: &'__session_diagnostic_sess rustc_session::Session
-                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess> {
+                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, rustc_errors::ErrorGuaranteed> {
                     #implementation
                 }
             }
@@ -587,7 +587,6 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         // next call to `it.next()` retrieves the next character.
         while let Some(c) = it.next() {
             if c == '{' && *it.peek().unwrap_or(&'\0') != '{' {
-                #[must_use]
                 let mut eat_argument = || -> Option<String> {
                     let mut result = String::new();
                     // Format specifiers look like

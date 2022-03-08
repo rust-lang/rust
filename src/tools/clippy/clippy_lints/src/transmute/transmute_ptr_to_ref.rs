@@ -14,7 +14,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
     qpath: &'tcx QPath<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
                     from_ty, to_ty
                 ),
                 |diag| {
-                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                    let arg = sugg::Sugg::hir(cx, arg, "..");
                     let (deref, cast) = if *mutbl == Mutability::Mut {
                         ("&mut *", "*mut")
                     } else {
@@ -38,7 +38,7 @@ pub(super) fn check<'tcx>(
                     let arg = if from_ptr_ty.ty == *to_ref_ty {
                         arg
                     } else {
-                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, to_ref_ty)))
+                        arg.as_ty(&format!("{} {}", cast, get_type_snippet(cx, qpath, *to_ref_ty)))
                     };
 
                     diag.span_suggestion(

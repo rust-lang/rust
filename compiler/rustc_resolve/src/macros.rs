@@ -11,7 +11,7 @@ use rustc_ast_lowering::ResolverAstLowering;
 use rustc_ast_pretty::pprust;
 use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::ptr_key::PtrKey;
+use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
@@ -23,7 +23,7 @@ use rustc_hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, LocalDefId};
 use rustc_hir::PrimTy;
 use rustc_middle::middle::stability;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, RegisteredTools};
 use rustc_session::lint::builtin::{LEGACY_DERIVE_HELPERS, PROC_MACRO_DERIVE_RESOLUTION_FALLBACK};
 use rustc_session::lint::builtin::{SOFT_UNSTABLE, UNUSED_MACROS};
 use rustc_session::lint::BuiltinLintDiagnostics;
@@ -71,7 +71,7 @@ pub enum MacroRulesScope<'a> {
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
 /// which usually grow lineraly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
-pub(crate) type MacroRulesScopeRef<'a> = PtrKey<'a, Cell<MacroRulesScope<'a>>>;
+pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>;
 
 // Macro namespace is separated into two sub-namespaces, one for bang macros and
 // one for attribute-like macros (attributes, derives).
@@ -446,6 +446,10 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
     fn declare_proc_macro(&mut self, id: NodeId) {
         self.proc_macros.push(id)
+    }
+
+    fn registered_tools(&self) -> &RegisteredTools {
+        &self.registered_tools
     }
 }
 
@@ -1205,7 +1209,13 @@ impl<'a> Resolver<'a> {
                 // while still taking everything else from the source code.
                 // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
                 match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(item.span)) {
-                    BuiltinMacroState::NotYetSeen(ext) => result.kind = ext,
+                    BuiltinMacroState::NotYetSeen(ext) => {
+                        result.kind = ext;
+                        if item.id != ast::DUMMY_NODE_ID {
+                            self.builtin_macro_kinds
+                                .insert(self.local_def_id(item.id), result.macro_kind());
+                        }
+                    }
                     BuiltinMacroState::AlreadySeen(span) => {
                         struct_span_err!(
                             self.session,

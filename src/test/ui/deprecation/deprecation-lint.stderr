@@ -46,19 +46,19 @@ error: use of deprecated struct `deprecation_lint::DeprecatedStruct`: text
 LL |         let _ = DeprecatedStruct {
    |                 ^^^^^^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::DeprecatedUnitStruct`: text
+error: use of deprecated unit struct `deprecation_lint::DeprecatedUnitStruct`: text
   --> $DIR/deprecation-lint.rs:38:17
    |
 LL |         let _ = DeprecatedUnitStruct;
    |                 ^^^^^^^^^^^^^^^^^^^^
 
-error: use of deprecated variant `deprecation_lint::Enum::DeprecatedVariant`: text
+error: use of deprecated unit variant `deprecation_lint::Enum::DeprecatedVariant`: text
   --> $DIR/deprecation-lint.rs:40:23
    |
 LL |         let _ = Enum::DeprecatedVariant;
    |                       ^^^^^^^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::DeprecatedTupleStruct`: text
+error: use of deprecated tuple struct `deprecation_lint::DeprecatedTupleStruct`: text
   --> $DIR/deprecation-lint.rs:42:17
    |
 LL |         let _ = DeprecatedTupleStruct (1);
@@ -70,19 +70,19 @@ error: use of deprecated struct `deprecation_lint::nested::DeprecatedStruct`: te
 LL |         let _ = nested::DeprecatedStruct {
    |                         ^^^^^^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
+error: use of deprecated unit struct `deprecation_lint::nested::DeprecatedUnitStruct`: text
   --> $DIR/deprecation-lint.rs:48:25
    |
 LL |         let _ = nested::DeprecatedUnitStruct;
    |                         ^^^^^^^^^^^^^^^^^^^^
 
-error: use of deprecated variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
+error: use of deprecated unit variant `deprecation_lint::nested::Enum::DeprecatedVariant`: text
   --> $DIR/deprecation-lint.rs:50:31
    |
 LL | ...   let _ = nested::Enum::DeprecatedVariant;
    |                             ^^^^^^^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
+error: use of deprecated tuple struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
   --> $DIR/deprecation-lint.rs:52:25
    |
 LL | ...   let _ = nested::DeprecatedTupleStruct (1);
@@ -154,19 +154,19 @@ error: use of deprecated struct `deprecation_lint::Deprecated`: text
 LL |         let Deprecated
    |             ^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::Deprecated2`: text
+error: use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
   --> $DIR/deprecation-lint.rs:132:17
    |
 LL |         let x = Deprecated2(1, 2, 3);
    |                 ^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::Deprecated2`: text
+error: use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
   --> $DIR/deprecation-lint.rs:142:13
    |
 LL |         let Deprecated2
    |             ^^^^^^^^^^^
 
-error: use of deprecated struct `deprecation_lint::Deprecated2`: text
+error: use of deprecated tuple struct `deprecation_lint::Deprecated2`: text
   --> $DIR/deprecation-lint.rs:151:13
    |
 LL |         let Deprecated2

@@ -186,7 +186,7 @@ pub(super) fn check<'tcx>(
 
 fn is_len_call(expr: &Expr<'_>, var: Symbol) -> bool {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, len_args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, len_args, _) = expr.kind;
         if len_args.len() == 1;
         if method.ident.name == sym::len;
         if let ExprKind::Path(QPath::Resolved(_, path)) = len_args[0].kind;
@@ -296,7 +296,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if_chain! {
             // a range index op
-            if let ExprKind::MethodCall(meth, _, [args_0, args_1, ..], _) = &expr.kind;
+            if let ExprKind::MethodCall(meth, [args_0, args_1, ..], _) = &expr.kind;
             if (meth.ident.name == sym::index && match_trait_method(self.cx, expr, &paths::INDEX))
                 || (meth.ident.name == sym::index_mut && match_trait_method(self.cx, expr, &paths::INDEX_MUT));
             if !self.check(args_1, args_0, expr);
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     self.visit_expr(expr);
                 }
             },
-            ExprKind::MethodCall(_, _, args, _) => {
+            ExprKind::MethodCall(_, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(self.cx.tcx.fn_sig(def_id).inputs().skip_binder(), args) {
                     self.prefer_mutable = false;

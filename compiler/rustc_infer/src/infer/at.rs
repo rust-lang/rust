@@ -51,6 +51,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> At<'a, 'tcx> {
         At { infcx: self, cause, param_env }
     }
+
+    /// Forks the inference context, creating a new inference context with the same inference
+    /// variables in the same state. This can be used to "branch off" many tests from the same
+    /// common state. Used in coherence.
+    pub fn fork(&self) -> Self {
+        Self {
+            tcx: self.tcx.clone(),
+            defining_use_anchor: self.defining_use_anchor.clone(),
+            in_progress_typeck_results: self.in_progress_typeck_results.clone(),
+            inner: self.inner.clone(),
+            skip_leak_check: self.skip_leak_check.clone(),
+            lexical_region_resolutions: self.lexical_region_resolutions.clone(),
+            selection_cache: self.selection_cache.clone(),
+            evaluation_cache: self.evaluation_cache.clone(),
+            reported_trait_errors: self.reported_trait_errors.clone(),
+            reported_closure_mismatch: self.reported_closure_mismatch.clone(),
+            tainted_by_errors_flag: self.tainted_by_errors_flag.clone(),
+            err_count_on_creation: self.err_count_on_creation,
+            in_snapshot: self.in_snapshot.clone(),
+            universe: self.universe.clone(),
+        }
+    }
 }
 
 pub trait ToTrace<'tcx>: Relate<'tcx> + Copy {
@@ -258,7 +280,10 @@ impl<'tcx> ToTrace<'tcx> for Ty<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Types(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
     }
 }
 
@@ -274,7 +299,7 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
+impl<'tcx> ToTrace<'tcx> for Const<'tcx> {
     fn to_trace(
         _: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -282,7 +307,22 @@ impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        TypeTrace { cause: cause.clone(), values: Consts(ExpectedFound::new(a_is_expected, a, b)) }
+        TypeTrace {
+            cause: cause.clone(),
+            values: Terms(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::Term<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace { cause: cause.clone(), values: Terms(ExpectedFound::new(a_is_expected, a, b)) }
     }
 }
 
@@ -328,7 +368,7 @@ impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
         let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
         TypeTrace {
             cause: cause.clone(),
-            values: Types(ExpectedFound::new(a_is_expected, a_ty, b_ty)),
+            values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),
         }
     }
 }

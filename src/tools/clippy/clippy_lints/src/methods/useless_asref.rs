@@ -23,8 +23,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             // allow the `as_ref` or `as_mut` if it is followed by another method call
             if_chain! {
                 if let Some(parent) = get_parent_expr(cx, expr);
-                if let hir::ExprKind::MethodCall(_, ref span, _, _) = parent.kind;
-                if span != &expr.span;
+                if let hir::ExprKind::MethodCall(segment, ..) = parent.kind;
+                if segment.ident.span != expr.span;
                 then {
                     return;
                 }

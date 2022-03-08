@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
-use clippy_utils::{get_trait_def_id, higher, is_qpath_def_path, paths};
+use clippy_utils::{higher, match_def_path, path_def_id, paths};
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -145,7 +145,7 @@ const HEURISTICS: [(&str, usize, Heuristic, Finiteness); 19] = [
 
 fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(method, _, args, _) => {
+        ExprKind::MethodCall(method, args, _) => {
             for &(name, len, heuristic, cap) in &HEURISTICS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return (match heuristic {
@@ -167,13 +167,9 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
         },
         ExprKind::Block(block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprKind::Box(e) | ExprKind::AddrOf(BorrowKind::Ref, _, e) => is_infinite(cx, e),
-        ExprKind::Call(path, _) => {
-            if let ExprKind::Path(ref qpath) = path.kind {
-                is_qpath_def_path(cx, qpath, path.hir_id, &paths::ITER_REPEAT).into()
-            } else {
-                Finite
-            }
-        },
+        ExprKind::Call(path, _) => path_def_id(cx, path)
+            .map_or(false, |id| match_def_path(cx, id, &paths::ITER_REPEAT))
+            .into(),
         ExprKind::Struct(..) => higher::Range::hir(expr).map_or(false, |r| r.end.is_none()).into(),
         _ => Finite,
     }
@@ -221,7 +217,7 @@ const INFINITE_COLLECTORS: &[Symbol] = &[
 
 fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
     match expr.kind {
-        ExprKind::MethodCall(method, _, args, _) => {
+        ExprKind::MethodCall(method, args, _) => {
             for &(name, len) in &COMPLETING_METHODS {
                 if method.ident.name.as_str() == name && args.len() == len {
                     return is_infinite(cx, &args[0]);
@@ -233,9 +229,12 @@ fn complete_infinite_iter(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
                 }
             }
             if method.ident.name == sym!(last) && args.len() == 1 {
-                let not_double_ended = get_trait_def_id(cx, &paths::DOUBLE_ENDED_ITERATOR).map_or(false, |id| {
-                    !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
-                });
+                let not_double_ended = cx
+                    .tcx
+                    .get_diagnostic_item(sym::DoubleEndedIterator)
+                    .map_or(false, |id| {
+                        !implements_trait(cx, cx.typeck_results().expr_ty(&args[0]), id, &[])
+                    });
                 if not_double_ended {
                     return is_infinite(cx, &args[0]);
                 }

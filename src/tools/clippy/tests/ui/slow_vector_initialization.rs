@@ -53,7 +53,7 @@ fn resize_vector() {
     vec1.resize(10, 0);
 }
 
-fn do_stuff(vec: &mut Vec<u8>) {}
+fn do_stuff(vec: &mut [u8]) {}
 
 fn extend_vector_with_manipulations_between() {
     let len = 300;

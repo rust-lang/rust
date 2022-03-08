@@ -1,3 +1,5 @@
+// Checks that the first non-empty search result tab is selected if the default/currently selected
+// one is empty.
 goto: file://|DOC_PATH|/test_docs/index.html
 write: (".search-input", "Foo")
 // Waiting for the search results to appear...

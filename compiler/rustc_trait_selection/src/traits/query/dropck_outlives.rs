@@ -43,21 +43,19 @@ impl<'cx, 'tcx> AtExt<'tcx> for At<'cx, 'tcx> {
         let c_ty = self.infcx.canonicalize_query(self.param_env.and(ty), &mut orig_values);
         let span = self.cause.span;
         debug!("c_ty = {:?}", c_ty);
-        if let Ok(result) = tcx.dropck_outlives(c_ty) {
-            if result.is_proven() {
-                if let Ok(InferOk { value, obligations }) =
-                    self.infcx.instantiate_query_response_and_region_obligations(
-                        self.cause,
-                        self.param_env,
-                        &orig_values,
-                        result,
-                    )
-                {
-                    let ty = self.infcx.resolve_vars_if_possible(ty);
-                    let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
-                    return InferOk { value: kinds, obligations };
-                }
-            }
+        if let Ok(result) = tcx.dropck_outlives(c_ty)
+            && result.is_proven()
+            && let Ok(InferOk { value, obligations }) =
+                self.infcx.instantiate_query_response_and_region_obligations(
+                    self.cause,
+                    self.param_env,
+                    &orig_values,
+                    result,
+                )
+        {
+            let ty = self.infcx.resolve_vars_if_possible(ty);
+            let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
+            return InferOk { value: kinds, obligations };
         }
 
         // Errors and ambiuity in dropck occur in two cases:
@@ -104,11 +102,11 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         | ty::Error(_) => true,
 
         // [T; N] and [T] have same properties as T.
-        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, ty),
+        ty::Array(ty, _) | ty::Slice(ty) => trivial_dropck_outlives(tcx, *ty),
 
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *any* of those are trivial.
-        ty::Tuple(ref tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t.expect_ty())),
+        ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
         ty::Closure(_, ref substs) => {
             trivial_dropck_outlives(tcx, substs.as_closure().tupled_upvars_ty())
         }

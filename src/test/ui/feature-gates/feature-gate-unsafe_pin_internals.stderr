@@ -1,0 +1,14 @@
+error: the feature `unsafe_pin_internals` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/feature-gate-unsafe_pin_internals.rs:3:12
+   |
+LL | #![feature(unsafe_pin_internals)]
+   |            ^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/feature-gate-unsafe_pin_internals.rs:2:11
+   |
+LL | #![forbid(incomplete_features, unsafe_code)]
+   |           ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

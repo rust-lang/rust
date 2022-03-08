@@ -499,7 +499,7 @@ mod dist {
         let host = TargetSelection::from_user("A");
 
         builder.run_step_descriptions(
-            &[StepDescription::from::<test::Crate>()],
+            &[StepDescription::from::<test::Crate>(Kind::Test)],
             &["library/std".into()],
         );
 
@@ -520,7 +520,7 @@ mod dist {
     #[test]
     fn test_exclude() {
         let mut config = configure(&["A"], &["A"]);
-        config.exclude = vec!["src/tools/tidy".into()];
+        config.exclude = vec![TaskPath::parse("src/tools/tidy")];
         config.cmd = Subcommand::Test {
             paths: Vec::new(),
             test_args: Vec::new(),

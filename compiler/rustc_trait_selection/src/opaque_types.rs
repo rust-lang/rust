@@ -141,7 +141,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r {
+        match *r {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
             // from the function declaraion.
@@ -287,10 +287,10 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         }
     }
 
-    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
-        match ct.val {
+        match ct.val() {
             ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
@@ -311,7 +311,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
                             )
                             .emit();
 
-                        self.tcx().const_error(ct.ty)
+                        self.tcx().const_error(ct.ty())
                     }
                 }
             }
