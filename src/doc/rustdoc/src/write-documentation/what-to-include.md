@@ -122,4 +122,4 @@ Here is an example of a new theme, [Ayu].
 [API Guidelines]: https://rust-lang.github.io/api-guidelines/documentation.html#rustdoc-does-not-show-unhelpful-implementation-details-c-hidden
 [Documentation tests]: documentation-tests.md
 [on this blog]: https://blog.guillaume-gomez.fr/articles/2016-09-16+Generating+doc+with+rustdoc+and+a+custom+theme
-[rustdoc-lints]: lints.md
+[rustdoc-lints]: ../lints.md

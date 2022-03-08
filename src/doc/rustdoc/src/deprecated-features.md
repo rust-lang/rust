@@ -1,4 +1,6 @@
-# Passes
+# Deprecated features
+
+## Passes
 
 Rustdoc has a concept called "passes". These are transformations that
 `rustdoc` runs on your documentation before producing its final output.
