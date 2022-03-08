@@ -105,7 +105,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // which we pass to user code.
         let fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(fn_instance));
 
-        let num_fields = dest.layout.layout.fields.count();
+        let num_fields = dest.layout.fields.count();
 
         if !(4..=5).contains(&num_fields) {
             // Always mention 5 fields, since the 4-field struct
