@@ -1,88 +1,67 @@
 // run-rustfix
 #![warn(clippy::nop_match)]
 #![allow(clippy::manual_map)]
-#![allow(clippy::question_mark)]
 #![allow(dead_code)]
 
-fn func_ret_err<T>(err: T) -> Result<(), T> {
-    Err(err)
-}
-
-enum SampleEnum {
+enum Choice {
     A,
     B,
     C,
+    D,
 }
 
-fn useless_prim_type_match(x: i32) -> i32 {
-    x
+fn useless_match(x: i32) {
+    let _: i32 = x;
 }
 
-fn useless_custom_type_match(se: SampleEnum) -> SampleEnum {
-    se
+fn custom_type_match(se: Choice) {
+    let _: Choice = se;
+    // Don't trigger
+    let _: Choice = match se {
+        Choice::A => Choice::A,
+        Choice::B => Choice::B,
+        _ => Choice::C,
+    };
+    // Mingled, don't trigger
+    let _: Choice = match se {
+        Choice::A => Choice::B,
+        Choice::B => Choice::C,
+        Choice::C => Choice::D,
+        Choice::D => Choice::A,
+    };
 }
 
-// Don't trigger
-fn mingled_custom_type(se: SampleEnum) -> SampleEnum {
-    match se {
-        SampleEnum::A => SampleEnum::B,
-        SampleEnum::B => SampleEnum::C,
-        SampleEnum::C => SampleEnum::A,
-    }
+fn option_match(x: Option<i32>) {
+    let _: Option<i32> = x;
+    // Don't trigger, this is the case for manual_map_option
+    let _: Option<i32> = match x {
+        Some(a) => Some(-a),
+        None => None,
+    };
 }
 
-fn option_match() -> Option<i32> {
+fn func_ret_err<T>(err: T) -> Result<i32, T> {
+    Err(err)
+}
+
+fn result_match() {
+    let _: Result<i32, i32> = Ok(1);
+    let _: Result<i32, i32> = func_ret_err(0_i32);
+}
+
+fn if_let_option() -> Option<i32> {
     Some(1)
 }
 
-fn result_match() -> Result<i32, i32> {
-    Ok(1)
+fn if_let_result(x: Result<(), i32>) {
+    let _: Result<(), i32> = x;
+    let _: Result<(), i32> = x;
+    // Input type mismatch, don't trigger
+    let _: Result<(), i32> = if let Err(e) = Ok(1) { Err(e) } else { x };
 }
 
-fn result_match_func_call() {
-    let _ = func_ret_err(0_i32);
-}
-
-fn option_check() -> Option<i32> {
-    if let Some(a) = Some(1) { Some(a) } else { None }
-}
-
-fn option_check_no_else() -> Option<i32> {
-    if let Some(a) = Some(1) {
-        return Some(a);
-    }
-    None
-}
-
-fn result_check_no_else() -> Result<(), i32> {
-    if let Err(e) = func_ret_err(0_i32) {
-        return Err(e);
-    }
-    Ok(())
-}
-
-fn result_check_a() -> Result<(), i32> {
-    if let Err(e) = func_ret_err(0_i32) {
-        Err(e)
-    } else {
-        Ok(())
-    }
-}
-
-// Don't trigger
-fn result_check_b() -> Result<(), i32> {
-    if let Err(e) = Ok(1) { Err(e) } else { Ok(()) }
-}
-
-fn result_check_c() -> Result<(), i32> {
-    let example = Ok(());
-    if let Err(e) = example { Err(e) } else { example }
-}
-
-// Don't trigger
-fn result_check_d() -> Result<(), i32> {
-    let example = Ok(1);
-    if let Err(e) = example { Err(e) } else { Ok(()) }
+fn custom_enum_a(x: Choice) -> Choice {
+    x
 }
 
 fn main() {}

@@ -1,25 +1,13 @@
-#![allow(unused_variables)]
 use super::NOP_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::{eq_expr_value, get_parent_expr};
+use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{eq_expr_value, get_parent_expr, higher, is_else_clause, is_lang_ctor, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, PathSegment, QPath};
+use rustc_hir::LangItem::OptionNone;
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
-
-pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
-    if false {
-        span_lint_and_sugg(
-            cx,
-            NOP_MATCH,
-            ex.span,
-            "this if-let expression is unnecessary",
-            "replace it with",
-            "".to_string(),
-            Applicability::MachineApplicable,
-        );
-    }
-}
+use rustc_span::sym;
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     // This is for avoiding collision with `match_single_binding`.
@@ -52,6 +40,70 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>])
     }
 }
 
+/// Check for nop `if let` expression that assembled as unnecessary match
+///
+/// ```rust,ignore
+/// if let Some(a) = option {
+///     Some(a)
+/// } else {
+///     None
+/// }
+/// ```
+/// OR
+/// ```rust,ignore
+/// if let SomeEnum::A = some_enum {
+///     SomeEnum::A
+/// } else if let SomeEnum::B = some_enum {
+///     SomeEnum::B
+/// } else {
+///     some_enum
+/// }
+/// ```
+pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
+    if_chain! {
+        if let Some(ref if_let) = higher::IfLet::hir(cx, ex);
+        if !is_else_clause(cx.tcx, ex);
+        if check_if_let(cx, if_let);
+        then {
+            let mut applicability = Applicability::MachineApplicable;
+            span_lint_and_sugg(
+                cx,
+                NOP_MATCH,
+                ex.span,
+                "this if-let expression is unnecessary",
+                "replace it with",
+                snippet_with_applicability(cx, if_let.let_expr.span, "..", &mut applicability).to_string(),
+                applicability,
+            );
+        }
+    }
+}
+
+fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
+    if let Some(else_block) = if_let.if_else {
+        if !pat_same_as_expr(if_let.let_pat, peel_blocks_with_stmt(if_let.if_then)) {
+            return false;
+        }
+
+        let else_expr = peel_blocks_with_stmt(else_block);
+        // Recurrsively check for each `else if let` phrase,
+        if let Some(ref nested_if_let) = higher::IfLet::hir(cx, else_expr) {
+            return check_if_let(cx, nested_if_let);
+        }
+        let ret = strip_return(else_expr);
+        let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
+        if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
+            if let ExprKind::Path(ref qpath) = ret.kind {
+                return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
+            }
+        } else {
+            return eq_expr_value(cx, if_let.let_expr, ret);
+        }
+        return true;
+    }
+    false
+}
+
 fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
     if let ExprKind::Ret(Some(ret)) = expr.kind {
         ret
@@ -68,7 +120,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
             ExprKind::Call(call_expr, [first_param, ..]),
         ) => {
             if let ExprKind::Path(QPath::Resolved(_, call_path)) = call_expr.kind {
-                if is_identical_segments(path.segments, call_path.segments)
+                if has_identical_segments(path.segments, call_path.segments)
                     && has_same_non_ref_symbol(first_pat, first_param)
                 {
                     return true;
@@ -76,7 +128,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
             }
         },
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
-            return is_identical_segments(p_path.segments, e_path.segments);
+            return has_identical_segments(p_path.segments, e_path.segments);
         },
         (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
             if let ExprKind::Lit(pat_spanned) = &pat_lit_expr.kind {
@@ -89,7 +141,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     false
 }
 
-fn is_identical_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegment<'_>]) -> bool {
+fn has_identical_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegment<'_>]) -> bool {
     if left_segs.len() != right_segs.len() {
         return false;
     }
@@ -105,8 +157,7 @@ fn has_same_non_ref_symbol(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     if_chain! {
         if let PatKind::Binding(annot, _, pat_ident, _) = pat.kind;
         if !matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
-        if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind;
-        if let Some(first_seg) = path.segments.first();
+        if let ExprKind::Path(QPath::Resolved(_, Path {segments: [first_seg, ..], .. })) = expr.kind;
         then {
             return pat_ident.name == first_seg.ident.name;
         }

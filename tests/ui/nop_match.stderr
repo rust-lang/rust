@@ -1,53 +1,88 @@
 error: this match expression is unnecessary
-  --> $DIR/nop_match.rs:18:5
+  --> $DIR/nop_match.rs:14:18
    |
-LL | /     match x {
+LL |       let _: i32 = match x {
+   |  __________________^
 LL | |         0 => 0,
 LL | |         1 => 1,
 LL | |         2 => 2,
 LL | |         _ => x,
-LL | |     }
+LL | |     };
    | |_____^ help: replace it with: `x`
    |
    = note: `-D clippy::nop-match` implied by `-D warnings`
 
 error: this match expression is unnecessary
-  --> $DIR/nop_match.rs:27:5
+  --> $DIR/nop_match.rs:23:21
    |
-LL | /     match se {
-LL | |         SampleEnum::A => SampleEnum::A,
-LL | |         SampleEnum::B => SampleEnum::B,
-LL | |         SampleEnum::C => SampleEnum::C,
-LL | |     }
+LL |       let _: Choice = match se {
+   |  _____________________^
+LL | |         Choice::A => Choice::A,
+LL | |         Choice::B => Choice::B,
+LL | |         Choice::C => Choice::C,
+LL | |         Choice::D => Choice::D,
+LL | |     };
    | |_____^ help: replace it with: `se`
 
 error: this match expression is unnecessary
-  --> $DIR/nop_match.rs:44:5
+  --> $DIR/nop_match.rs:45:26
    |
-LL | /     match Some(1) {
+LL |       let _: Option<i32> = match x {
+   |  __________________________^
 LL | |         Some(a) => Some(a),
 LL | |         None => None,
-LL | |     }
-   | |_____^ help: replace it with: `Some(1)`
+LL | |     };
+   | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/nop_match.rs:51:5
+  --> $DIR/nop_match.rs:61:31
    |
-LL | /     match Ok(1) {
-LL | |         Ok(a) => Ok(a),
-LL | |         Err(err) => Err(err),
-LL | |     }
-   | |_____^ help: replace it with: `Ok(1)`
-
-error: this match expression is unnecessary
-  --> $DIR/nop_match.rs:58:13
-   |
-LL |       let _ = match func_ret_err(0_i32) {
-   |  _____________^
+LL |       let _: Result<i32, i32> = match Ok(1) {
+   |  _______________________________^
 LL | |         Ok(a) => Ok(a),
 LL | |         Err(err) => Err(err),
 LL | |     };
+   | |_____^ help: replace it with: `Ok(1)`
+
+error: this match expression is unnecessary
+  --> $DIR/nop_match.rs:65:31
+   |
+LL |       let _: Result<i32, i32> = match func_ret_err(0_i32) {
+   |  _______________________________^
+LL | |         Err(err) => Err(err),
+LL | |         Ok(a) => Ok(a),
+LL | |     };
    | |_____^ help: replace it with: `func_ret_err(0_i32)`
 
-error: aborting due to 5 previous errors
+error: this if-let expression is unnecessary
+  --> $DIR/nop_match.rs:72:5
+   |
+LL |     if let Some(a) = Some(1) { Some(a) } else { None }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
+
+error: this if-let expression is unnecessary
+  --> $DIR/nop_match.rs:76:30
+   |
+LL |     let _: Result<(), i32> = if let Err(e) = x { Err(e) } else { x };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+
+error: this if-let expression is unnecessary
+  --> $DIR/nop_match.rs:77:30
+   |
+LL |     let _: Result<(), i32> = if let Ok(val) = x { Ok(val) } else { x };
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+
+error: this if-let expression is unnecessary
+  --> $DIR/nop_match.rs:83:5
+   |
+LL | /     if let Choice::A = x {
+LL | |         Choice::A
+LL | |     } else if let Choice::B = x {
+LL | |         Choice::B
+...  |
+LL | |         x
+LL | |     }
+   | |_____^ help: replace it with: `x`
+
+error: aborting due to 9 previous errors
 
