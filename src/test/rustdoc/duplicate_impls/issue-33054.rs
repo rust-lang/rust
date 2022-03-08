@@ -1,3 +1,5 @@
+// ignore-tidy-linelength
+
 // @has issue_33054/impls/struct.Foo.html
 // @has - '//h3[@class="code-header in-band"]' 'impl Foo'
 // @has - '//h3[@class="code-header in-band"]' 'impl Bar for Foo'

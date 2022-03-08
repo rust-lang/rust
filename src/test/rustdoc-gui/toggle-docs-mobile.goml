@@ -14,7 +14,7 @@ assert-attribute: (".top-doc", {"open": ""})
 // Assert the position of the toggle on the top doc block.
 assert-position: (".top-doc summary::before", {"x": 4})
 // Assert the position of the toggle on the impl block.
-assert-position: ("#implementations + details > summary::before", {"x": 4})
+assert-position: ("#implementations-list > details > summary::before", {"x": 4})
 // Assert the position of the toggle on a method.
 assert-position: (
     "#trait-implementations-list .impl-items .method-toggle > summary::before",
