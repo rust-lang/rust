@@ -617,7 +617,9 @@ pub fn type_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll 
         ty::RawPtr(ty::TypeAndMut { ty: pointee_type, .. }) | ty::Ref(_, pointee_type, _) => {
             pointer_or_reference_metadata(cx, t, pointee_type, unique_type_id)
         }
-        ty::Adt(def, _) if def.is_box() => {
+        // Box<T, A> may have a non-ZST allocator A. In that case, we
+        // cannot treat Box<T, A> as just an owned alias of `*mut T`.
+        ty::Adt(def, substs) if def.is_box() && cx.layout_of(substs.type_at(1)).is_zst() => {
             pointer_or_reference_metadata(cx, t, t.boxed_ty(), unique_type_id)
         }
         ty::FnDef(..) | ty::FnPtr(_) => subroutine_type_metadata(cx, unique_type_id),
