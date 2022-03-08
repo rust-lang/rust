@@ -231,6 +231,7 @@
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(async_iterator)]
+#![feature(atomic_mut_ptr)]
 #![feature(bench_black_box)]
 #![feature(box_syntax)]
 #![feature(c_unwind)]
