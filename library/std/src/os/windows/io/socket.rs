@@ -1,6 +1,6 @@
 //! Owned and borrowed OS sockets.
 
-#![unstable(feature = "io_safety", issue = "87074")]
+#![stable(feature = "io_safety", since = "1.63.0")]
 
 use super::raw::{AsRawSocket, FromRawSocket, IntoRawSocket, RawSocket};
 use crate::fmt;
@@ -36,7 +36,7 @@ use crate::sys::cvt;
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
 #[rustc_nonnull_optimization_guaranteed]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub struct BorrowedSocket<'socket> {
     socket: RawSocket,
     _phantom: PhantomData<&'socket OwnedSocket>,
@@ -59,7 +59,7 @@ pub struct BorrowedSocket<'socket> {
     rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FF_FF_FF_FF_FE)
 )]
 #[rustc_nonnull_optimization_guaranteed]
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub struct OwnedSocket {
     socket: RawSocket,
 }
@@ -73,7 +73,8 @@ impl BorrowedSocket<'_> {
     /// the returned `BorrowedSocket`, and it must not have the value
     /// `INVALID_SOCKET`.
     #[inline]
-    #[unstable(feature = "io_safety", issue = "87074")]
+    #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
         assert!(socket != c::INVALID_SOCKET as RawSocket);
         Self { socket, _phantom: PhantomData }
@@ -83,6 +84,7 @@ impl BorrowedSocket<'_> {
 impl OwnedSocket {
     /// Creates a new `OwnedSocket` instance that shares the same underlying socket
     /// as the existing `OwnedSocket` instance.
+    #[stable(feature = "io_safety", since = "1.63.0")]
     pub fn try_clone(&self) -> io::Result<Self> {
         let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
         let result = unsafe {
@@ -152,6 +154,7 @@ fn last_error() -> io::Error {
     io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsRawSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
@@ -159,6 +162,7 @@ impl AsRawSocket for BorrowedSocket<'_> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsRawSocket for OwnedSocket {
     #[inline]
     fn as_raw_socket(&self) -> RawSocket {
@@ -166,6 +170,7 @@ impl AsRawSocket for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl IntoRawSocket for OwnedSocket {
     #[inline]
     fn into_raw_socket(self) -> RawSocket {
@@ -175,6 +180,7 @@ impl IntoRawSocket for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl FromRawSocket for OwnedSocket {
     #[inline]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
@@ -183,6 +189,7 @@ impl FromRawSocket for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl Drop for OwnedSocket {
     #[inline]
     fn drop(&mut self) {
@@ -192,12 +199,14 @@ impl Drop for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Debug for BorrowedSocket<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowedSocket").field("socket", &self.socket).finish()
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl fmt::Debug for OwnedSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("OwnedSocket").field("socket", &self.socket).finish()
@@ -205,13 +214,14 @@ impl fmt::Debug for OwnedSocket {
 }
 
 /// A trait to borrow the socket from an underlying object.
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 pub trait AsSocket {
     /// Borrows the socket.
+    #[stable(feature = "io_safety", since = "1.63.0")]
     fn as_socket(&self) -> BorrowedSocket<'_>;
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T: AsSocket> AsSocket for &T {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -219,7 +229,7 @@ impl<T: AsSocket> AsSocket for &T {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl<T: AsSocket> AsSocket for &mut T {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -227,6 +237,7 @@ impl<T: AsSocket> AsSocket for &mut T {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for BorrowedSocket<'_> {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -234,6 +245,7 @@ impl AsSocket for BorrowedSocket<'_> {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for OwnedSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -244,6 +256,7 @@ impl AsSocket for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for crate::net::TcpStream {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -251,6 +264,7 @@ impl AsSocket for crate::net::TcpStream {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::TcpStream> for OwnedSocket {
     #[inline]
     fn from(tcp_stream: crate::net::TcpStream) -> OwnedSocket {
@@ -258,6 +272,7 @@ impl From<crate::net::TcpStream> for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::TcpStream {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
@@ -265,6 +280,7 @@ impl From<OwnedSocket> for crate::net::TcpStream {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for crate::net::TcpListener {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -272,6 +288,7 @@ impl AsSocket for crate::net::TcpListener {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::TcpListener> for OwnedSocket {
     #[inline]
     fn from(tcp_listener: crate::net::TcpListener) -> OwnedSocket {
@@ -279,6 +296,7 @@ impl From<crate::net::TcpListener> for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::TcpListener {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
@@ -286,6 +304,7 @@ impl From<OwnedSocket> for crate::net::TcpListener {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsSocket for crate::net::UdpSocket {
     #[inline]
     fn as_socket(&self) -> BorrowedSocket<'_> {
@@ -293,6 +312,7 @@ impl AsSocket for crate::net::UdpSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::net::UdpSocket> for OwnedSocket {
     #[inline]
     fn from(udp_socket: crate::net::UdpSocket) -> OwnedSocket {
@@ -300,6 +320,7 @@ impl From<crate::net::UdpSocket> for OwnedSocket {
     }
 }
 
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedSocket> for crate::net::UdpSocket {
     #[inline]
     fn from(owned: OwnedSocket) -> Self {
