@@ -286,16 +286,21 @@ impl<'a> TyLoweringContext<'a> {
                         let idx = self.impl_trait_counter.get();
                         // FIXME we're probably doing something wrong here
                         self.impl_trait_counter.set(idx + count_impl_traits(type_ref) as u16);
-                        let (parent_params, self_params, list_params, _impl_trait_params) =
-                            if let Some(def) = self.resolver.generic_def() {
-                                let generics = generics(self.db.upcast(), def);
-                                generics.provenance_split()
-                            } else {
-                                (0, 0, 0, 0)
-                            };
+                        let (
+                            parent_params,
+                            self_params,
+                            list_params,
+                            const_params,
+                            _impl_trait_params,
+                        ) = if let Some(def) = self.resolver.generic_def() {
+                            let generics = generics(self.db.upcast(), def);
+                            generics.provenance_split()
+                        } else {
+                            (0, 0, 0, 0, 0)
+                        };
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + parent_params + self_params + list_params,
+                            idx as usize + parent_params + self_params + list_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -639,9 +644,10 @@ impl<'a> TyLoweringContext<'a> {
         let mut substs = Vec::new();
         let def_generics = def_generic.map(|def| generics(self.db.upcast(), def));
 
-        let (parent_params, self_params, type_params, impl_trait_params) =
-            def_generics.map_or((0, 0, 0, 0), |g| g.provenance_split());
-        let total_len = parent_params + self_params + type_params + impl_trait_params;
+        let (parent_params, self_params, type_params, const_params, impl_trait_params) =
+            def_generics.map_or((0, 0, 0, 0, 0), |g| g.provenance_split());
+        let total_len =
+            parent_params + self_params + type_params + const_params + impl_trait_params;
 
         substs.extend(iter::repeat(TyKind::Error.intern(Interner)).take(parent_params));
 
@@ -993,7 +999,7 @@ fn named_associated_type_shorthand_candidates<R>(
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
                 let generics = generics(db.upcast(), trait_id.into());
-                if generics.params.types[param_id.local_id()].is_trait_self() {
+                if generics.params.tocs[param_id.local_id()].is_trait_self() {
                     let trait_ref = TyBuilder::trait_ref(db, trait_id)
                         .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
                         .build();
@@ -1235,9 +1241,17 @@ pub(crate) fn generic_defaults_query(
     let generic_params = generics(db.upcast(), def);
 
     let defaults = generic_params
-        .type_iter()
+        .toc_iter()
         .enumerate()
         .map(|(idx, (_, p))| {
+            let p = match p {
+                TypeOrConstParamData::TypeParamData(p) => p,
+                TypeOrConstParamData::ConstParamData(_) => {
+                    // FIXME: here we should add const generic parameters
+                    let ty = TyKind::Error.intern(Interner);
+                    return crate::make_only_type_binders(idx, ty);
+                }
+            };
             let mut ty =
                 p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
 
@@ -1269,7 +1283,7 @@ pub(crate) fn generic_defaults_recover(
 
     // we still need one default per parameter
     let defaults = generic_params
-        .type_iter()
+        .toc_iter()
         .enumerate()
         .map(|(idx, _)| {
             let ty = TyKind::Error.intern(Interner);
@@ -1502,7 +1516,7 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
 // returns None if def is a type arg
 pub(crate) fn const_param_ty_query(db: &dyn HirDatabase, def: ConstParamId) -> Ty {
     let parent_data = db.generic_params(def.parent());
-    let data = &parent_data.types[def.local_id()];
+    let data = &parent_data.tocs[def.local_id()];
     let resolver = def.parent().resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver);
     match data {

@@ -626,7 +626,7 @@ impl<'a> Printer<'a> {
     }
 
     fn print_generic_params(&mut self, params: &GenericParams) {
-        if params.types.is_empty() && params.lifetimes.is_empty() {
+        if params.tocs.is_empty() && params.lifetimes.is_empty() {
             return;
         }
 
@@ -639,7 +639,7 @@ impl<'a> Printer<'a> {
             first = false;
             w!(self, "{}", lt.name);
         }
-        for (idx, x) in params.types.iter() {
+        for (idx, x) in params.tocs.iter() {
             if !first {
                 w!(self, ", ");
             }
@@ -701,7 +701,7 @@ impl<'a> Printer<'a> {
                 match target {
                     WherePredicateTypeTarget::TypeRef(ty) => this.print_type_ref(ty),
                     WherePredicateTypeTarget::TypeOrConstParam(id) => {
-                        match &params.types[*id].name() {
+                        match &params.tocs[*id].name() {
                             Some(name) => w!(this, "{}", name),
                             None => w!(this, "_anon_{}", id.into_raw()),
                         }

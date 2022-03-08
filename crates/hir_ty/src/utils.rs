@@ -203,12 +203,30 @@ impl Generics {
             )
     }
 
+    pub(crate) fn toc_iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+        self.parent_generics
+            .as_ref()
+            .into_iter()
+            .flat_map(|it| {
+                it.params
+                    .toc_iter()
+                    .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
+            })
+            .chain(
+                self.params.toc_iter().map(move |(local_id, p)| {
+                    (TypeOrConstParamId { parent: self.def, local_id }, p)
+                }),
+            )
+    }
+
     pub(crate) fn iter_parent<'a>(
         &'a self,
     ) -> impl Iterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
         self.parent_generics.as_ref().into_iter().flat_map(|it| {
             it.params
-                .types
+                .tocs
                 .iter()
                 .map(move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p))
         })
@@ -221,36 +239,36 @@ impl Generics {
     /// (total, parents, child)
     pub(crate) fn len_split(&self) -> (usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
-        // FIXME: we should not filter const generics here, but at now it breaks tests
-        let child = self.params.types.iter().filter_map(|x| x.1.type_param()).count();
+        let child = self.params.tocs.len();
         (parent + child, parent, child)
     }
 
-    /// (parent total, self param, type param list, impl trait)
-    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize) {
+    /// (parent total, self param, type param list, const param list, impl trait)
+    pub(crate) fn provenance_split(&self) -> (usize, usize, usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
         let self_params = self
             .params
-            .types
+            .tocs
             .iter()
             .filter_map(|x| x.1.type_param())
             .filter(|p| p.provenance == TypeParamProvenance::TraitSelf)
             .count();
-        let list_params = self
+        let type_params = self
             .params
-            .types
+            .tocs
             .iter()
             .filter_map(|x| x.1.type_param())
             .filter(|p| p.provenance == TypeParamProvenance::TypeParamList)
             .count();
+        let const_params = self.params.tocs.iter().filter_map(|x| x.1.const_param()).count();
         let impl_trait_params = self
             .params
-            .types
+            .tocs
             .iter()
             .filter_map(|x| x.1.type_param())
             .filter(|p| p.provenance == TypeParamProvenance::ArgumentImplTrait)
             .count();
-        (parent, self_params, list_params, impl_trait_params)
+        (parent, self_params, type_params, const_params, impl_trait_params)
     }
 
     pub(crate) fn param_idx(&self, param: TypeOrConstParamId) -> Option<usize> {
@@ -261,7 +279,7 @@ impl Generics {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
-                .types
+                .tocs
                 .iter()
                 .enumerate()
                 .find(|(_, (idx, _))| *idx == param.local_id)
@@ -277,7 +295,7 @@ impl Generics {
     pub(crate) fn bound_vars_subst(&self, debruijn: DebruijnIndex) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.type_iter()
+            self.toc_iter()
                 .enumerate()
                 .map(|(idx, _)| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner)),
         )
@@ -287,7 +305,7 @@ impl Generics {
     pub(crate) fn type_params_subst(&self, db: &dyn HirDatabase) -> Substitution {
         Substitution::from_iter(
             Interner,
-            self.type_iter().map(|(id, _)| {
+            self.toc_iter().map(|(id, _)| {
                 TyKind::Placeholder(crate::to_placeholder_idx(db, id)).intern(Interner)
             }),
         )

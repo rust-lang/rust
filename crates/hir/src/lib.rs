@@ -2007,7 +2007,7 @@ impl_from!(
 impl GenericDef {
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let generics = db.generic_params(self.into());
-        let ty_params = generics.types.iter().map(|(local_id, _)| {
+        let ty_params = generics.tocs.iter().map(|(local_id, _)| {
             let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: self.into(), local_id } };
             match toc.split(db) {
                 Either::Left(x) => GenericParam::ConstParam(x),
@@ -2027,7 +2027,7 @@ impl GenericDef {
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
         let generics = db.generic_params(self.into());
         generics
-            .types
+            .tocs
             .iter()
             .map(|(local_id, _)| TypeOrConstParam {
                 id: TypeOrConstParamId { parent: self.into(), local_id },
@@ -2349,7 +2349,7 @@ impl ConstParam {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent());
-        match params.types[self.id.local_id()].name() {
+        match params.tocs[self.id.local_id()].name() {
             Some(x) => x.clone(),
             None => {
                 never!();
@@ -2381,7 +2381,7 @@ pub struct TypeOrConstParam {
 impl TypeOrConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        match params.types[self.id.local_id].name() {
+        match params.tocs[self.id.local_id].name() {
             Some(n) => n.clone(),
             _ => Name::missing(),
         }
@@ -2397,7 +2397,7 @@ impl TypeOrConstParam {
 
     pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
         let params = db.generic_params(self.id.parent);
-        match &params.types[self.id.local_id] {
+        match &params.tocs[self.id.local_id] {
             hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
                 Either::Right(TypeParam { id: self.id.into() })
             }
