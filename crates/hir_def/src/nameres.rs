@@ -78,8 +78,6 @@ use crate::{
     AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
 };
 
-use self::proc_macro::ProcMacroDef;
-
 /// Contains the results of (early) name resolution.
 ///
 /// A `DefMap` stores the module tree and the definitions that are in scope in every module after
@@ -102,11 +100,8 @@ pub struct DefMap {
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
 
-    /// Side table with additional proc. macro info, for use by name resolution in downstream
-    /// crates.
-    ///
-    /// (the primary purpose is to resolve derive helpers)
-    exported_proc_macros: FxHashMap<MacroDefId, ProcMacroDef>,
+    /// Side table for resolving derive helpers.
+    exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -275,7 +270,7 @@ impl DefMap {
             edition,
             recursion_limit: None,
             extern_prelude: FxHashMap::default(),
-            exported_proc_macros: FxHashMap::default(),
+            exported_derives: FxHashMap::default(),
             prelude: None,
             root,
             modules,
@@ -452,7 +447,7 @@ impl DefMap {
         // Exhaustive match to require handling new fields.
         let Self {
             _c: _,
-            exported_proc_macros,
+            exported_derives: exported_proc_macros,
             extern_prelude,
             diagnostics,
             modules,

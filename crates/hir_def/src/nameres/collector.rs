@@ -554,9 +554,9 @@ impl DefCollector<'_> {
         id: ItemTreeId<item_tree::Function>,
         module_id: ModuleId,
     ) {
-        let kind = def.kind.to_basedb_kind();
         self.exports_proc_macros = true;
 
+        let kind = def.kind.to_basedb_kind();
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some(&(_, expander)) => (expander, kind),
             None => (ProcMacroExpander::dummy(self.def_map.krate), kind),
@@ -565,9 +565,11 @@ impl DefCollector<'_> {
         let proc_macro_id =
             ProcMacroLoc { container: module_id, id, expander, kind }.intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id.into());
-        self.def_map
-            .exported_proc_macros
-            .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), def);
+        if let ProcMacroKind::CustomDerive { helpers } = def.kind {
+            self.def_map
+                .exported_derives
+                .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
+        }
     }
 
     /// Define a macro with `macro_rules`.
@@ -1301,13 +1303,11 @@ impl DefCollector<'_> {
         if let MacroCallKind::Derive { ast_id, .. } = &loc.kind {
             if loc.def.krate != self.def_map.krate {
                 let def_map = self.db.crate_def_map(loc.def.krate);
-                if let Some(def) = def_map.exported_proc_macros.get(&loc.def) {
-                    if let ProcMacroKind::CustomDerive { helpers } = &def.kind {
-                        self.derive_helpers_in_scope
-                            .entry(ast_id.map(|it| it.upcast()))
-                            .or_default()
-                            .extend(helpers.iter().cloned());
-                    }
+                if let Some(helpers) = def_map.exported_derives.get(&loc.def) {
+                    self.derive_helpers_in_scope
+                        .entry(ast_id.map(|it| it.upcast()))
+                        .or_default()
+                        .extend(helpers.iter().cloned());
                 }
             }
         }
