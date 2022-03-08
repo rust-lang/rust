@@ -3,6 +3,7 @@ name = "bootstrap"
 version = "0.0.0"
 edition = "2021"
 build = "build.rs"
+default-run = "bootstrap"
 
 [lib]
 path = "lib.rs"

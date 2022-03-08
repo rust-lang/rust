@@ -3,7 +3,6 @@
 //! This module implements the command-line parsing of the build system which
 //! has various flags to configure how it's run.
 
-use std::env;
 use std::path::PathBuf;
 use std::process;
 
@@ -541,7 +540,6 @@ Arguments:
         // Get any optional paths which occur after the subcommand
         let mut paths = matches.free[1..].iter().map(|p| p.into()).collect::<Vec<PathBuf>>();
 
-        let cfg_file = env::var_os("BOOTSTRAP_CONFIG").map(PathBuf::from);
         let verbose = matches.opt_present("verbose");
 
         // User passed in -h/--help?
@@ -671,7 +669,7 @@ Arguments:
             } else {
                 None
             },
-            config: cfg_file,
+            config: matches.opt_str("config").map(PathBuf::from),
             jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,
             incremental: matches.opt_present("incremental"),

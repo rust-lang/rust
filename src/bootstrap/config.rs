@@ -6,7 +6,6 @@
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -392,7 +391,6 @@ derive_merge! {
         build: Option<String>,
         host: Option<Vec<String>>,
         target: Option<Vec<String>>,
-        // This is ignored, the rust code always gets the build directory from the `BUILD_DIR` env variable
         build_dir: Option<String>,
         cargo: Option<String>,
         rustc: Option<String>,
@@ -588,18 +586,6 @@ derive_merge! {
 }
 
 impl Config {
-    fn path_from_python(var_key: &str) -> PathBuf {
-        match env::var_os(var_key) {
-            Some(var_val) => Self::normalize_python_path(var_val),
-            _ => panic!("expected '{}' to be set", var_key),
-        }
-    }
-
-    /// Normalizes paths from Python slightly. We don't trust paths from Python (#49785).
-    fn normalize_python_path(path: OsString) -> PathBuf {
-        Path::new(&path).components().collect()
-    }
-
     pub fn default_opts() -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
@@ -625,7 +611,7 @@ impl Config {
         let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         // Undo `src/bootstrap`
         config.src = manifest_dir.parent().unwrap().parent().unwrap().to_owned();
-        config.out = Config::path_from_python("BUILD_DIR");
+        config.out = PathBuf::from("build");
 
         config.initial_cargo = PathBuf::from(env!("CARGO"));
         config.initial_rustc = PathBuf::from(env!("RUSTC"));
@@ -655,12 +641,6 @@ impl Config {
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
 
-        if config.dry_run {
-            let dir = config.out.join("tmp-dry-run");
-            t!(fs::create_dir_all(&dir));
-            config.out = dir;
-        }
-
         #[cfg(test)]
         let get_toml = |_| TomlConfig::default();
         #[cfg(not(test))]
@@ -677,7 +657,15 @@ impl Config {
             }
         };
 
-        let mut toml = flags.config.as_deref().map(get_toml).unwrap_or_else(TomlConfig::default);
+        // check --config first, then `$RUST_BOOTSTRAP_CONFIG` first, then `config.toml`
+        let toml_path = flags
+            .config
+            .clone()
+            .or_else(|| env::var_os("RUST_BOOTSTRAP_CONFIG").map(PathBuf::from))
+            .unwrap_or_else(|| PathBuf::from("config.toml"));
+        let mut toml =
+            if toml_path.exists() { get_toml(&toml_path) } else { TomlConfig::default() };
+
         if let Some(include) = &toml.profile {
             let mut include_path = config.src.clone();
             include_path.push("src");
@@ -689,11 +677,24 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        if let Some(cfg) = flags.config {
-            config.config = cfg;
-        }
+        config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
+
+        set(&mut config.initial_rustc, build.rustc.map(PathBuf::from));
+        set(&mut config.out, build.build_dir.map(PathBuf::from));
+        // NOTE: Bootstrap spawns various commands with different working directories.
+        // To avoid writing to random places on the file system, `config.out` needs to be an absolute path.
+        if !config.out.is_absolute() {
+            // `canonicalize` requires the path to already exist. Use our vendored copy of `absolute` instead.
+            config.out = crate::util::absolute(&config.out);
+        }
+
+        if config.dry_run {
+            let dir = config.out.join("tmp-dry-run");
+            t!(fs::create_dir_all(&dir));
+            config.out = dir;
+        }
 
         config.hosts = if let Some(arg_host) = flags.host {
             arg_host
