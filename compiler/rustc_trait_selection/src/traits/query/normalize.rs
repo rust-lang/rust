@@ -336,7 +336,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
     ) -> Result<mir::ConstantKind<'tcx>, Self::Error> {
         let constant_kind = match constant {
             mir::ConstantKind::Ty(c) => {
-                let const_folded = c.try_super_fold_with(self)?;
+                let const_folded = c.try_fold_with(self)?;
                 match const_folded.val() {
                     ty::ConstKind::Value(cv) => {
                         // FIXME With Valtrees we need to convert `cv: ValTree`
