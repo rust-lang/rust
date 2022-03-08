@@ -241,7 +241,10 @@ mod c {
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
         // include them.
-        if target_os != "ios" && target_os != "watchos" && (target_vendor != "apple" || target_arch != "x86") {
+        if target_os != "ios"
+            && target_os != "watchos"
+            && (target_vendor != "apple" || target_arch != "x86")
+        {
             sources.extend(&[
                 ("__absvti2", "absvti2.c"),
                 ("__addvti3", "addvti3.c"),
@@ -318,7 +321,11 @@ mod c {
             }
         }
 
-        if target_arch == "arm" && target_os != "ios" && target_os != "watchos" && target_env != "msvc" {
+        if target_arch == "arm"
+            && target_os != "ios"
+            && target_os != "watchos"
+            && target_env != "msvc"
+        {
             sources.extend(&[
                 ("__aeabi_div0", "arm/aeabi_div0.c"),
                 ("__aeabi_drsub", "arm/aeabi_drsub.c"),
