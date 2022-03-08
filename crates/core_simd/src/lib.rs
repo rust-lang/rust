@@ -1,4 +1,4 @@
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 #![feature(
     convert_float_to_int,
     decl_macro,

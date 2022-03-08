@@ -156,8 +156,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::Simd;
-    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
+    /// # use core::simd::Simd;
     /// let floats: Simd<f32, 4> = Simd::from_array([1.9, -4.5, f32::INFINITY, f32::NAN]);
     /// let ints = floats.cast::<i32>();
     /// assert_eq!(ints, Simd::from_array([1, -4, i32::MAX, 0]));
@@ -184,8 +183,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::Simd;
-    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
+    /// # use core::simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -205,8 +203,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::Simd;
-    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
+    /// # use core::simd::Simd;
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     ///
@@ -229,8 +226,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
-    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
+    /// # use core::simd::{Simd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -264,8 +260,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
-    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
+    /// # use core::simd::{Simd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
@@ -300,8 +295,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::Simd;
-    /// # #[cfg(not(feature = "std"))] use core::simd::Simd;
+    /// # use core::simd::Simd;
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -323,8 +317,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
-    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
+    /// # use core::simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -358,8 +351,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # #[cfg(feature = "std")] use core_simd::{Simd, Mask};
-    /// # #[cfg(not(feature = "std"))] use core::simd::{Simd, Mask};
+    /// # use core::simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
