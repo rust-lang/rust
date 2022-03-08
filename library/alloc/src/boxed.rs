@@ -718,54 +718,12 @@ impl<T> Box<[T]> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
-enum AllocInit {
-    /// The contents of the new memory are uninitialized.
-    Uninitialized,
-    /// The new memory is guaranteed to be zeroed.
-    Zeroed,
-}
-
 impl<T, A: Allocator> Box<[T], A> {
     /// Constructs a new empty boxed slice
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub const fn empty_in(alloc: A) -> Self {
         Box(Unique::dangling_slice(), alloc)
-    }
-
-    #[cfg(not(no_global_oom_handling))]
-    fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
-        if mem::size_of::<T>() == 0 || capacity == 0 {
-            Box::empty_in(alloc)
-        } else {
-            // We avoid `unwrap_or_else` here because it bloats the amount of
-            // LLVM IR generated.
-            let layout = match Layout::array::<T>(capacity) {
-                Ok(layout) => layout,
-                Err(_) => crate::box_storage::capacity_overflow(),
-            };
-            match crate::box_storage::alloc_guard(layout.size()) {
-                Ok(_) => {}
-                Err(_) => crate::box_storage::capacity_overflow(),
-            }
-            let result = match init {
-                AllocInit::Uninitialized => alloc.allocate(layout),
-                AllocInit::Zeroed => alloc.allocate_zeroed(layout),
-            };
-            let ptr = match result {
-                Ok(ptr) => ptr,
-                Err(_) => handle_alloc_error(layout),
-            };
-
-            // Allocators currently return a `NonNull<[u8]>` whose length
-            // matches the size requested. If that ever changes, the capacity
-            // here should change to `ptr.len() / mem::size_of::<T>()`.
-            unsafe {
-                crate::box_storage::from_raw_slice_parts_in(ptr.as_ptr().cast(), capacity, alloc)
-            }
-        }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator.
@@ -795,7 +753,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_uninit_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        Self::allocate_in(len, AllocInit::Uninitialized, alloc)
+        crate::box_storage::allocate_in(len, crate::box_storage::AllocInit::Uninitialized, alloc)
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator,
@@ -823,7 +781,7 @@ impl<T, A: Allocator> Box<[T], A> {
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
     pub fn new_zeroed_slice_in(len: usize, alloc: A) -> Box<[mem::MaybeUninit<T>], A> {
-        Self::allocate_in(len, AllocInit::Zeroed, alloc)
+        crate::box_storage::allocate_in(len, crate::box_storage::AllocInit::Zeroed, alloc)
     }
 }
 

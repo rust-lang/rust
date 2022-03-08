@@ -1,31 +1,41 @@
-use crate::alloc::{handle_alloc_error, Allocator, Layout, LayoutError};
+#![unstable(feature = "raw_vec_internals", reason = "unstable const warnings", issue = "none")]
+
+use core::alloc::LayoutError;
+use core::cmp;
+use core::intrinsics;
+use core::mem;
+use core::ptr::NonNull;
+
+#[cfg(not(no_global_oom_handling))]
+use crate::alloc::handle_alloc_error;
+use crate::alloc::{Allocator, Layout};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 use crate::collections::TryReserveErrorKind::*;
-use core::mem;
 
-pub(crate) unsafe fn from_raw_slice_parts_in<T, A: Allocator>(
-    ptr: *mut T,
-    len: usize,
-    alloc: A,
-) -> Box<[T], A> {
-    unsafe {
-        let raw = core::slice::from_raw_parts_mut(ptr, len);
-        Box::from_raw_in(raw, alloc)
-    }
+#[cfg(test)]
+mod tests;
+
+#[cfg(not(no_global_oom_handling))]
+pub(crate) enum AllocInit {
+    /// The contents of the new memory are uninitialized.
+    Uninitialized,
+    /// The new memory is guaranteed to be zeroed.
+    Zeroed,
 }
 
-pub(crate) fn box_into_raw_slice_parts<T, A: Allocator>(
-    mut this: Box<[T], A>,
-) -> (*mut T, usize, A) {
-    let len = this.len();
-    let ptr = this.as_mut_ptr();
-    let (_, alloc) = Box::into_raw_with_allocator(this);
-    (ptr, len, alloc)
-}
-
-pub(crate) trait BoxStorage {
+pub(crate) trait BoxStorage: Sized {
+    // Tiny Vecs are dumb. Skip to:
+    // - 8 if the element size is 1, because any heap allocators is likely
+    //   to round up a request of less than 8 bytes to at least 8 bytes.
+    // - 4 if elements are moderate-sized (<= 1 KiB).
+    // - 1 otherwise, to avoid wasting too much space for very short Vecs.
     const MIN_NON_ZERO_CAP: usize;
+
+    /// Gets the capacity of the allocation.
+    ///
+    /// This will always be `usize::MAX` if `T` is zero-sized.
+    fn capacity(&self) -> usize;
 
     /// Ensures that the buffer contains at least enough space to hold `len +
     /// additional` elements. If it doesn't already have enough capacity, will
@@ -53,18 +63,20 @@ pub(crate) trait BoxStorage {
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
         // handle_reserve behind a call, while making sure that this function is likely to be
         // inlined as just a comparison and a call if the comparison fails.
+        #[cold]
+        fn do_reserve_and_handle<T: BoxStorage>(slf: &mut T, len: usize, additional: usize) {
+            handle_reserve(slf.grow_amortized(len, additional));
+        }
+
         if self.needs_to_grow(len, additional) {
-            self.do_reserve_and_handle(len, additional);
+            do_reserve_and_handle(self, len, additional);
         }
     }
 
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool;
-
-    #[cold]
-    fn do_reserve_and_handle(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.grow_amortized(len, additional));
+    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+        additional > self.capacity().wrapping_sub(len)
     }
 
     /// A specialized version of `reserve()` used only by the hot and
@@ -92,7 +104,11 @@ pub(crate) trait BoxStorage {
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
     fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        self.grow_amortized(len, additional)
+        if self.needs_to_grow(len, additional) {
+            self.grow_amortized(len, additional)
+        } else {
+            Ok(())
+        }
     }
 
     /// Ensures that the buffer contains at least enough space to hold `len +
@@ -119,7 +135,7 @@ pub(crate) trait BoxStorage {
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
     fn try_reserve_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        self.grow_exact(len, additional)
+        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
     }
 
     fn grow_amortized(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError>;
@@ -136,10 +152,9 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
         1
     };
 
-    /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
-    /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
-        additional > self.len().wrapping_sub(len)
+    #[inline(always)]
+    fn capacity(&self) -> usize {
+        if mem::size_of::<T>() == 0 { usize::MAX } else { self.len() }
     }
 
     // This method is usually instantiated many times. So we want it to be as
@@ -165,13 +180,15 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
         // This guarantees exponential growth. The doubling cannot overflow
         // because `cap <= isize::MAX` and the type of `cap` is `usize`.
         let cap = self.len();
-        let cap = core::cmp::max(cap * 2, required_cap);
-        let cap = core::cmp::max(Self::MIN_NON_ZERO_CAP, cap);
+        let cap = cmp::max(cap * 2, required_cap);
+        let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
         let new_layout = Layout::array::<T>(cap);
 
         replace(self, |ptr, len, alloc| {
-            Ok((finish_grow(new_layout, slice_layout(ptr, len), alloc)?.as_mut_ptr().cast(), cap))
+            // `finish_grow` is non-generic over `T`.
+            let ptr = finish_grow(new_layout, slice_layout(ptr, len), alloc)?;
+            Ok((ptr.as_mut_ptr().cast(), cap))
         })
     }
 
@@ -184,17 +201,18 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
             // 0, getting to here necessarily means the `RawVec` is overfull.
             return Err(CapacityOverflow.into());
         }
-
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
         let new_layout = Layout::array::<T>(cap);
 
         replace(self, |ptr, len, alloc| {
-            Ok((finish_grow(new_layout, slice_layout(ptr, len), alloc)?.as_mut_ptr().cast(), cap))
+            // `finish_grow` is non-generic over `T`.
+            let ptr = finish_grow(new_layout, slice_layout(ptr, len), alloc)?;
+            Ok((ptr.as_mut_ptr().cast(), cap))
         })
     }
 
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
-        assert!(cap <= self.len(), "Tried to shrink to a larger capacity");
+        assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
         replace(self, |ptr, len, alloc| {
             let (ptr, layout) =
                 if let Some(mem) = slice_layout(ptr, len) { mem } else { return Ok((ptr, len)) };
@@ -210,6 +228,26 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
             Ok((ptr.as_mut_ptr().cast(), cap))
         })
     }
+}
+
+pub(crate) unsafe fn from_raw_slice_parts_in<T, A: Allocator>(
+    ptr: *mut T,
+    len: usize,
+    alloc: A,
+) -> Box<[T], A> {
+    unsafe {
+        let raw = core::slice::from_raw_parts_mut(ptr, len);
+        Box::from_raw_in(raw, alloc)
+    }
+}
+
+pub(crate) fn box_into_raw_slice_parts<T, A: Allocator>(
+    mut this: Box<[T], A>,
+) -> (*mut T, usize, A) {
+    let len = this.len();
+    let ptr = this.as_mut_ptr();
+    let (_, alloc) = Box::into_raw_with_allocator(this);
+    (ptr, len, alloc)
 }
 
 fn replace<T, A: Allocator>(
@@ -244,16 +282,16 @@ fn slice_layout<T>(ptr: *mut T, len: usize) -> Option<(core::ptr::NonNull<u8>, L
     }
 }
 
-// This function is outside `Box` to minimize compile times. See the comment
+// This function is outside `RawVec` to minimize compile times. See the comment
 // above `RawVec::grow_amortized` for details. (The `A` parameter isn't
 // significant, because the number of different `A` types seen in practice is
 // much smaller than the number of `T` types.)
 #[inline(never)]
 fn finish_grow<A>(
     new_layout: Result<Layout, LayoutError>,
-    current_memory: Option<(core::ptr::NonNull<u8>, Layout)>,
+    current_memory: Option<(NonNull<u8>, Layout)>,
     alloc: &mut A,
-) -> Result<core::ptr::NonNull<[u8]>, TryReserveError>
+) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: Allocator,
 {
@@ -266,7 +304,7 @@ where
         debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
-            core::intrinsics::assume(old_layout.align() == new_layout.align());
+            intrinsics::assume(old_layout.align() == new_layout.align());
             alloc.grow(ptr, old_layout, new_layout)
         }
     } else {
@@ -311,4 +349,40 @@ pub(crate) fn alloc_guard(alloc_size: usize) -> Result<(), TryReserveError> {
 #[cfg(not(no_global_oom_handling))]
 pub(crate) fn capacity_overflow() -> ! {
     panic!("capacity overflow");
+}
+
+#[cfg(not(no_global_oom_handling))]
+pub(crate) fn allocate_in<T, A: Allocator>(
+    capacity: usize,
+    init: AllocInit,
+    alloc: A,
+) -> Box<[mem::MaybeUninit<T>], A> {
+    // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
+    if mem::size_of::<T>() == 0 || capacity == 0 {
+        Box::empty_in(alloc)
+    } else {
+        // We avoid `unwrap_or_else` here because it bloats the amount of
+        // LLVM IR generated.
+        let layout = match Layout::array::<T>(capacity) {
+            Ok(layout) => layout,
+            Err(_) => crate::box_storage::capacity_overflow(),
+        };
+        match crate::box_storage::alloc_guard(layout.size()) {
+            Ok(_) => {}
+            Err(_) => crate::box_storage::capacity_overflow(),
+        }
+        let result = match init {
+            AllocInit::Uninitialized => alloc.allocate(layout),
+            AllocInit::Zeroed => alloc.allocate_zeroed(layout),
+        };
+        let ptr = match result {
+            Ok(ptr) => ptr,
+            Err(_) => handle_alloc_error(layout),
+        };
+
+        // Allocators currently return a `NonNull<[u8]>` whose length
+        // matches the size requested. If that ever changes, the capacity
+        // here should change to `ptr.len() / mem::size_of::<T>()`.
+        unsafe { crate::box_storage::from_raw_slice_parts_in(ptr.as_ptr().cast(), capacity, alloc) }
+    }
 }
