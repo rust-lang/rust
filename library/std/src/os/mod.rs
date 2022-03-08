@@ -129,8 +129,6 @@ pub mod illumos;
 pub mod ios;
 #[cfg(target_os = "l4re")]
 pub mod l4re;
-#[cfg(target_os = "watchos")]
-pub mod watchos;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "netbsd")]
@@ -141,11 +139,12 @@ pub mod openbsd;
 pub mod redox;
 #[cfg(target_os = "solaris")]
 pub mod solaris;
-
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
 #[cfg(target_os = "vxworks")]
 pub mod vxworks;
+#[cfg(target_os = "watchos")]
+pub mod watchos;
 
 #[cfg(any(unix, target_os = "wasi", doc))]
 mod fd;
