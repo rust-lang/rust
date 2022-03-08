@@ -4,13 +4,20 @@ error[E0005]: refutable pattern in local binding: `Err(_)` not covered
 LL |     let Ok(x) = res;
    |         ^^^^^ pattern `Err(_)` not covered
    |
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
-   |     --- not covered
-   |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `Result<u32, &R>` defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL | / pub enum Result<T, E> {
+LL | |     /// Contains the success value
+LL | |     #[lang = "Ok"]
+LL | |     #[stable(feature = "rust1", since = "1.0.0")]
+...  |
+LL | |     Err(#[stable(feature = "rust1", since = "1.0.0")] E),
+   | |     ^^^ not covered
+LL | | }
+   | |_-
    = note: the matched value is of type `Result<u32, &R>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
