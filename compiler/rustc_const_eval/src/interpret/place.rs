@@ -793,6 +793,16 @@ where
         }
     }
 
+    fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        let mplace = self.force_allocation(dest)?;
+        let Some(mut alloc) = self.get_alloc_mut(&mplace)? else {
+            // Zero-sized access
+            return Ok(());
+        };
+        alloc.write_uninit();
+        Ok(())
+    }
+
     /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     #[inline(always)]
@@ -1011,7 +1021,10 @@ where
     ) -> InterpResult<'tcx> {
         // This must be an enum or generator.
         match dest.layout.ty.kind() {
-            ty::Adt(adt, _) => assert!(adt.is_enum()),
+            ty::Adt(adt, _) => {
+                assert!(adt.is_enum());
+                self.write_uninit(dest)?;
+            }
             ty::Generator(..) => {}
             _ => span_bug!(
                 self.cur_span(),
