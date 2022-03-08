@@ -106,6 +106,15 @@ fn zst() {
     let v: Box<[MaybeUninit<ZST>]> = Box::new_uninit_slice_in(100, Global);
     zst_sanity(&v);
 
+    let v: Box<[MaybeUninit<ZST>]> = allocate_in(0, AllocInit::Zeroed, Global);
+    zst_sanity(&v);
+
+    let v: Box<[MaybeUninit<ZST>]> = allocate_in(100, AllocInit::Zeroed, Global);
+    zst_sanity(&v);
+
+    let v: Box<[MaybeUninit<ZST>]> = allocate_in(usize::MAX, AllocInit::Zeroed, Global);
+    zst_sanity(&v);
+
     let v: Box<[MaybeUninit<ZST>]> = allocate_in(0, AllocInit::Uninitialized, Global);
     zst_sanity(&v);
 
