@@ -1,5 +1,5 @@
 use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{StackProbeType, Target, TargetOptions, LinkerFlavor, LldFlavor};
+use crate::spec::{StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
     let base = opts("watchos", Arch::X86_64);
