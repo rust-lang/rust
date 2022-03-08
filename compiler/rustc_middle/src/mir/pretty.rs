@@ -18,9 +18,8 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::MirSource;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
-use std::ops::ControlFlow;
 
 const INDENT: &str = "    ";
 /// Alignment for lining up comments following MIR statements
@@ -672,16 +671,27 @@ pub fn write_allocations<'tcx>(
         }
     }
     struct CollectAllocIds(BTreeSet<AllocId>);
-    impl<'tcx> TypeVisitor<'tcx> for CollectAllocIds {
-        fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
+
+    impl<'tcx> Visitor<'tcx> for CollectAllocIds {
+        fn visit_const(&mut self, c: ty::Const<'tcx>, _loc: Location) {
             if let ty::ConstKind::Value(val) = c.val() {
                 self.0.extend(alloc_ids_from_const(val));
             }
-            c.super_visit_with(self)
+        }
+
+        fn visit_constant(&mut self, c: &Constant<'tcx>, loc: Location) {
+            match c.literal {
+                ConstantKind::Ty(c) => self.visit_const(c, loc),
+                ConstantKind::Val(val, _) => {
+                    self.0.extend(alloc_ids_from_const(val));
+                }
+            }
         }
     }
+
     let mut visitor = CollectAllocIds(Default::default());
-    body.visit_with(&mut visitor);
+    visitor.visit_body(body);
+
     // `seen` contains all seen allocations, including the ones we have *not* printed yet.
     // The protocol is to first `insert` into `seen`, and only if that returns `true`
     // then push to `todo`.
