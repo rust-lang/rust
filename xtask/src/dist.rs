@@ -55,7 +55,7 @@ fn dist_client(version: &str, release_tag: &str, target: &Target) -> Result<()> 
         .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
         .replace(r#""$generated-start": {},"#, "")
         .replace(",\n                \"$generated-end\": {}", "")
-        .replace(r#""enableProposedApi": true,"#, r#""#);
+        .replace(r#""enabledApiProposals": true,"#, r#""#);
     patch.commit()?;
 
     Ok(())
