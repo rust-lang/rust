@@ -102,6 +102,12 @@ impl ChildBySource for ItemScope {
                 res[keys::ATTR_MACRO_CALL].insert(ast_id.to_node(db.upcast()), call_id);
             },
         );
+        self.legacy_macros().for_each(|(_, id)| {
+            let loc = id.lookup(db);
+            if loc.id.file_id() == file_id {
+                res[keys::MACRO_RULES].insert(loc.source(db).value, id);
+            }
+        });
         self.derive_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
             |(ast_id, calls)| {
                 let adt = ast_id.to_node(db.upcast());
@@ -145,7 +151,9 @@ impl ChildBySource for ItemScope {
                     MacroId::MacroRulesId(id) => insert!(map[keys::MACRO_RULES].insert(id)),
                     MacroId::ProcMacroId(id) => insert!(map[keys::PROC_MACRO].insert(id)),
                 },
-                _ => (),
+                ModuleDefId::ModuleId(_)
+                | ModuleDefId::EnumVariantId(_)
+                | ModuleDefId::BuiltinType(_) => (),
             }
         }
         fn add_impl(db: &dyn DefDatabase, map: &mut DynMap, file_id: HirFileId, imp: ImplId) {

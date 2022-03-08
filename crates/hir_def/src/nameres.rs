@@ -105,7 +105,7 @@ pub struct DefMap {
     /// Side table with additional proc. macro info, for use by name resolution in downstream
     /// crates.
     ///
-    /// (the primary purpose is to resolve derive helpers and fetch a proc-macros name)
+    /// (the primary purpose is to resolve derive helpers)
     exported_proc_macros: FxHashMap<MacroDefId, ProcMacroDef>,
 
     /// Custom attributes registered with `#![register_attr]`.
@@ -294,9 +294,6 @@ impl DefMap {
 
     pub fn modules(&self) -> impl Iterator<Item = (LocalModuleId, &ModuleData)> + '_ {
         self.modules.iter()
-    }
-    pub fn exported_proc_macros(&self) -> impl Iterator<Item = (MacroDefId, Name)> + '_ {
-        self.exported_proc_macros.iter().map(|(id, def)| (*id, def.name.clone()))
     }
     pub fn registered_tools(&self) -> &[SmolStr] {
         &self.registered_tools

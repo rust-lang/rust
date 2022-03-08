@@ -5,7 +5,7 @@ use std::{fmt, hash::Hash, ops, sync::Arc};
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile};
+use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
@@ -24,7 +24,7 @@ use crate::{
     path::{ModPath, PathKind},
     src::{HasChildSource, HasSource},
     AdtId, AttrDefId, EnumId, GenericParamId, HasModule, LocalEnumVariantId, LocalFieldId, Lookup,
-    VariantId,
+    MacroId, VariantId,
 };
 
 /// Holds documentation
@@ -358,9 +358,11 @@ impl AttrsWithOwner {
                 AdtId::UnionId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             },
             AttrDefId::TraitId(it) => attrs_from_item_tree(it.lookup(db).id, db),
-            AttrDefId::MacroDefId(it) => it
-                .ast_id()
-                .either(|ast_id| attrs_from_ast(ast_id, db), |ast_id| attrs_from_ast(ast_id, db)),
+            AttrDefId::MacroId(it) => match it {
+                MacroId::Macro2Id(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                MacroId::MacroRulesId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+                MacroId::ProcMacroId(it) => attrs_from_item_tree(it.lookup(db).id, db),
+            },
             AttrDefId::ImplId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::ConstId(it) => attrs_from_item_tree(it.lookup(db).id, db),
             AttrDefId::StaticId(it) => attrs_from_item_tree(it.lookup(db).id, db),
@@ -461,10 +463,11 @@ impl AttrsWithOwner {
             AttrDefId::ConstId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::TraitId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::TypeAliasId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
-            AttrDefId::MacroDefId(id) => id.ast_id().either(
-                |it| it.with_value(ast::AnyHasAttrs::new(it.to_node(db.upcast()))),
-                |it| it.with_value(ast::AnyHasAttrs::new(it.to_node(db.upcast()))),
-            ),
+            AttrDefId::MacroId(id) => match id {
+                MacroId::Macro2Id(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
+                MacroId::MacroRulesId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
+                MacroId::ProcMacroId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
+            },
             AttrDefId::ImplId(id) => id.lookup(db).source(db).map(ast::AnyHasAttrs::new),
             AttrDefId::GenericParamId(id) => match id {
                 GenericParamId::ConstParamId(id) => {
@@ -843,14 +846,6 @@ impl<'attr> AttrQuery<'attr> {
             .iter()
             .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_smol_str() == key))
     }
-}
-
-fn attrs_from_ast<N>(src: AstId<N>, db: &dyn DefDatabase) -> RawAttrs
-where
-    N: ast::HasAttrs,
-{
-    let src = InFile::new(src.file_id, src.to_node(db.upcast()));
-    RawAttrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn ast::HasAttrs))
 }
 
 fn attrs_from_item_tree<N: ItemTreeNode>(id: ItemTreeId<N>, db: &dyn DefDatabase) -> RawAttrs {

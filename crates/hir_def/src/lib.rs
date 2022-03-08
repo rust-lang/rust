@@ -538,7 +538,7 @@ pub enum AttrDefId {
     ConstId(ConstId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
-    MacroDefId(MacroDefId),
+    MacroId(MacroId),
     ImplId(ImplId),
     GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
@@ -554,7 +554,7 @@ impl_from!(
     FunctionId,
     TraitId,
     TypeAliasId,
-    MacroDefId,
+    MacroId,
     ImplId,
     GenericParamId
     for AttrDefId
@@ -757,9 +757,7 @@ impl AttrDefId {
                 .module(db)
                 .krate
             }
-            // FIXME: `MacroDefId` should store the defining module, then this can implement
-            // `HasModule`
-            AttrDefId::MacroDefId(it) => it.krate,
+            AttrDefId::MacroId(it) => it.module(db).krate,
         }
     }
 }
@@ -856,7 +854,7 @@ fn macro_call_as_call_id(
     Ok(res)
 }
 
-fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
+pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
     match id {
         MacroId::Macro2Id(it) => {
             let loc = it.lookup(db);

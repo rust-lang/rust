@@ -1069,9 +1069,9 @@ mod tests {
             Query::new("".to_string()).limit(2),
             expect![[r#"
                 dep::fmt (t)
-                dep::Fmt (m)
                 dep::Fmt (t)
                 dep::Fmt (v)
+                dep::Fmt (m)
             "#]],
         );
     }

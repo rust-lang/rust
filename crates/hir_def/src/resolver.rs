@@ -21,8 +21,8 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeParamId, VariantId,
+    LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId,
+    StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -862,5 +862,33 @@ impl HasResolver for VariantId {
             VariantId::StructId(it) => it.resolver(db),
             VariantId::UnionId(it) => it.resolver(db),
         }
+    }
+}
+
+impl HasResolver for MacroId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        match self {
+            MacroId::Macro2Id(it) => it.resolver(db),
+            MacroId::MacroRulesId(it) => it.resolver(db),
+            MacroId::ProcMacroId(it) => it.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for Macro2Id {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for ProcMacroId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for MacroRulesId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
     }
 }
