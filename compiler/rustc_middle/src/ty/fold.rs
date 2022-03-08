@@ -142,30 +142,40 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
         self.visit_with(&mut HasTypeFlagsVisitor { flags }).break_value() == Some(FoundFlags)
     }
+
+    #[inline]
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)
     }
+    #[inline]
     fn has_opaque_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_OPAQUE)
     }
+    #[inline]
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
     }
+    #[inline]
     fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)
     }
+    #[inline]
     fn has_infer_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_INFER)
     }
+    #[inline]
     fn has_infer_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER)
     }
+    #[inline]
     fn has_infer_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_CT_INFER)
     }
+    #[inline]
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_INFER)
     }
+    #[inline]
     fn has_placeholders(&self) -> bool {
         self.has_type_flags(
             TypeFlags::HAS_RE_PLACEHOLDER
@@ -173,20 +183,24 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
                 | TypeFlags::HAS_CT_PLACEHOLDER,
         )
     }
+    #[inline]
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
     /// "Free" regions in this context means that it has any region
     /// that is not (a) erased or (b) late-bound.
+    #[inline]
     fn has_free_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
 
+    #[inline]
     fn has_erased_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_ERASED)
     }
 
     /// True if there are any un-erased free regions.
+    #[inline]
     fn has_erasable_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_FREE_REGIONS)
     }
@@ -194,11 +208,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// Indicates whether this value references only 'global'
     /// generic parameters that are the same regardless of what fn we are
     /// in. This is used for caching.
+    #[inline]
     fn is_global(&self) -> bool {
         !self.has_type_flags(TypeFlags::HAS_FREE_LOCAL_NAMES)
     }
 
     /// True if there are any late-bound regions
+    #[inline]
     fn has_late_bound_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
@@ -206,6 +222,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// Indicates whether this value still has parameters/placeholders/inference variables
     /// which could be replaced later, in a way that would change the results of `impl`
     /// specialization.
+    #[inline]
     fn still_further_specializable(&self) -> bool {
         self.has_type_flags(TypeFlags::STILL_FURTHER_SPECIALIZABLE)
     }

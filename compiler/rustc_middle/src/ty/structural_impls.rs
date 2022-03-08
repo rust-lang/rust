@@ -12,6 +12,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::CRATE_DEF_INDEX;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_type_ir::TypeFlags;
 
 use std::fmt;
 use std::mem::ManuallyDrop;
@@ -1066,6 +1067,11 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_ty(*self)
     }
+
+    #[inline(always)]
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.flags().intersects(flags)
+    }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
@@ -1086,6 +1092,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region<'tcx> {
 
     fn visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> ControlFlow<V::BreakTy> {
         visitor.visit_region(*self)
+    }
+
+    #[inline(always)]
+    fn has_type_flags(&self, flags: TypeFlags) -> bool {
+        self.type_flags().intersects(flags)
     }
 }
 
