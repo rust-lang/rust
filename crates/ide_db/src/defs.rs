@@ -94,7 +94,7 @@ impl Definition {
 
     pub fn name(&self, db: &RootDatabase) -> Option<Name> {
         let name = match self {
-            Definition::Macro(it) => it.name(db)?,
+            Definition::Macro(it) => it.name(db),
             Definition::Field(it) => it.name(db),
             Definition::Module(it) => it.name(db)?,
             Definition::Function(it) => it.name(db),

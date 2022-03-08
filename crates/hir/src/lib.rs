@@ -340,7 +340,7 @@ impl ModuleDef {
             ModuleDef::Variant(it) => it.name(db),
             ModuleDef::TypeAlias(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
-            ModuleDef::Macro(it) => it.name(db)?,
+            ModuleDef::Macro(it) => it.name(db),
             ModuleDef::BuiltinType(it) => it.name(),
         };
         Some(name)
@@ -426,8 +426,7 @@ impl HasVisibility for ModuleDef {
             ModuleDef::Trait(it) => it.visibility(db),
             ModuleDef::TypeAlias(it) => it.visibility(db),
             ModuleDef::Variant(it) => it.visibility(db),
-            // FIXME
-            ModuleDef::Macro(_) => Visibility::Public,
+            ModuleDef::Macro(it) => it.visibility(db),
             ModuleDef::BuiltinType(_) => Visibility::Public,
         }
     }
@@ -1766,14 +1765,12 @@ impl Macro {
         Module { id: self.id.module(db.upcast()) }
     }
 
-    pub fn name(self, _db: &dyn HirDatabase) -> Option<Name> {
-        // match self.id {
-        //     MacroId::Macro2Id(id) => db.macro2_data(id).name.clone(),
-        //     MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
-        //     MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
-        // }
-        // FIXME
-        None
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        match self.id {
+            MacroId::Macro2Id(id) => db.macro2_data(id).name.clone(),
+            MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
+            MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
+        }
     }
 
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {
@@ -1823,6 +1820,20 @@ impl Macro {
 
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
         matches!(self.kind(db), MacroKind::Attr)
+    }
+}
+
+impl HasVisibility for Macro {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        match self.id {
+            MacroId::Macro2Id(id) => {
+                let data = db.macro2_data(id);
+                let visibility = &data.visibility;
+                visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+            }
+            MacroId::MacroRulesId(_) => Visibility::Public,
+            MacroId::ProcMacroId(_) => Visibility::Public,
+        }
     }
 }
 
@@ -3372,5 +3383,11 @@ impl HasCrate for TypeAlias {
 impl HasCrate for Type {
     fn krate(&self, _db: &dyn HirDatabase) -> Crate {
         self.krate.into()
+    }
+}
+
+impl HasCrate for Macro {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 }

@@ -36,7 +36,7 @@ pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, at
                         |&&dependency| {
                             !existing_derives
                                 .iter()
-                                .filter_map(|it| it.name(ctx.db))
+                                .map(|it| it.name(ctx.db))
                                 .any(|it| it.to_smol_str() == dependency)
                         },
                     ));
@@ -108,7 +108,7 @@ fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                 let mut item = CompletionItem::new(
                     SymbolKind::Derive,
                     ctx.source_range(),
-                    mac.name(ctx.db)?.to_smol_str(),
+                    mac.name(ctx.db).to_smol_str(),
                 );
                 item.add_import(ImportEdit { import, scope: import_scope.clone() });
                 if let Some(docs) = mac.docs(ctx.db) {

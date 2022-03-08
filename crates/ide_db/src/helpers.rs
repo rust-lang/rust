@@ -15,7 +15,7 @@ pub fn item_name(db: &RootDatabase, item: ItemInNs) -> Option<Name> {
     match item {
         ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).name(db),
         ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).name(db),
-        ItemInNs::Macros(macro_def_id) => Macro::from(macro_def_id).name(db),
+        ItemInNs::Macros(macro_def_id) => Some(Macro::from(macro_def_id).name(db)),
     }
 }
 

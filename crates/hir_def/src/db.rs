@@ -11,7 +11,10 @@ use crate::{
     adt::{EnumData, StructData},
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
-    data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
+    data::{
+        ConstData, FunctionData, ImplData, Macro2Data, MacroRulesData, ProcMacroData, StaticData,
+        TraitData, TypeAliasData,
+    },
     generics::GenericParams,
     import_map::ImportMap,
     intern::Interned,
@@ -117,6 +120,15 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(StaticData::static_data_query)]
     fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
+
+    #[salsa::invoke(Macro2Data::macro2_data_query)]
+    fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;
+
+    #[salsa::invoke(MacroRulesData::macro_rules_data_query)]
+    fn macro_rules_data(&self, makro: MacroRulesId) -> Arc<MacroRulesData>;
+
+    #[salsa::invoke(ProcMacroData::proc_macro_data_query)]
+    fn proc_macro_data(&self, makro: ProcMacroId) -> Arc<ProcMacroData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

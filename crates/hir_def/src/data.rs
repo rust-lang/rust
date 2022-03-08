@@ -15,7 +15,8 @@ use crate::{
     type_ref::{TraitRef, TypeBound, TypeRef},
     visibility::RawVisibility,
     AssocItemId, AstIdWithPath, ConstId, ConstLoc, FunctionId, FunctionLoc, HasModule, ImplId,
-    Intern, ItemContainerId, Lookup, ModuleId, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    Intern, ItemContainerId, Lookup, Macro2Id, MacroRulesId, ModuleId, ProcMacroId, StaticId,
+    TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,6 +291,59 @@ impl ImplData {
 
     pub fn attribute_calls(&self) -> impl Iterator<Item = (AstId<ast::Item>, MacroCallId)> + '_ {
         self.attribute_calls.iter().flat_map(|it| it.iter()).copied()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Macro2Data {
+    pub name: Name,
+    pub visibility: RawVisibility,
+}
+
+impl Macro2Data {
+    pub(crate) fn macro2_data_query(db: &dyn DefDatabase, makro: Macro2Id) -> Arc<Macro2Data> {
+        let loc = makro.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let makro = &item_tree[loc.id.value];
+
+        Arc::new(Macro2Data {
+            name: makro.name.clone(),
+            visibility: item_tree[makro.visibility].clone(),
+        })
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MacroRulesData {
+    pub name: Name,
+}
+
+impl MacroRulesData {
+    pub(crate) fn macro_rules_data_query(
+        db: &dyn DefDatabase,
+        makro: MacroRulesId,
+    ) -> Arc<MacroRulesData> {
+        let loc = makro.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let makro = &item_tree[loc.id.value];
+
+        Arc::new(MacroRulesData { name: makro.name.clone() })
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ProcMacroData {
+    pub name: Name,
+}
+
+impl ProcMacroData {
+    pub(crate) fn proc_macro_data_query(
+        db: &dyn DefDatabase,
+        makro: ProcMacroId,
+    ) -> Arc<ProcMacroData> {
+        let loc = makro.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+        let makro = &item_tree[loc.id.value];
+
+        Arc::new(ProcMacroData { name: makro.name.clone() })
     }
 }
 

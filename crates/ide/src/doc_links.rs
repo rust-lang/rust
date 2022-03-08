@@ -472,7 +472,7 @@ fn filename_and_frag_for_def(
         }
         Definition::Const(c) => format!("const.{}.html", c.name(db)?),
         Definition::Static(s) => format!("static.{}.html", s.name(db)),
-        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db)?),
+        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db)),
         Definition::Field(field) => {
             let def = match field.parent_def(db) {
                 hir::VariantDef::Struct(it) => Definition::Adt(it.into()),
