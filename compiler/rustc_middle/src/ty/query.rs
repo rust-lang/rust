@@ -152,6 +152,16 @@ macro_rules! separate_provide_extern_default {
     };
 }
 
+macro_rules! opt_remap_env_constness {
+    ([][$name:ident]) => {};
+    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
+        let $name = $name.without_const();
+    };
+    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
+        opt_remap_env_constness!([$($modifiers)*][$name])
+    };
+}
+
 macro_rules! define_callbacks {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -198,7 +208,9 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, QueryMode::Ensure);
+                opt_remap_env_constness!([$($modifiers)*][key]);
+                let key_hash = rustc_data_structures::sharded::make_hash(&key);
+                self.tcx.queries.$name(self.tcx, DUMMY_SP, key, key_hash, QueryMode::Ensure);
             })*
         }
 
@@ -209,7 +221,9 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 let key = key.into_query_param();
-                self.queries.$name(self, DUMMY_SP, key, QueryMode::Get).unwrap()
+                opt_remap_env_constness!([$($modifiers)*][key]);
+                let key_hash = rustc_data_structures::sharded::make_hash(&key);
+                self.queries.$name(self, DUMMY_SP, key, key_hash, QueryMode::Get).unwrap()
             })*
         }
 
@@ -219,7 +233,9 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 let key = key.into_query_param();
-                self.tcx.queries.$name(self.tcx, self.span, key, QueryMode::Get).unwrap()
+                opt_remap_env_constness!([$($modifiers)*][key]);
+                let key_hash = rustc_data_structures::sharded::make_hash(&key);
+                self.tcx.queries.$name(self.tcx, self.span, key, key_hash, QueryMode::Get).unwrap()
             })*
         }
 
@@ -277,6 +293,7 @@ macro_rules! define_callbacks {
                 tcx: TyCtxt<$tcx>,
                 span: Span,
                 key: query_keys::$name<$tcx>,
+                key_hash: u64,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<$tcx>>;)*
         }

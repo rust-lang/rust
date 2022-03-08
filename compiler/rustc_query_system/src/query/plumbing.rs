@@ -325,7 +325,7 @@ where
         #[cfg(parallel_compiler)]
         TryGetJob::JobCompleted(query_blocked_prof_timer) => {
             let (v, index) = cache
-                .lookup(&key)
+                .lookup(&key, rustc_data_structures::sharded::make_hash(&key))
                 .unwrap_or_else(|| panic!("value must be in cache after waiting"));
 
             if unlikely!(tcx.dep_context().profiler().enabled()) {
@@ -654,13 +654,19 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, CTX>(tcx: CTX, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
+pub fn get_query<Q, CTX>(
+    tcx: CTX,
+    span: Span,
+    key: Q::Key,
+    key_hash: u64,
+    mode: QueryMode,
+) -> Option<Q::Stored>
 where
     Q: QueryDescription<CTX>,
     Q::Key: DepNodeParams<CTX::DepContext>,
     CTX: QueryContext,
 {
-    match Q::query_cache(tcx).lookup(&key) {
+    match Q::query_cache(tcx).lookup(&key, key_hash) {
         Some((value, index)) => {
             if unlikely!(tcx.dep_context().profiler().enabled()) {
                 tcx.dep_context().profiler().query_cache_hit(index.into());
@@ -707,7 +713,7 @@ where
     // We may be concurrently trying both execute and force a query.
     // Ensure that only one of them runs the query.
     let cache = Q::query_cache(tcx);
-    match cache.lookup(&key) {
+    match cache.lookup(&key, rustc_data_structures::sharded::make_hash(&key)) {
         Some((_, index)) => {
             if unlikely!(tcx.dep_context().profiler().enabled()) {
                 tcx.dep_context().profiler().query_cache_hit(index.into());

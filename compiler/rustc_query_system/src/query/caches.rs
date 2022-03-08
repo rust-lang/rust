@@ -2,7 +2,6 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
 #[cfg(not(parallel_compiler))]
@@ -33,7 +32,7 @@ pub trait QueryCache: QueryStorage + Sized {
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup(&self, key: &Self::Key) -> Option<(Self::Stored, DepNodeIndex)>;
+    fn lookup(&self, key: &Self::Key, key_hash: u64) -> Option<(Self::Stored, DepNodeIndex)>;
 
     fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
@@ -78,8 +77,7 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(Self::Stored, DepNodeIndex)> {
-        let key_hash = sharded::make_hash(key);
+    fn lookup(&self, key: &K, key_hash: u64) -> Option<(Self::Stored, DepNodeIndex)> {
         #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key_hash).lock();
         #[cfg(not(parallel_compiler))]
@@ -159,8 +157,7 @@ where
     type Key = K;
 
     #[inline(always)]
-    fn lookup(&self, key: &K) -> Option<(Self::Stored, DepNodeIndex)> {
-        let key_hash = sharded::make_hash(key);
+    fn lookup(&self, key: &K, key_hash: u64) -> Option<(Self::Stored, DepNodeIndex)> {
         #[cfg(parallel_compiler)]
         let lock = self.cache.get_shard_by_hash(key_hash).lock();
         #[cfg(not(parallel_compiler))]
