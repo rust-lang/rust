@@ -86,7 +86,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         candidate: &Candidate<'pat, 'tcx>,
         switch_ty: Ty<'tcx>,
-        options: &mut FxIndexMap<ConstantKind<'tcx>, u128>,
+        options: &mut FxIndexMap<ty::Const<'tcx>, u128>,
     ) -> bool {
         let Some(match_pair) = candidate.match_pairs.iter().find(|mp| mp.place == *test_place) else {
             return false;
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                 } else if let [success, fail] = *make_target_blocks(self) {
                     assert_eq!(value.ty(), ty);
-                    let expect = self.literal_operand(test.span, value);
+                    let expect = self.literal_operand(test.span, value.into());
                     let val = Operand::Copy(place);
                     self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
                 } else {
@@ -277,8 +277,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let target_blocks = make_target_blocks(self);
 
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
-                let lo = self.literal_operand(test.span, lo);
-                let hi = self.literal_operand(test.span, hi);
+                let lo = self.literal_operand(test.span, lo.into());
+                let hi = self.literal_operand(test.span, hi.into());
                 let val = Operand::Copy(place);
 
                 let [success, fail] = *target_blocks else {
@@ -366,11 +366,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
-        value: ConstantKind<'tcx>,
+        value: ty::Const<'tcx>,
         place: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
-        let mut expect = self.literal_operand(source_info.span, value);
+        let mut expect = self.literal_operand(source_info.span, value.into());
         let mut val = Operand::Copy(place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
@@ -760,11 +760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
     }
 
-    fn const_range_contains(
-        &self,
-        range: PatRange<'tcx>,
-        value: ConstantKind<'tcx>,
-    ) -> Option<bool> {
+    fn const_range_contains(&self, range: PatRange<'tcx>, value: ty::Const<'tcx>) -> Option<bool> {
         use std::cmp::Ordering::*;
 
         let tcx = self.tcx;
@@ -781,7 +777,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn values_not_contained_in_range(
         &self,
         range: PatRange<'tcx>,
-        options: &FxIndexMap<ConstantKind<'tcx>, u128>,
+        options: &FxIndexMap<ty::Const<'tcx>, u128>,
     ) -> Option<bool> {
         for &val in options.keys() {
             if self.const_range_contains(range, val)? {

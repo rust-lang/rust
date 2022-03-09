@@ -94,13 +94,8 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
-<<<<<<< HEAD
         ConstBlock { did: _, substs: _ } => {}
         Repeat { value, count: _ } => {
-=======
-        ConstBlock { value } => visitor.visit_constant(value),
-        Repeat { value, count } => {
->>>>>>> 6064f16d846 (change thir to use mir::ConstantKind instead of ty::Const)
             visitor.visit_expr(&visitor.thir()[value]);
         }
         Array { ref fields } | Tuple { ref fields } => {

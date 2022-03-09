@@ -17,7 +17,6 @@ use crate::traits::{self, Obligation, ObligationCause};
 use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::ConstantKind;
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_middle::ty::{Predicate, ToPredicate};
@@ -837,10 +836,7 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeFoldable<'tcx>>(
             if let Ok(Some(ct)) = AbstractConst::new(self.tcx, uv.shrink()) {
                 const_evaluatable::walk_abstract_const(self.tcx, ct, |node| {
                     match node.root(self.tcx) {
-                        Node::Leaf(leaf) => match leaf {
-                            ConstantKind::Ty(c) => self.visit_const(c),
-                            ConstantKind::Val(_, ty) => self.visit_ty(ty),
-                        },
+                        Node::Leaf(leaf) => self.visit_const(leaf),
                         Node::Cast(_, _, ty) => self.visit_ty(ty),
                         Node::Binop(..) | Node::UnaryOp(..) | Node::FunctionCall(_, _) => {
                             ControlFlow::CONTINUE

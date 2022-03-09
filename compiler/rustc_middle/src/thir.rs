@@ -661,7 +661,7 @@ pub enum PatKind<'tcx> {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: mir::ConstantKind<'tcx>,
+        value: ty::Const<'tcx>,
     },
 
     Range(PatRange<'tcx>),
@@ -691,8 +691,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: mir::ConstantKind<'tcx>,
-    pub hi: mir::ConstantKind<'tcx>,
+    pub lo: ty::Const<'tcx>,
+    pub hi: ty::Const<'tcx>,
     pub end: RangeEnd,
 }
 
@@ -736,7 +736,11 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         Some(adt_def.variant(variant_index))
                     }
                     _ => self.ty.ty_adt_def().and_then(|adt| {
-                        if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }
+                        if !adt.is_enum() {
+                            Some(adt.non_enum_variant())
+                        } else {
+                            None
+                        }
                     }),
                 };
 

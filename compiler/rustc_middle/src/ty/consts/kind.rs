@@ -76,7 +76,11 @@ static_assert_size!(ConstKind<'_>, 40);
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
     pub fn try_to_value(self) -> Option<ConstValue<'tcx>> {
-        if let ConstKind::Value(val) = self { Some(val) } else { None }
+        if let ConstKind::Value(val) = self {
+            Some(val)
+        } else {
+            None
+        }
     }
 
     #[inline]
@@ -126,6 +130,7 @@ impl<'tcx> ConstKind<'tcx> {
     #[inline]
     /// Tries to evaluate the constant if it is `Unevaluated`. If that isn't possible or necessary
     /// return `None`.
+    // FIXME(@lcnr): Completely rework the evaluation/normalization system for `ty::Const` once valtrees are merged.
     pub fn try_eval(
         self,
         tcx: TyCtxt<'tcx>,
