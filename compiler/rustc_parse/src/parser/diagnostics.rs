@@ -5,6 +5,7 @@ use super::{
     SemiColonMode, SeqSep, TokenExpectType, TokenType,
 };
 
+use crate::lexer::UnmatchedBrace;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
@@ -21,6 +22,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
 
@@ -154,6 +156,25 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+pub(super) struct SnapshotParser<'a> {
+    parser: Parser<'a>,
+    unclosed_delims: Vec<UnmatchedBrace>,
+}
+
+impl<'a> Deref for SnapshotParser<'a> {
+    type Target = Parser<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.parser
+    }
+}
+
+impl<'a> DerefMut for SnapshotParser<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.parser
+    }
+}
+
 impl<'a> Parser<'a> {
     pub(super) fn span_err<S: Into<MultiSpan>>(
         &self,
@@ -179,11 +200,17 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    pub(super) fn diagnostic_snapshot(&self) -> Self {
+    pub(super) fn restore(&mut self, snapshot: SnapshotParser<'a>) {
+        *self = snapshot.parser;
+        self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
+    }
+
+    pub(super) fn diagnostic_snapshot(&self) -> SnapshotParser<'a> {
         let mut snapshot = self.clone();
+        let unclosed_delims = self.unclosed_delims.clone();
         // initialize unclosed_delims to avoid duplicate errors.
-        snapshot.unclosed_delims = vec![];
-        snapshot
+        snapshot.unclosed_delims.clear();
+        SnapshotParser { parser: snapshot, unclosed_delims }
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {

@@ -630,9 +630,9 @@ impl<'a> Parser<'a> {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
                     if is_const_fn {
-                        if let Ok(expr) = snapshot.parse_expr_res(Restrictions::CONST_EXPR, None) {
-                            snapshot.unclosed_delims.extend(self.unclosed_delims.clone());
-                            *self = snapshot;
+                        if let Ok(expr) = (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None)
+                        {
+                            self.restore(snapshot);
                             return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
                         }
                     }
