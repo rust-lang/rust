@@ -762,10 +762,7 @@ pub(super) fn parse_tt(
                         Err(mut err) => {
                             err.span_label(
                                 span,
-                                format!(
-                                    "while parsing argument for this `{}` macro fragment",
-                                    kind
-                                ),
+                                format!("while parsing argument for this `{kind}` macro fragment"),
                             )
                             .emit();
                             return ErrorReported;
@@ -784,31 +781,45 @@ pub(super) fn parse_tt(
             (_, _) => {
                 // We need to call the black-box parser to get some nonterminal, but something is
                 // wrong.
-                let nts = bb_items
-                    .iter()
-                    .map(|item| match item.top_elts.get_tt(item.idx) {
-                        TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
-                            format!("{} ('{}')", kind, bind)
-                        }
-                        _ => panic!(),
-                    })
-                    .collect::<Vec<String>>()
-                    .join(" or ");
-
-                return Error(
+                return bb_items_ambiguity_error(
+                    macro_name,
+                    next_items,
+                    bb_items,
                     parser.token.span,
-                    format!(
-                        "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
-                        match next_items.len() {
-                            0 => format!("built-in NTs {}.", nts),
-                            1 => format!("built-in NTs {} or 1 other option.", nts),
-                            n => format!("built-in NTs {} or {} other options.", nts, n),
-                        }
-                    ),
                 );
             }
         }
 
         assert!(!cur_items.is_empty());
     }
+}
+
+fn bb_items_ambiguity_error<'root, 'tt>(
+    macro_name: Ident,
+    next_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+    bb_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+    token_span: rustc_span::Span,
+) -> NamedParseResult {
+    let nts = bb_items
+        .iter()
+        .map(|item| match item.top_elts.get_tt(item.idx) {
+            TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
+                format!("{} ('{}')", kind, bind)
+            }
+            _ => panic!(),
+        })
+        .collect::<Vec<String>>()
+        .join(" or ");
+
+    Error(
+        token_span,
+        format!(
+            "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
+            match next_items.len() {
+                0 => format!("built-in NTs {}.", nts),
+                1 => format!("built-in NTs {} or 1 other option.", nts),
+                n => format!("built-in NTs {} or {} other options.", nts, n),
+            }
+        ),
+    )
 }
