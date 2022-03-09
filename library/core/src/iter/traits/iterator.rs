@@ -1921,7 +1921,7 @@ pub trait Iterator {
     /// println!("Vec len now is {}", count);
     /// ```
     #[inline]
-    #[unstable(feature = "iter_collect_into", reason = "new API", issue = "none")]
+    #[unstable(feature = "iter_collect_into", reason = "new API", issue = "94780")]
     fn collect_into<E: Extend<Self::Item>>(self, collection: &mut E) -> &mut E
     where
         Self: Sized,
