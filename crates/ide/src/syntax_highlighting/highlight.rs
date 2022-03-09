@@ -320,7 +320,7 @@ fn highlight_def(
 ) -> Highlight {
     let db = sema.db;
     let mut h = match def {
-        Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind().into())),
+        Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
         Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));

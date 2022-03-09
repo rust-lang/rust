@@ -4151,7 +4151,7 @@ struct Foo;
                 *Copy*
 
                 ```rust
-                test
+                test::foo
                 ```
 
                 ```rust

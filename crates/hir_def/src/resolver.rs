@@ -2,10 +2,7 @@
 use std::sync::Arc;
 
 use base_db::CrateId;
-use hir_expand::{
-    name::{name, Name},
-    MacroDefId,
-};
+use hir_expand::name::{name, Name};
 use indexmap::IndexMap;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -24,8 +21,8 @@ use crate::{
     visibility::{RawVisibility, Visibility},
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, VariantId,
+    LocalModuleId, Lookup, Macro2Id, MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId,
+    StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, VariantId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -347,11 +344,7 @@ impl Resolver {
         }
     }
 
-    pub fn resolve_path_as_macro(
-        &self,
-        db: &dyn DefDatabase,
-        path: &ModPath,
-    ) -> Option<MacroDefId> {
+    pub fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroId> {
         let (item_map, module) = self.module_scope()?;
         item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
     }
@@ -485,7 +478,6 @@ impl Resolver {
 #[derive(Debug, PartialEq, Eq)]
 pub enum ScopeDef {
     ModuleDef(ModuleDefId),
-    MacroDef(MacroDefId),
     Unknown,
     ImplSelfType(ImplId),
     AdtSelfType(AdtId),
@@ -509,7 +501,7 @@ impl Scope {
                     acc.add_per_ns(name, def);
                 });
                 m.def_map[m.module_id].scope.legacy_macros().for_each(|(name, mac)| {
-                    acc.add(name, ScopeDef::MacroDef(mac));
+                    acc.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))));
                 });
                 m.def_map.extern_prelude().for_each(|(name, &def)| {
                     acc.add(name, ScopeDef::ModuleDef(def));
@@ -651,6 +643,7 @@ impl ModuleItemMap {
                     | ModuleDefId::FunctionId(_)
                     | ModuleDefId::EnumVariantId(_)
                     | ModuleDefId::ConstId(_)
+                    | ModuleDefId::MacroId(_)
                     | ModuleDefId::StaticId(_) => return None,
                 };
                 Some(ResolveValueResult::Partial(ty, idx))
@@ -682,6 +675,7 @@ fn to_value_ns(per_ns: PerNs) -> Option<ValueNs> {
         | ModuleDefId::TraitId(_)
         | ModuleDefId::TypeAliasId(_)
         | ModuleDefId::BuiltinType(_)
+        | ModuleDefId::MacroId(_)
         | ModuleDefId::ModuleId(_) => return None,
     };
     Some(res)
@@ -699,6 +693,7 @@ fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
 
         ModuleDefId::FunctionId(_)
         | ModuleDefId::ConstId(_)
+        | ModuleDefId::MacroId(_)
         | ModuleDefId::StaticId(_)
         | ModuleDefId::ModuleId(_) => return None,
     };
@@ -718,14 +713,14 @@ impl ScopeNames {
         }
     }
     fn add_per_ns(&mut self, name: &Name, def: PerNs) {
-        if let Some(ty) = &def.types {
-            self.add(name, ScopeDef::ModuleDef(ty.0))
+        if let &Some((ty, _)) = &def.types {
+            self.add(name, ScopeDef::ModuleDef(ty))
         }
-        if let Some(val) = &def.values {
-            self.add(name, ScopeDef::ModuleDef(val.0))
+        if let &Some((def, _)) = &def.values {
+            self.add(name, ScopeDef::ModuleDef(def))
         }
-        if let Some(mac) = &def.macros {
-            self.add(name, ScopeDef::MacroDef(mac.0))
+        if let &Some((mac, _)) = &def.macros {
+            self.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(mac)))
         }
         if def.is_none() {
             self.add(name, ScopeDef::Unknown)
@@ -867,5 +862,33 @@ impl HasResolver for VariantId {
             VariantId::StructId(it) => it.resolver(db),
             VariantId::UnionId(it) => it.resolver(db),
         }
+    }
+}
+
+impl HasResolver for MacroId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        match self {
+            MacroId::Macro2Id(it) => it.resolver(db),
+            MacroId::MacroRulesId(it) => it.resolver(db),
+            MacroId::ProcMacroId(it) => it.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for Macro2Id {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for ProcMacroId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
+    }
+}
+
+impl HasResolver for MacroRulesId {
+    fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        self.lookup(db).container.resolver(db)
     }
 }

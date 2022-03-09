@@ -75,10 +75,8 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
+    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, ModuleDefId, ModuleId, ProcMacroId,
 };
-
-use self::proc_macro::ProcMacroDef;
 
 /// Contains the results of (early) name resolution.
 ///
@@ -102,11 +100,9 @@ pub struct DefMap {
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
 
-    /// Side table with additional proc. macro info, for use by name resolution in downstream
-    /// crates.
-    ///
-    /// (the primary purpose is to resolve derive helpers and fetch a proc-macros name)
-    exported_proc_macros: FxHashMap<MacroDefId, ProcMacroDef>,
+    /// Side table for resolving derive helpers.
+    exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
+    fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -275,7 +271,8 @@ impl DefMap {
             edition,
             recursion_limit: None,
             extern_prelude: FxHashMap::default(),
-            exported_proc_macros: FxHashMap::default(),
+            exported_derives: FxHashMap::default(),
+            fn_proc_macro_mapping: FxHashMap::default(),
             prelude: None,
             root,
             modules,
@@ -295,9 +292,6 @@ impl DefMap {
     pub fn modules(&self) -> impl Iterator<Item = (LocalModuleId, &ModuleData)> + '_ {
         self.modules.iter()
     }
-    pub fn exported_proc_macros(&self) -> impl Iterator<Item = (MacroDefId, Name)> + '_ {
-        self.exported_proc_macros.iter().map(|(id, def)| (*id, def.name.clone()))
-    }
     pub fn registered_tools(&self) -> &[SmolStr] {
         &self.registered_tools
     }
@@ -306,6 +300,10 @@ impl DefMap {
     }
     pub fn root(&self) -> LocalModuleId {
         self.root
+    }
+
+    pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
+        self.fn_proc_macro_mapping.get(&id).copied()
     }
 
     pub(crate) fn krate(&self) -> CrateId {
@@ -455,12 +453,13 @@ impl DefMap {
         // Exhaustive match to require handling new fields.
         let Self {
             _c: _,
-            exported_proc_macros,
+            exported_derives,
             extern_prelude,
             diagnostics,
             modules,
             registered_attrs,
             registered_tools,
+            fn_proc_macro_mapping,
             block: _,
             edition: _,
             recursion_limit: _,
@@ -470,11 +469,12 @@ impl DefMap {
         } = self;
 
         extern_prelude.shrink_to_fit();
-        exported_proc_macros.shrink_to_fit();
+        exported_derives.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
         registered_attrs.shrink_to_fit();
         registered_tools.shrink_to_fit();
+        fn_proc_macro_mapping.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();

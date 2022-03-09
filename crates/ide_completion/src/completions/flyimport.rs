@@ -146,7 +146,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             Some(kind) => kind,
             None => {
                 return match import.original_item {
-                    ItemInNs::Macros(mac) => mac.is_fn_like(),
+                    ItemInNs::Macros(mac) => mac.is_fn_like(ctx.db),
                     _ => true,
                 }
             }
@@ -160,7 +160,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (
                 PathKind::Expr | PathKind::Type | PathKind::Mac | PathKind::Pat,
                 ItemInNs::Macros(mac),
-            ) => mac.is_fn_like(),
+            ) => mac.is_fn_like(ctx.db),
             (PathKind::Mac, _) => true,
 
             (PathKind::Expr, ItemInNs::Types(_) | ItemInNs::Values(_)) => true,
@@ -171,7 +171,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Type, ItemInNs::Types(_)) => true,
             (PathKind::Type, ItemInNs::Values(_)) => false,
 
-            (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(),
+            (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(ctx.db),
             (PathKind::Attr { .. }, _) => false,
         }
     };

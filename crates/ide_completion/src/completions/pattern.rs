@@ -77,9 +77,9 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(e)) => refutable || single_variant_enum(e),
                 hir::ModuleDef::Const(..) | hir::ModuleDef::Module(..) => refutable,
+                hir::ModuleDef::Macro(mac) => mac.is_fn_like(ctx.db),
                 _ => false,
             },
-            hir::ScopeDef::MacroDef(mac) => mac.is_fn_like(),
             hir::ScopeDef::ImplSelfType(impl_) => match impl_.self_ty(ctx.db).as_adt() {
                 Some(hir::Adt::Struct(strukt)) => {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
@@ -117,7 +117,9 @@ fn pattern_path_completion(
                     let module_scope = module.scope(ctx.db, ctx.module);
                     for (name, def) in module_scope {
                         let add_resolution = match def {
-                            ScopeDef::MacroDef(m) if m.is_fn_like() => true,
+                            ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => {
+                                mac.is_fn_like(ctx.db)
+                            }
                             ScopeDef::ModuleDef(_) => true,
                             _ => false,
                         };

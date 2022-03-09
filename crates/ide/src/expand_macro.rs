@@ -75,7 +75,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     for node in tok.ancestors() {
         if let Some(item) = ast::Item::cast(node.clone()) {
             if let Some(def) = sema.resolve_attr_macro_call(&item) {
-                name = def.name(db).map(|name| name.to_string());
+                name = Some(def.name(db).to_string());
                 expanded = expand_attr_macro_recur(&sema, &item);
                 break;
             }

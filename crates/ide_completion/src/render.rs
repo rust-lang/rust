@@ -171,7 +171,9 @@ fn render_resolution_(
         ScopeDef::ModuleDef(Variant(var)) if ctx.completion.pattern_ctx.is_none() => {
             return render_variant(ctx, import_to_add, Some(local_name), var, None);
         }
-        ScopeDef::MacroDef(mac) => return render_macro(ctx, import_to_add, local_name, mac),
+        ScopeDef::ModuleDef(Macro(mac)) => {
+            return render_macro(ctx, import_to_add, local_name, mac)
+        }
         ScopeDef::Unknown => {
             let mut item = CompletionItem::new(
                 CompletionItemKind::UnresolvedReference,
@@ -274,7 +276,6 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<hir::Docume
 fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> bool {
     match resolution {
         ScopeDef::ModuleDef(it) => ctx.is_deprecated_assoc_item(it),
-        ScopeDef::MacroDef(it) => ctx.is_deprecated(it),
         ScopeDef::GenericParam(it) => ctx.is_deprecated(it),
         ScopeDef::AdtSelfType(it) => ctx.is_deprecated(it),
         _ => false,

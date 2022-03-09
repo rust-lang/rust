@@ -211,6 +211,7 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Static(it) => it.try_to_nav(db),
             hir::ModuleDef::Trait(it) => it.try_to_nav(db),
             hir::ModuleDef::TypeAlias(it) => it.try_to_nav(db),
+            hir::ModuleDef::Macro(it) => it.try_to_nav(db),
             hir::ModuleDef::BuiltinType(_) => None,
         }
     }
@@ -332,7 +333,7 @@ impl TryToNav for hir::Field {
     }
 }
 
-impl TryToNav for hir::MacroDef {
+impl TryToNav for hir::Macro {
     fn try_to_nav(&self, db: &RootDatabase) -> Option<NavigationTarget> {
         let src = self.source(db)?;
         let name_owner: &dyn ast::HasName = match &src.value {
@@ -343,7 +344,7 @@ impl TryToNav for hir::MacroDef {
         let mut res = NavigationTarget::from_named(
             db,
             src.as_ref().with_value(name_owner),
-            self.kind().into(),
+            self.kind(db).into(),
         );
         res.docs = self.docs(db);
         Some(res)

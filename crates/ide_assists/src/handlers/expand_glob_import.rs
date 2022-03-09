@@ -130,9 +130,6 @@ impl Ref {
             ScopeDef::ModuleDef(def) => {
                 Some(Ref { visible_name: name, def: Definition::from(def) })
             }
-            ScopeDef::MacroDef(def) => {
-                Some(Ref { visible_name: name, def: Definition::Macro(def) })
-            }
             _ => None,
         }
     }

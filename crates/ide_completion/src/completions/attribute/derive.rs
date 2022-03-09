@@ -1,5 +1,5 @@
 //! Completion for derives
-use hir::{HasAttrs, MacroDef, MacroKind};
+use hir::{HasAttrs, Macro, MacroKind};
 use ide_db::{
     imports::{import_assets::ImportAssets, insert_use::ImportScope},
     SymbolKind,
@@ -24,9 +24,9 @@ pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, at
         }
 
         let name = name.to_smol_str();
-        let (label, lookup) = match core.zip(mac.module(ctx.db).map(|it| it.krate())) {
+        let (label, lookup) = match (core, mac.module(ctx.db).krate()) {
             // show derive dependencies for `core`/`std` derives
-            Some((core, mac_krate)) if core == mac_krate => {
+            (Some(core), mac_krate) if core == mac_krate => {
                 if let Some(derive_completion) = DEFAULT_DERIVE_DEPENDENCIES
                     .iter()
                     .find(|derive_completion| derive_completion.label == name)
@@ -36,7 +36,7 @@ pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, at
                         |&&dependency| {
                             !existing_derives
                                 .iter()
-                                .filter_map(|it| it.name(ctx.db))
+                                .map(|it| it.name(ctx.db))
                                 .any(|it| it.to_smol_str() == dependency)
                         },
                     ));
@@ -63,11 +63,11 @@ pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, at
     flyimport_derive(acc, ctx);
 }
 
-fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, MacroDef)> {
+fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, Macro)> {
     let mut result = Vec::default();
     ctx.process_all_names(&mut |name, scope_def| {
-        if let hir::ScopeDef::MacroDef(mac) = scope_def {
-            if mac.kind() == hir::MacroKind::Derive {
+        if let hir::ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) = scope_def {
+            if mac.kind(ctx.db) == hir::MacroKind::Derive {
                 result.push((name, mac));
             }
         }
@@ -99,7 +99,7 @@ fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                 hir::ItemInNs::Macros(mac) => Some((import, mac)),
                 _ => None,
             })
-            .filter(|&(_, mac)| mac.kind() == MacroKind::Derive)
+            .filter(|&(_, mac)| mac.kind(ctx.db) == MacroKind::Derive)
             .filter(|&(_, mac)| !ctx.is_item_hidden(&hir::ItemInNs::Macros(mac)))
             .sorted_by_key(|(import, _)| {
                 compute_fuzzy_completion_order_key(&import.import_path, &user_input_lowercased)
@@ -108,7 +108,7 @@ fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()
                 let mut item = CompletionItem::new(
                     SymbolKind::Derive,
                     ctx.source_range(),
-                    mac.name(ctx.db)?.to_smol_str(),
+                    mac.name(ctx.db).to_smol_str(),
                 );
                 item.add_import(ImportEdit { import, scope: import_scope.clone() });
                 if let Some(docs) = mac.docs(ctx.db) {

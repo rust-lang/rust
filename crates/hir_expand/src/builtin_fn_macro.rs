@@ -9,10 +9,7 @@ use syntax::{
     SmolStr,
 };
 
-use crate::{
-    db::AstDatabase, name, quote, AstId, CrateId, ExpandError, ExpandResult, MacroCallId,
-    MacroCallLoc, MacroDefId, MacroDefKind,
-};
+use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId, MacroCallLoc};
 
 macro_rules! register_builtin {
     ( LAZY: $(($name:ident, $kind: ident) => $expand:ident),* , EAGER: $(($e_name:ident, $e_kind: ident) => $e_expand:ident),*  ) => {
@@ -79,23 +76,8 @@ impl ExpandedEager {
 
 pub fn find_builtin_macro(
     ident: &name::Name,
-    krate: CrateId,
-    ast_id: AstId<ast::Macro>,
-) -> Option<MacroDefId> {
-    let kind = find_by_name(ident)?;
-
-    match kind {
-        Either::Left(kind) => Some(MacroDefId {
-            krate,
-            kind: MacroDefKind::BuiltIn(kind, ast_id),
-            local_inner: false,
-        }),
-        Either::Right(kind) => Some(MacroDefId {
-            krate,
-            kind: MacroDefKind::BuiltInEager(kind, ast_id),
-            local_inner: false,
-        }),
-    }
+) -> Option<Either<BuiltinFnLikeExpander, EagerExpander>> {
+    find_by_name(ident)
 }
 
 register_builtin! {

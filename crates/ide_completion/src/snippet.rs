@@ -181,7 +181,6 @@ fn import_edits(
     let resolve = |import: &GreenNode| {
         let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
         let item = match ctx.scope.speculative_resolve(&path)? {
-            hir::PathResolution::Macro(mac) => mac.into(),
             hir::PathResolution::Def(def) => def.into(),
             _ => return None,
         };

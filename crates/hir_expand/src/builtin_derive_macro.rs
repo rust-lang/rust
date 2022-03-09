@@ -8,10 +8,7 @@ use syntax::{
 };
 use tt::TokenId;
 
-use crate::{
-    db::AstDatabase, name, quote, AstId, CrateId, ExpandError, ExpandResult, MacroCallId,
-    MacroDefId, MacroDefKind,
-};
+use crate::{db::AstDatabase, name, quote, ExpandError, ExpandResult, MacroCallId};
 
 macro_rules! register_builtin {
     ( $($trait:ident => $expand:ident),* ) => {
@@ -56,17 +53,8 @@ register_builtin! {
     PartialEq => partial_eq_expand
 }
 
-pub fn find_builtin_derive(
-    ident: &name::Name,
-    krate: CrateId,
-    ast_id: AstId<ast::Macro>,
-) -> Option<MacroDefId> {
-    let expander = BuiltinDeriveExpander::find_by_name(ident)?;
-    Some(MacroDefId {
-        krate,
-        kind: MacroDefKind::BuiltInDerive(expander, ast_id),
-        local_inner: false,
-    })
+pub fn find_builtin_derive(ident: &name::Name) -> Option<BuiltinDeriveExpander> {
+    BuiltinDeriveExpander::find_by_name(ident)
 }
 
 struct BasicAdtInfo {

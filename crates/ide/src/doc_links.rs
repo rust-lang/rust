@@ -5,7 +5,6 @@ mod tests;
 
 mod intra_doc_links;
 
-use either::Either;
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
 use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions};
 use stdx::format_to;
@@ -173,7 +172,7 @@ pub(crate) fn resolve_doc_path_for_def(
     link: &str,
     ns: Option<hir::Namespace>,
 ) -> Option<Definition> {
-    let def = match def {
+    match def {
         Definition::Module(it) => it.resolve_doc_path(db, link, ns),
         Definition::Function(it) => it.resolve_doc_path(db, link, ns),
         Definition::Adt(it) => it.resolve_doc_path(db, link, ns),
@@ -191,11 +190,8 @@ pub(crate) fn resolve_doc_path_for_def(
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_) => None,
-    }?;
-    match def {
-        Either::Left(def) => Some(Definition::from(def)),
-        Either::Right(def) => Some(Definition::Macro(def)),
     }
+    .map(Definition::from)
 }
 
 pub(crate) fn doc_attributes(
@@ -476,7 +472,7 @@ fn filename_and_frag_for_def(
         }
         Definition::Const(c) => format!("const.{}.html", c.name(db)?),
         Definition::Static(s) => format!("static.{}.html", s.name(db)),
-        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db)?),
+        Definition::Macro(mac) => format!("macro.{}.html", mac.name(db)),
         Definition::Field(field) => {
             let def = match field.parent_def(db) {
                 hir::VariantDef::Struct(it) => Definition::Adt(it.into()),

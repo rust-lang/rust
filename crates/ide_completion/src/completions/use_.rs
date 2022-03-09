@@ -56,9 +56,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                                 cov_mark::hit!(dont_complete_current_use);
                                 continue;
                             }
-                            ScopeDef::ModuleDef(_) | ScopeDef::MacroDef(_) | ScopeDef::Unknown => {
-                                true
-                            }
+                            ScopeDef::ModuleDef(_) | ScopeDef::Unknown => true,
                             _ => false,
                         };
 

@@ -93,10 +93,10 @@ use hir_def::{
     expr::{LabelId, PatId},
     keys::{self, Key},
     AdtId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, FieldId, FunctionId,
-    GenericDefId, GenericParamId, ImplId, LifetimeParamId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, TypeParamId, UnionId, VariantId,
+    GenericDefId, GenericParamId, ImplId, LifetimeParamId, MacroId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeParamId, UnionId, VariantId,
 };
-use hir_expand::{name::AsName, AstId, HirFileId, MacroCallId, MacroDefId, MacroDefKind};
+use hir_expand::{name::AsName, HirFileId, MacroCallId};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use stdx::impl_from;
@@ -317,20 +317,18 @@ impl SourceToDefCtx<'_, '_> {
         }
     }
 
-    pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroDefId> {
-        let makro = self.dyn_map(src.as_ref()).and_then(|it| it[keys::MACRO].get(&src.value));
-        if let Some(&makro) = makro {
-            return Some(makro);
-        }
+    pub(super) fn macro_to_def(&mut self, src: InFile<ast::Macro>) -> Option<MacroId> {
+        self.dyn_map(src.as_ref()).and_then(|it| match &src.value {
+            ast::Macro::MacroRules(value) => {
+                it[keys::MACRO_RULES].get(value).copied().map(MacroId::from)
+            }
+            ast::Macro::MacroDef(value) => it[keys::MACRO2].get(value).copied().map(MacroId::from),
+        })
+    }
 
-        // Not all macros are recorded in the dyn map, only the ones behaving like items, so fall back
-        // for the non-item like definitions.
-        let file_ast_id = self.db.ast_id_map(src.file_id).ast_id(&src.value);
-        let ast_id = AstId::new(src.file_id, file_ast_id.upcast());
-        let kind = MacroDefKind::Declarative(ast_id);
-        let file_id = src.file_id.original_file(self.db.upcast());
-        let krate = self.file_to_def(file_id).get(0).copied()?.krate();
-        Some(MacroDefId { krate, kind, local_inner: false })
+    pub(super) fn proc_macro_to_def(&mut self, src: InFile<ast::Fn>) -> Option<MacroId> {
+        self.dyn_map(src.as_ref())
+            .and_then(|it| it[keys::PROC_MACRO].get(&src.value).copied().map(MacroId::from))
     }
 
     pub(super) fn find_container(&mut self, src: InFile<&SyntaxNode>) -> Option<ChildContainer> {

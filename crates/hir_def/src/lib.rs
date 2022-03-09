@@ -58,11 +58,15 @@ use std::{
 };
 
 use attr::Attr;
-use base_db::{impl_intern_key, salsa, CrateId};
+use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
 use hir_expand::{
     ast_id_map::FileAstId,
+    builtin_attr_macro::BuiltinAttrExpander,
+    builtin_derive_macro::BuiltinDeriveExpander,
+    builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     eager::{expand_eager_macro, ErrorEmitted, ErrorSink},
     hygiene::Hygiene,
+    proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroDefId,
     MacroDefKind, UnresolvedMacro,
 };
@@ -77,8 +81,8 @@ use crate::{
     attr::AttrId,
     builtin_type::BuiltinType,
     item_tree::{
-        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, ModItem, Static, Struct, Trait,
-        TypeAlias, Union,
+        Const, Enum, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules, ModItem,
+        Static, Struct, Trait, TypeAlias, Union,
     },
 };
 
@@ -268,6 +272,48 @@ pub struct ExternBlockId(salsa::InternId);
 type ExternBlockLoc = ItemLoc<ExternBlock>;
 impl_intern!(ExternBlockId, ExternBlockLoc, intern_extern_block, lookup_intern_extern_block);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroExpander {
+    Declarative,
+    BuiltIn(BuiltinFnLikeExpander),
+    BuiltInAttr(BuiltinAttrExpander),
+    BuiltInDerive(BuiltinDeriveExpander),
+    BuiltInEager(EagerExpander),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct Macro2Id(salsa::InternId);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Macro2Loc {
+    pub container: ModuleId,
+    pub id: ItemTreeId<MacroDef>,
+    pub expander: MacroExpander,
+}
+impl_intern!(Macro2Id, Macro2Loc, intern_macro2, lookup_intern_macro2);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct MacroRulesId(salsa::InternId);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroRulesLoc {
+    pub container: ModuleId,
+    pub id: ItemTreeId<MacroRules>,
+    pub local_inner: bool,
+    pub expander: MacroExpander,
+}
+impl_intern!(MacroRulesId, MacroRulesLoc, intern_macro_rules, lookup_intern_macro_rules);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub struct ProcMacroId(salsa::InternId);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ProcMacroLoc {
+    // FIXME: this should be a crate? or just a crate-root module
+    pub container: ModuleId,
+    pub id: ItemTreeId<Function>,
+    pub expander: ProcMacroExpander,
+    pub kind: ProcMacroKind,
+}
+impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_macro);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct BlockId(salsa::InternId);
 #[derive(Debug, Hash, PartialEq, Eq, Clone)]
@@ -284,8 +330,8 @@ pub struct TypeOrConstParamId {
     pub local_id: LocalTypeOrConstParamId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 /// A TypeOrConstParamId with an invariant that it actually belongs to a type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeParamId(TypeOrConstParamId);
 
 impl TypeParamId {
@@ -359,6 +405,24 @@ pub enum AdtId {
 }
 impl_from!(StructId, UnionId, EnumId for AdtId);
 
+/// A macro
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum MacroId {
+    Macro2Id(Macro2Id),
+    MacroRulesId(MacroRulesId),
+    ProcMacroId(ProcMacroId),
+}
+impl_from!(Macro2Id, MacroRulesId, ProcMacroId for MacroId);
+
+impl MacroId {
+    pub fn is_attribute(self, db: &dyn db::DefDatabase) -> bool {
+        match self {
+            MacroId::ProcMacroId(it) => it.lookup(db).kind == ProcMacroKind::Attr,
+            _ => false,
+        }
+    }
+}
+
 /// A generic param
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GenericParamId {
@@ -381,8 +445,10 @@ pub enum ModuleDefId {
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
+    MacroId(MacroId),
 }
 impl_from!(
+    MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ModuleId,
     FunctionId,
     AdtId(StructId, EnumId, UnionId),
@@ -472,7 +538,7 @@ pub enum AttrDefId {
     ConstId(ConstId),
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
-    MacroDefId(MacroDefId),
+    MacroId(MacroId),
     ImplId(ImplId),
     GenericParamId(GenericParamId),
     ExternBlockId(ExternBlockId),
@@ -488,7 +554,7 @@ impl_from!(
     FunctionId,
     TraitId,
     TypeAliasId,
-    MacroDefId,
+    MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
     GenericParamId
     for AttrDefId
@@ -592,6 +658,16 @@ impl HasModule for VariantId {
     }
 }
 
+impl HasModule for MacroId {
+    fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
+        match self {
+            MacroId::MacroRulesId(it) => it.lookup(db).container,
+            MacroId::Macro2Id(it) => it.lookup(db).container,
+            MacroId::ProcMacroId(it) => it.lookup(db).container,
+        }
+    }
+}
+
 impl HasModule for DefWithBodyId {
     fn module(&self, db: &dyn db::DefDatabase) -> ModuleId {
         match self {
@@ -652,6 +728,7 @@ impl ModuleDefId {
             ModuleDefId::StaticId(id) => id.lookup(db).module(db),
             ModuleDefId::TraitId(id) => id.lookup(db).container,
             ModuleDefId::TypeAliasId(id) => id.lookup(db).module(db),
+            ModuleDefId::MacroId(id) => id.module(db),
             ModuleDefId::BuiltinType(_) => return None,
         })
     }
@@ -680,9 +757,7 @@ impl AttrDefId {
                 .module(db)
                 .krate
             }
-            // FIXME: `MacroDefId` should store the defining module, then this can implement
-            // `HasModule`
-            AttrDefId::MacroDefId(it) => it.krate,
+            AttrDefId::MacroId(it) => it.module(db).krate,
         }
     }
 }
@@ -762,7 +837,7 @@ fn macro_call_as_call_id(
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId>,
     error_sink: &mut dyn FnMut(ExpandError),
 ) -> Result<Result<MacroCallId, ErrorEmitted>, UnresolvedMacro> {
-    let def: MacroDefId =
+    let def =
         resolver(call.path.clone()).ok_or_else(|| UnresolvedMacro { path: call.path.clone() })?;
 
     let res = if let MacroDefKind::BuiltInEager(..) = def.kind {
@@ -777,6 +852,74 @@ fn macro_call_as_call_id(
         ))
     };
     Ok(res)
+}
+
+pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
+    match id {
+        MacroId::Macro2Id(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            let in_file = |m: FileAstId<ast::MacroDef>| InFile::new(loc.id.file_id(), m.upcast());
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: match loc.expander {
+                    MacroExpander::Declarative => MacroDefKind::Declarative(in_file(makro.ast_id)),
+                    MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file(makro.ast_id)),
+                    MacroExpander::BuiltInAttr(it) => {
+                        MacroDefKind::BuiltInAttr(it, in_file(makro.ast_id))
+                    }
+                    MacroExpander::BuiltInDerive(it) => {
+                        MacroDefKind::BuiltInDerive(it, in_file(makro.ast_id))
+                    }
+                    MacroExpander::BuiltInEager(it) => {
+                        MacroDefKind::BuiltInEager(it, in_file(makro.ast_id))
+                    }
+                },
+                local_inner: false,
+            }
+        }
+        MacroId::MacroRulesId(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            let in_file = |m: FileAstId<ast::MacroRules>| InFile::new(loc.id.file_id(), m.upcast());
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: match loc.expander {
+                    MacroExpander::Declarative => MacroDefKind::Declarative(in_file(makro.ast_id)),
+                    MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file(makro.ast_id)),
+                    MacroExpander::BuiltInAttr(it) => {
+                        MacroDefKind::BuiltInAttr(it, in_file(makro.ast_id))
+                    }
+                    MacroExpander::BuiltInDerive(it) => {
+                        MacroDefKind::BuiltInDerive(it, in_file(makro.ast_id))
+                    }
+                    MacroExpander::BuiltInEager(it) => {
+                        MacroDefKind::BuiltInEager(it, in_file(makro.ast_id))
+                    }
+                },
+                local_inner: loc.local_inner,
+            }
+        }
+        MacroId::ProcMacroId(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: MacroDefKind::ProcMacro(
+                    loc.expander,
+                    loc.kind,
+                    InFile::new(loc.id.file_id(), makro.ast_id),
+                ),
+                local_inner: false,
+            }
+        }
+    }
 }
 
 fn derive_macro_as_call_id(

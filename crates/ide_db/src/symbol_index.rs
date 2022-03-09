@@ -425,7 +425,11 @@ struct StructInModB;
         let symbols: Vec<_> = Crate::from(db.test_crate())
             .modules(&db)
             .into_iter()
-            .map(|module_id| (module_id, SymbolCollector::collect(&db, module_id)))
+            .map(|module_id| {
+                let mut symbols = SymbolCollector::collect(&db, module_id);
+                symbols.sort_by_key(|it| it.name.clone());
+                (module_id, symbols)
+            })
             .collect();
 
         expect_file!["./test_data/test_symbol_index_collection.txt"].assert_debug_eq(&symbols);

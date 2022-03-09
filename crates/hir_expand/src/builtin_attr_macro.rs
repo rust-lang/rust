@@ -1,12 +1,8 @@
 //! Builtin attributes.
 
 use itertools::Itertools;
-use syntax::ast;
 
-use crate::{
-    db::AstDatabase, name, AstId, CrateId, ExpandResult, MacroCallId, MacroCallKind, MacroDefId,
-    MacroDefKind,
-};
+use crate::{db::AstDatabase, name, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
     ( $(($name:ident, $variant:ident) => $expand:ident),* ) => {
@@ -61,17 +57,8 @@ register_builtin! {
     (test_case, TestCase) => dummy_attr_expand
 }
 
-pub fn find_builtin_attr(
-    ident: &name::Name,
-    krate: CrateId,
-    ast_id: AstId<ast::Macro>,
-) -> Option<MacroDefId> {
-    let expander = BuiltinAttrExpander::find_by_name(ident)?;
-    Some(MacroDefId {
-        krate,
-        kind: MacroDefKind::BuiltInAttr(expander, ast_id),
-        local_inner: false,
-    })
+pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
+    BuiltinAttrExpander::find_by_name(ident)
 }
 
 fn dummy_attr_expand(

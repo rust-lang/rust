@@ -35,7 +35,7 @@ mod display;
 use std::{collections::HashMap, iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
@@ -49,10 +49,10 @@ use hir_def::{
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    TypeOrConstParamId, TypeParamId, UnionId,
+    LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
-use hir_expand::{name::name, MacroCallKind, MacroDefId, MacroDefKind};
+use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     autoderef,
     consteval::{eval_const, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt},
@@ -207,7 +207,7 @@ impl Crate {
         self,
         db: &dyn DefDatabase,
         query: import_map::Query,
-    ) -> impl Iterator<Item = Either<ModuleDef, MacroDef>> {
+    ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
         let _p = profile::span("query_external_importables");
         import_map::search_dependencies(db, self.into(), query).into_iter().map(|item| {
             match ItemInNs::from(item) {
@@ -272,6 +272,7 @@ pub enum ModuleDef {
     Trait(Trait),
     TypeAlias(TypeAlias),
     BuiltinType(BuiltinType),
+    Macro(Macro),
 }
 impl_from!(
     Module,
@@ -282,7 +283,8 @@ impl_from!(
     Static,
     Trait,
     TypeAlias,
-    BuiltinType
+    BuiltinType,
+    Macro
     for ModuleDef
 );
 
@@ -307,6 +309,7 @@ impl ModuleDef {
             ModuleDef::Static(it) => Some(it.module(db)),
             ModuleDef::Trait(it) => Some(it.module(db)),
             ModuleDef::TypeAlias(it) => Some(it.module(db)),
+            ModuleDef::Macro(it) => Some(it.module(db)),
             ModuleDef::BuiltinType(_) => None,
         }
     }
@@ -337,6 +340,7 @@ impl ModuleDef {
             ModuleDef::Variant(it) => it.name(db),
             ModuleDef::TypeAlias(it) => it.name(db),
             ModuleDef::Static(it) => it.name(db),
+            ModuleDef::Macro(it) => it.name(db),
             ModuleDef::BuiltinType(it) => it.name(),
         };
         Some(name)
@@ -390,6 +394,7 @@ impl ModuleDef {
             | ModuleDef::Variant(_)
             | ModuleDef::Trait(_)
             | ModuleDef::TypeAlias(_)
+            | ModuleDef::Macro(_)
             | ModuleDef::BuiltinType(_) => None,
         }
     }
@@ -404,6 +409,7 @@ impl ModuleDef {
             ModuleDef::Static(it) => it.attrs(db),
             ModuleDef::Trait(it) => it.attrs(db),
             ModuleDef::TypeAlias(it) => it.attrs(db),
+            ModuleDef::Macro(it) => it.attrs(db),
             ModuleDef::BuiltinType(_) => return None,
         })
     }
@@ -420,6 +426,7 @@ impl HasVisibility for ModuleDef {
             ModuleDef::Trait(it) => it.visibility(db),
             ModuleDef::TypeAlias(it) => it.visibility(db),
             ModuleDef::Variant(it) => it.visibility(db),
+            ModuleDef::Macro(it) => it.visibility(db),
             ModuleDef::BuiltinType(_) => Visibility::Public,
         }
     }
@@ -1376,9 +1383,10 @@ impl Function {
         db.function_data(self.id).has_body()
     }
 
-    pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<MacroDef> {
+    pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
         let function_data = db.function_data(self.id);
         let attrs = &function_data.attrs;
+        // FIXME: Store this in FunctionData flags?
         if !(attrs.is_proc_macro()
             || attrs.is_proc_macro_attribute()
             || attrs.is_proc_macro_derive())
@@ -1386,15 +1394,8 @@ impl Function {
             return None;
         }
         let loc = self.id.lookup(db.upcast());
-        let krate = loc.krate(db);
-        let def_map = db.crate_def_map(krate.into());
-        let ast_id =
-            InFile::new(loc.id.file_id(), loc.id.item_tree(db.upcast())[loc.id.value].ast_id);
-
-        let mut exported_proc_macros = def_map.exported_proc_macros();
-        exported_proc_macros
-            .find(|&(id, _)| matches!(id.kind, MacroDefKind::ProcMacro(_, _, id) if id == ast_id))
-            .map(|(id, _)| MacroDef { id })
+        let def_map = db.crate_def_map(loc.krate(db).into());
+        def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
     /// A textual representation of the HIR of this function for debugging purposes.
@@ -1747,61 +1748,82 @@ pub enum MacroKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroDef {
-    pub(crate) id: MacroDefId,
+pub struct Macro {
+    pub(crate) id: MacroId,
 }
 
-impl MacroDef {
-    /// FIXME: right now, this just returns the root module of the crate that
-    /// defines this macro. The reasons for this is that macros are expanded
-    /// early, in `hir_expand`, where modules simply do not exist yet.
-    pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
-        let krate = self.id.krate;
-        let def_map = db.crate_def_map(krate);
-        let module_id = def_map.root();
-        Some(Module { id: def_map.module_id(module_id) })
+impl Macro {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: self.id.module(db.upcast()) }
     }
 
-    /// XXX: this parses the file
-    pub fn name(self, db: &dyn HirDatabase) -> Option<Name> {
-        match self.source(db)?.value {
-            Either::Left(it) => it.name().map(|it| it.as_name()),
-            Either::Right(_) => {
-                let krate = self.id.krate;
-                let def_map = db.crate_def_map(krate);
-                let (_, name) = def_map.exported_proc_macros().find(|&(id, _)| id == self.id)?;
-                Some(name)
-            }
+    pub fn name(self, db: &dyn HirDatabase) -> Name {
+        match self.id {
+            MacroId::Macro2Id(id) => db.macro2_data(id).name.clone(),
+            MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
+            MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
         }
     }
 
-    pub fn kind(&self) -> MacroKind {
-        match self.id.kind {
-            MacroDefKind::Declarative(_) => MacroKind::Declarative,
-            MacroDefKind::BuiltIn(_, _) | MacroDefKind::BuiltInEager(_, _) => MacroKind::BuiltIn,
-            MacroDefKind::BuiltInDerive(_, _) => MacroKind::Derive,
-            MacroDefKind::BuiltInAttr(_, _) => MacroKind::Attr,
-            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::CustomDerive, _) => {
-                MacroKind::Derive
-            }
-            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::Attr, _) => MacroKind::Attr,
-            MacroDefKind::ProcMacro(_, base_db::ProcMacroKind::FuncLike, _) => MacroKind::ProcMacro,
+    pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {
+        match self.id {
+            MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
+                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
+                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+            },
+            MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
+                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
+                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+            },
+            MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
+                ProcMacroKind::CustomDerive => MacroKind::Derive,
+                ProcMacroKind::FuncLike => MacroKind::ProcMacro,
+                ProcMacroKind::Attr => MacroKind::Attr,
+            },
         }
     }
 
-    pub fn is_fn_like(&self) -> bool {
-        match self.kind() {
+    pub fn is_fn_like(&self, db: &dyn HirDatabase) -> bool {
+        match self.kind(db) {
             MacroKind::Declarative | MacroKind::BuiltIn | MacroKind::ProcMacro => true,
             MacroKind::Attr | MacroKind::Derive => false,
         }
     }
 
-    pub fn is_builtin_derive(&self) -> bool {
-        matches!(self.id.kind, MacroDefKind::BuiltInAttr(exp, _) if exp.is_derive())
+    pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
+        match self.id {
+            MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
+                MacroExpander::BuiltInDerive(_) => true,
+                _ => false,
+            },
+            MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
+                MacroExpander::BuiltInDerive(_) => true,
+                _ => false,
+            },
+            MacroId::ProcMacroId(_) => false,
+        }
     }
 
-    pub fn is_attr(&self) -> bool {
-        matches!(self.kind(), MacroKind::Attr)
+    pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
+        matches!(self.kind(db), MacroKind::Attr)
+    }
+}
+
+impl HasVisibility for Macro {
+    fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
+        match self.id {
+            MacroId::Macro2Id(id) => {
+                let data = db.macro2_data(id);
+                let visibility = &data.visibility;
+                visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+            }
+            MacroId::MacroRulesId(_) => Visibility::Public,
+            MacroId::ProcMacroId(_) => Visibility::Public,
+        }
     }
 }
 
@@ -1809,11 +1831,11 @@ impl MacroDef {
 pub enum ItemInNs {
     Types(ModuleDef),
     Values(ModuleDef),
-    Macros(MacroDef),
+    Macros(Macro),
 }
 
-impl From<MacroDef> for ItemInNs {
-    fn from(it: MacroDef) -> Self {
+impl From<Macro> for ItemInNs {
+    fn from(it: Macro) -> Self {
         Self::Macros(it)
     }
 }
@@ -1841,7 +1863,7 @@ impl ItemInNs {
     pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
         match self {
             ItemInNs::Types(did) | ItemInNs::Values(did) => did.module(db).map(|m| m.krate()),
-            ItemInNs::Macros(id) => id.module(db).map(|m| m.krate()),
+            ItemInNs::Macros(id) => Some(id.module(db).krate()),
         }
     }
 
@@ -3224,7 +3246,6 @@ impl Callable {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
-    MacroDef(MacroDef),
     GenericParam(GenericParam),
     ImplSelfType(Impl),
     AdtSelfType(Adt),
@@ -3255,7 +3276,7 @@ impl ScopeDef {
         };
 
         if let Some(macro_def_id) = def.take_macros() {
-            items.push(ScopeDef::MacroDef(macro_def_id.into()));
+            items.push(ScopeDef::ModuleDef(ModuleDef::Macro(macro_def_id.into())));
         }
 
         if items.is_empty() {
@@ -3268,7 +3289,6 @@ impl ScopeDef {
     pub fn attrs(&self, db: &dyn HirDatabase) -> Option<AttrsWithOwner> {
         match self {
             ScopeDef::ModuleDef(it) => it.attrs(db),
-            ScopeDef::MacroDef(it) => Some(it.attrs(db)),
             ScopeDef::GenericParam(it) => Some(it.attrs(db)),
             ScopeDef::ImplSelfType(_)
             | ScopeDef::AdtSelfType(_)
@@ -3281,7 +3301,6 @@ impl ScopeDef {
     pub fn krate(&self, db: &dyn HirDatabase) -> Option<Crate> {
         match self {
             ScopeDef::ModuleDef(it) => it.module(db).map(|m| m.krate()),
-            ScopeDef::MacroDef(it) => it.module(db).map(|m| m.krate()),
             ScopeDef::GenericParam(it) => Some(it.module(db).krate()),
             ScopeDef::ImplSelfType(_) => None,
             ScopeDef::AdtSelfType(it) => Some(it.module(db).krate()),
@@ -3297,7 +3316,7 @@ impl From<ItemInNs> for ScopeDef {
         match item {
             ItemInNs::Types(id) => ScopeDef::ModuleDef(id),
             ItemInNs::Values(id) => ScopeDef::ModuleDef(id),
-            ItemInNs::Macros(id) => ScopeDef::MacroDef(id),
+            ItemInNs::Macros(id) => ScopeDef::ModuleDef(ModuleDef::Macro(id)),
         }
     }
 }
@@ -3354,5 +3373,11 @@ impl HasCrate for TypeAlias {
 impl HasCrate for Type {
     fn krate(&self, _db: &dyn HirDatabase) -> Crate {
         self.krate.into()
+    }
+}
+
+impl HasCrate for Macro {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        self.module(db).krate()
     }
 }

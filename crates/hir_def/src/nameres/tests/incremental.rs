@@ -226,6 +226,7 @@ pub type Ty = ();
                     ModuleDefId::TypeAliasId(it) => drop(db.type_alias_data(it)),
                     ModuleDefId::EnumVariantId(_)
                     | ModuleDefId::ModuleId(_)
+                    | ModuleDefId::MacroId(_)
                     | ModuleDefId::BuiltinType(_) => unreachable!(),
                 }
             }

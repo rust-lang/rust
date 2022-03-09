@@ -44,7 +44,6 @@ pub(crate) fn replace_qualified_name_with_use(
     // only offer replacement for non assoc items
     match ctx.sema.resolve_path(&path)? {
         hir::PathResolution::Def(def) if def.as_assoc_item(ctx.sema.db).is_none() => (),
-        hir::PathResolution::Macro(_) => (),
         _ => return None,
     }
     // then search for an import for the first path segment of what we want to replace

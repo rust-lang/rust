@@ -1,7 +1,7 @@
 //! Look up accessible paths for items.
 use hir::{
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, MacroDef, ModPath, Module,
-    ModuleDef, PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, ItemInNs, ModPath, Module, ModuleDef,
+    PathResolution, PrefixKind, ScopeDef, Semantics, SemanticsScope, Type,
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
@@ -432,7 +432,7 @@ fn module_with_segment_name(
     let mut current_module = match candidate {
         ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).module(db),
         ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).module(db),
-        ItemInNs::Macros(macro_def_id) => MacroDef::from(macro_def_id).module(db),
+        ItemInNs::Macros(macro_def_id) => ModuleDef::from(macro_def_id).module(db),
     };
     while let Some(module) = current_module {
         if let Some(module_name) = module.name(db) {

@@ -11,7 +11,10 @@ use crate::{
     adt::{EnumData, StructData},
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
-    data::{ConstData, FunctionData, ImplData, StaticData, TraitData, TypeAliasData},
+    data::{
+        ConstData, FunctionData, ImplData, Macro2Data, MacroRulesData, ProcMacroData, StaticData,
+        TraitData, TypeAliasData,
+    },
     generics::GenericParams,
     import_map::ImportMap,
     intern::Interned,
@@ -21,8 +24,9 @@ use crate::{
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstId, ConstLoc, DefWithBodyId, EnumId, EnumLoc, ExternBlockId,
     ExternBlockLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, LocalEnumVariantId,
-    LocalFieldId, StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId,
-    TypeAliasLoc, UnionId, UnionLoc, VariantId,
+    LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
+    StaticId, StaticLoc, StructId, StructLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc,
+    UnionId, UnionLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -49,6 +53,12 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_extern_block(&self, loc: ExternBlockLoc) -> ExternBlockId;
     #[salsa::interned]
     fn intern_block(&self, loc: BlockLoc) -> BlockId;
+    #[salsa::interned]
+    fn intern_macro2(&self, loc: Macro2Loc) -> Macro2Id;
+    #[salsa::interned]
+    fn intern_proc_macro(&self, loc: ProcMacroLoc) -> ProcMacroId;
+    #[salsa::interned]
+    fn intern_macro_rules(&self, loc: MacroRulesLoc) -> MacroRulesId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]
@@ -86,6 +96,7 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
+
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
@@ -109,6 +120,15 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
 
     #[salsa::invoke(StaticData::static_data_query)]
     fn static_data(&self, konst: StaticId) -> Arc<StaticData>;
+
+    #[salsa::invoke(Macro2Data::macro2_data_query)]
+    fn macro2_data(&self, makro: Macro2Id) -> Arc<Macro2Data>;
+
+    #[salsa::invoke(MacroRulesData::macro_rules_data_query)]
+    fn macro_rules_data(&self, makro: MacroRulesId) -> Arc<MacroRulesData>;
+
+    #[salsa::invoke(ProcMacroData::proc_macro_data_query)]
+    fn proc_macro_data(&self, makro: ProcMacroId) -> Arc<ProcMacroData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
