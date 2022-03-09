@@ -3,7 +3,7 @@ use core::marker::PhantomData;
 use core::mem;
 
 use super::super::borrow::DormantMutRef;
-use super::super::node::{marker, Handle, InsertResult::*, NodeRef};
+use super::super::node::{marker, Handle, NodeRef};
 use super::BTreeMap;
 
 use Entry::*;
@@ -313,13 +313,13 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         let out_ptr = match self.handle.insert_recursing(self.key, value) {
-            (Fit(_), val_ptr) => {
+            (None, val_ptr) => {
                 // SAFETY: We have consumed self.handle and the handle returned.
                 let map = unsafe { self.dormant_map.awaken() };
                 map.length += 1;
                 val_ptr
             }
-            (Split(ins), val_ptr) => {
+            (Some(ins), val_ptr) => {
                 drop(ins.left);
                 // SAFETY: We have consumed self.handle and the reference returned.
                 let map = unsafe { self.dormant_map.awaken() };
