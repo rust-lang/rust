@@ -40,7 +40,7 @@ note: associated function defined here
 LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |        ^^^ ----  --------  --------
 
-error[E0599]: the method `take` exists for struct `Foo`, but its trait bounds were not satisfied
+error[E0599]: `Foo` is not an iterator
   --> $DIR/method-call-err-msg.rs:19:7
    |
 LL | pub struct Foo;
@@ -50,7 +50,7 @@ LL | pub struct Foo;
    | doesn't satisfy `Foo: Iterator`
 ...
 LL |      .take()
-   |       ^^^^ method cannot be called on `Foo` due to unsatisfied trait bounds
+   |       ^^^^ `Foo` is not an iterator
    |
    = note: the following trait bounds were not satisfied:
            `Foo: Iterator`
