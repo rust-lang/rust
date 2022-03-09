@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::expr::category::Category;
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -20,7 +20,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
         let local_scope = self.local_scope();
-        self.as_operand(block, Some(local_scope), expr, None)
+        self.as_operand(block, Some(local_scope), expr, None, NeedsTemporary::Maybe)
     }
 
     /// Returns an operand suitable for use until the end of the current scope expression and
@@ -94,32 +94,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Like `as_local_call_operand`, except that the argument will
     /// not be valid once `scope` ends.
+    #[instrument(level = "debug", skip(self, scope))]
     crate fn as_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
         local_info: Option<Box<LocalInfo<'tcx>>>,
+        needs_temporary: NeedsTemporary,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_operand(block={:?}, expr={:?} local_info={:?})", block, expr, local_info);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
             return this.in_scope(region_scope, lint_level, |this| {
-                this.as_operand(block, scope, &this.thir[value], local_info)
+                this.as_operand(block, scope, &this.thir[value], local_info, needs_temporary)
             });
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!("as_operand: category={:?} for={:?}", category, expr.kind);
+        debug!(?category, ?expr.kind);
         match category {
-            Category::Constant => {
+            Category::Constant if let NeedsTemporary::No = needs_temporary || !expr.ty.needs_drop(this.tcx, this.param_env) => {
                 let constant = this.as_constant(expr);
                 block.and(Operand::Constant(Box::new(constant)))
             }
-            Category::Place | Category::Rvalue(..) => {
+            Category::Constant | Category::Place | Category::Rvalue(..) => {
                 let operand = unpack!(block = this.as_temp(block, scope, expr, Mutability::Mut));
                 if this.local_decls[operand].local_info.is_none() {
                     this.local_decls[operand].local_info = local_info;
@@ -176,6 +177,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        this.as_operand(block, scope, expr, None)
+        this.as_operand(block, scope, expr, None, NeedsTemporary::Maybe)
     }
 }

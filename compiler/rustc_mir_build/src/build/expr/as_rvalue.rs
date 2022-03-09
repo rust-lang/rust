@@ -4,7 +4,7 @@ use rustc_index::vec::Idx;
 
 use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, Builder};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
@@ -52,17 +52,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Repeat { value, count } => {
-                let value_operand =
-                    unpack!(block = this.as_operand(block, scope, &this.thir[value], None));
+                let value_operand = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[value], None, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Binary { op, lhs, rhs } => {
-                let lhs = unpack!(block = this.as_operand(block, scope, &this.thir[lhs], None));
-                let rhs = unpack!(block = this.as_operand(block, scope, &this.thir[rhs], None));
+                let lhs = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[lhs], None, NeedsTemporary::Maybe)
+                );
+                let rhs = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[rhs], None, NeedsTemporary::No)
+                );
                 this.build_binary_op(block, op, expr_span, expr.ty, lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
-                let arg = unpack!(block = this.as_operand(block, scope, &this.thir[arg], None));
+                let arg = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[arg], None, NeedsTemporary::No)
+                );
                 // Check for -MIN on signed integers
                 if this.check_overflow && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.tcx.types.bool;
@@ -167,13 +178,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))
             }
             ExprKind::Cast { source } => {
-                let source =
-                    unpack!(block = this.as_operand(block, scope, &this.thir[source], None));
+                let source = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
             ExprKind::Pointer { cast, source } => {
-                let source =
-                    unpack!(block = this.as_operand(block, scope, &this.thir[source], None));
+                let source = unpack!(
+                    block =
+                        this.as_operand(block, scope, &this.thir[source], None, NeedsTemporary::No)
+                );
                 block.and(Rvalue::Cast(CastKind::Pointer(cast), source, expr.ty))
             }
             ExprKind::Array { ref fields } => {
@@ -208,7 +223,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields: Vec<_> = fields
                     .into_iter()
                     .copied()
-                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f], None)))
+                    .map(|f| {
+                        unpack!(
+                            block = this.as_operand(
+                                block,
+                                scope,
+                                &this.thir[f],
+                                None,
+                                NeedsTemporary::Maybe
+                            )
+                        )
+                    })
                     .collect();
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
@@ -219,7 +244,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let fields: Vec<_> = fields
                     .into_iter()
                     .copied()
-                    .map(|f| unpack!(block = this.as_operand(block, scope, &this.thir[f], None)))
+                    .map(|f| {
+                        unpack!(
+                            block = this.as_operand(
+                                block,
+                                scope,
+                                &this.thir[f],
+                                None,
+                                NeedsTemporary::Maybe
+                            )
+                        )
+                    })
                     .collect();
 
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
@@ -296,7 +331,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                         )
                                     ),
                                     _ => {
-                                        unpack!(block = this.as_operand(block, scope, upvar, None))
+                                        unpack!(
+                                            block = this.as_operand(
+                                                block,
+                                                scope,
+                                                upvar,
+                                                None,
+                                                NeedsTemporary::Maybe
+                                            )
+                                        )
                                     }
                                 }
                             }
@@ -325,13 +368,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     literal: ConstantKind::zero_sized(this.tcx.types.unit),
                 }))))
             }
-            ExprKind::Yield { .. }
-            | ExprKind::Literal { .. }
+
+            ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
             | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
-            | ExprKind::StaticRef { .. }
+            | ExprKind::StaticRef { .. } => {
+                let constant = this.as_constant(expr);
+                block.and(Rvalue::Use(Operand::Constant(Box::new(constant))))
+            }
+
+            ExprKind::Yield { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }
             | ExprKind::If { .. }
@@ -359,9 +407,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // so make an operand and then return that
                 debug_assert!(!matches!(
                     Category::of(&expr.kind),
-                    Some(Category::Rvalue(RvalueFunc::AsRvalue))
+                    Some(Category::Rvalue(RvalueFunc::AsRvalue) | Category::Constant)
                 ));
-                let operand = unpack!(block = this.as_operand(block, scope, expr, None));
+                let operand =
+                    unpack!(block = this.as_operand(block, scope, expr, None, NeedsTemporary::No));
                 block.and(Rvalue::Use(operand))
             }
         }

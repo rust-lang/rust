@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
 use rustc_ast::InlineAsmOptions;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -329,7 +329,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                     block,
                                     Some(scope),
                                     &this.thir[f.expr],
-                                    Some(local_info)
+                                    Some(local_info),
+                                    NeedsTemporary::Maybe,
                                 )
                             ),
                         )
@@ -516,8 +517,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             ExprKind::Yield { value } => {
                 let scope = this.local_scope();
-                let value =
-                    unpack!(block = this.as_operand(block, Some(scope), &this.thir[value], None));
+                let value = unpack!(
+                    block = this.as_operand(
+                        block,
+                        Some(scope),
+                        &this.thir[value],
+                        None,
+                        NeedsTemporary::No
+                    )
+                );
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
