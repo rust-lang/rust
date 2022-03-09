@@ -128,9 +128,7 @@ impl ItemScope {
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module
-    pub(crate) fn legacy_macros<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (&'a Name, MacroRulesId)> + 'a {
+    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroRulesId)> + 'a {
         self.legacy_macros.iter().map(|(name, def)| (name, *def))
     }
 

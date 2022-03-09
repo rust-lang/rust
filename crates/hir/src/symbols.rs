@@ -174,6 +174,13 @@ impl<'a> SymbolCollector<'a> {
         for const_id in scope.unnamed_consts() {
             self.collect_from_body(const_id);
         }
+
+        for (_, id) in scope.legacy_macros() {
+            let loc = id.lookup(self.db.upcast());
+            if loc.container == module_id {
+                self.push_decl(id, FileSymbolKind::Macro);
+            }
+        }
     }
 
     fn collect_from_body(&mut self, body_id: impl Into<DefWithBodyId>) {
