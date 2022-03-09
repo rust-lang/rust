@@ -744,70 +744,77 @@ pub(super) fn parse_tt(
         // unnecessary implicit clone later in `Rc::make_mut`.
         drop(eof_items);
 
-        // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then there is a syntax error.
-        if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.token.clone(), "no rules expected this token in macro call");
-        }
-
-        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
-            // We need to call out to parse some rust nonterminal (black-box) parser. But something
-            // is wrong, because there is not EXACTLY ONE of these.
-            let nts = bb_items
-                .iter()
-                .map(|item| match item.top_elts.get_tt(item.idx) {
-                    TokenTree::MetaVarDecl(_, bind, Some(kind)) => format!("{} ('{}')", kind, bind),
-                    _ => panic!(),
-                })
-                .collect::<Vec<String>>()
-                .join(" or ");
-
-            return Error(
-                parser.token.span,
-                format!(
-                    "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
-                    match next_items.len() {
-                        0 => format!("built-in NTs {}.", nts),
-                        1 => format!("built-in NTs {} or 1 other option.", nts),
-                        n => format!("built-in NTs {} or {} other options.", nts, n),
-                    }
-                ),
-            );
-        }
-
-        if !next_items.is_empty() {
-            // Dump all possible `next_items` into `cur_items` for the next iteration. Then process
-            // the next token.
-            cur_items.extend(next_items.drain(..));
-            parser.to_mut().bump();
-        } else {
-            // Finally, we have the case where we need to call the black-box parser to get some
-            // nonterminal.
-            assert_eq!(bb_items.len(), 1);
-
-            let mut item = bb_items.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx) {
-                let match_cur = item.match_cur;
-                // We use the span of the metavariable declaration to determine any
-                // edition-specific matching behavior for non-terminals.
-                let nt = match parser.to_mut().parse_nonterminal(kind) {
-                    Err(mut err) => {
-                        err.span_label(
-                            span,
-                            format!("while parsing argument for this `{}` macro fragment", kind),
-                        )
-                        .emit();
-                        return ErrorReported;
-                    }
-                    Ok(nt) => nt,
-                };
-                item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
-                item.idx += 1;
-                item.match_cur += 1;
-            } else {
-                unreachable!()
+        match (next_items.len(), bb_items.len()) {
+            (0, 0) => {
+                // There are no possible next positions AND we aren't waiting for the black-box
+                // parser: syntax error.
+                return Failure(parser.token.clone(), "no rules expected this token in macro call");
             }
-            cur_items.push(item);
+
+            (_, 0) => {
+                // Dump all possible `next_items` into `cur_items` for the next iteration. Then
+                // process the next token.
+                cur_items.extend(next_items.drain(..));
+                parser.to_mut().bump();
+            }
+
+            (0, 1) => {
+                // We need to call the black-box parser to get some nonterminal.
+                let mut item = bb_items.pop().unwrap();
+                if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx)
+                {
+                    let match_cur = item.match_cur;
+                    // We use the span of the metavariable declaration to determine any
+                    // edition-specific matching behavior for non-terminals.
+                    let nt = match parser.to_mut().parse_nonterminal(kind) {
+                        Err(mut err) => {
+                            err.span_label(
+                                span,
+                                format!(
+                                    "while parsing argument for this `{}` macro fragment",
+                                    kind
+                                ),
+                            )
+                            .emit();
+                            return ErrorReported;
+                        }
+                        Ok(nt) => nt,
+                    };
+                    item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
+                    item.idx += 1;
+                    item.match_cur += 1;
+                } else {
+                    unreachable!()
+                }
+                cur_items.push(item);
+            }
+
+            (_, _) => {
+                // We need to call the black-box parser to get some nonterminal, but something is
+                // wrong.
+                let nts = bb_items
+                    .iter()
+                    .map(|item| match item.top_elts.get_tt(item.idx) {
+                        TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
+                            format!("{} ('{}')", kind, bind)
+                        }
+                        _ => panic!(),
+                    })
+                    .collect::<Vec<String>>()
+                    .join(" or ");
+
+                return Error(
+                    parser.token.span,
+                    format!(
+                        "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
+                        match next_items.len() {
+                            0 => format!("built-in NTs {}.", nts),
+                            1 => format!("built-in NTs {} or 1 other option.", nts),
+                            n => format!("built-in NTs {} or {} other options.", nts, n),
+                        }
+                    ),
+                );
+            }
         }
 
         assert!(!cur_items.is_empty());
