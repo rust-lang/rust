@@ -631,6 +631,7 @@ impl<'a> Parser<'a> {
                 Err(err) => {
                     if is_const_fn {
                         if let Ok(expr) = snapshot.parse_expr_res(Restrictions::CONST_EXPR, None) {
+                            snapshot.unclosed_delims.extend(self.unclosed_delims.clone());
                             *self = snapshot;
                             return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
                         }
