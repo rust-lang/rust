@@ -1,0 +1,12 @@
+error[E0658]: meta-variable expressions are unstable
+  --> $DIR/required-feature.rs:3:10
+   |
+LL |         ${ count(e) }
+   |          ^^^^^^^^^^^^
+   |
+   = note: see issue #83527 <https://github.com/rust-lang/rust/issues/83527> for more information
+   = help: add `#![feature(macro_metavar_expr)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

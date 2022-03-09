@@ -23,7 +23,7 @@ pub enum LitError {
 
 impl LitKind {
     /// Converts literal token into a semantic literal.
-    fn from_lit_token(lit: token::Lit) -> Result<LitKind, LitError> {
+    pub fn from_lit_token(lit: token::Lit) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
         if suffix.is_some() && !kind.may_have_suffix() {
             return Err(LitError::InvalidSuffix);

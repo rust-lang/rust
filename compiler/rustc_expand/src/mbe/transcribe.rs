@@ -255,6 +255,11 @@ pub(super) fn transcribe<'a>(
                 }
             }
 
+            // Replace meta-variable expressions with the result of their expansion.
+            mbe::TokenTree::MetaVarExpr(sp, expr) => {
+                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, &sp)?;
+            }
+
             // If we are entering a new delimiter, we push its contents to the `stack` to be
             // processed, and we push all of the currently produced results to the `result_stack`.
             // We will produce all of the results of the inside of the `Delimited` and then we will
@@ -391,6 +396,28 @@ fn lockstep_iter_size(
                 _ => LockstepIterSize::Unconstrained,
             }
         }
+        TokenTree::MetaVarExpr(_, ref expr) => {
+            let default_rslt = LockstepIterSize::Unconstrained;
+            let Some(ident) = expr.ident() else { return default_rslt; };
+            let name = MacroRulesNormalizedIdent::new(ident.clone());
+            match lookup_cur_matched(name, interpolations, repeats) {
+                Some(MatchedSeq(ref ads)) => {
+                    default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
+                }
+                _ => default_rslt,
+            }
+        }
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
     }
+}
+
+fn transcribe_metavar_expr<'a>(
+    _cx: &ExtCtxt<'a>,
+    _expr: mbe::MetaVarExpr,
+    _interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    _repeats: &[(usize, usize)],
+    _result: &mut Vec<TreeAndSpacing>,
+    _sp: &DelimSpan,
+) -> PResult<'a, ()> {
+    Ok(())
 }
