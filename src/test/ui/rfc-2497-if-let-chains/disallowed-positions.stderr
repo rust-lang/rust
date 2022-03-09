@@ -15,7 +15,7 @@ error: `let` expressions are not supported here
 LL |     if &let 0 = 0 {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -24,7 +24,7 @@ error: `let` expressions are not supported here
 LL |     if !let 0 = 0 {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -33,7 +33,7 @@ error: `let` expressions are not supported here
 LL |     if *let 0 = 0 {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -42,7 +42,7 @@ error: `let` expressions are not supported here
 LL |     if -let 0 = 0 {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -51,7 +51,7 @@ error: `let` expressions are not supported here
 LL |     if (let 0 = 0)? {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -60,8 +60,13 @@ error: `let` expressions are not supported here
 LL |     if true || let 0 = 0 {}
    |                ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:47:13
+   |
+LL |     if true || let 0 = 0 {}
+   |             ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:48:17
@@ -69,8 +74,13 @@ error: `let` expressions are not supported here
 LL |     if (true || let 0 = 0) {}
    |                 ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:48:14
+   |
+LL |     if (true || let 0 = 0) {}
+   |              ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:49:25
@@ -78,8 +88,13 @@ error: `let` expressions are not supported here
 LL |     if true && (true || let 0 = 0) {}
    |                         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:49:22
+   |
+LL |     if true && (true || let 0 = 0) {}
+   |                      ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:50:25
@@ -87,8 +102,13 @@ error: `let` expressions are not supported here
 LL |     if true || (true && let 0 = 0) {}
    |                         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:50:13
+   |
+LL |     if true || (true && let 0 = 0) {}
+   |             ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:53:12
@@ -96,7 +116,7 @@ error: `let` expressions are not supported here
 LL |     if x = let 0 = 0 {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -105,7 +125,7 @@ error: `let` expressions are not supported here
 LL |     if true..(let 0 = 0) {}
    |               ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -114,7 +134,7 @@ error: `let` expressions are not supported here
 LL |     if ..(let 0 = 0) {}
    |           ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -123,7 +143,7 @@ error: `let` expressions are not supported here
 LL |     if (let 0 = 0).. {}
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -132,7 +152,7 @@ error: `let` expressions are not supported here
 LL |     if let Range { start: _, end: _ } = true..true && false {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -141,7 +161,7 @@ error: `let` expressions are not supported here
 LL |     if let Range { start: _, end: _ } = true..true || false {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -150,7 +170,7 @@ error: `let` expressions are not supported here
 LL |     if let Range { start: F, end } = F..|| true {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -159,7 +179,7 @@ error: `let` expressions are not supported here
 LL |     if let Range { start: true, end } = t..&&false {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -168,7 +188,7 @@ error: `let` expressions are not supported here
 LL |     if let true = let true = true {}
    |                   ^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -177,7 +197,7 @@ error: `let` expressions are not supported here
 LL |     while &let 0 = 0 {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -186,7 +206,7 @@ error: `let` expressions are not supported here
 LL |     while !let 0 = 0 {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -195,7 +215,7 @@ error: `let` expressions are not supported here
 LL |     while *let 0 = 0 {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -204,7 +224,7 @@ error: `let` expressions are not supported here
 LL |     while -let 0 = 0 {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -213,7 +233,7 @@ error: `let` expressions are not supported here
 LL |     while (let 0 = 0)? {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -222,8 +242,13 @@ error: `let` expressions are not supported here
 LL |     while true || let 0 = 0 {}
    |                   ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:111:16
+   |
+LL |     while true || let 0 = 0 {}
+   |                ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:112:20
@@ -231,8 +256,13 @@ error: `let` expressions are not supported here
 LL |     while (true || let 0 = 0) {}
    |                    ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:112:17
+   |
+LL |     while (true || let 0 = 0) {}
+   |                 ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:113:28
@@ -240,8 +270,13 @@ error: `let` expressions are not supported here
 LL |     while true && (true || let 0 = 0) {}
    |                            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:113:25
+   |
+LL |     while true && (true || let 0 = 0) {}
+   |                         ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:114:28
@@ -249,8 +284,13 @@ error: `let` expressions are not supported here
 LL |     while true || (true && let 0 = 0) {}
    |                            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:114:16
+   |
+LL |     while true || (true && let 0 = 0) {}
+   |                ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:117:15
@@ -258,7 +298,7 @@ error: `let` expressions are not supported here
 LL |     while x = let 0 = 0 {}
    |               ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -267,7 +307,7 @@ error: `let` expressions are not supported here
 LL |     while true..(let 0 = 0) {}
    |                  ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -276,7 +316,7 @@ error: `let` expressions are not supported here
 LL |     while ..(let 0 = 0) {}
    |              ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -285,7 +325,7 @@ error: `let` expressions are not supported here
 LL |     while (let 0 = 0).. {}
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -294,7 +334,7 @@ error: `let` expressions are not supported here
 LL |     while let Range { start: _, end: _ } = true..true && false {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -303,7 +343,7 @@ error: `let` expressions are not supported here
 LL |     while let Range { start: _, end: _ } = true..true || false {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -312,7 +352,7 @@ error: `let` expressions are not supported here
 LL |     while let Range { start: F, end } = F..|| true {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -321,7 +361,7 @@ error: `let` expressions are not supported here
 LL |     while let Range { start: true, end } = t..&&false {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -330,7 +370,7 @@ error: `let` expressions are not supported here
 LL |     while let true = let true = true {}
    |                      ^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -339,7 +379,7 @@ error: `let` expressions are not supported here
 LL |     &let 0 = 0;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -348,7 +388,7 @@ error: `let` expressions are not supported here
 LL |     !let 0 = 0;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -357,7 +397,7 @@ error: `let` expressions are not supported here
 LL |     *let 0 = 0;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -366,7 +406,7 @@ error: `let` expressions are not supported here
 LL |     -let 0 = 0;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -375,7 +415,7 @@ error: `let` expressions are not supported here
 LL |     (let 0 = 0)?;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -384,8 +424,13 @@ error: `let` expressions are not supported here
 LL |     true || let 0 = 0;
    |             ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:184:10
+   |
+LL |     true || let 0 = 0;
+   |          ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:185:14
@@ -393,8 +438,13 @@ error: `let` expressions are not supported here
 LL |     (true || let 0 = 0);
    |              ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:185:11
+   |
+LL |     (true || let 0 = 0);
+   |           ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:186:22
@@ -402,8 +452,13 @@ error: `let` expressions are not supported here
 LL |     true && (true || let 0 = 0);
    |                      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
+note: `||` operators are not allowed in let chain expressions
+  --> $DIR/disallowed-positions.rs:186:19
+   |
+LL |     true && (true || let 0 = 0);
+   |                   ^^
 
 error: `let` expressions are not supported here
   --> $DIR/disallowed-positions.rs:189:9
@@ -411,7 +466,7 @@ error: `let` expressions are not supported here
 LL |     x = let 0 = 0;
    |         ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -420,7 +475,7 @@ error: `let` expressions are not supported here
 LL |     true..(let 0 = 0);
    |            ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -429,7 +484,7 @@ error: `let` expressions are not supported here
 LL |     ..(let 0 = 0);
    |        ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -438,7 +493,7 @@ error: `let` expressions are not supported here
 LL |     (let 0 = 0)..;
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -447,7 +502,7 @@ error: `let` expressions are not supported here
 LL |     (let Range { start: _, end: _ } = true..true || false);
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -456,7 +511,7 @@ error: `let` expressions are not supported here
 LL |     (let true = let true = true);
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -465,7 +520,7 @@ error: `let` expressions are not supported here
 LL |     &let 0 = 0
    |      ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -474,7 +529,7 @@ error: `let` expressions are not supported here
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -483,7 +538,7 @@ error: `let` expressions are not supported here
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -492,7 +547,7 @@ error: `let` expressions are not supported here
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error: `let` expressions are not supported here
@@ -501,7 +556,7 @@ error: `let` expressions are not supported here
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
    |
-   = note: only supported directly in conditions of `if`- and `while`-expressions
+   = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
 
 error[E0308]: mismatched types
