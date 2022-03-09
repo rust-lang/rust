@@ -489,16 +489,22 @@ fn is_exception(file: &Path, link: &str) -> bool {
 /// If the given HTML file contents is an HTML redirect, this returns the
 /// destination path given in the redirect.
 fn maybe_redirect(source: &str) -> Option<String> {
-    const REDIRECT: &str = "<p>Redirecting to <a href=";
+    const REDIRECT_RUSTDOC: (usize, &str) = (7, "<p>Redirecting to <a href=");
+    const REDIRECT_MDBOOK: (usize, &str) = (8 - 7, "<p>Redirecting to... <a href=");
 
     let mut lines = source.lines();
-    let redirect_line = lines.nth(7)?;
 
-    redirect_line.find(REDIRECT).map(|i| {
-        let rest = &redirect_line[(i + REDIRECT.len() + 1)..];
-        let pos_quote = rest.find('"').unwrap();
-        rest[..pos_quote].to_owned()
-    })
+    let mut find_redirect = |(line_rel, redirect_pattern): (usize, &str)| {
+        let redirect_line = lines.nth(line_rel)?;
+
+        redirect_line.find(redirect_pattern).map(|i| {
+            let rest = &redirect_line[(i + redirect_pattern.len() + 1)..];
+            let pos_quote = rest.find('"').unwrap();
+            rest[..pos_quote].to_owned()
+        })
+    };
+
+    find_redirect(REDIRECT_RUSTDOC).or_else(|| find_redirect(REDIRECT_MDBOOK))
 }
 
 fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(source: &str, attr: &str, mut f: F) {
