@@ -1857,7 +1857,11 @@ const fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> Clone for Option<T> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T> const Clone for Option<T>
+where
+    T: ~const Clone + ~const Drop,
+{
     #[inline]
     fn clone(&self) -> Self {
         match self {
