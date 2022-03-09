@@ -1,4 +1,5 @@
 // compile-flags: -C opt-level=0 -Z inline_mir=no
+// ignore-wasm32 compiled with panic=abort by default
 
 // EMIT_MIR combine_clone_of_primitives.{impl#0}-clone.InstCombine.diff
 
