@@ -1,11 +1,12 @@
 //! Borrow checker diagnostics.
 
-use rustc_const_eval::util::call_kind;
-use rustc_errors::Diagnostic;
+use rustc_const_eval::util::{call_kind, CallDesugaringKind};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::GeneratorKind;
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
     Place, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
@@ -13,8 +14,9 @@ use rustc_middle::mir::{
 use rustc_middle::ty::print::Print;
 use rustc_middle::ty::{self, DefIdTree, Instance, Ty, TyCtxt};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
-use rustc_span::{symbol::sym, Span};
+use rustc_span::{symbol::sym, Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
+use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -482,9 +484,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             BorrowedContentSource::DerefSharedRef
         }
     }
-}
 
-impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
     pub(super) fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
@@ -994,5 +994,174 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     pub(super) fn retrieve_borrow_spans(&self, borrow: &BorrowData<'_>) -> UseSpans<'tcx> {
         let span = self.body.source_info(borrow.reserve_location).span;
         self.borrow_spans(span, borrow.reserve_location)
+    }
+
+    fn explain_captures(
+        &mut self,
+        err: &mut Diagnostic,
+        span: Span,
+        move_span: Span,
+        move_spans: UseSpans<'tcx>,
+        moved_place: Place<'tcx>,
+        used_place: Option<PlaceRef<'tcx>>,
+        partially_str: &str,
+        loop_message: &str,
+        move_msg: &str,
+        is_loop_move: bool,
+        maybe_reinitialized_locations_is_empty: bool,
+    ) {
+        if let UseSpans::FnSelfUse { var_span, fn_call_span, fn_span, kind } = move_spans {
+            let place_name = self
+                .describe_place(moved_place.as_ref())
+                .map(|n| format!("`{}`", n))
+                .unwrap_or_else(|| "value".to_owned());
+            match kind {
+                CallKind::FnCall { fn_trait_id, .. }
+                    if Some(fn_trait_id) == self.infcx.tcx.lang_items().fn_once_trait() =>
+                {
+                    err.span_label(
+                        fn_call_span,
+                        &format!(
+                            "{} {}moved due to this call{}",
+                            place_name, partially_str, loop_message
+                        ),
+                    );
+                    err.span_note(
+                        var_span,
+                        "this value implements `FnOnce`, which causes it to be moved when called",
+                    );
+                }
+                CallKind::Operator { self_arg, .. } => {
+                    let self_arg = self_arg.unwrap();
+                    err.span_label(
+                        fn_call_span,
+                        &format!(
+                            "{} {}moved due to usage in operator{}",
+                            place_name, partially_str, loop_message
+                        ),
+                    );
+                    if self.fn_self_span_reported.insert(fn_span) {
+                        err.span_note(
+                            // Check whether the source is accessible
+                            if self
+                                .infcx
+                                .tcx
+                                .sess
+                                .source_map()
+                                .span_to_snippet(self_arg.span)
+                                .is_ok()
+                            {
+                                self_arg.span
+                            } else {
+                                fn_call_span
+                            },
+                            "calling this operator moves the left-hand side",
+                        );
+                    }
+                }
+                CallKind::Normal { self_arg, desugaring, is_option_or_result } => {
+                    let self_arg = self_arg.unwrap();
+                    if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
+                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+                        let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
+                            Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
+                                type_known_to_meet_bound_modulo_regions(
+                                    &infcx,
+                                    self.param_env,
+                                    infcx.tcx.mk_imm_ref(
+                                        infcx.tcx.lifetimes.re_erased,
+                                        infcx.tcx.erase_regions(ty),
+                                    ),
+                                    def_id,
+                                    DUMMY_SP,
+                                )
+                            }),
+                            _ => false,
+                        };
+                        if suggest {
+                            err.span_suggestion_verbose(
+                                move_span.shrink_to_lo(),
+                                &format!(
+                                    "consider iterating over a slice of the `{}`'s content to \
+                                     avoid moving into the `for` loop",
+                                    ty,
+                                ),
+                                "&".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+
+                        err.span_label(
+                            fn_call_span,
+                            &format!(
+                                "{} {}moved due to this implicit call to `.into_iter()`{}",
+                                place_name, partially_str, loop_message
+                            ),
+                        );
+                        // If we have a `&mut` ref, we need to reborrow.
+                        if let Some(ty::Ref(_, _, hir::Mutability::Mut)) = used_place
+                            .map(|used_place| used_place.ty(self.body, self.infcx.tcx).ty.kind())
+                        {
+                            // If we are in a loop this will be suggested later.
+                            if !is_loop_move {
+                                err.span_suggestion_verbose(
+                                    move_span.shrink_to_lo(),
+                                    &format!(
+                                        "consider creating a fresh reborrow of {} here",
+                                        self.describe_place(moved_place.as_ref())
+                                            .map(|n| format!("`{}`", n))
+                                            .unwrap_or_else(|| "the mutable reference".to_string()),
+                                    ),
+                                    "&mut *".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
+                    } else {
+                        err.span_label(
+                            fn_call_span,
+                            &format!(
+                                "{} {}moved due to this method call{}",
+                                place_name, partially_str, loop_message
+                            ),
+                        );
+                    }
+                    if is_option_or_result && maybe_reinitialized_locations_is_empty {
+                        err.span_suggestion_verbose(
+                            fn_call_span.shrink_to_lo(),
+                            "consider calling `.as_ref()` to borrow the type's contents",
+                            "as_ref().".to_string(),
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    // Avoid pointing to the same function in multiple different
+                    // error messages.
+                    if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
+                        err.span_note(
+                            self_arg.span,
+                            &format!("this function takes ownership of the receiver `self`, which moves {}", place_name)
+                        );
+                    }
+                }
+                // Other desugarings takes &self, which cannot cause a move
+                _ => {}
+            }
+        } else {
+            if move_span != span || !loop_message.is_empty() {
+                err.span_label(
+                    move_span,
+                    format!("value {}moved{} here{}", partially_str, move_msg, loop_message),
+                );
+            }
+            // If the move error occurs due to a loop, don't show
+            // another message for the same span
+            if loop_message.is_empty() {
+                move_spans.var_span_label(
+                    err,
+                    format!("variable {}moved due to use{}", partially_str, move_spans.describe()),
+                    "moved",
+                );
+            }
+        }
     }
 }

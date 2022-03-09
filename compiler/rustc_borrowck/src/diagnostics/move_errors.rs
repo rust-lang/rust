@@ -1,15 +1,12 @@
-use rustc_const_eval::util::CallDesugaringKind;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
-use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::*;
 use rustc_middle::ty;
 use rustc_mir_dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, LookupResult, MoveError, MovePathIndex,
 };
-use rustc_span::{sym, Span, DUMMY_SP};
-use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
+use rustc_span::{sym, Span};
 
-use crate::diagnostics::{CallKind, UseSpans};
+use crate::diagnostics::UseSpans;
 use crate::prefixes::PrefixSet;
 use crate::MirBorrowckCtxt;
 
@@ -409,34 +406,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ".as_ref()".to_string(),
                 Applicability::MaybeIncorrect,
             );
-        } else if let Some(UseSpans::FnSelfUse {
-            kind:
-                CallKind::Normal { desugaring: Some((CallDesugaringKind::ForLoopIntoIter, _)), .. },
-            ..
-        }) = use_spans
-        {
-            let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
-                Some(def_id) => self.infcx.tcx.infer_ctxt().enter(|infcx| {
-                    type_known_to_meet_bound_modulo_regions(
-                        &infcx,
-                        self.param_env,
-                        infcx
-                            .tcx
-                            .mk_imm_ref(infcx.tcx.lifetimes.re_erased, infcx.tcx.erase_regions(ty)),
-                        def_id,
-                        DUMMY_SP,
-                    )
-                }),
-                _ => false,
-            };
-            if suggest {
-                err.span_suggestion_verbose(
-                    span.shrink_to_lo(),
-                    &format!("consider iterating over a slice of the `{}`'s content", ty),
-                    "&".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+        } else if let Some(use_spans) = use_spans {
+            self.explain_captures(
+                &mut err, span, span, use_spans, move_place, None, "", "", "", false, true,
+            );
         }
         err
     }
@@ -491,11 +464,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 self.note_type_does_not_implement_copy(err, &place_desc, place_ty, Some(span), "");
 
                 use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
-                use_spans.var_span_label(
-                    err,
-                    format!("move occurs due to use{}", use_spans.describe()),
-                    "moved",
-                );
             }
         }
     }
