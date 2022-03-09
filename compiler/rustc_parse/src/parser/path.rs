@@ -625,8 +625,7 @@ impl<'a> Parser<'a> {
         } else if self.check_type() {
             // Parse type argument.
             let is_const_fn = self.look_ahead(1, |t| t.kind == token::OpenDelim(token::Paren));
-            let mut snapshot = self.clone();
-            snapshot.unclosed_delims = vec![];
+            let mut snapshot = self.diagnostic_snapshot();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {

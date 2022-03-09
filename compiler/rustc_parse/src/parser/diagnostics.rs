@@ -179,6 +179,13 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
+    pub(super) fn diagnostic_snapshot(&self) -> Self {
+        let mut snapshot = self.clone();
+        // initialize unclosed_delims to avoid duplicate errors.
+        snapshot.unclosed_delims = vec![];
+        snapshot
+    }
+
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
         self.sess.source_map().span_to_snippet(span)
     }
