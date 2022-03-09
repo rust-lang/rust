@@ -54,7 +54,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Constant {
                 span: source_info.span,
                 user_ty: None,
-                literal: ty::Const::from_usize(self.tcx, value).into(),
+                literal: ConstantKind::from_usize(self.tcx, value),
             },
         );
         temp

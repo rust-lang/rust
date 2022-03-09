@@ -275,6 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(new_ptr)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn deallocate(
         &mut self,
         ptr: Pointer<Option<M::PointerTag>>,
@@ -304,6 +305,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             .into());
         };
+
+        debug!(?alloc);
 
         if alloc.mutability == Mutability::Not {
             throw_ub_format!("deallocating immutable allocation {}", alloc_id);
