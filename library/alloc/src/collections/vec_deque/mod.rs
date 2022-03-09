@@ -12,7 +12,7 @@ use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{repeat_with, FromIterator};
 use core::marker::PhantomData;
-use core::mem::{self, ManuallyDrop};
+use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::{Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice;
@@ -181,16 +181,28 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
-    /// Turn ptr into a slice
+    /// Turn ptr into a slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_slice(&self) -> &[T] {
-        unsafe { slice::from_raw_parts(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_slice(&self) -> &[MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
-    /// Turn ptr into a mut slice
+    /// Turn ptr into a mut slice, since the elements of the backing buffer may be uninitialized,
+    /// we will return a slice of [`MaybeUninit<T>`].
+    ///
+    /// See [`MaybeUninit::zeroed`][zeroed] for examples of correct and
+    /// incorrect usage of this method.
+    ///
+    /// [zeroed]: mem::MaybeUninit::zeroed
     #[inline]
-    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        unsafe { slice::from_raw_parts_mut(self.ptr(), self.cap()) }
+    unsafe fn buffer_as_mut_slice(&mut self) -> &mut [MaybeUninit<T>] {
+        unsafe { slice::from_raw_parts_mut(self.ptr() as *mut MaybeUninit<T>, self.cap()) }
     }
 
     /// Moves an element out of the buffer
@@ -1055,9 +1067,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let buf = self.buffer_as_slice();
-            RingSlices::ring_slices(buf, self.head, self.tail)
+            let (front, back) = RingSlices::ring_slices(buf, self.head, self.tail);
+            (MaybeUninit::slice_assume_init_ref(front), MaybeUninit::slice_assume_init_ref(back))
         }
     }
 
@@ -1089,11 +1105,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
         unsafe {
             let head = self.head;
             let tail = self.tail;
             let buf = self.buffer_as_mut_slice();
-            RingSlices::ring_slices(buf, head, tail)
+            let (front, back) = RingSlices::ring_slices(buf, head, tail);
+            (MaybeUninit::slice_assume_init_mut(front), MaybeUninit::slice_assume_init_mut(back))
         }
     }
 
@@ -2327,7 +2347,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if self.is_contiguous() {
             let tail = self.tail;
             let head = self.head;
-            return unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 };
+            // Safety:
+            // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+            // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+            return unsafe {
+                MaybeUninit::slice_assume_init_mut(
+                    RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+                )
+            };
         }
 
         let buf = self.buf.ptr();
@@ -2413,7 +2440,14 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
         let tail = self.tail;
         let head = self.head;
-        unsafe { RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0 }
+        // Safety:
+        // - `self.head` and `self.tail` in a ring buffer are always valid indices.
+        // - `RingSlices::ring_slices` guarantees that the slices split according to `self.head` and `self.tail` are initialized.
+        unsafe {
+            MaybeUninit::slice_assume_init_mut(
+                RingSlices::ring_slices(self.buffer_as_mut_slice(), head, tail).0,
+            )
+        }
     }
 
     /// Rotates the double-ended queue `mid` places to the left.
