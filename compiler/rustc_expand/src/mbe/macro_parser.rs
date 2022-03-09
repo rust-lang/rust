@@ -491,7 +491,7 @@ fn parse_tt_inner<'root, 'tt>(
     sess: &ParseSess,
     ms: &[TokenTree],
     cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-    next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
+    next_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     token: &Token,
 ) -> Option<NamedParseResult> {
@@ -708,10 +708,9 @@ pub(super) fn parse_tt(
     // there are frequently *no* others! -- are allocated on the heap.
     let mut initial = MatcherPos::new(ms);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
-    let mut next_items = Vec::new();
 
     loop {
-        assert!(next_items.is_empty());
+        let mut next_items = SmallVec::new();
 
         // Matcher positions black-box parsed by parser.rs (`parser`)
         let mut bb_items = SmallVec::new();
