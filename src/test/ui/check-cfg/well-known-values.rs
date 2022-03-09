@@ -25,4 +25,18 @@ fn unix_with_value() {}
 #[cfg(unix)]
 fn unix() {}
 
+#[cfg(miri = "miri")]
+//~^ WARNING unexpected `cfg` condition value
+fn miri_with_value() {}
+
+#[cfg(miri)]
+fn miri() {}
+
+#[cfg(doc = "linux")]
+//~^ WARNING unexpected `cfg` condition value
+fn doc_with_value() {}
+
+#[cfg(doc)]
+fn doc() {}
+
 fn main() {}

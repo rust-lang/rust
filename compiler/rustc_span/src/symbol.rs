@@ -891,6 +891,7 @@ symbols! {
         minnumf32,
         minnumf64,
         mips_target_feature,
+        miri,
         misc,
         mmx_reg,
         modifiers,
