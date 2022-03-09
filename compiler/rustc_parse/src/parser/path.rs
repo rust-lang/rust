@@ -635,7 +635,6 @@ impl<'a> Parser<'a> {
                             return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
                         }
                     }
-                    // self.parse_fn_call_expr();
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
