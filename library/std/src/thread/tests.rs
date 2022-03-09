@@ -293,5 +293,3 @@ fn test_thread_id_not_equal() {
     assert!(thread::current().id() != spawned_id);
 }
 
-// NOTE: the corresponding test for stderr is in ui/thread-stderr, due
-// to the test harness apparently interfering with stderr configuration.
