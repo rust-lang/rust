@@ -339,6 +339,33 @@ mod inner {
 
     impl Timespec {
         pub fn now(clock: clock_t) -> Timespec {
+            // Try to use 64-bit time in preparation for Y2038.
+            #[cfg(all(target_os = "linux", target_env = "gnu", target_pointer_width = "32"))]
+            {
+                use crate::sys::weak::weak;
+
+                // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
+                // and it handles both vDSO calls and ENOSYS fallbacks itself.
+                weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
+
+                #[repr(C)]
+                struct __timespec64 {
+                    tv_sec: i64,
+                    #[cfg(target_endian = "big")]
+                    _padding: i32,
+                    tv_nsec: i32,
+                    #[cfg(target_endian = "little")]
+                    _padding: i32,
+                }
+
+                if let Some(clock_gettime64) = __clock_gettime64.get() {
+                    let mut t = MaybeUninit::uninit();
+                    cvt(unsafe { clock_gettime64(clock, t.as_mut_ptr()) }).unwrap();
+                    let t = unsafe { t.assume_init() };
+                    return Timespec { tv_sec: t.tv_sec, tv_nsec: t.tv_nsec as i64 };
+                }
+            }
+
             let mut t = MaybeUninit::uninit();
             cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
             Timespec::from(unsafe { t.assume_init() })
