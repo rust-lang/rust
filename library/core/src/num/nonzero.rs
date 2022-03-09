@@ -34,6 +34,11 @@ macro_rules! nonzero_integers {
             /// use std::mem::size_of;
             #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
             /// ```
+            ///
+            /// # Layout
+            ///
+            #[doc = concat!("`", stringify!($Ty), "` is guaranteed to have the same layout and bit validity as `", stringify!($Int), "`"]
+            /// with the exception that `0` is not a valid instance.
             #[$stability]
             #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
             #[repr(transparent)]
