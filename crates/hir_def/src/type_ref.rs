@@ -89,7 +89,7 @@ pub enum TypeRef {
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
     // FIXME: for full const generics, the latter element (length) here is going to have to be an
     // expression that is further lowered later in hir_ty.
-    Array(Box<TypeRef>, ConstScalar),
+    Array(Box<TypeRef>, ConstScalarOrPath),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
     Fn(Vec<(Option<Name>, TypeRef)>, bool /*varargs*/),
@@ -162,10 +162,7 @@ impl TypeRef {
                 // `hir_def::body::lower` to lower this into an `Expr` and then evaluate it at the
                 // `hir_ty` level, which would allow knowing the type of:
                 // let v: [u8; 2 + 2] = [0u8; 4];
-                let len = inner
-                    .expr()
-                    .map(ConstScalar::usize_from_literal_expr)
-                    .unwrap_or(ConstScalar::Unknown);
+                let len = ConstScalarOrPath::from_expr_opt(inner.expr());
 
                 TypeRef::Array(Box::new(TypeRef::from_ast_opt(ctx, inner.ty())), len)
             }
@@ -278,7 +275,8 @@ impl TypeRef {
                             crate::path::GenericArg::Type(type_ref) => {
                                 go(type_ref, f);
                             }
-                            crate::path::GenericArg::Lifetime(_) => {}
+                            crate::path::GenericArg::Const(_)
+                            | crate::path::GenericArg::Lifetime(_) => {}
                         }
                     }
                     for binding in &args_and_bindings.bindings {
@@ -357,6 +355,60 @@ impl TypeBound {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ConstScalarOrPath {
+    Scalar(ConstScalar),
+    Path(Name),
+}
+
+impl std::fmt::Display for ConstScalarOrPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConstScalarOrPath::Scalar(s) => write!(f, "{}", s),
+            ConstScalarOrPath::Path(n) => write!(f, "{}", n),
+        }
+    }
+}
+
+impl ConstScalarOrPath {
+    pub(crate) fn from_expr_opt(expr: Option<ast::Expr>) -> Self {
+        match expr {
+            Some(x) => Self::from_expr(x),
+            None => Self::Scalar(ConstScalar::Unknown),
+        }
+    }
+
+    // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
+    // parse stage.
+    fn from_expr(expr: ast::Expr) -> Self {
+        match expr {
+            ast::Expr::PathExpr(p) => {
+                match p.path().and_then(|x| x.segment()).and_then(|x| x.name_ref()) {
+                    Some(x) => Self::Path(x.as_name()),
+                    None => Self::Scalar(ConstScalar::Unknown),
+                }
+            }
+            ast::Expr::Literal(lit) => {
+                let lkind = lit.kind();
+                match lkind {
+                    ast::LiteralKind::IntNumber(num)
+                        if num.suffix() == None || num.suffix() == Some("usize") =>
+                    {
+                        Self::Scalar(
+                            num.value()
+                                .and_then(|v| v.try_into().ok())
+                                .map(ConstScalar::Usize)
+                                .unwrap_or(ConstScalar::Unknown),
+                        )
+                    }
+                    _ => Self::Scalar(ConstScalar::Unknown),
+                }
+            }
+            _ => Self::Scalar(ConstScalar::Unknown),
+        }
+    }
+}
+
 /// A concrete constant value
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ConstScalar {
@@ -388,26 +440,5 @@ impl ConstScalar {
             &ConstScalar::Usize(us) => Some(us),
             _ => None,
         }
-    }
-
-    // FIXME: as per the comments on `TypeRef::Array`, this evaluation should not happen at this
-    // parse stage.
-    fn usize_from_literal_expr(expr: ast::Expr) -> ConstScalar {
-        match expr {
-            ast::Expr::Literal(lit) => {
-                let lkind = lit.kind();
-                match lkind {
-                    ast::LiteralKind::IntNumber(num)
-                        if num.suffix() == None || num.suffix() == Some("usize") =>
-                    {
-                        num.value().and_then(|v| v.try_into().ok())
-                    }
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
-        .map(ConstScalar::Usize)
-        .unwrap_or(ConstScalar::Unknown)
     }
 }

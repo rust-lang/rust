@@ -279,7 +279,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn type_param_to_def(&mut self, src: InFile<ast::TypeParam>) -> Option<TypeParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::TYPE_PARAM].get(&src.value).copied().map(|x| x.into())
+        dyn_map[keys::TYPE_PARAM].get(&src.value).copied().map(|x| TypeParamId::from_unchecked(x))
     }
 
     pub(super) fn lifetime_param_to_def(
@@ -297,7 +297,7 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<ConstParamId> {
         let container: ChildContainer = self.find_generic_param_container(src.syntax())?.into();
         let dyn_map = self.cache_for(container, src.file_id);
-        dyn_map[keys::CONST_PARAM].get(&src.value).copied().map(|x| x.into())
+        dyn_map[keys::CONST_PARAM].get(&src.value).copied().map(|x| ConstParamId::from_unchecked(x))
     }
 
     pub(super) fn generic_param_to_def(

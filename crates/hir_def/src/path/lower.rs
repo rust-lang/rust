@@ -1,6 +1,6 @@
 //! Transforms syntax into `Path` objects, ideally with accounting for hygiene
 
-use crate::intern::Interned;
+use crate::{intern::Interned, type_ref::ConstScalarOrPath};
 
 use either::Either;
 use hir_expand::name::{name, AsName};
@@ -180,8 +180,10 @@ pub(super) fn lower_generic_args(
                     args.push(GenericArg::Lifetime(lifetime_ref))
                 }
             }
-            // constants are ignored for now.
-            ast::GenericArg::ConstArg(_) => (),
+            ast::GenericArg::ConstArg(arg) => {
+                let arg = ConstScalarOrPath::from_expr_opt(arg.expr());
+                args.push(GenericArg::Const(arg))
+            }
         }
     }
 

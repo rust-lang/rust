@@ -7,13 +7,15 @@ use std::{
     sync::Arc,
 };
 
-use chalk_ir::{cast::Cast, fold::Shift, Mutability, TyVariableKind};
+use chalk_ir::{
+    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
+};
 use hir_def::{
     expr::{ArithOp, Array, BinaryOp, CmpOp, Expr, ExprId, Literal, Ordering, Statement, UnaryOp},
     generics::TypeOrConstParamData,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    FieldId, FunctionId, ItemContainerId, Lookup,
+    ConstParamId, FieldId, FunctionId, ItemContainerId, Lookup,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -23,7 +25,9 @@ use crate::{
     autoderef::{self, Autoderef},
     consteval,
     infer::coerce::CoerceMany,
-    lower::lower_to_chalk_mutability,
+    lower::{
+        const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
+    },
     mapping::from_chalk,
     method_resolution,
     primitive::{self, UintTy},
@@ -39,7 +43,7 @@ use super::{
 };
 
 impl<'a> InferenceContext<'a> {
-    pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
+    pub(crate) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
         if self.resolve_ty_shallow(&ty).is_never() {
             // Any expression that produces a value of type `!` must have diverged
@@ -662,7 +666,7 @@ impl<'a> InferenceContext<'a> {
                     self.resolve_associated_type_with_params(
                         self_ty,
                         self.resolve_ops_index_output(),
-                        &[index_ty],
+                        &[GenericArgData::Ty(index_ty).intern(Interner)],
                     )
                 } else {
                     self.err_ty()
@@ -704,7 +708,7 @@ impl<'a> InferenceContext<'a> {
                             let cur_elem_ty = self.infer_expr_inner(expr, &expected);
                             coerce.coerce(self, Some(expr), &cur_elem_ty);
                         }
-                        Some(items.len() as u64)
+                        consteval::usize_const(Some(items.len() as u64))
                     }
                     &Array::Repeat { initializer, repeat } => {
                         self.infer_expr_coerce(initializer, &Expectation::has_type(elem_ty));
@@ -715,19 +719,22 @@ impl<'a> InferenceContext<'a> {
                             ),
                         );
 
-                        consteval::eval_usize(
-                            repeat,
-                            consteval::ConstEvalCtx {
-                                exprs: &body.exprs,
-                                pats: &body.pats,
-                                local_data: Default::default(),
-                                infer: &mut |x| self.infer_expr(x, &expected),
-                            },
-                        )
+                        if let Some(g_def) = self.owner.as_generic_def_id() {
+                            let generics = generics(self.db.upcast(), g_def);
+                            consteval::eval_to_const(
+                                repeat,
+                                ParamLoweringMode::Placeholder,
+                                self,
+                                || generics,
+                                DebruijnIndex::INNERMOST,
+                            )
+                        } else {
+                            consteval::usize_const(None)
+                        }
                     }
                 };
 
-                TyKind::Array(coerce.complete(), consteval::usize_const(len)).intern(Interner)
+                TyKind::Array(coerce.complete(), len).intern(Interner)
             }
             Expr::Literal(lit) => match lit {
                 Literal::Bool(..) => TyKind::Scalar(Scalar::Bool).intern(Interner),
@@ -1038,38 +1045,52 @@ impl<'a> InferenceContext<'a> {
         let total_len = parent_params + type_params + const_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown
-        for (_id, param) in def_generics.iter_parent() {
+        for (id, param) in def_generics.iter_parent() {
             match param {
                 TypeOrConstParamData::TypeParamData(_) => {
-                    substs.push(self.table.new_type_var());
+                    substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner));
                 }
                 TypeOrConstParamData::ConstParamData(_) => {
-                    // FIXME: here we should do something else
-                    substs.push(self.table.new_type_var());
+                    let ty = self.db.const_param_ty(ConstParamId::from_unchecked(id));
+                    substs
+                        .push(GenericArgData::Const(self.table.new_const_var(ty)).intern(Interner));
                 }
             }
         }
-        // handle provided type arguments
+        // handle provided arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args
+            for (arg, kind_id) in generic_args
                 .args
                 .iter()
-                .filter(|arg| matches!(arg, GenericArg::Type(_)))
-                .take(type_params)
+                .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
+                .take(type_params + const_params)
+                .zip(def_generics.iter_id().skip(parent_params))
             {
-                match arg {
-                    GenericArg::Type(type_ref) => {
-                        let ty = self.make_ty(type_ref);
-                        substs.push(ty);
-                    }
-                    GenericArg::Lifetime(_) => {}
+                if let Some(g) = generic_arg_to_chalk(
+                    self.db,
+                    kind_id,
+                    arg,
+                    self,
+                    |this, type_ref| this.make_ty(type_ref),
+                    |this, c| {
+                        const_or_path_to_chalk(
+                            this.db,
+                            &this.resolver,
+                            c,
+                            ParamLoweringMode::Placeholder,
+                            || generics(this.db.upcast(), (&this.resolver).generic_def().unwrap()),
+                            DebruijnIndex::INNERMOST,
+                        )
+                    },
+                ) {
+                    substs.push(g);
                 }
             }
         };
         let supplied_params = substs.len();
         for _ in supplied_params..total_len {
-            substs.push(self.table.new_type_var());
+            substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner));
         }
         assert_eq!(substs.len(), total_len);
         Substitution::from_iter(Interner, substs)

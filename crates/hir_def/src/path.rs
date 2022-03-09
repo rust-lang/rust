@@ -6,7 +6,11 @@ use std::{
     iter,
 };
 
-use crate::{body::LowerCtx, intern::Interned, type_ref::LifetimeRef};
+use crate::{
+    body::LowerCtx,
+    intern::Interned,
+    type_ref::{ConstScalarOrPath, LifetimeRef},
+};
 use hir_expand::name::{name, Name};
 use syntax::ast;
 
@@ -78,6 +82,7 @@ pub struct AssociatedTypeBinding {
 pub enum GenericArg {
     Type(TypeRef),
     Lifetime(LifetimeRef),
+    Const(ConstScalarOrPath),
 }
 
 impl Path {

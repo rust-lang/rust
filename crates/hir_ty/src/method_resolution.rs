@@ -6,7 +6,7 @@ use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
-use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
+use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, Mutability, UniverseIndex};
 use hir_def::{
     item_scope::ItemScope, lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId,
     ConstId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
@@ -25,8 +25,9 @@ use crate::{
     primitive::{self, FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
-    Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, GenericArgData,
+    InEnvironment, Interner, Scalar, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder,
+    TyExt, TyKind,
 };
 
 /// This is used as a key for indexing impls.
@@ -1087,13 +1088,14 @@ pub(crate) fn inherent_impl_substs(
         .build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).substitute(Interner, &vars);
     let mut kinds = self_ty.binders.interned().to_vec();
-    kinds.extend(
-        iter::repeat(chalk_ir::WithKind::new(
-            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
-            UniverseIndex::ROOT,
-        ))
-        .take(vars.len(Interner)),
-    );
+    kinds.extend(vars.iter(Interner).map(|x| {
+        let kind = match x.data(Interner) {
+            GenericArgData::Ty(_) => chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
+            GenericArgData::Const(c) => chalk_ir::VariableKind::Const(c.data(Interner).ty.clone()),
+            GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
+        };
+        chalk_ir::WithKind::new(kind, UniverseIndex::ROOT)
+    }));
     let tys = Canonical {
         binders: CanonicalVarKinds::from_iter(Interner, kinds),
         value: (self_ty_with_vars, self_ty.value.clone()),
@@ -1111,14 +1113,27 @@ pub(crate) fn inherent_impl_substs(
 
 /// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
 /// num_vars_to_keep) by `TyKind::Unknown`.
-fn fallback_bound_vars(s: Substitution, num_vars_to_keep: usize) -> Substitution {
-    crate::fold_free_vars(s, |bound, binders| {
-        if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-            TyKind::Error.intern(Interner)
-        } else {
-            bound.shifted_in_from(binders).to_ty(Interner)
-        }
-    })
+pub(crate) fn fallback_bound_vars<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+    s: T,
+    num_vars_to_keep: usize,
+) -> T::Result {
+    crate::fold_free_vars(
+        s,
+        |bound, binders| {
+            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
+                TyKind::Error.intern(Interner)
+            } else {
+                bound.shifted_in_from(binders).to_ty(Interner)
+            }
+        },
+        |ty, bound, binders| {
+            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
+                consteval::usize_const(None)
+            } else {
+                bound.shifted_in_from(binders).to_const(Interner, ty)
+            }
+        },
+    )
 }
 
 fn transform_receiver_ty(
@@ -1183,13 +1198,18 @@ fn generic_implements_goal(
         .push(self_ty.value.clone())
         .fill_with_bound_vars(DebruijnIndex::INNERMOST, kinds.len())
         .build();
-    kinds.extend(
-        iter::repeat(chalk_ir::WithKind::new(
-            chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General),
-            UniverseIndex::ROOT,
-        ))
-        .take(trait_ref.substitution.len(Interner) - 1),
-    );
+    kinds.extend(trait_ref.substitution.iter(Interner).skip(1).map(|x| {
+        let vk = match x.data(Interner) {
+            chalk_ir::GenericArgData::Ty(_) => {
+                chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+            }
+            chalk_ir::GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
+            chalk_ir::GenericArgData::Const(c) => {
+                chalk_ir::VariableKind::Const(c.data(Interner).ty.clone())
+            }
+        };
+        chalk_ir::WithKind::new(vk, UniverseIndex::ROOT)
+    }));
     let obligation = trait_ref.cast(Interner);
     Canonical {
         binders: CanonicalVarKinds::from_iter(Interner, kinds),

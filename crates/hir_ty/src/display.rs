@@ -14,7 +14,7 @@ use hir_def::{
     intern::{Internable, Interned},
     item_scope::ItemInNs,
     path::{Path, PathKind},
-    type_ref::{TraitBoundModifier, TypeBound, TypeRef},
+    type_ref::{ConstScalar, TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
     HasModule, ItemContainerId, Lookup, ModuleId, TraitId,
 };
@@ -28,10 +28,10 @@ use crate::{
     mapping::from_chalk,
     primitive, subst_prefix, to_assoc_type_id,
     utils::{self, generics},
-    AdtId, AliasEq, AliasTy, CallableDefId, CallableSig, Const, ConstValue, DomainGoal, GenericArg,
-    ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability, OpaqueTy,
-    ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, TraitRef, TraitRefExt, Ty, TyExt,
-    TyKind, WhereClause,
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Const, ConstValue, DomainGoal,
+    GenericArg, ImplTraitId, Interner, Lifetime, LifetimeData, LifetimeOutlives, Mutability,
+    OpaqueTy, ProjectionTy, ProjectionTyExt, QuantifiedWhereClause, Scalar, Substitution, TraitRef,
+    TraitRefExt, Ty, TyExt, TyKind, WhereClause,
 };
 
 pub struct HirFormatter<'a> {
@@ -316,11 +316,11 @@ impl HirDisplay for Const {
         let data = self.interned();
         match data.value {
             ConstValue::BoundVar(idx) => idx.hir_fmt(f),
-            ConstValue::InferenceVar(..) => write!(f, "_"),
+            ConstValue::InferenceVar(..) => write!(f, "#c#"),
             ConstValue::Placeholder(idx) => {
                 let id = from_placeholder_idx(f.db, idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.tocs[id.local_id];
+                let param_data = &generics.params.type_or_consts[id.local_id];
                 write!(f, "{}", param_data.name().unwrap())
             }
             ConstValue::Concrete(c) => write!(f, "{}", c.interned),
@@ -544,24 +544,37 @@ impl HirDisplay for Ty {
                         {
                             None => parameters.as_slice(Interner),
                             Some(default_parameters) => {
+                                fn should_show(
+                                    parameter: &GenericArg,
+                                    default_parameters: &[Binders<GenericArg>],
+                                    i: usize,
+                                    parameters: &Substitution,
+                                ) -> bool {
+                                    if parameter.ty(Interner).map(|x| x.kind(Interner))
+                                        == Some(&TyKind::Error)
+                                    {
+                                        return true;
+                                    }
+                                    if let Some(ConstValue::Concrete(c)) =
+                                        parameter.constant(Interner).map(|x| x.data(Interner).value)
+                                    {
+                                        if c.interned == ConstScalar::Unknown {
+                                            return true;
+                                        }
+                                    }
+                                    let default_parameter = match default_parameters.get(i) {
+                                        Some(x) => x,
+                                        None => return true,
+                                    };
+                                    let actual_default = default_parameter
+                                        .clone()
+                                        .substitute(Interner, &subst_prefix(parameters, i));
+                                    parameter != &actual_default
+                                }
                                 let mut default_from = 0;
                                 for (i, parameter) in parameters.iter(Interner).enumerate() {
-                                    match (
-                                        parameter.assert_ty_ref(Interner).kind(Interner),
-                                        default_parameters.get(i),
-                                    ) {
-                                        (&TyKind::Error, _) | (_, None) => {
-                                            default_from = i + 1;
-                                        }
-                                        (_, Some(default_parameter)) => {
-                                            let actual_default = default_parameter
-                                                .clone()
-                                                .substitute(Interner, &subst_prefix(parameters, i));
-                                            if parameter.assert_ty_ref(Interner) != &actual_default
-                                            {
-                                                default_from = i + 1;
-                                            }
-                                        }
+                                    if should_show(parameter, &default_parameters, i, parameters) {
+                                        default_from = i + 1;
                                     }
                                 }
                                 &parameters.as_slice(Interner)[0..default_from]
@@ -680,14 +693,14 @@ impl HirDisplay for Ty {
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.tocs[id.local_id];
+                let param_data = &generics.params.type_or_consts[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {
                             write!(f, "{}", p.name.clone().unwrap_or_else(Name::missing))?
                         }
                         TypeParamProvenance::ArgumentImplTrait => {
-                            let substs = generics.type_params_subst(f.db);
+                            let substs = generics.placeholder_subst(f.db);
                             let bounds =
                                 f.db.generic_predicates(id.parent)
                                     .iter()
@@ -1281,6 +1294,7 @@ impl HirDisplay for hir_def::path::GenericArg {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         match self {
             hir_def::path::GenericArg::Type(ty) => ty.hir_fmt(f),
+            hir_def::path::GenericArg::Const(c) => write!(f, "{}", c),
             hir_def::path::GenericArg::Lifetime(lifetime) => write!(f, "{}", lifetime.name),
         }
     }

@@ -13,7 +13,7 @@ use la_arena::ArenaMap;
 use crate::{
     chalk_db,
     method_resolution::{InherentImpls, TraitImpls},
-    Binders, CallableDefId, FnDefId, ImplTraitId, InferenceResult, Interner, PolyFnSig,
+    Binders, CallableDefId, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner, PolyFnSig,
     QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
@@ -73,7 +73,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     #[salsa::cycle(crate::lower::generic_defaults_recover)]
-    fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<Ty>]>;
+    fn generic_defaults(&self, def: GenericDefId) -> Arc<[Binders<GenericArg>]>;
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
     fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;

@@ -1,7 +1,5 @@
 //! Path expression resolution.
 
-use std::iter;
-
 use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
@@ -11,8 +9,8 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    method_resolution, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
-    ValueTyDefId,
+    builder::ParamKind, consteval, method_resolution, GenericArgData, Interner, Substitution,
+    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -82,7 +80,7 @@ impl<'a> InferenceContext<'a> {
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = generics.type_params_subst(self.db);
+                let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
                 if let Some((AdtId::StructId(struct_id), substs)) = ty.as_adt() {
                     let ty = self.db.value_ty(struct_id.into()).substitute(Interner, &substs);
@@ -98,9 +96,19 @@ impl<'a> InferenceContext<'a> {
         let parent_substs = self_subst.unwrap_or_else(|| Substitution::empty(Interner));
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver);
         let substs = ctx.substs_from_path(path, typable, true);
+        let mut it = substs.as_slice(Interner)[parent_substs.len(Interner)..].iter().cloned();
         let ty = TyBuilder::value_ty(self.db, typable)
             .use_parent_substs(&parent_substs)
-            .fill(substs.as_slice(Interner)[parent_substs.len(Interner)..].iter().cloned())
+            .fill(|x| {
+                it.next().unwrap_or_else(|| match x {
+                    ParamKind::Type => {
+                        GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
+                    }
+                    ParamKind::Const(_) => {
+                        GenericArgData::Const(consteval::usize_const(None)).intern(Interner)
+                    }
+                })
+            })
             .build();
         Some(ty)
     }
@@ -241,7 +249,15 @@ impl<'a> InferenceContext<'a> {
                 let substs = match container {
                     ItemContainerId::ImplId(impl_id) => {
                         let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
-                            .fill(iter::repeat_with(|| self.table.new_type_var()))
+                            .fill(|x| match x {
+                                ParamKind::Type => {
+                                    GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
+                                }
+                                ParamKind::Const(ty) => {
+                                    GenericArgData::Const(self.table.new_const_var(ty.clone()))
+                                        .intern(Interner)
+                                }
+                            })
                             .build();
                         let impl_self_ty =
                             self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
@@ -252,7 +268,15 @@ impl<'a> InferenceContext<'a> {
                         // we're picking this method
                         let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                             .push(ty.clone())
-                            .fill(std::iter::repeat_with(|| self.table.new_type_var()))
+                            .fill(|x| match x {
+                                ParamKind::Type => {
+                                    GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
+                                }
+                                ParamKind::Const(ty) => {
+                                    GenericArgData::Const(self.table.new_const_var(ty.clone()))
+                                        .intern(Interner)
+                                }
+                            })
                             .build();
                         self.push_obligation(trait_ref.clone().cast(Interner));
                         Some(trait_ref.substitution)

@@ -3362,6 +3362,27 @@ fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
 }
 
 #[test]
+fn hover_const_generic_type_alias() {
+    check(
+        r#"
+struct Foo<const LEN: usize>;
+type Fo$0o2 = Foo<2>;
+"#,
+        expect![[r#"
+                *Foo2*
+
+                ```rust
+                test
+                ```
+
+                ```rust
+                type Foo2 = Foo<2>
+                ```
+            "#]],
+    );
+}
+
+#[test]
 fn hover_const_param() {
     check(
         r#"

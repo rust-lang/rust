@@ -2,15 +2,25 @@
 
 use std::{collections::HashMap, convert::TryInto, fmt::Display};
 
-use chalk_ir::{IntTy, Scalar};
+use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
 use hir_def::{
     expr::{ArithOp, BinaryOp, Expr, Literal, Pat},
+    path::ModPath,
+    resolver::{Resolver, ValueNs},
     type_ref::ConstScalar,
 };
 use hir_expand::name::Name;
 use la_arena::{Arena, Idx};
+use stdx::never;
 
-use crate::{Const, ConstData, ConstValue, Interner, Ty, TyKind};
+use crate::{
+    db::HirDatabase,
+    infer::{Expectation, InferenceContext},
+    lower::ParamLoweringMode,
+    to_placeholder_idx,
+    utils::Generics,
+    Const, ConstData, ConstValue, GenericArg, Interner, Ty, TyKind,
+};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {
@@ -303,6 +313,57 @@ pub fn eval_usize(expr: Idx<Expr>, mut ctx: ConstEvalCtx<'_>) -> Option<u64> {
     None
 }
 
+pub(crate) fn path_to_const(
+    db: &dyn HirDatabase,
+    resolver: &Resolver,
+    path: &ModPath,
+    mode: ParamLoweringMode,
+    args_lazy: impl FnOnce() -> Generics,
+    debruijn: DebruijnIndex,
+) -> Option<Const> {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+        Some(ValueNs::GenericParam(p)) => {
+            let ty = db.const_param_ty(p);
+            let args = args_lazy();
+            let value = match mode {
+                ParamLoweringMode::Placeholder => {
+                    ConstValue::Placeholder(to_placeholder_idx(db, p.into()))
+                }
+                ParamLoweringMode::Variable => match args.param_idx(p.into()) {
+                    Some(x) => ConstValue::BoundVar(BoundVar::new(debruijn, x)),
+                    None => {
+                        never!(
+                            "Generic list doesn't contain this param: {:?}, {}, {:?}",
+                            args,
+                            path,
+                            p
+                        );
+                        return None;
+                    }
+                },
+            };
+            Some(ConstData { ty, value }.intern(Interner))
+        }
+        _ => None,
+    }
+}
+
+pub fn unknown_const(ty: Ty) -> Const {
+    ConstData {
+        ty,
+        value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: ConstScalar::Unknown }),
+    }
+    .intern(Interner)
+}
+
+pub fn unknown_const_usize() -> Const {
+    unknown_const(TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner))
+}
+
+pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
+    GenericArgData::Const(unknown_const(ty)).intern(Interner)
+}
+
 /// Interns a possibly-unknown target usize
 pub fn usize_const(value: Option<u64>) -> Const {
     ConstData {
@@ -312,4 +373,28 @@ pub fn usize_const(value: Option<u64>) -> Const {
         }),
     }
     .intern(Interner)
+}
+
+pub(crate) fn eval_to_const(
+    expr: Idx<Expr>,
+    mode: ParamLoweringMode,
+    ctx: &mut InferenceContext,
+    args: impl FnOnce() -> Generics,
+    debruijn: DebruijnIndex,
+) -> Const {
+    if let Expr::Path(p) = &ctx.body.exprs[expr] {
+        let db = ctx.db;
+        let resolver = &ctx.resolver;
+        if let Some(c) = path_to_const(db, resolver, p.mod_path(), mode, args, debruijn) {
+            return c;
+        }
+    }
+    let body = ctx.body.clone();
+    let ctx = ConstEvalCtx {
+        exprs: &body.exprs,
+        pats: &body.pats,
+        local_data: HashMap::default(),
+        infer: &mut |x| ctx.infer_expr(x, &Expectation::None),
+    };
+    usize_const(eval_usize(expr, ctx))
 }

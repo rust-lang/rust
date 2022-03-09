@@ -256,7 +256,7 @@ impl HirDisplay for TypeParam {
         }
 
         let bounds = f.db.generic_predicates_for_param(self.id.parent(), self.id.into(), None);
-        let substs = TyBuilder::type_params_subst(f.db, self.id.parent());
+        let substs = TyBuilder::placeholder_subst(f.db, self.id.parent());
         let predicates: Vec<_> =
             bounds.iter().cloned().map(|b| b.substitute(Interner, &substs)).collect();
         let krate = self.id.parent().krate(f.db).id;
@@ -292,8 +292,9 @@ impl HirDisplay for ConstParam {
 fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
     let params = f.db.generic_params(def);
     if params.lifetimes.is_empty()
+        && params.type_or_consts.iter().all(|x| x.1.const_param().is_none())
         && params
-            .tocs
+            .type_or_consts
             .iter()
             .filter_map(|x| x.1.type_param())
             .all(|param| !matches!(param.provenance, TypeParamProvenance::TypeParamList))
@@ -315,7 +316,7 @@ fn write_generic_params(def: GenericDefId, f: &mut HirFormatter) -> Result<(), H
         delim(f)?;
         write!(f, "{}", lifetime.name)?;
     }
-    for (_, ty) in params.tocs.iter() {
+    for (_, ty) in params.type_or_consts.iter() {
         if let Some(name) = &ty.name() {
             match ty {
                 TypeOrConstParamData::TypeParamData(ty) => {
@@ -348,7 +349,9 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
     // unnamed type targets are displayed inline with the argument itself, e.g. `f: impl Y`.
     let is_unnamed_type_target = |target: &WherePredicateTypeTarget| match target {
         WherePredicateTypeTarget::TypeRef(_) => false,
-        WherePredicateTypeTarget::TypeOrConstParam(id) => params.tocs[*id].name().is_none(),
+        WherePredicateTypeTarget::TypeOrConstParam(id) => {
+            params.type_or_consts[*id].name().is_none()
+        }
     };
 
     let has_displayable_predicate = params
@@ -364,10 +367,12 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter) -> Result<(), Hir
 
     let write_target = |target: &WherePredicateTypeTarget, f: &mut HirFormatter| match target {
         WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f),
-        WherePredicateTypeTarget::TypeOrConstParam(id) => match &params.tocs[*id].name() {
-            Some(name) => write!(f, "{}", name),
-            None => write!(f, "{{unnamed}}"),
-        },
+        WherePredicateTypeTarget::TypeOrConstParam(id) => {
+            match &params.type_or_consts[*id].name() {
+                Some(name) => write!(f, "{}", name),
+                None => write!(f, "{{unnamed}}"),
+            }
+        }
     };
 
     write!(f, "\nwhere")?;

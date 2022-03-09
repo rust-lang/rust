@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, iter, mem, sync::Arc};
+use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, NoSolution,
@@ -9,13 +9,14 @@ use chalk_ir::{
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
 use hir_expand::name;
+use stdx::never;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
     db::HirDatabase, fold_tys, static_lifetime, traits::FnTrait, AliasEq, AliasTy, BoundVar,
-    Canonical, Const, DebruijnIndex, GenericArg, Goal, Guidance, InEnvironment, InferenceVar,
-    Interner, Lifetime, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
+    Canonical, Const, DebruijnIndex, GenericArg, GenericArgData, Goal, Guidance, InEnvironment,
+    InferenceVar, Interner, Lifetime, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind, VariableKind,
 };
 
 impl<'a> InferenceContext<'a> {
@@ -48,13 +49,13 @@ impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
         // the solution may contain new variables, which we need to convert to new inference vars
         let new_vars = Substitution::from_iter(
             Interner,
-            solution.binders.iter(Interner).map(|k| match k.kind {
+            solution.binders.iter(Interner).map(|k| match &k.kind {
                 VariableKind::Ty(TyVariableKind::General) => ctx.new_type_var().cast(Interner),
                 VariableKind::Ty(TyVariableKind::Integer) => ctx.new_integer_var().cast(Interner),
                 VariableKind::Ty(TyVariableKind::Float) => ctx.new_float_var().cast(Interner),
                 // Chalk can sometimes return new lifetime variables. We just use the static lifetime everywhere
                 VariableKind::Lifetime => static_lifetime().cast(Interner),
-                _ => panic!("const variable in solution"),
+                VariableKind::Const(ty) => ctx.new_const_var(ty.clone()).cast(Interner),
             }),
         );
         for (i, v) in solution.value.iter(Interner).enumerate() {
@@ -87,11 +88,17 @@ pub(crate) fn unify(
     let mut table = InferenceTable::new(db, env);
     let vars = Substitution::from_iter(
         Interner,
-        tys.binders
-            .iter(Interner)
-            // we always use type vars here because we want everything to
-            // fallback to Unknown in the end (kind of hacky, as below)
-            .map(|_| table.new_type_var()),
+        tys.binders.iter(Interner).map(|x| match &x.kind {
+            chalk_ir::VariableKind::Ty(_) => {
+                GenericArgData::Ty(table.new_type_var()).intern(Interner)
+            }
+            chalk_ir::VariableKind::Lifetime => {
+                GenericArgData::Ty(table.new_type_var()).intern(Interner)
+            } // FIXME: maybe wrong?
+            chalk_ir::VariableKind::Const(ty) => {
+                GenericArgData::Const(table.new_const_var(ty.clone())).intern(Interner)
+            }
+        }),
     );
     let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
     let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
@@ -117,8 +124,7 @@ pub(crate) fn unify(
     };
     Some(Substitution::from_iter(
         Interner,
-        vars.iter(Interner)
-            .map(|v| table.resolve_with_fallback(v.assert_ty_ref(Interner).clone(), &fallback)),
+        vars.iter(Interner).map(|v| table.resolve_with_fallback(v.clone(), &fallback)),
     ))
 }
 
@@ -552,11 +558,18 @@ impl<'a> InferenceTable<'a> {
 
         let mut arg_tys = vec![];
         let arg_ty = TyBuilder::tuple(num_args)
-            .fill(iter::repeat_with(|| {
-                let arg = self.new_type_var();
+            .fill(|x| {
+                let arg = match x {
+                    ParamKind::Type => self.new_type_var(),
+                    ParamKind::Const(ty) => {
+                        never!("Tuple with const parameter");
+                        return GenericArgData::Const(self.new_const_var(ty.clone()))
+                            .intern(Interner);
+                    }
+                };
                 arg_tys.push(arg.clone());
-                arg
-            }))
+                GenericArgData::Ty(arg).intern(Interner)
+            })
             .build();
 
         let projection = {
