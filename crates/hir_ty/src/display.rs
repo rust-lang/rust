@@ -320,7 +320,7 @@ impl HirDisplay for Const {
             ConstValue::Placeholder(idx) => {
                 let id = from_placeholder_idx(f.db, idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.types[id.local_id];
+                let param_data = &generics.params.tocs[id.local_id];
                 write!(f, "{}", param_data.name().unwrap())
             }
             ConstValue::Concrete(c) => write!(f, "{}", c.interned),
@@ -489,9 +489,9 @@ impl HirDisplay for Ty {
                 };
                 if parameters.len(Interner) > 0 {
                     let generics = generics(f.db.upcast(), def.into());
-                    let (parent_params, self_param, type_params, _impl_trait_params) =
+                    let (parent_params, self_param, type_params, const_params, _impl_trait_params) =
                         generics.provenance_split();
-                    let total_len = parent_params + self_param + type_params;
+                    let total_len = parent_params + self_param + type_params + const_params;
                     // We print all params except implicit impl Trait params. Still a bit weird; should we leave out parent and self?
                     if total_len > 0 {
                         write!(f, "<")?;
@@ -680,7 +680,7 @@ impl HirDisplay for Ty {
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(f.db, *idx);
                 let generics = generics(f.db.upcast(), id.parent);
-                let param_data = &generics.params.types[id.local_id];
+                let param_data = &generics.params.tocs[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         TypeParamProvenance::TypeParamList | TypeParamProvenance::TraitSelf => {

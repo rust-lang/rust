@@ -1032,10 +1032,10 @@ impl<'a> InferenceContext<'a> {
         def_generics: Generics,
         generic_args: Option<&GenericArgs>,
     ) -> Substitution {
-        let (parent_params, self_params, type_params, impl_trait_params) =
+        let (parent_params, self_params, type_params, const_params, impl_trait_params) =
             def_generics.provenance_split();
         assert_eq!(self_params, 0); // method shouldn't have another Self param
-        let total_len = parent_params + type_params + impl_trait_params;
+        let total_len = parent_params + type_params + const_params + impl_trait_params;
         let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown
         for (_id, param) in def_generics.iter_parent() {
@@ -1044,7 +1044,8 @@ impl<'a> InferenceContext<'a> {
                     substs.push(self.table.new_type_var());
                 }
                 TypeOrConstParamData::ConstParamData(_) => {
-                    // FIXME: here we should do something
+                    // FIXME: here we should do something else
+                    substs.push(self.table.new_type_var());
                 }
             }
         }

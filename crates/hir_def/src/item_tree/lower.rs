@@ -582,7 +582,7 @@ impl<'a> Ctx<'a> {
             }
             GenericsOwner::Trait(trait_def) => {
                 // traits get the Self type as an implicit first type parameter
-                generics.types.alloc(
+                generics.tocs.alloc(
                     TypeParamData {
                         name: Some(name![Self]),
                         default: None,

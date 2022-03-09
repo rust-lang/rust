@@ -518,10 +518,10 @@ impl Scope {
             }
             Scope::GenericParams { params, def: parent } => {
                 let parent = *parent;
-                for (local_id, param) in params.types.iter() {
+                for (local_id, param) in params.tocs.iter() {
                     if let Some(name) = &param.name() {
                         let id = TypeOrConstParamId { parent, local_id };
-                        let data = &db.generic_params(parent).types[local_id];
+                        let data = &db.generic_params(parent).tocs[local_id];
                         acc.add(
                             name,
                             ScopeDef::GenericParam(match data {

@@ -1298,3 +1298,71 @@ impl<I: Iterator> IntoIterator for I {
 "#,
     );
 }
+
+#[test]
+fn bug_11659() {
+    check_infer(
+        r#"
+struct LinkArray<const N: usize, LD>(LD);
+fn f<const N: usize, LD>(x: LD) -> LinkArray<N, LD> {
+    let r = LinkArray::<N, LD>(x);
+    r
+}
+
+fn test() {
+    let x = f::<2, i32>(5);
+    let y = LinkArray::<52, LinkArray<2, i32>>(x);
+}
+        "#,
+        expect![[r#"
+        67..68 'x': LD
+        94..138 '{     ...   r }': LinkArray<{unknown}, LD>
+        104..105 'r': LinkArray<{unknown}, LD>
+        108..126 'LinkAr...N, LD>': LinkArray<{unknown}, LD>(LD) -> LinkArray<{unknown}, LD>
+        108..129 'LinkAr...LD>(x)': LinkArray<{unknown}, LD>
+        127..128 'x': LD
+        135..136 'r': LinkArray<{unknown}, LD>
+        150..232 '{     ...(x); }': ()
+        160..161 'x': LinkArray<{unknown}, {unknown}>
+        164..175 'f::<2, i32>': fn f<i32, i32>(i32) -> LinkArray<{unknown}, {unknown}>
+        164..178 'f::<2, i32>(5)': LinkArray<{unknown}, {unknown}>
+        176..177 '5': i32
+        188..189 'y': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
+        192..226 'LinkAr... i32>>': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>(LinkArray<{unknown}, {unknown}>) -> LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
+        192..229 'LinkAr...2>>(x)': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
+        227..228 'x': LinkArray<{unknown}, {unknown}>
+        "#]],
+    );
+    check_infer(
+        r#"
+struct LinkArray<LD, const N: usize>(LD);
+fn f<const N: usize, LD>(x: LD) -> LinkArray<LD, N> {
+    let r = LinkArray::<LD, N>(x);
+    r
+}
+
+fn test() {
+    let x = f::<i32, 2>(5);
+    let y = LinkArray::<LinkArray<i32, 2>, 52>(x);
+}
+        "#,
+        expect![[r#"
+        67..68 'x': LD
+        94..138 '{     ...   r }': LinkArray<LD, {unknown}>
+        104..105 'r': LinkArray<LD, {unknown}>
+        108..126 'LinkAr...LD, N>': LinkArray<LD, {unknown}>(LD) -> LinkArray<LD, {unknown}>
+        108..129 'LinkAr... N>(x)': LinkArray<LD, {unknown}>
+        127..128 'x': LD
+        135..136 'r': LinkArray<LD, {unknown}>
+        150..232 '{     ...(x); }': ()
+        160..161 'x': LinkArray<i32, {unknown}>
+        164..175 'f::<i32, 2>': fn f<i32, i32>(i32) -> LinkArray<i32, {unknown}>
+        164..178 'f::<i32, 2>(5)': LinkArray<i32, {unknown}>
+        176..177 '5': i32
+        188..189 'y': LinkArray<LinkArray<i32, {unknown}>, {unknown}>
+        192..226 'LinkAr...>, 52>': LinkArray<LinkArray<i32, {unknown}>, {unknown}>(LinkArray<i32, {unknown}>) -> LinkArray<LinkArray<i32, {unknown}>, {unknown}>
+        192..229 'LinkAr...52>(x)': LinkArray<LinkArray<i32, {unknown}>, {unknown}>
+        227..228 'x': LinkArray<i32, {unknown}>
+        "#]],
+    );
+}
