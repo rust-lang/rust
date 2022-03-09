@@ -357,6 +357,8 @@ impl<'s> LintLevelsBuilder<'s> {
                         // can't be fulfilled. The lint message will include an explanation, that the
                         // `unfulfilled_lint_expectations` lint can't be expected.
                         if let Level::Expect(expect_id) = level {
+                            // The `unfulfilled_lint_expectations` lint is not part of any lint groups. Therefore. we
+                            // only need to check the slice if it contains a single lint.
                             let is_unfulfilled_lint_expectations = match ids {
                                 [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
                                 _ => false,
