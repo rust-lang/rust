@@ -238,6 +238,17 @@ fn simd_cast() {
     }
 }
 
+fn simd_swizzle() {
+    use Which::*;
+
+    let a = f32x4::splat(10.0);
+    let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
+
+    assert_eq!(simd_swizzle!(b, [3, 0, 0, 2]), f32x4::from_array([-4.0, 1.0, 1.0, 3.0]));
+    assert_eq!(simd_swizzle!(b, [1, 2]), f32x2::from_array([2.0, 3.0]));
+    assert_eq!(simd_swizzle!(b, a, [First(3), Second(0)]), f32x2::from_array([-4.0, 10.0]));
+}
+
 fn simd_intrinsics() {
     extern "platform-intrinsic" {
         fn simd_eq<T, U>(x: T, y: T) -> U;
@@ -276,5 +287,6 @@ fn main() {
     simd_ops_f64();
     simd_ops_i32();
     simd_cast();
+    simd_swizzle();
     simd_intrinsics();
 }
