@@ -483,6 +483,7 @@ fn project_json_to_crate_graph(
                     cfg_options,
                     env,
                     proc_macro.unwrap_or_default(),
+                    krate.is_proc_macro,
                     if krate.display_name.is_some() {
                         CrateOrigin::CratesIo { repo: krate.repository.clone() }
                     } else {
@@ -592,6 +593,7 @@ fn cargo_to_crate_graph(
                     &mut |path| load_proc_macro(&cargo[tgt].name, path),
                     file_id,
                     &cargo[tgt].name,
+                    cargo[tgt].is_proc_macro,
                 );
                 if cargo[tgt].kind == TargetKind::Lib {
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
@@ -707,6 +709,7 @@ fn detached_files_to_crate_graph(
             cfg_options.clone(),
             Env::default(),
             Vec::new(),
+            false,
             CrateOrigin::Unknown,
         );
 
@@ -759,6 +762,7 @@ fn handle_rustc_crates(
                         &mut |path| load_proc_macro(&rustc_workspace[tgt].name, path),
                         file_id,
                         &rustc_workspace[tgt].name,
+                        rustc_workspace[tgt].is_proc_macro,
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -813,6 +817,7 @@ fn add_target_crate_root(
     load_proc_macro: &mut dyn FnMut(&AbsPath) -> Vec<ProcMacro>,
     file_id: FileId,
     cargo_name: &str,
+    is_proc_macro: bool,
 ) -> CrateId {
     let edition = pkg.edition;
     let cfg_options = {
@@ -857,6 +862,7 @@ fn add_target_crate_root(
         potential_cfg_options,
         env,
         proc_macro,
+        is_proc_macro,
         CrateOrigin::CratesIo { repo: pkg.repository.clone() },
     )
 }
@@ -901,6 +907,7 @@ fn sysroot_to_crate_graph(
                 cfg_options.clone(),
                 env,
                 proc_macro,
+                false,
                 CrateOrigin::Lang,
             );
             Some((krate, crate_id))

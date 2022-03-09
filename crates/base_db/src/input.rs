@@ -124,7 +124,7 @@ pub enum CrateOrigin {
     /// Crates that are provided by the language, like std, core, proc-macro, ...
     Lang,
     /// Crates that we don't know their origin.
-    // Idealy this enum should cover all cases, and then we remove this variant.
+    // Ideally this enum should cover all cases, and then we remove this variant.
     Unknown,
 }
 
@@ -228,6 +228,7 @@ pub struct CrateData {
     pub dependencies: Vec<Dependency>,
     pub proc_macro: Vec<ProcMacro>,
     pub origin: CrateOrigin,
+    pub is_proc_macro: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -279,6 +280,7 @@ impl CrateGraph {
         potential_cfg_options: CfgOptions,
         env: Env,
         proc_macro: Vec<ProcMacro>,
+        is_proc_macro: bool,
         origin: CrateOrigin,
     ) -> CrateId {
         let data = CrateData {
@@ -292,6 +294,7 @@ impl CrateGraph {
             proc_macro,
             dependencies: Vec::new(),
             origin,
+            is_proc_macro,
         };
         let crate_id = CrateId(self.arena.len() as u32);
         let prev = self.arena.insert(crate_id, data);
@@ -596,6 +599,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -607,6 +611,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate3 = graph.add_crate_root(
@@ -618,6 +623,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         assert!(graph
@@ -643,6 +649,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -654,6 +661,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         assert!(graph
@@ -676,6 +684,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -687,6 +696,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate3 = graph.add_crate_root(
@@ -698,6 +708,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         assert!(graph
@@ -720,6 +731,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         let crate2 = graph.add_crate_root(
@@ -731,6 +743,7 @@ mod tests {
             CfgOptions::default(),
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         assert!(graph

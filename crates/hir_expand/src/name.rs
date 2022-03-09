@@ -268,6 +268,7 @@ pub mod known {
         bench,
         cfg_accessible,
         cfg_eval,
+        crate_type,
         derive,
         global_allocator,
         test,
