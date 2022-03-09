@@ -9,10 +9,7 @@ use hir::{
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
-use rustc_middle::{
-    hir::map::Map,
-    ty::{TyCtxt, TypeckResults},
-};
+use rustc_middle::hir::map::Map;
 use std::mem::swap;
 
 /// Traverses the body to find the control flow graph and locations for the
@@ -22,14 +19,11 @@ use std::mem::swap;
 /// can be done with propagate_to_fixpoint in cfg_propagate.
 pub(super) fn build_control_flow_graph<'tcx>(
     hir: Map<'tcx>,
-    tcx: TyCtxt<'tcx>,
-    typeck_results: &TypeckResults<'tcx>,
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
 ) -> DropRangesBuilder {
-    let mut drop_range_visitor =
-        DropRangeVisitor::new(hir, tcx, typeck_results, consumed_borrowed_places, num_exprs);
+    let mut drop_range_visitor = DropRangeVisitor::new(hir, consumed_borrowed_places, num_exprs);
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
@@ -78,39 +72,23 @@ pub(super) fn build_control_flow_graph<'tcx>(
 /// // all of `a` is considered initialized
 /// ```
 
-struct DropRangeVisitor<'a, 'tcx> {
+struct DropRangeVisitor<'tcx> {
     hir: Map<'tcx>,
     places: ConsumedAndBorrowedPlaces,
     drop_ranges: DropRangesBuilder,
     expr_index: PostOrderId,
-    tcx: TyCtxt<'tcx>,
-    typeck_results: &'a TypeckResults<'tcx>,
     label_stack: Vec<(Option<rustc_ast::Label>, PostOrderId)>,
 }
 
-impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
-    fn new(
-        hir: Map<'tcx>,
-        tcx: TyCtxt<'tcx>,
-        typeck_results: &'a TypeckResults<'tcx>,
-        places: ConsumedAndBorrowedPlaces,
-        num_exprs: usize,
-    ) -> Self {
+impl<'tcx> DropRangeVisitor<'tcx> {
+    fn new(hir: Map<'tcx>, places: ConsumedAndBorrowedPlaces, num_exprs: usize) -> Self {
         debug!("consumed_places: {:?}", places.consumed);
         let drop_ranges = DropRangesBuilder::new(
             places.consumed.iter().flat_map(|(_, places)| places.iter().cloned()),
             hir,
             num_exprs,
         );
-        Self {
-            hir,
-            places,
-            drop_ranges,
-            expr_index: PostOrderId::from_u32(0),
-            typeck_results,
-            tcx,
-            label_stack: vec![],
-        }
+        Self { hir, places, drop_ranges, expr_index: PostOrderId::from_u32(0), label_stack: vec![] }
     }
 
     fn record_drop(&mut self, value: TrackedValue) {
@@ -205,20 +183,6 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
         }
     }
 
-    /// For an expression with an uninhabited return type (e.g. a function that returns !),
-    /// this adds a self edge to to the CFG to model the fact that the function does not
-    /// return.
-    fn handle_uninhabited_return(&mut self, expr: &Expr<'tcx>) {
-        let ty = self.typeck_results.expr_ty(expr);
-        let ty = self.tcx.erase_regions(ty);
-        let m = self.tcx.parent_module(expr.hir_id).to_def_id();
-        let param_env = self.tcx.param_env(m.expect_local());
-        if self.tcx.is_ty_uninhabited_from(m, ty, param_env) {
-            // This function will not return. We model this fact as an infinite loop.
-            self.drop_ranges.add_control_edge(self.expr_index + 1, self.expr_index + 1);
-        }
-    }
-
     /// Map a Destination to an equivalent expression node
     ///
     /// The destination field of a Break or Continue expression can target either an
@@ -274,7 +238,7 @@ fn find_last_block_expression(block: &hir::Block<'_>) -> HirId {
     )
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for DropRangeVisitor<'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let mut reinit = None;
         match expr.kind {
@@ -427,15 +391,11 @@ impl<'a, 'tcx> Visitor<'tcx> for DropRangeVisitor<'a, 'tcx> {
                 for arg in args {
                     self.visit_expr(arg);
                 }
-
-                self.handle_uninhabited_return(expr);
             }
             ExprKind::MethodCall(_, exprs, _) => {
                 for expr in exprs {
                     self.visit_expr(expr);
                 }
-
-                self.handle_uninhabited_return(expr);
             }
 
             ExprKind::AddrOf(..)

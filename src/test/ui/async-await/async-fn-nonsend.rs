@@ -47,13 +47,6 @@ async fn non_sync_with_method_call() {
     }
 }
 
-async fn non_sync_with_method_call_panic() {
-    let f: &mut std::fmt::Formatter = panic!();
-    if non_sync().fmt(f).unwrap() == () {
-        fut().await;
-    }
-}
-
 async fn non_sync_with_method_call_infinite_loop() {
     let f: &mut std::fmt::Formatter = loop {};
     if non_sync().fmt(f).unwrap() == () {
@@ -69,6 +62,5 @@ pub fn pass_assert() {
     //~^ ERROR future cannot be sent between threads safely
     assert_send(non_sync_with_method_call());
     //~^ ERROR future cannot be sent between threads safely
-    assert_send(non_sync_with_method_call_panic());
     assert_send(non_sync_with_method_call_infinite_loop());
 }
