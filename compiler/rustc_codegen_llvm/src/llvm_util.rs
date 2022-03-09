@@ -527,8 +527,9 @@ pub(crate) fn should_use_new_llvm_pass_manager(user_opt: &Option<bool>, target_a
     // The new pass manager is enabled by default for LLVM >= 13.
     // This matches Clang, which also enables it since Clang 13.
 
-    // FIXME: There are some perf issues with the new pass manager
-    // when targeting s390x, so it is temporarily disabled for that
-    // arch, see https://github.com/rust-lang/rust/issues/89609
-    user_opt.unwrap_or_else(|| target_arch != "s390x" && llvm_util::get_version() >= (13, 0, 0))
+    // There are some perf issues with the new pass manager when targeting
+    // s390x with LLVM 13, so enable the new pass manager only with LLVM 14.
+    // See https://github.com/rust-lang/rust/issues/89609.
+    let min_version = if target_arch == "s390x" { 14 } else { 13 };
+    user_opt.unwrap_or_else(|| llvm_util::get_version() >= (min_version, 0, 0))
 }
