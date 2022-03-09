@@ -7,13 +7,13 @@ LL | #[rustc_legacy_const_generics(0usize)]
    = help: instead of using a suffixed literal (`1u8`, `1.0f32`, etc.), use an unsuffixed version (`1`, `1.0`, etc.)
 
 error: malformed `rustc_legacy_const_generics` attribute input
-  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:32:1
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:37:1
    |
 LL | #[rustc_legacy_const_generics]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_legacy_const_generics(N)]`
 
 error: malformed `rustc_legacy_const_generics` attribute input
-  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:35:1
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:40:1
    |
 LL | #[rustc_legacy_const_generics = 1]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_legacy_const_generics(N)]`
@@ -67,6 +67,14 @@ LL | fn foo8<X>() {}
    |         - non-const generic parameter
 
 error: attribute should be applied to a function
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:33:5
+   |
+LL |     #[rustc_legacy_const_generics(0)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     fn foo9<const X: usize>() {}
+   |     ---------------------------- not a function
+
+error: attribute should be applied to a function
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:25:5
    |
 LL |     #[rustc_legacy_const_generics(1)]
@@ -82,6 +90,6 @@ LL |     fn foo7<const X: usize>();
    |
    = help: replace the const parameters with concrete consts
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
 For more information about this error, try `rustc --explain E0044`.
