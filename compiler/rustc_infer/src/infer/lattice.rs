@@ -1,23 +1,21 @@
-//! # Lattice Variables
+//! # Lattice variables
 //!
-//! This file contains generic code for operating on inference variables
-//! that are characterized by an upper- and lower-bound. The logic and
-//! reasoning is explained in detail in the large comment in `infer.rs`.
+//! Generic code for operating on [lattices] of inference variables
+//! that are characterized by an upper- and lower-bound.
 //!
-//! The code in here is defined quite generically so that it can be
+//! The code is defined quite generically so that it can be
 //! applied both to type variables, which represent types being inferred,
 //! and fn variables, which represent function types being inferred.
-//! It may eventually be applied to their types as well, who knows.
+//! (It may eventually be applied to their types as well.)
 //! In some cases, the functions are also generic with respect to the
 //! operation on the lattice (GLB vs LUB).
 //!
-//! Although all the functions are generic, we generally write the
-//! comments in a way that is specific to type variables and the LUB
-//! operation. It's just easier that way.
+//! ## Note
 //!
-//! In general all of the functions are defined parametrically
-//! over a `LatticeValue`, which is a value defined with respect to
-//! a lattice.
+//! Although all the functions are generic, for simplicity, comments in the source code
+//! generally refer to type variables and the LUB operation.
+//!
+//! [lattices]: https://en.wikipedia.org/wiki/Lattice_(order)
 
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
@@ -27,6 +25,11 @@ use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::TyVar;
 use rustc_middle::ty::{self, Ty};
 
+/// Trait for returning data about a lattice, and for abstracting
+/// over the "direction" of the lattice operation (LUB/GLB).
+///
+/// GLB moves "down" the lattice (to smaller values); LUB moves
+/// "up" the lattice (to bigger values).
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
 
@@ -41,6 +44,7 @@ pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
     fn relate_bound(&mut self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
+/// Relates two types using a given lattice.
 pub fn super_lattice_tys<'a, 'tcx: 'a, L>(
     this: &mut L,
     a: Ty<'tcx>,
