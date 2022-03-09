@@ -300,7 +300,8 @@ pub trait Into<T>: Sized {
 /// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
 /// details.
 ///
-/// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
+/// **Note: This trait must not fail**. The `From` trait is intended for perfect conversions.
+/// If the conversion can fail or is not perfect, use [`TryFrom`].
 ///
 /// # Generic Implementations
 ///
