@@ -1383,27 +1383,19 @@ impl Function {
         db.function_data(self.id).has_body()
     }
 
-    pub fn as_proc_macro(self, _db: &dyn HirDatabase) -> Option<Macro> {
-        // let function_data = db.function_data(self.id);
-        // let attrs = &function_data.attrs;
-        // if !(attrs.is_proc_macro()
-        //     || attrs.is_proc_macro_attribute()
-        //     || attrs.is_proc_macro_derive())
-        // {
-        //     return None;
-        // }
-        // let loc = self.id.lookup(db.upcast());
-        // let krate = loc.krate(db);
-        // let def_map = db.crate_def_map(krate.into());
-        // let ast_id =
-        //     InFile::new(loc.id.file_id(), loc.id.item_tree(db.upcast())[loc.id.value].ast_id);
-
-        // let mut exported_proc_macros = def_map.exported_proc_macros();
-        // exported_proc_macros
-        //     .find(|&(id, _)| matches!(id.kind, MacroDefKind::ProcMacro(_, _, id) if id == ast_id))
-        //     .map(|(id, _)| Macro { id })
-        // FIXME
-        None
+    pub fn as_proc_macro(self, db: &dyn HirDatabase) -> Option<Macro> {
+        let function_data = db.function_data(self.id);
+        let attrs = &function_data.attrs;
+        // FIXME: Store this in FunctionData flags?
+        if !(attrs.is_proc_macro()
+            || attrs.is_proc_macro_attribute()
+            || attrs.is_proc_macro_derive())
+        {
+            return None;
+        }
+        let loc = self.id.lookup(db.upcast());
+        let def_map = db.crate_def_map(loc.krate(db).into());
+        def_map.fn_as_proc_macro(loc.id).map(|id| Macro { id: id.into() })
     }
 
     /// A textual representation of the HIR of this function for debugging purposes.

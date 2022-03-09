@@ -70,12 +70,12 @@ use syntax::{ast, SmolStr};
 use crate::{
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::TreeId,
+    item_tree::{self, ItemTreeId, TreeId},
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId,
+    AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId, ProcMacroId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -102,6 +102,7 @@ pub struct DefMap {
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
+    fn_proc_macro_mapping: FxHashMap<ItemTreeId<item_tree::Function>, ProcMacroId>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -271,6 +272,7 @@ impl DefMap {
             recursion_limit: None,
             extern_prelude: FxHashMap::default(),
             exported_derives: FxHashMap::default(),
+            fn_proc_macro_mapping: FxHashMap::default(),
             prelude: None,
             root,
             modules,
@@ -298,6 +300,11 @@ impl DefMap {
     }
     pub fn root(&self) -> LocalModuleId {
         self.root
+    }
+
+    // FIXME: This is an odd interface....
+    pub fn fn_as_proc_macro(&self, id: ItemTreeId<item_tree::Function>) -> Option<ProcMacroId> {
+        self.fn_proc_macro_mapping.get(&id).copied()
     }
 
     pub(crate) fn krate(&self) -> CrateId {
@@ -453,6 +460,7 @@ impl DefMap {
             modules,
             registered_attrs,
             registered_tools,
+            fn_proc_macro_mapping,
             block: _,
             edition: _,
             recursion_limit: _,
@@ -467,6 +475,7 @@ impl DefMap {
         modules.shrink_to_fit();
         registered_attrs.shrink_to_fit();
         registered_tools.shrink_to_fit();
+        fn_proc_macro_mapping.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();

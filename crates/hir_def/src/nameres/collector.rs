@@ -570,6 +570,7 @@ impl DefCollector<'_> {
                 .exported_derives
                 .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
         }
+        self.def_map.fn_proc_macro_mapping.insert(id, proc_macro_id);
     }
 
     /// Define a macro with `macro_rules`.

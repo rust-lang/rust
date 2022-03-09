@@ -332,6 +332,7 @@ impl MacroRulesData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcMacroData {
     pub name: Name,
+    // FIXME: Record deriver helper here?
 }
 
 impl ProcMacroData {
@@ -343,7 +344,17 @@ impl ProcMacroData {
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
 
-        Arc::new(ProcMacroData { name: makro.name.clone() })
+        let name = if let Some(def) = item_tree
+            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
+            .parse_proc_macro_decl(&makro.name)
+        {
+            def.name
+        } else {
+            // eeeh...
+            stdx::never!("proc macro declaration is not a proc macro");
+            makro.name.clone()
+        };
+        Arc::new(ProcMacroData { name })
     }
 }
 
