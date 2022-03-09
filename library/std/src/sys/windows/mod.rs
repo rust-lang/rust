@@ -224,8 +224,14 @@ where
             } as usize;
             if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
                 n *= 2;
-            } else if k >= n {
+            } else if k > n {
                 n = k;
+            } else if k == n {
+                // It is impossible to reach this point.
+                // On success, k is the returned string length excluding the null.
+                // On failure, k is the required buffer length including the null.
+                // Therefore k never equals n.
+                unreachable!();
             } else {
                 return Ok(f2(&buf[..k]));
             }
