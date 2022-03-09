@@ -543,6 +543,14 @@ fn test_try_collect() {
     assert_eq!(v, Continue(vec![4, 5]));
 }
 
+#[test]
+fn test_collect_into() {
+    let a = vec![1, 2, 3, 4, 5];
+    let mut b = Vec::new();
+    a.iter().cloned().collect_into(&mut b);
+    assert!(a == b);
+}
+
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};
