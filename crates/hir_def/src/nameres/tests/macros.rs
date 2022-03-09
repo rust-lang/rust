@@ -809,6 +809,7 @@ pub macro derive($item:item) {}
 struct S;
 
 //- /proc.rs crate:proc
+#![crate_type="proc-macro"]
 #[proc_macro_derive(Derive, attributes(helper))]
 fn derive() {}
         "#,
@@ -886,29 +887,30 @@ indirect_macro!();
 #[test]
 fn resolves_proc_macros() {
     check(
-        r"
-        struct TokenStream;
+        r#"
+#![crate_type="proc-macro"]
+struct TokenStream;
 
-        #[proc_macro]
-        pub fn function_like_macro(args: TokenStream) -> TokenStream {
-            args
-        }
+#[proc_macro]
+pub fn function_like_macro(args: TokenStream) -> TokenStream {
+    args
+}
 
-        #[proc_macro_attribute]
-        pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
-            item
-        }
+#[proc_macro_attribute]
+pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
 
-        #[proc_macro_derive(DummyTrait)]
-        pub fn derive_macro(_item: TokenStream) -> TokenStream {
-            TokenStream
-        }
+#[proc_macro_derive(DummyTrait)]
+pub fn derive_macro(_item: TokenStream) -> TokenStream {
+    TokenStream
+}
 
-        #[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
-        pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
-            TokenStream
-        }
-        ",
+#[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
+pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
+    TokenStream
+}
+"#,
         expect![[r#"
             crate
             AnotherTrait: m
@@ -927,33 +929,34 @@ fn proc_macro_censoring() {
     // Make sure that only proc macros are publicly exported from proc-macro crates.
 
     check(
-        r"
-        //- /main.rs crate:main deps:macros
-        pub use macros::*;
+        r#"
+//- /main.rs crate:main deps:macros
+pub use macros::*;
 
-        //- /macros.rs crate:macros
-        pub struct TokenStream;
+//- /macros.rs crate:macros
+#![crate_type="proc-macro"]
+pub struct TokenStream;
 
-        #[proc_macro]
-        pub fn function_like_macro(args: TokenStream) -> TokenStream {
-            args
-        }
+#[proc_macro]
+pub fn function_like_macro(args: TokenStream) -> TokenStream {
+    args
+}
 
-        #[proc_macro_attribute]
-        pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
-            item
-        }
+#[proc_macro_attribute]
+pub fn attribute_macro(_args: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}
 
-        #[proc_macro_derive(DummyTrait)]
-        pub fn derive_macro(_item: TokenStream) -> TokenStream {
-            TokenStream
-        }
+#[proc_macro_derive(DummyTrait)]
+pub fn derive_macro(_item: TokenStream) -> TokenStream {
+    TokenStream
+}
 
-        #[macro_export]
-        macro_rules! mbe {
-            () => {};
-        }
-        ",
+#[macro_export]
+macro_rules! mbe {
+    () => {};
+}
+"#,
         expect![[r#"
             crate
             DummyTrait: m
@@ -966,14 +969,15 @@ fn proc_macro_censoring() {
 #[test]
 fn collects_derive_helpers() {
     let def_map = compute_crate_def_map(
-        r"
-        struct TokenStream;
+        r#"
+#![crate_type="proc-macro"]
+struct TokenStream;
 
-        #[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
-        pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
-            TokenStream
-        }
-        ",
+#[proc_macro_derive(AnotherTrait, attributes(helper_attr))]
+pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
+    TokenStream
+}
+"#,
     );
 
     assert_eq!(def_map.exported_derives.len(), 1);

@@ -154,18 +154,21 @@ impl RawAttrs {
                     return smallvec![attr.clone()];
                 }
 
-                let subtree = match attr.input.as_deref() {
-                    Some(AttrInput::TokenTree(it, _)) => it,
+                let subtree = match attr.token_tree_value() {
+                    Some(it) => it,
                     _ => return smallvec![attr.clone()],
                 };
 
                 // Input subtree is: `(cfg, $(attr),+)`
                 // Split it up into a `cfg` subtree and the `attr` subtrees.
                 // FIXME: There should be a common API for this.
-                let mut parts = subtree.token_trees.split(
-                    |tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ','),
-                );
-                let cfg = parts.next().unwrap();
+                let mut parts = subtree.token_trees.split(|tt| {
+                    matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. })))
+                });
+                let cfg = match parts.next() {
+                    Some(it) => it,
+                    None => return smallvec![],
+                };
                 let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
                 let cfg = CfgExpr::parse(&cfg);
                 let index = attr.id;
@@ -259,17 +262,8 @@ impl Attrs {
     }
 
     pub fn docs(&self) -> Option<Documentation> {
-        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
-            AttrInput::Literal(s) => Some(s),
-            AttrInput::TokenTree(..) => None,
-        });
-        let indent = docs
-            .clone()
-            .flat_map(|s| s.lines())
-            .filter(|line| !line.chars().all(|c| c.is_whitespace()))
-            .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
-            .min()
-            .unwrap_or(0);
+        let docs = self.by_key("doc").attrs().filter_map(|attr| attr.string_value());
+        let indent = doc_indent(self);
         let mut buf = String::new();
         for doc in docs {
             // str::lines doesn't yield anything for the empty string
@@ -507,18 +501,9 @@ impl AttrsWithOwner {
         &self,
         db: &dyn DefDatabase,
     ) -> Option<(Documentation, DocsRangeMap)> {
-        // FIXME: code duplication in `docs` above
-        let docs = self.by_key("doc").attrs().flat_map(|attr| match attr.input.as_deref()? {
-            AttrInput::Literal(s) => Some((s, attr.id)),
-            AttrInput::TokenTree(..) => None,
-        });
-        let indent = docs
-            .clone()
-            .flat_map(|(s, _)| s.lines())
-            .filter(|line| !line.chars().all(|c| c.is_whitespace()))
-            .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
-            .min()
-            .unwrap_or(0);
+        let docs =
+            self.by_key("doc").attrs().filter_map(|attr| attr.string_value().map(|s| (s, attr.id)));
+        let indent = doc_indent(self);
         let mut buf = String::new();
         let mut mapping = Vec::new();
         for (doc, idx) in docs {
@@ -555,6 +540,18 @@ impl AttrsWithOwner {
             Some((Documentation(buf), DocsRangeMap { mapping, source_map: self.source_map(db) }))
         }
     }
+}
+
+fn doc_indent(attrs: &Attrs) -> usize {
+    attrs
+        .by_key("doc")
+        .attrs()
+        .filter_map(|attr| attr.string_value())
+        .flat_map(|s| s.lines())
+        .filter(|line| !line.chars().all(|c| c.is_whitespace()))
+        .map(|line| line.chars().take_while(|c| c.is_whitespace()).count())
+        .min()
+        .unwrap_or(0)
 }
 
 fn inner_attributes(
@@ -773,45 +770,58 @@ impl Attr {
         Self::from_src(db, ast, hygiene, id)
     }
 
+    pub fn path(&self) -> &ModPath {
+        &self.path
+    }
+}
+
+impl Attr {
+    /// #[path = "string"]
+    pub fn string_value(&self) -> Option<&SmolStr> {
+        match self.input.as_deref()? {
+            AttrInput::Literal(it) => Some(it),
+            _ => None,
+        }
+    }
+
+    /// #[path(ident)]
+    pub fn single_ident_value(&self) -> Option<&tt::Ident> {
+        match self.input.as_deref()? {
+            AttrInput::TokenTree(subtree, _) => match &*subtree.token_trees {
+                [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] => Some(ident),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// #[path TokenTree]
+    pub fn token_tree_value(&self) -> Option<&Subtree> {
+        match self.input.as_deref()? {
+            AttrInput::TokenTree(subtree, _) => Some(subtree),
+            _ => None,
+        }
+    }
+
     /// Parses this attribute as a token tree consisting of comma separated paths.
     pub fn parse_path_comma_token_tree(&self) -> Option<impl Iterator<Item = ModPath> + '_> {
-        let args = match self.input.as_deref() {
-            Some(AttrInput::TokenTree(args, _)) => args,
-            _ => return None,
-        };
+        let args = self.token_tree_value()?;
 
         if args.delimiter_kind() != Some(DelimiterKind::Parenthesis) {
             return None;
         }
         let paths = args
             .token_trees
-            .iter()
-            .group_by(|tt| {
-                matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. })))
-            })
-            .into_iter()
-            .filter(|(comma, _)| !*comma)
-            .map(|(_, tts)| {
-                let segments = tts.filter_map(|tt| match tt {
+            .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))))
+            .map(|tts| {
+                let segments = tts.iter().filter_map(|tt| match tt {
                     tt::TokenTree::Leaf(tt::Leaf::Ident(id)) => Some(id.as_name()),
                     _ => None,
                 });
                 ModPath::from_segments(PathKind::Plain, segments)
-            })
-            .collect::<Vec<_>>();
+            });
 
-        Some(paths.into_iter())
-    }
-
-    pub fn path(&self) -> &ModPath {
-        &self.path
-    }
-
-    pub fn string_value(&self) -> Option<&SmolStr> {
-        match self.input.as_deref()? {
-            AttrInput::Literal(it) => Some(it),
-            _ => None,
-        }
+        Some(paths)
     }
 }
 
@@ -823,17 +833,11 @@ pub struct AttrQuery<'attr> {
 
 impl<'attr> AttrQuery<'attr> {
     pub fn tt_values(self) -> impl Iterator<Item = &'attr Subtree> {
-        self.attrs().filter_map(|attr| match attr.input.as_deref()? {
-            AttrInput::TokenTree(it, _) => Some(it),
-            _ => None,
-        })
+        self.attrs().filter_map(|attr| attr.token_tree_value())
     }
 
     pub fn string_value(self) -> Option<&'attr SmolStr> {
-        self.attrs().find_map(|attr| match attr.input.as_deref()? {
-            AttrInput::Literal(it) => Some(it),
-            _ => None,
-        })
+        self.attrs().find_map(|attr| attr.string_value())
     }
 
     pub fn exists(self) -> bool {

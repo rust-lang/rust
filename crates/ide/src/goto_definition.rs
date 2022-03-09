@@ -1244,6 +1244,7 @@ use mac::fn_macro;
 fn_macro$0!();
 
 //- /mac.rs crate:mac
+#![crate_type="proc-macro"]
 #[proc_macro]
 fn fn_macro() {}
  //^^^^^^^^

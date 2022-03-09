@@ -34,6 +34,7 @@ pub(crate) fn shuffle_crate_graph(db: &mut RootDatabase) {
             data.potential_cfg_options.clone(),
             data.env.clone(),
             data.proc_macro.clone(),
+            data.is_proc_macro,
             data.origin.clone(),
         );
         map.insert(old_id, new_id);

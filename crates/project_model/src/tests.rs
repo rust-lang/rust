@@ -176,6 +176,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         2,
@@ -248,6 +249,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         4,
@@ -312,6 +314,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                                 "https://github.com/rust-lang/libc",
                             ),
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         1,
@@ -384,6 +387,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         3,
@@ -456,6 +460,7 @@ fn cargo_hello_world_project_model_with_wildcard_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                 },
             }"#]],
@@ -543,6 +548,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         2,
@@ -617,6 +623,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         4,
@@ -681,6 +688,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                                 "https://github.com/rust-lang/libc",
                             ),
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         1,
@@ -755,6 +763,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         3,
@@ -829,6 +838,7 @@ fn cargo_hello_world_project_model_with_selective_overrides() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                 },
             }"#]],
@@ -907,6 +917,7 @@ fn cargo_hello_world_project_model() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         2,
@@ -981,6 +992,7 @@ fn cargo_hello_world_project_model() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         4,
@@ -1047,6 +1059,7 @@ fn cargo_hello_world_project_model() {
                                 "https://github.com/rust-lang/libc",
                             ),
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         1,
@@ -1121,6 +1134,7 @@ fn cargo_hello_world_project_model() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         3,
@@ -1195,6 +1209,7 @@ fn cargo_hello_world_project_model() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                 },
             }"#]],
@@ -1247,6 +1262,7 @@ fn rust_project_hello_world_project_model() {
                         ],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         10,
@@ -1276,6 +1292,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         7,
@@ -1305,6 +1322,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         4,
@@ -1344,6 +1362,7 @@ fn rust_project_hello_world_project_model() {
                         ],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         1,
@@ -1373,6 +1392,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         11,
@@ -1441,6 +1461,7 @@ fn rust_project_hello_world_project_model() {
                         origin: CratesIo {
                             repo: None,
                         },
+                        is_proc_macro: false,
                     },
                     CrateId(
                         8,
@@ -1470,6 +1491,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         5,
@@ -1499,6 +1521,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         2,
@@ -1528,6 +1551,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         9,
@@ -1557,6 +1581,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         6,
@@ -1668,6 +1693,7 @@ fn rust_project_hello_world_project_model() {
                         ],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                     CrateId(
                         3,
@@ -1697,6 +1723,7 @@ fn rust_project_hello_world_project_model() {
                         dependencies: [],
                         proc_macro: [],
                         origin: Lang,
+                        is_proc_macro: false,
                     },
                 },
             }"#]],

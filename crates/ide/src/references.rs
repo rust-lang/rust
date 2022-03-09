@@ -1501,16 +1501,15 @@ fn f() {
         check(
             r#"
 //- proc_macros: identity
-
 #[proc_macros::identity]
 fn func$0() {
     func();
 }
 "#,
             expect![[r#"
-                func Function FileId(0) 26..51 29..33
+                func Function FileId(0) 25..50 28..32
 
-                FileId(0) 42..46
+                FileId(0) 41..45
             "#]],
         )
     }
@@ -1555,11 +1554,12 @@ fn func() {}
         );
         check(
             r#"
+#![crate_type="proc-macro"]
 #[proc_macro_attribute]
 fn func$0() {}
 "#,
             expect![[r#"
-                func Attribute FileId(0) 0..36 27..31
+                func Attribute FileId(0) 28..64 55..59
 
                 (no references)
             "#]],
@@ -1604,11 +1604,12 @@ struct Foo;
         );
         check(
             r#"
+#![crate_type="proc-macro"]
 #[proc_macro_derive(Derive, attributes(x))]
 pub fn deri$0ve(_stream: TokenStream) -> TokenStream {}
 "#,
             expect![[r#"
-                derive Derive FileId(0) 0..97 51..57
+                derive Derive FileId(0) 28..125 79..85
 
                 (no references)
             "#]],

@@ -22,10 +22,10 @@ use itertools::Itertools;
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::ast;
+use syntax::{ast, SmolStr};
 
 use crate::{
-    attr::{Attr, AttrId, AttrInput, Attrs},
+    attr::{Attr, AttrId, Attrs},
     attr_macro_as_call_id,
     db::DefDatabase,
     derive_macro_as_call_id,
@@ -61,7 +61,8 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
 
     let mut deps = FxHashMap::default();
     // populate external prelude and dependency list
-    for dep in &crate_graph[def_map.krate].dependencies {
+    let krate = &crate_graph[def_map.krate];
+    for dep in &krate.dependencies {
         tracing::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
         let dep_def_map = db.crate_def_map(dep.crate_id);
         let dep_root = dep_def_map.module_id(dep_def_map.root);
@@ -73,9 +74,9 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         }
     }
 
-    let cfg_options = &crate_graph[def_map.krate].cfg_options;
-    let proc_macros = &crate_graph[def_map.krate].proc_macro;
-    let proc_macros = proc_macros
+    let cfg_options = &krate.cfg_options;
+    let proc_macros = krate
+        .proc_macro
         .iter()
         .enumerate()
         .map(|(idx, it)| {
@@ -87,6 +88,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
             )
         })
         .collect();
+    let is_proc_macro = krate.is_proc_macro;
 
     let mut collector = DefCollector {
         db,
@@ -103,6 +105,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
+        is_proc_macro,
     };
     if tree_id.is_block() {
         collector.seed_with_inner(tree_id);
@@ -243,6 +246,7 @@ struct DefCollector<'a> {
     /// empty when proc. macro support is disabled (in which case we still do name resolution for
     /// them).
     proc_macros: Vec<(Name, ProcMacroExpander)>,
+    is_proc_macro: bool,
     exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -277,12 +281,17 @@ impl DefCollector<'_> {
                 };
 
                 if *attr_name == hir_expand::name![recursion_limit] {
-                    if let Some(input) = &attr.input {
-                        if let AttrInput::Literal(limit) = &**input {
-                            if let Ok(limit) = limit.parse() {
-                                self.def_map.recursion_limit = Some(limit);
-                            }
+                    if let Some(limit) = attr.string_value() {
+                        if let Ok(limit) = limit.parse() {
+                            self.def_map.recursion_limit = Some(limit);
                         }
+                    }
+                    continue;
+                }
+
+                if *attr_name == hir_expand::name![crate_type] {
+                    if let Some("proc-macro") = attr.string_value().map(SmolStr::as_str) {
+                        self.is_proc_macro = true;
                     }
                     continue;
                 }
@@ -293,11 +302,8 @@ impl DefCollector<'_> {
                     continue;
                 }
 
-                let registered_name = match attr.input.as_deref() {
-                    Some(AttrInput::TokenTree(subtree, _)) => match &*subtree.token_trees {
-                        [tt::TokenTree::Leaf(tt::Leaf::Ident(name))] => name.as_name(),
-                        _ => continue,
-                    },
+                let registered_name = match attr.single_ident_value() {
+                    Some(ident) => ident.as_name(),
                     _ => continue,
                 };
 
@@ -404,8 +410,7 @@ impl DefCollector<'_> {
         }
         self.unresolved_imports = unresolved_imports;
 
-        // FIXME: This condition should instead check if this is a `proc-macro` type crate.
-        if self.exports_proc_macros {
+        if self.is_proc_macro {
             // A crate exporting procedural macros is not allowed to export anything else.
             //
             // Additionally, while the proc macro entry points must be `pub`, they are not publicly
@@ -1555,22 +1560,21 @@ impl ModCollector<'_, '_> {
                     let fn_id =
                         FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
-                    let is_proc_macro = attrs.parse_proc_macro_decl(&it.name);
-                    let vis = match is_proc_macro {
-                        Some(proc_macro) => {
-                            // FIXME: this should only be done in the root module of `proc-macro` crates, not everywhere
-                            let module_id = def_map.module_id(def_map.root());
-
-                            self.def_collector.export_proc_macro(
-                                proc_macro,
-                                ItemTreeId::new(self.tree_id, id),
-                                fn_id,
-                                module_id,
-                            );
-                            Visibility::Module(module_id)
+                    let vis = resolve_vis(def_map, &self.item_tree[it.visibility]);
+                    if self.def_collector.is_proc_macro {
+                        if self.module_id == def_map.root {
+                            if let Some(proc_macro) = attrs.parse_proc_macro_decl(&it.name) {
+                                let crate_root = def_map.module_id(def_map.root);
+                                self.def_collector.export_proc_macro(
+                                    proc_macro,
+                                    ItemTreeId::new(self.tree_id, id),
+                                    fn_id,
+                                    crate_root,
+                                );
+                            }
                         }
-                        None => resolve_vis(def_map, &self.item_tree[it.visibility]),
-                    };
+                    }
+
                     update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
                 }
                 ModItem::Struct(id) => {
@@ -2099,6 +2103,7 @@ mod tests {
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             derive_helpers_in_scope: Default::default(),
+            is_proc_macro: false,
         };
         collector.seed_with_top_level();
         collector.collect();

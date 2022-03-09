@@ -160,6 +160,7 @@ impl ChangeFixture {
                     meta.cfg,
                     meta.env,
                     Default::default(),
+                    false,
                     origin,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
@@ -194,6 +195,7 @@ impl ChangeFixture {
                 default_cfg,
                 Env::default(),
                 Default::default(),
+                false,
                 Default::default(),
             );
         } else {
@@ -230,6 +232,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 Vec::new(),
+                false,
                 CrateOrigin::Lang,
             );
 
@@ -266,6 +269,7 @@ impl ChangeFixture {
                 CfgOptions::default(),
                 Env::default(),
                 proc_macro,
+                true,
                 CrateOrigin::Lang,
             );
 

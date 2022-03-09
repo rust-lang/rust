@@ -231,6 +231,7 @@ impl Analysis {
             cfg_options,
             Env::default(),
             Default::default(),
+            false,
             Default::default(),
         );
         change.change_file(file_id, Some(Arc::new(text)));
