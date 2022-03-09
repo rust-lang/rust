@@ -64,8 +64,8 @@ struct AstValidator<'a> {
     /// certain positions.
     is_assoc_ty_bound_banned: bool,
 
-    /// Used to allow `let` expressions in certain syntactic locations.
-    is_let_allowed: bool,
+    /// See [ForbiddenLetReason]
+    forbidden_let_reason: Option<ForbiddenLetReason>,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -103,20 +103,28 @@ impl<'a> AstValidator<'a> {
         self.is_tilde_const_allowed = old;
     }
 
-    fn with_let_allowed(&mut self, allowed: bool, f: impl FnOnce(&mut Self, bool)) {
-        let old = mem::replace(&mut self.is_let_allowed, allowed);
+    fn with_let_management(
+        &mut self,
+        forbidden_let_reason: Option<ForbiddenLetReason>,
+        f: impl FnOnce(&mut Self, Option<ForbiddenLetReason>),
+    ) {
+        let old = mem::replace(&mut self.forbidden_let_reason, forbidden_let_reason);
         f(self, old);
-        self.is_let_allowed = old;
+        self.forbidden_let_reason = old;
     }
 
     /// Emits an error banning the `let` expression provided in the given location.
-    fn ban_let_expr(&self, expr: &'a Expr) {
+    fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
         let sess = &self.session;
         if sess.opts.unstable_features.is_nightly_build() {
-            sess.struct_span_err(expr.span, "`let` expressions are not supported here")
-                .note("only supported directly in conditions of `if`- and `while`-expressions")
-                .note("as well as when nested within `&&` and parentheses in those conditions")
-                .emit();
+            let err = "`let` expressions are not supported here";
+            let mut diag = sess.struct_span_err(expr.span, err);
+            diag.note("only supported directly in conditions of `if` and `while` expressions");
+            diag.note("as well as when nested within `&&` and parentheses in those conditions");
+            if let ForbiddenLetReason::ForbiddenWithOr(span) = forbidden_let_reason {
+                diag.span_note(span, "`||` operators are not allowed in let chain expressions");
+            }
+            diag.emit();
         } else {
             sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
                 .note("variable declaration using `let` is a statement")
@@ -988,39 +996,48 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        self.with_let_allowed(false, |this, let_allowed| match &expr.kind {
-            ExprKind::If(cond, then, opt_else) => {
-                this.visit_block(then);
-                walk_list!(this, visit_expr, opt_else);
-                this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                return;
-            }
-            ExprKind::Let(..) if !let_allowed => this.ban_let_expr(expr),
-            ExprKind::Match(expr, arms) => {
-                this.visit_expr(expr);
-                for arm in arms {
-                    this.visit_expr(&arm.body);
-                    this.visit_pat(&arm.pat);
-                    walk_list!(this, visit_attribute, &arm.attrs);
-                    if let Some(ref guard) = arm.guard {
-                        if let ExprKind::Let(_, ref expr, _) = guard.kind {
-                            this.with_let_allowed(true, |this, _| this.visit_expr(expr));
+        self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
+            match &expr.kind {
+                ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
+                    let forbidden_let_reason = Some(ForbiddenLetReason::ForbiddenWithOr(*span));
+                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(lhs));
+                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(rhs));
+                }
+                ExprKind::If(cond, then, opt_else) => {
+                    this.visit_block(then);
+                    walk_list!(this, visit_expr, opt_else);
+                    this.with_let_management(None, |this, _| this.visit_expr(cond));
+                    return;
+                }
+                ExprKind::Let(..) if let Some(elem) = forbidden_let_reason => {
+                    this.ban_let_expr(expr, elem);
+                },
+                ExprKind::Match(scrutinee, arms) => {
+                    this.visit_expr(scrutinee);
+                    for arm in arms {
+                        this.visit_expr(&arm.body);
+                        this.visit_pat(&arm.pat);
+                        walk_list!(this, visit_attribute, &arm.attrs);
+                        if let Some(guard) = &arm.guard && let ExprKind::Let(_, guard_expr, _) = &guard.kind {
+                            this.with_let_management(None, |this, _| {
+                                this.visit_expr(guard_expr)
+                            });
                             return;
                         }
                     }
                 }
+                ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
+                    this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
+                    return;
+                }
+                ExprKind::While(cond, then, opt_label) => {
+                    walk_list!(this, visit_label, opt_label);
+                    this.visit_block(then);
+                    this.with_let_management(None, |this, _| this.visit_expr(cond));
+                    return;
+                }
+                _ => visit::walk_expr(this, expr),
             }
-            ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
-                this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-                return;
-            }
-            ExprKind::While(cond, then, opt_label) => {
-                walk_list!(this, visit_label, opt_label);
-                this.visit_block(then);
-                this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                return;
-            }
-            _ => visit::walk_expr(this, expr),
         });
     }
 
@@ -1772,10 +1789,19 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         is_tilde_const_allowed: false,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
-        is_let_allowed: false,
+        forbidden_let_reason: Some(ForbiddenLetReason::GenericForbidden),
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
 
     validator.has_proc_macro_decls
+}
+
+/// Used to forbid `let` expressions in certain syntactic locations.
+#[derive(Clone, Copy)]
+enum ForbiddenLetReason {
+    /// A let chain with the `||` operator
+    ForbiddenWithOr(Span),
+    /// `let` is not valid and the source environment is not important
+    GenericForbidden,
 }
