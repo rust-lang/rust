@@ -79,7 +79,8 @@ unsafe fn wait_timeout(
         (Timespec::now(libc::CLOCK_MONOTONIC), dur)
     };
 
-    let timeout = now.checked_add_duration(&dur).map(|t| t.t).unwrap_or(TIMESPEC_MAX);
+    let timeout =
+        now.checked_add_duration(&dur).and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
     let r = libc::pthread_cond_timedwait(cond, lock, &timeout);
     debug_assert!(r == libc::ETIMEDOUT || r == 0);
 }
