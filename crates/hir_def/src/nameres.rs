@@ -70,12 +70,12 @@ use syntax::{ast, SmolStr};
 use crate::{
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
-    item_tree::{self, ItemTreeId, TreeId},
+    item_tree::TreeId,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, LocalModuleId, ModuleDefId, ModuleId, ProcMacroId,
+    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, ModuleDefId, ModuleId, ProcMacroId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -102,7 +102,7 @@ pub struct DefMap {
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
-    fn_proc_macro_mapping: FxHashMap<ItemTreeId<item_tree::Function>, ProcMacroId>,
+    fn_proc_macro_mapping: FxHashMap<FunctionId, ProcMacroId>,
 
     /// Custom attributes registered with `#![register_attr]`.
     registered_attrs: Vec<SmolStr>,
@@ -302,8 +302,7 @@ impl DefMap {
         self.root
     }
 
-    // FIXME: This is an odd interface....
-    pub fn fn_as_proc_macro(&self, id: ItemTreeId<item_tree::Function>) -> Option<ProcMacroId> {
+    pub fn fn_as_proc_macro(&self, id: FunctionId) -> Option<ProcMacroId> {
         self.fn_proc_macro_mapping.get(&id).copied()
     }
 
@@ -454,7 +453,7 @@ impl DefMap {
         // Exhaustive match to require handling new fields.
         let Self {
             _c: _,
-            exported_derives: exported_proc_macros,
+            exported_derives,
             extern_prelude,
             diagnostics,
             modules,
@@ -470,7 +469,7 @@ impl DefMap {
         } = self;
 
         extern_prelude.shrink_to_fit();
-        exported_proc_macros.shrink_to_fit();
+        exported_derives.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
         registered_attrs.shrink_to_fit();

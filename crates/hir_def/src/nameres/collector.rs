@@ -46,10 +46,10 @@ use crate::{
     path::{ImportAlias, ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionLoc,
-    ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
-    StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
+    AdtId, AstId, AstIdWithPath, ConstLoc, EnumLoc, EnumVariantId, ExternBlockLoc, FunctionId,
+    FunctionLoc, ImplLoc, Intern, ItemContainerId, LocalModuleId, Macro2Id, Macro2Loc,
+    MacroExpander, MacroId, MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId,
+    ProcMacroLoc, StaticLoc, StructLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -552,6 +552,7 @@ impl DefCollector<'_> {
         &mut self,
         def: ProcMacroDef,
         id: ItemTreeId<item_tree::Function>,
+        fn_id: FunctionId,
         module_id: ModuleId,
     ) {
         self.exports_proc_macros = true;
@@ -570,7 +571,7 @@ impl DefCollector<'_> {
                 .exported_derives
                 .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
         }
-        self.def_map.fn_proc_macro_mapping.insert(id, proc_macro_id);
+        self.def_map.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
 
     /// Define a macro with `macro_rules`.
@@ -1551,6 +1552,8 @@ impl ModCollector<'_, '_> {
                 }
                 ModItem::Function(id) => {
                     let it = &self.item_tree[id];
+                    let fn_id =
+                        FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }.intern(db);
 
                     let is_proc_macro = attrs.parse_proc_macro_decl(&it.name);
                     let vis = match is_proc_macro {
@@ -1561,21 +1564,14 @@ impl ModCollector<'_, '_> {
                             self.def_collector.export_proc_macro(
                                 proc_macro,
                                 ItemTreeId::new(self.tree_id, id),
+                                fn_id,
                                 module_id,
                             );
                             Visibility::Module(module_id)
                         }
                         None => resolve_vis(def_map, &self.item_tree[it.visibility]),
                     };
-                    update_def(
-                        self.def_collector,
-                        FunctionLoc { container, id: ItemTreeId::new(self.tree_id, id) }
-                            .intern(db)
-                            .into(),
-                        &it.name,
-                        vis,
-                        false,
-                    );
+                    update_def(self.def_collector, fn_id.into(), &it.name, vis, false);
                 }
                 ModItem::Struct(id) => {
                     let it = &self.item_tree[id];

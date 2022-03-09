@@ -35,7 +35,7 @@ mod display;
 use std::{collections::HashMap, iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
 use either::Either;
 use hir_def::{
     adt::{ReprKind, VariantData},
@@ -49,8 +49,8 @@ use hir_def::{
     src::HasSource as _,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, DefWithBodyId, EnumId,
     FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, LifetimeParamId,
-    LocalEnumVariantId, LocalFieldId, Lookup, MacroId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    LocalEnumVariantId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
@@ -1395,7 +1395,7 @@ impl Function {
         }
         let loc = self.id.lookup(db.upcast());
         let def_map = db.crate_def_map(loc.krate(db).into());
-        def_map.fn_as_proc_macro(loc.id).map(|id| Macro { id: id.into() })
+        def_map.fn_as_proc_macro(self.id).map(|id| Macro { id: id.into() })
     }
 
     /// A textual representation of the HIR of this function for debugging purposes.
@@ -1768,23 +1768,21 @@ impl Macro {
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {
         match self.id {
             MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
-                hir_def::MacroExpander::Declarative => MacroKind::Declarative,
-                hir_def::MacroExpander::BuiltIn(_) => MacroKind::BuiltIn,
-                hir_def::MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                hir_def::MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
-                hir_def::MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
+                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
-                hir_def::MacroExpander::Declarative => MacroKind::Declarative,
-                hir_def::MacroExpander::BuiltIn(_) => MacroKind::BuiltIn,
-                hir_def::MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                hir_def::MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
-                hir_def::MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::Declarative => MacroKind::Declarative,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
+                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
+                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
-                base_db::ProcMacroKind::CustomDerive => MacroKind::Derive,
-                base_db::ProcMacroKind::FuncLike => MacroKind::ProcMacro,
-                base_db::ProcMacroKind::Attr => MacroKind::Attr,
+                ProcMacroKind::CustomDerive => MacroKind::Derive,
+                ProcMacroKind::FuncLike => MacroKind::ProcMacro,
+                ProcMacroKind::Attr => MacroKind::Attr,
             },
         }
     }
@@ -1799,11 +1797,11 @@ impl Macro {
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
             MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
-                hir_def::MacroExpander::BuiltInDerive(_) => true,
+                MacroExpander::BuiltInDerive(_) => true,
                 _ => false,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
-                hir_def::MacroExpander::BuiltInDerive(_) => true,
+                MacroExpander::BuiltInDerive(_) => true,
                 _ => false,
             },
             MacroId::ProcMacroId(_) => false,

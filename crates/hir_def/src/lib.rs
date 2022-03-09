@@ -554,7 +554,7 @@ impl_from!(
     FunctionId,
     TraitId,
     TypeAliasId,
-    MacroId,
+    MacroId(Macro2Id, MacroRulesId, ProcMacroId),
     ImplId,
     GenericParamId
     for AttrDefId
