@@ -1,5 +1,5 @@
 // build-fail
-//~^ cycle detected when normalizing `<() as Tr>::A` [E0391]
+//~^ ERROR cycle detected when normalizing `<() as Tr>::A` [E0391]
 
 // Cyclic assoc. const defaults don't error unless *used*
 trait Tr {
