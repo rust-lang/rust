@@ -353,8 +353,8 @@ enum EntryKind {
     Variant(Lazy<VariantData>),
     Struct(Lazy<VariantData>),
     Union(Lazy<VariantData>),
-    Fn(Lazy<FnData>),
-    ForeignFn(Lazy<FnData>),
+    Fn,
+    ForeignFn,
     Mod(Lazy<[ModChild]>),
     MacroDef(Lazy<ast::MacArgs>, /*macro_rules*/ bool),
     ProcMacro(MacroKind),
@@ -366,11 +366,6 @@ enum EntryKind {
     AssocType(AssocContainer),
     AssocConst(AssocContainer),
     TraitAlias,
-}
-
-#[derive(MetadataEncodable, MetadataDecodable)]
-struct FnData {
-    constness: hir::Constness,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -430,7 +425,6 @@ impl AssocContainer {
 
 #[derive(MetadataEncodable, MetadataDecodable)]
 struct AssocFnData {
-    fn_data: FnData,
     container: AssocContainer,
     has_self: bool,
 }

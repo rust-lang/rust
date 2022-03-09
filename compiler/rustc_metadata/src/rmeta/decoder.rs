@@ -1454,9 +1454,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     // don't serialize constness for tuple variant and tuple struct constructors.
     fn is_const_fn_raw(self, id: DefIndex) -> bool {
         let constness = match self.kind(id) {
-            EntryKind::AssocFn(data) => data.decode(self).fn_data.constness,
-            EntryKind::Fn(data) => data.decode(self).constness,
-            EntryKind::ForeignFn(data) => data.decode(self).constness,
+            EntryKind::AssocFn(_) | EntryKind::Fn | EntryKind::ForeignFn => {
+                self.root.tables.impl_constness.get(self, id).unwrap().decode(self)
+            }
             EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
             _ => hir::Constness::NotConst,
         };
@@ -1465,7 +1465,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn is_foreign_item(self, id: DefIndex) -> bool {
         match self.kind(id) {
-            EntryKind::ForeignStatic | EntryKind::ForeignFn(_) => true,
+            EntryKind::ForeignStatic | EntryKind::ForeignFn => true,
             _ => false,
         }
     }
