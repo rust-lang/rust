@@ -73,6 +73,13 @@ Thanks! <3
 """
 label = "O-riscv"
 
+[ping.fuchsia]
+message = """\
+Hey friends of Fuchsia! This issue could use some guidance on how this should be
+resolved/implemented on Fuchsia. Could one of you weigh in?
+"""
+label = "O-fuchsia"
+
 [prioritize]
 label = "I-prioritize"
 
