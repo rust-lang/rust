@@ -99,24 +99,12 @@ pub fn escape_default(c: u8) -> EscapeDefault {
         b'"' => ([b'\\', b'"', 0, 0], 2),
         b'\x20'..=b'\x7e' => ([c, 0, 0, 0], 1),
         _ => {
-            let (b1, b2) = hexify(c);
-            ([b'\\', b'x', b1, b2], 4)
+            let hex_digits: &[u8; 16] = b"0123456789abcdef";
+            ([b'\\', b'x', hex_digits[(c >> 4) as usize], hex_digits[(c & 0xf) as usize]], 4)
         }
     };
 
     return EscapeDefault { range: 0..len, data };
-
-    #[inline]
-    fn hexify(b: u8) -> (u8, u8) {
-        let hex_digits: &[u8; 16] = b"0123456789abcdef";
-        // SAFETY: For all n: u8, n >> 4 < 16 and n & 0xf < 16
-        unsafe {
-            (
-                *hex_digits.get_unchecked((b >> 4) as usize),
-                *hex_digits.get_unchecked((b & 0xf) as usize),
-            )
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
