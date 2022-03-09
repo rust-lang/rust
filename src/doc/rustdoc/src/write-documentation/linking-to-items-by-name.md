@@ -35,7 +35,7 @@ link to `Option`.
 You can refer to anything in scope, and use paths, including `Self`, `self`, `super`, and
 `crate`. Associated items (functions, types, and constants) are supported, but [not for blanket
 trait implementations][#79682]. Rustdoc also supports linking to all primitives listed in
-[the standard library documentation](../std/index.html#primitives).
+[the standard library documentation](../../std/index.html#primitives).
 
 [#79682]: https://github.com/rust-lang/rust/pull/79682
 
