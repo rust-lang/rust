@@ -115,8 +115,9 @@ impl<K, V> BTreeMap<K, V> {
         K: Ord,
     {
         let iter = mem::take(self).into_iter();
-        let root = BTreeMap::ensure_is_owned(&mut self.root);
-        root.bulk_push(iter, &mut self.length);
+        if !iter.is_empty() {
+            self.root.insert(Root::new()).bulk_push(iter, &mut self.length);
+        }
     }
 }
 
@@ -914,7 +915,7 @@ mod test_drain_filter {
     fn empty() {
         let mut map: BTreeMap<i32, i32> = BTreeMap::new();
         map.drain_filter(|_, _| unreachable!("there's nothing to decide on"));
-        assert!(map.is_empty());
+        assert_eq!(map.height(), None);
         map.check();
     }
 
@@ -1410,7 +1411,7 @@ fn test_clear() {
         assert_eq!(map.len(), len);
         map.clear();
         map.check();
-        assert!(map.is_empty());
+        assert_eq!(map.height(), None);
     }
 }
 
@@ -1789,7 +1790,7 @@ fn test_occupied_entry_key() {
     let mut a = BTreeMap::new();
     let key = "hello there";
     let value = "value goes here";
-    assert!(a.is_empty());
+    assert_eq!(a.height(), None);
     a.insert(key, value);
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
@@ -1809,9 +1810,9 @@ fn test_vacant_entry_key() {
     let key = "hello there";
     let value = "value goes here";
 
-    assert!(a.is_empty());
+    assert_eq!(a.height(), None);
     match a.entry(key) {
-        Occupied(_) => panic!(),
+        Occupied(_) => unreachable!(),
         Vacant(e) => {
             assert_eq!(key, *e.key());
             e.insert(value);
@@ -1819,6 +1820,36 @@ fn test_vacant_entry_key() {
     }
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
+    a.check();
+}
+
+#[test]
+fn test_vacant_entry_no_insert() {
+    let mut a = BTreeMap::<&str, ()>::new();
+    let key = "hello there";
+
+    // Non-allocated
+    assert_eq!(a.height(), None);
+    match a.entry(key) {
+        Occupied(_) => unreachable!(),
+        Vacant(e) => assert_eq!(key, *e.key()),
+    }
+    // Ensures the tree has no root.
+    assert_eq!(a.height(), None);
+    a.check();
+
+    // Allocated but still empty
+    a.insert(key, ());
+    a.remove(&key);
+    assert_eq!(a.height(), Some(0));
+    assert!(a.is_empty());
+    match a.entry(key) {
+        Occupied(_) => unreachable!(),
+        Vacant(e) => assert_eq!(key, *e.key()),
+    }
+    // Ensures the allocated root is not changed.
+    assert_eq!(a.height(), Some(0));
+    assert!(a.is_empty());
     a.check();
 }
 

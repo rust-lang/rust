@@ -40,7 +40,8 @@ impl<K: Debug + Ord, V: Debug> Debug for Entry<'_, K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     pub(super) key: K,
-    pub(super) handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
+    /// `None` for a (empty) map without root
+    pub(super) handle: Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>,
     pub(super) dormant_map: DormantMutRef<'a, BTreeMap<K, V>>,
 
     // Be invariant in `K` and `V`
@@ -312,22 +313,33 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
-        let out_ptr = match self.handle.insert_recursing(self.key, value) {
-            (None, val_ptr) => {
-                // SAFETY: We have consumed self.handle and the handle returned.
-                let map = unsafe { self.dormant_map.awaken() };
-                map.length += 1;
-                val_ptr
-            }
-            (Some(ins), val_ptr) => {
-                drop(ins.left);
+        let out_ptr = match self.handle {
+            None => {
                 // SAFETY: We have consumed self.handle and the reference returned.
                 let map = unsafe { self.dormant_map.awaken() };
-                let root = map.root.as_mut().unwrap();
-                root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
-                map.length += 1;
+                let mut root = NodeRef::new_leaf();
+                let val_ptr = root.borrow_mut().push(self.key, value) as *mut V;
+                map.root = Some(root.forget_type());
+                map.length = 1;
                 val_ptr
             }
+            Some(handle) => match handle.insert_recursing(self.key, value) {
+                (None, val_ptr) => {
+                    // SAFETY: We have consumed self.handle and the handle returned.
+                    let map = unsafe { self.dormant_map.awaken() };
+                    map.length += 1;
+                    val_ptr
+                }
+                (Some(ins), val_ptr) => {
+                    drop(ins.left);
+                    // SAFETY: We have consumed self.handle and the reference returned.
+                    let map = unsafe { self.dormant_map.awaken() };
+                    let root = map.root.as_mut().unwrap();
+                    root.push_internal_level().push(ins.kv.0, ins.kv.1, ins.right);
+                    map.length += 1;
+                    val_ptr
+                }
+            },
         };
         // Now that we have finished growing the tree using borrowed references,
         // dereference the pointer to a part of it, that we picked up along the way.
