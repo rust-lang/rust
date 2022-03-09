@@ -43,6 +43,8 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
         let mut drop_ranges = build_control_flow_graph(
             fcx.tcx.hir(),
+            fcx.tcx,
+            &fcx.typeck_results.borrow(),
             consumed_borrowed_places,
             body,
             num_exprs,

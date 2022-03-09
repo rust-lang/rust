@@ -740,24 +740,36 @@ fn sanitize_witness<'tcx>(
         }
     };
 
-    for (local, decl) in body.local_decls.iter_enumerated() {
-        // Ignore locals which are internal or not saved between yields.
-        if !saved_locals.contains(local) || decl.internal {
-            continue;
-        }
-        let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
+    // First check if any of the locals are an uninhabited type. If so, we don't need to do the
+    // rest of this check because this code unreachable.
+    let any_uninhabited = body.local_decls.iter_enumerated().any(|(_, decl)| {
+        tcx.is_ty_uninhabited_from(
+            tcx.parent_module(tcx.hir().local_def_id_to_hir_id(did.expect_local())).to_def_id(),
+            tcx.normalize_erasing_regions(param_env, decl.ty),
+            param_env,
+        )
+    });
 
-        // Sanity check that typeck knows about the type of locals which are
-        // live across a suspension point
-        if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
-            span_bug!(
-                body.span,
-                "Broken MIR: generator contains type {} in MIR, \
+    if !any_uninhabited {
+        for (local, decl) in body.local_decls.iter_enumerated() {
+            // Ignore locals which are internal or not saved between yields.
+            if !saved_locals.contains(local) || decl.internal {
+                continue;
+            }
+            let decl_ty = tcx.normalize_erasing_regions(param_env, decl.ty);
+
+            // Sanity check that typeck knows about the type of locals which are
+            // live across a suspension point
+            if !allowed.contains(&decl_ty) && !allowed_upvars.contains(&decl_ty) {
+                span_bug!(
+                    body.span,
+                    "Broken MIR: generator contains type {} in MIR, \
                        but typeck only knows about {} and {:?}",
-                decl_ty,
-                allowed,
-                allowed_upvars
-            );
+                    decl_ty,
+                    allowed,
+                    allowed_upvars
+                );
+            }
         }
     }
 }
