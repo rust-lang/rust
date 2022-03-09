@@ -101,6 +101,8 @@ Links across all documentation is validated with a link checker tool.
 
 > Example: `./x.py test src/tools/linkchecker`
 
+> Example: `./x.py test linkchecker`
+
 This requires building all of the documentation, which might take a while.
 
 ### Dist check

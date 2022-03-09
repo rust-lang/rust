@@ -52,14 +52,15 @@ The following test suites are available, with links for more information:
 - `run-make-fulldeps` — `run-make` tests which require a linkable build of `rustc`,
   or the rust demangler
 - [`run-pass-valgrind`](#valgrind-tests) — tests run with Valgrind
-- Rustdoc tests:
+- [Rustdoc tests](../rustdoc.md#tests):
     - `rustdoc` — tests for rustdoc, making sure that the generated files
       contain the expected documentation.
-    - `rustdoc-gui` — TODO
-    - `rustdoc-js` — TODO
-    - `rustdoc-js-std` — TODO
-    - `rustdoc-json` — TODO
-    - `rustdoc-ui` — TODO
+    - `rustdoc-gui` — tests for rustdoc's GUI using a web browser.
+    - `rustdoc-js` — tests to ensure the rustdoc search is working as expected.
+    - `rustdoc-js-std` — tests to ensure the rustdoc search is working as expected
+      (run specifically on the std docs).
+    - `rustdoc-json` — tests on the JSON output of rustdoc.
+    - `rustdoc-ui` — tests on the terminal output of rustdoc.
 
 [`src/test`]: https://github.com/rust-lang/rust/blob/master/src/test
 [`src/tools/compiletest/src/common.rs`]: https://github.com/rust-lang/rust/tree/master/src/tools/compiletest/src/common.rs
