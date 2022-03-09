@@ -1345,7 +1345,7 @@ impl CheckAttrVisitor<'_> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) -> bool {
-        let is_function = matches!(target, Target::Fn | Target::Method(..));
+        let is_function = matches!(target, Target::Fn);
         if !is_function {
             self.tcx
                 .sess

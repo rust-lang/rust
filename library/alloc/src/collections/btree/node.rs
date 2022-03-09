@@ -861,11 +861,10 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// this edge. This method splits the node if there isn't enough room.
     ///
     /// The returned pointer points to the inserted value.
-    fn insert(mut self, key: K, val: V) -> (InsertResult<'a, K, V, marker::Leaf>, *mut V) {
+    fn insert(mut self, key: K, val: V) -> (Option<SplitResult<'a, K, V, marker::Leaf>>, *mut V) {
         if self.node.len() < CAPACITY {
             let val_ptr = self.insert_fit(key, val);
-            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
-            (InsertResult::Fit(kv), val_ptr)
+            (None, val_ptr)
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
@@ -879,7 +878,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
                 },
             };
             let val_ptr = insertion_edge.insert_fit(key, val);
-            (InsertResult::Split(result), val_ptr)
+            (Some(result), val_ptr)
         }
     }
 }
@@ -923,13 +922,12 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
         key: K,
         val: V,
         edge: Root<K, V>,
-    ) -> InsertResult<'a, K, V, marker::Internal> {
+    ) -> Option<SplitResult<'a, K, V, marker::Internal>> {
         assert!(edge.height == self.node.height - 1);
 
         if self.node.len() < CAPACITY {
             self.insert_fit(key, val, edge);
-            let kv = unsafe { Handle::new_kv(self.node, self.idx) };
-            InsertResult::Fit(kv)
+            None
         } else {
             let (middle_kv_idx, insertion) = splitpoint(self.idx);
             let middle = unsafe { Handle::new_kv(self.node, middle_kv_idx) };
@@ -943,7 +941,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
                 },
             };
             insertion_edge.insert_fit(key, val, edge);
-            InsertResult::Split(result)
+            Some(result)
         }
     }
 }
@@ -953,32 +951,26 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, mark
     /// this edge. This method splits the node if there isn't enough room, and tries to
     /// insert the split off portion into the parent node recursively, until the root is reached.
     ///
-    /// If the returned result is a `Fit`, its handle's node can be this edge's node or an ancestor.
-    /// If the returned result is a `Split`, the `left` field will be the root node.
-    /// The returned pointer points to the inserted value.
+    /// If the returned result is some `SplitResult`, the `left` field will be the root node.
+    /// The returned pointer points to the inserted value, which in the case of `SplitResult`
+    /// is in the `left` or `right` tree.
     pub fn insert_recursing(
         self,
         key: K,
         value: V,
-    ) -> (InsertResult<'a, K, V, marker::LeafOrInternal>, *mut V) {
+    ) -> (Option<SplitResult<'a, K, V, marker::LeafOrInternal>>, *mut V) {
         let (mut split, val_ptr) = match self.insert(key, value) {
-            (InsertResult::Fit(handle), ptr) => {
-                return (InsertResult::Fit(handle.forget_node_type()), ptr);
-            }
-            (InsertResult::Split(split), val_ptr) => (split.forget_node_type(), val_ptr),
+            (None, val_ptr) => return (None, val_ptr),
+            (Some(split), val_ptr) => (split.forget_node_type(), val_ptr),
         };
 
         loop {
             split = match split.left.ascend() {
                 Ok(parent) => match parent.insert(split.kv.0, split.kv.1, split.right) {
-                    InsertResult::Fit(handle) => {
-                        return (InsertResult::Fit(handle.forget_node_type()), val_ptr);
-                    }
-                    InsertResult::Split(split) => split.forget_node_type(),
+                    None => return (None, val_ptr),
+                    Some(split) => split.forget_node_type(),
                 },
-                Err(root) => {
-                    return (InsertResult::Split(SplitResult { left: root, ..split }), val_ptr);
-                }
+                Err(root) => return (Some(SplitResult { left: root, ..split }), val_ptr),
             };
         }
     }
@@ -1529,14 +1521,6 @@ impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::K
     }
 }
 
-impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
-    pub fn forget_node_type(
-        self,
-    ) -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
-        unsafe { Handle::new_kv(self.node.forget_type(), self.idx) }
-    }
-}
-
 impl<BorrowType, K, V, Type> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, Type> {
     /// Checks whether the underlying node is an `Internal` node or a `Leaf` node.
     pub fn force(
@@ -1621,7 +1605,7 @@ pub enum ForceResult<Leaf, Internal> {
 pub struct SplitResult<'a, K, V, NodeType> {
     // Altered node in existing tree with elements and edges that belong to the left of `kv`.
     pub left: NodeRef<marker::Mut<'a>, K, V, NodeType>,
-    // Some key and value split off, to be inserted elsewhere.
+    // Some key and value that existed before and were split off, to be inserted elsewhere.
     pub kv: (K, V),
     // Owned, unattached, new node with elements and edges that belong to the right of `kv`.
     pub right: NodeRef<marker::Owned, K, V, NodeType>,
@@ -1637,11 +1621,6 @@ impl<'a, K, V> SplitResult<'a, K, V, marker::Internal> {
     pub fn forget_node_type(self) -> SplitResult<'a, K, V, marker::LeafOrInternal> {
         SplitResult { left: self.left.forget_type(), kv: self.kv, right: self.right.forget_type() }
     }
-}
-
-pub enum InsertResult<'a, K, V, NodeType> {
-    Fit(Handle<NodeRef<marker::Mut<'a>, K, V, NodeType>, marker::KV>),
-    Split(SplitResult<'a, K, V, NodeType>),
 }
 
 pub mod marker {
