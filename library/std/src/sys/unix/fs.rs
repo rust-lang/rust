@@ -228,21 +228,52 @@ struct Dir(*mut libc::DIR);
 unsafe impl Send for Dir {}
 unsafe impl Sync for Dir {}
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+))]
 pub struct DirEntry {
-    entry: dirent64,
     dir: Arc<InnerReadDir>,
+    entry: dirent64_min,
     // We need to store an owned copy of the entry name on platforms that use
     // readdir() (not readdir_r()), because a) struct dirent may use a flexible
     // array to store the name, b) it lives only until the next readdir() call.
-    #[cfg(any(
-        target_os = "android",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox"
-    ))]
     name: CString,
+}
+
+// Define a minimal subset of fields we need from `dirent64`, especially since
+// we're not using the immediate `d_name` on these targets. Keeping this as an
+// `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+))]
+struct dirent64_min {
+    d_ino: u64,
+    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+    d_type: u8,
+}
+
+#[cfg(not(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "solaris",
+    target_os = "illumos",
+    target_os = "fuchsia",
+    target_os = "redox"
+)))]
+pub struct DirEntry {
+    dir: Arc<InnerReadDir>,
+    // The full entry includes a fixed-length `d_name`.
+    entry: dirent64,
 }
 
 #[derive(Clone, Debug)]
@@ -501,8 +532,14 @@ impl Iterator for ReadDir {
                 let entry_name = entry_bytes.add(name_offset);
                 ptr::copy_nonoverlapping(entry_bytes, copy_bytes, name_offset);
 
+                let entry = dirent64_min {
+                    d_ino: copy.d_ino as u64,
+                    #[cfg(not(any(target_os = "solaris", target_os = "illumos")))]
+                    d_type: copy.d_type as u8,
+                };
+
                 let ret = DirEntry {
-                    entry: copy,
+                    entry,
                     // d_name is guaranteed to be null-terminated.
                     name: CStr::from_ptr(entry_name as *const _).to_owned(),
                     dir: Arc::clone(&self.inner),
