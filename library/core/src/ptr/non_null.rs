@@ -642,7 +642,8 @@ impl<T> NonNull<[T]> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Clone for NonNull<T> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T: ?Sized> const Clone for NonNull<T> {
     #[inline]
     fn clone(&self) -> Self {
         *self
