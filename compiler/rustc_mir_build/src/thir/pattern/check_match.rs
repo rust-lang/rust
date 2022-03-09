@@ -7,7 +7,8 @@ use super::{PatCtxt, PatternError};
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
-    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -20,7 +21,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
-use rustc_span::{DesugaringKind, ExpnKind, MultiSpan, Span};
+use rustc_span::{BytePos, DesugaringKind, ExpnKind, MultiSpan, Span};
 
 crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
@@ -241,6 +242,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
 
         let joined_patterns = joined_uncovered_patterns(&cx, &witnesses);
+
+        let mut bindings = vec![];
+
         let mut err = struct_span_err!(
             self.tcx.sess,
             pat.span,
@@ -257,6 +261,16 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 false
             }
             _ => {
+                pat.walk(&mut |pat: &hir::Pat<'_>| {
+                    match pat.kind {
+                        hir::PatKind::Binding(_, _, ident, _) => {
+                            bindings.push(ident);
+                        }
+                        _ => {}
+                    }
+                    true
+                });
+
                 err.span_label(pat.span, pattern_not_covered_label(&witnesses, &joined_patterns));
                 true
             }
@@ -267,13 +281,71 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span,
-                    "you might want to use `if let` to ignore the variant that isn't matched",
-                    format!("if {} {{ /* */ }}", &snippet[..snippet.len() - 1]),
+            if self.tcx.sess.source_map().span_to_snippet(span).is_ok() {
+                let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
+                let start_span = span.shrink_to_lo();
+                let end_span = semi_span.shrink_to_lo();
+                err.multipart_suggestion(
+                    &format!(
+                        "you might want to use `if let` to ignore the variant{} that {} matched",
+                        pluralize!(witnesses.len()),
+                        match witnesses.len() {
+                            1 => "isn't",
+                            _ => "aren't",
+                        },
+                    ),
+                    vec![
+                        match &bindings[..] {
+                            [] => (start_span, "if ".to_string()),
+                            [binding] => (start_span, format!("let {} = if ", binding)),
+                            bindings => (
+                                start_span,
+                                format!(
+                                    "let ({}) = if ",
+                                    bindings
+                                        .iter()
+                                        .map(|ident| ident.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                            ),
+                        },
+                        match &bindings[..] {
+                            [] => (semi_span, " { todo!() }".to_string()),
+                            [binding] => {
+                                (end_span, format!(" {{ {} }} else {{ todo!() }}", binding))
+                            }
+                            bindings => (
+                                end_span,
+                                format!(
+                                    " {{ ({}) }} else {{ todo!() }}",
+                                    bindings
+                                        .iter()
+                                        .map(|ident| ident.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                            ),
+                        },
+                    ],
                     Applicability::HasPlaceholders,
                 );
+                if !bindings.is_empty() && cx.tcx.sess.is_nightly_build() {
+                    err.span_suggestion_verbose(
+                        semi_span.shrink_to_lo(),
+                        &format!(
+                            "alternatively, on nightly, you might want to use \
+                             `#![feature(let_else)]` to handle the variant{} that {} matched",
+                            pluralize!(witnesses.len()),
+                            match witnesses.len() {
+                                1 => "isn't",
+                                _ => "aren't",
+                            },
+                        ),
+                        " else { todo!() }".to_string(),
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
             err.note(
                 "for more information, visit \
