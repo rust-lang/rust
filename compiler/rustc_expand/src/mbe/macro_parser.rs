@@ -521,6 +521,8 @@ fn inner_parse_loop<'root, 'tt>(
             // then we could be at the end of a sequence or at the beginning of the next
             // repetition.
             if let Some(repetition) = &item.repetition {
+                debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
+
                 // At this point, regardless of whether there is a separator, we should add all
                 // matches from the complete repetition of the sequence to the shared, top-level
                 // `matches` list (actually, `up.matches`, which could itself not be the top-level,
