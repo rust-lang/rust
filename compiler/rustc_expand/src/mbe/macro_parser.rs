@@ -439,9 +439,8 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
                 Occupied(..) => return Err((sp, format!("duplicated bind name: {}", bind_name))),
             },
-            // FIXME(c410-f3r) MetaVar and MetaVarExpr should be handled instead of being ignored
-            // https://github.com/rust-lang/rust/issues/9390
-            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) | TokenTree::Token(..) => {}
+            TokenTree::Token(..) => (),
+            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         }
 
         Ok(())
@@ -655,7 +654,9 @@ fn inner_parse_loop<'root, 'tt>(
                 // rules. NOTE that this is not necessarily an error unless _all_ items in
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => {}
+                TokenTree::Token(..) => {}
+
+                TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
             }
         }
     }
