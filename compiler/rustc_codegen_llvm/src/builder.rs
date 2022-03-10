@@ -1225,9 +1225,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe { llvm::LLVMBuildZExt(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn do_not_inline(&mut self, llret: &'ll Value) {
-        let noinline = llvm::AttributeKind::NoInline.create_attr(self.llcx);
-        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[noinline]);
+    fn apply_attrs_to_cleanup_callsite(&mut self, llret: &'ll Value) {
+        // Cleanup is always the cold path.
+        let cold_inline = llvm::AttributeKind::Cold.create_attr(self.llcx);
+
+        attributes::apply_to_callsite(llret, llvm::AttributePlace::Function, &[cold_inline]);
     }
 }
 
