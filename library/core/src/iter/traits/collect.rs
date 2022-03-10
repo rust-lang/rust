@@ -4,9 +4,11 @@
 /// created from an iterator. This is common for types which describe a
 /// collection of some kind.
 ///
-/// [`FromIterator::from_iter()`] is rarely called explicitly, and is instead
-/// used through [`Iterator::collect()`] method. See [`Iterator::collect()`]'s
-/// documentation for more examples.
+/// If you want to create a collection from the contents of an iterator, the
+/// [`Iterator::collect()`] method is preferred. However, when you need to
+/// specify the container type, [`FromIterator::from_iter()`] can be more
+/// readable than using a turbofish (e.g. `::<Vec<_>>()`). See the
+/// [`Iterator::collect()`] documentation for more examples of its use.
 ///
 /// See also: [`IntoIterator`].
 ///
@@ -30,6 +32,17 @@
 /// let v: Vec<i32> = five_fives.collect();
 ///
 /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
+/// ```
+///
+/// Using [`FromIterator::from_iter()`] as a more readable alternative to
+/// [`Iterator::collect()`]:
+///
+/// ```
+/// use std::collections::VecDeque;
+/// let first = (0..10).collect::<VecDeque<i32>>();
+/// let second = VecDeque::from_iter(0..10);
+///
+/// assert_eq!(first, second);
 /// ```
 ///
 /// Implementing `FromIterator` for your type:
