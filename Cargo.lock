@@ -632,7 +632,6 @@ dependencies = [
  "hir",
  "ide_db",
  "itertools",
- "parser",
  "profile",
  "rustc-hash",
  "sourcegen",

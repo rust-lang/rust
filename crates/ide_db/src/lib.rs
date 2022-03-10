@@ -35,6 +35,8 @@ pub mod syntax_helpers {
     pub mod node_ext;
     pub mod insert_whitespace_into_node;
     pub mod format_string;
+
+    pub use parser::LexedStr;
 }
 
 use std::{fmt, mem::ManuallyDrop, sync::Arc};
