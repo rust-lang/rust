@@ -10,19 +10,6 @@ error[E0734]: stability attributes may not be used outside of the standard libra
 LL | #[stable()]
    | ^^^^^^^^^^^
 
-error[E0734]: stability attributes may not be used outside of the standard library
-  --> $DIR/stability-attribute-non-staged.rs:3:1
-   |
-LL | #[rustc_deprecated()]
-   | ^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 2 previous errors
 
-error[E0542]: missing 'since'
-  --> $DIR/stability-attribute-non-staged.rs:3:1
-   |
-LL | #[rustc_deprecated()]
-   | ^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 4 previous errors
-
-Some errors have detailed explanations: E0542, E0734.
-For more information about an error, try `rustc --explain E0542`.
+For more information about this error, try `rustc --explain E0734`.

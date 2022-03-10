@@ -1887,6 +1887,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_array_slice(self) -> bool {
+        match self.kind() {
+            Slice(_) => true,
+            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_array(self) -> bool {
         matches!(self.kind(), Array(..))
     }

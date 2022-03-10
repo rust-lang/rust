@@ -437,13 +437,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 )
                 .emit();
             }
-        } else {
-            if attr.has_name(sym::deprecated) {
-                self.sess
-                    .struct_span_err(attr.span, "`#[deprecated]` cannot be used in staged API")
-                    .span_label(attr.span, "use `#[rustc_deprecated]` instead")
-                    .emit();
-            }
         }
     }
 

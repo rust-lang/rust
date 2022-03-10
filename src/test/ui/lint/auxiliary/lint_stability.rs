@@ -5,21 +5,21 @@
 #![stable(feature = "lint_stability", since = "1.0.0")]
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub fn deprecated() {}
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub fn deprecated_text() {}
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "99.99.99", reason = "text")]
+#[deprecated(since = "99.99.99", note = "text")]
 pub fn deprecated_future() {}
 
 #[unstable(feature = "unstable_test_feature", issue = "none")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub fn deprecated_unstable() {}
 #[unstable(feature = "unstable_test_feature", issue = "none")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub fn deprecated_unstable_text() {}
 
 #[unstable(feature = "unstable_test_feature", issue = "none")]
@@ -37,17 +37,17 @@ pub struct MethodTester;
 
 impl MethodTester {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     pub fn method_deprecated(&self) {}
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     pub fn method_deprecated_text(&self) {}
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     pub fn method_deprecated_unstable(&self) {}
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     pub fn method_deprecated_unstable_text(&self) {}
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
@@ -64,17 +64,17 @@ impl MethodTester {
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub trait Trait {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     fn trait_deprecated(&self) {}
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     fn trait_deprecated_text(&self) {}
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     fn trait_deprecated_unstable(&self) {}
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     fn trait_deprecated_unstable_text(&self) {}
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
@@ -93,7 +93,7 @@ pub trait TraitWithAssociatedTypes {
     #[unstable(feature = "unstable_test_feature", issue = "none")]
     type TypeUnstable = u8;
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     type TypeDeprecated = u8;
 }
 
@@ -104,18 +104,18 @@ impl Trait for MethodTester {}
 pub trait UnstableTrait { fn dummy(&self) { } }
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub trait DeprecatedTrait {
     #[stable(feature = "stable_test_feature", since = "1.0.0")] fn dummy(&self) { }
 }
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedStruct {
     #[stable(feature = "stable_test_feature", since = "1.0.0")] pub i: isize
 }
 #[unstable(feature = "unstable_test_feature", issue = "none")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedUnstableStruct {
     #[stable(feature = "stable_test_feature", since = "1.0.0")] pub i: isize
 }
@@ -133,10 +133,10 @@ pub enum UnstableEnum {}
 pub enum StableEnum {}
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedUnitStruct;
 #[unstable(feature = "unstable_test_feature", issue = "none")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedUnstableUnitStruct;
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub struct UnstableUnitStruct;
@@ -146,10 +146,10 @@ pub struct StableUnitStruct;
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
 pub enum Enum {
     #[stable(feature = "stable_test_feature", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     DeprecatedVariant,
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     DeprecatedUnstableVariant,
     #[unstable(feature = "unstable_test_feature", issue = "none")]
     UnstableVariant,
@@ -159,10 +159,10 @@ pub enum Enum {
 }
 
 #[stable(feature = "stable_test_feature", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 #[unstable(feature = "unstable_test_feature", issue = "none")]
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 pub struct DeprecatedUnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 #[unstable(feature = "unstable_test_feature", issue = "none")]
 pub struct UnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);

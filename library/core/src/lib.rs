@@ -149,6 +149,8 @@
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(const_slice_index)]
+#![feature(const_is_char_boundary)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
@@ -167,6 +169,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(derive_default_enum)]
+#![cfg_attr(not(bootstrap), feature(deprecated_suggestion))]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]

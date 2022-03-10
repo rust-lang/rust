@@ -664,6 +664,7 @@ where
 {
     let mut depr: Option<(Deprecation, Span)> = None;
     let diagnostic = &sess.parse_sess.span_diagnostic;
+    let is_rustc = sess.features_untracked().staged_api;
 
     'outer: for attr in attrs_iter {
         if !(attr.has_name(sym::deprecated) || attr.has_name(sym::rustc_deprecated)) {
@@ -728,17 +729,31 @@ where
                                     continue 'outer;
                                 }
                             }
-                            sym::note if attr.has_name(sym::deprecated) => {
+                            sym::note => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
                             }
+                            // FIXME(jhpratt) remove this after a bootstrap occurs. Emitting an
+                            // error specific to the renaming would be a good idea as well.
                             sym::reason if attr.has_name(sym::rustc_deprecated) => {
                                 if !get(mi, &mut note) {
                                     continue 'outer;
                                 }
                             }
-                            sym::suggestion if attr.has_name(sym::rustc_deprecated) => {
+                            sym::suggestion => {
+                                if !sess.features_untracked().deprecated_suggestion {
+                                    let mut diag = sess.struct_span_err(
+                                        mi.span,
+                                        "suggestions on deprecated items are unstable",
+                                    );
+                                    if sess.is_nightly_build() {
+                                        diag.help("add `#![feature(deprecated_suggestion)]` to the crate root");
+                                    }
+                                    // FIXME(jhpratt) change this to an actual tracking issue
+                                    diag.note("see #XXX for more details").emit();
+                                }
+
                                 if !get(mi, &mut suggestion) {
                                     continue 'outer;
                                 }
@@ -752,7 +767,7 @@ where
                                         if attr.has_name(sym::deprecated) {
                                             &["since", "note"]
                                         } else {
-                                            &["since", "reason", "suggestion"]
+                                            &["since", "note", "suggestion"]
                                         },
                                     ),
                                 );
@@ -775,24 +790,22 @@ where
             }
         }
 
-        if suggestion.is_some() && attr.has_name(sym::deprecated) {
-            unreachable!("only allowed on rustc_deprecated")
-        }
-
-        if attr.has_name(sym::rustc_deprecated) {
+        if is_rustc {
             if since.is_none() {
                 handle_errors(&sess.parse_sess, attr.span, AttrError::MissingSince);
                 continue;
             }
 
             if note.is_none() {
-                struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'").emit();
+                struct_span_err!(diagnostic, attr.span, E0543, "missing 'note'").emit();
                 continue;
             }
         }
 
-        let is_since_rustc_version = attr.has_name(sym::rustc_deprecated);
-        depr = Some((Deprecation { since, note, suggestion, is_since_rustc_version }, attr.span));
+        depr = Some((
+            Deprecation { since, note, suggestion, is_since_rustc_version: is_rustc },
+            attr.span,
+        ));
     }
 
     depr
