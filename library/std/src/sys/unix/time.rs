@@ -144,6 +144,10 @@ mod inner {
     }
 
     impl SystemTime {
+        pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
+            SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
+        }
+
         pub fn now() -> SystemTime {
             use crate::ptr;
 
@@ -294,6 +298,10 @@ mod inner {
     }
 
     impl SystemTime {
+        pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
+            SystemTime { t: Timespec::new(tv_sec, tv_nsec) }
+        }
+
         pub fn now() -> SystemTime {
             SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
         }

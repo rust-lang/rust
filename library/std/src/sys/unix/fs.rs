@@ -113,10 +113,19 @@ cfg_has_statx! {{
         // This is needed to check if btime is supported by the filesystem.
         stx_mask: u32,
         stx_btime: libc::statx_timestamp,
+        // With statx, we can overcome 32-bit `time_t` too.
+        #[cfg(target_pointer_width = "32")]
+        stx_atime: libc::statx_timestamp,
+        #[cfg(target_pointer_width = "32")]
+        stx_ctime: libc::statx_timestamp,
+        #[cfg(target_pointer_width = "32")]
+        stx_mtime: libc::statx_timestamp,
+
     }
 
-    // We prefer `statx` on Linux if available, which contains file creation time.
-    // Default `stat64` contains no creation time.
+    // We prefer `statx` on Linux if available, which contains file creation time,
+    // as well as 64-bit timestamps of all kinds.
+    // Default `stat64` contains no creation time and may have 32-bit `time_t`.
     unsafe fn try_statx(
         fd: c_int,
         path: *const c_char,
@@ -192,6 +201,13 @@ cfg_has_statx! {{
         let extra = StatxExtraFields {
             stx_mask: buf.stx_mask,
             stx_btime: buf.stx_btime,
+            // Store full times to avoid 32-bit `time_t` truncation.
+            #[cfg(target_pointer_width = "32")]
+            stx_atime: buf.stx_atime,
+            #[cfg(target_pointer_width = "32")]
+            stx_ctime: buf.stx_ctime,
+            #[cfg(target_pointer_width = "32")]
+            stx_mtime: buf.stx_mtime,
         };
 
         Some(Ok(FileAttr { stat, statx_extra_fields: Some(extra) }))
@@ -310,6 +326,36 @@ cfg_has_statx! {{
         fn from_stat64(stat: stat64) -> Self {
             Self { stat, statx_extra_fields: None }
         }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_mtime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_MTIME) != 0 {
+                    return Some(&ext.stx_mtime);
+                }
+            }
+            None
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_atime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_ATIME) != 0 {
+                    return Some(&ext.stx_atime);
+                }
+            }
+            None
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        pub fn stx_ctime(&self) -> Option<&libc::statx_timestamp> {
+            if let Some(ext) = &self.statx_extra_fields {
+                if (ext.stx_mask & libc::STATX_CTIME) != 0 {
+                    return Some(&ext.stx_ctime);
+                }
+            }
+            None
+        }
     }
 } else {
     impl FileAttr {
@@ -335,24 +381,15 @@ impl FileAttr {
 #[cfg(target_os = "netbsd")]
 impl FileAttr {
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: self.stat.st_mtimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtimensec as i64))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: self.stat.st_atimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atimensec as i64))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_birthtime as libc::time_t,
-            tv_nsec: self.stat.st_birthtimensec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtimensec as i64))
     }
 }
 
@@ -360,34 +397,36 @@ impl FileAttr {
 impl FileAttr {
     #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: self.stat.st_mtime_nsec as _,
-        }))
+        #[cfg(target_pointer_width = "32")]
+        cfg_has_statx! {
+            if let Some(mtime) = self.stx_mtime() {
+                return Ok(SystemTime::new(mtime.tv_sec, mtime.tv_nsec as i64));
+            }
+        }
+
+        Ok(SystemTime::new(self.stat.st_mtime as i64, self.stat.st_mtime_nsec as i64))
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_mtime as libc::time_t,
-            tv_nsec: 0,
-        }))
+        Ok(SystemTime::new(self.stat.st_mtime as i64, 0))
     }
 
     #[cfg(all(not(target_os = "vxworks"), not(target_os = "espidf")))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: self.stat.st_atime_nsec as _,
-        }))
+        #[cfg(target_pointer_width = "32")]
+        cfg_has_statx! {
+            if let Some(atime) = self.stx_atime() {
+                return Ok(SystemTime::new(atime.tv_sec, atime.tv_nsec as i64));
+            }
+        }
+
+        Ok(SystemTime::new(self.stat.st_atime as i64, self.stat.st_atime_nsec as i64))
     }
 
     #[cfg(any(target_os = "vxworks", target_os = "espidf"))]
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_atime as libc::time_t,
-            tv_nsec: 0,
-        }))
+        Ok(SystemTime::new(self.stat.st_atime as i64, 0))
     }
 
     #[cfg(any(
@@ -397,10 +436,7 @@ impl FileAttr {
         target_os = "ios"
     ))]
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from(libc::timespec {
-            tv_sec: self.stat.st_birthtime as libc::time_t,
-            tv_nsec: self.stat.st_birthtime_nsec as libc::c_long,
-        }))
+        Ok(SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64))
     }
 
     #[cfg(not(any(
@@ -413,10 +449,7 @@ impl FileAttr {
         cfg_has_statx! {
             if let Some(ext) = &self.statx_extra_fields {
                 return if (ext.stx_mask & libc::STATX_BTIME) != 0 {
-                    Ok(SystemTime::from(libc::timespec {
-                        tv_sec: ext.stx_btime.tv_sec as libc::time_t,
-                        tv_nsec: ext.stx_btime.tv_nsec as _,
-                    }))
+                    Ok(SystemTime::new(ext.stx_btime.tv_sec, ext.stx_btime.tv_nsec as i64))
                 } else {
                     Err(io::const_io_error!(
                         io::ErrorKind::Uncategorized,
