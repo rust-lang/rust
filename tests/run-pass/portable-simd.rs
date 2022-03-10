@@ -250,10 +250,14 @@ fn simd_swizzle() {
 }
 
 fn simd_gather_scatter() {
-    let vec: &[i16] = &[10, 11, 12, 13, 14, 15, 16, 17, 18];
+    let mut vec: Vec<i16> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     let idxs = Simd::from_array([9, 3, 0, 17]);
     let result = Simd::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
     assert_eq!(result, Simd::from_array([0, 13, 10, 0]));
+
+    let idxs = Simd::from_array([9, 3, 0, 0]);
+    Simd::from_array([-27, 82, -41, 124]).scatter(&mut vec, idxs);
+    assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
 }
 
 fn simd_intrinsics() {

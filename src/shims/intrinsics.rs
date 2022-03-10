@@ -570,8 +570,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
 
-                    let mask = simd_element_to_bool(mask)?;
-                    let val = if mask { yes } else { no };
+                    let val = if simd_element_to_bool(mask)? { yes } else { no };
                     this.write_immediate(*val, &dest.into())?;
                 }
             }
@@ -670,14 +669,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
 
-                    let mask = simd_element_to_bool(mask)?;
-                    let val = if mask {
+                    let val = if simd_element_to_bool(mask)? {
                         let place = this.deref_operand(&ptr.into())?;
                         this.read_immediate(&place.into())?
                     } else {
                         passthru
                     };
                     this.write_immediate(*val, &dest.into())?;
+                }
+            }
+            "simd_scatter" => {
+                let &[ref value, ref ptrs, ref mask] = check_arg_count(args)?;
+                let (value, value_len) = this.operand_to_simd(value)?;
+                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+
+                assert_eq!(ptrs_len, value_len);
+                assert_eq!(ptrs_len, mask_len);
+
+                for i in 0..ptrs_len {
+                    let value = this.read_immediate(&this.mplace_index(&value, i)?.into())?;
+                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+
+                    if simd_element_to_bool(mask)? {
+                        let place = this.deref_operand(&ptr.into())?;
+                        this.write_immediate(*value, &place.into())?;
+                    }
                 }
             }
 
