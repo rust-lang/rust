@@ -688,13 +688,17 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default                pub macro Default
                 de Clone, Copy
-                de PartialEq
+                de PartialEq              pub macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
-                de Clone
+                de Clone                  pub macro Clone
                 de PartialEq, PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         );
     }
@@ -707,12 +711,16 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default             pub macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone
+                de Clone               pub macro Clone
                 de PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         )
     }
@@ -725,34 +733,18 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default             pub macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone
+                de Clone               pub macro Clone
                 de PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         )
-    }
-
-    #[test]
-    fn derive_no_attrs() {
-        check_derive(
-            r#"
-//- proc_macros: identity
-//- minicore: derive
-#[derive($0)] struct Test;
-"#,
-            expect![[r#""#]],
-        );
-        check_derive(
-            r#"
-//- proc_macros: identity
-//- minicore: derive
-#[derive(i$0)] struct Test;
-"#,
-            expect![[r#""#]],
-        );
     }
 
     #[test]
@@ -764,6 +756,11 @@ mod derive {
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
+                md proc_macros
+                md core
+                kw self::
+                kw super::
+                kw crate::
                 de DeriveIdentity (use proc_macros::DeriveIdentity) pub macro derive_identity
             "#]],
         );
@@ -775,7 +772,12 @@ use proc_macros::DeriveIdentity;
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity
+                de DeriveIdentity pub macro derive_identity
+                md proc_macros
+                md core
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         );
     }
@@ -805,7 +807,9 @@ use proc_macros::DeriveIdentity;
 //- minicore: derive, copy, clone
 #[derive(proc_macros::$0)] struct Test;
 "#,
-            expect![[r#""#]],
+            expect![[r#"
+                de DeriveIdentity pub macro derive_identity
+            "#]],
         );
         check_derive(
             r#"
@@ -813,7 +817,9 @@ use proc_macros::DeriveIdentity;
 //- minicore: derive, copy, clone
 #[derive(proc_macros::C$0)] struct Test;
 "#,
-            expect![[r#""#]],
+            expect![[r#"
+                de DeriveIdentity pub macro derive_identity
+            "#]],
         );
     }
 }
