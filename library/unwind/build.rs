@@ -5,12 +5,17 @@ fn main() {
     let target = env::var("TARGET").expect("TARGET was not set");
 
     if target.contains("android") {
-        let build = cc::Build::new();
-
-        // Since ndk r23 beta 3 `libgcc` was replaced with `libunwind` thus
-        // check if we have `libunwind` available and if so use it. Otherwise
-        // fall back to `libgcc` to support older ndk versions.
-        let has_unwind = build.is_flag_supported("-lunwind").expect("Unable to invoke compiler");
+        // When building with Miri we shouldn't invoke the compiler as this puts
+        // a hard dependency on the NDK being present.
+        let has_unwind = if env::var_os("CARGO_CFG_MIRI").is_some() {
+            true
+        } else {
+            let build = cc::Build::new();
+            // Since ndk r23 beta 3 `libgcc` was replaced with `libunwind` thus
+            // check if we have `libunwind` available and if so use it. Otherwise
+            // fall back to `libgcc` to support older ndk versions.
+            build.is_flag_supported("-lunwind").expect("Unable to invoke compiler")
+        };
 
         if has_unwind {
             println!("cargo:rustc-link-lib=unwind");
