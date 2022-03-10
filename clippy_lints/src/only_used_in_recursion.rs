@@ -502,7 +502,7 @@ impl<'tcx> SideEffectVisit<'tcx> {
             if let ExprKind::Path(QPath::TypeRelative(ty, segment)) = callee.kind;
             if segment.ident == self.fn_ident;
             if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
-            if let Res::SelfTy(..) = path.res;
+            if let Res::SelfTy{ .. } = path.res;
             then {
                 is_recursive = true;
             }
