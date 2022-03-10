@@ -442,12 +442,7 @@ impl Build {
             let workspace_target_dir = std::env::var("CARGO_TARGET_DIR")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| src.join("target"));
-            let bootstrap_out = workspace_target_dir.join("debug");
-            if !bootstrap_out.join("rustc").exists() {
-                // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-                panic!("run `cargo build --bins` before `cargo run`")
-            }
-            bootstrap_out
+            workspace_target_dir.join("debug")
         };
 
         let mut build = Build {
@@ -489,6 +484,11 @@ impl Build {
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
         };
+
+        if env::var("BOOTSTRAP_PYTHON").is_err() {
+            // This can be removed whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented.
+            build.run(Command::new(env!("CARGO")).args(&["build", "-p", "bootstrap", "--bins"]));
+        }
 
         build.verbose("finding compilers");
         cc_detect::find(&mut build);
