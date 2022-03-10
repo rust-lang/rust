@@ -1,1 +1,1 @@
-type Foo where Foo: Copy = ();
+type Foo = () where Foo: Copy;
