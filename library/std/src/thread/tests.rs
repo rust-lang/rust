@@ -4,10 +4,11 @@ use crate::mem;
 use crate::panic::panic_any;
 use crate::result;
 use crate::sync::{
+    atomic::{AtomicBool, Ordering},
     mpsc::{channel, Sender},
     Arc, Barrier,
 };
-use crate::thread::{self, ThreadId};
+use crate::thread::{self, Scope, ThreadId};
 use crate::time::Duration;
 use crate::time::Instant;
 
@@ -293,5 +294,25 @@ fn test_thread_id_not_equal() {
     assert!(thread::current().id() != spawned_id);
 }
 
-// NOTE: the corresponding test for stderr is in ui/thread-stderr, due
-// to the test harness apparently interfering with stderr configuration.
+#[test]
+fn test_scoped_threads_drop_result_before_join() {
+    let actually_finished = &AtomicBool::new(false);
+    struct X<'scope, 'env>(&'scope Scope<'scope, 'env>, &'env AtomicBool);
+    impl Drop for X<'_, '_> {
+        fn drop(&mut self) {
+            thread::sleep(Duration::from_millis(20));
+            let actually_finished = self.1;
+            self.0.spawn(move || {
+                thread::sleep(Duration::from_millis(20));
+                actually_finished.store(true, Ordering::Relaxed);
+            });
+        }
+    }
+    thread::scope(|s| {
+        s.spawn(move || {
+            thread::sleep(Duration::from_millis(20));
+            X(s, actually_finished)
+        });
+    });
+    assert!(actually_finished.load(Ordering::Relaxed));
+}

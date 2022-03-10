@@ -1287,12 +1287,31 @@ unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
     fn drop(&mut self) {
+        // If this packet was for a thread that ran in a scope, the thread
+        // panicked, and nobody consumed the panic payload, we make sure
+        // the scope function will panic.
+        let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+        // Drop the result without causing unwinding.
+        // This is only relevant for threads that aren't join()ed, as
+        // join() will take the `result` and set it to None, such that
+        // there is nothing left to drop here.
+        // If this panics, we should handle that, because we're outside the
+        // outermost `catch_unwind` of our thread.
+        // We just abort in that case, since there's nothing else we can do.
+        // (And even if we tried to handle it somehow, we'd also need to handle
+        // the case where the panic payload we get out of it also panics on
+        // drop, and so on. See issue #86027.)
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            *self.result.get_mut() = None;
+        })) {
+            rtabort!("thread result panicked on drop");
+        }
         // Book-keeping so the scope knows when it's done.
         if let Some(scope) = self.scope {
-            // If this packet was for a thread that ran in a scope, the thread
-            // panicked, and nobody consumed the panic payload, we make sure
-            // the scope function will panic.
-            let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+            // Now that there will be no more user code running on this thread
+            // that can use 'scope, mark the thread as 'finished'.
+            // It's important we only do this after the `result` has been dropped,
+            // since dropping it might still use things it borrowed from 'scope.
             scope.decrement_num_running_threads(unhandled_panic);
         }
     }
