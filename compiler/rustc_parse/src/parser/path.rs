@@ -645,7 +645,7 @@ impl<'a> Parser<'a> {
         } else {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
-            let snapshot = self.clone();
+            let snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
@@ -654,7 +654,7 @@ impl<'a> Parser<'a> {
                     )));
                 }
                 Err(err) => {
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                     err.cancel();
                     return Ok(None);
                 }

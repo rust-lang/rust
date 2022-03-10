@@ -481,7 +481,7 @@ impl<'a> Parser<'a> {
             // fn foo() -> Foo {
             //     field: value,
             // }
-            let mut snapshot = self.clone();
+            let mut snapshot = self.create_snapshot_for_diagnostic();
             let path =
                 Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
             let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
@@ -507,7 +507,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
                         s,
@@ -721,7 +721,7 @@ impl<'a> Parser<'a> {
     /// angle brackets.
     pub(super) fn check_turbofish_missing_angle_brackets(&mut self, segment: &mut PathSegment) {
         if token::ModSep == self.token.kind && segment.args.is_none() {
-            let snapshot = self.clone();
+            let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
             let lo = self.token.span;
             match self.parse_angle_args(None) {
@@ -755,14 +755,14 @@ impl<'a> Parser<'a> {
                         .emit();
                     } else {
                         // This doesn't look like an invalid turbofish, can't recover parse state.
-                        *self = snapshot;
+                        self.restore_snapshot(snapshot);
                     }
                 }
                 Err(err) => {
                     // We couldn't parse generic parameters, unlikely to be a turbofish. Rely on
                     // generic parse error instead.
                     err.cancel();
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                 }
             }
         }
@@ -868,7 +868,7 @@ impl<'a> Parser<'a> {
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
                     // Consume `z`/outer-op-rhs.
-                    let snapshot = self.clone();
+                    let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_expr() {
                         Ok(r2) => {
                             // We are sure that outer-op-rhs could be consumed, the suggestion is
@@ -878,14 +878,14 @@ impl<'a> Parser<'a> {
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
-                            *self = snapshot;
+                            self.restore_snapshot(snapshot);
                             false
                         }
                     }
                 }
                 // `x > y == z`
                 (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
-                    let snapshot = self.clone();
+                    let snapshot = self.create_snapshot_for_diagnostic();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
                     match self.parse_expr() {
@@ -895,7 +895,7 @@ impl<'a> Parser<'a> {
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
-                            *self = snapshot;
+                            self.restore_snapshot(snapshot);
                             false
                         }
                     }
@@ -960,7 +960,7 @@ impl<'a> Parser<'a> {
                     || outer_op.node == AssocOp::Greater
                 {
                     if outer_op.node == AssocOp::Less {
-                        let snapshot = self.clone();
+                        let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
                         let modifiers =
@@ -972,7 +972,7 @@ impl<'a> Parser<'a> {
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
-                            *self = snapshot.clone();
+                            self.restore_snapshot(snapshot);
                         }
                     }
                     return if token::ModSep == self.token.kind {
@@ -980,7 +980,7 @@ impl<'a> Parser<'a> {
                         // `foo< bar >::`
                         suggest(&mut err);
 
-                        let snapshot = self.clone();
+                        let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump(); // `::`
 
                         // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
@@ -997,7 +997,7 @@ impl<'a> Parser<'a> {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
-                                *self = snapshot;
+                                self.restore_snapshot(snapshot);
                                 Err(err)
                             }
                         }
@@ -1051,7 +1051,7 @@ impl<'a> Parser<'a> {
     }
 
     fn consume_fn_args(&mut self) -> Result<(), ()> {
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         self.bump(); // `(`
 
         // Consume the fn call arguments.
@@ -1061,7 +1061,7 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == token::Eof {
             // Not entirely sure that what we consumed were fn arguments, rollback.
-            *self = snapshot;
+            self.restore_snapshot(snapshot);
             Err(())
         } else {
             // 99% certain that the suggestion is correct, continue parsing.
@@ -2002,12 +2002,12 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         let param = match self.parse_const_param(vec![]) {
             Ok(param) => param,
             Err(err) => {
                 err.cancel();
-                *self = snapshot;
+                self.restore_snapshot(snapshot);
                 return None;
             }
         };
@@ -2099,7 +2099,7 @@ impl<'a> Parser<'a> {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);
         }
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         if is_op_or_dot {
             self.bump();
         }
@@ -2131,7 +2131,7 @@ impl<'a> Parser<'a> {
                 err.cancel();
             }
         }
-        *self = snapshot;
+        self.restore_snapshot(snapshot);
         Err(err)
     }
 
@@ -2191,7 +2191,7 @@ impl<'a> Parser<'a> {
         let span = self.token.span;
         // We only emit "unexpected `:`" error here if we can successfully parse the
         // whole pattern correctly in that case.
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
 
         // Create error for "unexpected `:`".
         match self.expected_one_of_not_found(&[], &[]) {
@@ -2203,7 +2203,7 @@ impl<'a> Parser<'a> {
                         // reasonable error.
                         inner_err.cancel();
                         err.cancel();
-                        *self = snapshot;
+                        self.restore_snapshot(snapshot);
                     }
                     Ok(mut pat) => {
                         // We've parsed the rest of the pattern.
@@ -2282,7 +2282,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 // Carry on as if we had not done anything. This should be unreachable.
-                *self = snapshot;
+                self.restore_snapshot(snapshot);
             }
         };
         first_pat
