@@ -73,7 +73,10 @@ impl CommandKind {
 
         if let CommandKind::Count = self {
             if args[2].parse::<usize>().is_err() {
-                print_err(&format!("Third argument to @count must be a valid usize"), lineno);
+                print_err(
+                    &format!("Third argument to @count must be a valid usize (got `{}`)", args[2]),
+                    lineno,
+                );
                 return false;
             }
         }
