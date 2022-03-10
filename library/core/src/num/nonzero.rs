@@ -996,10 +996,6 @@ macro_rules! nonzero_min_max_unsigned {
                 /// The smallest value that can be represented by this non-zero
                 /// integer type, 1.
                 ///
-                /// Note: While most integer types are defined for every whole
-                /// number between `MIN` and `MAX`, signed non-zero integers are
-                /// a special case. They have a "gap" at 0.
-                ///
                 /// # Examples
                 ///
                 /// ```
@@ -1014,10 +1010,6 @@ macro_rules! nonzero_min_max_unsigned {
                 /// The largest value that can be represented by this non-zero
                 /// integer type,
                 #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
-                ///
-                /// Note: While most integer types are defined for every whole
-                /// number between `MIN` and `MAX`, signed non-zero integers are
-                /// a special case. They have a "gap" at 0.
                 ///
                 /// # Examples
                 ///
@@ -1042,6 +1034,10 @@ macro_rules! nonzero_min_max_signed {
                 /// integer type,
                 #[doc = concat!("equal to [`", stringify!($Int), "::MIN`].")]
                 ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
+                ///
                 /// # Examples
                 ///
                 /// ```
@@ -1056,6 +1052,10 @@ macro_rules! nonzero_min_max_signed {
                 /// The largest value that can be represented by this non-zero
                 /// integer type,
                 #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+                ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
                 ///
                 /// # Examples
                 ///
