@@ -110,6 +110,8 @@ pub fn escape_default(c: u8) -> EscapeDefault {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
+
+    #[inline]
     fn next(&mut self) -> Option<u8> {
         self.range.next().map(|i| self.data[i as usize])
     }
