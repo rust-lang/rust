@@ -340,6 +340,40 @@ impl AtomicBool {
         unsafe { &mut *(v as *mut bool as *mut Self) }
     }
 
+    /// Get non-atomic access to a `&mut [AtomicBool]` slice.
+    ///
+    /// This is safe because the mutable reference guarantees that no other threads are
+    /// concurrently accessing the atomic data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, inline_const, scoped_threads)]
+    /// use std::sync::atomic::{AtomicBool, Ordering};
+    ///
+    /// let mut some_bools = [const { AtomicBool::new(false) }; 10];
+    ///
+    /// let view: &mut [bool] = AtomicBool::get_mut_slice(&mut some_bools);
+    /// assert_eq!(view, [false; 10]);
+    /// view[..5].copy_from_slice(&[true; 5]);
+    ///
+    /// std::thread::scope(|s| {
+    ///     for t in &some_bools[..5] {
+    ///         s.spawn(move || assert_eq!(t.load(Ordering::Relaxed), true));
+    ///     }
+    ///
+    ///     for f in &some_bools[5..] {
+    ///         s.spawn(move || assert_eq!(f.load(Ordering::Relaxed), false));
+    ///     }
+    /// });
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn get_mut_slice(this: &mut [Self]) -> &mut [bool] {
+        // SAFETY: the mutable reference guarantees unique ownership.
+        unsafe { &mut *(this as *mut [Self] as *mut [bool]) }
+    }
+
     /// Get atomic access to a `&mut [bool]` slice.
     ///
     /// # Examples
@@ -971,6 +1005,46 @@ impl<T> AtomicPtr<T> {
         unsafe { &mut *(v as *mut *mut T as *mut Self) }
     }
 
+    /// Get non-atomic access to a `&mut [AtomicPtr]` slice.
+    ///
+    /// This is safe because the mutable reference guarantees that no other threads are
+    /// concurrently accessing the atomic data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(atomic_from_mut, inline_const, scoped_threads)]
+    /// use std::ptr::null_mut;
+    /// use std::sync::atomic::{AtomicPtr, Ordering};
+    ///
+    /// let mut some_ptrs = [const { AtomicPtr::new(null_mut::<String>()) }; 10];
+    ///
+    /// let view: &mut [*mut String] = AtomicPtr::get_mut_slice(&mut some_ptrs);
+    /// assert_eq!(view, [null_mut::<String>(); 10]);
+    /// view
+    ///     .iter_mut()
+    ///     .enumerate()
+    ///     .for_each(|(i, ptr)| *ptr = Box::into_raw(Box::new(format!("iteration#{i}"))));
+    ///
+    /// std::thread::scope(|s| {
+    ///     for ptr in &some_ptrs {
+    ///         s.spawn(move || {
+    ///             let ptr = ptr.load(Ordering::Relaxed);
+    ///             assert!(!ptr.is_null());
+    ///
+    ///             let name = unsafe { Box::from_raw(ptr) };
+    ///             println!("Hello, {name}!");
+    ///         });
+    ///     }
+    /// });
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_from_mut", issue = "76314")]
+    pub fn get_mut_slice(this: &mut [Self]) -> &mut [*mut T] {
+        // SAFETY: the mutable reference guarantees unique ownership.
+        unsafe { &mut *(this as *mut [Self] as *mut [*mut T]) }
+    }
+
     /// Get atomic access to a slice of pointers.
     ///
     /// # Examples
@@ -1519,6 +1593,42 @@ macro_rules! atomic_int {
                 //  - the alignment of `$int_type` and `Self` is the
                 //    same, as promised by $cfg_align and verified above.
                 unsafe { &mut *(v as *mut $int_type as *mut Self) }
+            }
+
+            #[doc = concat!("Get non-atomic access to a `&mut [", stringify!($atomic_type), "]` slice")]
+            ///
+            /// This is safe because the mutable reference guarantees that no other threads are
+            /// concurrently accessing the atomic data.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// #![feature(atomic_from_mut, inline_const, scoped_threads)]
+            #[doc = concat!($extra_feature, "use std::sync::atomic::{", stringify!($atomic_type), ", Ordering};")]
+            ///
+            #[doc = concat!("let mut some_ints = [const { ", stringify!($atomic_type), "::new(0) }; 10];")]
+            ///
+            #[doc = concat!("let view: &mut [", stringify!($int_type), "] = ", stringify!($atomic_type), "::get_mut_slice(&mut some_ints);")]
+            /// assert_eq!(view, [0; 10]);
+            /// view
+            ///     .iter_mut()
+            ///     .enumerate()
+            ///     .for_each(|(idx, int)| *int = idx as _);
+            ///
+            /// std::thread::scope(|s| {
+            ///     some_ints
+            ///         .iter()
+            ///         .enumerate()
+            ///         .for_each(|(idx, int)| {
+            ///             s.spawn(move || assert_eq!(int.load(Ordering::Relaxed), idx as _));
+            ///         })
+            /// });
+            /// ```
+            #[inline]
+            #[unstable(feature = "atomic_from_mut", issue = "76314")]
+            pub fn get_mut_slice(this: &mut [Self]) -> &mut [$int_type] {
+                // SAFETY: the mutable reference guarantees unique ownership.
+                unsafe { &mut *(this as *mut [Self] as *mut [$int_type]) }
             }
 
             #[doc = concat!("Get atomic access to a `&mut [", stringify!($int_type), "]` slice.")]
