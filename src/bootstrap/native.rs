@@ -259,18 +259,6 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
-        // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
-        // We also do this if the user explicitly requested static libstdc++.
-        if builder.config.llvm_tools_enabled || builder.config.llvm_static_stdcpp {
-            if !target.contains("msvc") && !target.contains("netbsd") {
-                if target.contains("apple") {
-                    ldflags.push_all("-static-libstdc++");
-                } else {
-                    ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
-                }
-            }
-        }
-
         if target.starts_with("riscv") && !target.contains("freebsd") {
             // RISC-V GCC erroneously requires linking against
             // `libatomic` when using 1-byte and 2-byte C++
@@ -574,6 +562,18 @@ fn configure_cmake(
 
     if let Some(flags) = get_var("LDFLAGS", &builder.config.build.triple, &target.triple) {
         ldflags.push_all(&flags);
+    }
+
+    // For distribution we want the LLVM tools to be *statically* linked to libstdc++.
+    // We also do this if the user explicitly requested static libstdc++.
+    if builder.config.llvm_tools_enabled || builder.config.llvm_static_stdcpp {
+        if !target.contains("msvc") && !target.contains("netbsd") {
+            if target.contains("apple") {
+                ldflags.push_all("-static-libstdc++");
+            } else {
+                ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
+            }
+        }
     }
 
     cfg.define("CMAKE_SHARED_LINKER_FLAGS", &ldflags.shared);
