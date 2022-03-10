@@ -2557,7 +2557,14 @@ impl<'tcx> Constant<'tcx> {
 impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
     fn from(ct: ty::Const<'tcx>) -> Self {
-        Self::Ty(ct)
+        match ct.val() {
+            ty::ConstKind::Value(cv) => {
+                // FIXME Once valtrees are introduced we need to convert those
+                // into `ConstValue` instances here
+                Self::Val(cv, ct.ty())
+            }
+            _ => Self::Ty(ct),
+        }
     }
 }
 
@@ -2637,6 +2644,27 @@ impl<'tcx> ConstantKind<'tcx> {
             Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
             Self::Val(val, _) => val.try_to_machine_usize(tcx),
         }
+    }
+
+    pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
+        let cv = ConstValue::from_bool(v);
+        Self::Val(cv, tcx.types.bool)
+    }
+
+    pub fn from_zero_sized(ty: Ty<'tcx>) -> Self {
+        let cv = ConstValue::Scalar(Scalar::ZST);
+        Self::Val(cv, ty)
+    }
+
+    pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
+        let ty = tcx.types.usize;
+        let size = tcx
+            .layout_of(ty::ParamEnv::empty().and(ty))
+            .unwrap_or_else(|e| bug!("could not compute layout for {:?}: {:?}", ty, e))
+            .size;
+        let cv = ConstValue::Scalar(Scalar::from_uint(n as u128, size));
+
+        Self::Val(cv, ty)
     }
 }
 

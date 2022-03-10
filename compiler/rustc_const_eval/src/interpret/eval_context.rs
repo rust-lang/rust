@@ -164,7 +164,7 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, PartialEq, Eq, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable)]
 pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
     pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
@@ -714,6 +714,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
 
+    #[instrument(skip(self, body, return_place, return_to_block), level = "debug")]
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -721,6 +722,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
+        debug!("body: {:#?}", body);
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
@@ -824,6 +826,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `Drop` impls for any locals that have been initialized at this point.
     /// The cleanup block ends with a special `Resume` terminator, which will
     /// cause us to continue unwinding.
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
             "popping stack frame ({})",
@@ -875,6 +878,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Leak the locals, skip validation, skip machine hook.
             return Ok(());
         }
+
+        debug!("locals: {:#?}", frame.locals);
 
         // Cleanup: deallocate all locals that are backed by an allocation.
         for local in &frame.locals {
@@ -935,6 +940,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty

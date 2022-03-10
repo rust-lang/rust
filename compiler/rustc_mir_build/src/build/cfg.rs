@@ -2,7 +2,7 @@
 
 use crate::build::CFG;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 
 impl<'tcx> CFG<'tcx> {
     crate fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -73,7 +73,7 @@ impl<'tcx> CFG<'tcx> {
             Rvalue::Use(Operand::Constant(Box::new(Constant {
                 span: source_info.span,
                 user_ty: None,
-                literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
+                literal: ConstantKind::from_zero_sized(tcx.types.unit),
             }))),
         );
     }

@@ -359,6 +359,8 @@ pub fn intern_const_alloc_recursive<
     // pointers, ... So we can't intern them according to their type rules
 
     let mut todo: Vec<_> = leftover_allocations.iter().cloned().collect();
+    debug!(?todo);
+    debug!("dead_alloc_map: {:#?}", ecx.memory.dead_alloc_map);
     while let Some(alloc_id) = todo.pop() {
         if let Some((_, mut alloc)) = ecx.memory.alloc_map.remove(&alloc_id) {
             // We can't call the `intern_shallow` method here, as its logic is tailored to safe

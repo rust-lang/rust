@@ -569,6 +569,9 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
+
+                // FIXME Do we want to use `from_inline_const` once valtrees
+                // are introduced? This would create `ValTree`s that will never be used...
                 let value = ty::Const::from_inline_const(self.tcx, anon_const_def_id);
 
                 ExprKind::ConstBlock { value }
