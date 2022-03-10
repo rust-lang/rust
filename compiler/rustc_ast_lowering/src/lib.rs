@@ -1835,7 +1835,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Output lifetime like `'_`:
             for (span, node_id) in lifetimes_to_define {
                 let param = this.fresh_lifetime_to_generic_param(span, node_id);
-                lifetime_params.push((span, hir::LifetimeName::Implicit(false)));
+                lifetime_params.push((span, hir::LifetimeName::Implicit));
                 generic_params.push(param);
             }
             let generic_params = this.arena.alloc_from_iter(generic_params);
@@ -2017,7 +2017,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     });
                 let param_name = match lt.name {
                     hir::LifetimeName::Param(param_name) => param_name,
-                    hir::LifetimeName::Implicit(_) | hir::LifetimeName::Underscore => {
+                    hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
                         hir::ParamName::Plain(lt.name.ident())
                     }
                     hir::LifetimeName::ImplicitObjectLifetimeDefault => {
@@ -2397,7 +2397,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
 
-            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span, false),
+            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
         }
     }
 
@@ -2416,12 +2416,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &'s mut self,
         span: Span,
         count: usize,
-        param_mode: ParamMode,
     ) -> impl Iterator<Item = hir::Lifetime> + Captures<'a> + Captures<'s> + Captures<'hir> {
-        (0..count).map(move |_| self.elided_path_lifetime(span, param_mode))
+        (0..count).map(move |_| self.elided_path_lifetime(span))
     }
 
-    fn elided_path_lifetime(&mut self, span: Span, param_mode: ParamMode) -> hir::Lifetime {
+    fn elided_path_lifetime(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
             AnonymousLifetimeMode::CreateParameter => {
                 // We should have emitted E0726 when processing this path above
@@ -2437,7 +2436,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // lifetime. Instead, we simply create an implicit lifetime, which will be checked
             // later, at which point a suitable error will be emitted.
             AnonymousLifetimeMode::PassThrough | AnonymousLifetimeMode::ReportError => {
-                self.new_implicit_lifetime(span, param_mode == ParamMode::Explicit)
+                self.new_implicit_lifetime(span)
             }
         }
     }
@@ -2480,11 +2479,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         r
     }
 
-    fn new_implicit_lifetime(&mut self, span: Span, missing: bool) -> hir::Lifetime {
+    fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
         hir::Lifetime {
             hir_id: self.next_id(),
             span: self.lower_span(span),
-            name: hir::LifetimeName::Implicit(missing),
+            name: hir::LifetimeName::Implicit,
         }
     }
 }
@@ -2587,7 +2586,7 @@ fn lifetimes_from_impl_trait_bounds(
 
         fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
             let name = match lifetime.name {
-                hir::LifetimeName::Implicit(_) | hir::LifetimeName::Underscore => {
+                hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
                     if self.collect_elided_lifetimes {
                         // Use `'_` for both implicit and underscore lifetimes in
                         // `type Foo<'_> = impl SomeTrait<'_>;`.

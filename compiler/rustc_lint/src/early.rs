@@ -284,6 +284,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         ast_visit::walk_path(self, p);
     }
 
+    fn visit_path_segment(&mut self, path_span: Span, s: &'a ast::PathSegment) {
+        self.check_id(s.id);
+        ast_visit::walk_path_segment(self, path_span, s);
+    }
+
     fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
         run_early_pass!(self, check_attribute, attr);
     }

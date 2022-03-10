@@ -21,7 +21,8 @@ use crate::passes::{EarlyLintPassObject, LateLintPassObject};
 use rustc_ast::util::unicode::TEXT_FLOW_CONTROL_CHARS;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync;
-use rustc_errors::{struct_span_err, Applicability, MultiSpan, SuggestionStyle};
+use rustc_errors::{add_elided_lifetime_in_path_suggestion, struct_span_err};
+use rustc_errors::{Applicability, MultiSpan, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
@@ -664,6 +665,21 @@ pub trait LintContext: Sized {
                     span_def,
                 ) => {
                     db.span_note(span_def, "the macro is defined here");
+                }
+                BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                    n,
+                    path_span,
+                    incl_angl_brckt,
+                    insertion_span,
+                ) => {
+                    add_elided_lifetime_in_path_suggestion(
+                        sess.source_map(),
+                        &mut db,
+                        n,
+                        path_span,
+                        incl_angl_brckt,
+                        insertion_span,
+                    );
                 }
                 BuiltinLintDiagnostics::UnknownCrateTypes(span, note, sugg) => {
                     db.span_suggestion(span, &note, sugg, Applicability::MaybeIncorrect);

@@ -1402,7 +1402,7 @@ impl<'a> Resolver<'a> {
         let mut allow_super = true;
         let mut second_binding = None;
 
-        for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
+        for (i, &Segment { ident, id, .. }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
             let record_segment_res = |this: &mut Self, res| {
                 if finalize.is_some() {

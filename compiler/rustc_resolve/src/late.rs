@@ -21,10 +21,11 @@ use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_middle::ty::DefIdTree;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{BytePos, Span};
 use smallvec::{smallvec, SmallVec};
 
 use rustc_span::source_map::{respan, Spanned};
@@ -1165,6 +1166,134 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let id = self.r.next_node_id();
         let lt = Lifetime { id, ident: Ident::new(kw::UnderscoreLifetime, span) };
         self.resolve_anonymous_lifetime(&lt, true);
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
+    fn resolve_elided_lifetimes_in_path(
+        &mut self,
+        path_id: NodeId,
+        partial_res: PartialRes,
+        path: &[Segment],
+        source: PathSource<'_>,
+        finalize: Finalize,
+    ) {
+        let Some(path_span) = finalize.path_span() else {
+            return;
+        };
+        let proj_start = path.len() - partial_res.unresolved_segments();
+        for (i, segment) in path.iter().enumerate() {
+            if segment.has_lifetime_args {
+                continue;
+            }
+            let Some(segment_id) = segment.id else {
+                continue;
+            };
+
+            // Figure out if this is a type/trait segment,
+            // which may need lifetime elision performed.
+            let type_def_id = match partial_res.base_res() {
+                Res::Def(DefKind::AssocTy, def_id) if i + 2 == proj_start => {
+                    self.r.parent(def_id).unwrap()
+                }
+                Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
+                    self.r.parent(def_id).unwrap()
+                }
+                Res::Def(DefKind::Struct, def_id)
+                | Res::Def(DefKind::Union, def_id)
+                | Res::Def(DefKind::Enum, def_id)
+                | Res::Def(DefKind::TyAlias, def_id)
+                | Res::Def(DefKind::Trait, def_id)
+                    if i + 1 == proj_start =>
+                {
+                    def_id
+                }
+                _ => continue,
+            };
+
+            let expected_lifetimes = self.r.item_generics_num_lifetimes(type_def_id);
+            if expected_lifetimes == 0 {
+                continue;
+            }
+
+            let missing = match source {
+                PathSource::Trait(..) | PathSource::TraitItem(..) | PathSource::Type => true,
+                PathSource::Expr(..)
+                | PathSource::Pat
+                | PathSource::Struct
+                | PathSource::TupleStruct(..) => false,
+            };
+            let mut error = false;
+            for rib in self.lifetime_ribs.iter().rev() {
+                match rib.kind {
+                    // In create-parameter mode we error here because we don't want to support
+                    // deprecated impl elision in new features like impl elision and `async fn`,
+                    // both of which work using the `CreateParameter` mode:
+                    //
+                    //     impl Foo for std::cell::Ref<u32> // note lack of '_
+                    //     async fn foo(_: std::cell::Ref<u32>) { ... }
+                    LifetimeRibKind::AnonymousCreateParameter => {
+                        error = true;
+                        break;
+                    }
+                    // `PassThrough` is the normal case.
+                    // `new_error_lifetime`, which would usually be used in the case of `ReportError`,
+                    // is unsuitable here, as these can occur from missing lifetime parameters in a
+                    // `PathSegment`, for which there is no associated `'_` or `&T` with no explicit
+                    // lifetime. Instead, we simply create an implicit lifetime, which will be checked
+                    // later, at which point a suitable error will be emitted.
+                    LifetimeRibKind::AnonymousPassThrough
+                    | LifetimeRibKind::AnonymousReportError
+                    | LifetimeRibKind::Item => break,
+                    _ => {}
+                }
+            }
+
+            if !missing {
+                continue;
+            }
+
+            let elided_lifetime_span = if segment.has_generic_args {
+                // If there are brackets, but not generic arguments, then use the opening bracket
+                segment.args_span.with_hi(segment.args_span.lo() + BytePos(1))
+            } else {
+                // If there are no brackets, use the identifier span.
+                // HACK: we use find_ancestor_inside to properly suggest elided spans in paths
+                // originating from macros, since the segment's span might be from a macro arg.
+                segment.ident.span.find_ancestor_inside(path_span).unwrap_or(path_span)
+            };
+            if error {
+                let sess = self.r.session;
+                let mut err = rustc_errors::struct_span_err!(
+                    sess,
+                    path_span,
+                    E0726,
+                    "implicit elided lifetime not allowed here"
+                );
+                rustc_errors::add_elided_lifetime_in_path_suggestion(
+                    sess.source_map(),
+                    &mut err,
+                    expected_lifetimes,
+                    path_span,
+                    !segment.has_generic_args,
+                    elided_lifetime_span,
+                );
+                err.note("assuming a `'static` lifetime...");
+                err.emit();
+            } else {
+                self.r.lint_buffer.buffer_lint_with_diagnostic(
+                    lint::builtin::ELIDED_LIFETIMES_IN_PATHS,
+                    segment_id,
+                    elided_lifetime_span,
+                    "hidden lifetime parameters in types are deprecated",
+                    lint::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                        expected_lifetimes,
+                        path_span,
+                        !segment.has_generic_args,
+                        elided_lifetime_span,
+                    ),
+                );
+            }
+        }
     }
 
     /// Searches the current set of local scopes for labels. Returns the `NodeId` of the resolved
@@ -2528,6 +2657,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             self.r.record_partial_res(id, partial_res);
         }
 
+        self.resolve_elided_lifetimes_in_path(id, partial_res, path, source, finalize);
         partial_res
     }
 
