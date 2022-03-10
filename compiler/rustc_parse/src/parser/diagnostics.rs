@@ -156,6 +156,9 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+// SnapshotParser is used to create a snapshot of the parser
+// without causing duplicate errors being emitted when the `Parser`
+// is dropped.
 pub(super) struct SnapshotParser<'a> {
     parser: Parser<'a>,
     unclosed_delims: Vec<UnmatchedBrace>,
@@ -200,15 +203,21 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    pub(super) fn restore(&mut self, snapshot: SnapshotParser<'a>) {
+    /// Relace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
+    /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
+    pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
         self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
     }
 
-    pub(super) fn diagnostic_snapshot(&self) -> SnapshotParser<'a> {
+    /// Create a snapshot of the `Parser`.
+    pub(super) fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
         let mut snapshot = self.clone();
         let unclosed_delims = self.unclosed_delims.clone();
-        // initialize unclosed_delims to avoid duplicate errors.
+        // Clear `unclosed_delims` in snapshot to avoid
+        // duplicate errors being emitted when the `Parser`
+        // is dropped (which may or may not happen, depending
+        // if the parsing the snapshot is created for is successful)
         snapshot.unclosed_delims.clear();
         SnapshotParser { parser: snapshot, unclosed_delims }
     }
