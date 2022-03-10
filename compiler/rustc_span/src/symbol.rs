@@ -1385,6 +1385,7 @@ symbols! {
         test_case,
         test_removed_feature,
         test_runner,
+        test_unstable_lint,
         then_with,
         thread,
         thread_local,
