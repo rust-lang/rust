@@ -1,4 +1,4 @@
-use super::NOP_MATCH;
+use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -30,7 +30,7 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>])
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
-            NOP_MATCH,
+            NEEDLESS_MATCH,
             match_expr.span,
             "this match expression is unnecessary",
             "replace it with",
@@ -68,7 +68,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
-                NOP_MATCH,
+                NEEDLESS_MATCH,
                 ex.span,
                 "this if-let expression is unnecessary",
                 "replace it with",

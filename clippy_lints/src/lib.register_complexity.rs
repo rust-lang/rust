@@ -30,6 +30,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(map_unit_fn::RESULT_MAP_UNIT_FN),
     LintId::of(matches::MATCH_AS_REF),
     LintId::of(matches::MATCH_SINGLE_BINDING),
+    LintId::of(matches::NEEDLESS_MATCH),
     LintId::of(matches::WILDCARD_IN_OR_PATTERNS),
     LintId::of(methods::BIND_INSTEAD_OF_MAP),
     LintId::of(methods::CLONE_ON_COPY),

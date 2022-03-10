@@ -1,5 +1,5 @@
 // run-rustfix
-#![warn(clippy::nop_match)]
+#![warn(clippy::needless_match)]
 #![allow(clippy::manual_map)]
 #![allow(dead_code)]
 

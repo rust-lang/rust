@@ -16,7 +16,7 @@ mod match_same_arms;
 mod match_single_binding;
 mod match_wild_enum;
 mod match_wild_err_arm;
-mod nop_match;
+mod needless_match;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
@@ -605,8 +605,8 @@ declare_clippy_lint! {
     /// }
     /// ```
     #[clippy::version = "1.61.0"]
-    pub NOP_MATCH,
-    correctness,
+    pub NEEDLESS_MATCH,
+    complexity,
     "`match` or match-like `if let` that are unnecessary"
 }
 
@@ -643,7 +643,7 @@ impl_lint_pass!(Matches => [
     REDUNDANT_PATTERN_MATCHING,
     MATCH_LIKE_MATCHES_MACRO,
     MATCH_SAME_ARMS,
-    NOP_MATCH,
+    NEEDLESS_MATCH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -667,7 +667,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
-                    nop_match::check_match(cx, ex, arms);
+                    needless_match::check_match(cx, ex, arms);
 
                     if self.infallible_destructuring_match_linted {
                         self.infallible_destructuring_match_linted = false;
@@ -686,7 +686,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_like_matches::check(cx, expr);
             }
             redundant_pattern_match::check(cx, expr);
-            nop_match::check(cx, expr);
+            needless_match::check(cx, expr);
         }
     }
 
