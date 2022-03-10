@@ -1072,6 +1072,7 @@ impl CrateCheckConfig {
         // NOTE: This should be kept in sync with `default_configuration` and
         // `fill_well_known_values`
         const WELL_KNOWN_NAMES: &[Symbol] = &[
+            // rustc
             sym::unix,
             sym::windows,
             sym::target_os,
@@ -1091,9 +1092,12 @@ impl CrateCheckConfig {
             sym::debug_assertions,
             sym::proc_macro,
             sym::test,
+            sym::feature,
+            // rustdoc
             sym::doc,
             sym::doctest,
-            sym::feature,
+            // miri
+            sym::miri,
         ];
 
         // We only insert well-known names if `names()` was activated
@@ -1128,13 +1132,14 @@ impl CrateCheckConfig {
 
         // No-values
         for name in [
-            sym::unix,
-            sym::windows,
-            sym::debug_assertions,
-            sym::proc_macro,
-            sym::test,
             sym::doc,
+            sym::miri,
+            sym::unix,
+            sym::test,
             sym::doctest,
+            sym::windows,
+            sym::proc_macro,
+            sym::debug_assertions,
             sym::target_thread_local,
         ] {
             self.values_valid.entry(name).or_default();

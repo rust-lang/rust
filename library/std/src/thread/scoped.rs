@@ -107,6 +107,24 @@ impl ScopeData {
 /// a.push(4);
 /// assert_eq!(x, a.len());
 /// ```
+///
+/// # Lifetimes
+///
+/// Scoped threads involve two lifetimes: `'scope` and `'env`.
+///
+/// The `'scope` lifetime represents the lifetime of the scope itself.
+/// That is: the time during which new scoped threads may be spawned,
+/// and also the time during which they might still be running.
+/// Once this lifetime ends, all scoped threads are joined.
+/// This lifetime starts within the `scope` function, before `f` (the argument to `scope`) starts.
+/// It ends after `f` returns and all scoped threads have been joined, but before `scope` returns.
+///
+/// The `'env` lifetime represents the lifetime of whatever is borrowed by the scoped threads.
+/// This lifetime must outlast the call to `scope`, and thus cannot be smaller than `'scope`.
+/// It can be as small as the call to `scope`, meaning that anything that outlives this call,
+/// such as local variables defined right before the scope, can be borrowed by the scoped threads.
+///
+/// The `'env: 'scope` bound is part of the definition of the `Scope` type.
 #[track_caller]
 pub fn scope<'env, F, T>(f: F) -> T
 where

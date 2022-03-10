@@ -508,6 +508,7 @@ fn close_readwrite_smoke() {
 }
 
 #[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn close_read_wakes_up() {
     each_ip(&mut |addr| {
         let a = t!(TcpListener::bind(&addr));
