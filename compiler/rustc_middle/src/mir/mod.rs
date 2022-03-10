@@ -2214,7 +2214,7 @@ impl<'tcx> Operand<'tcx> {
     /// While this is unlikely in general, it's the normal case of what you'll
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
-        let const_ty = self.constant()?.literal.const_for_ty()?.ty();
+        let const_ty = self.constant()?.literal.ty();
         if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
     }
 }
