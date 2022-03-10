@@ -16,7 +16,6 @@ use crate::option::Option::{None, Some};
 use crate::ptr;
 use crate::result::Result;
 use crate::result::Result::{Err, Ok};
-#[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
 use crate::simd::{self, Simd};
 use crate::slice;
 
@@ -3544,7 +3543,6 @@ impl<T> [T] {
     /// assert_eq!(basic_simd_sum(&numbers[1..99]), 4949.0);
     /// ```
     #[unstable(feature = "portable_simd", issue = "86656")]
-    #[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
     pub fn as_simd<const LANES: usize>(&self) -> (&[T], &[Simd<T, LANES>], &[T])
     where
         Simd<T, LANES>: AsRef<[T; LANES]>,
@@ -3588,7 +3586,6 @@ impl<T> [T] {
     /// be lifted in a way that would make it possible to see panics from this
     /// method for something like `LANES == 3`.
     #[unstable(feature = "portable_simd", issue = "86656")]
-    #[cfg(not(all(miri, doctest)))] // Miri skips SIMD doctests
     pub fn as_simd_mut<const LANES: usize>(&mut self) -> (&mut [T], &mut [Simd<T, LANES>], &mut [T])
     where
         Simd<T, LANES>: AsMut<[T; LANES]>,
