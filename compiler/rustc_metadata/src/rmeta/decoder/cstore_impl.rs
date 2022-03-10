@@ -153,8 +153,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     asyncness => { table }
     fn_arg_names => { table }
     generator_kind => { table }
+    trait_def => { table }
 
-    trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;

@@ -320,6 +320,7 @@ define_tables! {
     asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
     fn_arg_names: Table<DefIndex, Lazy!([Ident])>,
     generator_kind: Table<DefIndex, Lazy!(hir::GeneratorKind)>,
+    trait_def: Table<DefIndex, Lazy!(ty::TraitDef)>,
 
     trait_item_def_id: Table<DefIndex, Lazy<DefId>>,
     inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
@@ -360,7 +361,7 @@ enum EntryKind {
     ProcMacro(MacroKind),
     Closure,
     Generator,
-    Trait(Lazy<TraitData>),
+    Trait,
     Impl,
     AssocFn(Lazy<AssocFnData>),
     AssocType(AssocContainer),
@@ -375,17 +376,6 @@ struct VariantData {
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<DefIndex>,
     is_non_exhaustive: bool,
-}
-
-#[derive(TyEncodable, TyDecodable)]
-struct TraitData {
-    unsafety: hir::Unsafety,
-    paren_sugar: bool,
-    has_auto_impl: bool,
-    is_marker: bool,
-    skip_array_during_method_dispatch: bool,
-    specialization_kind: ty::trait_def::TraitSpecializationKind,
-    must_implement_one_of: Option<Box<[Ident]>>,
 }
 
 /// Describes whether the container of an associated item

@@ -1218,8 +1218,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
     } else {
         ty::trait_def::TraitSpecializationKind::None
     };
-    let def_path_hash = tcx.def_path_hash(def_id);
-
     let must_implement_one_of = tcx
         .get_attrs(def_id)
         .iter()
@@ -1326,7 +1324,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
         is_marker,
         skip_array_during_method_dispatch,
         spec_kind,
-        def_path_hash,
         must_implement_one_of,
     )
 }

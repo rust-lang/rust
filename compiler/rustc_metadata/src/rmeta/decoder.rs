@@ -909,37 +909,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         )
     }
 
-    fn get_trait_def(self, item_id: DefIndex, sess: &Session) -> ty::TraitDef {
-        match self.kind(item_id) {
-            EntryKind::Trait(data) => {
-                let data = data.decode((self, sess));
-                ty::TraitDef::new(
-                    self.local_def_id(item_id),
-                    data.unsafety,
-                    data.paren_sugar,
-                    data.has_auto_impl,
-                    data.is_marker,
-                    data.skip_array_during_method_dispatch,
-                    data.specialization_kind,
-                    self.def_path_hash(item_id),
-                    data.must_implement_one_of,
-                )
-            }
-            EntryKind::TraitAlias => ty::TraitDef::new(
-                self.local_def_id(item_id),
-                hir::Unsafety::Normal,
-                false,
-                false,
-                false,
-                false,
-                ty::trait_def::TraitSpecializationKind::None,
-                self.def_path_hash(item_id),
-                None,
-            ),
-            _ => bug!("def-index does not refer to trait or trait alias"),
-        }
-    }
-
     fn get_variant(self, kind: &EntryKind, index: DefIndex, parent_did: DefId) -> ty::VariantDef {
         let data = match kind {
             EntryKind::Variant(data) | EntryKind::Struct(data) | EntryKind::Union(data) => {
@@ -1172,7 +1141,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     callback(exp);
                 }
             }
-            EntryKind::Enum | EntryKind::Trait(..) => {}
+            EntryKind::Enum | EntryKind::Trait => {}
             _ => bug!("`for_each_module_child` is called on a non-module: {:?}", self.def_kind(id)),
         }
     }
@@ -1187,7 +1156,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn module_expansion(self, id: DefIndex, sess: &Session) -> ExpnId {
         match self.kind(id) {
-            EntryKind::Mod(_) | EntryKind::Enum | EntryKind::Trait(_) => {
+            EntryKind::Mod(_) | EntryKind::Enum | EntryKind::Trait => {
                 self.get_expn_that_defined(id, sess)
             }
             _ => panic!("Expected module, found {:?}", self.local_def_id(id)),
@@ -1396,7 +1365,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             _ => return None,
         }
         def_key.parent.and_then(|parent_index| match self.kind(parent_index) {
-            EntryKind::Trait(_) | EntryKind::TraitAlias => Some(self.local_def_id(parent_index)),
+            EntryKind::Trait | EntryKind::TraitAlias => Some(self.local_def_id(parent_index)),
             _ => None,
         })
     }

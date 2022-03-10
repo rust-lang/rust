@@ -5,7 +5,6 @@ use crate::ty::{Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::definitions::DefPathHash;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -13,10 +12,8 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
-#[derive(HashStable)]
+#[derive(HashStable, Encodable, Decodable)]
 pub struct TraitDef {
-    // We already have the def_path_hash below, no need to hash it twice
-    #[stable_hasher(ignore)]
     pub def_id: DefId,
 
     pub unsafety: hir::Unsafety,
@@ -43,10 +40,6 @@ pub struct TraitDef {
     /// on this trait.
     pub specialization_kind: TraitSpecializationKind,
 
-    /// The ICH of this trait's DefPath, cached here so it doesn't have to be
-    /// recomputed all the time.
-    pub def_path_hash: DefPathHash,
-
     /// List of functions from `#[rustc_must_implement_one_of]` attribute one of which
     /// must be implemented.
     pub must_implement_one_of: Option<Box<[Ident]>>,
@@ -54,7 +47,7 @@ pub struct TraitDef {
 
 /// Whether this trait is treated specially by the standard library
 /// specialization lint.
-#[derive(HashStable, PartialEq, Clone, Copy, TyEncodable, TyDecodable)]
+#[derive(HashStable, PartialEq, Clone, Copy, Encodable, Decodable)]
 pub enum TraitSpecializationKind {
     /// The default. Specializing on this trait is not allowed.
     None,
@@ -92,7 +85,6 @@ impl<'tcx> TraitDef {
         is_marker: bool,
         skip_array_during_method_dispatch: bool,
         specialization_kind: TraitSpecializationKind,
-        def_path_hash: DefPathHash,
         must_implement_one_of: Option<Box<[Ident]>>,
     ) -> TraitDef {
         TraitDef {
@@ -103,7 +95,6 @@ impl<'tcx> TraitDef {
             is_marker,
             skip_array_during_method_dispatch,
             specialization_kind,
-            def_path_hash,
             must_implement_one_of,
         }
     }

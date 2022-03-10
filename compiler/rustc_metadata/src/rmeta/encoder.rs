@@ -1474,19 +1474,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Trait(..) => {
                 let trait_def = self.tcx.trait_def(def_id);
-                let data = TraitData {
-                    unsafety: trait_def.unsafety,
-                    paren_sugar: trait_def.paren_sugar,
-                    has_auto_impl: self.tcx.trait_is_auto(def_id),
-                    is_marker: trait_def.is_marker,
-                    skip_array_during_method_dispatch: trait_def.skip_array_during_method_dispatch,
-                    specialization_kind: trait_def.specialization_kind,
-                    must_implement_one_of: trait_def.must_implement_one_of.clone(),
-                };
+                record!(self.tables.trait_def[def_id] <- trait_def);
 
-                EntryKind::Trait(self.lazy(data))
+                EntryKind::Trait
             }
-            hir::ItemKind::TraitAlias(..) => EntryKind::TraitAlias,
+            hir::ItemKind::TraitAlias(..) => {
+                let trait_def = self.tcx.trait_def(def_id);
+                record!(self.tables.trait_def[def_id] <- trait_def);
+
+                EntryKind::TraitAlias
+            }
             hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {
                 bug!("cannot encode info for item {:?}", item)
             }
