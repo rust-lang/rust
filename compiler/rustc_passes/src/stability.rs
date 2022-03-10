@@ -202,7 +202,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                     self.tcx.sess,
                     *span,
                     E0549,
-                    "rustc_deprecated attribute must be paired with \
+                    "deprecated attribute must be paired with \
                     either stable or unstable attribute"
                 )
                 .emit();

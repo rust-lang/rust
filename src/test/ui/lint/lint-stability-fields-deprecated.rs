@@ -160,7 +160,7 @@ mod this_crate {
         inherit: u8,
         #[unstable(feature = "unstable_test_feature", issue = "none")]
         override1: u8,
-        #[rustc_deprecated(since = "1.0.0", reason = "text")]
+        #[deprecated(since = "1.0.0", note = "text")]
         #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
     }
@@ -169,14 +169,14 @@ mod this_crate {
     struct Stable2(u8,
                    #[stable(feature = "rust1", since = "1.0.0")] u8,
                    #[unstable(feature = "unstable_test_feature", issue = "none")]
-                   #[rustc_deprecated(since = "1.0.0", reason = "text")] u8);
+                   #[deprecated(since = "1.0.0", note = "text")] u8);
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
     struct Unstable {
         inherit: u8,
         #[stable(feature = "rust1", since = "1.0.0")]
         override1: u8,
-        #[rustc_deprecated(since = "1.0.0", reason = "text")]
+        #[deprecated(since = "1.0.0", note = "text")]
         #[unstable(feature = "unstable_test_feature", issue = "none")]
         override2: u8,
     }
@@ -185,10 +185,10 @@ mod this_crate {
     struct Unstable2(u8,
                      #[stable(feature = "rust1", since = "1.0.0")] u8,
                      #[unstable(feature = "unstable_test_feature", issue = "none")]
-                     #[rustc_deprecated(since = "1.0.0", reason = "text")] u8);
+                     #[deprecated(since = "1.0.0", note = "text")] u8);
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     struct Deprecated {
         inherit: u8,
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -198,7 +198,7 @@ mod this_crate {
     }
 
     #[unstable(feature = "unstable_test_feature", issue = "none")]
-    #[rustc_deprecated(since = "1.0.0", reason = "text")]
+    #[deprecated(since = "1.0.0", note = "text")]
     struct Deprecated2(u8,
                        #[stable(feature = "rust1", since = "1.0.0")] u8,
                        #[unstable(feature = "unstable_test_feature", issue = "none")] u8);

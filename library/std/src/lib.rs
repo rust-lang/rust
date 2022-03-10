@@ -263,6 +263,7 @@
 #![feature(doc_cfg)]
 #![feature(doc_cfg_hide)]
 #![feature(rustdoc_internals)]
+#![cfg_attr(not(bootstrap), feature(deprecated_suggestion))]
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]

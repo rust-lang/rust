@@ -4,11 +4,11 @@
 
 #![stable(feature = "rustc_deprecation-in-future-test", since = "1.0.0")]
 
-#[rustc_deprecated(since = "99.99.99", reason = "effectively never")]
+#[deprecated(since = "99.99.99", note = "effectively never")]
 #[stable(feature = "rustc_deprecation-in-future-test", since = "1.0.0")]
 pub struct S1;
 
-#[rustc_deprecated(since = "TBD", reason = "literally never")]
+#[deprecated(since = "TBD", note = "literally never")]
 #[stable(feature = "rustc_deprecation-in-future-test", since = "1.0.0")]
 pub struct S2;
 
