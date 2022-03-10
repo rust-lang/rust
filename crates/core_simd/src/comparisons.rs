@@ -66,3 +66,37 @@ where
         unsafe { Mask::from_int_unchecked(intrinsics::simd_ge(self, other)) }
     }
 }
+
+macro_rules! impl_min_max_vector {
+    { $type:ty } => {
+        impl<const LANES: usize> Simd<$type, LANES>
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+            /// Returns the lane-wise minimum with other
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            #[inline]
+            pub fn min(self, other: Self) -> Self {
+                self.lanes_gt(other).select(other, self)
+            }
+
+            /// Returns the lane-wise maximum with other
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            #[inline]
+            pub fn max(self, other: Self) -> Self {
+                self.lanes_lt(other).select(other, self)
+            }
+        }
+    }
+}
+
+impl_min_max_vector!(i8);
+impl_min_max_vector!(i16);
+impl_min_max_vector!(i32);
+impl_min_max_vector!(i64);
+impl_min_max_vector!(isize);
+impl_min_max_vector!(u8);
+impl_min_max_vector!(u16);
+impl_min_max_vector!(u32);
+impl_min_max_vector!(u64);
+impl_min_max_vector!(usize);

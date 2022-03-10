@@ -222,6 +222,23 @@ macro_rules! impl_signed_tests {
                     assert_eq!(a % b, Vector::<LANES>::splat(0));
                 }
 
+                fn min<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(0);
+                    assert_eq!(a.min(b), a);
+                    let a = Vector::<LANES>::splat(Scalar::MAX);
+                    let b = Vector::<LANES>::splat(0);
+                    assert_eq!(a.min(b), b);
+                }
+
+                fn max<const LANES: usize>() {
+                    let a = Vector::<LANES>::splat(Scalar::MIN);
+                    let b = Vector::<LANES>::splat(0);
+                    assert_eq!(a.max(b), b);
+                    let a = Vector::<LANES>::splat(Scalar::MAX);
+                    let b = Vector::<LANES>::splat(0);
+                    assert_eq!(a.max(b), a);
+                }
             }
 
             test_helpers::test_lanes_panic! {
