@@ -621,7 +621,7 @@ impl<K, V, S> HashMap<K, V, S> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    /// In other words, remove all pairs `(k, v)` for which `f(&k, &mut v)` returns `false`.
     /// The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
