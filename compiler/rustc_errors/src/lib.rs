@@ -8,6 +8,7 @@
 #![feature(backtrace)]
 #![feature(if_let_guard)]
 #![feature(let_else)]
+#![feature(never_type)]
 #![feature(nll)]
 #![feature(adt_const_params)]
 #![allow(incomplete_features)]
@@ -758,7 +759,7 @@ impl Handler {
         &self,
         span: impl Into<MultiSpan>,
         msg: &str,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_, !> {
         let mut result = self.struct_fatal(msg);
         result.set_span(span);
         result
@@ -770,15 +771,15 @@ impl Handler {
         span: impl Into<MultiSpan>,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_, !> {
         let mut result = self.struct_span_fatal(span, msg);
         result.code(code);
         result
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        DiagnosticBuilder::new_guaranteeing_error::<{ Level::Fatal }>(self, msg)
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, !> {
+        DiagnosticBuilder::new_fatal(self, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.

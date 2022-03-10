@@ -3,9 +3,7 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream};
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{
-    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, PResult,
-};
+use rustc_errors::{error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_lexer::unescape::{self, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_session::lint::builtin::{
@@ -104,7 +102,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Report a fatal lexical error with a given span.
-    fn fatal_span(&self, sp: Span, m: &str) -> FatalError {
+    fn fatal_span(&self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
 
@@ -114,7 +112,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Report a fatal error spanning [`from_pos`, `to_pos`).
-    fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> FatalError {
+    fn fatal_span_(&self, from_pos: BytePos, to_pos: BytePos, m: &str) -> ! {
         self.fatal_span(self.mk_sp(from_pos, to_pos), m)
     }
 
@@ -129,10 +127,22 @@ impl<'a> StringReader<'a> {
         to_pos: BytePos,
         m: &str,
         c: char,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a, !> {
         self.sess
             .span_diagnostic
             .struct_span_fatal(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))
+    }
+
+    fn struct_err_span_char(
+        &self,
+        from_pos: BytePos,
+        to_pos: BytePos,
+        m: &str,
+        c: char,
+    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+        self.sess
+            .span_diagnostic
+            .struct_span_err(self.mk_sp(from_pos, to_pos), &format!("{}: {}", m, escaped_char(c)))
     }
 
     /// Detect usages of Unicode codepoints changing the direction of the text on screen and loudly
@@ -311,7 +321,7 @@ impl<'a> StringReader<'a> {
             rustc_lexer::TokenKind::Unknown | rustc_lexer::TokenKind::InvalidIdent => {
                 let c = self.str_from(start).chars().next().unwrap();
                 let mut err =
-                    self.struct_fatal_span_char(start, self.pos, "unknown start of token", c);
+                    self.struct_err_span_char(start, self.pos, "unknown start of token", c);
                 // FIXME: the lexer could be used to turn the ASCII version of unicode homoglyphs,
                 // instead of keeping a table in `check_for_substitution`into the token. Ideally,
                 // this should be inside `rustc_lexer`. However, we should first remove compound
@@ -503,8 +513,7 @@ impl<'a> StringReader<'a> {
             "found invalid character; only `#` is allowed in raw string delimitation",
             bad_char,
         )
-        .emit();
-        FatalError.raise()
+        .emit()
     }
 
     fn report_unterminated_raw_string(
@@ -541,8 +550,7 @@ impl<'a> StringReader<'a> {
             );
         }
 
-        err.emit();
-        FatalError.raise()
+        err.emit()
     }
 
     // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
@@ -601,7 +609,6 @@ impl<'a> StringReader<'a> {
                 found
             ),
         )
-        .raise();
     }
 
     fn validate_literal_escape(

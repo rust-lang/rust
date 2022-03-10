@@ -3,6 +3,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(option_get_or_insert_default)]
 #![recursion_limit = "256"]

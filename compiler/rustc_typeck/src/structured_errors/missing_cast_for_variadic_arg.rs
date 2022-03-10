@@ -21,7 +21,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx> {
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let mut err = self.sess.struct_span_fatal_with_code(
+        let mut err = self.sess.struct_span_err_with_code(
             self.span,
             &format!("can't pass `{}` to variadic function", self.ty),
             self.code(),
