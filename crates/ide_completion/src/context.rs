@@ -12,6 +12,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     RootDatabase,
 };
+use rustc_hash::FxHashSet;
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasName, NameOrNameRef},
@@ -127,7 +128,6 @@ pub(crate) struct CompletionContext<'a> {
 
     /// The parent function of the cursor position if it exists.
     pub(super) function_def: Option<ast::Fn>,
-    pub(super) attr: Option<ast::Attr>,
     /// The parent impl of the cursor position if it exists.
     pub(super) impl_def: Option<ast::Impl>,
     /// The NameLike under the cursor in the original file if it exists.
@@ -142,6 +142,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) lifetime_ctx: Option<LifetimeContext>,
     pub(super) pattern_ctx: Option<PatternContext>,
     pub(super) path_context: Option<PathCompletionCtx>,
+
+    pub(super) existing_derives: FxHashSet<hir::Macro>,
 
     pub(super) locals: Vec<(Name, Local)>,
 
@@ -440,7 +442,6 @@ impl<'a> CompletionContext<'a> {
             expected_name: None,
             expected_type: None,
             function_def: None,
-            attr: None,
             impl_def: None,
             name_syntax: None,
             lifetime_ctx: None,
@@ -453,6 +454,7 @@ impl<'a> CompletionContext<'a> {
             locals,
             incomplete_let: false,
             no_completion_required: false,
+            existing_derives: Default::default(),
         };
         ctx.expand_and_fill(
             original_file.syntax().clone(),
@@ -746,11 +748,6 @@ impl<'a> CompletionContext<'a> {
             (fn_is_prev && !inside_impl_trait_block) || for_is_prev2
         };
 
-        self.attr = self
-            .sema
-            .token_ancestors_with_macros(self.token.clone())
-            .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-            .find_map(ast::Attr::cast);
         self.fake_attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
 
         self.incomplete_let =
@@ -764,9 +761,21 @@ impl<'a> CompletionContext<'a> {
 
         // Overwrite the path kind for derives
         if let Some((original_file, file_with_fake_ident, offset)) = derive_ctx {
+            let attr = self
+                .sema
+                .token_ancestors_with_macros(self.token.clone())
+                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+                .find_map(ast::Attr::cast);
+            if let Some(attr) = &attr {
+                self.existing_derives =
+                    self.sema.resolve_derive_macro(attr).into_iter().flatten().flatten().collect();
+            }
+
             if let Some(ast::NameLike::NameRef(name_ref)) =
                 find_node_at_offset(&file_with_fake_ident, offset)
             {
+                self.name_syntax =
+                    find_node_at_offset(&original_file, name_ref.syntax().text_range().start());
                 if let Some((path_ctx, _)) =
                     Self::classify_name_ref(&self.sema, &original_file, name_ref)
                 {

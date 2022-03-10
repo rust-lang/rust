@@ -764,7 +764,7 @@ mod derive {
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity (use proc_macros::DeriveIdentity)
+                de DeriveIdentity (use proc_macros::DeriveIdentity) pub macro derive_identity
             "#]],
         );
         check_derive(
@@ -805,10 +805,7 @@ use proc_macros::DeriveIdentity;
 //- minicore: derive, copy, clone
 #[derive(proc_macros::$0)] struct Test;
 "#,
-            expect![[r#"
-                de Clone, Copy
-                de Clone
-            "#]],
+            expect![[r#""#]],
         );
         check_derive(
             r#"
@@ -816,10 +813,7 @@ use proc_macros::DeriveIdentity;
 //- minicore: derive, copy, clone
 #[derive(proc_macros::C$0)] struct Test;
 "#,
-            expect![[r#"
-                de Clone, Copy
-                de Clone
-            "#]],
+            expect![[r#""#]],
         );
     }
 }

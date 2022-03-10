@@ -1,32 +1,26 @@
 //! Completion for derives
-use hir::{HasAttrs, Macro, MacroKind};
-use ide_db::{
-    imports::{import_assets::ImportAssets, insert_use::ImportScope},
-    SymbolKind,
-};
+use hir::{HasAttrs, Macro};
+use ide_db::SymbolKind;
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
-use syntax::{SmolStr, SyntaxKind};
+use syntax::SmolStr;
 
 use crate::{
-    completions::flyimport::compute_fuzzy_completion_order_key,
     context::{CompletionContext, PathCompletionCtx, PathKind},
     item::CompletionItem,
-    Completions, ImportEdit,
+    Completions,
 };
 
 pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
-    let attr = match (&ctx.path_context, ctx.attr.as_ref()) {
-        (Some(PathCompletionCtx { kind: Some(PathKind::Derive), .. }), Some(attr)) => attr,
+    match ctx.path_context {
+        // FIXME: Enable qualified completions
+        Some(PathCompletionCtx { kind: Some(PathKind::Derive), qualifier: None, .. }) => (),
         _ => return,
-    };
+    }
 
     let core = ctx.famous_defs().core();
-    let existing_derives: FxHashSet<_> =
-        ctx.sema.resolve_derive_macro(attr).into_iter().flatten().flatten().collect();
 
     for (name, mac) in get_derives_in_scope(ctx) {
-        if existing_derives.contains(&mac) {
+        if ctx.existing_derives.contains(&mac) {
             continue;
         }
 
@@ -41,7 +35,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
                     let mut components = vec![derive_completion.label];
                     components.extend(derive_completion.dependencies.iter().filter(
                         |&&dependency| {
-                            !existing_derives
+                            !ctx.existing_derives
                                 .iter()
                                 .map(|it| it.name(ctx.db))
                                 .any(|it| it.to_smol_str() == dependency)
@@ -66,8 +60,6 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
         }
         item.add_to(acc);
     }
-
-    flyimport_derive(acc, ctx);
 }
 
 fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, Macro)> {
@@ -80,51 +72,6 @@ fn get_derives_in_scope(ctx: &CompletionContext) -> Vec<(hir::Name, Macro)> {
         }
     });
     result
-}
-
-fn flyimport_derive(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
-    if ctx.token.kind() != SyntaxKind::IDENT {
-        return None;
-    };
-    let potential_import_name = ctx.token.to_string();
-    let module = ctx.module?;
-    let parent = ctx.token.parent()?;
-    let user_input_lowercased = potential_import_name.to_lowercase();
-    let import_assets = ImportAssets::for_fuzzy_path(
-        module,
-        None,
-        potential_import_name,
-        &ctx.sema,
-        parent.clone(),
-    )?;
-    let import_scope = ImportScope::find_insert_use_container(&parent, &ctx.sema)?;
-    acc.add_all(
-        import_assets
-            .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind)
-            .into_iter()
-            .filter_map(|import| match import.original_item {
-                hir::ItemInNs::Macros(mac) => Some((import, mac)),
-                _ => None,
-            })
-            .filter(|&(_, mac)| mac.kind(ctx.db) == MacroKind::Derive)
-            .filter(|&(_, mac)| !ctx.is_item_hidden(&hir::ItemInNs::Macros(mac)))
-            .sorted_by_key(|(import, _)| {
-                compute_fuzzy_completion_order_key(&import.import_path, &user_input_lowercased)
-            })
-            .filter_map(|(import, mac)| {
-                let mut item = CompletionItem::new(
-                    SymbolKind::Derive,
-                    ctx.source_range(),
-                    mac.name(ctx.db).to_smol_str(),
-                );
-                item.add_import(ImportEdit { import, scope: import_scope.clone() });
-                if let Some(docs) = mac.docs(ctx.db) {
-                    item.documentation(docs);
-                }
-                Some(item.build())
-            }),
-    );
-    Some(())
 }
 
 struct DeriveDependencies {

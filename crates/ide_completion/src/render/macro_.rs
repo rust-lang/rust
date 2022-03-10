@@ -109,6 +109,7 @@ fn detail(sema: &Semantics<RootDatabase>, macro_: hir::Macro) -> Option<String> 
     let _ = sema.parse_or_expand(file_id);
     let detail = match value {
         Either::Left(node) => macro_label(&node),
+        // FIXME: this should render with the derive name, not the function name
         Either::Right(node) => fn_as_proc_macro_label(&node),
     };
     Some(detail)
