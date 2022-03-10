@@ -1,4 +1,5 @@
 [workspace]
+default-members = ["src/bootstrap"]
 members = [
   "src/bootstrap",
   "compiler/rustc",

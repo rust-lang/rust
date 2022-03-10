@@ -24,7 +24,7 @@ wait-for: 50
 assert-text: ("#toggle-all-docs", "[+]")
 // We check that all <details> are collapsed (except for the impl block ones).
 assert-attribute-false: ("details.rustdoc-toggle:not(.implementors-toggle)", {"open": ""}, ALL)
-assert-attribute: ("details.rustdoc-toggle.implementors-toggle", {"open": ""})
+assert-attribute: ("#implementations-list > details.implementors-toggle", {"open": ""})
 // We now check that the other impl blocks are collapsed.
 assert-attribute-false: (
     "#blanket-implementations-list > details.rustdoc-toggle.implementors-toggle",
