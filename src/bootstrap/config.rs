@@ -66,7 +66,6 @@ pub struct Config {
     pub rustc_error_format: Option<String>,
     pub json_output: bool,
     pub test_compare_mode: bool,
-    pub llvm_libunwind: LlvmLibunwind,
     pub color: Color,
 
     pub on_fail: Option<String>,
@@ -145,6 +144,7 @@ pub struct Config {
     pub rust_profile_generate: Option<String>,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
+    pub llvm_libunwind_default: Option<LlvmLibunwind>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -289,6 +289,7 @@ pub struct Target {
     pub llvm_config: Option<PathBuf>,
     /// Some(path to FileCheck) if one was specified.
     pub llvm_filecheck: Option<PathBuf>,
+    pub llvm_libunwind: Option<LlvmLibunwind>,
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ar: Option<PathBuf>,
@@ -573,6 +574,7 @@ derive_merge! {
         linker: Option<String>,
         llvm_config: Option<String>,
         llvm_filecheck: Option<String>,
+        llvm_libunwind: Option<String>,
         android_ndk: Option<String>,
         sanitizers: Option<bool>,
         profiler: Option<bool>,
@@ -925,10 +927,6 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
-            config.llvm_libunwind = rust
-                .llvm_libunwind
-                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"))
-                .unwrap_or_default();
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel);
             config.description = rust.description;
@@ -951,6 +949,9 @@ impl Config {
             config.rust_thin_lto_import_instr_limit = rust.thin_lto_import_instr_limit;
             set(&mut config.rust_remap_debuginfo, rust.remap_debuginfo);
             set(&mut config.control_flow_guard, rust.control_flow_guard);
+            config.llvm_libunwind_default = rust
+                .llvm_libunwind
+                .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
 
             if let Some(ref backends) = rust.codegen_backends {
                 config.rust_codegen_backends =
@@ -977,6 +978,10 @@ impl Config {
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
+                target.llvm_libunwind = cfg
+                    .llvm_libunwind
+                    .as_ref()
+                    .map(|v| v.parse().expect("failed to parse rust.llvm-libunwind"));
                 if let Some(ref s) = cfg.android_ndk {
                     target.ndk = Some(config.src.join(s));
                 }
@@ -1172,6 +1177,18 @@ impl Config {
 
     pub fn llvm_enabled(&self) -> bool {
         self.rust_codegen_backends.contains(&INTERNER.intern_str("llvm"))
+    }
+
+    pub fn llvm_libunwind(&self, target: TargetSelection) -> LlvmLibunwind {
+        self.target_config
+            .get(&target)
+            .and_then(|t| t.llvm_libunwind)
+            .or(self.llvm_libunwind_default)
+            .unwrap_or(if target.contains("fuchsia") {
+                LlvmLibunwind::InTree
+            } else {
+                LlvmLibunwind::No
+            })
     }
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
