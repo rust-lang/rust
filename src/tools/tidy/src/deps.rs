@@ -340,8 +340,8 @@ fn check_exceptions(
                 }
                 Some(pkg_license) => {
                     if pkg_license.as_str() != *license {
-                        println!("dependency exception `{}` license has changed", name);
-                        println!("    previously `{}` now `{}`", license, pkg_license);
+                        println!("dependency exception `{name}` license has changed");
+                        println!("    previously `{license}` now `{pkg_license}`");
                         println!("    update EXCEPTIONS for the new license");
                         *bad = true;
                     }
@@ -418,7 +418,7 @@ fn check_dependencies(
     if !unapproved.is_empty() {
         tidy_error!(bad, "Dependencies not explicitly permitted:");
         for dep in unapproved {
-            println!("* {}", dep);
+            println!("* {dep}");
         }
     }
 }
@@ -501,7 +501,7 @@ fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
-        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+        .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     node.deps
         .iter()
         .map(|dep| {
@@ -516,8 +516,8 @@ fn deps_of<'a>(metadata: &'a Metadata, pkg_id: &'a PackageId) -> Vec<&'a Package
 fn pkg_from_name<'a>(metadata: &'a Metadata, name: &'static str) -> &'a Package {
     let mut i = metadata.packages.iter().filter(|p| p.name == name);
     let result =
-        i.next().unwrap_or_else(|| panic!("could not find package `{}` in package list", name));
-    assert!(i.next().is_none(), "more than one package found for `{}`", name);
+        i.next().unwrap_or_else(|| panic!("could not find package `{name}` in package list"));
+    assert!(i.next().is_none(), "more than one package found for `{name}`");
     result
 }
 
@@ -545,7 +545,7 @@ fn normal_deps_of_r<'a>(
         .nodes
         .iter()
         .find(|n| &n.id == pkg_id)
-        .unwrap_or_else(|| panic!("could not find `{}` in resolve", pkg_id));
+        .unwrap_or_else(|| panic!("could not find `{pkg_id}` in resolve"));
     for dep in &node.deps {
         normal_deps_of_r(resolve, &dep.pkg, result);
     }

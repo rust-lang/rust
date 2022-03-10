@@ -169,7 +169,7 @@ mod spec_extend;
 /// vec.extend([1, 2, 3].iter().copied());
 ///
 /// for x in &vec {
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 /// assert_eq!(vec, [7, 1, 2, 3]);
 /// ```
@@ -211,7 +211,7 @@ mod spec_extend;
 ///
 /// while let Some(top) = stack.pop() {
 ///     // Prints 3, 2, 1
-///     println!("{}", top);
+///     println!("{top}");
 /// }
 /// ```
 ///
@@ -1297,7 +1297,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[inline(never)]
         fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("swap_remove index (is {}) should be < len (is {})", index, len);
+            panic!("swap_remove index (is {index}) should be < len (is {len})");
         }
 
         let len = self.len();
@@ -1338,7 +1338,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[inline(never)]
         fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("insertion index (is {}) should be <= len (is {})", index, len);
+            panic!("insertion index (is {index}) should be <= len (is {len})");
         }
 
         let len = self.len();
@@ -1397,7 +1397,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[inline(never)]
         #[track_caller]
         fn assert_failed(index: usize, len: usize) -> ! {
-            panic!("removal index (is {}) should be < len (is {})", index, len);
+            panic!("removal index (is {index}) should be < len (is {len})");
         }
 
         let len = self.len();
@@ -1942,7 +1942,7 @@ impl<T, A: Allocator> Vec<T, A> {
         #[cold]
         #[inline(never)]
         fn assert_failed(at: usize, len: usize) -> ! {
-            panic!("`at` split index (is {}) should be <= len (is {})", at, len);
+            panic!("`at` split index (is {at}) should be <= len (is {len})");
         }
 
         if at > self.len() {
@@ -2568,7 +2568,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// let v = vec!["a".to_string(), "b".to_string()];
     /// for s in v.into_iter() {
     ///     // s has type String, not &String
-    ///     println!("{}", s);
+    ///     println!("{s}");
     /// }
     /// ```
     #[inline]

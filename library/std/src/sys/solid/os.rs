@@ -26,7 +26,7 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(errno: i32) -> String {
-    if let Some(name) = error::error_name(errno) { name.to_owned() } else { format!("{}", errno) }
+    if let Some(name) = error::error_name(errno) { name.to_owned() } else { format!("{errno}") }
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {

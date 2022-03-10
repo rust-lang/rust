@@ -1106,7 +1106,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f32_unsuffixed(n: f32) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         let mut repr = n.to_string();
         if !repr.contains('.') {
@@ -1131,7 +1131,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f32_suffixed(n: f32) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         Literal(bridge::client::Literal::f32(&n.to_string()))
     }
@@ -1151,7 +1151,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f64_unsuffixed(n: f64) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         let mut repr = n.to_string();
         if !repr.contains('.') {
@@ -1176,7 +1176,7 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn f64_suffixed(n: f64) -> Literal {
         if !n.is_finite() {
-            panic!("Invalid float literal {}", n);
+            panic!("Invalid float literal {n}");
         }
         Literal(bridge::client::Literal::f64(&n.to_string()))
     }

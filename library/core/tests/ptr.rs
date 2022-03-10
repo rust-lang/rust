@@ -550,7 +550,7 @@ fn dyn_metadata() {
     assert_eq!(meta.align_of(), std::mem::align_of::<Something>());
     assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
 
-    assert!(format!("{:?}", meta).starts_with("DynMetadata(0x"));
+    assert!(format!("{meta:?}").starts_with("DynMetadata(0x"));
 }
 
 #[test]

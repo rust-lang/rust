@@ -1586,17 +1586,17 @@ fn test_components_debug() {
     let mut components = path.components();
 
     let expected = "Components([RootDir, Normal(\"tmp\")])";
-    let actual = format!("{:?}", components);
+    let actual = format!("{components:?}");
     assert_eq!(expected, actual);
 
     let _ = components.next().unwrap();
     let expected = "Components([Normal(\"tmp\")])";
-    let actual = format!("{:?}", components);
+    let actual = format!("{components:?}");
     assert_eq!(expected, actual);
 
     let _ = components.next().unwrap();
     let expected = "Components([])";
-    let actual = format!("{:?}", components);
+    let actual = format!("{components:?}");
     assert_eq!(expected, actual);
 }
 
@@ -1608,17 +1608,17 @@ fn test_iter_debug() {
     let mut iter = path.iter();
 
     let expected = "Iter([\"/\", \"tmp\"])";
-    let actual = format!("{:?}", iter);
+    let actual = format!("{iter:?}");
     assert_eq!(expected, actual);
 
     let _ = iter.next().unwrap();
     let expected = "Iter([\"tmp\"])";
-    let actual = format!("{:?}", iter);
+    let actual = format!("{iter:?}");
     assert_eq!(expected, actual);
 
     let _ = iter.next().unwrap();
     let expected = "Iter([])";
-    let actual = format!("{:?}", iter);
+    let actual = format!("{iter:?}");
     assert_eq!(expected, actual);
 }
 
@@ -1770,7 +1770,7 @@ fn test_windows_absolute() {
 fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
     let prefix = "my/home";
     let mut paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
 
     paths.sort();
 
@@ -1783,7 +1783,7 @@ fn bench_path_cmp_fast_path_buf_sort(b: &mut test::Bencher) {
 fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
 
     let mut set = BTreeSet::new();
 
@@ -1801,7 +1801,7 @@ fn bench_path_cmp_fast_path_long(b: &mut test::Bencher) {
 fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
     let prefix = "my/home";
     let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
 
     let mut set = BTreeSet::new();
 
@@ -1819,7 +1819,7 @@ fn bench_path_cmp_fast_path_short(b: &mut test::Bencher) {
 fn bench_path_hashset(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
 
     let mut set = HashSet::new();
 
@@ -1837,7 +1837,7 @@ fn bench_path_hashset(b: &mut test::Bencher) {
 fn bench_path_hashset_miss(b: &mut test::Bencher) {
     let prefix = "/my/home/is/my/castle/and/my/castle/has/a/rusty/workbench/";
     let paths: Vec<_> =
-        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {}.rs", num))).collect();
+        (0..1000).map(|num| PathBuf::from(prefix).join(format!("file {num}.rs"))).collect();
 
     let mut set = HashSet::new();
 

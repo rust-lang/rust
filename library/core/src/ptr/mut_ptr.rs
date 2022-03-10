@@ -160,7 +160,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_ref() {
-    ///         println!("We got back the value: {}!", val_back);
+    ///         println!("We got back the value: {val_back}!");
     ///     }
     /// }
     /// ```
@@ -176,7 +176,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// unsafe {
     ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {}!", val_back);
+    ///     println!("We got back the value: {val_back}!");
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
@@ -409,7 +409,7 @@ impl<T: ?Sized> *mut T {
     /// let first_value = unsafe { ptr.as_mut().unwrap() };
     /// *first_value = 4;
     /// # assert_eq!(s, [4, 2, 3]);
-    /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
+    /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     ///
     /// # Null-unchecked version
@@ -424,7 +424,7 @@ impl<T: ?Sized> *mut T {
     /// let first_value = unsafe { &mut *ptr };
     /// *first_value = 4;
     /// # assert_eq!(s, [4, 2, 3]);
-    /// println!("{:?}", s); // It'll print: "[4, 2, 3]".
+    /// println!("{s:?}"); // It'll print: "[4, 2, 3]".
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]

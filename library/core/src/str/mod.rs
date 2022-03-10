@@ -104,7 +104,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     // 1. out of bounds
     if begin > s.len() || end > s.len() {
         let oob_index = if begin > s.len() { begin } else { end };
-        panic!("byte index {} is out of bounds of `{}`{}", oob_index, s_trunc, ellipsis);
+        panic!("byte index {oob_index} is out of bounds of `{s_trunc}`{ellipsis}");
     }
 
     // 2. begin <= end
@@ -2446,7 +2446,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_debug() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -2492,7 +2492,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_default() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -2530,7 +2530,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_unicode() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```

@@ -369,7 +369,7 @@ impl<T> Packet<T> {
         match self.channels.fetch_sub(1, Ordering::SeqCst) {
             1 => {}
             n if n > 1 => return,
-            n => panic!("bad number of channels left {}", n),
+            n => panic!("bad number of channels left {n}"),
         }
 
         match self.cnt.swap(DISCONNECTED, Ordering::SeqCst) {

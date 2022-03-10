@@ -230,7 +230,7 @@ fn keyed_event_handle() -> c::HANDLE {
                     0,
                 ) {
                     c::STATUS_SUCCESS => {}
-                    r => panic!("Unable to create keyed event handle: error {}", r),
+                    r => panic!("Unable to create keyed event handle: error {r}"),
                 }
             }
             match HANDLE.compare_exchange(INVALID, handle as usize, Relaxed, Relaxed) {

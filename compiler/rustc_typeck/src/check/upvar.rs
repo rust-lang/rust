@@ -458,10 +458,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// let s: String;  // hir_id_s
     /// let mut p: Point; // his_id_p
     /// let c = || {
-    ///        println!("{}", s);  // L1
+    ///        println!("{s}");  // L1
     ///        p.x += 10;  // L2
-    ///        println!("{}" , p.y) // L3
-    ///        println!("{}", p) // L4
+    ///        println!("{}" , p.y); // L3
+    ///        println!("{p}"); // L4
     ///        drop(s);   // L5
     /// };
     /// ```

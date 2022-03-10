@@ -96,7 +96,7 @@ pub trait Error: Debug + Display {
     /// fn main() {
     ///     match get_super_error() {
     ///         Err(e) => {
-    ///             println!("Error: {}", e);
+    ///             println!("Error: {e}");
     ///             println!("Caused by: {}", e.source().unwrap());
     ///         }
     ///         _ => println!("No error"),
@@ -139,7 +139,7 @@ pub trait Error: Debug + Display {
     /// ```
     /// if let Err(e) = "xc".parse::<u32>() {
     ///     // Print `e` itself, no need for description().
-    ///     eprintln!("Error: {}", e);
+    ///     eprintln!("Error: {e}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1074,7 +1074,7 @@ impl<E> Report<E> {
     ///
     /// let error = SuperError { source: SuperErrorSideKick };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1135,7 +1135,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick { source };
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces the following output:
@@ -1210,7 +1210,7 @@ impl<E> Report<E> {
     /// let source = SuperErrorSideKick::new();
     /// let error = SuperError { source };
     /// let report = Report::new(error).pretty(true).show_backtrace(true);
-    /// eprintln!("Error: {:?}", report);
+    /// eprintln!("Error: {report:?}");
     /// ```
     ///
     /// This example produces something similar to the following output:
@@ -1267,7 +1267,7 @@ where
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1278,7 +1278,7 @@ where
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1289,9 +1289,9 @@ where
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }
@@ -1333,7 +1333,7 @@ impl Report<Box<dyn Error>> {
         let sources = self.error.source().into_iter().flat_map(<dyn Error>::chain);
 
         for cause in sources {
-            write!(f, ": {}", cause)?;
+            write!(f, ": {cause}")?;
         }
 
         Ok(())
@@ -1344,7 +1344,7 @@ impl Report<Box<dyn Error>> {
     fn fmt_multiline(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let error = &self.error;
 
-        write!(f, "{}", error)?;
+        write!(f, "{error}")?;
 
         if let Some(cause) = error.source() {
             write!(f, "\n\nCaused by:")?;
@@ -1355,9 +1355,9 @@ impl Report<Box<dyn Error>> {
                 writeln!(f)?;
                 let mut indented = Indented { inner: f };
                 if multiple {
-                    write!(indented, "{: >4}: {}", ind, error)?;
+                    write!(indented, "{ind: >4}: {error}")?;
                 } else {
-                    write!(indented, "      {}", error)?;
+                    write!(indented, "      {error}")?;
                 }
             }
         }

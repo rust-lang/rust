@@ -1758,7 +1758,7 @@ fn test_ord_absence() {
     }
 
     fn map_debug<K: Debug>(mut map: BTreeMap<K, ()>) {
-        format!("{:?}", map);
+        format!("{map:?}");
         format!("{:?}", map.iter());
         format!("{:?}", map.iter_mut());
         format!("{:?}", map.keys());

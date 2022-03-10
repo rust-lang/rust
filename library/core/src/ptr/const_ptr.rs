@@ -153,7 +153,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_ref() {
-    ///         println!("We got back the value: {}!", val_back);
+    ///         println!("We got back the value: {val_back}!");
     ///     }
     /// }
     /// ```
@@ -169,7 +169,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {}!", val_back);
+    ///     println!("We got back the value: {val_back}!");
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]

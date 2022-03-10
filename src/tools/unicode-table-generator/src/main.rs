@@ -277,7 +277,7 @@ fn main() {
 
     for (name, contents) in modules {
         table_file.push_str("#[rustfmt::skip]\n");
-        table_file.push_str(&format!("pub mod {} {{\n", name));
+        table_file.push_str(&format!("pub mod {name} {{\n"));
         for line in contents.lines() {
             if !line.trim().is_empty() {
                 table_file.push_str("    ");
@@ -290,7 +290,7 @@ fn main() {
 
     std::fs::write(&write_location, format!("{}\n", table_file.trim_end())).unwrap();
 
-    println!("Total table sizes: {} bytes", total_bytes);
+    println!("Total table sizes: {total_bytes} bytes");
 }
 
 fn version() -> String {
@@ -308,7 +308,7 @@ fn version() -> String {
         readme[start..end].split('.').map(|v| v.parse::<u32>().expect(&v)).collect::<Vec<_>>();
     let [major, minor, micro] = [version[0], version[1], version[2]];
 
-    out.push_str(&format!("({}, {}, {});\n", major, minor, micro));
+    out.push_str(&format!("({major}, {minor}, {micro});\n"));
     out
 }
 
@@ -322,7 +322,7 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
         } else {
             out.push_str(line.trim_end());
             out.push('\n');
-            line = format!("    {}", piece);
+            line = format!("    {piece}");
         }
     }
     out.push_str(line.trim_end());
@@ -335,7 +335,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     s.push_str("#![allow(incomplete_features, unused)]\n");
     s.push_str("#![feature(const_generics)]\n\n");
     s.push_str("\n#[allow(unused)]\nuse std::hint;\n");
-    s.push_str(&format!("#[path = \"{}\"]\n", data_path));
+    s.push_str(&format!("#[path = \"{data_path}\"]\n"));
     s.push_str("mod unicode_data;\n\n");
 
     s.push_str("\nfn main() {\n");

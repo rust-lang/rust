@@ -142,8 +142,7 @@ fn write_close() {
                     e.kind() == ErrorKind::ConnectionReset
                         || e.kind() == ErrorKind::BrokenPipe
                         || e.kind() == ErrorKind::ConnectionAborted,
-                    "unknown error: {}",
-                    e
+                    "unknown error: {e}"
                 );
             }
         }
@@ -655,7 +654,7 @@ fn debug() {
         inner_name,
         render_inner(&listener)
     );
-    assert_eq!(format!("{:?}", listener), compare);
+    assert_eq!(format!("{listener:?}"), compare);
 
     let stream = t!(TcpStream::connect(&("localhost", socket_addr.port())));
     let compare = format!(
@@ -665,7 +664,7 @@ fn debug() {
         inner_name,
         render_inner(&stream)
     );
-    assert_eq!(format!("{:?}", stream), compare);
+    assert_eq!(format!("{stream:?}"), compare);
 }
 
 // FIXME: re-enabled openbsd tests once their socket timeout code
@@ -832,7 +831,7 @@ fn set_nonblocking() {
     match stream.read(&mut buf) {
         Ok(_) => panic!("expected error"),
         Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-        Err(e) => panic!("unexpected error {}", e),
+        Err(e) => panic!("unexpected error {e}"),
     }
 }
 
@@ -862,7 +861,7 @@ fn peek() {
         match c.peek(&mut b) {
             Ok(_) => panic!("expected error"),
             Err(ref e) if e.kind() == ErrorKind::WouldBlock => {}
-            Err(e) => panic!("unexpected error {}", e),
+            Err(e) => panic!("unexpected error {e}"),
         }
         t!(txdone.send(()));
     })

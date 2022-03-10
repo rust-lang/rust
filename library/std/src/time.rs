@@ -191,7 +191,7 @@ pub struct Instant(time::Instant);
 ///        }
 ///        Err(e) => {
 ///            // an error occurred!
-///            println!("Error: {:?}", e);
+///            println!("Error: {e:?}");
 ///        }
 ///    }
 /// }
@@ -513,7 +513,7 @@ impl SystemTime {
     /// let new_sys_time = SystemTime::now();
     /// let difference = new_sys_time.duration_since(sys_time)
     ///     .expect("Clock may have gone backwards");
-    /// println!("{:?}", difference);
+    /// println!("{difference:?}");
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
     pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, SystemTimeError> {

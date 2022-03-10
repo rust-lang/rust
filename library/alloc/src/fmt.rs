@@ -416,9 +416,9 @@
 //! fn main() {
 //!     let myvector = Vector2D { x: 3, y: 4 };
 //!
-//!     println!("{}", myvector);       // => "(3, 4)"
-//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
-//!     println!("{:10.3b}", myvector); // => "     5.000"
+//!     println!("{myvector}");       // => "(3, 4)"
+//!     println!("{myvector:?}");     // => "Vector2D {x: 3, y:4}"
+//!     println!("{myvector:10.3b}"); // => "     5.000"
 //! }
 //! ```
 //!

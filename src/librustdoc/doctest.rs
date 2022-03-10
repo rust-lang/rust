@@ -197,7 +197,7 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                 .to_string();
             let uext = UnusedExterns { lint_level, unused_extern_names };
             let unused_extern_json = serde_json::to_string(&uext).unwrap();
-            eprintln!("{}", unused_extern_json);
+            eprintln!("{unused_extern_json}");
         }
     }
 
@@ -430,7 +430,7 @@ fn run_test(
                 // We used to check if the output contained "error[{}]: " but since we added the
                 // colored output, we can't anymore because of the color escape characters before
                 // the ":".
-                lang_string.error_codes.retain(|err| !out.contains(&format!("error[{}]", err)));
+                lang_string.error_codes.retain(|err| !out.contains(&format!("error[{err}]")));
 
                 if !lang_string.error_codes.is_empty() {
                     return Err(TestFailure::MissingErrorCodes(lang_string.error_codes));
@@ -510,7 +510,7 @@ crate fn make_test(
 
     // Next, any attributes that came from the crate root via #![doc(test(attr(...)))].
     for attr in &opts.attrs {
-        prog.push_str(&format!("#![{}]\n", attr));
+        prog.push_str(&format!("#![{attr}]\n"));
         line_offset += 1;
     }
 
@@ -647,7 +647,7 @@ crate fn make_test(
             // parse the source, but only has false positives, not false
             // negatives.
             if s.contains(crate_name) {
-                prog.push_str(&format!("extern crate r#{};\n", crate_name));
+                prog.push_str(&format!("extern crate r#{crate_name};\n"));
                 line_offset += 1;
             }
         }
@@ -661,7 +661,7 @@ crate fn make_test(
         // Give each doctest main function a unique name.
         // This is for example needed for the tooling around `-C instrument-coverage`.
         let inner_fn_name = if let Some(test_id) = test_id {
-            format!("_doctest_main_{}", test_id)
+            format!("_doctest_main_{test_id}")
         } else {
             "_inner".into()
         };
@@ -669,15 +669,14 @@ crate fn make_test(
         let (main_pre, main_post) = if returns_result {
             (
                 format!(
-                    "fn main() {{ {}fn {}() -> Result<(), impl core::fmt::Debug> {{\n",
-                    inner_attr, inner_fn_name
+                    "fn main() {{ {inner_attr}fn {inner_fn_name}() -> Result<(), impl core::fmt::Debug> {{\n",
                 ),
-                format!("\n}} {}().unwrap() }}", inner_fn_name),
+                format!("\n}} {inner_fn_name}().unwrap() }}"),
             )
         } else if test_id.is_some() {
             (
-                format!("fn main() {{ {}fn {}() {{\n", inner_attr, inner_fn_name),
-                format!("\n}} {}() }}", inner_fn_name),
+                format!("fn main() {{ {inner_attr}fn {inner_fn_name}() {{\n",),
+                format!("\n}} {inner_fn_name}() }}"),
             )
         } else {
             ("fn main() {\n".into(), "\n}".into())
@@ -695,7 +694,7 @@ crate fn make_test(
         prog.extend([&main_pre, everything_else, &main_post].iter().cloned());
     }
 
-    debug!("final doctest:\n{}", prog);
+    debug!("final doctest:\n{prog}");
 
     (prog, line_offset, supports_color)
 }
@@ -763,9 +762,9 @@ fn partition_source(s: &str) -> (String, String, String) {
         }
     }
 
-    debug!("before:\n{}", before);
-    debug!("crates:\n{}", crates);
-    debug!("after:\n{}", after);
+    debug!("before:\n{before}");
+    debug!("crates:\n{crates}");
+    debug!("after:\n{after}");
 
     (before, after, crates)
 }
@@ -940,7 +939,7 @@ impl Tester for Collector {
             )
         };
 
-        debug!("creating test {}: {}", name, test);
+        debug!("creating test {name}: {test}");
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
@@ -994,19 +993,19 @@ impl Tester for Collector {
                             eprint!("Some expected error codes were not found: {:?}", codes);
                         }
                         TestFailure::ExecutionError(err) => {
-                            eprint!("Couldn't run the test: {}", err);
+                            eprint!("Couldn't run the test: {err}");
                             if err.kind() == io::ErrorKind::PermissionDenied {
                                 eprint!(" - maybe your tempdir is mounted with noexec?");
                             }
                         }
                         TestFailure::ExecutionFailure(out) => {
                             let reason = if let Some(code) = out.status.code() {
-                                format!("exit code {}", code)
+                                format!("exit code {code}")
                             } else {
                                 String::from("terminated by signal")
                             };
 
-                            eprintln!("Test executable failed ({}).", reason);
+                            eprintln!("Test executable failed ({reason}).");
 
                             // FIXME(#12309): An unfortunate side-effect of capturing the test
                             // executable's output is that the relative ordering between the test's
@@ -1024,11 +1023,11 @@ impl Tester for Collector {
                                 eprintln!();
 
                                 if !stdout.is_empty() {
-                                    eprintln!("stdout:\n{}", stdout);
+                                    eprintln!("stdout:\n{stdout}");
                                 }
 
                                 if !stderr.is_empty() {
-                                    eprintln!("stderr:\n{}", stderr);
+                                    eprintln!("stderr:\n{stderr}");
                                 }
                             }
                         }

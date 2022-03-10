@@ -41,7 +41,7 @@ use crate::mem::MaybeUninit;
 ///
 ///     let mut line = String::new();
 ///     let len = reader.read_line(&mut line)?;
-///     println!("First line is {} bytes long", len);
+///     println!("First line is {len} bytes long");
 ///     Ok(())
 /// }
 /// ```

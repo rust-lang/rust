@@ -829,7 +829,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[ast::Attrib
                             .values
                             .insert(a as _, Argument { name, type_: *ty, is_const: true });
                     } else {
-                        panic!("unexpected non const in position {}", pos);
+                        panic!("unexpected non const in position {pos}");
                     }
                 }
                 _ => panic!("invalid arg index"),

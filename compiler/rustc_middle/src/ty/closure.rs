@@ -281,7 +281,7 @@ pub struct CaptureInfo {
     /// let mut t = (0,1);
     ///
     /// let c = || {
-    ///     println!("{}",t); // L1
+    ///     println!("{t}"); // L1
     ///     t.1 = 4; // L2
     /// };
     /// ```

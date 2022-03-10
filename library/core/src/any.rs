@@ -62,7 +62,7 @@
 //!             println!("String ({}): {}", as_string.len(), as_string);
 //!         }
 //!         None => {
-//!             println!("{:?}", value);
+//!             println!("{value:?}");
 //!         }
 //!     }
 //! }

@@ -915,7 +915,7 @@ impl Command {
     ///                      .status()
     ///                      .expect("failed to execute process");
     ///
-    /// println!("process finished with: {}", status);
+    /// println!("process finished with: {status}");
     ///
     /// assert!(status.success());
     /// ```
@@ -1434,7 +1434,7 @@ impl ExitStatus {
     ///                      .status()
     ///                      .expect("ls could not be executed");
     ///
-    /// println!("ls: {}", status);
+    /// println!("ls: {status}");
     /// status.exit_ok().expect_err("/dev/nonexistent could be listed!");
     /// # } // cfg!(unix)
     /// ```
@@ -1459,7 +1459,7 @@ impl ExitStatus {
     /// if status.success() {
     ///     println!("'projects/' directory created");
     /// } else {
-    ///     println!("failed to create 'projects/' directory: {}", status);
+    ///     println!("failed to create 'projects/' directory: {status}");
     /// }
     /// ```
     #[must_use]
@@ -1490,7 +1490,7 @@ impl ExitStatus {
     ///                      .expect("failed to execute mkdir");
     ///
     /// match status.code() {
-    ///     Some(code) => println!("Exited with status code: {}", code),
+    ///     Some(code) => println!("Exited with status code: {code}"),
     ///     None       => println!("Process terminated by signal")
     /// }
     /// ```
@@ -1806,13 +1806,13 @@ impl Child {
     /// let mut child = Command::new("ls").spawn().unwrap();
     ///
     /// match child.try_wait() {
-    ///     Ok(Some(status)) => println!("exited with: {}", status),
+    ///     Ok(Some(status)) => println!("exited with: {status}"),
     ///     Ok(None) => {
     ///         println!("status not ready yet, let's really wait");
     ///         let res = child.wait();
-    ///         println!("result: {:?}", res);
+    ///         println!("result: {res:?}");
     ///     }
-    ///     Err(e) => println!("error attempting to wait: {}", e),
+    ///     Err(e) => println!("error attempting to wait: {e}"),
     /// }
     /// ```
     #[stable(feature = "process_try_wait", since = "1.18.0")]
@@ -1912,7 +1912,7 @@ impl Child {
 ///     std::process::exit(match run_app() {
 ///         Ok(_) => 0,
 ///         Err(err) => {
-///             eprintln!("error: {:?}", err);
+///             eprintln!("error: {err:?}");
 ///             1
 ///         }
 ///     });
@@ -2071,7 +2071,7 @@ impl Termination for ! {
 impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> ExitCode {
         let Err(err) = self;
-        eprintln!("Error: {:?}", err);
+        eprintln!("Error: {err:?}");
         ExitCode::FAILURE.report()
     }
 }

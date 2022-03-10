@@ -22,7 +22,7 @@ pub struct Scope<'scope, 'env: 'scope> {
     /// std::thread::scope(|s| {
     ///     s.spawn(|| {
     ///         let a = String::from("abcd");
-    ///         s.spawn(|| println!("{:?}", a)); // might run after `a` is dropped
+    ///         s.spawn(|| println!("{a:?}")); // might run after `a` is dropped
     ///     });
     /// });
     /// ```

@@ -100,7 +100,7 @@ fn test_debug_fmt() {
     assert_eq!("[0, 1]", format!("{:?}", vec2));
 
     let slice: &[isize] = &[4, 5];
-    assert_eq!("[4, 5]", format!("{:?}", slice));
+    assert_eq!("[4, 5]", format!("{slice:?}"));
 }
 
 #[test]
@@ -918,7 +918,7 @@ fn test_into_iter_as_mut_slice() {
 fn test_into_iter_debug() {
     let vec = vec!['a', 'b', 'c'];
     let into_iter = vec.into_iter();
-    let debug = format!("{:?}", into_iter);
+    let debug = format!("{into_iter:?}");
     assert_eq!(debug, "IntoIter(['a', 'b', 'c'])");
 }
 
@@ -2336,7 +2336,7 @@ fn test_vec_dedup_panicking() {
     let ok = vec.iter().zip(expected.iter()).all(|(x, y)| x.index == y.index);
 
     if !ok {
-        panic!("expected: {:?}\ngot: {:?}\n", expected, vec);
+        panic!("expected: {expected:?}\ngot: {vec:?}\n");
     }
 }
 

@@ -121,9 +121,7 @@ fn windows_env_unicode_case() {
             assert_eq!(
                 env::var(key).ok(),
                 value.map(|s| s.to_string_lossy().into_owned()),
-                "command environment mismatch: {} {}",
-                a,
-                b
+                "command environment mismatch: {a} {b}",
             );
         }
     }

@@ -595,10 +595,10 @@ impl TcpStream {
     ///             // via platform-specific APIs such as epoll or IOCP
     ///             wait_for_fd();
     ///         }
-    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///         Err(e) => panic!("encountered IO error: {e}"),
     ///     };
     /// };
-    /// println!("bytes: {:?}", buf);
+    /// println!("bytes: {buf:?}");
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -799,8 +799,8 @@ impl TcpListener {
     ///
     /// let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     /// match listener.accept() {
-    ///     Ok((_socket, addr)) => println!("new client: {:?}", addr),
-    ///     Err(e) => println!("couldn't get client: {:?}", e),
+    ///     Ok((_socket, addr)) => println!("new client: {addr:?}"),
+    ///     Err(e) => println!("couldn't get client: {e:?}"),
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -991,7 +991,7 @@ impl TcpListener {
     ///             wait_for_fd();
     ///             continue;
     ///         }
-    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///         Err(e) => panic!("encountered IO error: {e}"),
     ///     }
     /// }
     /// ```

@@ -653,7 +653,7 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
 /// map.insert(8, "c");
 ///
 /// for (key, value) in map.range((Excluded(3), Included(8))) {
-///     println!("{}: {}", key, value);
+///     println!("{key}: {value}");
 /// }
 ///
 /// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
