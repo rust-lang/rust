@@ -7,7 +7,6 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
 };
-use parser::SyntaxKind::WHITESPACE;
 use stdx::format_to;
 use syntax::{
     algo::find_node_at_range,
@@ -16,7 +15,9 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         make, HasName, HasVisibility,
     },
-    match_ast, ted, AstNode, SourceFile, SyntaxNode, TextRange,
+    match_ast, ted, AstNode, SourceFile,
+    SyntaxKind::WHITESPACE,
+    SyntaxNode, TextRange,
 };
 
 use crate::{AssistContext, Assists};
