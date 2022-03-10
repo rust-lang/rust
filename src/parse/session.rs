@@ -218,6 +218,15 @@ impl ParseSess {
         self.parse_sess.source_map().lookup_char_pos(pos).line
     }
 
+    // TODO(calebcartwright): Preemptive, currently unused addition
+    // that will be used to support formatting scenarios that take original
+    // positions into account
+    /// Determines whether two byte positions are in the same source line.
+    #[allow(dead_code)]
+    pub(crate) fn byte_pos_same_line(&self, a: BytePos, b: BytePos) -> bool {
+        self.line_of_byte_pos(a) == self.line_of_byte_pos(b)
+    }
+
     pub(crate) fn span_to_debug_info(&self, span: Span) -> String {
         self.parse_sess.source_map().span_to_diagnostic_string(span)
     }
