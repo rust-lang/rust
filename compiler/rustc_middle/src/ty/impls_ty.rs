@@ -78,7 +78,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for ty::subst::GenericArgKin
             // that high.
             ty::subst::GenericArgKind::Type(ty) => ty.hash_stable(hcx, hasher),
             ty::subst::GenericArgKind::Const(ct) => {
-                0xF3u8.hash_stable(hcx, hasher).hash_stable(hcx, hasher);
+                0xF3u8.hash_stable(hcx, hasher);
                 ct.hash_stable(hcx, hasher);
             }
             ty::subst::GenericArgKind::Lifetime(lt) => {
