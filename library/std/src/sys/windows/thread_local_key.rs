@@ -124,6 +124,35 @@ unsafe fn register_dtor(key: Key, dtor: Dtor) {
 }
 
 // -------------------------------------------------------------------------
+// Keyless dtor registration
+
+// Using a per-thread list avoids the problems in synchronizing global state.
+#[thread_local]
+#[cfg(target_thread_local)]
+static mut DESTRUCTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
+
+#[cfg(target_thread_local)]
+pub unsafe fn register_keyless_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
+    DESTRUCTORS.push((t, dtor));
+}
+
+#[cfg(target_thread_local)]
+/// Runs destructors. This should not be called until thread exit.
+unsafe fn run_keyless_dtors() {
+    // Drop all the destructors.
+    //
+    // Note: While this is potentially an infinite loop, it *should* be
+    // the case that this loop always terminates because we provide the
+    // guarantee that a TLS key cannot be set after it is flagged for
+    // destruction.
+    while let Some((ptr, dtor)) = DESTRUCTORS.pop() {
+        (dtor)(ptr);
+    }
+    // We're done so free the memory.
+    DESTRUCTORS = Vec::new();
+}
+
+// -------------------------------------------------------------------------
 // Where the Magic (TM) Happens
 //
 // If you're looking at this code, and wondering "what is this doing?",
@@ -197,7 +226,7 @@ unsafe extern "system" fn on_tls_callback(h: c::LPVOID, dwReason: c::DWORD, pv: 
     if dwReason == c::DLL_THREAD_DETACH || dwReason == c::DLL_PROCESS_DETACH {
         run_dtors();
         #[cfg(target_thread_local)]
-        super::thread_local_dtor::run_keyless_dtors();
+        run_keyless_dtors();
     }
 
     // See comments above for what this is doing. Note that we don't need this
