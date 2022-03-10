@@ -1657,6 +1657,31 @@ impl EmitterWriter {
             let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
             draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
             let mut lines = complete.lines();
+            if lines.clone().next().is_none() {
+                // Account for a suggestion to completely remove a line(s) with whitespace (#94192).
+                let line_end = sm.lookup_char_pos(parts[0].span.hi()).line;
+                for line in line_start..=line_end {
+                    buffer.puts(
+                        row_num - 1 + line - line_start,
+                        0,
+                        &self.maybe_anonymized(line),
+                        Style::LineNumber,
+                    );
+                    buffer.puts(
+                        row_num - 1 + line - line_start,
+                        max_line_num_len + 1,
+                        "- ",
+                        Style::Removal,
+                    );
+                    buffer.puts(
+                        row_num - 1 + line - line_start,
+                        max_line_num_len + 3,
+                        &normalize_whitespace(&*file_lines.file.get_line(line - 1).unwrap()),
+                        Style::Removal,
+                    );
+                }
+                row_num += line_end - line_start;
+            }
             for (line_pos, (line, highlight_parts)) in
                 lines.by_ref().zip(highlights).take(MAX_SUGGESTION_HIGHLIGHT_LINES).enumerate()
             {
