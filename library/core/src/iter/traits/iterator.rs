@@ -35,6 +35,11 @@ fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
               to have a bounded `RangeInclusive`: `0..=end`"
     ),
     on(
+        _Self = "[]",
+        label = "`{Self}` is not an iterator; try calling `.into_iter()` or `.iter()`"
+    ),
+    on(_Self = "&[]", label = "`{Self}` is not an iterator; try calling `.iter()`"),
+    on(
         _Self = "&str",
         label = "`{Self}` is not an iterator; try calling `.chars()` or `.bytes()`"
     ),

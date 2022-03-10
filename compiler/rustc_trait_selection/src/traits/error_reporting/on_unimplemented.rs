@@ -11,7 +11,7 @@ use std::iter;
 
 use super::InferCtxtPrivExt;
 
-crate trait InferCtxtExt<'tcx> {
+pub trait InferCtxtExt<'tcx> {
     /*private*/
     fn impl_similar_to(
         &self,
@@ -202,6 +202,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             // Allow targeting all integers using `{integral}`, even if the exact type was resolved
             if self_ty.is_integral() {
                 flags.push((sym::_Self, Some("{integral}".to_owned())));
+            }
+
+            if self_ty.is_array_slice() {
+                flags.push((sym::_Self, Some("&[]".to_owned())));
             }
 
             if let ty::Array(aty, len) = self_ty.kind() {
