@@ -208,12 +208,12 @@ mod macros {
     macro_rules! concat { }
 }
 "#,
-            expect![[r##"
+            expect![[r#"
                 fn f()        fn()
-                ma concat!(…) #[macro_export] macro_rules! concat
+                ma concat!(…) macro_rules! concat
                 md std
                 bt u32
-            "##]],
+            "#]],
         );
     }
 

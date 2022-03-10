@@ -421,10 +421,10 @@ macro_rules! foo { () => {} }
 
 fn main() { let _ = crate::$0 }
 "#,
-            expect![[r##"
+            expect![[r#"
                 fn main()  fn()
-                ma foo!(…) #[macro_export] macro_rules! foo
-            "##]],
+                ma foo!(…) macro_rules! foo
+            "#]],
         );
     }
 

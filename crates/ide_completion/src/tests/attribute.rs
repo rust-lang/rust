@@ -62,7 +62,7 @@ fn proc_macros_qualified() {
 struct Foo;
 "#,
         expect![[r#"
-            at identity pub macro identity
+            at identity proc_macro identity
         "#]],
     )
 }
@@ -302,7 +302,7 @@ struct Foo;
 "#,
         expect![[r#"
             md core
-            at derive           pub macro derive
+            at derive           macro derive
             kw self::
             kw super::
             kw crate::
@@ -689,12 +689,12 @@ mod derive {
 "#,
             expect![[r#"
                 md core
-                de Default                pub macro Default
+                de Default                macro Default
                 de Clone, Copy
-                de PartialEq              pub macro PartialEq
+                de PartialEq              macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
-                de Clone                  pub macro Clone
+                de Clone                  macro Clone
                 de PartialEq, PartialOrd
                 kw self::
                 kw super::
@@ -712,11 +712,11 @@ mod derive {
 "#,
             expect![[r#"
                 md core
-                de Default             pub macro Default
+                de Default             macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone               pub macro Clone
+                de Clone               macro Clone
                 de PartialOrd
                 kw self::
                 kw super::
@@ -734,17 +734,17 @@ mod derive {
 "#,
             expect![[r#"
                 md core
-                de Default             pub macro Default
+                de Default             macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone               pub macro Clone
+                de Clone               macro Clone
                 de PartialOrd
                 kw self::
                 kw super::
                 kw crate::
             "#]],
-        )
+        );
     }
 
     #[test]
@@ -761,7 +761,7 @@ mod derive {
                 kw self::
                 kw super::
                 kw crate::
-                de DeriveIdentity (use proc_macros::DeriveIdentity) pub macro derive_identity
+                de DeriveIdentity (use proc_macros::DeriveIdentity) proc_macro DeriveIdentity
             "#]],
         );
         check_derive(
@@ -772,7 +772,7 @@ use proc_macros::DeriveIdentity;
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity pub macro derive_identity
+                de DeriveIdentity proc_macro DeriveIdentity
                 md proc_macros
                 md core
                 kw self::
@@ -808,7 +808,7 @@ use proc_macros::DeriveIdentity;
 #[derive(proc_macros::$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity pub macro derive_identity
+                de DeriveIdentity proc_macro DeriveIdentity
             "#]],
         );
         check_derive(
@@ -818,7 +818,7 @@ use proc_macros::DeriveIdentity;
 #[derive(proc_macros::C$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity pub macro derive_identity
+                de DeriveIdentity proc_macro DeriveIdentity
             "#]],
         );
     }

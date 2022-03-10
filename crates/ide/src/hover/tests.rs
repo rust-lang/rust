@@ -4102,16 +4102,16 @@ identity!{
 }
 "#,
         expect![[r#"
-                *Copy*
+            *Copy*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub macro Copy
-                ```
-            "#]],
+            ```rust
+            macro Copy
+            ```
+        "#]],
     );
 }
 
@@ -4126,16 +4126,16 @@ pub macro Copy {}
 struct Foo;
 "#,
         expect![[r#"
-                *Copy*
+            *Copy*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub macro Copy
-                ```
-            "#]],
+            ```rust
+            macro Copy
+            ```
+        "#]],
     );
     check(
         r#"
@@ -4148,16 +4148,16 @@ mod foo {
 struct Foo;
 "#,
         expect![[r#"
-                *Copy*
+            *Copy*
 
-                ```rust
-                test::foo
-                ```
+            ```rust
+            test::foo
+            ```
 
-                ```rust
-                pub macro Copy
-                ```
-            "#]],
+            ```rust
+            macro Copy
+            ```
+        "#]],
     );
 }
 
