@@ -1,5 +1,6 @@
 use super::super::navigate;
 use super::*;
+use crate::alloc::Global;
 use crate::fmt::Debug;
 use crate::string::String;
 
@@ -67,10 +68,10 @@ fn test_splitpoint() {
 
 #[test]
 fn test_partial_eq() {
-    let mut root1 = NodeRef::new_leaf();
+    let mut root1 = NodeRef::new_leaf(&Global);
     root1.borrow_mut().push(1, ());
-    let mut root1 = NodeRef::new_internal(root1.forget_type()).forget_type();
-    let root2 = Root::new();
+    let mut root1 = NodeRef::new_internal(root1.forget_type(), &Global).forget_type();
+    let root2 = Root::new(&Global);
     root1.reborrow().assert_back_pointers();
     root2.reborrow().assert_back_pointers();
 
@@ -86,9 +87,9 @@ fn test_partial_eq() {
     assert!(top_edge_1 == top_edge_1);
     assert!(top_edge_1 != top_edge_2);
 
-    root1.pop_internal_level();
-    unsafe { root1.into_dying().deallocate_and_ascend() };
-    unsafe { root2.into_dying().deallocate_and_ascend() };
+    root1.pop_internal_level(&Global);
+    unsafe { root1.into_dying().deallocate_and_ascend(&Global) };
+    unsafe { root2.into_dying().deallocate_and_ascend(&Global) };
 }
 
 #[test]
