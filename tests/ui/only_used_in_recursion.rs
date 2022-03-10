@@ -104,4 +104,19 @@ fn ignore2(a: usize, _b: usize) -> usize {
     if a == 1 { 1 } else { ignore2(a - 1, _b) }
 }
 
+fn f1(a: u32) -> u32 {
+    a
+}
+
+fn f2(a: u32) -> u32 {
+    f1(a)
+}
+
+fn inner_fn(a: u32) -> u32 {
+    fn inner_fn(a: u32) -> u32 {
+        a
+    }
+    inner_fn(a)
+}
+
 fn main() {}

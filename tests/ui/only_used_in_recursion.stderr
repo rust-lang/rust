@@ -67,10 +67,16 @@ LL |     fn method2(&self, a: usize, b: usize) -> usize {
    |                                 ^ help: if this is intentional, prefix with an underscore: `_b`
 
 error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:90:24
+   |
+LL |     fn hello(a: usize, b: usize) -> usize {
+   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
   --> $DIR/only_used_in_recursion.rs:94:32
    |
 LL |     fn hello2(&self, a: usize, b: usize) -> usize {
    |                                ^ help: if this is intentional, prefix with an underscore: `_b`
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

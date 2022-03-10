@@ -5,12 +5,13 @@ use itertools::{izip, Itertools};
 use rustc_ast::{walk_list, Label, Mutability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
-use rustc_hir::def::Res;
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::{
-    Arm, Block, Body, Expr, ExprKind, Guard, HirId, Let, Local, Pat, PatKind, Path, PathSegment, QPath, Stmt, StmtKind,
-    UnOp,
+    Arm, Block, Body, Expr, ExprKind, Guard, HirId, ImplicitSelfKind, Let, Local, Pat, PatKind, Path, PathSegment,
+    QPath, Stmt, StmtKind, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -94,13 +95,15 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
         &mut self,
         cx: &LateContext<'tcx>,
         kind: FnKind<'tcx>,
-        _: &'tcx rustc_hir::FnDecl<'tcx>,
+        decl: &'tcx rustc_hir::FnDecl<'tcx>,
         body: &'tcx Body<'tcx>,
         _: Span,
         id: HirId,
     ) {
         if let FnKind::ItemFn(ident, ..) | FnKind::Method(ident, ..) = kind {
-            let data = cx.tcx.def_path(cx.tcx.hir().local_def_id(id).to_def_id()).data;
+            let def_id = id.owner.to_def_id();
+            let data = cx.tcx.def_path(def_id).data;
+
             if data.len() > 1 {
                 match data.get(data.len() - 2) {
                     Some(DisambiguatedDefPathData {
@@ -110,6 +113,8 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     _ => {},
                 }
             }
+
+            let has_self = !matches!(decl.implicit_self, ImplicitSelfKind::None);
 
             let ty_res = cx.typeck_results();
             let param_span = body
@@ -122,10 +127,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                     });
                     v
                 })
-                .skip(match kind {
-                    FnKind::Method(..) => 1,
-                    _ => 0,
-                })
+                .skip(if has_self { 1 } else { 0 })
                 .filter(|(_, _, ident)| !ident.name.as_str().starts_with('_'))
                 .collect_vec();
 
@@ -139,7 +141,9 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                 break_vars: FxHashMap::default(),
                 params,
                 fn_ident: ident,
+                fn_def_id: def_id,
                 is_method: matches!(kind, FnKind::Method(..)),
+                has_self,
                 ty_res,
                 ty_ctx: cx.tcx,
             };
@@ -242,7 +246,9 @@ pub struct SideEffectVisit<'tcx> {
     break_vars: FxHashMap<Ident, Vec<(HirId, bool)>>,
     params: Vec<&'tcx Pat<'tcx>>,
     fn_ident: Ident,
+    fn_def_id: DefId,
     is_method: bool,
+    has_self: bool,
     ty_res: &'tcx TypeckResults<'tcx>,
     ty_ctx: TyCtxt<'tcx>,
 }
@@ -479,39 +485,53 @@ impl<'tcx> SideEffectVisit<'tcx> {
         let mut ret_vars = std::mem::take(&mut self.ret_vars);
         self.add_side_effect(ret_vars.clone());
 
+        let mut is_recursive = false;
+
         if_chain! {
-            if !self.is_method;
+            if !self.has_self;
             if let ExprKind::Path(QPath::Resolved(_, path)) = callee.kind;
-            if let Res::Def(..) = path.res;
-            if path.segments.len() == 1;
-            let ident = path.segments.last().unwrap().ident;
-            if ident == self.fn_ident;
+            if let Res::Def(DefKind::Fn, def_id) = path.res;
+            if self.fn_def_id == def_id;
             then {
-                izip!(self.params.clone(), args)
-                    .for_each(|(pat, expr)| {
-                        self.visit_pat_expr(pat, expr, true);
-                        self.ret_vars.clear();
-                    });
-            } else {
-                // This would set arguments used in closure that does not have side-effect.
-                // Closure itself can be detected whether there is a side-effect, but the
-                // value of variable that is holding closure can change.
-                // So, we just check the variables.
-                self.ret_vars = args
-                    .iter()
-                    .flat_map(|expr| {
-                        self.visit_expr(expr);
-                        std::mem::take(&mut self.ret_vars)
-                    })
-                    .collect_vec()
-                    .into_iter()
-                    .map(|id| {
-                        self.has_side_effect.insert(id.0);
-                        id
-                    })
-                    .collect();
-                self.contains_side_effect = true;
+                is_recursive = true;
             }
+        }
+
+        if_chain! {
+            if !self.has_self && self.is_method;
+            if let ExprKind::Path(QPath::TypeRelative(ty, segment)) = callee.kind;
+            if segment.ident == self.fn_ident;
+            if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+            if let Res::SelfTy(..) = path.res;
+            then {
+                is_recursive = true;
+            }
+        }
+
+        if is_recursive {
+            izip!(self.params.clone(), args).for_each(|(pat, expr)| {
+                self.visit_pat_expr(pat, expr, true);
+                self.ret_vars.clear();
+            });
+        } else {
+            // This would set arguments used in closure that does not have side-effect.
+            // Closure itself can be detected whether there is a side-effect, but the
+            // value of variable that is holding closure can change.
+            // So, we just check the variables.
+            self.ret_vars = args
+                .iter()
+                .flat_map(|expr| {
+                    self.visit_expr(expr);
+                    std::mem::take(&mut self.ret_vars)
+                })
+                .collect_vec()
+                .into_iter()
+                .map(|id| {
+                    self.has_side_effect.insert(id.0);
+                    id
+                })
+                .collect();
+            self.contains_side_effect = true;
         }
 
         self.ret_vars.append(&mut ret_vars);
