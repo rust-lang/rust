@@ -197,6 +197,7 @@ impl Parse for Newtype {
             #(#attrs)*
             #[derive(Clone, Copy, PartialEq, Eq, Hash, #(#derive_paths),*)]
             #[rustc_layout_scalar_valid_range_end(#max)]
+            #[rustc_pass_by_value]
             #vis struct #name {
                 private: u32,
             }

@@ -543,10 +543,10 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_borrower.reachable_from(&row);
+            let borrowers = self.possible_borrower.reachable_from(row);
             if !borrowers.is_empty() {
                 let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
+                for c in borrowers {
                     if c != mir::Local::from_usize(0) {
                         bs.insert(c);
                     }
@@ -663,10 +663,10 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_origin.reachable_from(&row);
+            let borrowers = self.possible_origin.reachable_from(row);
             if !borrowers.is_empty() {
                 let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
+                for c in borrowers {
                     if c != mir::Local::from_usize(0) {
                         bs.insert(c);
                     }

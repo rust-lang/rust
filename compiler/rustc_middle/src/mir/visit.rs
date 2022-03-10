@@ -225,12 +225,14 @@ macro_rules! make_mir_visitor {
                 self.super_var_debug_info(var_debug_info);
             }
 
+            #[allow(rustc::pass_by_value)]
             fn visit_local(&mut self,
                             _local: & $($mutability)? Local,
                             _context: PlaceContext,
                             _location: Location) {
             }
 
+            #[allow(rustc::pass_by_value)]
             fn visit_source_scope(&mut self,
                                       scope: & $($mutability)? SourceScope) {
                 self.super_source_scope(scope);
@@ -851,6 +853,7 @@ macro_rules! make_mir_visitor {
                 }
             }
 
+            #[allow(rustc::pass_by_value)]
             fn super_source_scope(&mut self,
                                       _scope: & $($mutability)? SourceScope) {
             }

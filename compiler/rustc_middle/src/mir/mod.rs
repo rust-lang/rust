@@ -1292,6 +1292,8 @@ pub enum InlineAsmOperand<'tcx> {
 /// Type for MIR `Assert` terminator error messages.
 pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 
+// FIXME: Change `Successors` to `impl Iterator<Item = BasicBlock>`.
+#[allow(rustc::pass_by_value)]
 pub type Successors<'a> =
     iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
 pub type SuccessorsMut<'a> =
@@ -1832,7 +1834,8 @@ impl<V, T> ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-// At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
+// This type is fairly frequently used, so we shouldn't unintentionally increase
+// its size.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PlaceElem<'_>, 24);
 

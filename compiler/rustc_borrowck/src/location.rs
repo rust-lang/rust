@@ -100,7 +100,7 @@ impl LocationTable {
 }
 
 impl LocationIndex {
-    fn is_start(&self) -> bool {
+    fn is_start(self) -> bool {
         // even indices are start points; odd indices are mid points
         (self.index() % 2) == 0
     }

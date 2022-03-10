@@ -127,7 +127,10 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 &AggregateKind::Closure(def_id, _) | &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
                         self.tcx.unsafety_check_result(def_id.expect_local());
-                    self.register_violations(violations, used_unsafe_blocks);
+                    self.register_violations(
+                        violations,
+                        used_unsafe_blocks.iter().map(|(&h, &d)| (h, d)),
+                    );
                 }
             },
             _ => {}
@@ -261,7 +264,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
     fn register_violations<'a>(
         &mut self,
         violations: impl IntoIterator<Item = &'a UnsafetyViolation>,
-        new_used_unsafe_blocks: impl IntoIterator<Item = (&'a HirId, &'a UsedUnsafeBlockData)>,
+        new_used_unsafe_blocks: impl IntoIterator<Item = (HirId, UsedUnsafeBlockData)>,
     ) {
         use UsedUnsafeBlockData::{AllAllowedInUnsafeFn, SomeDisallowedInUnsafeFn};
 
@@ -318,7 +321,7 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 
         new_used_unsafe_blocks
             .into_iter()
-            .for_each(|(&hir_id, &usage_data)| update_entry(self, hir_id, usage_data));
+            .for_each(|(hir_id, usage_data)| update_entry(self, hir_id, usage_data));
     }
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,

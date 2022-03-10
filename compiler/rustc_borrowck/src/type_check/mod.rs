@@ -1198,7 +1198,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 tcx,
                 self.param_env,
                 proj,
-                |this, field, &()| {
+                |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
                     self.normalize(ty, locations)
                 },

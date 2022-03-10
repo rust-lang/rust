@@ -785,7 +785,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Add a label pointing to where a captured variable affected by drop order
                             // is dropped
                             if lint_note.reason.drop_order {
-                                let drop_location_span = drop_location_span(self.tcx, &closure_hir_id);
+                                let drop_location_span = drop_location_span(self.tcx, closure_hir_id);
 
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
@@ -1697,8 +1697,8 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: &hir::HirId) -> Span {
-    let owner_id = tcx.hir().get_enclosing_scope(*hir_id).unwrap();
+fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
+    let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir().get(owner_id);
     let owner_span = match owner_node {
