@@ -5,7 +5,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{eq_expr_value, get_parent_expr, higher, is_else_clause, is_lang_ctor, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -107,6 +107,7 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
     false
 }
 
+/// Strip `return` keyword if the expression type is `ExprKind::Ret`.
 fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
     if let ExprKind::Ret(Some(ret)) = expr.kind {
         ret
@@ -118,6 +119,7 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     let expr = strip_return(expr);
     match (&pat.kind, &expr.kind) {
+        // Example: `Some(val) => Some(val)`
         (
             PatKind::TupleStruct(QPath::Resolved(_, path), [first_pat, ..], _),
             ExprKind::Call(call_expr, [first_param, ..]),
@@ -130,9 +132,34 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
                 }
             }
         },
+        // Example: `val => val`, or `ref val => *val`
+        (PatKind::Binding(annot, _, pat_ident, _), _) => {
+            let new_expr = if let (
+                BindingAnnotation::Ref | BindingAnnotation::RefMut,
+                ExprKind::Unary(UnOp::Deref, operand_expr),
+            ) = (annot, &expr.kind)
+            {
+                operand_expr
+            } else {
+                expr
+            };
+
+            if let ExprKind::Path(QPath::Resolved(
+                _,
+                Path {
+                    segments: [first_seg, ..],
+                    ..
+                },
+            )) = new_expr.kind
+            {
+                return pat_ident.name == first_seg.ident.name;
+            }
+        },
+        // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
             return has_identical_segments(p_path.segments, e_path.segments);
         },
+        // Example: `5 => 5`
         (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
             if let ExprKind::Lit(pat_spanned) = &pat_lit_expr.kind {
                 return pat_spanned.node == expr_spanned.node;

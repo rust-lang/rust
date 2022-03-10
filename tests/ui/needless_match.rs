@@ -11,12 +11,31 @@ enum Choice {
     D,
 }
 
-fn useless_match(x: i32) {
-    let _: i32 = match x {
+#[allow(unused_mut)]
+fn useless_match() {
+    let mut i = 10;
+    let _: i32 = match i {
         0 => 0,
         1 => 1,
         2 => 2,
-        _ => x,
+        _ => i,
+    };
+    let _: i32 = match i {
+        0 => 0,
+        1 => 1,
+        ref i => *i,
+    };
+    let mut _i_mut = match i {
+        0 => 0,
+        1 => 1,
+        ref mut i => *i,
+    };
+
+    let s = "test";
+    let _: &str = match s {
+        "a" => "a",
+        "b" => "b",
+        s => s,
     };
 }
 

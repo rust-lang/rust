@@ -11,8 +11,15 @@ enum Choice {
     D,
 }
 
-fn useless_match(x: i32) {
-    let _: i32 = x;
+#[allow(unused_mut)]
+fn useless_match() {
+    let mut i = 10;
+    let _: i32 = i;
+    let _: i32 = i;
+    let mut _i_mut = i;
+
+    let s = "test";
+    let _: &str = s;
 }
 
 fn custom_type_match(se: Choice) {
