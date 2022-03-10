@@ -269,7 +269,7 @@ By default, this will still hide `unused` warnings, since so many examples use p
 you can add `#![warn(unused)]` to the top of your example if you want to see unused variables or dead code warnings.
 You can also use [`#![doc(test(attr(warn(unused))))]`][test-attr] in the crate root to enable warnings globally.
 
-[test-attr]: ./the-doc-attribute.md#testattr
+[test-attr]: the-doc-attribute.md#testattr
 
 ## Documenting macros
 

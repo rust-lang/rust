@@ -38,7 +38,7 @@ but given that docs are rendered via Markdown, it will remove these newlines.
 Another use case is for including external files as documentation:
 
 ```rust,no_run
-#[doc = include_str!("../README.md")]
+#[doc = include_str!("../../README.md")]
 # fn f() {}
 ```
 
@@ -73,7 +73,7 @@ left hand side of the docs.
 #![doc(html_logo_url = "https://example.com/logo.jpg")]
 ```
 
-This will put `<a href='index.html'><img src='{}' alt='logo' width='100'></a>` into
+This will put `<a href='../index.html'><img src='{}' alt='logo' width='100'></a>` into
 your docs, where the string for the attribute goes into the `{}`.
 
 If you don't use this attribute, there will be no logo.
