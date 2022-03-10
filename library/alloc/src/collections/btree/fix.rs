@@ -1,13 +1,15 @@
 use super::map::MIN_LEN;
 use super::node::{marker, ForceResult::*, Handle, LeftOrRight::*, NodeRef, Root};
+use core::alloc::Allocator;
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     /// Stocks up a possibly underfull node by merging with or stealing from a
     /// sibling. If successful but at the cost of shrinking the parent node,
     /// returns that shrunk parent node. Returns an `Err` if the node is
     /// an empty root.
-    fn fix_node_through_parent(
+    fn fix_node_through_parent<A: Allocator>(
         self,
+        alloc: &A,
     ) -> Result<Option<NodeRef<marker::Mut<'a>, K, V, marker::Internal>>, Self> {
         let len = self.len();
         if len >= MIN_LEN {
@@ -16,7 +18,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
             match self.choose_parent_kv() {
                 Ok(Left(mut left_parent_kv)) => {
                     if left_parent_kv.can_merge() {
-                        let parent = left_parent_kv.merge_tracking_parent();
+                        let parent = left_parent_kv.merge_tracking_parent(alloc);
                         Ok(Some(parent))
                     } else {
                         left_parent_kv.bulk_steal_left(MIN_LEN - len);
@@ -25,7 +27,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
                 }
                 Ok(Right(mut right_parent_kv)) => {
                     if right_parent_kv.can_merge() {
-                        let parent = right_parent_kv.merge_tracking_parent();
+                        let parent = right_parent_kv.merge_tracking_parent(alloc);
                         Ok(Some(parent))
                     } else {
                         right_parent_kv.bulk_steal_right(MIN_LEN - len);
@@ -52,9 +54,9 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
     ///
     /// This method does not expect ancestors to already be underfull upon entry
     /// and panics if it encounters an empty ancestor.
-    pub fn fix_node_and_affected_ancestors(mut self) -> bool {
+    pub fn fix_node_and_affected_ancestors<A: Allocator>(mut self, alloc: &A) -> bool {
         loop {
-            match self.fix_node_through_parent() {
+            match self.fix_node_through_parent(alloc) {
                 Ok(Some(parent)) => self = parent.forget_type(),
                 Ok(None) => return true,
                 Err(_) => return false,
@@ -65,29 +67,29 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
 
 impl<K, V> Root<K, V> {
     /// Removes empty levels on the top, but keeps an empty leaf if the entire tree is empty.
-    pub fn fix_top(&mut self) {
+    pub fn fix_top<A: Allocator>(&mut self, alloc: &A) {
         while self.height() > 0 && self.len() == 0 {
-            self.pop_internal_level();
+            self.pop_internal_level(alloc);
         }
     }
 
     /// Stocks up or merge away any underfull nodes on the right border of the
     /// tree. The other nodes, those that are not the root nor a rightmost edge,
     /// must already have at least MIN_LEN elements.
-    pub fn fix_right_border(&mut self) {
-        self.fix_top();
+    pub fn fix_right_border<A: Allocator>(&mut self, alloc: &A) {
+        self.fix_top(alloc);
         if self.len() > 0 {
-            self.borrow_mut().last_kv().fix_right_border_of_right_edge();
-            self.fix_top();
+            self.borrow_mut().last_kv().fix_right_border_of_right_edge(alloc);
+            self.fix_top(alloc);
         }
     }
 
     /// The symmetric clone of `fix_right_border`.
-    pub fn fix_left_border(&mut self) {
-        self.fix_top();
+    pub fn fix_left_border<A: Allocator>(&mut self, alloc: &A) {
+        self.fix_top(alloc);
         if self.len() > 0 {
-            self.borrow_mut().first_kv().fix_left_border_of_left_edge();
-            self.fix_top();
+            self.borrow_mut().first_kv().fix_left_border_of_left_edge(alloc);
+            self.fix_top(alloc);
         }
     }
 
@@ -113,16 +115,16 @@ impl<K, V> Root<K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV> {
-    fn fix_left_border_of_left_edge(mut self) {
+    fn fix_left_border_of_left_edge<A: Allocator>(mut self, alloc: &A) {
         while let Internal(internal_kv) = self.force() {
-            self = internal_kv.fix_left_child().first_kv();
+            self = internal_kv.fix_left_child(alloc).first_kv();
             debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
         }
     }
 
-    fn fix_right_border_of_right_edge(mut self) {
+    fn fix_right_border_of_right_edge<A: Allocator>(mut self, alloc: &A) {
         while let Internal(internal_kv) = self.force() {
-            self = internal_kv.fix_right_child().last_kv();
+            self = internal_kv.fix_right_child(alloc).last_kv();
             debug_assert!(self.reborrow().into_node().len() > MIN_LEN);
         }
     }
@@ -133,12 +135,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns the left child.
-    fn fix_left_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+    fn fix_left_child<A: Allocator>(
+        self,
+        alloc: &A,
+    ) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let mut internal_kv = self.consider_for_balancing();
         let left_len = internal_kv.left_child_len();
         debug_assert!(internal_kv.right_child_len() >= MIN_LEN);
         if internal_kv.can_merge() {
-            internal_kv.merge_tracking_child()
+            internal_kv.merge_tracking_child(alloc)
         } else {
             // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
             let count = (MIN_LEN + 1).saturating_sub(left_len);
@@ -153,12 +158,15 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, 
     /// provisions an extra element to allow merging its children in turn
     /// without becoming underfull.
     /// Returns wherever the right child ended up.
-    fn fix_right_child(self) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
+    fn fix_right_child<A: Allocator>(
+        self,
+        alloc: &A,
+    ) -> NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal> {
         let mut internal_kv = self.consider_for_balancing();
         let right_len = internal_kv.right_child_len();
         debug_assert!(internal_kv.left_child_len() >= MIN_LEN);
         if internal_kv.can_merge() {
-            internal_kv.merge_tracking_child()
+            internal_kv.merge_tracking_child(alloc)
         } else {
             // `MIN_LEN + 1` to avoid readjust if merge happens on the next level.
             let count = (MIN_LEN + 1).saturating_sub(right_len);
