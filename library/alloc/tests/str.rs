@@ -1259,7 +1259,7 @@ fn test_chars_debug() {
     let s = "ศไทย中华Việt Nam";
     let c = s.chars();
     assert_eq!(
-        format!("{:?}", c),
+        format!("{c:?}"),
         r#"Chars(['ศ', 'ไ', 'ท', 'ย', '中', '华', 'V', 'i', 'ệ', 't', ' ', 'N', 'a', 'm'])"#
     );
 }
@@ -1870,7 +1870,7 @@ mod pattern {
         }
 
         if let Some(err) = err {
-            panic!("Input skipped range at {}", err);
+            panic!("Input skipped range at {err}");
         }
 
         if first_index != haystack.len() {
@@ -2187,10 +2187,10 @@ fn utf8() {
     fn check_str_eq(a: String, b: String) {
         let mut i: isize = 0;
         for ab in a.bytes() {
-            println!("{}", i);
-            println!("{}", ab);
+            println!("{i}");
+            println!("{ab}");
             let bb: u8 = b.as_bytes()[i as usize];
-            println!("{}", bb);
+            println!("{bb}");
             assert_eq!(ab, bb);
             i += 1;
         }

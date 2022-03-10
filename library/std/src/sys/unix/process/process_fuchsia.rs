@@ -211,7 +211,7 @@ impl Process {
                     return Ok(None);
                 }
                 _ => {
-                    panic!("Failed to wait on process handle: {}", status);
+                    panic!("Failed to wait on process handle: {status}");
                 }
             }
             zx_cvt(zx_object_get_info(

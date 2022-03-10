@@ -309,7 +309,7 @@ fn test_cowrc_clone_weak() {
 #[test]
 fn test_show() {
     let foo = Rc::new(75);
-    assert_eq!(format!("{:?}", foo), "75");
+    assert_eq!(format!("{foo:?}"), "75");
 }
 
 #[test]
@@ -324,7 +324,7 @@ fn test_maybe_thin_unsized() {
     use std::ffi::{CStr, CString};
 
     let x: Rc<CStr> = Rc::from(CString::new("swordfish").unwrap().into_boxed_c_str());
-    assert_eq!(format!("{:?}", x), "\"swordfish\"");
+    assert_eq!(format!("{x:?}"), "\"swordfish\"");
     let y: Weak<CStr> = Rc::downgrade(&x);
     drop(x);
 
@@ -451,7 +451,7 @@ fn test_from_box_trait_zero_sized() {
     let b: Box<dyn Debug> = box ();
     let r: Rc<dyn Debug> = Rc::from(b);
 
-    assert_eq!(format!("{:?}", r), "()");
+    assert_eq!(format!("{r:?}"), "()");
 }
 
 #[test]

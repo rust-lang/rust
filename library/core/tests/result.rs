@@ -80,9 +80,9 @@ fn test_fmt_default() {
     let ok: Result<isize, &'static str> = Ok(100);
     let err: Result<isize, &'static str> = Err("Err");
 
-    let s = format!("{:?}", ok);
+    let s = format!("{ok:?}");
     assert_eq!(s, "Ok(100)");
-    let s = format!("{:?}", err);
+    let s = format!("{err:?}");
     assert_eq!(s, "Err(\"Err\")");
 }
 

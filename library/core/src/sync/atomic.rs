@@ -94,7 +94,7 @@
 //!     }
 //!
 //!     if let Err(panic) = thread.join() {
-//!         println!("Thread had an error: {:?}", panic);
+//!         println!("Thread had an error: {panic:?}");
 //!     }
 //! }
 //! ```
@@ -1345,7 +1345,7 @@ impl const From<bool> for AtomicBool {
     /// ```
     /// use std::sync::atomic::AtomicBool;
     /// let atomic_bool = AtomicBool::from(true);
-    /// assert_eq!(format!("{:?}", atomic_bool), "true")
+    /// assert_eq!(format!("{atomic_bool:?}"), "true")
     /// ```
     #[inline]
     fn from(b: bool) -> Self {

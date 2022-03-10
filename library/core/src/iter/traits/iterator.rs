@@ -709,13 +709,13 @@ pub trait Iterator {
     /// ```
     /// # #![allow(unused_must_use)]
     /// // don't do this:
-    /// (0..5).map(|x| println!("{}", x));
+    /// (0..5).map(|x| println!("{x}"));
     ///
     /// // it won't even execute, as it is lazy. Rust will warn you about this.
     ///
     /// // Instead, use for:
     /// for x in 0..5 {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]
@@ -761,7 +761,7 @@ pub trait Iterator {
     /// (0..5).flat_map(|x| x * 100 .. x * 110)
     ///       .enumerate()
     ///       .filter(|&(i, x)| (i + x) % 3 == 0)
-    ///       .for_each(|(i, x)| println!("{}:{}", i, x));
+    ///       .for_each(|(i, x)| println!("{i}:{x}"));
     /// ```
     #[inline]
     #[stable(feature = "iterator_for_each", since = "1.21.0")]
@@ -1575,17 +1575,17 @@ pub trait Iterator {
     ///     .filter(|x| x % 2 == 0)
     ///     .fold(0, |sum, i| sum + i);
     ///
-    /// println!("{}", sum);
+    /// println!("{sum}");
     ///
     /// // let's add some inspect() calls to investigate what's happening
     /// let sum = a.iter()
     ///     .cloned()
-    ///     .inspect(|x| println!("about to filter: {}", x))
+    ///     .inspect(|x| println!("about to filter: {x}"))
     ///     .filter(|x| x % 2 == 0)
-    ///     .inspect(|x| println!("made it through filter: {}", x))
+    ///     .inspect(|x| println!("made it through filter: {x}"))
     ///     .fold(0, |sum, i| sum + i);
     ///
-    /// println!("{}", sum);
+    /// println!("{sum}");
     /// ```
     ///
     /// This will print:
@@ -1611,13 +1611,13 @@ pub trait Iterator {
     ///     .map(|line| line.parse::<i32>())
     ///     .inspect(|num| {
     ///         if let Err(ref e) = *num {
-    ///             println!("Parsing error: {}", e);
+    ///             println!("Parsing error: {e}");
     ///         }
     ///     })
     ///     .filter_map(Result::ok)
     ///     .sum();
     ///
-    /// println!("Sum: {}", sum);
+    /// println!("Sum: {sum}");
     /// ```
     ///
     /// This will print:
@@ -2205,7 +2205,7 @@ pub trait Iterator {
     ///
     /// let data = ["no_tea.txt", "stale_bread.json", "torrential_rain.png"];
     ///
-    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{}", x));
+    /// let res = data.iter().try_for_each(|x| writeln!(stdout(), "{x}"));
     /// assert!(res.is_ok());
     ///
     /// let mut it = data.iter().cloned();
@@ -2319,7 +2319,7 @@ pub trait Iterator {
     /// let zero = "0".to_string();
     ///
     /// let result = numbers.iter().fold(zero, |acc, &x| {
-    ///     format!("({} + {})", acc, x)
+    ///     format!("({acc} + {x})")
     /// });
     ///
     /// assert_eq!(result, "(((((0 + 1) + 2) + 3) + 4) + 5)");

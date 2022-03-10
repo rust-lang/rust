@@ -169,30 +169,30 @@ fn is_v6() {
 fn socket_v4_to_str() {
     let socket = SocketAddrV4::new(Ipv4Addr::new(192, 168, 0, 1), 8080);
 
-    assert_eq!(format!("{}", socket), "192.168.0.1:8080");
-    assert_eq!(format!("{:<20}", socket), "192.168.0.1:8080    ");
-    assert_eq!(format!("{:>20}", socket), "    192.168.0.1:8080");
-    assert_eq!(format!("{:^20}", socket), "  192.168.0.1:8080  ");
-    assert_eq!(format!("{:.10}", socket), "192.168.0.");
+    assert_eq!(format!("{socket}"), "192.168.0.1:8080");
+    assert_eq!(format!("{socket:<20}"), "192.168.0.1:8080    ");
+    assert_eq!(format!("{socket:>20}"), "    192.168.0.1:8080");
+    assert_eq!(format!("{socket:^20}"), "  192.168.0.1:8080  ");
+    assert_eq!(format!("{socket:.10}"), "192.168.0.");
 }
 
 #[test]
 fn socket_v6_to_str() {
     let mut socket = SocketAddrV6::new(Ipv6Addr::new(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), 53, 0, 0);
 
-    assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1]:53");
-    assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1]:53    ");
-    assert_eq!(format!("{:>24}", socket), "    [2a02:6b8:0:1::1]:53");
-    assert_eq!(format!("{:^24}", socket), "  [2a02:6b8:0:1::1]:53  ");
-    assert_eq!(format!("{:.15}", socket), "[2a02:6b8:0:1::");
+    assert_eq!(format!("{socket}"), "[2a02:6b8:0:1::1]:53");
+    assert_eq!(format!("{socket:<24}"), "[2a02:6b8:0:1::1]:53    ");
+    assert_eq!(format!("{socket:>24}"), "    [2a02:6b8:0:1::1]:53");
+    assert_eq!(format!("{socket:^24}"), "  [2a02:6b8:0:1::1]:53  ");
+    assert_eq!(format!("{socket:.15}"), "[2a02:6b8:0:1::");
 
     socket.set_scope_id(5);
 
-    assert_eq!(format!("{}", socket), "[2a02:6b8:0:1::1%5]:53");
-    assert_eq!(format!("{:<24}", socket), "[2a02:6b8:0:1::1%5]:53  ");
-    assert_eq!(format!("{:>24}", socket), "  [2a02:6b8:0:1::1%5]:53");
-    assert_eq!(format!("{:^24}", socket), " [2a02:6b8:0:1::1%5]:53 ");
-    assert_eq!(format!("{:.18}", socket), "[2a02:6b8:0:1::1%5");
+    assert_eq!(format!("{socket}"), "[2a02:6b8:0:1::1%5]:53");
+    assert_eq!(format!("{socket:<24}"), "[2a02:6b8:0:1::1%5]:53  ");
+    assert_eq!(format!("{socket:>24}"), "  [2a02:6b8:0:1::1%5]:53");
+    assert_eq!(format!("{socket:^24}"), " [2a02:6b8:0:1::1%5]:53 ");
+    assert_eq!(format!("{socket:.18}"), "[2a02:6b8:0:1::1%5");
 }
 
 #[test]

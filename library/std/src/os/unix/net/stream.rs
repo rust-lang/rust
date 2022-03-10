@@ -57,7 +57,7 @@ pub use ucred::UCred;
 ///     stream.write_all(b"hello world")?;
 ///     let mut response = String::new();
 ///     stream.read_to_string(&mut response)?;
-///     println!("{}", response);
+///     println!("{response}");
 ///     Ok(())
 /// }
 /// ```
@@ -90,7 +90,7 @@ impl UnixStream {
     /// let socket = match UnixStream::connect("/tmp/sock") {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
+    ///         println!("Couldn't connect: {e:?}");
     ///         return
     ///     }
     /// };
@@ -123,7 +123,7 @@ impl UnixStream {
     ///     let sock = match UnixStream::connect_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
-    ///             println!("Couldn't connect: {:?}", e);
+    ///             println!("Couldn't connect: {e:?}");
     ///             return Err(e)
     ///         }
     ///     };
@@ -155,7 +155,7 @@ impl UnixStream {
     /// let (sock1, sock2) = match UnixStream::pair() {
     ///     Ok((sock1, sock2)) => (sock1, sock2),
     ///     Err(e) => {
-    ///         println!("Couldn't create a pair of sockets: {:?}", e);
+    ///         println!("Couldn't create a pair of sockets: {e:?}");
     ///         return
     ///     }
     /// };
@@ -443,7 +443,7 @@ impl UnixStream {
     /// fn main() -> std::io::Result<()> {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     if let Ok(Some(err)) = socket.take_error() {
-    ///         println!("Got error: {:?}", err);
+    ///         println!("Got error: {err:?}");
     ///     }
     ///     Ok(())
     /// }
@@ -530,11 +530,11 @@ impl UnixStream {
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     let size = socket.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
-    ///     println!("received {}", size);
+    ///     println!("received {size}");
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
-    ///                 println!("receive file descriptor: {}", fd);
+    ///                 println!("receive file descriptor: {fd}");
     ///             }
     ///         }
     ///     }

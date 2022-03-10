@@ -169,6 +169,8 @@ declare_features! (
     (active, staged_api, "1.0.0", None, None),
     /// Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+    /// Added for testing unstable lints; perma-unstable.
+    (active, test_unstable_lint, "1.60.0", None, None),
     /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
     /// Marked `incomplete` since perma-unstable and unsound.
     (incomplete, unsafe_pin_internals, "1.60.0", None, None),
@@ -428,6 +430,8 @@ declare_features! (
     (active, link_cfg, "1.14.0", Some(37406), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
+    /// Give access to additional metadata about declarative macro meta-variables.
+    (active, macro_metavar_expr, "1.61.0", Some(83527), None),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
     /// A minimal, sound subset of specialization intended to be used by the

@@ -55,10 +55,10 @@ fn instant_elapsed() {
 fn instant_math() {
     let a = Instant::now();
     let b = Instant::now();
-    println!("a: {:?}", a);
-    println!("b: {:?}", b);
+    println!("a: {a:?}");
+    println!("b: {b:?}");
     let dur = b.duration_since(a);
-    println!("dur: {:?}", dur);
+    println!("dur: {dur:?}");
     assert_almost_eq!(b - dur, a);
     assert_almost_eq!(a + dur, b);
 

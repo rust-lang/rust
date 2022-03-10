@@ -58,7 +58,7 @@ fn main() {
     let current = match env::current_dir() {
         Ok(dir) => dir,
         Err(err) => {
-            eprintln!("Failed to get current directory: {}", err);
+            eprintln!("Failed to get current directory: {err}");
             process::exit(1);
         }
     };

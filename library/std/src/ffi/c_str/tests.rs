@@ -35,7 +35,7 @@ fn build_with_zero2() {
 #[test]
 fn formatted() {
     let s = CString::new(&b"abc\x01\x02\n\xE2\x80\xA6\xFF"[..]).unwrap();
-    assert_eq!(format!("{:?}", s), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
+    assert_eq!(format!("{s:?}"), r#""abc\x01\x02\n\xe2\x80\xa6\xff""#);
 }
 
 #[test]

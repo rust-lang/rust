@@ -592,7 +592,7 @@ impl AsRef<Path> for Component<'_> {
 /// let path = Path::new("/tmp/foo/bar.txt");
 ///
 /// for component in path.components() {
-///     println!("{:?}", component);
+///     println!("{component:?}");
 /// }
 /// ```
 ///

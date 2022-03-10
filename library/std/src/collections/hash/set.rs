@@ -66,7 +66,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Iterate over everything.
 /// for book in &books {
-///     println!("{}", book);
+///     println!("{book}");
 /// }
 /// ```
 ///
@@ -91,7 +91,7 @@ use super::map::{map_try_reserve_error, RandomState};
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in &vikings {
-///     println!("{:?}", x);
+///     println!("{x:?}");
 /// }
 /// ```
 ///
@@ -181,7 +181,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in set.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]
@@ -244,7 +244,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// // print 1, 2, 3 in an arbitrary order
     /// for i in set.drain() {
-    ///     println!("{}", i);
+    ///     println!("{i}");
     /// }
     ///
     /// assert!(set.is_empty());
@@ -525,7 +525,7 @@ where
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
-    ///     println!("{}", x); // Print 1
+    ///     println!("{x}"); // Print 1
     /// }
     ///
     /// let diff: HashSet<_> = a.difference(&b).collect();
@@ -555,7 +555,7 @@ where
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let diff1: HashSet<_> = a.symmetric_difference(&b).collect();
@@ -586,7 +586,7 @@ where
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let intersection: HashSet<_> = a.intersection(&b).collect();
@@ -615,7 +615,7 @@ where
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// let union: HashSet<_> = a.union(&b).collect();
@@ -1451,7 +1451,7 @@ impl<T, S> IntoIterator for HashSet<T, S> {
     ///
     /// // Will print in an arbitrary order.
     /// for x in &v {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[inline]

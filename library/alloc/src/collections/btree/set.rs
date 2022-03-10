@@ -60,7 +60,7 @@ use super::Recover;
 ///
 /// // Iterate over everything.
 /// for book in &books {
-///     println!("{}", book);
+///     println!("{book}");
 /// }
 /// ```
 ///
@@ -284,7 +284,7 @@ impl<T> BTreeSet<T> {
     /// set.insert(5);
     /// set.insert(8);
     /// for &elem in set.range((Included(&4), Included(&8))) {
-    ///     println!("{}", elem);
+    ///     println!("{elem}");
     /// }
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```

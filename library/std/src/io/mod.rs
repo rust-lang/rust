@@ -91,7 +91,7 @@
 //!     // read a line into buffer
 //!     reader.read_line(&mut buffer)?;
 //!
-//!     println!("{}", buffer);
+//!     println!("{buffer}");
 //!     Ok(())
 //! }
 //! ```
@@ -1035,7 +1035,7 @@ pub trait Read {
 /// fn main() -> io::Result<()> {
 ///     let stdin = io::read_to_string(io::stdin())?;
 ///     println!("Stdin was:");
-///     println!("{}", stdin);
+///     println!("{stdin}");
 ///     Ok(())
 /// }
 /// ```
@@ -1761,7 +1761,7 @@ pub trait Seek {
     ///     .open("foo.txt").unwrap();
     ///
     /// let hello = "Hello!\n";
-    /// write!(f, "{}", hello).unwrap();
+    /// write!(f, "{hello}").unwrap();
     /// f.rewind().unwrap();
     ///
     /// let mut buf = String::new();
@@ -1804,7 +1804,7 @@ pub trait Seek {
     ///     let mut f = File::open("foo.txt")?;
     ///
     ///     let len = f.stream_len()?;
-    ///     println!("The file is currently {} bytes long", len);
+    ///     println!("The file is currently {len} bytes long");
     ///     Ok(())
     /// }
     /// ```
@@ -1988,7 +1988,7 @@ pub trait BufRead: Read {
     /// let buffer = stdin.fill_buf().unwrap();
     ///
     /// // work with buffer
-    /// println!("{:?}", buffer);
+    /// println!("{buffer:?}");
     ///
     /// // ensure the bytes we worked with aren't returned again later
     /// let length = buffer.len();
@@ -2042,7 +2042,7 @@ pub trait BufRead: Read {
     ///     let mut line = String::new();
     ///     stdin.read_line(&mut line).unwrap();
     ///     // work with line
-    ///     println!("{:?}", line);
+    ///     println!("{line:?}");
     /// }
     /// ```
     #[unstable(feature = "buf_read_has_data_left", reason = "recently added", issue = "86423")]

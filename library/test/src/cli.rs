@@ -149,7 +149,7 @@ fn optgroups() -> getopts::Options {
 }
 
 fn usage(binary: &str, options: &getopts::Options) {
-    let message = format!("Usage: {} [OPTIONS] [FILTERS...]", binary);
+    let message = format!("Usage: {binary} [OPTIONS] [FILTERS...]");
     println!(
         r#"{usage}
 
@@ -360,7 +360,7 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
         shuffle_seed = match env::var("RUST_TEST_SHUFFLE_SEED") {
             Ok(val) => match val.parse::<u64>() {
                 Ok(n) => Some(n),
-                Err(_) => panic!("RUST_TEST_SHUFFLE_SEED is `{}`, should be a number.", val),
+                Err(_) => panic!("RUST_TEST_SHUFFLE_SEED is `{val}`, should be a number."),
             },
             Err(_) => None,
         };

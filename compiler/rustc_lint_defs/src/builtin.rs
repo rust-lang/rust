@@ -3128,6 +3128,7 @@ declare_lint_pass! {
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         UNEXPECTED_CFGS,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        TEST_UNSTABLE_LINT,
     ]
 }
 
@@ -3399,7 +3400,7 @@ declare_lint! {
     ///     //                  ^^^^^^^^
     ///     // This call to try_into matches both Foo:try_into and TryInto::try_into as
     ///     // `TryInto` has been added to the Rust prelude in 2021 edition.
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     ///
@@ -3770,4 +3771,26 @@ declare_lint! {
     pub DEPRECATED_WHERE_CLAUSE_LOCATION,
     Warn,
     "deprecated where clause location"
+}
+
+declare_lint! {
+    /// The `test_unstable_lint` lint tests unstable lints and is perma-unstable.
+    ///
+    /// ### Example
+    ///
+    /// ```
+    /// #![allow(test_unstable_lint)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In order to test the behavior of unstable lints, a permanently-unstable
+    /// lint is required. This lint can be used to trigger warnings and errors
+    /// from the compiler related to unstable lints.
+    pub TEST_UNSTABLE_LINT,
+    Deny,
+    "this unstable lint is only for testing",
+    @feature_gate = sym::test_unstable_lint;
 }

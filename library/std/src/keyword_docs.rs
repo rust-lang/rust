@@ -64,7 +64,7 @@ mod as_keyword {}
 /// }
 ///
 /// assert_eq!(last, 12);
-/// println!("{}", last);
+/// println!("{last}");
 /// ```
 ///
 /// A break expression is normally associated with the innermost loop enclosing the
@@ -72,10 +72,10 @@ mod as_keyword {}
 ///
 ///```rust
 /// 'outer: for i in 1..=5 {
-///     println!("outer iteration (i): {}", i);
+///     println!("outer iteration (i): {i}");
 ///
 ///     '_inner: for j in 1..=200 {
-///         println!("    inner iteration (j): {}", j);
+///         println!("    inner iteration (j): {j}");
 ///         if j >= 3 {
 ///             // breaks from inner loop, lets outer loop continue.
 ///             break;
@@ -106,7 +106,7 @@ mod as_keyword {}
 /// };
 /// // first number in Fibonacci sequence over 10:
 /// assert_eq!(result, 13);
-/// println!("{}", result);
+/// println!("{result}");
 /// ```
 ///
 /// For more details consult the [Reference on "break expression"] and the [Reference on "break and
@@ -200,7 +200,7 @@ mod const_keyword {}
 ///     if number % 2 == 0 {
 ///         continue;
 ///     }
-///     println!("{}", number);
+///     println!("{number}");
 /// }
 ///```
 ///
@@ -515,7 +515,7 @@ mod fn_keyword {}
 /// }
 ///
 /// for i in std::iter::repeat(5) {
-///     println!("turns out {} never stops being 5", i);
+///     println!("turns out {i} never stops being 5");
 ///     break; // would loop forever otherwise
 /// }
 ///
@@ -776,7 +776,7 @@ mod in_keyword {}
 /// let shadowing_example = true;
 /// let shadowing_example = 123.4;
 /// let shadowing_example = shadowing_example as u32;
-/// let mut shadowing_example = format!("cool! {}", shadowing_example);
+/// let mut shadowing_example = format!("cool! {shadowing_example}");
 /// shadowing_example += " something else!"; // not shadowing
 /// ```
 ///
@@ -805,7 +805,7 @@ mod let_keyword {}
 /// let mut counter = 0;
 ///
 /// while counter < 10 {
-///     println!("{}", counter);
+///     println!("{counter}");
 ///     counter += 1;
 /// }
 /// ```
@@ -836,7 +836,7 @@ mod let_keyword {}
 ///     if i == 10 {
 ///         counter = None;
 ///     } else {
-///         println!("{}", i);
+///         println!("{i}");
 ///         counter = Some (i + 1);
 ///     }
 /// }
@@ -866,7 +866,7 @@ mod while_keyword {}
 ///
 /// let mut i = 1;
 /// loop {
-///     println!("i is {}", i);
+///     println!("i is {i}");
 ///     if i > 100 {
 ///         break;
 ///     }
@@ -920,8 +920,8 @@ mod loop_keyword {}
 ///
 /// let a_number = Option::Some(10);
 /// match a_number {
-///     Some(x) if x <= 5 => println!("0 to 5 num = {}", x),
-///     Some(x @ 6..=10) => println!("6 to 10 num = {}", x),
+///     Some(x) if x <= 5 => println!("0 to 5 num = {x}"),
+///     Some(x @ 6..=10) => println!("6 to 10 num = {x}"),
 ///     None => panic!(),
 ///     // all other numbers
 ///     _ => panic!(),
@@ -940,8 +940,8 @@ mod loop_keyword {}
 ///
 /// let get_inner = Outer::Double(None, Some(String::new()));
 /// match get_inner {
-///     Outer::Double(None, Some(st)) => println!("{}", st),
-///     Outer::Single(opt) => println!("{:?}", opt),
+///     Outer::Double(None, Some(st)) => println!("{st}"),
+///     Outer::Single(opt) => println!("{opt:?}"),
 ///     _ => panic!(),
 /// }
 /// ```
@@ -988,7 +988,7 @@ mod mod_keyword {}
 ///
 /// ```rust
 /// let data = vec![1, 2, 3];
-/// let closure = move || println!("captured {:?} by value", data);
+/// let closure = move || println!("captured {data:?} by value");
 ///
 /// // data is no longer available, it is owned by the closure
 /// ```
@@ -1001,7 +1001,7 @@ mod mod_keyword {}
 /// ```rust
 /// fn create_fn() -> impl Fn() {
 ///     let text = "Fn".to_owned();
-///     move || println!("This is a: {}", text)
+///     move || println!("This is a: {text}")
 /// }
 ///
 /// let fn_plain = create_fn();
@@ -1014,7 +1014,7 @@ mod mod_keyword {}
 /// let data = vec![1, 2, 3];
 ///
 /// std::thread::spawn(move || {
-///     println!("captured {:?} by value", data)
+///     println!("captured {data:?} by value")
 /// }).join().unwrap();
 ///
 /// // data was moved to the spawned thread, so we cannot use it here
@@ -1025,7 +1025,7 @@ mod mod_keyword {}
 /// ```rust
 /// let capture = "hello".to_owned();
 /// let block = async move {
-///     println!("rust says {} from async block", capture);
+///     println!("rust says {capture} from async block");
 /// };
 /// ```
 ///
@@ -1124,7 +1124,7 @@ mod pub_keyword {}
 /// let maybe_name = Some(String::from("Alice"));
 /// // The variable 'maybe_name' is consumed here ...
 /// match maybe_name {
-///     Some(n) => println!("Hello, {}", n),
+///     Some(n) => println!("Hello, {n}"),
 ///     _ => println!("Hello, world"),
 /// }
 /// // ... and is now unavailable.
@@ -1138,7 +1138,7 @@ mod pub_keyword {}
 /// let maybe_name = Some(String::from("Alice"));
 /// // Using `ref`, the value is borrowed, not moved ...
 /// match maybe_name {
-///     Some(ref n) => println!("Hello, {}", n),
+///     Some(ref n) => println!("Hello, {n}"),
 ///     _ => println!("Hello, world"),
 /// }
 /// // ... so it's available here!
@@ -1423,7 +1423,7 @@ mod self_upper_keyword {}
 /// // With a strictly read-only static, references will have the same address
 /// assert_eq!(r1, r2);
 /// // A static item can be used just like a variable in many cases
-/// println!("{:?}", FOO);
+/// println!("{FOO:?}");
 /// ```
 ///
 /// # Mutable `static`s
@@ -1675,7 +1675,7 @@ mod super_keyword {}
 /// # #![allow(dead_code)]
 /// fn debug_iter<I: Iterator>(it: I) where I::Item: std::fmt::Debug {
 ///     for elem in it {
-///         println!("{:#?}", elem);
+///         println!("{elem:#?}");
 ///     }
 /// }
 ///
@@ -2313,7 +2313,7 @@ mod dyn_keyword {}
 ///     match u {
 ///         IntOrFloat { i: 10 } => println!("Found exactly ten!"),
 ///         // Matching the field `f` provides an `f32`.
-///         IntOrFloat { f } => println!("Found f = {} !", f),
+///         IntOrFloat { f } => println!("Found f = {f} !"),
 ///     }
 /// }
 /// ```
@@ -2337,7 +2337,7 @@ mod dyn_keyword {}
 /// let i = unsafe { &mut u.i };
 ///
 /// *i = 10;
-/// println!("f = {} and i = {}", f, i);
+/// println!("f = {f} and i = {i}");
 /// ```
 ///
 /// See the [Reference][union] for more informations on `union`s.

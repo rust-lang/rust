@@ -283,7 +283,7 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}", name, msg, location);
+        let _ = writeln!(err, "thread '{name}' panicked at '{msg}', {location}");
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -677,7 +677,7 @@ fn rust_panic_with_hook(
             // Unfortunately, this does not print a backtrace, because creating
             // a `Backtrace` will allocate, which we must to avoid here.
             let panicinfo = PanicInfo::internal_constructor(message, location, can_unwind);
-            rtprintpanic!("{}\npanicked after panic::always_abort(), aborting.\n", panicinfo);
+            rtprintpanic!("{panicinfo}\npanicked after panic::always_abort(), aborting.\n");
         }
         crate::sys::abort_internal();
     }
@@ -745,5 +745,5 @@ fn rust_panic(mut msg: &mut dyn BoxMeUp) -> ! {
         let obj = &mut msg as *mut &mut dyn BoxMeUp;
         __rust_start_panic(obj)
     };
-    rtabort!("failed to initiate panic, error {}", code)
+    rtabort!("failed to initiate panic, error {code}")
 }

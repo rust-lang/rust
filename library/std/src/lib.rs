@@ -501,10 +501,8 @@ pub mod lazy;
 #[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 mod std_float;
 
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 #[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
 pub mod simd {

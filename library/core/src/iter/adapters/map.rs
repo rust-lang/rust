@@ -34,7 +34,7 @@ use crate::ops::Try;
 ///
 /// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) }) {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 ///
@@ -52,7 +52,7 @@ use crate::ops::Try;
 /// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) })
 ///                                .rev() {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 #[must_use = "iterators are lazy and do nothing unless consumed"]

@@ -240,7 +240,7 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
 fn main() {
     let answer = do_twice(add_one, 5);
 
-    println!("The answer is: {}", answer);
+    println!("The answer is: {answer}");
 
     println!("With CFI enabled, you should not see the next answer");
     let f: fn(i32) -> i32 = unsafe {
@@ -250,7 +250,7 @@ fn main() {
     };
     let next_answer = do_twice(f, 5);
 
-    println!("The next answer is: {}", next_answer);
+    println!("The next answer is: {next_answer}");
 }
 ```
 Fig. 1. Modified example from the [Advanced Functions and
@@ -303,14 +303,14 @@ fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
 fn main() {
     let answer = do_twice(add_one, 5);
 
-    println!("The answer is: {}", answer);
+    println!("The answer is: {answer}");
 
     println!("With CFI enabled, you should not see the next answer");
     let f: fn(i32) -> i32 =
         unsafe { mem::transmute::<*const u8, fn(i32) -> i32>(add_two as *const u8) };
     let next_answer = do_twice(f, 5);
 
-    println!("The next answer is: {}", next_answer);
+    println!("The next answer is: {next_answer}");
 }
 ```
 Fig. 4. Another modified example from the [Advanced Functions and

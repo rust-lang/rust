@@ -1120,7 +1120,7 @@ impl fmt::Display for FromBytesWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.description())?;
         if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
-            write!(f, " at byte pos {}", pos)?;
+            write!(f, " at byte pos {pos}")?;
         }
         Ok(())
     }
@@ -1134,7 +1134,7 @@ impl fmt::Display for FromVecWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.error_kind {
             FromBytesWithNulErrorKind::InteriorNul(pos) => {
-                write!(f, "data provided contains an interior nul byte at pos {}", pos)
+                write!(f, "data provided contains an interior nul byte at pos {pos}")
             }
             FromBytesWithNulErrorKind::NotNulTerminated => {
                 write!(f, "data provided is not nul terminated")

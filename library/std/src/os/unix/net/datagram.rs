@@ -95,7 +95,7 @@ impl UnixDatagram {
     /// let sock = match UnixDatagram::bind("/path/to/the/socket") {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
-    ///         println!("Couldn't bind: {:?}", e);
+    ///         println!("Couldn't bind: {e:?}");
     ///         return
     ///     }
     /// };
@@ -127,7 +127,7 @@ impl UnixDatagram {
     ///     let sock2 = match UnixDatagram::bind_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(err) => {
-    ///             println!("Couldn't bind: {:?}", err);
+    ///             println!("Couldn't bind: {err:?}");
     ///             return Err(err);
     ///         }
     ///     };
@@ -157,7 +157,7 @@ impl UnixDatagram {
     /// let sock = match UnixDatagram::unbound() {
     ///     Ok(sock) => sock,
     ///     Err(e) => {
-    ///         println!("Couldn't unbound: {:?}", e);
+    ///         println!("Couldn't unbound: {e:?}");
     ///         return
     ///     }
     /// };
@@ -180,7 +180,7 @@ impl UnixDatagram {
     /// let (sock1, sock2) = match UnixDatagram::pair() {
     ///     Ok((sock1, sock2)) => (sock1, sock2),
     ///     Err(e) => {
-    ///         println!("Couldn't unbound: {:?}", e);
+    ///         println!("Couldn't unbound: {e:?}");
     ///         return
     ///     }
     /// };
@@ -210,7 +210,7 @@ impl UnixDatagram {
     ///     match sock.connect("/path/to/the/socket") {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
-    ///             println!("Couldn't connect: {:?}", e);
+    ///             println!("Couldn't connect: {e:?}");
     ///             return Err(e)
     ///         }
     ///     };
@@ -243,7 +243,7 @@ impl UnixDatagram {
     ///     match sock.connect_addr(&addr) {
     ///         Ok(sock) => sock,
     ///         Err(e) => {
-    ///             println!("Couldn't connect: {:?}", e);
+    ///             println!("Couldn't connect: {e:?}");
     ///             return Err(e)
     ///         }
     ///     };
@@ -367,7 +367,7 @@ impl UnixDatagram {
     ///     let sock = UnixDatagram::unbound()?;
     ///     let mut buf = vec![0; 10];
     ///     let (size, sender) = sock.recv_from(buf.as_mut_slice())?;
-    ///     println!("received {} bytes from {:?}", size, sender);
+    ///     println!("received {size} bytes from {sender:?}");
     ///     Ok(())
     /// }
     /// ```
@@ -422,11 +422,11 @@ impl UnixDatagram {
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated, sender) = sock.recv_vectored_with_ancillary_from(bufs, &mut ancillary)?;
-    ///     println!("received {}", size);
+    ///     println!("received {size}");
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
-    ///                 println!("receive file descriptor: {}", fd);
+    ///                 println!("receive file descriptor: {fd}");
     ///             }
     ///         }
     ///     }
@@ -479,11 +479,11 @@ impl UnixDatagram {
     ///     let mut ancillary_buffer = [0; 128];
     ///     let mut ancillary = SocketAncillary::new(&mut ancillary_buffer[..]);
     ///     let (size, _truncated) = sock.recv_vectored_with_ancillary(bufs, &mut ancillary)?;
-    ///     println!("received {}", size);
+    ///     println!("received {size}");
     ///     for ancillary_result in ancillary.messages() {
     ///         if let AncillaryData::ScmRights(scm_rights) = ancillary_result.unwrap() {
     ///             for fd in scm_rights {
-    ///                 println!("receive file descriptor: {}", fd);
+    ///                 println!("receive file descriptor: {fd}");
     ///             }
     ///         }
     ///     }
@@ -893,7 +893,7 @@ impl UnixDatagram {
     /// fn main() -> std::io::Result<()> {
     ///     let sock = UnixDatagram::unbound()?;
     ///     if let Ok(Some(err)) = sock.take_error() {
-    ///         println!("Got error: {:?}", err);
+    ///         println!("Got error: {err:?}");
     ///     }
     ///     Ok(())
     /// }

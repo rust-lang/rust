@@ -1123,7 +1123,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.modified() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform");
     ///     }
@@ -1158,7 +1158,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.accessed() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform");
     ///     }
@@ -1190,7 +1190,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.created() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform or filesystem");
     ///     }

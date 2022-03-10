@@ -605,9 +605,9 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// match socket.take_error() {
-    ///     Ok(Some(error)) => println!("UdpSocket error: {:?}", error),
+    ///     Ok(Some(error)) => println!("UdpSocket error: {error:?}"),
     ///     Ok(None) => println!("No error"),
-    ///     Err(error) => println!("UdpSocket.take_error failed: {:?}", error),
+    ///     Err(error) => println!("UdpSocket.take_error failed: {error:?}"),
     /// }
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -686,8 +686,8 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// let mut buf = [0; 10];
     /// match socket.recv(&mut buf) {
-    ///     Ok(received) => println!("received {} bytes {:?}", received, &buf[..received]),
-    ///     Err(e) => println!("recv function failed: {:?}", e),
+    ///     Ok(received) => println!("received {received} bytes {:?}", &buf[..received]),
+    ///     Err(e) => println!("recv function failed: {e:?}"),
     /// }
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -726,8 +726,8 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// let mut buf = [0; 10];
     /// match socket.peek(&mut buf) {
-    ///     Ok(received) => println!("received {} bytes", received),
-    ///     Err(e) => println!("peek function failed: {:?}", e),
+    ///     Ok(received) => println!("received {received} bytes"),
+    ///     Err(e) => println!("peek function failed: {e:?}"),
     /// }
     /// ```
     #[stable(feature = "peek", since = "1.18.0")]
@@ -770,7 +770,7 @@ impl UdpSocket {
     ///             // via platform-specific APIs such as epoll or IOCP
     ///             wait_for_fd();
     ///         }
-    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///         Err(e) => panic!("encountered IO error: {e}"),
     ///     }
     /// };
     /// println!("bytes: {:?}", &buf[..num_bytes_read]);
