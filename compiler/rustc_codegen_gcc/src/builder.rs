@@ -1392,8 +1392,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.cx
     }
 
-    fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
+    fn apply_attrs_to_cleanup_callsite(&mut self, _llret: RValue<'gcc>) {
         // FIXME(bjorn3): implement
+        unimplemented!();
     }
 
     fn set_span(&mut self, _span: Span) {}
