@@ -7,6 +7,7 @@ use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
 };
+use parser::SyntaxKind::WHITESPACE;
 use stdx::format_to;
 use syntax::{
     algo::find_node_at_range,
@@ -59,6 +60,20 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         syntax::NodeOrToken::Token(t) => t.parent()?,
     };
 
+    //If the selection is inside impl block, we need to place new module outside impl block,
+    //as impl blocks cannot contain modules
+
+    let mut impl_parent: Option<ast::Impl> = None;
+    let mut impl_child_count: usize = 0;
+    if let Some(parent_assoc_list) = node.parent() {
+        if let Some(parent_impl) = parent_assoc_list.parent() {
+            if let Some(impl_) = ast::Impl::cast(parent_impl) {
+                impl_child_count = parent_assoc_list.children().count();
+                impl_parent = Some(impl_);
+            }
+        }
+    }
+
     let mut curr_parent_module: Option<ast::Module> = None;
     if let Some(mod_syn_opt) = node.ancestors().find(|it| ast::Module::can_cast(it.kind())) {
         curr_parent_module = ast::Module::cast(mod_syn_opt);
@@ -98,18 +113,55 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         "Extract Module",
         module.text_range,
         |builder| {
-            let _ = &module;
+            let mut body_items: Vec<String> = Vec::new();
+            let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
+            let mut new_item_indent = old_item_indent + 1;
 
-            let mut body_items = Vec::new();
-            let new_item_indent = old_item_indent + 1;
-            for item in module.body_items {
+            if impl_parent.is_some() {
+                new_item_indent = old_item_indent + 2;
+            } else {
+                items_to_be_processed = [module.use_items.clone(), items_to_be_processed].concat();
+            }
+
+            for item in items_to_be_processed {
                 let item = item.indent(IndentLevel(1));
                 let mut indented_item = String::new();
                 format_to!(indented_item, "{}{}", new_item_indent, item.to_string());
                 body_items.push(indented_item);
             }
 
-            let body = body_items.join("\n\n");
+            let mut body = body_items.join("\n\n");
+
+            if let Some(impl_) = &impl_parent {
+                let mut impl_body_def = String::new();
+
+                if let Some(self_ty) = impl_.self_ty() {
+                    format_to!(
+                        impl_body_def,
+                        "{}impl {} {{\n{}\n{}}}",
+                        old_item_indent + 1,
+                        self_ty.to_string(),
+                        body,
+                        old_item_indent + 1
+                    );
+
+                    body = impl_body_def;
+
+                    // Add the import for enum/struct corresponding to given impl block
+                    if let Some(_) = module.make_use_stmt_of_node_with_super(self_ty.syntax()) {
+                        for item in module.use_items {
+                            let mut indented_item = String::new();
+                            format_to!(
+                                indented_item,
+                                "{}{}",
+                                old_item_indent + 1,
+                                item.to_string()
+                            );
+                            body = format!("{}\n\n{}", indented_item, body);
+                        }
+                    }
+                }
+            }
 
             let mut module_def = String::new();
 
@@ -135,7 +187,29 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             for import_path_text_range in import_paths_to_be_removed {
                 builder.delete(import_path_text_range);
             }
-            builder.replace(module.text_range, module_def)
+
+            if let Some(impl_) = impl_parent {
+                let node_to_be_removed;
+
+                // Remove complete impl block if it has only one child (as such it will be empty
+                // after deleting that child)
+                if impl_child_count == 1 {
+                    node_to_be_removed = impl_.syntax()
+                } else {
+                    //Remove selected node
+                    node_to_be_removed = &node;
+                }
+
+                builder.delete(node_to_be_removed.text_range());
+                // Remove preceding indentation from node
+                if let Some(range) = indent_range_before_given_node(&node_to_be_removed) {
+                    builder.delete(range);
+                }
+
+                builder.insert(impl_.syntax().text_range().end(), format!("\n\n{}", module_def));
+            } else {
+                builder.replace(module.text_range, module_def)
+            }
         },
     )
 }
@@ -144,16 +218,24 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 struct Module {
     text_range: TextRange,
     name: String,
-    body_items: Vec<ast::Item>,
+    body_items: Vec<ast::Item>, // All items except use items
+    use_items: Vec<ast::Item>, // Use items are kept separately as they help when the selection is inside an impl block, we can directly take these items and keep them outside generated impl block inside generated module
 }
 
 fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Module> {
+    let mut use_items = vec![];
+
     let mut body_items: Vec<ast::Item> = node
         .children()
         .filter_map(|child| {
-            if let Some(item) = ast::Item::cast(child) {
-                if selection_range.contains_range(item.syntax().text_range()) {
-                    return Some(item);
+            if selection_range.contains_range(child.text_range()) {
+                let child_kind = child.kind();
+                if let Some(item) = ast::Item::cast(child) {
+                    if ast::Use::can_cast(child_kind) {
+                        use_items.push(item);
+                    } else {
+                        return Some(item);
+                    }
                 }
                 return None;
             }
@@ -165,7 +247,7 @@ fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Modul
         body_items.push(node_item);
     }
 
-    Some(Module { text_range: selection_range, name: "modname".to_string(), body_items })
+    Some(Module { text_range: selection_range, name: "modname".to_string(), body_items, use_items })
 }
 
 impl Module {
@@ -543,23 +625,27 @@ impl Module {
             let use_ =
                 make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
             if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-                self.body_items.insert(0, item);
+                self.use_items.insert(0, item);
             }
         }
 
         import_path_to_be_removed
     }
 
-    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) {
+    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> Option<ast::Item> {
         let super_path = make::ext::ident_path("super");
         let node_path = make::ext::ident_path(&node_syntax.to_string());
         let use_ = make::use_(
             None,
             make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
         );
+
         if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-            self.body_items.insert(0, item);
+            self.use_items.insert(0, item.clone());
+            return Some(item);
         }
+
+        return None;
     }
 
     fn process_use_stmt_for_import_resolve(
@@ -857,6 +943,14 @@ fn compare_hir_and_ast_module(
     }
 
     return Some(());
+}
+
+fn indent_range_before_given_node(node: &SyntaxNode) -> Option<TextRange> {
+    let x = node.siblings_with_tokens(syntax::Direction::Prev).find(|x| {
+        return x.kind() == WHITESPACE;
+    })?;
+
+    return Some(x.text_range());
 }
 
 #[cfg(test)]
@@ -1433,6 +1527,65 @@ mod modname {
     }
 }
             ",
+        )
+    }
+
+    #[test]
+    fn test_if_inside_impl_block_generate_module_outside() {
+        check_assist(
+            extract_module,
+            r"
+            struct A {}
+
+            impl A {
+$0fn foo() {}$0
+                fn bar() {}
+            }
+        ",
+            r"
+            struct A {}
+
+            impl A {
+                fn bar() {}
+            }
+
+mod modname {
+    use super::A;
+
+    impl A {
+        pub(crate) fn foo() {}
+    }
+}
+        ",
+        )
+    }
+
+    #[test]
+    fn test_if_inside_impl_block_generate_module_outside_but_impl_block_having_one_child() {
+        check_assist(
+            extract_module,
+            r"
+            struct A {}
+            struct B {}
+
+            impl A {
+$0fn foo(x: B) {}$0
+            }
+        ",
+            r"
+            struct A {}
+            struct B {}
+
+mod modname {
+    use super::B;
+
+    use super::A;
+
+    impl A {
+        pub(crate) fn foo(x: B) {}
+    }
+}
+        ",
         )
     }
 }
