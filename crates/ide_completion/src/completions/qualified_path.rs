@@ -63,7 +63,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 
     match kind {
-        Some(PathKind::Pat | PathKind::Attr { .. } | PathKind::Vis { .. } | PathKind::Use) => {
+        Some(
+            PathKind::Pat
+            | PathKind::Attr { .. }
+            | PathKind::Vis { .. }
+            | PathKind::Use
+            | PathKind::Derive,
+        ) => {
             return;
         }
         _ => {

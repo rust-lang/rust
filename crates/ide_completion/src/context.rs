@@ -43,11 +43,12 @@ pub(crate) enum Visible {
     No,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(super) enum PathKind {
     Expr,
     Type,
     Attr { kind: AttrKind, annotated_item_kind: Option<SyntaxKind> },
+    Derive,
     Mac,
     Pat,
     Vis { has_in_token: bool },
@@ -472,6 +473,8 @@ impl<'a> CompletionContext<'a> {
         mut fake_ident_token: SyntaxToken,
     ) {
         let _p = profile::span("CompletionContext::expand_and_fill");
+        let mut derive_ctx = None;
+
         'expansion: loop {
             let parent_item =
                 |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
@@ -509,11 +512,45 @@ impl<'a> CompletionContext<'a> {
                     _ => break 'expansion,
                 }
             }
+            let orig_tt = match find_node_at_offset::<ast::TokenTree>(&original_file, offset) {
+                Some(it) => it,
+                None => break,
+            };
+            let spec_tt = match find_node_at_offset::<ast::TokenTree>(&speculative_file, offset) {
+                Some(it) => it,
+                None => break,
+            };
+
+            // Expand pseudo-derive expansion
+            if let (Some(orig_attr), Some(spec_attr)) = (
+                orig_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
+                spec_tt.syntax().parent().and_then(ast::Meta::cast).and_then(|it| it.parent_attr()),
+            ) {
+                match (
+                    self.sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
+                    self.sema.speculative_expand_derive_as_pseudo_attr_macro(
+                        &orig_attr,
+                        &spec_attr,
+                        fake_ident_token.clone(),
+                    ),
+                ) {
+                    // Clearly not a derive macro
+                    (None, None) => (),
+                    // successful expansions
+                    (Some(actual_expansion), Some((fake_expansion, fake_mapped_token))) => {
+                        let new_offset = fake_mapped_token.text_range().start();
+                        derive_ctx = Some((actual_expansion, fake_expansion, new_offset));
+                        break 'expansion;
+                    }
+                    // exactly one expansion failed, inconsistent state so stop expanding completely
+                    _ => break 'expansion,
+                }
+            }
 
             // Expand fn-like macro calls
             if let (Some(actual_macro_call), Some(macro_call_with_fake_ident)) = (
-                find_node_at_offset::<ast::MacroCall>(&original_file, offset),
-                find_node_at_offset::<ast::MacroCall>(&speculative_file, offset),
+                orig_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
+                spec_tt.syntax().ancestors().find_map(ast::MacroCall::cast),
             ) {
                 let mac_call_path0 = actual_macro_call.path().as_ref().map(|s| s.syntax().text());
                 let mac_call_path1 =
@@ -553,7 +590,7 @@ impl<'a> CompletionContext<'a> {
             break;
         }
 
-        self.fill(&original_file, speculative_file, offset);
+        self.fill(&original_file, speculative_file, offset, derive_ctx);
     }
 
     fn expected_type_and_name(&self) -> (Option<Type>, Option<NameOrNameRef>) {
@@ -697,6 +734,7 @@ impl<'a> CompletionContext<'a> {
         original_file: &SyntaxNode,
         file_with_fake_ident: SyntaxNode,
         offset: TextSize,
+        derive_ctx: Option<(SyntaxNode, SyntaxNode, TextSize)>,
     ) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
@@ -724,6 +762,21 @@ impl<'a> CompletionContext<'a> {
         self.expected_type = expected_type;
         self.expected_name = expected_name;
 
+        // Overwrite the path kind for derives
+        if let Some((original_file, file_with_fake_ident, offset)) = derive_ctx {
+            if let Some(ast::NameLike::NameRef(name_ref)) =
+                find_node_at_offset(&file_with_fake_ident, offset)
+            {
+                if let Some((path_ctx, _)) =
+                    Self::classify_name_ref(&self.sema, &original_file, name_ref)
+                {
+                    self.path_context =
+                        Some(PathCompletionCtx { kind: Some(PathKind::Derive), ..path_ctx });
+                }
+            }
+            return;
+        }
+
         let name_like = match find_node_at_offset(&file_with_fake_ident, offset) {
             Some(it) => it,
             None => return,
@@ -743,6 +796,7 @@ impl<'a> CompletionContext<'a> {
             .token_ancestors_with_macros(self.token.clone())
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::Fn::cast);
+
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
                 self.lifetime_ctx =

@@ -19,10 +19,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(PathCompletionCtx {
             kind:
                 Some(
-                    PathKind::Vis { .. }
-                    | PathKind::Attr { .. }
+                    PathKind::Attr { .. }
+                    | PathKind::Derive
+                    | PathKind::Pat
                     | PathKind::Use { .. }
-                    | PathKind::Pat,
+                    | PathKind::Vis { .. },
                 ),
             ..
         }) => return,

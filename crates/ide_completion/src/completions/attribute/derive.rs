@@ -6,14 +6,21 @@ use ide_db::{
 };
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
-use syntax::{ast, SmolStr, SyntaxKind};
+use syntax::{SmolStr, SyntaxKind};
 
 use crate::{
-    completions::flyimport::compute_fuzzy_completion_order_key, context::CompletionContext,
-    item::CompletionItem, Completions, ImportEdit,
+    completions::flyimport::compute_fuzzy_completion_order_key,
+    context::{CompletionContext, PathCompletionCtx, PathKind},
+    item::CompletionItem,
+    Completions, ImportEdit,
 };
 
-pub(super) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext, attr: &ast::Attr) {
+pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
+    let attr = match (&ctx.path_context, ctx.attr.as_ref()) {
+        (Some(PathCompletionCtx { kind: Some(PathKind::Derive), .. }), Some(attr)) => attr,
+        _ => return,
+    };
+
     let core = ctx.famous_defs().core();
     let existing_derives: FxHashSet<_> =
         ctx.sema.resolve_derive_macro(attr).into_iter().flatten().flatten().collect();

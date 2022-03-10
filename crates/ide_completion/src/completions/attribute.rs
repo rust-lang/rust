@@ -29,6 +29,8 @@ mod derive;
 mod lint;
 mod repr;
 
+pub(crate) use self::derive::complete_derive;
+
 /// Complete inputs to known builtin attributes as well as derive attributes
 pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
@@ -46,7 +48,6 @@ pub(crate) fn complete_known_attribute_input(
 
     match path.text().as_str() {
         "repr" => repr::complete_repr(acc, ctx, tt),
-        "derive" => derive::complete_derive(acc, ctx, ctx.attr.as_ref()?),
         "feature" => lint::complete_lint(acc, ctx, &parse_tt_as_comma_sep_paths(tt)?, FEATURES),
         "allow" | "warn" | "deny" | "forbid" => {
             let existing_lints = parse_tt_as_comma_sep_paths(tt)?;
@@ -62,9 +63,7 @@ pub(crate) fn complete_known_attribute_input(
 
             lint::complete_lint(acc, ctx, &existing_lints, &lints);
         }
-        "cfg" => {
-            cfg::complete_cfg(acc, ctx);
-        }
+        "cfg" => cfg::complete_cfg(acc, ctx),
         _ => (),
     }
     Some(())
@@ -347,7 +346,7 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         .children_with_tokens()
         .skip(1)
         .take_while(|it| it.as_token() != Some(&r_paren));
-    let input_expressions = tokens.into_iter().group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
     Some(
         input_expressions
             .into_iter()

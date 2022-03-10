@@ -153,7 +153,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         };
         match (kind, import.original_item) {
             // Aren't handled in flyimport
-            (PathKind::Vis { .. } | PathKind::Use, _) => false,
+            (PathKind::Vis { .. } | PathKind::Use | PathKind::Derive, _) => false,
             // modules are always fair game
             (_, ItemInNs::Types(hir::ModuleDef::Module(_))) => true,
             // and so are macros(except for attributes)
