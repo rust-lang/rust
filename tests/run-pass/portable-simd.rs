@@ -238,6 +238,28 @@ fn simd_cast() {
     }
 }
 
+fn simd_swizzle() {
+    use Which::*;
+
+    let a = f32x4::splat(10.0);
+    let b = f32x4::from_array([1.0, 2.0, 3.0, -4.0]);
+
+    assert_eq!(simd_swizzle!(b, [3, 0, 0, 2]), f32x4::from_array([-4.0, 1.0, 1.0, 3.0]));
+    assert_eq!(simd_swizzle!(b, [1, 2]), f32x2::from_array([2.0, 3.0]));
+    assert_eq!(simd_swizzle!(b, a, [First(3), Second(0)]), f32x2::from_array([-4.0, 10.0]));
+}
+
+fn simd_gather_scatter() {
+    let mut vec: Vec<i16> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
+    let idxs = Simd::from_array([9, 3, 0, 17]);
+    let result = Simd::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
+    assert_eq!(result, Simd::from_array([0, 13, 10, 0]));
+
+    let idxs = Simd::from_array([9, 3, 0, 0]);
+    Simd::from_array([-27, 82, -41, 124]).scatter(&mut vec, idxs);
+    assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
+}
+
 fn simd_intrinsics() {
     extern "platform-intrinsic" {
         fn simd_eq<T, U>(x: T, y: T) -> U;
@@ -276,5 +298,7 @@ fn main() {
     simd_ops_f64();
     simd_ops_i32();
     simd_cast();
+    simd_swizzle();
+    simd_gather_scatter();
     simd_intrinsics();
 }

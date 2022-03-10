@@ -3,7 +3,7 @@ use std::iter;
 use log::trace;
 
 use rustc_apfloat::{Float, Round};
-use rustc_middle::ty::layout::{IntegerExt, LayoutOf};
+use rustc_middle::ty::layout::{HasParamEnv, IntegerExt, LayoutOf};
 use rustc_middle::{mir, mir::BinOp, ty, ty::FloatTy};
 use rustc_target::abi::{Align, Integer};
 
@@ -570,8 +570,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
 
-                    let mask = simd_element_to_bool(mask)?;
-                    let val = if mask { yes } else { no };
+                    let val = if simd_element_to_bool(mask)? { yes } else { no };
                     this.write_immediate(*val, &dest.into())?;
                 }
             }
@@ -612,6 +611,91 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                             ),
                     };
                     this.write_immediate(val, &dest.into())?;
+                }
+            }
+            "simd_shuffle" => {
+                let &[ref left, ref right, ref index] = check_arg_count(args)?;
+                let (left, left_len) = this.operand_to_simd(left)?;
+                let (right, right_len) = this.operand_to_simd(right)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                // `index` is an array, not a SIMD type
+                let ty::Array(_, index_len) = index.layout.ty.kind() else {
+                    bug!("simd_shuffle index argument has non-array type {}", index.layout.ty)
+                };
+                let index_len = index_len.eval_usize(*this.tcx, this.param_env());
+
+                assert_eq!(left_len, right_len);
+                assert_eq!(index_len, dest_len);
+
+                for i in 0..dest_len {
+                    let src_index: u64 = this
+                        .read_immediate(&this.operand_index(&index, i)?.into())?
+                        .to_scalar()?
+                        .to_u32()?
+                        .into();
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let val = if src_index < left_len {
+                        this.read_immediate(&this.mplace_index(&left, src_index)?.into())?
+                    } else if src_index < left_len.checked_add(right_len).unwrap() {
+                        this.read_immediate(
+                            &this.mplace_index(&right, src_index - left_len)?.into(),
+                        )?
+                    } else {
+                        bug!(
+                            "simd_shuffle index {} is out of bounds for 2 vectors of size {}",
+                            src_index,
+                            left_len
+                        );
+                    };
+                    this.write_immediate(*val, &dest.into())?;
+                }
+            }
+            "simd_gather" => {
+                let &[ref passthru, ref ptrs, ref mask] = check_arg_count(args)?;
+                let (passthru, passthru_len) = this.operand_to_simd(passthru)?;
+                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, passthru_len);
+                assert_eq!(dest_len, ptrs_len);
+                assert_eq!(dest_len, mask_len);
+
+                for i in 0..dest_len {
+                    let passthru = this.read_immediate(&this.mplace_index(&passthru, i)?.into())?;
+                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let val = if simd_element_to_bool(mask)? {
+                        let place = this.deref_operand(&ptr.into())?;
+                        this.read_immediate(&place.into())?
+                    } else {
+                        passthru
+                    };
+                    this.write_immediate(*val, &dest.into())?;
+                }
+            }
+            "simd_scatter" => {
+                let &[ref value, ref ptrs, ref mask] = check_arg_count(args)?;
+                let (value, value_len) = this.operand_to_simd(value)?;
+                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+
+                assert_eq!(ptrs_len, value_len);
+                assert_eq!(ptrs_len, mask_len);
+
+                for i in 0..ptrs_len {
+                    let value = this.read_immediate(&this.mplace_index(&value, i)?.into())?;
+                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+
+                    if simd_element_to_bool(mask)? {
+                        let place = this.deref_operand(&ptr.into())?;
+                        this.write_immediate(*value, &place.into())?;
+                    }
                 }
             }
 
