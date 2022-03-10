@@ -249,6 +249,13 @@ fn simd_swizzle() {
     assert_eq!(simd_swizzle!(b, a, [First(3), Second(0)]), f32x2::from_array([-4.0, 10.0]));
 }
 
+fn simd_gather_scatter() {
+    let vec: &[i16] = &[10, 11, 12, 13, 14, 15, 16, 17, 18];
+    let idxs = Simd::from_array([9, 3, 0, 17]);
+    let result = Simd::gather_or_default(&vec, idxs); // Note the lane that is out-of-bounds.
+    assert_eq!(result, Simd::from_array([0, 13, 10, 0]));
+}
+
 fn simd_intrinsics() {
     extern "platform-intrinsic" {
         fn simd_eq<T, U>(x: T, y: T) -> U;
@@ -288,5 +295,6 @@ fn main() {
     simd_ops_i32();
     simd_cast();
     simd_swizzle();
+    simd_gather_scatter();
     simd_intrinsics();
 }

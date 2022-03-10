@@ -653,6 +653,33 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_immediate(*val, &dest.into())?;
                 }
             }
+            "simd_gather" => {
+                let &[ref passthru, ref ptrs, ref mask] = check_arg_count(args)?;
+                let (passthru, passthru_len) = this.operand_to_simd(passthru)?;
+                let (ptrs, ptrs_len) = this.operand_to_simd(ptrs)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, passthru_len);
+                assert_eq!(dest_len, ptrs_len);
+                assert_eq!(dest_len, mask_len);
+
+                for i in 0..dest_len {
+                    let passthru = this.read_immediate(&this.mplace_index(&passthru, i)?.into())?;
+                    let ptr = this.read_immediate(&this.mplace_index(&ptrs, i)?.into())?;
+                    let mask = this.read_immediate(&this.mplace_index(&mask, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let mask = simd_element_to_bool(mask)?;
+                    let val = if mask {
+                        let place = this.deref_operand(&ptr.into())?;
+                        this.read_immediate(&place.into())?
+                    } else {
+                        passthru
+                    };
+                    this.write_immediate(*val, &dest.into())?;
+                }
+            }
 
             // Atomic operations
             "atomic_load" => this.atomic_load(args, dest, AtomicReadOp::SeqCst)?,
