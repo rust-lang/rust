@@ -408,12 +408,10 @@ pub mod arch {
 #[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Skip SIMD doctests in Miri
 mod core_simd;
 
 #[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Skip SIMD doctests in Miri
 pub mod simd {
     #[unstable(feature = "portable_simd", issue = "86656")]
     pub use crate::core_simd::simd::*;
