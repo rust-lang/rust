@@ -200,7 +200,7 @@ struct MatcherPos<'root, 'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_, '_>, 192);
+rustc_data_structures::static_assert_size!(MatcherPos<'_, '_>, 240);
 
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
     /// Generates the top-level matcher position in which the "dot" is before the first token of
@@ -321,10 +321,13 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count
             + match *elt {
-                TokenTree::Sequence(_, ref seq) => seq.num_captures,
                 TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
                 TokenTree::MetaVar(..) => 0,
                 TokenTree::MetaVarDecl(..) => 1,
+                // FIXME(c410-f3r) MetaVarExpr should be handled instead of being ignored
+                // https://github.com/rust-lang/rust/issues/9390
+                TokenTree::MetaVarExpr(..) => 0,
+                TokenTree::Sequence(_, ref seq) => seq.num_captures,
                 TokenTree::Token(..) => 0,
             }
     })
@@ -436,7 +439,9 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
                 Occupied(..) => return Err((sp, format!("duplicated bind name: {}", bind_name))),
             },
-            TokenTree::MetaVar(..) | TokenTree::Token(..) => (),
+            // FIXME(c410-f3r) MetaVar and MetaVarExpr should be handled instead of being ignored
+            // https://github.com/rust-lang/rust/issues/9390
+            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) | TokenTree::Token(..) => {}
         }
 
         Ok(())
@@ -650,7 +655,7 @@ fn inner_parse_loop<'root, 'tt>(
                 // rules. NOTE that this is not necessarily an error unless _all_ items in
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
+                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => {}
             }
         }
     }

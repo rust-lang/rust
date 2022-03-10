@@ -3,6 +3,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
