@@ -1,3 +1,149 @@
+Version 1.60.0 (2022-04-07)
+==========================
+
+Language
+--------
+- [Stabilize `#[cfg(panic = "...")]` for either `"unwind"` or `"abort"`.][93658]
+- [Stabilize `#[cfg(target_has_atomic = "...")]` for each integer size and `"ptr"`.][93824]
+
+Compiler
+--------
+- [Enable combining `+crt-static` and `relocation-model=pic` on `x86_64-unknown-linux-gnu`][86374]
+- [Fixes wrong `unreachable_pub` lints on nested and glob public reexport][87487]
+- [Stabilize `-Z instrument-coverage` as `-C instrument-coverage`][90132]
+- [Implement raw-dylib support for windows-gnu][90782]
+- [Stabilize `-Z print-link-args` as `--print link-args`][91606]
+- [`mips64-openwrt-linux-musl`: Add Tier 3 target][92300]
+- [Add new target `armv7-unknown-linux-uclibceabi` (softfloat)][92383]
+- [Fix invalid removal of newlines from doc comments][92357]
+- [Add kernel target for RustyHermit][92670]
+- [Deny mixing bin crate type with lib crate types][92933]
+- [Make rustc use `RUST_BACKTRACE=full` by default][93566]
+- [Upgrade to LLVM 14][93577]
+
+Libraries
+---------
+- [Guarantee call order for `sort_by_cached_key`][89621]
+- [Improve `Duration::try_from_secs_f32`/`f64` accuracy by directly processing exponent and mantissa][90247]
+- [Switch all libraries to the 2021 edition][92068]
+- [Make `Instant::{duration_since, elapsed, sub}` saturating and remove workarounds][89926]
+- [Change PhantomData type for `BuildHasherDefault` (and more)][92630]
+
+Stabilized APIs
+---------------
+- [`Arc::new_cyclic`][arc_new_cyclic]
+- [`Rc::new_cyclic`][rc_new_cyclic]
+- [`slice::EscapeAscii`][slice_escape_ascii]
+- [`<[u8]>::escape_ascii`][slice_u8_escape_ascii]
+- [`u8::escape_ascii`][u8_escape_ascii]
+- [`Vec::spare_capacity_mut`][vec_spare_capacity_mut]
+- [`MaybeUninit::assume_init_drop`][assume_init_drop]
+- [`MaybeUninit::assume_init_read`][assume_init_read]
+- [`i8::abs_diff`][i8_abs_diff]
+- [`i16::abs_diff`][i16_abs_diff]
+- [`i32::abs_diff`][i32_abs_diff]
+- [`i64::abs_diff`][i64_abs_diff]
+- [`i128::abs_diff`][i128_abs_diff]
+- [`isize::abs_diff`][isize_abs_diff]
+- [`u8::abs_diff`][u8_abs_diff]
+- [`u16::abs_diff`][u16_abs_diff]
+- [`u32::abs_diff`][u32_abs_diff]
+- [`u64::abs_diff`][u64_abs_diff]
+- [`u128::abs_diff`][u128_abs_diff]
+- [`usize::abs_diff`][usize_abs_diff]
+- [`Display for io::ErrorKind`][display_error_kind]
+- [`From<u8> for ExitCode`][from_u8_exit_code]
+- [`Not for !` (the "never" type)][not_never]
+- [_Op_`Assign<$t> for Wrapping<$t>`][wrapping_assign_ops]
+- [`arch::is_aarch64_feature_detected!`][is_aarch64_feature_detected]
+
+Cargo
+-----
+- [Print executable name on `cargo test --no-run`.][cargo/9959]
+- [Port cargo from `toml-rs` to `toml_edit`][cargo/10086]
+- [Stabilize `-Ztimings` as `--timings`][cargo/10245]
+- [Accept more `cargo:rustc-link-arg-*` types from build script output.][cargo/10274]
+- [cargo-new should not add ignore rule on Cargo.lock inside subdirs][cargo/10379]
+
+Misc
+----
+- [Drop rustc-docs from complete profile][93742]
+- [bootstrap: tidy up flag handling for llvm build][93918]
+
+Compatibility Notes
+-------------------
+- [Remove compiler-rt linking hack on Android][83822]
+- [Remove deprecated LLVM-style inline assembly][92816]
+- [Reject unsupported naked functions][93153]
+- [Remove deprecated `--host` arg for cargo search and publish cmds][cargo/10327]
+
+Internal Changes
+----------------
+
+These changes provide no direct user facing benefits, but represent significant
+improvements to the internals and overall performance of rustc
+and related tools.
+
+<!-- TODO: anything to highlight? -->
+
+[83822]: https://github.com/rust-lang/rust/pull/83822
+[86374]: https://github.com/rust-lang/rust/pull/86374
+[87487]: https://github.com/rust-lang/rust/pull/87487
+[89621]: https://github.com/rust-lang/rust/pull/89621
+[89926]: https://github.com/rust-lang/rust/pull/89926
+[90132]: https://github.com/rust-lang/rust/pull/90132
+[90247]: https://github.com/rust-lang/rust/pull/90247
+[90782]: https://github.com/rust-lang/rust/pull/90782
+[91606]: https://github.com/rust-lang/rust/pull/91606
+[92068]: https://github.com/rust-lang/rust/pull/92068
+[92300]: https://github.com/rust-lang/rust/pull/92300
+[92357]: https://github.com/rust-lang/rust/pull/92357
+[92383]: https://github.com/rust-lang/rust/pull/92383
+[92630]: https://github.com/rust-lang/rust/pull/92630
+[92670]: https://github.com/rust-lang/rust/pull/92670
+[92816]: https://github.com/rust-lang/rust/pull/92816
+[92933]: https://github.com/rust-lang/rust/pull/92933
+[93153]: https://github.com/rust-lang/rust/pull/93153
+[93566]: https://github.com/rust-lang/rust/pull/93566
+[93577]: https://github.com/rust-lang/rust/pull/93577
+[93658]: https://github.com/rust-lang/rust/pull/93658
+[93742]: https://github.com/rust-lang/rust/pull/93742
+[93824]: https://github.com/rust-lang/rust/pull/93824
+[93918]: https://github.com/rust-lang/rust/pull/93918
+
+[cargo/9959]: https://github.com/rust-lang/cargo/pull/9959
+[cargo/10086]: https://github.com/rust-lang/cargo/pull/10086
+[cargo/10245]: https://github.com/rust-lang/cargo/pull/10245
+[cargo/10274]: https://github.com/rust-lang/cargo/pull/10274
+[cargo/10379]: https://github.com/rust-lang/cargo/pull/10379
+[cargo/10327]: https://github.com/rust-lang/cargo/pull/10327
+
+[arc_new_cyclic]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.new_cyclic
+[rc_new_cyclic]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.new_cyclic
+[slice_escape_ascii]: https://doc.rust-lang.org/stable/std/slice/struct.EscapeAscii.html
+[slice_u8_escape_ascii]: https://doc.rust-lang.org/stable/std/primitive.slice.html#method.escape_ascii
+[u8_escape_ascii]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.escape_ascii
+[vec_spare_capacity_mut]: https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.spare_capacity_mut
+[assume_init_drop]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_drop
+[assume_init_read]: https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#method.assume_init_read
+[i8_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i8.html#method.abs_diff
+[i16_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i16.html#method.abs_diff
+[i32_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i32.html#method.abs_diff
+[i64_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i64.html#method.abs_diff
+[i128_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.i128.html#method.abs_diff
+[isize_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.isize.html#method.abs_diff
+[u8_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u8.html#method.abs_diff
+[u16_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u16.html#method.abs_diff
+[u32_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u32.html#method.abs_diff
+[u64_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u64.html#method.abs_diff
+[u128_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.u128.html#method.abs_diff
+[usize_abs_diff]: https://doc.rust-lang.org/stable/std/primitive.usize.html#method.abs_diff
+[display_error_kind]: https://doc.rust-lang.org/stable/std/io/enum.ErrorKind.html#impl-Display
+[from_u8_exit_code]: https://doc.rust-lang.org/stable/std/process/struct.ExitCode.html#impl-From%3Cu8%3E
+[not_never]: https://doc.rust-lang.org/stable/std/primitive.never.html#impl-Not
+[wrapping_assign_ops]: https://doc.rust-lang.org/stable/std/num/struct.Wrapping.html#trait-implementations
+[is_aarch64_feature_detected]: https://doc.rust-lang.org/stable/std/arch/macro.is_aarch64_feature_detected.html
+
 Version 1.59.0 (2022-02-24)
 ==========================
 
