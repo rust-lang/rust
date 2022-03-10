@@ -188,8 +188,6 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("x86", "avx512gfni") => smallvec!["gfni"],
         ("x86", "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
         ("aarch64", "fp") => smallvec!["fp-armv8"],
-        ("aarch64", "fp16") => smallvec!["fullfp16"],
-        ("aarch64", "fhm") => smallvec!["fp16fml"],
         ("aarch64", "rcpc2") => smallvec!["rcpc-immo"],
         ("aarch64", "dpb") => smallvec!["ccpp"],
         ("aarch64", "dpb2") => smallvec!["ccdp"],
@@ -198,6 +196,19 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("aarch64", "pmuv3") => smallvec!["perfmon"],
         ("aarch64", "paca") => smallvec!["pauth"],
         ("aarch64", "pacg") => smallvec!["pauth"],
+        // Rust ties fp and neon together. In LLVM neon implicitly enables fp,
+        // but we manually enable neon when a feature only implicitly enables fp
+        ("aarch64", "f32mm") => smallvec!["f32mm", "neon"],
+        ("aarch64", "f64mm") => smallvec!["f64mm", "neon"],
+        ("aarch64", "fhm") => smallvec!["fp16fml", "neon"],
+        ("aarch64", "fp16") => smallvec!["fullfp16", "neon"],
+        ("aarch64", "jsconv") => smallvec!["jsconv", "neon"],
+        ("aarch64", "sve") => smallvec!["sve", "neon"],
+        ("aarch64", "sve2") => smallvec!["sve2", "neon"],
+        ("aarch64", "sve2-aes") => smallvec!["sve2-aes", "neon"],
+        ("aarch64", "sve2-sm4") => smallvec!["sve2-sm4", "neon"],
+        ("aarch64", "sve2-sha3") => smallvec!["sve2-sha3", "neon"],
+        ("aarch64", "sve2-bitperm") => smallvec!["sve2-bitperm", "neon"],
         (_, s) => smallvec![s],
     }
 }
@@ -490,7 +501,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
         if RUSTC_SPECIFIC_FEATURES.contains(&feature) {
             return SmallVec::<[_; 2]>::new();
         }
-        // ... otherwise though we run through `to_llvm_feature when
+        // ... otherwise though we run through `to_llvm_features` when
         // passing requests down to LLVM. This means that all in-language
         // features also work on the command line instead of having two
         // different names when the LLVM name and the Rust name differ.
