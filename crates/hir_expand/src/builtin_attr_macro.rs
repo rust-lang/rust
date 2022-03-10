@@ -1,7 +1,5 @@
 //! Builtin attributes.
 
-use itertools::Itertools;
-
 use crate::{db::AstDatabase, name, ExpandResult, MacroCallId, MacroCallKind};
 
 macro_rules! register_builtin {
@@ -98,10 +96,16 @@ fn derive_attr_expand(
 ) -> ExpandResult<tt::Subtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
-        MacroCallKind::Attr { attr_args, .. } => &attr_args.0,
-        _ => return ExpandResult::ok(tt.clone()),
+        MacroCallKind::Attr { attr_args, is_derive: true, .. } => &attr_args.0,
+        _ => return ExpandResult::ok(Default::default()),
     };
+    pseudo_derive_attr_expansion(tt, derives)
+}
 
+pub fn pseudo_derive_attr_expansion(
+    tt: &tt::Subtree,
+    args: &tt::Subtree,
+) -> ExpandResult<tt::Subtree> {
     let mk_leaf = |char| {
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
             char,
@@ -111,21 +115,12 @@ fn derive_attr_expand(
     };
 
     let mut token_trees = Vec::new();
-    for (comma, group) in &derives
-        .token_trees
-        .iter()
-        .filter_map(|tt| match tt {
-            tt::TokenTree::Leaf(l) => Some(l),
-            tt::TokenTree::Subtree(_) => None,
-        })
-        .group_by(|l| matches!(l, tt::Leaf::Punct(tt::Punct { char: ',', .. })))
+    for tt in (&args.token_trees)
+        .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))))
     {
-        if comma {
-            continue;
-        }
         token_trees.push(mk_leaf('#'));
         token_trees.push(mk_leaf('['));
-        token_trees.extend(group.cloned().map(tt::TokenTree::Leaf));
+        token_trees.extend(tt.iter().cloned());
         token_trees.push(mk_leaf(']'));
     }
     token_trees.push(mk_leaf('('));

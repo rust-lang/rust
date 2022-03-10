@@ -63,7 +63,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     }
 
     match kind {
-        Some(PathKind::Pat | PathKind::Attr { .. } | PathKind::Vis { .. } | PathKind::Use) => {
+        Some(
+            PathKind::Pat
+            | PathKind::Attr { .. }
+            | PathKind::Vis { .. }
+            | PathKind::Use
+            | PathKind::Derive,
+        ) => {
             return;
         }
         _ => {
@@ -415,10 +421,10 @@ macro_rules! foo { () => {} }
 
 fn main() { let _ = crate::$0 }
 "#,
-            expect![[r##"
+            expect![[r#"
                 fn main()  fn()
-                ma foo!(…) #[macro_export] macro_rules! foo
-            "##]],
+                ma foo!(…) macro_rules! foo
+            "#]],
         );
     }
 

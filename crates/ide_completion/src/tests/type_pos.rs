@@ -16,7 +16,7 @@ struct Foo<'lt, T, const C: usize> {
     f: $0
 }
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -29,10 +29,10 @@ struct Foo<'lt, T, const C: usize> {
             md module
             st Foo<…>
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     )
 }
 
@@ -42,7 +42,7 @@ fn tuple_struct_field() {
         r#"
 struct Foo<'lt, T, const C: usize>(f$0);
 "#,
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub(super)
             kw pub
@@ -58,10 +58,10 @@ struct Foo<'lt, T, const C: usize>(f$0);
             md module
             st Foo<…>
             st Unit
-            ma makro!(…)  #[macro_export] macro_rules! makro
+            ma makro!(…)  macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     )
 }
 
@@ -71,7 +71,7 @@ fn fn_return_type() {
         r#"
 fn x<'lt, T, const C: usize>() -> $0
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -82,10 +82,10 @@ fn x<'lt, T, const C: usize>() -> $0
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     );
 }
 
@@ -98,7 +98,7 @@ fn foo<'lt, T, const C: usize>() {
     let _: $0;
 }
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -109,10 +109,10 @@ fn foo<'lt, T, const C: usize>() {
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     );
     check(
         r#"
@@ -121,16 +121,16 @@ fn foo<'lt, T, const C: usize>() {
     let _: self::$0;
 }
 "#,
-        expect![[r##"
+        expect![[r#"
             tt Trait
             en Enum
             st Record
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
-        "##]],
+        "#]],
     );
 }
 
@@ -144,7 +144,7 @@ trait Trait2 {
 
 fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -157,12 +157,12 @@ fn foo<'lt, T: Trait2<$0>, const CONST_PARAM: usize>(_: T) {}
             st Tuple
             md module
             st Unit
-            ma makro!(…)          #[macro_export] macro_rules! makro
+            ma makro!(…)          macro_rules! makro
             tt Trait2
             un Union
             ct CONST
             bt u32
-        "##]],
+        "#]],
     );
     check(
         r#"
@@ -172,18 +172,18 @@ trait Trait2 {
 
 fn foo<'lt, T: Trait2<self::$0>, const CONST_PARAM: usize>(_: T) {}
     "#,
-        expect![[r##"
+        expect![[r#"
             tt Trait
             en Enum
             st Record
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             tt Trait2
             un Union
             ct CONST
-        "##]],
+        "#]],
     );
 }
 

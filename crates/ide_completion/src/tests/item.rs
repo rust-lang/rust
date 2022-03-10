@@ -17,7 +17,7 @@ fn target_type_or_trait_in_impl_block() {
         r#"
 impl Tra$0
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -27,10 +27,10 @@ impl Tra$0
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     )
 }
 
@@ -40,7 +40,7 @@ fn target_type_in_trait_impl_block() {
         r#"
 impl Trait for Str$0
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -50,10 +50,10 @@ impl Trait for Str$0
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     )
 }
 
@@ -85,7 +85,7 @@ fn after_struct_name() {
     // FIXME: This should emit `kw where` only
     check(
         r"struct Struct $0",
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub(super)
             kw pub
@@ -109,8 +109,8 @@ fn after_struct_name() {
             kw super
             kw crate
             md module
-            ma makro!(…)           #[macro_export] macro_rules! makro
-        "##]],
+            ma makro!(…)           macro_rules! makro
+        "#]],
     );
 }
 
@@ -119,7 +119,7 @@ fn after_fn_name() {
     // FIXME: This should emit `kw where` only
     check(
         r"fn func() $0",
-        expect![[r##"
+        expect![[r#"
             kw pub(crate)
             kw pub(super)
             kw pub
@@ -143,8 +143,8 @@ fn after_fn_name() {
             kw super
             kw crate
             md module
-            ma makro!(…)           #[macro_export] macro_rules! makro
-        "##]],
+            ma makro!(…)           macro_rules! makro
+        "#]],
     );
 }
 

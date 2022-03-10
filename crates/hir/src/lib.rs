@@ -1811,6 +1811,10 @@ impl Macro {
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
         matches!(self.kind(db), MacroKind::Attr)
     }
+
+    pub fn is_derive(&self, db: &dyn HirDatabase) -> bool {
+        matches!(self.kind(db), MacroKind::Derive)
+    }
 }
 
 impl HasVisibility for Macro {

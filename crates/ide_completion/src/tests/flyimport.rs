@@ -1108,7 +1108,7 @@ fn flyimport_attribute() {
 struct Foo;
 "#,
         expect![[r#"
-            at identity (use proc_macros::identity) pub macro identity
+            at identity (use proc_macros::identity) proc_macro identity
         "#]],
     );
     check_edit(

@@ -2,7 +2,7 @@
 use std::fmt::Display;
 
 use either::Either;
-use hir::{AsAssocItem, AttributeTemplate, HasAttrs, HasSource, HirDisplay, Semantics, TypeInfo};
+use hir::{AsAssocItem, AttributeTemplate, HasAttrs, HirDisplay, Semantics, TypeInfo};
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
@@ -13,9 +13,7 @@ use ide_db::{
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    algo, ast,
-    display::{fn_as_proc_macro_label, macro_label},
-    match_ast, AstNode, Direction,
+    algo, ast, match_ast, AstNode, Direction,
     SyntaxKind::{LET_EXPR, LET_STMT},
     SyntaxToken, T,
 };
@@ -342,14 +340,8 @@ pub(super) fn definition(
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
     let (label, docs) = match def {
-        Definition::Macro(it) => (
-            match &it.source(db)?.value {
-                Either::Left(mac) => macro_label(mac),
-                Either::Right(mac_fn) => fn_as_proc_macro_label(mac_fn),
-            },
-            it.attrs(db).docs(),
-        ),
-        Definition::Field(def) => label_and_docs(db, def),
+        Definition::Macro(it) => label_and_docs(db, it),
+        Definition::Field(it) => label_and_docs(db, it),
         Definition::Module(it) => label_and_docs(db, it),
         Definition::Function(it) => label_and_docs(db, it),
         Definition::Adt(it) => label_and_docs(db, it),

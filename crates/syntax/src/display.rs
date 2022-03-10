@@ -1,6 +1,6 @@
 //! This module contains utilities for rendering syntax nodes into a string representing their signature.
 
-use crate::ast::{self, HasAttrs, HasGenericParams, HasName};
+use crate::ast::{self, HasGenericParams, HasName};
 
 use ast::HasVisibility;
 use stdx::format_to;
@@ -48,38 +48,4 @@ pub fn function_declaration(node: &ast::Fn) -> String {
         format_to!(buf, "\n{}", where_clause);
     }
     buf
-}
-
-pub fn macro_label(node: &ast::Macro) -> String {
-    let name = node.name();
-    let mut s = String::new();
-    match node {
-        ast::Macro::MacroRules(node) => {
-            let vis = if node.has_atom_attr("macro_export") { "#[macro_export] " } else { "" };
-            format_to!(s, "{}macro_rules!", vis);
-        }
-        ast::Macro::MacroDef(node) => {
-            if let Some(vis) = node.visibility() {
-                format_to!(s, "{} ", vis);
-            }
-            format_to!(s, "macro");
-        }
-    }
-    if let Some(name) = name {
-        format_to!(s, " {}", name);
-    }
-    s
-}
-
-pub fn fn_as_proc_macro_label(node: &ast::Fn) -> String {
-    let name = node.name();
-    let mut s = String::new();
-    if let Some(vis) = node.visibility() {
-        format_to!(s, "{} ", vis);
-    }
-    format_to!(s, "macro");
-    if let Some(name) = name {
-        format_to!(s, " {}", name);
-    }
-    s
 }

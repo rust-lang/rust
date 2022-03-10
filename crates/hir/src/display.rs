@@ -18,8 +18,8 @@ use syntax::SmolStr;
 
 use crate::{
     Adt, Const, ConstParam, Enum, Field, Function, GenericParam, HasCrate, HasVisibility,
-    LifetimeParam, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias, TypeOrConstParam,
-    TypeParam, Union, Variant,
+    LifetimeParam, Macro, Module, Static, Struct, Trait, TyBuilder, Type, TypeAlias,
+    TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -507,5 +507,16 @@ impl HirDisplay for Module {
             },
             None => write!(f, "mod {{unnamed}}"),
         }
+    }
+}
+
+impl HirDisplay for Macro {
+    fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
+        match self.id {
+            hir_def::MacroId::Macro2Id(_) => write!(f, "macro"),
+            hir_def::MacroId::MacroRulesId(_) => write!(f, "macro_rules!"),
+            hir_def::MacroId::ProcMacroId(_) => write!(f, "proc_macro"),
+        }?;
+        write!(f, " {}", self.name(f.db))
     }
 }

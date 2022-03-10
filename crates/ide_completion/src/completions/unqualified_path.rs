@@ -19,10 +19,11 @@ pub(crate) fn complete_unqualified_path(acc: &mut Completions, ctx: &CompletionC
         Some(PathCompletionCtx {
             kind:
                 Some(
-                    PathKind::Vis { .. }
-                    | PathKind::Attr { .. }
+                    PathKind::Attr { .. }
+                    | PathKind::Derive
+                    | PathKind::Pat
                     | PathKind::Use { .. }
-                    | PathKind::Pat,
+                    | PathKind::Vis { .. },
                 ),
             ..
         }) => return,
@@ -207,12 +208,12 @@ mod macros {
     macro_rules! concat { }
 }
 "#,
-            expect![[r##"
+            expect![[r#"
                 fn f()        fn()
-                ma concat!(…) #[macro_export] macro_rules! concat
+                ma concat!(…) macro_rules! concat
                 md std
                 bt u32
-            "##]],
+            "#]],
         );
     }
 

@@ -62,7 +62,7 @@ fn proc_macros_qualified() {
 struct Foo;
 "#,
         expect![[r#"
-            at identity pub macro identity
+            at identity proc_macro identity
         "#]],
     )
 }
@@ -302,7 +302,7 @@ struct Foo;
 "#,
         expect![[r#"
             md core
-            at derive           pub macro derive
+            at derive           macro derive
             kw self::
             kw super::
             kw crate::
@@ -688,13 +688,17 @@ mod derive {
 #[derive($0)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default                macro Default
                 de Clone, Copy
-                de PartialEq
+                de PartialEq              macro PartialEq
                 de PartialEq, Eq
                 de PartialEq, Eq, PartialOrd, Ord
-                de Clone
+                de Clone                  macro Clone
                 de PartialEq, PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         );
     }
@@ -707,12 +711,16 @@ mod derive {
 #[derive(serde::Serialize, PartialEq, $0)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default             macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone
+                de Clone               macro Clone
                 de PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         )
     }
@@ -725,33 +733,17 @@ mod derive {
 #[derive($0 serde::Serialize, PartialEq)] struct Test;
 "#,
             expect![[r#"
-                de Default
+                md core
+                de Default             macro Default
                 de Clone, Copy
                 de Eq
                 de Eq, PartialOrd, Ord
-                de Clone
+                de Clone               macro Clone
                 de PartialOrd
+                kw self::
+                kw super::
+                kw crate::
             "#]],
-        )
-    }
-
-    #[test]
-    fn derive_no_attrs() {
-        check_derive(
-            r#"
-//- proc_macros: identity
-//- minicore: derive
-#[derive($0)] struct Test;
-"#,
-            expect![[r#""#]],
-        );
-        check_derive(
-            r#"
-//- proc_macros: identity
-//- minicore: derive
-#[derive(i$0)] struct Test;
-"#,
-            expect![[r#""#]],
         );
     }
 
@@ -760,20 +752,32 @@ mod derive {
         check_derive(
             r#"
 //- proc_macros: derive_identity
+//- minicore: derive
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity (use proc_macros::DeriveIdentity)
+                md proc_macros
+                md core
+                kw self::
+                kw super::
+                kw crate::
+                de DeriveIdentity (use proc_macros::DeriveIdentity) proc_macro DeriveIdentity
             "#]],
         );
         check_derive(
             r#"
 //- proc_macros: derive_identity
+//- minicore: derive
 use proc_macros::DeriveIdentity;
 #[derive(der$0)] struct Test;
 "#,
             expect![[r#"
-                de DeriveIdentity
+                de DeriveIdentity proc_macro DeriveIdentity
+                md proc_macros
+                md core
+                kw self::
+                kw super::
+                kw crate::
             "#]],
         );
     }
@@ -784,6 +788,7 @@ use proc_macros::DeriveIdentity;
             "DeriveIdentity",
             r#"
 //- proc_macros: derive_identity
+//- minicore: derive
 #[derive(der$0)] struct Test;
 "#,
             r#"
@@ -791,6 +796,30 @@ use proc_macros::DeriveIdentity;
 
 #[derive(DeriveIdentity)] struct Test;
 "#,
+        );
+    }
+
+    #[test]
+    fn qualified() {
+        check_derive(
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive, copy, clone
+#[derive(proc_macros::$0)] struct Test;
+"#,
+            expect![[r#"
+                de DeriveIdentity proc_macro DeriveIdentity
+            "#]],
+        );
+        check_derive(
+            r#"
+//- proc_macros: derive_identity
+//- minicore: derive, copy, clone
+#[derive(proc_macros::C$0)] struct Test;
+"#,
+            expect![[r#"
+                de DeriveIdentity proc_macro DeriveIdentity
+            "#]],
         );
     }
 }

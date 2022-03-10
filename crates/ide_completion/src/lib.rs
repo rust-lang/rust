@@ -152,6 +152,7 @@ pub fn completions(
 
     let mut acc = Completions::default();
     completions::attribute::complete_attribute(&mut acc, &ctx);
+    completions::attribute::complete_derive(&mut acc, &ctx);
     completions::attribute::complete_known_attribute_input(&mut acc, &ctx);
     completions::dot::complete_dot(&mut acc, &ctx);
     completions::extern_abi::complete_extern_abi(&mut acc, &ctx);

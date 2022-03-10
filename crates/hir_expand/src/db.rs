@@ -14,10 +14,10 @@ use syntax::{
 };
 
 use crate::{
-    ast_id_map::AstIdMap, fixup, hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander,
-    BuiltinFnLikeExpander, ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr,
-    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
-    ProcMacroExpander,
+    ast_id_map::AstIdMap, builtin_attr_macro::pseudo_derive_attr_expansion, fixup,
+    hygiene::HygieneFrame, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
+    ExpandError, ExpandResult, ExpandTo, HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind,
+    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, ProcMacroExpander,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -161,14 +161,16 @@ pub fn expand_speculative(
     );
 
     let (attr_arg, token_id) = match loc.kind {
-        MacroCallKind::Attr { invoc_attr_index, .. } => {
-            // Attributes may have an input token tree, build the subtree and map for this as well
-            // then try finding a token id for our token if it is inside this input subtree.
-            let item = ast::Item::cast(speculative_args.clone())?;
-            let attr = item
-                .doc_comments_and_attrs()
-                .nth(invoc_attr_index as usize)
-                .and_then(Either::left)?;
+        MacroCallKind::Attr { invoc_attr_index, is_derive, .. } => {
+            let attr = if is_derive {
+                // for pseudo-derive expansion we actually pass the attribute itself only
+                ast::Attr::cast(speculative_args.clone())
+            } else {
+                // Attributes may have an input token tree, build the subtree and map for this as well
+                // then try finding a token id for our token if it is inside this input subtree.
+                let item = ast::Item::cast(speculative_args.clone())?;
+                item.doc_comments_and_attrs().nth(invoc_attr_index as usize).and_then(Either::left)
+            }?;
             match attr.token_tree() {
                 Some(token_tree) => {
                     let (mut tree, map) = syntax_node_to_token_tree(attr.token_tree()?.syntax());
@@ -205,11 +207,15 @@ pub fn expand_speculative(
 
     // Do the actual expansion, we need to directly expand the proc macro due to the attribute args
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
-    let mut speculative_expansion = if let MacroDefKind::ProcMacro(expander, ..) = loc.def.kind {
-        tt.delimiter = None;
-        expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
-    } else {
-        macro_def.expand(db, actual_macro_call, &tt)
+    let mut speculative_expansion = match loc.def.kind {
+        MacroDefKind::ProcMacro(expander, ..) => {
+            tt.delimiter = None;
+            expander.expand(db, loc.krate, &tt, attr_arg.as_ref())
+        }
+        MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
+            pseudo_derive_attr_expansion(&tt, attr_arg.as_ref()?)
+        }
+        _ => macro_def.expand(db, actual_macro_call, &tt),
     };
 
     let expand_to = macro_expand_to(db, actual_macro_call);

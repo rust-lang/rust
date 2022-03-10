@@ -151,6 +151,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.expand_attr_macro(item)
     }
 
+    pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
+        self.imp.expand_derive_as_pseudo_attr_macro(attr)
+    }
+
     pub fn resolve_derive_macro(&self, derive: &ast::Attr) -> Option<Vec<Option<Macro>>> {
         self.imp.resolve_derive_macro(derive)
     }
@@ -183,6 +187,19 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, SyntaxToken)> {
         self.imp.speculative_expand_attr(actual_macro_call, speculative_args, token_to_map)
+    }
+
+    pub fn speculative_expand_derive_as_pseudo_attr_macro(
+        &self,
+        actual_macro_call: &ast::Attr,
+        speculative_args: &ast::Attr,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        self.imp.speculative_expand_derive_as_pseudo_attr_macro(
+            actual_macro_call,
+            speculative_args,
+            token_to_map,
+        )
     }
 
     /// Descend the token into macrocalls to its first mapped counterpart.
@@ -438,9 +455,16 @@ impl<'db> SemanticsImpl<'db> {
     fn expand_attr_macro(&self, item: &ast::Item) -> Option<SyntaxNode> {
         let src = self.wrap_node_infile(item.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(src))?;
-        let file_id = macro_call_id.as_file();
-        let node = self.parse_or_expand(file_id)?;
-        Some(node)
+        self.parse_or_expand(macro_call_id.as_file())
+    }
+
+    fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
+        let src = self.wrap_node_infile(attr.clone());
+        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let call_id = self.with_ctx(|ctx| {
+            ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
+        })?;
+        self.parse_or_expand(call_id.as_file())
     }
 
     fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
@@ -525,6 +549,25 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(SyntaxNode, SyntaxToken)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call))?;
+        hir_expand::db::expand_speculative(
+            self.db.upcast(),
+            macro_call_id,
+            speculative_args.syntax(),
+            token_to_map,
+        )
+    }
+
+    fn speculative_expand_derive_as_pseudo_attr_macro(
+        &self,
+        actual_macro_call: &ast::Attr,
+        speculative_args: &ast::Attr,
+        token_to_map: SyntaxToken,
+    ) -> Option<(SyntaxNode, SyntaxToken)> {
+        let attr = self.wrap_node_infile(actual_macro_call.clone());
+        let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
+        let macro_call_id = self.with_ctx(|ctx| {
+            ctx.attr_to_derive_macro_call(attr.with_value(&adt), attr).map(|(_, it, _)| it)
+        })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
             macro_call_id,

@@ -15,7 +15,7 @@ fn predicate_start() {
         r#"
 struct Foo<'lt, T, const C: usize> where $0 {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -26,10 +26,10 @@ struct Foo<'lt, T, const C: usize> where $0 {}
             md module
             st Foo<…>
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     );
 }
 
@@ -39,14 +39,14 @@ fn bound_for_type_pred() {
         r#"
 struct Foo<'lt, T, const C: usize> where T: $0 {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
             tt Trait
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
-        "##]],
+            ma makro!(…) macro_rules! makro
+        "#]],
     );
 }
 
@@ -58,14 +58,14 @@ fn bound_for_lifetime_pred() {
         r#"
 struct Foo<'lt, T, const C: usize> where 'lt: $0 {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
             tt Trait
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
-        "##]],
+            ma makro!(…) macro_rules! makro
+        "#]],
     );
 }
 
@@ -75,14 +75,14 @@ fn bound_for_for_pred() {
         r#"
 struct Foo<'lt, T, const C: usize> where for<'a> T: $0 {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
             tt Trait
             md module
-            ma makro!(…) #[macro_export] macro_rules! makro
-        "##]],
+            ma makro!(…) macro_rules! makro
+        "#]],
     );
 }
 
@@ -92,7 +92,7 @@ fn param_list_for_for_pred() {
         r#"
 struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -103,10 +103,10 @@ struct Foo<'lt, T, const C: usize> where for<'a> $0 {}
             md module
             st Foo<…>
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     );
 }
 
@@ -118,7 +118,7 @@ impl Record {
     fn method(self) where $0 {}
 }
 "#,
-        expect![[r##"
+        expect![[r#"
             kw self
             kw super
             kw crate
@@ -129,9 +129,9 @@ impl Record {
             st Tuple
             md module
             st Unit
-            ma makro!(…) #[macro_export] macro_rules! makro
+            ma makro!(…) macro_rules! makro
             un Union
             bt u32
-        "##]],
+        "#]],
     );
 }

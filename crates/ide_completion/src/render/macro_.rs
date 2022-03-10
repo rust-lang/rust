@@ -1,12 +1,8 @@
 //! Renderer for macro invocations.
 
-use either::Either;
-use hir::{Documentation, HasSource, InFile, Semantics};
-use ide_db::{RootDatabase, SymbolKind};
-use syntax::{
-    display::{fn_as_proc_macro_label, macro_label},
-    SmolStr,
-};
+use hir::{Documentation, HirDisplay};
+use ide_db::SymbolKind;
+use syntax::SmolStr;
 
 use crate::{
     context::PathKind,
@@ -52,7 +48,7 @@ fn render(
         label(&ctx, needs_bang, bra, ket, &name),
     );
     item.set_deprecated(ctx.is_deprecated(macro_))
-        .set_detail(detail(&completion.sema, macro_))
+        .detail(macro_.display(completion.db).to_string())
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 
@@ -101,17 +97,6 @@ fn label(
 
 fn banged_name(name: &str) -> SmolStr {
     SmolStr::from_iter([name, "!"])
-}
-
-fn detail(sema: &Semantics<RootDatabase>, macro_: hir::Macro) -> Option<String> {
-    // FIXME: This is parsing the file!
-    let InFile { file_id, value } = macro_.source(sema.db)?;
-    let _ = sema.parse_or_expand(file_id);
-    let detail = match value {
-        Either::Left(node) => macro_label(&node),
-        Either::Right(node) => fn_as_proc_macro_label(&node),
-    };
-    Some(detail)
 }
 
 fn guess_macro_braces(macro_name: &str, docs: &str) -> (&'static str, &'static str) {

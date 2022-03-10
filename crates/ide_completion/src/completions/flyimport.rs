@@ -142,7 +142,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
     )?;
 
     let ns_filter = |import: &LocatedImport| {
-        let kind = match ctx.path_kind() {
+        let path_kind = match ctx.path_kind() {
             Some(kind) => kind,
             None => {
                 return match import.original_item {
@@ -151,7 +151,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
                 }
             }
         };
-        match (kind, import.original_item) {
+        match (path_kind, import.original_item) {
             // Aren't handled in flyimport
             (PathKind::Vis { .. } | PathKind::Use, _) => false,
             // modules are always fair game
@@ -173,6 +173,11 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
 
             (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(ctx.db),
             (PathKind::Attr { .. }, _) => false,
+
+            (PathKind::Derive, ItemInNs::Macros(mac)) => {
+                mac.is_derive(ctx.db) && !ctx.existing_derives.contains(&mac)
+            }
+            (PathKind::Derive, _) => false,
         }
     };
 
