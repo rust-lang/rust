@@ -1,0 +1,5 @@
+[toolchain]
+# not just `beta`, since during release week there are two different beta compilers
+channel = "beta-2022-02-22"
+components = ["rustfmt"]
+profile = "minimal"
