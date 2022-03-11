@@ -48,6 +48,50 @@ impl<T: ?Sized> *const T {
         self as _
     }
 
+    /// Use the pointer value in a new pointer of another type.
+    ///
+    /// In case `val` is a (fat) pointer to an unsized type, this operation
+    /// will ignore the pointer part, whereas for (thin) pointers to sized
+    /// types, this has the same effect as a simple cast.
+    ///
+    /// The resulting pointer will have provenance of `self`, i.e., for a fat
+    /// pointer, this operation is semantically the same as creating a new
+    /// fat pointer with the data pointer value of `self` but the metadata of
+    /// `val`.
+    ///
+    /// # Examples
+    ///
+    /// This function is primarily useful for allowing byte-wise pointer
+    /// arithmetic on potentially fat pointers:
+    ///
+    /// ```
+    /// #![feature(set_ptr_value)]
+    /// # use core::fmt::Debug;
+    /// let arr: [i32; 3] = [1, 2, 3];
+    /// let mut ptr = arr.as_ptr() as *const dyn Debug;
+    /// let thin = ptr as *const u8;
+    /// unsafe {
+    ///     ptr = thin.add(8).with_metadata_of(ptr);
+    ///     # assert_eq!(*(ptr as *const i32), 3);
+    ///     println!("{:?}", &*ptr); // will print "3"
+    /// }
+    /// ```
+    #[unstable(feature = "set_ptr_value", issue = "75091")]
+    #[must_use = "returns a new pointer rather than modifying its argument"]
+    #[inline]
+    pub fn with_metadata_of<U>(self, mut val: *const U) -> *const U
+    where
+        U: ?Sized,
+    {
+        let target = &mut val as *mut *const U as *mut *const u8;
+        // SAFETY: In case of a thin pointer, this operations is identical
+        // to a simple assignment. In case of a fat pointer, with the current
+        // fat pointer layout implementation, the first field of such a
+        // pointer is always the data pointer, which is likewise assigned.
+        unsafe { *target = self as *const u8 };
+        val
+    }
+
     /// Changes constness without changing the type.
     ///
     /// This is a bit safer than `as` because it wouldn't silently change the type if the code is
@@ -762,47 +806,6 @@ impl<T: ?Sized> *const T {
         T: Sized,
     {
         self.wrapping_offset((count as isize).wrapping_neg())
-    }
-
-    /// Sets the pointer value to `ptr`.
-    ///
-    /// In case `self` is a (fat) pointer to an unsized type, this operation
-    /// will only affect the pointer part, whereas for (thin) pointers to
-    /// sized types, this has the same effect as a simple assignment.
-    ///
-    /// The resulting pointer will have provenance of `val`, i.e., for a fat
-    /// pointer, this operation is semantically the same as creating a new
-    /// fat pointer with the data pointer value of `val` but the metadata of
-    /// `self`.
-    ///
-    /// # Examples
-    ///
-    /// This function is primarily useful for allowing byte-wise pointer
-    /// arithmetic on potentially fat pointers:
-    ///
-    /// ```
-    /// #![feature(set_ptr_value)]
-    /// # use core::fmt::Debug;
-    /// let arr: [i32; 3] = [1, 2, 3];
-    /// let mut ptr = arr.as_ptr() as *const dyn Debug;
-    /// let thin = ptr as *const u8;
-    /// unsafe {
-    ///     ptr = ptr.set_ptr_value(thin.add(8));
-    ///     # assert_eq!(*(ptr as *const i32), 3);
-    ///     println!("{:?}", &*ptr); // will print "3"
-    /// }
-    /// ```
-    #[unstable(feature = "set_ptr_value", issue = "75091")]
-    #[must_use = "returns a new pointer rather than modifying its argument"]
-    #[inline]
-    pub fn set_ptr_value(mut self, val: *const u8) -> Self {
-        let thin = &mut self as *mut *const T as *mut *const u8;
-        // SAFETY: In case of a thin pointer, this operations is identical
-        // to a simple assignment. In case of a fat pointer, with the current
-        // fat pointer layout implementation, the first field of such a
-        // pointer is always the data pointer, which is likewise assigned.
-        unsafe { *thin = val };
-        self
     }
 
     /// Reads the value from `self` without moving it. This leaves the
