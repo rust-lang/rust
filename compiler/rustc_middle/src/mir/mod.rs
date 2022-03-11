@@ -1915,6 +1915,27 @@ impl<'tcx> Place<'tcx> {
             (base, proj)
         })
     }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(self, more_projections: &[PlaceElem<'tcx>], tcx: TyCtxt<'tcx>) -> Self {
+        if more_projections.is_empty() {
+            return self;
+        }
+
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
+    }
 }
 
 impl From<Local> for Place<'_> {
@@ -2186,6 +2207,15 @@ impl<'tcx> Operand<'tcx> {
             Operand::Constant(x) => Some(&**x),
             Operand::Copy(_) | Operand::Move(_) => None,
         }
+    }
+
+    /// Gets the `ty::FnDef` from an operand if it's a constant function item.
+    ///
+    /// While this is unlikely in general, it's the normal case of what you'll
+    /// find as the `func` in a [`TerminatorKind::Call`].
+    pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
+        let const_ty = self.constant()?.literal.ty();
+        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
     }
 }
 

@@ -704,7 +704,7 @@ impl<'tcx> Ty<'tcx> {
         tcx_at: TyCtxtAt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        tcx_at.is_copy_raw(param_env.and(self))
+        self.is_trivially_pure_clone_copy() || tcx_at.is_copy_raw(param_env.and(self))
     }
 
     /// Checks whether values of this type `T` have a size known at
