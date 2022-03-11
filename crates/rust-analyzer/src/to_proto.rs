@@ -419,11 +419,11 @@ pub(crate) fn inlay_hint(
     inlay_hint: InlayHint,
 ) -> lsp_ext::InlayHint {
     lsp_ext::InlayHint {
-        label: match inlay_hint.kind {
+        label: lsp_ext::InlayHintLabel::String(match inlay_hint.kind {
             InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
             InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
             _ => inlay_hint.label.to_string(),
-        },
+        }),
         position: match inlay_hint.kind {
             InlayKind::ParameterHint => position(line_index, inlay_hint.range.start()),
             InlayKind::TypeHint | InlayKind::ChainingHint => {
