@@ -279,6 +279,10 @@ def build():
 
 
 def set(key, value):
+    if isinstance(value, list):
+        # Remove empty values, which value.split(',') tends to generate.
+        value = [v for v in value if v]
+
     s = "{:20} := {}".format(key, value)
     if len(s) < 70:
         p(s)
