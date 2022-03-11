@@ -164,9 +164,6 @@ crate struct LifetimeContext<'a, 'tcx> {
     map: &'a mut NamedRegionMap,
     scope: ScopeRef<'a>,
 
-    /// Used to disallow the use of in-band lifetimes in `fn` or `Fn` syntax.
-    is_in_fn_syntax: bool,
-
     is_in_const_generic: bool,
 
     /// Indicates that we only care about the definition of a trait. This should
@@ -455,7 +452,6 @@ fn do_resolve(
         tcx,
         map: &mut named_region_map,
         scope: ROOT_SCOPE,
-        is_in_fn_syntax: false,
         is_in_const_generic: false,
         trait_definition_only,
         labels_in_fn: vec![],
@@ -874,8 +870,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         match ty.kind {
             hir::TyKind::BareFn(ref c) => {
                 let next_early_index = self.next_early_index();
-                let was_in_fn_syntax = self.is_in_fn_syntax;
-                self.is_in_fn_syntax = true;
                 let lifetime_span: Option<Span> =
                     c.generic_params.iter().rev().find_map(|param| match param.kind {
                         GenericParamKind::Lifetime { .. } => Some(param.span),
@@ -917,7 +911,6 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_ty(this, ty);
                 });
                 self.missing_named_lifetime_spots.pop();
-                self.is_in_fn_syntax = was_in_fn_syntax;
             }
             hir::TyKind::TraitObject(bounds, ref lifetime, _) => {
                 debug!(?bounds, ?lifetime, "TraitObject");
@@ -1805,7 +1798,6 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             tcx: *tcx,
             map,
             scope: &wrap_scope,
-            is_in_fn_syntax: self.is_in_fn_syntax,
             is_in_const_generic: self.is_in_const_generic,
             trait_definition_only: self.trait_definition_only,
             labels_in_fn,
@@ -2336,10 +2328,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         );
 
         if generic_args.parenthesized {
-            let was_in_fn_syntax = self.is_in_fn_syntax;
-            self.is_in_fn_syntax = true;
             self.visit_fn_like_elision(generic_args.inputs(), Some(generic_args.bindings[0].ty()));
-            self.is_in_fn_syntax = was_in_fn_syntax;
             return;
         }
 
