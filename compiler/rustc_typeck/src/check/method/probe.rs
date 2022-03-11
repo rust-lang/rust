@@ -765,7 +765,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // fcx's fulfillment context after this probe is over.
             // Note: we only normalize `xform_self_ty` here since the normalization
             // of the return type can lead to inference results that prohibit
-            // valid canidates from being found, see issue #85671
+            // valid candidates from being found, see issue #85671
             // FIXME Postponing the normalization of the return type likely only hides a deeper bug,
             // which might be caused by the `param_env` itself. The clauses of the `param_env`
             // maybe shouldn't include `Param`s, but rather fresh variables or be canonicalized,
