@@ -391,7 +391,7 @@ impl ErrorIndex {
         add_dylib_path(
             vec![
                 PathBuf::from(&builder.sysroot_libdir(compiler, compiler.host)),
-                PathBuf::from(builder.rustc_libdir(compiler)),
+                builder.rustc_libdir(compiler),
             ],
             &mut cmd,
         );

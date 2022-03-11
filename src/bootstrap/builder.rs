@@ -169,7 +169,7 @@ impl PathSet {
 
     fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind.into()) });
+        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
         PathSet::Set(set)
     }
 
@@ -372,10 +372,7 @@ impl<'a> ShouldRun<'a> {
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
         self.paths.insert(PathSet::Set(
-            paths
-                .iter()
-                .map(|p| TaskPath { path: p.into(), kind: Some(self.kind.into()) })
-                .collect(),
+            paths.iter().map(|p| TaskPath { path: p.into(), kind: Some(self.kind) }).collect(),
         ));
         self
     }
@@ -388,8 +385,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths
-            .insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind.into()) }));
+        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
         self
     }
 
@@ -1769,7 +1765,7 @@ impl<'a> Builder<'a> {
             if should_run.paths.iter().any(|s| s.has(path, Some(desc.kind)))
                 && !desc.is_excluded(
                     self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind.into()) }),
+                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
                 )
             {
                 return true;
