@@ -542,7 +542,7 @@ impl<T, E> Result<T, E> {
         matches!(*self, Ok(_))
     }
 
-    /// Returns `true` if the result is [`Ok`] wrapping a value matching the predicate.
+    /// Returns `true` if the result is [`Ok`] and the value inside of it matches a predicate.
     ///
     /// # Examples
     ///
@@ -550,18 +550,18 @@ impl<T, E> Result<T, E> {
     /// #![feature(is_some_with)]
     ///
     /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.is_ok_with(|&x| x > 1), true);
+    /// assert_eq!(x.is_ok_and(|&x| x > 1), true);
     ///
     /// let x: Result<u32, &str> = Ok(0);
-    /// assert_eq!(x.is_ok_with(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
     ///
     /// let x: Result<u32, &str> = Err("hey");
-    /// assert_eq!(x.is_ok_with(|&x| x > 1), false);
+    /// assert_eq!(x.is_ok_and(|&x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
     #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_ok_with(&self, f: impl FnOnce(&T) -> bool) -> bool {
+    pub fn is_ok_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
         matches!(self, Ok(x) if f(x))
     }
 
@@ -586,7 +586,7 @@ impl<T, E> Result<T, E> {
         !self.is_ok()
     }
 
-    /// Returns `true` if the result is [`Err`] wrapping a value matching the predicate.
+    /// Returns `true` if the result is [`Err`] and the value inside of it matches a predicate.
     ///
     /// # Examples
     ///
@@ -595,18 +595,18 @@ impl<T, E> Result<T, E> {
     /// use std::io::{Error, ErrorKind};
     ///
     /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
-    /// assert_eq!(x.is_err_with(|x| x.kind() == ErrorKind::NotFound), true);
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), true);
     ///
     /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::PermissionDenied, "!"));
-    /// assert_eq!(x.is_err_with(|x| x.kind() == ErrorKind::NotFound), false);
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), false);
     ///
     /// let x: Result<u32, Error> = Ok(123);
-    /// assert_eq!(x.is_err_with(|x| x.kind() == ErrorKind::NotFound), false);
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), false);
     /// ```
     #[must_use]
     #[inline]
     #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_err_with(&self, f: impl FnOnce(&E) -> bool) -> bool {
+    pub fn is_err_and(&self, f: impl FnOnce(&E) -> bool) -> bool {
         matches!(self, Err(x) if f(x))
     }
 
