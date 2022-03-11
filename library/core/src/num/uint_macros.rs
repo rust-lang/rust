@@ -2119,7 +2119,8 @@ macro_rules! uint_impl {
         pub const fn checked_next_multiple_of(self, rhs: Self) -> Option<Self> {
             match try_opt!(self.checked_rem(rhs)) {
                 0 => Some(self),
-                r => self.checked_add(try_opt!(rhs.checked_sub(r)))
+                // rhs - r cannot overflow because r is smaller than rhs
+                r => self.checked_add(rhs - r)
             }
         }
 
