@@ -1155,7 +1155,9 @@ impl<'a> IoSliceMut<'a> {
         }
 
         *bufs = &mut replace(bufs, &mut [])[remove..];
-        if !bufs.is_empty() {
+        if bufs.is_empty() {
+            assert!(n == accumulated_len, "advancing io slices beyond their length");
+        } else {
             bufs[0].advance(n - accumulated_len)
         }
     }
@@ -1289,7 +1291,9 @@ impl<'a> IoSlice<'a> {
         }
 
         *bufs = &mut replace(bufs, &mut [])[remove..];
-        if !bufs.is_empty() {
+        if bufs.is_empty() {
+            assert!(n == accumulated_len, "advancing io slices beyond their length");
+        } else {
             bufs[0].advance(n - accumulated_len)
         }
     }
