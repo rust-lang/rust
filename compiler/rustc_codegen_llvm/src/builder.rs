@@ -1236,9 +1236,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // Cleanup is always the cold path.
         attrs.push(llvm::AttributeKind::Cold.create_attr(self.llcx));
 
-        // In LLVM versions with deferred inlining (currently, system LLVM < 14),
+        // LLVM 14 contains fixes for catastrophic inlining behavior, without which
         // inlining drop glue can lead to exponential size blowup, see #41696 and #92110.
-        if !llvm_util::is_rust_llvm() && llvm_util::get_version() < (14, 0, 0) {
+        if llvm_util::get_version() < (14, 0, 0) {
             attrs.push(llvm::AttributeKind::NoInline.create_attr(self.llcx));
         }
 
