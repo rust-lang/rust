@@ -209,14 +209,19 @@ fn test_from_char_iterator() {
         ("사회과학원 어학연구소", true),
         // String containing diverse characters
         ("表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀", true),
-        // String which has too many characters to even consider inlining
-        ("☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺☺", true),
     ];
     for (raw, is_heap) in &examples {
         let s: SmolStr = raw.chars().collect();
         assert_eq!(s.as_str(), *raw);
         assert_eq!(s.is_heap_allocated(), *is_heap);
     }
+    // String which has too many characters to even consider inlining: Chars::size_hint uses
+    // (`len` + 3) / 4. With `len` = 89, this results in 23, so `from_iter` will immediately
+    // heap allocate
+    let raw: String = std::iter::repeat('a').take(22 * 4 + 1).collect();
+    let s: SmolStr = raw.chars().collect();
+    assert_eq!(s.as_str(), raw);
+    assert!(s.is_heap_allocated());
 }
 
 #[test]
