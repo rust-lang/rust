@@ -427,13 +427,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
                 let ty = self.structurally_resolved_type(span, ty.value);
                 assert!(matches!(ty.kind(), ty::Error(_)));
-                return Err(MethodError::NoMatch(NoMatchData::new(
-                    Vec::new(),
-                    Vec::new(),
-                    Vec::new(),
-                    None,
+                return Err(MethodError::NoMatch(NoMatchData {
+                    static_candidates: Vec::new(),
+                    unsatisfied_predicates: Vec::new(),
+                    out_of_scope_traits: Vec::new(),
+                    lev_candidate: None,
                     mode,
-                )));
+                }));
             }
         }
 
@@ -1093,13 +1093,13 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
         let lev_candidate = self.probe_for_lev_candidate()?;
 
-        Err(MethodError::NoMatch(NoMatchData::new(
+        Err(MethodError::NoMatch(NoMatchData {
             static_candidates,
             unsatisfied_predicates,
             out_of_scope_traits,
             lev_candidate,
-            self.mode,
-        )))
+            mode: self.mode,
+        }))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {

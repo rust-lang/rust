@@ -78,28 +78,6 @@ pub struct NoMatchData<'tcx> {
     pub mode: probe::Mode,
 }
 
-impl<'tcx> NoMatchData<'tcx> {
-    pub fn new(
-        static_candidates: Vec<CandidateSource>,
-        unsatisfied_predicates: Vec<(
-            ty::Predicate<'tcx>,
-            Option<ty::Predicate<'tcx>>,
-            Option<ObligationCause<'tcx>>,
-        )>,
-        out_of_scope_traits: Vec<DefId>,
-        lev_candidate: Option<ty::AssocItem>,
-        mode: probe::Mode,
-    ) -> Self {
-        NoMatchData {
-            static_candidates,
-            unsatisfied_predicates,
-            out_of_scope_traits,
-            lev_candidate,
-            mode,
-        }
-    }
-}
-
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
