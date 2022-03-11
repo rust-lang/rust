@@ -2166,7 +2166,8 @@ macro_rules! int_impl {
 
             let r = try_opt!(self.checked_rem(rhs));
             let m = if (r > 0 && rhs < 0) || (r < 0 && rhs > 0) {
-                try_opt!(r.checked_add(rhs))
+                // r + rhs cannot overflow because they have opposite signs
+                r + rhs
             } else {
                 r
             };
@@ -2174,7 +2175,8 @@ macro_rules! int_impl {
             if m == 0 {
                 Some(self)
             } else {
-                self.checked_add(try_opt!(rhs.checked_sub(m)))
+                // rhs - m cannot overflow because m has the same sign as rhs
+                self.checked_add(rhs - m)
             }
         }
 
