@@ -24,6 +24,7 @@ fst = { version = "0.4", default-features = false }
 itertools = "0.10.0"
 indexmap = "1.7.0"
 smallvec = "1.4.0"
+arrayvec = "0.7.2"
 la-arena = { version = "0.3.0", path = "../../lib/arena" }
 
 stdx = { path = "../stdx", version = "0.0.0" }

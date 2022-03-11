@@ -401,7 +401,7 @@ impl<'a> Ctx<'a> {
         let name = module.name()?.as_name();
         let visibility = self.lower_visibility(module);
         let kind = if module.semicolon_token().is_some() {
-            ModKind::Outline {}
+            ModKind::Outline
         } else {
             ModKind::Inline {
                 items: module

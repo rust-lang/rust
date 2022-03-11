@@ -1713,7 +1713,7 @@ impl ModCollector<'_, '_> {
                 }
             }
             // out of line module, resolve, parse and recurse
-            ModKind::Outline {} => {
+            ModKind::Outline => {
                 let ast_id = AstId::new(self.tree_id.file_id(), module.ast_id);
                 let db = self.def_collector.db;
                 match self.mod_dir.resolve_declaration(db, self.file_id(), &module.name, path_attr)
@@ -1751,9 +1751,9 @@ impl ModCollector<'_, '_> {
                             }
                         }
                     }
-                    Err(candidate) => {
+                    Err(candidates) => {
                         self.def_collector.def_map.diagnostics.push(
-                            DefDiagnostic::unresolved_module(self.module_id, ast_id, candidate),
+                            DefDiagnostic::unresolved_module(self.module_id, ast_id, candidates),
                         );
                     }
                 };

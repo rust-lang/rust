@@ -593,12 +593,12 @@ impl Module {
 
 fn emit_def_diagnostic(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, diag: &DefDiagnostic) {
     match &diag.kind {
-        DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate } => {
+        DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates } => {
             let decl = declaration.to_node(db.upcast());
             acc.push(
                 UnresolvedModule {
                     decl: InFile::new(declaration.file_id, AstPtr::new(&decl)),
-                    candidate: candidate.clone(),
+                    candidates: candidates.clone(),
                 }
                 .into(),
             )

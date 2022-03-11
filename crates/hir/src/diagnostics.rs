@@ -54,7 +54,7 @@ diagnostics![
 #[derive(Debug)]
 pub struct UnresolvedModule {
     pub decl: InFile<AstPtr<ast::Module>>,
-    pub candidate: String,
+    pub candidates: Box<[String]>,
 }
 
 #[derive(Debug)]

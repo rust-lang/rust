@@ -504,6 +504,7 @@ name = "hir_def"
 version = "0.0.0"
 dependencies = [
  "anymap",
+ "arrayvec",
  "base_db",
  "cfg",
  "cov-mark",
