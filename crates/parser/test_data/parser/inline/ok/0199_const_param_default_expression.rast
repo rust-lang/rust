@@ -3,7 +3,7 @@ SOURCE_FILE
     STRUCT_KW "struct"
     WHITESPACE " "
     NAME
-      IDENT "S"
+      IDENT "A"
     GENERIC_PARAM_LIST
       L_ANGLE "<"
       CONST_PARAM
@@ -17,21 +17,18 @@ SOURCE_FILE
           PATH
             PATH_SEGMENT
               NAME_REF
-                IDENT "u32"
+                IDENT "i32"
         WHITESPACE " "
         EQ "="
         WHITESPACE " "
-        CONST_ARG
-          PATH_EXPR
-            PATH
-              PATH
-                PATH_SEGMENT
-                  NAME_REF
-                    IDENT "u32"
-              COLON2 "::"
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "MAX"
+        BLOCK_EXPR
+          STMT_LIST
+            L_CURLY "{"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "1"
+            WHITESPACE " "
+            R_CURLY "}"
       R_ANGLE ">"
     SEMICOLON ";"
   WHITESPACE "\n"

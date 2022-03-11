@@ -72,28 +72,24 @@ fn lifetime_arg(p: &mut Parser) {
     m.complete(p, LIFETIME_ARG);
 }
 
-// test const_arg
-// type T = S<92>;
-pub(super) fn const_arg(p: &mut Parser) {
-    let m = p.start();
+pub(super) fn const_arg_expr(p: &mut Parser) {
+    // The tests in here are really for `const_arg`, which wraps the content
+    // CONST_ARG.
     match p.current() {
         // test const_arg_block
         // type T = S<{90 + 2}>;
         T!['{'] => {
             expressions::block_expr(p);
-            m.complete(p, CONST_ARG);
         }
         // test const_arg_literal
         // type T = S<"hello", 0xdeadbeef>;
         k if k.is_literal() => {
             expressions::literal(p);
-            m.complete(p, CONST_ARG);
         }
         // test const_arg_bool_literal
         // type T = S<true>;
         T![true] | T![false] => {
             expressions::literal(p);
-            m.complete(p, CONST_ARG);
         }
         // test const_arg_negative_number
         // type T = S<-92>;
@@ -102,17 +98,22 @@ pub(super) fn const_arg(p: &mut Parser) {
             p.bump(T![-]);
             expressions::literal(p);
             lm.complete(p, PREFIX_EXPR);
-            m.complete(p, CONST_ARG);
         }
-        // test const_arg_path
-        // struct S<const N: u32 = u32::MAX>;
         _ => {
+            // This shouldn't be hit by `const_arg`
             let lm = p.start();
             paths::use_path(p);
             lm.complete(p, PATH_EXPR);
-            m.complete(p, CONST_ARG);
         }
     }
+}
+
+// test const_arg
+// type T = S<92>;
+pub(super) fn const_arg(p: &mut Parser) {
+    let m = p.start();
+    const_arg_expr(p);
+    m.complete(p, CONST_ARG);
 }
 
 fn type_arg(p: &mut Parser) {
