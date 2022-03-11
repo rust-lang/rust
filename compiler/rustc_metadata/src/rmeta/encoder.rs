@@ -1399,7 +1399,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 let data = FnData { constness: sig.header.constness };
 
-                EntryKind::Fn(self.lazy(data))
+                EntryKind::Fn(data)
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 EntryKind::MacroDef(self.lazy(&*macro_def.body), macro_def.macro_rules)
@@ -1878,7 +1878,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         hir::Constness::NotConst
                     },
                 };
-                record!(self.tables.kind[def_id] <- EntryKind::ForeignFn(self.lazy(data)));
+                record!(self.tables.kind[def_id] <- EntryKind::ForeignFn(data));
             }
             hir::ForeignItemKind::Static(_, hir::Mutability::Mut) => {
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignMutStatic);

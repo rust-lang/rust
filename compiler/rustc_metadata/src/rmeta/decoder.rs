@@ -1434,8 +1434,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     fn is_const_fn_raw(self, id: DefIndex) -> bool {
         let constness = match self.kind(id) {
             EntryKind::AssocFn(data) => data.decode(self).fn_data.constness,
-            EntryKind::Fn(data) => data.decode(self).constness,
-            EntryKind::ForeignFn(data) => data.decode(self).constness,
+            EntryKind::Fn(data) => data.constness,
+            EntryKind::ForeignFn(data) => data.constness,
             EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
             _ => hir::Constness::NotConst,
         };

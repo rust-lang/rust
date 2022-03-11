@@ -347,8 +347,8 @@ enum EntryKind {
     Variant(Lazy<VariantData>),
     Struct(Lazy<VariantData>, ReprOptions),
     Union(Lazy<VariantData>, ReprOptions),
-    Fn(Lazy<FnData>),
-    ForeignFn(Lazy<FnData>),
+    Fn(FnData),
+    ForeignFn(FnData),
     Mod(Lazy<[ModChild]>),
     MacroDef(Lazy<ast::MacArgs>, /*macro_rules*/ bool),
     ProcMacro(MacroKind),
@@ -362,7 +362,7 @@ enum EntryKind {
     TraitAlias,
 }
 
-#[derive(MetadataEncodable, MetadataDecodable)]
+#[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
 struct FnData {
     constness: hir::Constness,
 }
