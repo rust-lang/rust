@@ -64,7 +64,7 @@ impl<'tcx> MutVarsDelegate {
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind, _is_autoref: bool) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, bk: ty::BorrowKind) {
         if bk == ty::BorrowKind::MutBorrow {
             self.update(cmt);
         }
