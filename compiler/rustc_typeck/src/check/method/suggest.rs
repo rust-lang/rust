@@ -574,6 +574,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Pick out the list of unimplemented traits on the receiver.
                     // This is used for custom error messages with the `#[rustc_on_unimplemented]` attribute.
                     let mut unimplemented_traits = FxHashMap::default();
+                    let mut unimplemented_traits_only = true;
                     for (predicate, _parent_pred, cause) in &unsatisfied_predicates {
                         if let (ty::PredicateKind::Trait(p), Some(cause)) =
                             (predicate.kind().skip_binder(), cause.as_ref())
@@ -593,6 +594,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     recursion_depth: 0,
                                 },
                             ));
+                        }
+                    }
+
+                    // Make sure that, if any traits other than the found ones were involved,
+                    // we don't don't report an unimplemented trait.
+                    // We don't want to say that `iter::Cloned` is not an interator, just
+                    // because of some non-Clone item being iterated over.
+                    for (predicate, _parent_pred, _cause) in &unsatisfied_predicates {
+                        match predicate.kind().skip_binder() {
+                            ty::PredicateKind::Trait(p)
+                                if unimplemented_traits.contains_key(&p.trait_ref.def_id) => {}
+                            _ => {
+                                unimplemented_traits_only = false;
+                                break;
+                            }
                         }
                     }
 
@@ -839,7 +855,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .join("\n");
                         let actual_prefix = actual.prefix_string(self.tcx);
                         info!("unimplemented_traits.len() == {}", unimplemented_traits.len());
-                        let (primary_message, label) = if unimplemented_traits.len() == 1 {
+                        let (primary_message, label) = if unimplemented_traits.len() == 1
+                            && unimplemented_traits_only
+                        {
                             unimplemented_traits
                                 .into_iter()
                                 .next()
