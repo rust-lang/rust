@@ -72,7 +72,7 @@ fn lifetime_arg(p: &mut Parser) {
     m.complete(p, LIFETIME_ARG);
 }
 
-pub(super) fn const_arg_content(p: &mut Parser) {
+pub(super) fn const_arg_expr(p: &mut Parser) {
     // The tests in here are really for `const_arg`, which wraps the content
     // CONST_ARG.
     match p.current() {
@@ -113,7 +113,7 @@ pub(super) fn const_arg_content(p: &mut Parser) {
 // type T = S<92>;
 pub(super) fn const_arg(p: &mut Parser) {
     let m = p.start();
-    const_arg_content(p);
+    const_arg_expr(p);
     m.complete(p, CONST_ARG);
 }
 

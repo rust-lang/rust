@@ -85,7 +85,7 @@ fn const_param(p: &mut Parser, m: Marker) {
 
         // test const_param_default_expression
         // struct A<const N: i32 = { 1 }>;
-        generic_args::const_arg_content(p);
+        generic_args::const_arg_expr(p);
     }
 
     m.complete(p, CONST_PARAM);
