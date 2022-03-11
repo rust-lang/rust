@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type `Command`
-  --> $DIR/amputate-span.rs:48:5
+  --> $DIR/amputate-span.rs:49:5
    |
 LL |     Command::new("git");
    |     ^^^^^^^ not found in this scope
@@ -10,7 +10,7 @@ LL | use std::process::Command;
    |
 
 error[E0433]: failed to resolve: use of undeclared type `Command`
-  --> $DIR/amputate-span.rs:61:9
+  --> $DIR/amputate-span.rs:63:9
    |
 LL |         Command::new("git");
    |         ^^^^^^^ not found in this scope
