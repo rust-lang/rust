@@ -184,6 +184,8 @@ pub enum CheckInAllocMsg {
     MemoryAccessTest,
     /// We are doing pointer arithmetic.
     PointerArithmeticTest,
+    /// We are doing pointer offset_from.
+    OffsetFromTest,
     /// None of the above -- generic/unspecific inbounds test.
     InboundsTest,
 }
@@ -199,6 +201,7 @@ impl fmt::Display for CheckInAllocMsg {
                 CheckInAllocMsg::DerefTest => "dereferencing pointer failed: ",
                 CheckInAllocMsg::MemoryAccessTest => "memory access failed: ",
                 CheckInAllocMsg::PointerArithmeticTest => "pointer arithmetic failed: ",
+                CheckInAllocMsg::OffsetFromTest => "out-of-bounds offset_from: ",
                 CheckInAllocMsg::InboundsTest => "",
             }
         )
@@ -357,6 +360,9 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             ),
             DanglingIntPointer(0, CheckInAllocMsg::InboundsTest) => {
                 write!(f, "null pointer is not a valid pointer for this operation")
+            }
+            DanglingIntPointer(0, msg) => {
+                write!(f, "{}null pointer is not a valid pointer", msg)
             }
             DanglingIntPointer(i, msg) => {
                 write!(f, "{}0x{:x} is not a valid pointer", msg, i)

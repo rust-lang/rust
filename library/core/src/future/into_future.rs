@@ -9,20 +9,20 @@ pub trait IntoFuture {
 
     /// Which kind of future are we turning this into?
     #[unstable(feature = "into_future", issue = "67644")]
-    type Future: Future<Output = Self::Output>;
+    type IntoFuture: Future<Output = Self::Output>;
 
     /// Creates a future from a value.
     #[unstable(feature = "into_future", issue = "67644")]
     #[lang = "into_future"]
-    fn into_future(self) -> Self::Future;
+    fn into_future(self) -> Self::IntoFuture;
 }
 
 #[unstable(feature = "into_future", issue = "67644")]
 impl<F: Future> IntoFuture for F {
     type Output = F::Output;
-    type Future = F;
+    type IntoFuture = F;
 
-    fn into_future(self) -> Self::Future {
+    fn into_future(self) -> Self::IntoFuture {
         self
     }
 }

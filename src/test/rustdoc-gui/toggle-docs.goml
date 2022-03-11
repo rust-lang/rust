@@ -17,7 +17,14 @@ assert-text: ("#toggle-all-docs", "[−]")
 goto: file://|DOC_PATH|/test_docs/struct.Foo.html
 // We first check that everything is visible.
 assert-text: ("#toggle-all-docs", "[−]")
-assert-attribute: ("details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("#implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute: ("#trait-implementations-list details.rustdoc-toggle", {"open": ""}, ALL)
+assert-attribute-false: (
+    "#blanket-implementations-list > details.rustdoc-toggle",
+    {"open": ""},
+    ALL,
+)
+
 // We collapse them all.
 click: "#toggle-all-docs"
 wait-for: 50

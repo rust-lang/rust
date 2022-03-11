@@ -388,9 +388,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 CheckInAllocMsg::DerefTest | CheckInAllocMsg::MemoryAccessTest => {
                     AllocCheck::Dereferenceable
                 }
-                CheckInAllocMsg::PointerArithmeticTest | CheckInAllocMsg::InboundsTest => {
-                    AllocCheck::Live
-                }
+                CheckInAllocMsg::PointerArithmeticTest
+                | CheckInAllocMsg::OffsetFromTest
+                | CheckInAllocMsg::InboundsTest => AllocCheck::Live,
             };
             let (size, align) = self.get_size_and_align(alloc_id, check)?;
             Ok((size, align, ()))
