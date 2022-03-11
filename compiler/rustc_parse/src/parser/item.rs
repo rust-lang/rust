@@ -1534,6 +1534,16 @@ impl<'a> Parser<'a> {
         let name = self.parse_field_ident(adt_ty, lo)?;
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
+        if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
+            self.struct_span_err(self.token.span, "found single colon in a struct field type path")
+                .span_suggestion_verbose(
+                    self.token.span,
+                    "write a path separator here",
+                    "::".to_string(),
+                    Applicability::MaybeIncorrect,
+                )
+                .emit();
+        }
         if self.token.kind == token::Eq {
             self.bump();
             let const_expr = self.parse_anon_const_expr()?;
