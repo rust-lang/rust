@@ -94,70 +94,70 @@ macro_rules! impl_binary_checked_op_test {
 macro_rules! impl_common_integer_tests {
     { $vector:ident, $scalar:ident } => {
         test_helpers::test_lanes! {
-            fn horizontal_sum<const LANES: usize>() {
+            fn reduce_sum<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_sum(),
+                        $vector::<LANES>::from_array(x).reduce_sum(),
                         x.iter().copied().fold(0 as $scalar, $scalar::wrapping_add),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_product<const LANES: usize>() {
+            fn reduce_product<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_product(),
+                        $vector::<LANES>::from_array(x).reduce_product(),
                         x.iter().copied().fold(1 as $scalar, $scalar::wrapping_mul),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_and<const LANES: usize>() {
+            fn reduce_and<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_and(),
+                        $vector::<LANES>::from_array(x).reduce_and(),
                         x.iter().copied().fold(-1i8 as $scalar, <$scalar as core::ops::BitAnd>::bitand),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_or<const LANES: usize>() {
+            fn reduce_or<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_or(),
+                        $vector::<LANES>::from_array(x).reduce_or(),
                         x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitOr>::bitor),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_xor<const LANES: usize>() {
+            fn reduce_xor<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_xor(),
+                        $vector::<LANES>::from_array(x).reduce_xor(),
                         x.iter().copied().fold(0 as $scalar, <$scalar as core::ops::BitXor>::bitxor),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_max<const LANES: usize>() {
+            fn reduce_max<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_max(),
+                        $vector::<LANES>::from_array(x).reduce_max(),
                         x.iter().copied().max().unwrap(),
                     );
                     Ok(())
                 });
             }
 
-            fn horizontal_min<const LANES: usize>() {
+            fn reduce_min<const LANES: usize>() {
                 test_helpers::test_1(&|x| {
                     test_helpers::prop_assert_biteq! (
-                        $vector::<LANES>::from_array(x).horizontal_min(),
+                        $vector::<LANES>::from_array(x).reduce_min(),
                         x.iter().copied().min().unwrap(),
                     );
                     Ok(())
@@ -516,29 +516,29 @@ macro_rules! impl_float_tests {
                     })
                 }
 
-                fn horizontal_sum<const LANES: usize>() {
+                fn reduce_sum<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
                         test_helpers::prop_assert_biteq! (
-                            Vector::<LANES>::from_array(x).horizontal_sum(),
+                            Vector::<LANES>::from_array(x).reduce_sum(),
                             x.iter().sum(),
                         );
                         Ok(())
                     });
                 }
 
-                fn horizontal_product<const LANES: usize>() {
+                fn reduce_product<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
                         test_helpers::prop_assert_biteq! (
-                            Vector::<LANES>::from_array(x).horizontal_product(),
+                            Vector::<LANES>::from_array(x).reduce_product(),
                             x.iter().product(),
                         );
                         Ok(())
                     });
                 }
 
-                fn horizontal_max<const LANES: usize>() {
+                fn reduce_max<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        let vmax = Vector::<LANES>::from_array(x).horizontal_max();
+                        let vmax = Vector::<LANES>::from_array(x).reduce_max();
                         let smax = x.iter().copied().fold(Scalar::NAN, Scalar::max);
                         // 0 and -0 are treated the same
                         if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {
@@ -548,9 +548,9 @@ macro_rules! impl_float_tests {
                     });
                 }
 
-                fn horizontal_min<const LANES: usize>() {
+                fn reduce_min<const LANES: usize>() {
                     test_helpers::test_1(&|x| {
-                        let vmax = Vector::<LANES>::from_array(x).horizontal_min();
+                        let vmax = Vector::<LANES>::from_array(x).reduce_min();
                         let smax = x.iter().copied().fold(Scalar::NAN, Scalar::min);
                         // 0 and -0 are treated the same
                         if !(x.contains(&0.) && x.contains(&-0.) && vmax.abs() == 0. && smax.abs() == 0.) {
