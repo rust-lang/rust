@@ -103,11 +103,10 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         place_with_id: &expr_use_visitor::PlaceWithHirId<'tcx>,
         diag_expr_id: HirId,
         bk: rustc_middle::ty::BorrowKind,
-        is_autoref: bool,
     ) {
         debug!(
             "borrow: place_with_id = {place_with_id:?}, diag_expr_id={diag_expr_id:?}, \
-            borrow_kind={bk:?}, is_autoref={is_autoref}"
+            borrow_kind={bk:?}"
         );
 
         self.places

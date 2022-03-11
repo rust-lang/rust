@@ -154,7 +154,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind, _is_autoref: bool) {
+    fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if cmt.place.projections.is_empty() {
             if let PlaceBase::Local(lid) = cmt.place.base {
                 self.set.remove(&lid);
