@@ -431,7 +431,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
         // and it can help optimizations.
         &deaggregator::Deaggregator,
-        &const_prop_lint::ConstProp,
+        &Lint(const_prop_lint::ConstProp),
     ];
 
     pm::run_passes(tcx, body, post_borrowck_cleanup);
