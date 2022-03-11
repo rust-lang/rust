@@ -215,4 +215,40 @@ fn test_from_char_iterator() {
         assert_eq!(s.as_str(), *raw);
         assert_eq!(s.is_heap_allocated(), *is_heap);
     }
+    // String which has too many characters to even consider inlining: Chars::size_hint uses
+    // (`len` + 3) / 4. With `len` = 89, this results in 23, so `from_iter` will immediately
+    // heap allocate
+    let raw: String = std::iter::repeat('a').take(22 * 4 + 1).collect();
+    let s: SmolStr = raw.chars().collect();
+    assert_eq!(s.as_str(), raw);
+    assert!(s.is_heap_allocated());
+}
+
+#[test]
+fn test_bad_size_hint_char_iter() {
+    struct BadSizeHint<I>(I);
+
+    impl<T, I: Iterator<Item = T>> Iterator for BadSizeHint<I> {
+        type Item = T;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            self.0.next()
+        }
+
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (1024, None)
+        }
+    }
+
+    let data = "testing";
+    let collected: SmolStr = BadSizeHint(data.chars()).collect();
+    let new = SmolStr::new(data);
+
+    // Because of the bad size hint, `collected` will be heap allocated, but `new` will be inline
+
+    // If we try to use the type of the string (inline/heap) to quickly test for equality, we need to ensure
+    // `collected` is inline allocated instead
+    assert!(collected.is_heap_allocated());
+    assert!(!new.is_heap_allocated());
+    assert_eq!(new, collected);
 }
