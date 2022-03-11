@@ -50,7 +50,7 @@ If the feature is changed later, please add those PRs here as well.
 -->
 
 - [ ] Implementation: #...
-- [ ] Final comment period (FCP)
+- [ ] Final comment period (FCP)[^1]
 - [ ] Stabilization PR
 
 <!--
@@ -81,3 +81,5 @@ Zulip, or the internals forum) here.
 -->
 
 - None yet.
+
+[^1]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html
