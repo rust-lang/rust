@@ -7,7 +7,7 @@ use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder};
+use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
@@ -82,7 +82,7 @@ pub fn feature_err<'a>(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: &str,
-) -> DiagnosticBuilder<'a> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -96,9 +96,28 @@ pub fn feature_err_issue<'a>(
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
-) -> DiagnosticBuilder<'a> {
+) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     let mut err = sess.span_diagnostic.struct_span_err_with_code(span, explain, error_code!(E0658));
+    add_feature_diagnostics_for_issue(&mut err, sess, feature, issue);
+    err
+}
 
+/// Adds the diagnostics for a feature to an existing error.
+pub fn add_feature_diagnostics<'a>(err: &mut Diagnostic, sess: &'a ParseSess, feature: Symbol) {
+    add_feature_diagnostics_for_issue(err, sess, feature, GateIssue::Language);
+}
+
+/// Adds the diagnostics for a feature to an existing error.
+///
+/// This variant allows you to control whether it is a library or language feature.
+/// Almost always, you want to use this for a language feature. If so, prefer
+/// `add_feature_diagnostics`.
+pub fn add_feature_diagnostics_for_issue<'a>(
+    err: &mut Diagnostic,
+    sess: &'a ParseSess,
+    feature: Symbol,
+    issue: GateIssue,
+) {
     if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
             "see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
@@ -110,8 +129,6 @@ pub fn feature_err_issue<'a>(
     if sess.unstable_features.is_nightly_build() {
         err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
     }
-
-    err
 }
 
 /// Info about a parsing session.
@@ -243,7 +260,7 @@ impl ParseSess {
 
     /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
     /// parser to continue parsing the following operation as part of the same expression.
-    pub fn expr_parentheses_needed(&self, err: &mut DiagnosticBuilder<'_>, span: Span) {
+    pub fn expr_parentheses_needed(&self, err: &mut Diagnostic, span: Span) {
         err.multipart_suggestion(
             "parentheses are required to parse this as an expression",
             vec![(span.shrink_to_lo(), "(".to_string()), (span.shrink_to_hi(), ")".to_string())],

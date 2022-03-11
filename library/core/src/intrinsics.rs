@@ -1936,7 +1936,6 @@ extern "rust-intrinsic" {
     /// - If the `ptr` is created in an another const, this intrinsic doesn't deallocate it.
     /// - If the `ptr` is pointing to a local variable, this intrinsic doesn't deallocate it.
     #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
-    #[cfg(not(bootstrap))]
     pub fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
 
     /// Determines whether the raw bytes of the two values are equal.

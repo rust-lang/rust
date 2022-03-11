@@ -7,7 +7,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::SubregionOrigin;
 
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::{GenericParamKind, Ty};
 use rustc_middle::ty::Region;
@@ -49,7 +49,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// ```
     ///
     /// It will later be extended to trait objects.
-    pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorGuaranteed> {
         let (span, sub, sup) = self.regions()?;
 
         if let Some(RegionResolutionError::ConcreteFailure(
@@ -148,7 +148,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         self.suggest_adding_lifetime_params(sub, ty_sup, ty_sub, &mut err);
 
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 
     fn suggest_adding_lifetime_params(
@@ -156,7 +156,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         sub: Region<'tcx>,
         ty_sup: &Ty<'_>,
         ty_sub: &Ty<'_>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         if let (
             hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
@@ -166,59 +166,61 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if lifetime_sub.name.is_elided() && lifetime_sup.name.is_elided() {
                 if let Some(anon_reg) = self.tcx().is_suitable_region(sub) {
                     let hir_id = self.tcx().hir().local_def_id_to_hir_id(anon_reg.def_id);
-                    if let hir::Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Fn(_, ref generics, ..),
-                        ..
-                    }) = self.tcx().hir().get(hir_id)
-                    {
-                        let (suggestion_param_name, introduce_new) = generics
-                            .params
-                            .iter()
-                            .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
-                            .and_then(|p| self.tcx().sess.source_map().span_to_snippet(p.span).ok())
-                            .map(|name| (name, false))
-                            .unwrap_or_else(|| ("'a".to_string(), true));
 
-                        let mut suggestions = vec![
-                            if let hir::LifetimeName::Underscore = lifetime_sub.name {
-                                (lifetime_sub.span, suggestion_param_name.clone())
-                            } else {
-                                (
-                                    lifetime_sub.span.shrink_to_hi(),
-                                    suggestion_param_name.clone() + " ",
-                                )
-                            },
-                            if let hir::LifetimeName::Underscore = lifetime_sup.name {
-                                (lifetime_sup.span, suggestion_param_name.clone())
-                            } else {
-                                (
-                                    lifetime_sup.span.shrink_to_hi(),
-                                    suggestion_param_name.clone() + " ",
-                                )
-                            },
-                        ];
+                    let node = self.tcx().hir().get(hir_id);
+                    let is_impl = matches!(&node, hir::Node::ImplItem(_));
+                    let generics = match node {
+                        hir::Node::Item(&hir::Item {
+                            kind: hir::ItemKind::Fn(_, ref generics, ..),
+                            ..
+                        })
+                        | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
+                        | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => generics,
+                        _ => return,
+                    };
 
-                        if introduce_new {
-                            let new_param_suggestion = match &generics.params {
-                                [] => (generics.span, format!("<{}>", suggestion_param_name)),
-                                [first, ..] => (
-                                    first.span.shrink_to_lo(),
-                                    format!("{}, ", suggestion_param_name),
-                                ),
-                            };
+                    let (suggestion_param_name, introduce_new) = generics
+                        .params
+                        .iter()
+                        .find(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                        .and_then(|p| self.tcx().sess.source_map().span_to_snippet(p.span).ok())
+                        .map(|name| (name, false))
+                        .unwrap_or_else(|| ("'a".to_string(), true));
 
-                            suggestions.push(new_param_suggestion);
-                        }
+                    let mut suggestions = vec![
+                        if let hir::LifetimeName::Underscore = lifetime_sub.name {
+                            (lifetime_sub.span, suggestion_param_name.clone())
+                        } else {
+                            (lifetime_sub.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
+                        },
+                        if let hir::LifetimeName::Underscore = lifetime_sup.name {
+                            (lifetime_sup.span, suggestion_param_name.clone())
+                        } else {
+                            (lifetime_sup.span.shrink_to_hi(), suggestion_param_name.clone() + " ")
+                        },
+                    ];
 
-                        err.multipart_suggestion(
-                            "consider introducing a named lifetime parameter",
-                            suggestions,
-                            Applicability::MaybeIncorrect,
-                        );
-                        err.note(
-                            "each elided lifetime in input position becomes a distinct lifetime",
-                        );
+                    if introduce_new {
+                        let new_param_suggestion = match &generics.params {
+                            [] => (generics.span, format!("<{}>", suggestion_param_name)),
+                            [first, ..] => {
+                                (first.span.shrink_to_lo(), format!("{}, ", suggestion_param_name))
+                            }
+                        };
+
+                        suggestions.push(new_param_suggestion);
                     }
+
+                    let mut sugg = String::from("consider introducing a named lifetime parameter");
+                    if is_impl {
+                        sugg.push_str(" and update trait if needed");
+                    }
+                    err.multipart_suggestion(
+                        sugg.as_str(),
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.note("each elided lifetime in input position becomes a distinct lifetime");
                 }
             }
         }

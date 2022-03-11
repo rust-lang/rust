@@ -9,23 +9,24 @@ use crate::sync::Arc;
 /// A scope to spawn scoped threads in.
 ///
 /// See [`scope`] for details.
-pub struct Scope<'env> {
+pub struct Scope<'scope, 'env: 'scope> {
     data: ScopeData,
-    /// Invariance over 'env, to make sure 'env cannot shrink,
+    /// Invariance over 'scope, to make sure 'scope cannot shrink,
     /// which is necessary for soundness.
     ///
     /// Without invariance, this would compile fine but be unsound:
     ///
-    /// ```compile_fail
+    /// ```compile_fail,E0373
     /// #![feature(scoped_threads)]
     ///
     /// std::thread::scope(|s| {
-    ///     s.spawn(|s| {
+    ///     s.spawn(|| {
     ///         let a = String::from("abcd");
-    ///         s.spawn(|_| println!("{:?}", a)); // might run after `a` is dropped
+    ///         s.spawn(|| println!("{a:?}")); // might run after `a` is dropped
     ///     });
     /// });
     /// ```
+    scope: PhantomData<&'scope mut &'scope ()>,
     env: PhantomData<&'env mut &'env ()>,
 }
 
@@ -88,12 +89,12 @@ impl ScopeData {
 /// let mut x = 0;
 ///
 /// thread::scope(|s| {
-///     s.spawn(|_| {
+///     s.spawn(|| {
 ///         println!("hello from the first scoped thread");
 ///         // We can borrow `a` here.
 ///         dbg!(&a);
 ///     });
-///     s.spawn(|_| {
+///     s.spawn(|| {
 ///         println!("hello from the second scoped thread");
 ///         // We can even mutably borrow `x` here,
 ///         // because no other threads are using it.
@@ -106,10 +107,28 @@ impl ScopeData {
 /// a.push(4);
 /// assert_eq!(x, a.len());
 /// ```
+///
+/// # Lifetimes
+///
+/// Scoped threads involve two lifetimes: `'scope` and `'env`.
+///
+/// The `'scope` lifetime represents the lifetime of the scope itself.
+/// That is: the time during which new scoped threads may be spawned,
+/// and also the time during which they might still be running.
+/// Once this lifetime ends, all scoped threads are joined.
+/// This lifetime starts within the `scope` function, before `f` (the argument to `scope`) starts.
+/// It ends after `f` returns and all scoped threads have been joined, but before `scope` returns.
+///
+/// The `'env` lifetime represents the lifetime of whatever is borrowed by the scoped threads.
+/// This lifetime must outlast the call to `scope`, and thus cannot be smaller than `'scope`.
+/// It can be as small as the call to `scope`, meaning that anything that outlives this call,
+/// such as local variables defined right before the scope, can be borrowed by the scoped threads.
+///
+/// The `'env: 'scope` bound is part of the definition of the `Scope` type.
 #[track_caller]
 pub fn scope<'env, F, T>(f: F) -> T
 where
-    F: FnOnce(&Scope<'env>) -> T,
+    F: for<'scope> FnOnce(&'scope Scope<'scope, 'env>) -> T,
 {
     let scope = Scope {
         data: ScopeData {
@@ -118,6 +137,7 @@ where
             a_thread_panicked: AtomicBool::new(false),
         },
         env: PhantomData,
+        scope: PhantomData,
     };
 
     // Run `f`, but catch panics so we can make sure to wait for all the threads to join.
@@ -138,7 +158,7 @@ where
     }
 }
 
-impl<'env> Scope<'env> {
+impl<'scope, 'env> Scope<'scope, 'env> {
     /// Spawns a new thread within a scope, returning a [`ScopedJoinHandle`] for it.
     ///
     /// Unlike non-scoped threads, threads spawned with this function may
@@ -163,10 +183,10 @@ impl<'env> Scope<'env> {
     /// to recover from such errors.
     ///
     /// [`join`]: ScopedJoinHandle::join
-    pub fn spawn<'scope, F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
+    pub fn spawn<F, T>(&'scope self, f: F) -> ScopedJoinHandle<'scope, T>
     where
-        F: FnOnce(&Scope<'env>) -> T + Send + 'env,
-        T: Send + 'env,
+        F: FnOnce() -> T + Send + 'scope,
+        T: Send + 'scope,
     {
         Builder::new().spawn_scoped(self, f).expect("failed to spawn thread")
     }
@@ -196,7 +216,7 @@ impl Builder {
     /// thread::scope(|s| {
     ///     thread::Builder::new()
     ///         .name("first".to_string())
-    ///         .spawn_scoped(s, |_|
+    ///         .spawn_scoped(s, ||
     ///     {
     ///         println!("hello from the {:?} scoped thread", thread::current().name());
     ///         // We can borrow `a` here.
@@ -205,7 +225,7 @@ impl Builder {
     ///     .unwrap();
     ///     thread::Builder::new()
     ///         .name("second".to_string())
-    ///         .spawn_scoped(s, |_|
+    ///         .spawn_scoped(s, ||
     ///     {
     ///         println!("hello from the {:?} scoped thread", thread::current().name());
     ///         // We can even mutably borrow `x` here,
@@ -222,14 +242,14 @@ impl Builder {
     /// ```
     pub fn spawn_scoped<'scope, 'env, F, T>(
         self,
-        scope: &'scope Scope<'env>,
+        scope: &'scope Scope<'scope, 'env>,
         f: F,
     ) -> io::Result<ScopedJoinHandle<'scope, T>>
     where
-        F: FnOnce(&Scope<'env>) -> T + Send + 'env,
-        T: Send + 'env,
+        F: FnOnce() -> T + Send + 'scope,
+        T: Send + 'scope,
     {
-        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(|| f(scope), Some(&scope.data)) }?))
+        Ok(ScopedJoinHandle(unsafe { self.spawn_unchecked_(f, Some(&scope.data)) }?))
     }
 }
 
@@ -240,12 +260,11 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// ```
     /// #![feature(scoped_threads)]
-    /// #![feature(thread_is_running)]
     ///
     /// use std::thread;
     ///
     /// thread::scope(|s| {
-    ///     let t = s.spawn(|_| {
+    ///     let t = s.spawn(|| {
     ///         println!("hello");
     ///     });
     ///     println!("thread id: {:?}", t.thread().id());
@@ -274,12 +293,11 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// ```
     /// #![feature(scoped_threads)]
-    /// #![feature(thread_is_running)]
     ///
     /// use std::thread;
     ///
     /// thread::scope(|s| {
-    ///     let t = s.spawn(|_| {
+    ///     let t = s.spawn(|| {
     ///         panic!("oh no");
     ///     });
     ///     assert!(t.join().is_err());
@@ -289,17 +307,22 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
         self.0.join()
     }
 
-    /// Checks if the associated thread is still running its main function.
+    /// Checks if the associated thread has finished running its main function.
     ///
-    /// This might return `false` for a brief moment after the thread's main
+    /// This might return `true` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
+    /// However, once this returns `true`, [`join`][Self::join] can be expected
+    /// to return quickly, without blocking for any significant amount of time.
+    ///
+    /// This function does not block. To block while waiting on the thread to finish,
+    /// use [`join`][Self::join].
     #[unstable(feature = "thread_is_running", issue = "90470")]
-    pub fn is_running(&self) -> bool {
-        Arc::strong_count(&self.0.packet) > 1
+    pub fn is_finished(&self) -> bool {
+        Arc::strong_count(&self.0.packet) == 1
     }
 }
 
-impl<'env> fmt::Debug for Scope<'env> {
+impl fmt::Debug for Scope<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scope")
             .field("num_running_threads", &self.data.num_running_threads.load(Ordering::Relaxed))

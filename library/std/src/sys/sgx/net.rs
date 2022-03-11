@@ -501,7 +501,7 @@ impl<'a> TryFrom<(&'a str, u16)> for LookupHost {
     type Error = io::Error;
 
     fn try_from((host, port): (&'a str, u16)) -> io::Result<LookupHost> {
-        LookupHost::new(format!("{}:{}", host, port))
+        LookupHost::new(format!("{host}:{port}"))
     }
 }
 

@@ -4,7 +4,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit as hir_visit;
@@ -31,6 +31,7 @@ use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode, 
 
 use std::convert::TryInto;
 use std::iter;
+use std::lazy::Lazy;
 use std::ops::ControlFlow;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
@@ -448,7 +449,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                  for more information",
             );
 
-            err.emit()
+            err.emit();
         }
     }
 }
@@ -843,7 +844,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                             "using {} as const generic parameters is forbidden",
                             unsupported_type
                         ),
-                    )
+                    );
                 } else {
                     let mut err = tcx.sess.struct_span_err(
                         hir_ty.span,
@@ -858,7 +859,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) {
                             "more complex types are supported with `#![feature(adt_const_params)]`",
                         );
                     }
-                    err.emit()
+                    err.emit();
                 }
             };
 
@@ -1720,8 +1721,29 @@ fn check_variances_for_type_defn<'tcx>(
 
     identify_constrained_generic_params(tcx, ty_predicates, None, &mut constrained_parameters);
 
+    // Lazily calculated because it is only needed in case of an error.
+    let explicitly_bounded_params = Lazy::new(|| {
+        let icx = crate::collect::ItemCtxt::new(tcx, item.def_id.to_def_id());
+        hir_generics
+            .where_clause
+            .predicates
+            .iter()
+            .filter_map(|predicate| match predicate {
+                hir::WherePredicate::BoundPredicate(predicate) => {
+                    match icx.to_ty(predicate.bounded_ty).kind() {
+                        ty::Param(data) => Some(Parameter(data.index)),
+                        _ => None,
+                    }
+                }
+                _ => None,
+            })
+            .collect::<FxHashSet<_>>()
+    });
+
     for (index, _) in variances.iter().enumerate() {
-        if constrained_parameters.contains(&Parameter(index as u32)) {
+        let parameter = Parameter(index as u32);
+
+        if constrained_parameters.contains(&parameter) {
             continue;
         }
 
@@ -1729,12 +1751,20 @@ fn check_variances_for_type_defn<'tcx>(
 
         match param.name {
             hir::ParamName::Error => {}
-            _ => report_bivariance(tcx, param),
+            _ => {
+                let has_explicit_bounds =
+                    !param.bounds.is_empty() || explicitly_bounded_params.contains(&parameter);
+                report_bivariance(tcx, param, has_explicit_bounds);
+            }
         }
     }
 }
 
-fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
+fn report_bivariance(
+    tcx: TyCtxt<'_>,
+    param: &rustc_hir::GenericParam<'_>,
+    has_explicit_bounds: bool,
+) -> ErrorGuaranteed {
     let span = param.span;
     let param_name = param.name.ident().name;
     let mut err = error_392(tcx, span, param_name);
@@ -1752,7 +1782,7 @@ fn report_bivariance(tcx: TyCtxt<'_>, param: &rustc_hir::GenericParam<'_>) {
     };
     err.help(&msg);
 
-    if matches!(param.kind, rustc_hir::GenericParamKind::Type { .. }) {
+    if matches!(param.kind, hir::GenericParamKind::Type { .. }) && !has_explicit_bounds {
         err.help(&format!(
             "if you intended `{0}` to be a const parameter, use `const {0}: usize` instead",
             param_name
@@ -1943,7 +1973,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
+fn error_392(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    param_name: Symbol,
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     let mut err =
         struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");

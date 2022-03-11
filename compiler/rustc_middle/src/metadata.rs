@@ -21,4 +21,6 @@ pub struct ModChild {
     pub vis: ty::Visibility,
     /// Span of the item.
     pub span: Span,
+    /// A proper `macro_rules` item (not a reexport).
+    pub macro_rules: bool,
 }

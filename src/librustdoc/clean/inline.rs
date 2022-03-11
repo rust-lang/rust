@@ -228,7 +228,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
         let generics = clean_ty_generics(cx, cx.tcx.generics_of(did), predicates);
-        let decl = clean_fn_decl_from_did_and_sig(cx, did, sig);
+        let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
     clean::Function {
@@ -636,7 +636,7 @@ fn filter_non_trait_generics(trait_did: DefId, mut g: clean::Generics) -> clean:
 
     g.where_predicates.retain(|pred| match pred {
         clean::WherePredicate::BoundPredicate {
-            ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, name: _, .. },
+            ty: clean::QPath { self_type: box clean::Generic(ref s), trait_, .. },
             bounds,
             ..
         } => !(bounds.is_empty() || *s == kw::SelfUpper && trait_.def_id() == trait_did),

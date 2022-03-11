@@ -4,10 +4,7 @@ error[E0382]: use of moved value: `orig`
 LL |     let orig = vec![true];
    |         ---- move occurs because `orig` has type `Vec<bool>`, which does not implement the `Copy` trait
 LL |     for _val in orig {}
-   |                 ----
-   |                 |
-   |                 `orig` moved due to this implicit call to `.into_iter()`
-   |                 help: consider borrowing to avoid moving into the for loop: `&orig`
+   |                 ---- `orig` moved due to this implicit call to `.into_iter()`
 LL |     let _closure = || orig;
    |                    ^^ ---- use occurs due to use in closure
    |                    |
@@ -18,6 +15,10 @@ note: this function takes ownership of the receiver `self`, which moves `orig`
    |
 LL |     fn into_iter(self) -> Self::IntoIter;
    |                  ^^^^
+help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
+   |
+LL |     for _val in &orig {}
+   |                 +
 
 error: aborting due to previous error
 

@@ -272,9 +272,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else {
                 bug!("unexpected builtin trait {:?}", trait_def)
             };
-            let nested = match conditions {
-                BuiltinImplConditions::Where(nested) => nested,
-                _ => bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation),
+            let BuiltinImplConditions::Where(nested) = conditions else {
+                bug!("obligation {:?} had matched a builtin impl but now doesn't", obligation);
             };
 
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
@@ -421,9 +420,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_predicate = self.infcx.replace_bound_vars_with_placeholders(obligation.predicate);
         let self_ty = self.infcx.shallow_resolve(trait_predicate.self_ty());
         let obligation_trait_ref = ty::Binder::dummy(trait_predicate.trait_ref);
-        let data = match *self_ty.kind() {
-            ty::Dynamic(data, ..) => data,
-            _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
+        let ty::Dynamic(data, ..) = *self_ty.kind() else {
+            span_bug!(obligation.cause.span, "object candidate with non-object");
         };
 
         let object_trait_ref = data.principal().unwrap_or_else(|| {
@@ -593,9 +591,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (generator_def_id, substs) = match *self_ty.kind() {
-            ty::Generator(id, substs, _) => (id, substs),
-            _ => bug!("closure candidate for non-closure {:?}", obligation),
+        let ty::Generator(generator_def_id, substs, _) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
         };
 
         debug!(?obligation, ?generator_def_id, ?substs, "confirm_generator_candidate");
@@ -622,9 +619,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match *self_ty.kind() {
-            ty::Closure(id, substs) => (id, substs),
-            _ => bug!("closure candidate for non-closure {:?}", obligation),
+        let ty::Closure(closure_def_id, substs) = *self_ty.kind() else {
+            bug!("closure candidate for non-closure {:?}", obligation);
         };
 
         let trait_ref = self.closure_trait_ref_unnormalized(obligation, substs);

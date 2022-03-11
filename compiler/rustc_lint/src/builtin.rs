@@ -31,7 +31,7 @@ use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust::{self, expr_to_string};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticStyledString};
 use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, GateIssue, Stability};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -51,7 +51,7 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, MultiSpan, Span};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::misc::can_type_implement_copy;
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -764,7 +764,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
             return;
         }
-        if can_type_implement_copy(cx.tcx, param_env, ty).is_ok() {
+        if can_type_implement_copy(
+            cx.tcx,
+            param_env,
+            ty,
+            traits::ObligationCause::misc(item.span, item.hir_id()),
+        )
+        .is_ok()
+        {
             cx.struct_span_lint(MISSING_COPY_IMPLEMENTATIONS, item.span, |lint| {
                 lint.build(
                     "type could implement `Copy`; consider adding `impl \
@@ -1078,6 +1085,16 @@ impl EarlyLintPass for UnusedDocComment {
 
     fn check_generic_param(&mut self, cx: &EarlyContext<'_>, param: &ast::GenericParam) {
         warn_if_doc(cx, param.ident.span, "generic parameters", &param.attrs);
+    }
+
+    fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
+        warn_if_doc(cx, block.span, "block", &block.attrs());
+    }
+
+    fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
+        if let ast::ItemKind::ForeignMod(_) = item.kind {
+            warn_if_doc(cx, item.span, "extern block", &item.attrs);
+        }
     }
 }
 
@@ -1469,17 +1486,17 @@ impl TypeAliasBounds {
         }
     }
 
-    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_changing_assoc_types(ty: &hir::Ty<'_>, err: &mut Diagnostic) {
         // Access to associates types should use `<T as Bound>::Assoc`, which does not need a
         // bound.  Let's see if this type does that.
 
         // We use a HIR visitor to walk the type.
         use rustc_hir::intravisit::{self, Visitor};
-        struct WalkAssocTypes<'a, 'db> {
-            err: &'a mut DiagnosticBuilder<'db>,
+        struct WalkAssocTypes<'a> {
+            err: &'a mut Diagnostic,
         }
-        impl<'a, 'db, 'v> Visitor<'v> for WalkAssocTypes<'a, 'db> {
-            fn visit_qpath(&mut self, qpath: &'v hir::QPath<'v>, id: hir::HirId, span: Span) {
+        impl Visitor<'_> for WalkAssocTypes<'_> {
+            fn visit_qpath(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) {
                 if TypeAliasBounds::is_type_variable_assoc(qpath) {
                     self.err.span_help(
                         span,
@@ -2844,8 +2861,8 @@ impl ClashingExternDeclarations {
 
                 let compare_layouts = |a, b| -> Result<bool, LayoutError<'tcx>> {
                     debug!("compare_layouts({:?}, {:?})", a, b);
-                    let a_layout = &cx.layout_of(a)?.layout.abi;
-                    let b_layout = &cx.layout_of(b)?.layout.abi;
+                    let a_layout = &cx.layout_of(a)?.layout.abi();
+                    let b_layout = &cx.layout_of(b)?.layout.abi();
                     debug!(
                         "comparing layouts: {:?} == {:?} = {}",
                         a_layout,

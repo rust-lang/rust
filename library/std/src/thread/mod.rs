@@ -613,7 +613,7 @@ impl Builder {
 ///
 /// let receiver = thread::spawn(move || {
 ///     let value = rx.recv().expect("Unable to receive from channel");
-///     println!("{}", value);
+///     println!("{value}");
 /// });
 ///
 /// sender.join().expect("The sender thread has panicked");
@@ -633,7 +633,7 @@ impl Builder {
 /// });
 ///
 /// let result = computation.join().unwrap();
-/// println!("{}", result);
+/// println!("{result}");
 /// ```
 ///
 /// [`channels`]: crate::sync::mpsc
@@ -979,7 +979,7 @@ pub fn park_timeout_ms(ms: u32) {
 ///     if elapsed >= timeout {
 ///         break;
 ///     }
-///     println!("restarting park_timeout after {:?}", elapsed);
+///     println!("restarting park_timeout after {elapsed:?}");
 ///     timeout_remaining = timeout - elapsed;
 /// }
 /// ```
@@ -1287,12 +1287,31 @@ unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
 
 impl<'scope, T> Drop for Packet<'scope, T> {
     fn drop(&mut self) {
+        // If this packet was for a thread that ran in a scope, the thread
+        // panicked, and nobody consumed the panic payload, we make sure
+        // the scope function will panic.
+        let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+        // Drop the result without causing unwinding.
+        // This is only relevant for threads that aren't join()ed, as
+        // join() will take the `result` and set it to None, such that
+        // there is nothing left to drop here.
+        // If this panics, we should handle that, because we're outside the
+        // outermost `catch_unwind` of our thread.
+        // We just abort in that case, since there's nothing else we can do.
+        // (And even if we tried to handle it somehow, we'd also need to handle
+        // the case where the panic payload we get out of it also panics on
+        // drop, and so on. See issue #86027.)
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            *self.result.get_mut() = None;
+        })) {
+            rtabort!("thread result panicked on drop");
+        }
         // Book-keeping so the scope knows when it's done.
         if let Some(scope) = self.scope {
-            // If this packet was for a thread that ran in a scope, the thread
-            // panicked, and nobody consumed the panic payload, we make sure
-            // the scope function will panic.
-            let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+            // Now that there will be no more user code running on this thread
+            // that can use 'scope, mark the thread as 'finished'.
+            // It's important we only do this after the `result` has been dropped,
+            // since dropping it might still use things it borrowed from 'scope.
             scope.decrement_num_running_threads(unhandled_panic);
         }
     }
@@ -1443,13 +1462,18 @@ impl<T> JoinHandle<T> {
         self.0.join()
     }
 
-    /// Checks if the associated thread is still running its main function.
+    /// Checks if the associated thread has finished running its main function.
     ///
-    /// This might return `false` for a brief moment after the thread's main
+    /// This might return `true` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
+    /// However, once this returns `true`, [`join`][Self::join] can be expected
+    /// to return quickly, without blocking for any significant amount of time.
+    ///
+    /// This function does not block. To block while waiting on the thread to finish,
+    /// use [`join`][Self::join].
     #[unstable(feature = "thread_is_running", issue = "90470")]
-    pub fn is_running(&self) -> bool {
-        Arc::strong_count(&self.0.packet) > 1
+    pub fn is_finished(&self) -> bool {
+        Arc::strong_count(&self.0.packet) == 1
     }
 }
 
@@ -1524,7 +1548,10 @@ fn _assert_sync_and_send() {
 ///
 /// On Linux:
 /// - It may overcount the amount of parallelism available when limited by a
-///   process-wide affinity mask, or when affected by cgroup limits.
+///   process-wide affinity mask or cgroup quotas and cgroup2 fs or `sched_getaffinity()` can't be
+///   queried, e.g. due to sandboxing.
+/// - It may undercount the amount of parallelism if the current thread's affinity mask
+///   does not reflect the process' cpuset, e.g. due to pinned threads.
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM

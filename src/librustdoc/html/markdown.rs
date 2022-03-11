@@ -1314,7 +1314,7 @@ crate fn markdown_links(md: &str) -> Vec<MarkdownLink> {
 
     for ev in iter {
         if let Event::Start(Tag::Link(kind, dest, _)) = ev.0 {
-            debug!("found link: {}", dest);
+            debug!("found link: {dest}");
             let span = span_for_link(&dest, ev.1);
             links.borrow_mut().push(MarkdownLink { kind, link: dest.into_string(), range: span });
         }
@@ -1460,6 +1460,7 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("provided-methods".to_owned(), 1);
     map.insert("implementors".to_owned(), 1);
     map.insert("synthetic-implementors".to_owned(), 1);
+    map.insert("implementations-list".to_owned(), 1);
     map.insert("trait-implementations-list".to_owned(), 1);
     map.insert("synthetic-implementations-list".to_owned(), 1);
     map.insert("blanket-implementations-list".to_owned(), 1);

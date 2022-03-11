@@ -6,7 +6,7 @@ use crate::astconv::{
 use crate::errors::AssocTypeBindingNotAllowed;
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -49,7 +49,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut DiagnosticBuilder<'_>| {
+        let add_braces_suggestion = |arg: &GenericArg<'_>, err: &mut Diagnostic| {
             let suggestions = vec![
                 (arg.span().shrink_to_lo(), String::from("{ ")),
                 (arg.span().shrink_to_hi(), String::from(" }")),
@@ -512,61 +512,69 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             explicit_late_bound == ExplicitLateBound::Yes,
         );
 
-        let mut check_types_and_consts =
-            |expected_min, expected_max, provided, params_offset, args_offset| {
-                debug!(
-                    ?expected_min,
-                    ?expected_max,
-                    ?provided,
-                    ?params_offset,
-                    ?args_offset,
-                    "check_types_and_consts"
+        let mut check_types_and_consts = |expected_min,
+                                          expected_max,
+                                          expected_max_with_synth,
+                                          provided,
+                                          params_offset,
+                                          args_offset| {
+            debug!(
+                ?expected_min,
+                ?expected_max,
+                ?provided,
+                ?params_offset,
+                ?args_offset,
+                "check_types_and_consts"
+            );
+            if (expected_min..=expected_max).contains(&provided) {
+                return true;
+            }
+
+            let num_default_params = expected_max - expected_min;
+
+            let gen_args_info = if provided > expected_max {
+                invalid_args.extend(
+                    gen_args.args[args_offset + expected_max..args_offset + provided]
+                        .iter()
+                        .map(|arg| arg.span()),
                 );
-                if (expected_min..=expected_max).contains(&provided) {
-                    return true;
+                let num_redundant_args = provided - expected_max;
+
+                // Provide extra note if synthetic arguments like `impl Trait` are specified.
+                let synth_provided = provided <= expected_max_with_synth;
+
+                GenericArgsInfo::ExcessTypesOrConsts {
+                    num_redundant_args,
+                    num_default_params,
+                    args_offset,
+                    synth_provided,
                 }
+            } else {
+                let num_missing_args = expected_max - provided;
 
-                let num_default_params = expected_max - expected_min;
-
-                let gen_args_info = if provided > expected_max {
-                    invalid_args.extend(
-                        gen_args.args[args_offset + expected_max..args_offset + provided]
-                            .iter()
-                            .map(|arg| arg.span()),
-                    );
-                    let num_redundant_args = provided - expected_max;
-
-                    GenericArgsInfo::ExcessTypesOrConsts {
-                        num_redundant_args,
-                        num_default_params,
-                        args_offset,
-                    }
-                } else {
-                    let num_missing_args = expected_max - provided;
-
-                    GenericArgsInfo::MissingTypesOrConsts {
-                        num_missing_args,
-                        num_default_params,
-                        args_offset,
-                    }
-                };
-
-                debug!(?gen_args_info);
-
-                WrongNumberOfGenericArgs::new(
-                    tcx,
-                    gen_args_info,
-                    seg,
-                    gen_params,
-                    params_offset,
-                    gen_args,
-                    def_id,
-                )
-                .diagnostic()
-                .emit_unless(gen_args.has_err());
-
-                false
+                GenericArgsInfo::MissingTypesOrConsts {
+                    num_missing_args,
+                    num_default_params,
+                    args_offset,
+                }
             };
+
+            debug!(?gen_args_info);
+
+            WrongNumberOfGenericArgs::new(
+                tcx,
+                gen_args_info,
+                seg,
+                gen_params,
+                params_offset,
+                gen_args,
+                def_id,
+            )
+            .diagnostic()
+            .emit_unless(gen_args.has_err());
+
+            false
+        };
 
         let args_correct = {
             let expected_min = if infer_args {
@@ -582,6 +590,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             check_types_and_consts(
                 expected_min,
                 param_counts.consts + named_type_param_count,
+                param_counts.consts + named_type_param_count + synth_type_param_count,
                 gen_args.num_generic_params(),
                 param_counts.lifetimes + has_self as usize,
                 gen_args.num_lifetime_params(),
@@ -593,7 +602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             correct: if lifetimes_correct && args_correct {
                 Ok(())
             } else {
-                Err(GenericArgCountMismatch { reported: Some(ErrorReported), invalid_args })
+                Err(GenericArgCountMismatch { reported: Some(ErrorGuaranteed), invalid_args })
             },
         }
     }

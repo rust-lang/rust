@@ -547,7 +547,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
 
             // Helper function to handle early returns.
             let mut set_skip_flag = || {
-                if result.skip {
+                if !result.skip {
                     self.skip_count += 1;
                 }
                 result.skip = true;

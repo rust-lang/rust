@@ -79,7 +79,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn eval_static_initializer(
         self,
         def_id: DefId,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         trace!("eval_static_initializer: Need to compute {:?}", def_id);
         assert!(self.is_static(def_id));
         let instance = ty::Instance::mono(self, def_id);
@@ -92,7 +92,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         gid: GlobalId<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-    ) -> Result<&'tcx mir::Allocation, ErrorHandled> {
+    ) -> Result<mir::ConstAllocation<'tcx>, ErrorHandled> {
         let param_env = param_env.with_const();
         trace!("eval_to_allocation: Need to compute {:?}", gid);
         let raw_const = self.eval_to_allocation_raw(param_env.and(gid))?;

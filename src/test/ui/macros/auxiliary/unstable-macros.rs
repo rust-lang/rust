@@ -7,7 +7,7 @@
 macro_rules! unstable_macro{ () => () }
 
 #[stable(feature = "deprecated_macros", since = "1.0.0")]
-#[rustc_deprecated(since = "1.0.0", reason = "deprecation reason")]
+#[deprecated(since = "1.0.0", note = "deprecation note")]
 #[macro_export]
 macro_rules! deprecated_macro{ () => () }
 

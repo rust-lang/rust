@@ -1,204 +1,196 @@
 error[E0004]: non-exhaustive patterns: `B` and `C` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:32:11
+  --> $DIR/non-exhaustive-defined-here.rs:38:11
    |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
+LL |     match e1 {
+   |           ^^ patterns `B` and `C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
 ...
-LL |       match e1 {
-   |             ^^ patterns `B` and `C` not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
    = note: the matched value is of type `E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {}
+LL +         B | C => todo!()
+   |
 
 error[E0005]: refutable pattern in local binding: `B` and `C` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:36:9
-   |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
-...
-LL |       let E::A = e;
-   |           ^^^^ patterns `B` and `C` not covered
-   |
-   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-   = note: the matched value is of type `E`
-help: you might want to use `if let` to ignore the variant that isn't matched
-   |
-LL |     if let E::A = e { /* */ }
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
-
-error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:40:11
-   |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
-...
-LL |       match e {
-   |             ^ patterns `&B` and `&C` not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
-   = note: the matched value is of type `&E`
-
-error[E0005]: refutable pattern in local binding: `&B` and `&C` not covered
   --> $DIR/non-exhaustive-defined-here.rs:44:9
    |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
-...
-LL |       let E::A = e;
-   |           ^^^^ patterns `&B` and `&C` not covered
+LL |     let E::A = e;
+   |         ^^^^ patterns `B` and `C` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
-   = note: the matched value is of type `&E`
-help: you might want to use `if let` to ignore the variant that isn't matched
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
    |
-LL |     if let E::A = e { /* */ }
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let E::A = e { todo!() }
+   |     ++              ~~~~~~~~~~~
+
+error[E0004]: non-exhaustive patterns: `&B` and `&C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:52:11
+   |
+LL |     match e {
+   |           ^ patterns `&B` and `&C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `&E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {}
+LL +         &B | &C => todo!()
+   |
+
+error[E0005]: refutable pattern in local binding: `&B` and `&C` not covered
+  --> $DIR/non-exhaustive-defined-here.rs:58:9
+   |
+LL |     let E::A = e;
+   |         ^^^^ patterns `&B` and `&C` not covered
+   |
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
+   = note: the matched value is of type `&E`
+help: you might want to use `if let` to ignore the variants that aren't matched
+   |
+LL |     if let E::A = e { todo!() }
+   |     ++              ~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `&&mut &B` and `&&mut &C` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:48:11
+  --> $DIR/non-exhaustive-defined-here.rs:66:11
    |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
+LL |     match e {
+   |           ^ patterns `&&mut &B` and `&&mut &C` not covered
+   |
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
 ...
-LL |       match e {
-   |             ^ patterns `&&mut &B` and `&&mut &C` not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
    = note: the matched value is of type `&&mut &E`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
+   |
+LL ~         E::A => {}
+LL +         &&mut &B | &&mut &C => todo!()
+   |
 
 error[E0005]: refutable pattern in local binding: `&&mut &B` and `&&mut &C` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:52:9
+  --> $DIR/non-exhaustive-defined-here.rs:72:9
    |
-LL | / enum E {
-LL | |
-LL | |
-LL | |
-...  |
-LL | |     B,
-   | |     - not covered
-...  |
-LL | |     C
-   | |     - not covered
-...  |
-LL | |
-LL | | }
-   | |_- `E` defined here
-...
-LL |       let E::A = e;
-   |           ^^^^ patterns `&&mut &B` and `&&mut &C` not covered
+LL |     let E::A = e;
+   |         ^^^^ patterns `&&mut &B` and `&&mut &C` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `E` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:14:5
+   |
+LL | enum E {
+   |      -
+...
+LL |     B,
+   |     ^ not covered
+...
+LL |     C
+   |     ^ not covered
    = note: the matched value is of type `&&mut &E`
-help: you might want to use `if let` to ignore the variant that isn't matched
+help: you might want to use `if let` to ignore the variants that aren't matched
    |
-LL |     if let E::A = e { /* */ }
-   |
+LL |     if let E::A = e { todo!() }
+   |     ++              ~~~~~~~~~~~
 
 error[E0004]: non-exhaustive patterns: `None` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:65:11
+  --> $DIR/non-exhaustive-defined-here.rs:92:11
    |
-LL | / enum Opt {
-LL | |
-LL | |
-LL | |     Some(u8),
-LL | |     None,
-   | |     ---- not covered
-LL | |
-LL | | }
-   | |_- `Opt` defined here
+LL |     match e {
+   |           ^ pattern `None` not covered
+   |
+note: `Opt` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:84:5
+   |
+LL | enum Opt {
+   |      ---
 ...
-LL |       match e {
-   |             ^ pattern `None` not covered
-   |
-   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+LL |     None,
+   |     ^^^^ not covered
    = note: the matched value is of type `Opt`
+help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
+   |
+LL ~         Opt::Some(ref _x) => {}
+LL +         None => todo!()
+   |
 
 error[E0005]: refutable pattern in local binding: `None` not covered
-  --> $DIR/non-exhaustive-defined-here.rs:69:9
+  --> $DIR/non-exhaustive-defined-here.rs:98:9
    |
-LL | / enum Opt {
-LL | |
-LL | |
-LL | |     Some(u8),
-LL | |     None,
-   | |     ---- not covered
-LL | |
-LL | | }
-   | |_- `Opt` defined here
-...
-LL |       let Opt::Some(ref _x) = e;
-   |           ^^^^^^^^^^^^^^^^^ pattern `None` not covered
+LL |     let Opt::Some(ref _x) = e;
+   |         ^^^^^^^^^^^^^^^^^ pattern `None` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `Opt` defined here
+  --> $DIR/non-exhaustive-defined-here.rs:84:5
+   |
+LL | enum Opt {
+   |      ---
+...
+LL |     None,
+   |     ^^^^ not covered
    = note: the matched value is of type `Opt`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
-LL |     if let Opt::Some(ref _x) = e { /* */ }
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let _x = if let Opt::Some(ref _x) = e { _x } else { todo!() };
+   |     +++++++++++                           +++++++++++++++++++++++
+help: alternatively, on nightly, you might want to use `#![feature(let_else)]` to handle the variant that isn't matched
+   |
+LL |     let Opt::Some(ref _x) = e else { todo!() };
+   |                               ++++++++++++++++
 
 error: aborting due to 8 previous errors
 

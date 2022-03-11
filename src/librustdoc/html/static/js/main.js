@@ -741,7 +741,7 @@ function hideThemeButtonState() {
         } else {
             addClass(innerToggle, "will-expand");
             onEachLazy(document.getElementsByClassName("rustdoc-toggle"), function(e) {
-                if (e.parentNode.id !== MAIN_ID ||
+                if (e.parentNode.id !== "implementations-list" ||
                     (!hasClass(e, "implementors-toggle") &&
                      !hasClass(e, "type-contents-toggle")))
                 {

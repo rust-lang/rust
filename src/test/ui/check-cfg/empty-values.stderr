@@ -1,2 +1,13 @@
-error: invalid `--check-cfg` argument: `values()` (expected `names(name1, name2, ... nameN)` or `values(name, "value1", "value2", ... "valueN")`)
+warning: unexpected `cfg` condition value
+  --> $DIR/empty-values.rs:6:7
+   |
+LL | #[cfg(test = "value")]
+   |       ^^^^----------
+   |           |
+   |           help: remove the value
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+   = note: no expected value for `test`
+
+warning: 1 warning emitted
 

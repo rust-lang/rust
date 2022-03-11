@@ -470,10 +470,8 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         debug!("RegionConstraintCollector: add_verify({:?})", verify);
 
         // skip no-op cases known to be satisfied
-        if let VerifyBound::AllBounds(ref bs) = verify.bound {
-            if bs.is_empty() {
-                return;
-            }
+        if let VerifyBound::AllBounds(ref bs) = verify.bound && bs.is_empty() {
+            return;
         }
 
         let index = self.data.verifys.len();

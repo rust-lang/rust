@@ -504,10 +504,8 @@ impl Token {
 
     /// Returns `true` if the token is an interpolated path.
     fn is_path(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
-            if let NtPath(..) = **nt {
-                return true;
-            }
+        if let Interpolated(ref nt) = self.kind && let NtPath(..) = **nt {
+            return true;
         }
         false
     }
@@ -516,10 +514,10 @@ impl Token {
     /// That is, is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
-            if let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt {
-                return true;
-            }
+        if let Interpolated(ref nt) = self.kind
+            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtIdent(..) | NtBlock(_) = **nt
+        {
+            return true;
         }
 
         false
@@ -527,10 +525,8 @@ impl Token {
 
     // Is the token an interpolated block (`$b:block`)?
     pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(ref nt) = self.kind {
-            if let NtBlock(..) = **nt {
-                return true;
-            }
+        if let Interpolated(ref nt) = self.kind && let NtBlock(..) = **nt {
+            return true;
         }
         false
     }

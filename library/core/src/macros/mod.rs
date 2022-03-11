@@ -594,7 +594,6 @@ macro_rules! writeln {
 ///     unreachable!("The loop should always return");
 /// }
 /// ```
-#[cfg(not(bootstrap))]
 #[macro_export]
 #[rustc_builtin_macro(unreachable)]
 #[allow_internal_unstable(edition_panic)]
@@ -606,24 +605,6 @@ macro_rules! unreachable {
     ($($arg:tt)*) => {
         /* compiler built-in */
     };
-}
-
-/// unreachable!() macro
-#[cfg(bootstrap)]
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "unreachable_macro")]
-#[allow_internal_unstable(core_panic)]
-macro_rules! unreachable {
-    () => ({
-        $crate::panicking::panic("internal error: entered unreachable code")
-    });
-    ($msg:expr $(,)?) => ({
-        $crate::unreachable!("{}", $msg)
-    });
-    ($fmt:expr, $($arg:tt)*) => ({
-        $crate::panic!($crate::concat!("internal error: entered unreachable code: ", $fmt), $($arg)*)
-    });
 }
 
 /// Indicates unimplemented code by panicking with a message of "not implemented".
@@ -914,7 +895,7 @@ pub(crate) mod builtin {
     ///
     /// ```
     /// let path: &'static str = env!("PATH");
-    /// println!("the $PATH variable at the time of compiling was: {}", path);
+    /// println!("the $PATH variable at the time of compiling was: {path}");
     /// ```
     ///
     /// You can customize the error message by passing a string as the second
@@ -954,7 +935,7 @@ pub(crate) mod builtin {
     ///
     /// ```
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
-    /// println!("the secret key might be: {:?}", key);
+    /// println!("the secret key might be: {key:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
@@ -1065,7 +1046,7 @@ pub(crate) mod builtin {
     ///
     /// ```
     /// let current_line = line!();
-    /// println!("defined on line: {}", current_line);
+    /// println!("defined on line: {current_line}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
@@ -1093,7 +1074,7 @@ pub(crate) mod builtin {
     ///
     /// ```
     /// let current_col = column!();
-    /// println!("defined on column: {}", current_col);
+    /// println!("defined on column: {current_col}");
     /// ```
     ///
     /// `column!` counts Unicode code points, not bytes or graphemes. As a result, the first two
@@ -1131,7 +1112,7 @@ pub(crate) mod builtin {
     ///
     /// ```
     /// let this_file = file!();
-    /// println!("defined in file: {}", this_file);
+    /// println!("defined in file: {this_file}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
@@ -1195,7 +1176,7 @@ pub(crate) mod builtin {
     /// fn main() {
     ///     let my_str = include_str!("spanish.in");
     ///     assert_eq!(my_str, "adiós\n");
-    ///     print!("{}", my_str);
+    ///     print!("{my_str}");
     /// }
     /// ```
     ///
@@ -1344,7 +1325,7 @@ pub(crate) mod builtin {
     /// fn main() {
     ///     let my_string = include!("monkeys.in");
     ///     assert_eq!("🙈🙊🙉🙈🙊🙉", my_string);
-    ///     println!("{}", my_string);
+    ///     println!("{my_string}");
     /// }
     /// ```
     ///

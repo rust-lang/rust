@@ -7,7 +7,7 @@ use std::iter::Iterator;
 /// one of two specific implementations.
 ///
 /// Note: For most methods providing custom
-///       implementation may margianlly
+///       implementation may marginally
 ///       improve performance by avoiding
 ///       doing Left/Right match on every step
 ///       and doing it only once instead.

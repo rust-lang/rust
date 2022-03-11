@@ -3,11 +3,11 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
+use core::ffi::NonZero_c_int;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
@@ -120,7 +120,7 @@ impl Command {
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => {
                     assert!(p.wait().is_ok(), "wait() should either return Ok or panic");
-                    panic!("the CLOEXEC pipe failed: {:?}", e)
+                    panic!("the CLOEXEC pipe failed: {e:?}")
                 }
                 Ok(..) => {
                     // pipe I/O up to PIPE_BUF bytes should be atomic
@@ -682,15 +682,15 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit status: {}", code)
+            write!(f, "exit status: {code}")
         } else if let Some(signal) = self.signal() {
             if self.core_dumped() {
-                write!(f, "signal: {} (core dumped)", signal)
+                write!(f, "signal: {signal} (core dumped)")
             } else {
-                write!(f, "signal: {}", signal)
+                write!(f, "signal: {signal}")
             }
         } else if let Some(signal) = self.stopped_signal() {
-            write!(f, "stopped (not terminated) by signal: {}", signal)
+            write!(f, "stopped (not terminated) by signal: {signal}")
         } else if self.continued() {
             write!(f, "continued (WIFCONTINUED)")
         } else {

@@ -34,7 +34,7 @@
 //! // Pattern match to retrieve the value
 //! match result {
 //!     // The division was valid
-//!     Some(x) => println!("Result: {}", x),
+//!     Some(x) => println!("Result: {x}"),
 //!     // The division was invalid
 //!     None    => println!("Cannot divide by 0"),
 //! }
@@ -66,7 +66,7 @@
 //!
 //! fn check_optional(optional: Option<Box<i32>>) {
 //!     match optional {
-//!         Some(p) => println!("has value {}", p),
+//!         Some(p) => println!("has value {p}"),
 //!         None => println!("has no value"),
 //!     }
 //! }
@@ -493,7 +493,7 @@
 //! }
 //!
 //! match name_of_biggest_animal {
-//!     Some(name) => println!("the biggest animal is {}", name),
+//!     Some(name) => println!("the biggest animal is {name}"),
 //!     None => println!("there are no animals :("),
 //! }
 //! ```
@@ -551,7 +551,7 @@ impl<T> Option<T> {
         matches!(*self, Some(_))
     }
 
-    /// Returns `true` if the option is a [`Some`] wrapping a value matching the predicate.
+    /// Returns `true` if the option is a [`Some`] and the value inside of it matches a predicate.
     ///
     /// # Examples
     ///
@@ -559,18 +559,18 @@ impl<T> Option<T> {
     /// #![feature(is_some_with)]
     ///
     /// let x: Option<u32> = Some(2);
-    /// assert_eq!(x.is_some_with(|&x| x > 1), true);
+    /// assert_eq!(x.is_some_and(|&x| x > 1), true);
     ///
     /// let x: Option<u32> = Some(0);
-    /// assert_eq!(x.is_some_with(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
     ///
     /// let x: Option<u32> = None;
-    /// assert_eq!(x.is_some_with(|&x| x > 1), false);
+    /// assert_eq!(x.is_some_and(|&x| x > 1), false);
     /// ```
     #[must_use]
     #[inline]
     #[unstable(feature = "is_some_with", issue = "93050")]
-    pub fn is_some_with(&self, f: impl FnOnce(&T) -> bool) -> bool {
+    pub fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
         matches!(self, Some(x) if f(x))
     }
 
@@ -615,7 +615,7 @@ impl<T> Option<T> {
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `text` on the stack.
     /// let text_length: Option<usize> = text.as_ref().map(|s| s.len());
-    /// println!("still can print text: {:?}", text);
+    /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
@@ -1891,7 +1891,11 @@ const fn expect_failed(msg: &str) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone> Clone for Option<T> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T> const Clone for Option<T>
+where
+    T: ~const Clone + ~const Drop,
+{
     #[inline]
     fn clone(&self) -> Self {
         match self {
@@ -2006,7 +2010,7 @@ impl<'a, T> const From<&'a Option<T>> for Option<&'a T> {
     /// let s: Option<String> = Some(String::from("Hello, Rustaceans!"));
     /// let o: Option<usize> = Option::from(&s).map(|ss: &String| ss.len());
     ///
-    /// println!("Can still print s: {:?}", s);
+    /// println!("Can still print s: {s:?}");
     ///
     /// assert_eq!(o, Some(18));
     /// ```

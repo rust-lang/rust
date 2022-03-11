@@ -10,3 +10,4 @@ rustc_span = { path = "../rustc_span" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_target = { path = "../rustc_target" }
+rustc_hir = { path = "../rustc_hir" }

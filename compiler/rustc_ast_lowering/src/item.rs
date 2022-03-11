@@ -25,6 +25,26 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
     pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
 }
 
+/// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
+/// to the where clause that is prefered, if it exists. Otherwise, it sets the span to the other where
+/// clause if it exists.
+fn add_ty_alias_where_clause(
+    generics: &mut ast::Generics,
+    mut where_clauses: (TyAliasWhereClause, TyAliasWhereClause),
+    prefer_first: bool,
+) {
+    if !prefer_first {
+        where_clauses = (where_clauses.1, where_clauses.0);
+    }
+    if where_clauses.0.0 || !where_clauses.1.0 {
+        generics.where_clause.has_where_token = where_clauses.0.0;
+        generics.where_clause.span = where_clauses.0.1;
+    } else {
+        generics.where_clause.has_where_token = where_clauses.1.0;
+        generics.where_clause.span = where_clauses.1.1;
+    }
+}
+
 impl ItemLowerer<'_, '_, '_> {
     fn with_trait_impl_ref<T>(
         &mut self,
@@ -277,7 +297,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::GlobalAsm(ref asm) => {
                 hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm))
             }
-            ItemKind::TyAlias(box TyAlias { ref generics, ty: Some(ref ty), .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                ref generics,
+                where_clauses,
+                ty: Some(ref ty),
+                ..
+            }) => {
                 // We lower
                 //
                 // type Foo = impl Trait
@@ -292,16 +317,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         capturable_lifetimes: &mut FxHashSet::default(),
                     },
                 );
+                let mut generics = generics.clone();
+                add_ty_alias_where_clause(&mut generics, where_clauses, true);
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
             }
-            ItemKind::TyAlias(box TyAlias { ref generics, ty: None, .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                ref generics, ref where_clauses, ty: None, ..
+            }) => {
                 let ty = self.arena.alloc(self.ty(span, hir::TyKind::Err));
+                let mut generics = generics.clone();
+                add_ty_alias_where_clause(&mut generics, *where_clauses, true);
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 hir::ItemKind::TyAlias(ty, generics)
@@ -444,8 +475,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ),
             ItemKind::MacroDef(MacroDef { ref body, macro_rules }) => {
                 let body = P(self.lower_mac_args(body));
-
-                hir::ItemKind::Macro(ast::MacroDef { body, macro_rules })
+                let macro_kind = self.resolver.decl_macro_kind(self.resolver.local_def_id(id));
+                hir::ItemKind::Macro(ast::MacroDef { body, macro_rules }, macro_kind)
             }
             ItemKind::MacCall(..) => {
                 panic!("`TyMac` should have been expanded by now")
@@ -832,18 +863,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)))
             }
-            AssocItemKind::TyAlias(box TyAlias { ref generics, ref bounds, ref ty, .. }) => {
+            AssocItemKind::TyAlias(box TyAlias {
+                ref generics,
+                where_clauses,
+                ref bounds,
+                ref ty,
+                ..
+            }) => {
                 let ty = ty.as_ref().map(|x| {
                     self.lower_ty(x, ImplTraitContext::Disallowed(ImplTraitPosition::Type))
                 });
+                let mut generics = generics.clone();
+                add_ty_alias_where_clause(&mut generics, where_clauses, false);
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(
                         bounds,
-                        ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                     ),
                     ty,
                 );
@@ -917,9 +956,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
             }
-            AssocItemKind::TyAlias(box TyAlias { generics, ty, .. }) => {
+            AssocItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
+                let mut generics = generics.clone();
+                add_ty_alias_where_clause(&mut generics, *where_clauses, false);
                 let generics = self.lower_generics(
-                    generics,
+                    &generics,
                     ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
                 );
                 let kind = match ty {
@@ -1366,7 +1407,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
     ) -> GenericsCtor<'hir> {
-        // Error if `?Trait` bounds in where clauses don't refer directly to type paramters.
+        // Error if `?Trait` bounds in where clauses don't refer directly to type parameters.
         // Note: we used to clone these bounds directly onto the type parameter (and avoid lowering
         // these into hir when we lower thee where clauses), but this makes it quite difficult to
         // keep track of the Span info. Now, `add_implicitly_sized` in `AstConv` checks both param bounds and

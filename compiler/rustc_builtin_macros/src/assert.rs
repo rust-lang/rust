@@ -4,7 +4,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, PResult};
 use rustc_expand::base::*;
 use rustc_parse::parser::Parser;
 use rustc_span::symbol::{sym, Ident, Symbol};
@@ -83,11 +83,7 @@ struct Assert {
     custom_message: Option<TokenStream>,
 }
 
-fn parse_assert<'a>(
-    cx: &mut ExtCtxt<'a>,
-    sp: Span,
-    stream: TokenStream,
-) -> Result<Assert, DiagnosticBuilder<'a>> {
+fn parse_assert<'a>(cx: &mut ExtCtxt<'a>, sp: Span, stream: TokenStream) -> PResult<'a, Assert> {
     let mut parser = cx.new_parser_from_tts(stream);
 
     if parser.token == token::Eof {

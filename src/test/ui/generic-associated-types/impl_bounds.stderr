@@ -4,7 +4,7 @@ error: `impl` associated type signature for `A` doesn't match `trait` associated
 LL |     type A<'a> where Self: 'a;
    |     -------------------------- expected
 ...
-LL |     type A<'a> where Self: 'static = (&'a ());
+LL |     type A<'a> = (&'a ()) where Self: 'static;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
 error: `impl` associated type signature for `B` doesn't match `trait` associated type signature
@@ -13,35 +13,33 @@ error: `impl` associated type signature for `B` doesn't match `trait` associated
 LL |     type B<'a, 'b> where 'a: 'b;
    |     ---------------------------- expected
 ...
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found
 
 error[E0478]: lifetime bound not satisfied
-  --> $DIR/impl_bounds.rs:17:35
+  --> $DIR/impl_bounds.rs:17:22
    |
 LL |     type B<'a, 'b> where 'a: 'b;
    |     ---------------------------- definition of `B` from trait
 ...
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-   |                                -  ^^^^^^^^^^^^^^^
-   |                                |
-   |                                help: try copying this clause from the trait: `, 'a: 'b`
+LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+   |                      ^^^^^^^^^^^^^^^             - help: try copying this clause from the trait: `, 'a: 'b`
    |
 note: lifetime parameter instantiated with the lifetime `'a` as defined here
   --> $DIR/impl_bounds.rs:17:12
    |
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |            ^^
 note: but lifetime parameter must outlive the lifetime `'b` as defined here
   --> $DIR/impl_bounds.rs:17:16
    |
-LL |     type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
+LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                ^^
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
   --> $DIR/impl_bounds.rs:20:5
    |
-LL |     type C where Self: Copy = String;
+LL |     type C = String where Self: Copy;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required because of the requirements on the impl of `Copy` for `Fooy<T>`

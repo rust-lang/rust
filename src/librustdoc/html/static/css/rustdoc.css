@@ -541,6 +541,9 @@ h2.location a {
 	text-decoration: underline;
 }
 
+.line-numbers {
+	text-align: right;
+}
 .rustdoc:not(.source) .example-wrap > pre:not(.line-number) {
 	width: 100%;
 	overflow-x: auto;

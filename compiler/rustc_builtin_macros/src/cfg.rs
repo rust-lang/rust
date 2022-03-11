@@ -6,7 +6,7 @@ use rustc_ast as ast;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr as attr;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::PResult;
 use rustc_expand::base::{self, *};
 use rustc_span::Span;
 
@@ -19,7 +19,12 @@ pub fn expand_cfg(
 
     match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
-            let matches_cfg = attr::cfg_matches(&cfg, &cx.sess.parse_sess, cx.ecfg.features);
+            let matches_cfg = attr::cfg_matches(
+                &cfg,
+                &cx.sess.parse_sess,
+                cx.current_expansion.lint_node_id,
+                cx.ecfg.features,
+            );
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }
         Err(mut err) => {
@@ -29,11 +34,7 @@ pub fn expand_cfg(
     }
 }
 
-fn parse_cfg<'a>(
-    cx: &mut ExtCtxt<'a>,
-    sp: Span,
-    tts: TokenStream,
-) -> Result<ast::MetaItem, DiagnosticBuilder<'a>> {
+fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, ast::MetaItem> {
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {

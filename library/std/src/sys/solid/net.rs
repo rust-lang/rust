@@ -157,7 +157,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
         };
         Err(io::Error::new(
             io::ErrorKind::Uncategorized,
-            &format!("failed to lookup address information: {}", msg)[..],
+            &format!("failed to lookup address information: {msg}")[..],
         ))
     }
 }

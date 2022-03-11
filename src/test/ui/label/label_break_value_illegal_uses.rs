@@ -1,21 +1,30 @@
+// run-rustfix
 #![feature(label_break_value)]
 
 // These are forbidden occurrences of label-break-value
 
+#[allow(unused_unsafe)]
 fn labeled_unsafe() {
-    unsafe 'b: {} //~ ERROR expected `{`, found `'b`
+    unsafe 'b: {} //~ ERROR block label not supported here
 }
 
 fn labeled_if() {
-    if true 'b: {} //~ ERROR expected `{`, found `'b`
+    if true 'b: {} //~ ERROR block label not supported here
 }
 
 fn labeled_else() {
-    if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
+    if true {} else 'b: {} //~ ERROR block label not supported here
 }
 
 fn labeled_match() {
-    match false 'b: {} //~ ERROR expected one of `.`, `?`, `{`, or an operator
+    match false 'b: { //~ ERROR block label not supported here
+        _ => {}
+    }
 }
 
-pub fn main() {}
+fn main() {
+    labeled_unsafe();
+    labeled_if();
+    labeled_else();
+    labeled_match();
+}

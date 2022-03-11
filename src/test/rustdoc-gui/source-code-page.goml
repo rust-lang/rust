@@ -14,3 +14,6 @@ assert-attribute: (".line-numbers > span:nth-child(6)", {"class": "line-highligh
 assert-attribute-false: (".line-numbers > span:nth-child(7)", {"class": "line-highlighted"})
 // This is to ensure that the content is correctly align with the line numbers.
 compare-elements-position: ("//*[@id='1']", ".rust > code > span", ("y"))
+
+// Assert that the line numbers text is aligned to the right.
+assert-css: (".line-numbers", {"text-align": "right"})

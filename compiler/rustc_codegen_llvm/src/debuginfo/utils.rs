@@ -4,9 +4,9 @@ use super::namespace::item_namespace;
 use super::CrateDebugContext;
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::{HasParamEnv, LayoutOf};
 use rustc_middle::ty::{self, DefIdTree, Ty};
-use rustc_target::abi::Variants;
+use tracing::trace;
 
 use crate::common::CodegenCx;
 use crate::llvm;
@@ -63,30 +63,26 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     pointee_ty: Ty<'tcx>,
 ) -> Option<FatPtrKind> {
-    let layout = cx.layout_of(pointee_ty);
+    let pointee_tail_ty = cx.tcx.struct_tail_erasing_lifetimes(pointee_ty, cx.param_env());
+    let layout = cx.layout_of(pointee_tail_ty);
+    trace!(
+        "fat_pointer_kind: {:?} has layout {:?} (is_unsized? {})",
+        pointee_tail_ty,
+        layout,
+        layout.is_unsized()
+    );
 
     if !layout.is_unsized() {
         return None;
     }
 
-    match *pointee_ty.kind() {
+    match *pointee_tail_ty.kind() {
         ty::Str | ty::Slice(_) => Some(FatPtrKind::Slice),
         ty::Dynamic(..) => Some(FatPtrKind::Dyn),
-        ty::Adt(..) | ty::Tuple(..) if matches!(layout.variants, Variants::Single { .. }) => {
-            let last_field_index = layout.fields.count() - 1;
-            debug_assert!(
-                (0..last_field_index)
-                    .all(|field_index| { !layout.field(cx, field_index).is_unsized() })
-            );
-
-            let unsized_field = layout.field(cx, last_field_index);
-            debug_assert!(unsized_field.is_unsized());
-            fat_pointer_kind(cx, unsized_field.ty)
-        }
         ty::Foreign(_) => {
             // Assert that pointers to foreign types really are thin:
             debug_assert_eq!(
-                cx.size_of(cx.tcx.mk_imm_ptr(pointee_ty)),
+                cx.size_of(cx.tcx.mk_imm_ptr(pointee_tail_ty)),
                 cx.size_of(cx.tcx.mk_imm_ptr(cx.tcx.types.u8))
             );
             None
@@ -94,7 +90,10 @@ pub(crate) fn fat_pointer_kind<'ll, 'tcx>(
         _ => {
             // For all other pointee types we should already have returned None
             // at the beginning of the function.
-            panic!("fat_pointer_kind() - Encountered unexpected `pointee_ty`: {:?}", pointee_ty)
+            panic!(
+                "fat_pointer_kind() - Encountered unexpected `pointee_tail_ty`: {:?}",
+                pointee_tail_ty
+            )
         }
     }
 }

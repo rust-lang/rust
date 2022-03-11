@@ -3,7 +3,6 @@
 // regression test for #88071
 
 #![feature(const_btree_new)]
-#![feature(const_fn_trait_bound)]
 
 use std::collections::BTreeMap;
 

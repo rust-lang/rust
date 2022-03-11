@@ -13,7 +13,7 @@ use rustc_middle::thir;
 use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::dep_graph::DepContext;
-use rustc_query_system::query::{QueryContext, QuerySideEffects};
+use rustc_query_system::query::{QueryCache, QueryContext, QuerySideEffects};
 use rustc_serialize::{
     opaque::{self, FileEncodeResult, FileEncoder, IntEncodedWithFixedSize},
     Decodable, Decoder, Encodable, Encoder,
@@ -1034,7 +1034,7 @@ where
     assert!(Q::query_state(tcx).all_inactive());
     let cache = Q::query_cache(tcx);
     let mut res = Ok(());
-    cache.iter_results(&mut |key, value, dep_node| {
+    cache.iter(&mut |key, value, dep_node| {
         if res.is_err() {
             return;
         }

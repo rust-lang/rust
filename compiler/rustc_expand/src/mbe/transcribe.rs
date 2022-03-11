@@ -233,7 +233,7 @@ pub(super) fn transcribe<'a>(
                         } else {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::None` to maintain parsing priorities.
-                            // `Interpolated` is currenty used for such groups in rustc parser.
+                            // `Interpolated` is currently used for such groups in rustc parser.
                             marker.visit_span(&mut sp);
                             TokenTree::token(token::Interpolated(nt.clone()), sp)
                         };
@@ -253,6 +253,11 @@ pub(super) fn transcribe<'a>(
                     result.push(TokenTree::token(token::Dollar, sp).into());
                     result.push(TokenTree::Token(Token::from_ast_ident(orignal_ident)).into());
                 }
+            }
+
+            // Replace meta-variable expressions with the result of their expansion.
+            mbe::TokenTree::MetaVarExpr(sp, expr) => {
+                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, &sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -358,6 +363,12 @@ impl LockstepIterSize {
 /// Note that if `repeats` does not match the exact correct depth of a meta-var,
 /// `lookup_cur_matched` will return `None`, which is why this still works even in the presence of
 /// multiple nested matcher sequences.
+///
+/// Example: `$($($x $y)+*);+` -- we need to make sure that `x` and `y` repeat the same amount as
+/// each other at the given depth when the macro was invoked. If they don't it might mean they were
+/// declared at unequal depths or there was a compile bug. For example, if we have 3 repetitions of
+/// the outer sequence and 4 repetitions of the inner sequence for `x`, we should have the same for
+/// `y`; otherwise, we can't transcribe them both at the given depth.
 fn lockstep_iter_size(
     tree: &mbe::TokenTree,
     interpolations: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
@@ -385,6 +396,28 @@ fn lockstep_iter_size(
                 _ => LockstepIterSize::Unconstrained,
             }
         }
+        TokenTree::MetaVarExpr(_, ref expr) => {
+            let default_rslt = LockstepIterSize::Unconstrained;
+            let Some(ident) = expr.ident() else { return default_rslt; };
+            let name = MacroRulesNormalizedIdent::new(ident.clone());
+            match lookup_cur_matched(name, interpolations, repeats) {
+                Some(MatchedSeq(ref ads)) => {
+                    default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
+                }
+                _ => default_rslt,
+            }
+        }
         TokenTree::Token(..) => LockstepIterSize::Unconstrained,
     }
+}
+
+fn transcribe_metavar_expr<'a>(
+    _cx: &ExtCtxt<'a>,
+    _expr: mbe::MetaVarExpr,
+    _interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    _repeats: &[(usize, usize)],
+    _result: &mut Vec<TreeAndSpacing>,
+    _sp: &DelimSpan,
+) -> PResult<'a, ()> {
+    Ok(())
 }

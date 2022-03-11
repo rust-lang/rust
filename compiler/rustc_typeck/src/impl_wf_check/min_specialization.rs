@@ -393,13 +393,14 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
                             tcx.def_path_str(trait_ref.def_id),
                         ),
                     )
-                    .emit()
+                    .emit();
             }
         }
-        _ => tcx
-            .sess
-            .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
-            .emit(),
+        _ => {
+            tcx.sess
+                .struct_span_err(span, &format!("cannot specialize on `{:?}`", predicate))
+                .emit();
+        }
     }
 }
 

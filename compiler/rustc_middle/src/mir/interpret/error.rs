@@ -4,7 +4,7 @@ use crate::mir::interpret::ConstValue;
 use crate::ty::{layout, query::TyCtxtAt, tls, FnSig, Ty};
 
 use rustc_data_structures::sync::Lock;
-use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{pluralize, struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_macros::HashStable;
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
@@ -15,7 +15,7 @@ use std::{any::Any, backtrace::Backtrace, fmt};
 pub enum ErrorHandled {
     /// Already reported an error for this evaluation, and the compilation is
     /// *guaranteed* to fail. Warnings/lints *must not* produce `Reported`.
-    Reported(ErrorReported),
+    Reported(ErrorGuaranteed),
     /// Already emitted a lint for this evaluation.
     Linted,
     /// Don't emit an error, the evaluation failed because the MIR was generic
@@ -23,8 +23,8 @@ pub enum ErrorHandled {
     TooGeneric,
 }
 
-impl From<ErrorReported> for ErrorHandled {
-    fn from(err: ErrorReported) -> ErrorHandled {
+impl From<ErrorGuaranteed> for ErrorHandled {
+    fn from(err: ErrorGuaranteed) -> ErrorHandled {
         ErrorHandled::Reported(err)
     }
 }
@@ -36,7 +36,10 @@ TrivialTypeFoldableAndLiftImpls! {
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 
-pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
+pub fn struct_error<'tcx>(
+    tcx: TyCtxtAt<'tcx>,
+    msg: &str,
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 
@@ -88,7 +91,7 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
-            ErrorHandled::Reported(ErrorReported) | ErrorHandled::Linted => {
+            ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
                 err_inval!(ReferencedConstant)
             }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
@@ -97,8 +100,8 @@ impl From<ErrorHandled> for InterpErrorInfo<'_> {
     }
 }
 
-impl From<ErrorReported> for InterpErrorInfo<'_> {
-    fn from(err: ErrorReported) -> Self {
+impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
+    fn from(err: ErrorGuaranteed) -> Self {
         InterpError::InvalidProgram(InvalidProgramInfo::AlreadyReported(err)).into()
     }
 }
@@ -138,7 +141,7 @@ pub enum InvalidProgramInfo<'tcx> {
     /// which already produced an error.
     ReferencedConstant,
     /// Abort in case errors are already reported.
-    AlreadyReported(ErrorReported),
+    AlreadyReported(ErrorGuaranteed),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
     /// An error occurred during FnAbi computation: the passed --target lacks FFI support
@@ -157,7 +160,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
-            AlreadyReported(ErrorReported) => {
+            AlreadyReported(ErrorGuaranteed) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
             Layout(ref err) => write!(f, "{}", err),
@@ -230,6 +233,10 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     DivisionByZero,
     /// Something was "remainded" by 0 (x % 0).
     RemainderByZero,
+    /// Signed division overflowed (INT_MIN / -1).
+    DivisionOverflow,
+    /// Signed remainder overflowed (INT_MIN % -1).
+    RemainderOverflow,
     /// Overflowing inbounds pointer arithmetic.
     PointerArithOverflow,
     /// Invalid metadata in a wide pointer (using `str` to avoid allocations).
@@ -307,6 +314,8 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
             }
             DivisionByZero => write!(f, "dividing by zero"),
             RemainderByZero => write!(f, "calculating the remainder with a divisor of zero"),
+            DivisionOverflow => write!(f, "overflow in signed division (dividing MIN by -1)"),
+            RemainderOverflow => write!(f, "overflow in signed remainder (dividing MIN by -1)"),
             PointerArithOverflow => write!(f, "overflowing in-bounds pointer arithmetic"),
             InvalidMeta(msg) => write!(f, "invalid metadata in wide pointer: {}", msg),
             InvalidVtableDropFn(sig) => write!(

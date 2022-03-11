@@ -7,7 +7,7 @@ use crate::infer::canonical::{Canonical, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::{struct_lint_level, LintDiagnosticBuilder, LintLevelSource};
 use crate::middle::resolve_lifetime::{self, LifetimeScopeForPath};
 use crate::middle::stability;
-use crate::mir::interpret::{self, Allocation, ConstValue, Scalar};
+use crate::mir::interpret::{self, Allocation, ConstAllocation, ConstValue, Scalar};
 use crate::mir::{
     Body, BorrowCheckResult, Field, Local, Place, PlaceElem, ProjectionKind, Promoted,
 };
@@ -24,7 +24,7 @@ use crate::ty::{
     RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyS, TyVar, TyVid, TypeAndMut, UintTy,
 };
 use rustc_ast as ast;
-use rustc_attr as attr;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::memmap::Mmap;
@@ -33,7 +33,7 @@ use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
@@ -56,9 +56,10 @@ use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::source_map::{MultiSpan, SourceMap};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
-use rustc_target::abi::{Layout, TargetDataLayout, VariantIdx};
+use rustc_target::abi::{Layout, LayoutS, TargetDataLayout, VariantIdx};
 use rustc_target::spec::abi;
 
+use rustc_type_ir::TypeFlags;
 use smallvec::SmallVec;
 use std::any::Any;
 use std::borrow::Borrow;
@@ -113,14 +114,8 @@ pub struct CtxtInterners<'tcx> {
     const_: InternedSet<'tcx, ConstS<'tcx>>,
     const_allocation: InternedSet<'tcx, Allocation>,
     bound_variable_kinds: InternedSet<'tcx, List<ty::BoundVariableKind>>,
-    layout: InternedSet<'tcx, Layout>,
+    layout: InternedSet<'tcx, LayoutS<'tcx>>,
     adt_def: InternedSet<'tcx, AdtDef>,
-
-    /// `#[stable]` and `#[unstable]` attributes
-    stability: InternedSet<'tcx, attr::Stability>,
-
-    /// `#[rustc_const_stable]` and `#[rustc_const_unstable]` attributes
-    const_stability: InternedSet<'tcx, attr::ConstStability>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -141,24 +136,45 @@ impl<'tcx> CtxtInterners<'tcx> {
             bound_variable_kinds: Default::default(),
             layout: Default::default(),
             adt_def: Default::default(),
-            stability: Default::default(),
-            const_stability: Default::default(),
         }
     }
 
     /// Interns a type.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline(never)]
-    fn intern_ty(&self, kind: TyKind<'tcx>) -> Ty<'tcx> {
+    fn intern_ty(
+        &self,
+        kind: TyKind<'tcx>,
+        sess: &Session,
+        resolutions: &ty::ResolverOutputs,
+    ) -> Ty<'tcx> {
         Ty(Interned::new_unchecked(
             self.type_
                 .intern(kind, |kind| {
                     let flags = super::flags::FlagComputation::for_kind(&kind);
 
+                    // It's impossible to hash inference regions (and will ICE), so we don't need to try to cache them.
+                    // Without incremental, we rarely stable-hash types, so let's not do it proactively.
+                    let stable_hash = if flags.flags.intersects(TypeFlags::HAS_RE_INFER)
+                        || sess.opts.incremental.is_none()
+                    {
+                        Fingerprint::ZERO
+                    } else {
+                        let mut hasher = StableHasher::new();
+                        let mut hcx = StableHashingContext::ignore_spans(
+                            sess,
+                            &resolutions.definitions,
+                            &*resolutions.cstore,
+                        );
+                        kind.hash_stable(&mut hcx, &mut hasher);
+                        hasher.finish()
+                    };
+
                     let ty_struct = TyS {
                         kind,
                         flags: flags.flags,
                         outer_exclusive_binder: flags.outer_exclusive_binder,
+                        stable_hash,
                     };
 
                     InternedInSet(self.arena.alloc(ty_struct))
@@ -353,7 +369,7 @@ pub struct TypeckResults<'tcx> {
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
-    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorReported>>,
+    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -463,8 +479,8 @@ pub struct TypeckResults<'tcx> {
     pub used_trait_imports: Lrc<FxHashSet<LocalDefId>>,
 
     /// If any errors occurred while type-checking this body,
-    /// this field will be set to `Some(ErrorReported)`.
-    pub tainted_by_errors: Option<ErrorReported>,
+    /// this field will be set to `Some(ErrorGuaranteed)`.
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 
     /// All the opaque types that are restricted to concrete types
     /// by this function.
@@ -553,7 +569,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn type_dependent_defs(
         &self,
-    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorReported>> {
+    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.type_dependent_defs }
     }
 
@@ -568,7 +584,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn type_dependent_defs_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorReported>> {
+    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
     }
 
@@ -896,8 +912,12 @@ pub enum UserType<'tcx> {
 }
 
 impl<'tcx> CommonTypes<'tcx> {
-    fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
-        let mk = |ty| interners.intern_ty(ty);
+    fn new(
+        interners: &CtxtInterners<'tcx>,
+        sess: &Session,
+        resolutions: &ty::ResolverOutputs,
+    ) -> CommonTypes<'tcx> {
+        let mk = |ty| interners.intern_ty(ty, sess, resolutions);
 
         CommonTypes {
             unit: mk(Tuple(List::empty())),
@@ -979,7 +999,7 @@ pub struct FreeRegionInfo {
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/ty.html
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
@@ -1171,7 +1191,7 @@ impl<'tcx> TyCtxt<'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(arena);
-        let common_types = CommonTypes::new(&interners);
+        let common_types = CommonTypes::new(&interners, s, &resolutions);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
 
@@ -1268,7 +1288,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
-    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
+    pub fn stability(self) -> &'tcx stability::Index {
         self.stability_index(())
     }
 
@@ -1633,22 +1653,6 @@ pub trait Lift<'tcx>: fmt::Debug {
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted>;
 }
 
-// Deprecated: we are in the process of converting all uses to `nop_lift`.
-macro_rules! nop_lift_old {
-    ($set:ident; $ty:ty => $lifted:ty) => {
-        impl<'a, 'tcx> Lift<'tcx> for $ty {
-            type Lifted = $lifted;
-            fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {
-                if tcx.interners.$set.contains_pointer_to(&InternedInSet(self)) {
-                    Some(unsafe { mem::transmute(self) })
-                } else {
-                    None
-                }
-            }
-        }
-    };
-}
-
 macro_rules! nop_lift {
     ($set:ident; $ty:ty => $lifted:ty) => {
         impl<'a, 'tcx> Lift<'tcx> for $ty {
@@ -1706,7 +1710,7 @@ macro_rules! nop_list_lift {
 nop_lift! {type_; Ty<'a> => Ty<'tcx>}
 nop_lift! {region; Region<'a> => Region<'tcx>}
 nop_lift! {const_; Const<'a> => Const<'tcx>}
-nop_lift_old! {const_allocation; &'a Allocation => &'tcx Allocation}
+nop_lift! {const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx>}
 nop_lift! {predicate; Predicate<'a> => Predicate<'tcx>}
 
 nop_list_lift! {poly_existential_predicates; ty::Binder<'a, ExistentialPredicate<'a>> => ty::Binder<'tcx, ExistentialPredicate<'tcx>>}
@@ -1997,12 +2001,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 writeln!(fmt, "InternalSubsts interner: #{}", self.0.interners.substs.len())?;
                 writeln!(fmt, "Region interner: #{}", self.0.interners.region.len())?;
-                writeln!(fmt, "Stability interner: #{}", self.0.interners.stability.len())?;
-                writeln!(
-                    fmt,
-                    "Const Stability interner: #{}",
-                    self.0.interners.const_stability.len()
-                )?;
                 writeln!(
                     fmt,
                     "Const Allocation interner: #{}",
@@ -2147,6 +2145,8 @@ macro_rules! direct_interners {
 direct_interners! {
     region: mk_region(RegionKind): Region -> Region<'tcx>,
     const_: mk_const(ConstS<'tcx>): Const -> Const<'tcx>,
+    const_allocation: intern_const_alloc(Allocation): ConstAllocation -> ConstAllocation<'tcx>,
+    layout: intern_layout(LayoutS<'tcx>): Layout -> Layout<'tcx>,
 }
 
 macro_rules! direct_interners_old {
@@ -2187,11 +2187,7 @@ macro_rules! direct_interners_old {
 
 // FIXME: eventually these should all be converted to `direct_interners`.
 direct_interners_old! {
-    const_allocation: intern_const_alloc(Allocation),
-    layout: intern_layout(Layout),
     adt_def: intern_adt_def(AdtDef),
-    stability: intern_stability(attr::Stability),
-    const_stability: intern_const_stability(attr::ConstStability),
 }
 
 macro_rules! slice_interners {
@@ -2293,7 +2289,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     pub fn mk_ty(self, st: TyKind<'tcx>) -> Ty<'tcx> {
-        self.interners.intern_ty(st)
+        self.interners.intern_ty(st, self.sess, &self.gcx.untracked_resolutions)
     }
 
     #[inline]
@@ -2743,7 +2739,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return bound;
             }
 
-            if hir.attrs(id).iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some()) {
+            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 return id;
             }
             let next = hir.get_parent_node(id);
@@ -2987,11 +2983,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
     };
 
-    providers.lookup_stability = |tcx, id| tcx.stability().local_stability(id.expect_local());
-    providers.lookup_const_stability =
-        |tcx, id| tcx.stability().local_const_stability(id.expect_local());
-    providers.lookup_deprecation_entry =
-        |tcx, id| tcx.stability().local_deprecation_entry(id.expect_local());
     providers.extern_mod_stmt_cnum =
         |tcx, id| tcx.resolutions(()).extern_crate_map.get(&id).cloned();
     providers.output_filenames = |tcx, ()| &tcx.output_filenames;

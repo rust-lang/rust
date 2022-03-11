@@ -5,7 +5,7 @@ use crate::ty::{
     TyCtxt, TypeFoldable,
 };
 use rustc_data_structures::intern::Interned;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_macros::HashStable;
@@ -21,7 +21,7 @@ pub use valtree::*;
 
 /// Use this rather than `ConstS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
 
 impl<'tcx> fmt::Debug for Const<'tcx> {
@@ -264,7 +264,7 @@ impl<'tcx> Const<'tcx> {
         if let Some(val) = self.val().try_eval(tcx, param_env) {
             match val {
                 Ok(val) => Const::from_value(tcx, val, self.ty()),
-                Err(ErrorReported) => tcx.const_error(self.ty()),
+                Err(ErrorGuaranteed) => tcx.const_error(self.ty()),
             }
         } else {
             self

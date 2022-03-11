@@ -673,8 +673,8 @@ fn indentation<T: LintContext>(cx: &T, span: Span) -> Option<String> {
         })
 }
 
-/// Convenience extension trait for `DiagnosticBuilder`.
-pub trait DiagnosticBuilderExt<T: LintContext> {
+/// Convenience extension trait for `Diagnostic`.
+pub trait DiagnosticExt<T: LintContext> {
     /// Suggests to add an attribute to an item.
     ///
     /// Correctly handles indentation of the attribute and item.
@@ -721,7 +721,7 @@ pub trait DiagnosticBuilderExt<T: LintContext> {
     fn suggest_remove_item(&mut self, cx: &T, item: Span, msg: &str, applicability: Applicability);
 }
 
-impl<T: LintContext> DiagnosticBuilderExt<T> for rustc_errors::DiagnosticBuilder<'_> {
+impl<T: LintContext> DiagnosticExt<T> for rustc_errors::Diagnostic {
     fn suggest_item_with_attr<D: Display + ?Sized>(
         &mut self,
         cx: &T,

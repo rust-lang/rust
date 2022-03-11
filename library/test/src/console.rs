@@ -103,21 +103,36 @@ impl ConsoleTestState {
         exec_time: Option<&TestExecTime>,
     ) -> io::Result<()> {
         self.write_log(|| {
+            let TestDesc {
+                name,
+                #[cfg(not(bootstrap))]
+                ignore_message,
+                ..
+            } = test;
             format!(
                 "{} {}",
                 match *result {
                     TestResult::TrOk => "ok".to_owned(),
                     TestResult::TrFailed => "failed".to_owned(),
-                    TestResult::TrFailedMsg(ref msg) => format!("failed: {}", msg),
-                    TestResult::TrIgnored => "ignored".to_owned(),
+                    TestResult::TrFailedMsg(ref msg) => format!("failed: {msg}"),
+                    TestResult::TrIgnored => {
+                        #[cfg(not(bootstrap))]
+                        if let Some(msg) = ignore_message {
+                            format!("ignored, {msg}")
+                        } else {
+                            "ignored".to_owned()
+                        }
+                        #[cfg(bootstrap)]
+                        "ignored".to_owned()
+                    }
                     TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
                     TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),
                 },
-                test.name,
+                name,
             )
         })?;
         if let Some(exec_time) = exec_time {
-            self.write_log(|| format!(" <{}>", exec_time))?;
+            self.write_log(|| format!(" <{exec_time}>"))?;
         }
         self.write_log(|| "\n")
     }
@@ -156,14 +171,14 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
             }
         };
 
-        writeln!(output, "{}: {}", name, fntype)?;
-        st.write_log(|| format!("{} {}\n", fntype, name))?;
+        writeln!(output, "{name}: {fntype}")?;
+        st.write_log(|| format!("{fntype} {name}\n"))?;
     }
 
     fn plural(count: u32, s: &str) -> String {
         match count {
-            1 => format!("{} {}", 1, s),
-            n => format!("{} {}s", n, s),
+            1 => format!("1 {s}"),
+            n => format!("{n} {s}s"),
         }
     }
 
@@ -203,7 +218,7 @@ fn handle_test_result(st: &mut ConsoleTestState, completed_test: CompletedTest) 
         TestResult::TrFailedMsg(msg) => {
             st.failed += 1;
             let mut stdout = stdout;
-            stdout.extend_from_slice(format!("note: {}", msg).as_bytes());
+            stdout.extend_from_slice(format!("note: {msg}").as_bytes());
             st.failures.push((test, stdout));
         }
         TestResult::TrTimedFail => {

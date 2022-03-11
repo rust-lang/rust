@@ -104,6 +104,7 @@
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
 #![feature(const_char_convert)]
+#![feature(const_clone)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
 #![feature(const_float_bits_conv)]
@@ -148,6 +149,8 @@
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
+#![feature(const_slice_index)]
+#![feature(const_is_char_boundary)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
@@ -156,16 +159,17 @@
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
 #![feature(cfg_target_has_atomic)]
-#![cfg_attr(not(bootstrap), feature(cfg_target_has_atomic_equal_alignment))]
+#![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![feature(const_fn_fn_ptr_basics)]
-#![feature(const_fn_trait_bound)]
-#![feature(const_impl_trait)]
+#![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
+#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
+#![cfg_attr(bootstrap, feature(const_impl_trait))]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(derive_default_enum)]
+#![cfg_attr(not(bootstrap), feature(deprecated_suggestion))]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]
@@ -408,12 +412,10 @@ pub mod arch {
 #[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 #[allow(rustdoc::bare_urls)]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 mod core_simd;
 
 #[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
-#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 pub mod simd {
     #[unstable(feature = "portable_simd", issue = "86656")]
     pub use crate::core_simd::simd::*;

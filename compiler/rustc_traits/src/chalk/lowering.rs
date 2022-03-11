@@ -323,7 +323,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Closure(def_id, substs) => {
                 chalk_ir::TyKind::Closure(chalk_ir::ClosureId(def_id), substs.lower_into(interner))
             }
-            ty::Generator(_def_id, _substs, _) => unimplemented!(),
+            ty::Generator(def_id, substs, _) => chalk_ir::TyKind::Generator(
+                chalk_ir::GeneratorId(def_id),
+                substs.lower_into(interner),
+            ),
             ty::GeneratorWitness(_) => unimplemented!(),
             ty::Never => chalk_ir::TyKind::Never,
             ty::Tuple(types) => {

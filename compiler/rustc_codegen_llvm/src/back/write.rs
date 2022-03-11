@@ -100,7 +100,10 @@ pub fn write_output_file<'ll>(
 
 pub fn create_informational_target_machine(sess: &Session) -> &'static mut llvm::TargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None };
-    target_machine_factory(sess, config::OptLevel::No)(config)
+    // Can't use query system here quite yet because this function is invoked before the query
+    // system/tcx is set up.
+    let features = llvm_util::global_llvm_features(sess, false);
+    target_machine_factory(sess, config::OptLevel::No, &features)(config)
         .unwrap_or_else(|err| llvm_err(sess.diagnostic(), &err).raise())
 }
 
@@ -115,8 +118,12 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> &'static mut ll
         None
     };
     let config = TargetMachineFactoryConfig { split_dwarf_file };
-    target_machine_factory(tcx.sess, tcx.backend_optimization_level(()))(config)
-        .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
+    target_machine_factory(
+        &tcx.sess,
+        tcx.backend_optimization_level(()),
+        tcx.global_backend_features(()),
+    )(config)
+    .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), &err).raise())
 }
 
 pub fn to_llvm_opt_settings(
@@ -171,6 +178,7 @@ pub(crate) fn to_llvm_code_model(code_model: Option<CodeModel>) -> llvm::CodeMod
 pub fn target_machine_factory(
     sess: &Session,
     optlvl: config::OptLevel,
+    target_features: &[String],
 ) -> TargetMachineFactoryFn<LlvmCodegenBackend> {
     let reloc_model = to_llvm_relocation_model(sess.relocation_model());
 
@@ -195,8 +203,7 @@ pub fn target_machine_factory(
 
     let triple = SmallCStr::new(&sess.target.llvm_target);
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));
-    let features = llvm_util::llvm_global_features(sess).join(",");
-    let features = CString::new(features).unwrap();
+    let features = CString::new(target_features.join(",")).unwrap();
     let abi = SmallCStr::new(&sess.target.llvm_abiname);
     let trap_unreachable =
         sess.opts.debugging_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);

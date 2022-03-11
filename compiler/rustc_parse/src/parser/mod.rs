@@ -15,7 +15,7 @@ pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 use diagnostics::Error;
 pub(crate) use item::FnParseMode;
-pub use pat::{RecoverColon, RecoverComma};
+pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
@@ -32,7 +32,9 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, FatalError};
+use rustc_errors::{
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError,
+};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::{MultiSpan, Span, DUMMY_SP};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -97,15 +99,15 @@ macro_rules! maybe_whole {
 #[macro_export]
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
-        if $allow_qpath_recovery && $self.look_ahead(1, |t| t == &token::ModSep) {
-            if let token::Interpolated(nt) = &$self.token.kind {
-                if let token::NtTy(ty) = &**nt {
+        if $allow_qpath_recovery
+                    && $self.look_ahead(1, |t| t == &token::ModSep)
+                    && let token::Interpolated(nt) = &$self.token.kind
+                    && let token::NtTy(ty) = &**nt
+                {
                     let ty = ty.clone();
                     $self.bump();
                     return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
                 }
-            }
-        }
     };
 }
 
@@ -849,7 +851,7 @@ impl<'a> Parser<'a> {
                                     v.push(t);
                                     continue;
                                 }
-                                Err(mut e) => {
+                                Err(e) => {
                                     // Parsing failed, therefore it must be something more serious
                                     // than just a missing separator.
                                     expect_err.emit();
@@ -877,7 +879,7 @@ impl<'a> Parser<'a> {
     fn recover_missing_braces_around_closure_body(
         &mut self,
         closure_spans: ClosureSpans,
-        mut expect_err: DiagnosticBuilder<'_>,
+        mut expect_err: DiagnosticBuilder<'_, ErrorGuaranteed>,
     ) -> PResult<'a, ()> {
         let initial_semicolon = self.token.span;
 
@@ -1429,7 +1431,7 @@ impl<'a> Parser<'a> {
 crate fn make_unclosed_delims_error(
     unmatched: UnmatchedBrace,
     sess: &ParseSess,
-) -> Option<DiagnosticBuilder<'_>> {
+) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_braces` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;

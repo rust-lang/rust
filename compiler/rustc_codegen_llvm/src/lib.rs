@@ -9,9 +9,14 @@
 #![feature(crate_visibility_modifier)]
 #![feature(let_else)]
 #![feature(extern_types)]
+#![feature(once_cell)]
 #![feature(nll)]
+#![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![allow(rustc::potential_query_instability)]
+
+#[macro_use]
+extern crate rustc_macros;
 
 use back::write::{create_informational_target_machine, create_target_machine};
 
@@ -25,9 +30,10 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{ErrorReported, FatalError, Handler};
+use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{OptLevel, OutputFilenames, PrintRequest};
 use rustc_session::Session;
@@ -122,8 +128,9 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         &self,
         sess: &Session,
         optlvl: OptLevel,
+        target_features: &[String],
     ) -> TargetMachineFactoryFn<Self> {
-        back::write::target_machine_factory(sess, optlvl)
+        back::write::target_machine_factory(sess, optlvl, target_features)
     }
     fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
         llvm_util::target_cpu(sess)
@@ -247,6 +254,11 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::init(sess); // Make sure llvm is inited
     }
 
+    fn provide(&self, providers: &mut Providers) {
+        providers.global_backend_features =
+            |tcx, ()| llvm_util::global_llvm_features(tcx.sess, true)
+    }
+
     fn print(&self, req: PrintRequest, sess: &Session) {
         match req {
             PrintRequest::RelocationModels => {
@@ -340,7 +352,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
         outputs: &OutputFilenames,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
             .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -361,7 +373,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<(), ErrorGuaranteed> {
         use crate::back::archive::LlvmArchiveBuilder;
         use rustc_codegen_ssa::back::link::link_binary;
 

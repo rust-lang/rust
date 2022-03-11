@@ -138,7 +138,7 @@ async function main(argv) {
     try {
         // This is more convenient that setting fields one by one.
         let args = [
-            "--no-screenshot",
+            "--no-screenshot-comparison",
             "--variable", "DOC_PATH", opts["doc_folder"],
         ];
         if (opts["debug"]) {

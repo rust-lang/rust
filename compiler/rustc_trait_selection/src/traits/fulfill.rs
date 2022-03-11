@@ -3,7 +3,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -346,6 +346,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let obligation = &mut pending_obligation.obligation;
 
+        debug!(?obligation, "process_obligation pre-resolve");
+
         if obligation.predicate.has_infer_types_or_consts() {
             obligation.predicate =
                 self.selcx.infcx().resolve_vars_if_possible(obligation.predicate);
@@ -355,6 +357,21 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
 
         let infcx = self.selcx.infcx();
 
+        if obligation.predicate.has_projections() {
+            let mut obligations = Vec::new();
+            let predicate = crate::traits::project::try_normalize_with_depth_to(
+                self.selcx,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                obligation.predicate,
+                &mut obligations,
+            );
+            if predicate != obligation.predicate {
+                obligations.push(obligation.with(predicate));
+                return ProcessResult::Changed(mk_pending(obligations));
+            }
+        }
         let binder = obligation.predicate.kind();
         match binder.no_bound_vars() {
             None => match binder.skip_binder() {
@@ -613,12 +630,14 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 ),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorReported)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => ProcessResult::Error(
-                            CodeSelectionError(SelectionError::NotConstEvaluatable(
-                                NotConstEvaluatable::Error(ErrorReported),
-                            )),
-                        ),
+                        (Err(ErrorHandled::Reported(ErrorGuaranteed)), _)
+                        | (_, Err(ErrorHandled::Reported(ErrorGuaranteed))) => {
+                            ProcessResult::Error(CodeSelectionError(
+                                SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(
+                                    ErrorGuaranteed,
+                                )),
+                            ))
+                        }
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.selcx.tcx()),

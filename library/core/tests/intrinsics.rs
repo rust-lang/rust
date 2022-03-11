@@ -80,7 +80,6 @@ fn test_hints_in_const_contexts() {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn test_const_allocate_at_runtime() {
     use core::intrinsics::const_allocate;
@@ -89,7 +88,6 @@ fn test_const_allocate_at_runtime() {
     }
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn test_const_deallocate_at_runtime() {
     use core::intrinsics::const_deallocate;

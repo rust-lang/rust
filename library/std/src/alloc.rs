@@ -83,7 +83,7 @@ pub use alloc_crate::alloc::*;
 ///
 /// fn main() {
 ///     let a = Box::new(4); // Allocates from the system allocator.
-///     println!("{}", a);
+///     println!("{a}");
 /// }
 /// ```
 ///

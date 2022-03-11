@@ -16,7 +16,8 @@ pub fn target() -> Target {
             features: "+neon,+fp-armv8".to_string(),
             supported_sanitizers: SanitizerSet::CFI
                 | SanitizerSet::HWADDRESS
-                | SanitizerSet::MEMTAG,
+                | SanitizerSet::MEMTAG
+                | SanitizerSet::ADDRESS,
             ..super::android_base::opts()
         },
     }

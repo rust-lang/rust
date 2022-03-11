@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Target, TargetOptions};
+use crate::spec::{LinkerFlavor, SanitizerSet, Target, TargetOptions};
 
 // This target if is for the baseline of the Android v7a ABI
 // in thumb mode. It's named armv7-* instead of thumbv7-*
@@ -19,6 +19,7 @@ pub fn target() -> Target {
         options: TargetOptions {
             abi: "eabi".to_string(),
             features: "+v7,+thumb-mode,+thumb2,+vfp3,-d32,-neon".to_string(),
+            supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(64),
             ..base
         },

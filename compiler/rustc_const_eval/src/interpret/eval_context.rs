@@ -22,9 +22,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance, Scalar,
-    ScalarMaybeUninit, StackPopJump,
+    AllocCheck, AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine,
+    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance,
+    Scalar, ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -164,7 +164,7 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, PartialEq, Eq, HashStable)]
+#[derive(Clone, Debug, PartialEq, Eq, HashStable)]
 pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
     pub value: LocalValue<Tag>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
@@ -440,6 +440,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.scalar_to_ptr(scalar)
     }
 
+    /// Test if this value might be null.
+    /// If the machine does not support ptr-to-int casts, this is conservative.
+    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> bool {
+        match scalar.try_to_int() {
+            Ok(int) => int.is_null(),
+            Err(_) => {
+                let ptr = self.scalar_to_ptr(scalar);
+                match self.memory.ptr_try_get_alloc(ptr) {
+                    Ok((alloc_id, offset, _)) => {
+                        let (size, _align) = self
+                            .memory
+                            .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
+                            .expect("alloc info with MaybeDead cannot fail");
+                        // If the pointer is out-of-bounds, it may be null.
+                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
+                        offset > size
+                    }
+                    Err(offset) => offset == 0,
+                }
+            }
+        }
+    }
+
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
     /// the machine pointer to the allocation.  Must never be used
     /// for any other pointers, nor for TLS statics.
@@ -691,6 +714,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.size_and_align_of(&mplace.meta, &mplace.layout)
     }
 
+    #[instrument(skip(self, body, return_place, return_to_block), level = "debug")]
     pub fn push_stack_frame(
         &mut self,
         instance: ty::Instance<'tcx>,
@@ -698,6 +722,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_place: Option<&PlaceTy<'tcx, M::PointerTag>>,
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
+        debug!("body: {:#?}", body);
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
@@ -801,6 +826,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// `Drop` impls for any locals that have been initialized at this point.
     /// The cleanup block ends with a special `Resume` terminator, which will
     /// cause us to continue unwinding.
+    #[instrument(skip(self), level = "debug")]
     pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
         info!(
             "popping stack frame ({})",
@@ -852,6 +878,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Leak the locals, skip validation, skip machine hook.
             return Ok(());
         }
+
+        debug!("locals: {:#?}", frame.locals);
 
         // Cleanup: deallocate all locals that are backed by an allocation.
         for local in &frame.locals {
@@ -912,6 +940,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn deallocate_local(&mut self, local: LocalValue<M::PointerTag>) -> InterpResult<'tcx> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             // All locals have a backing allocation, even if the allocation is empty

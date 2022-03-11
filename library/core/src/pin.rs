@@ -954,7 +954,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// stuff(pin!(Foo { /* … */ }));
 /// ```
 ///
-/// ### Manually polling a `Future` (wihout `Unpin` bounds)
+/// ### Manually polling a `Future` (without `Unpin` bounds)
 ///
 /// ```rust
 /// #![feature(pin_macro)]

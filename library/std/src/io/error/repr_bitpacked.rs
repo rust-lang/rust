@@ -161,8 +161,7 @@ impl Repr {
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Os(c) if c == code),
-            "repr(os) encoding failed for {}",
-            code,
+            "repr(os) encoding failed for {code}"
         );
         res
     }

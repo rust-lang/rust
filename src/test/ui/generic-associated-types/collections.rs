@@ -32,7 +32,7 @@ impl CollectionFamily for VecFamily {
 }
 
 impl<T> Collection<T> for Vec<T> {
-    type Iter<'iter> where T: 'iter = std::slice::Iter<'iter, T>;
+    type Iter<'iter> = std::slice::Iter<'iter, T> where T: 'iter;
     type Family = VecFamily;
 
     fn empty() -> Self {

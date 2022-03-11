@@ -58,21 +58,36 @@ cfg_if::cfg_if! {
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
-pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int, payload: T) -> io::Result<()> {
+pub fn setsockopt<T>(
+    sock: &Socket,
+    level: c_int,
+    option_name: c_int,
+    option_value: T,
+) -> io::Result<()> {
     unsafe {
-        let payload = &payload as *const T as *const c_void;
-        cvt(c::setsockopt(sock.as_raw(), opt, val, payload, mem::size_of::<T>() as c::socklen_t))?;
+        cvt(c::setsockopt(
+            sock.as_raw(),
+            level,
+            option_name,
+            &option_value as *const T as *const _,
+            mem::size_of::<T>() as c::socklen_t,
+        ))?;
         Ok(())
     }
 }
 
-pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int, val: c_int) -> io::Result<T> {
+pub fn getsockopt<T: Copy>(sock: &Socket, level: c_int, option_name: c_int) -> io::Result<T> {
     unsafe {
-        let mut slot: T = mem::zeroed();
-        let mut len = mem::size_of::<T>() as c::socklen_t;
-        cvt(c::getsockopt(sock.as_raw(), opt, val, &mut slot as *mut _ as *mut _, &mut len))?;
-        assert_eq!(len as usize, mem::size_of::<T>());
-        Ok(slot)
+        let mut option_value: T = mem::zeroed();
+        let mut option_len = mem::size_of::<T>() as c::socklen_t;
+        cvt(c::getsockopt(
+            sock.as_raw(),
+            level,
+            option_name,
+            &mut option_value as *mut T as *mut _,
+            &mut option_len,
+        ))?;
+        Ok(option_value)
     }
 }
 

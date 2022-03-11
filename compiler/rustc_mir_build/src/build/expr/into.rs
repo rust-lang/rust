@@ -9,7 +9,7 @@ use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use std::iter;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -107,7 +107,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Constant {
                         span: expr_span,
                         user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, true).into(),
+                        literal: ConstantKind::from_bool(this.tcx, true),
                     },
                 );
 
@@ -118,7 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Constant {
                         span: expr_span,
                         user_ty: None,
-                        literal: ty::Const::from_bool(this.tcx, false).into(),
+                        literal: ConstantKind::from_bool(this.tcx, false),
                     },
                 );
 
@@ -183,8 +183,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         span: expr_span,
                         user_ty: None,
                         literal: match op {
-                            LogicalOp::And => ty::Const::from_bool(this.tcx, false).into(),
-                            LogicalOp::Or => ty::Const::from_bool(this.tcx, true).into(),
+                            LogicalOp::And => ConstantKind::from_bool(this.tcx, false),
+                            LogicalOp::Or => ConstantKind::from_bool(this.tcx, true),
                         },
                     },
                 );

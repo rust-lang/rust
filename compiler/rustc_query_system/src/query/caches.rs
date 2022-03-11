@@ -1,9 +1,12 @@
 use crate::dep_graph::DepNodeIndex;
-use crate::query::plumbing::{QueryCacheStore, QueryLookup};
 
 use rustc_arena::TypedArena;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sharded;
+#[cfg(parallel_compiler)]
 use rustc_data_structures::sharded::Sharded;
+#[cfg(not(parallel_compiler))]
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::sync::WorkerLocal;
 use std::default::Default;
 use std::fmt::Debug;
@@ -25,35 +28,23 @@ pub trait QueryStorage {
 
 pub trait QueryCache: QueryStorage + Sized {
     type Key: Hash + Eq + Clone + Debug;
-    type Sharded: Default;
 
     /// Checks if the query is already computed and in the cache.
     /// It returns the shard index and a lock guard to the shard,
     /// which will be used if the query is not in the cache and we need
     /// to compute it.
-    fn lookup<'s, R, OnHit>(
+    fn lookup<R, OnHit>(
         &self,
-        state: &'s QueryCacheStore<Self>,
         key: &Self::Key,
         // `on_hit` can be called while holding a lock to the query state shard.
         on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    ) -> Result<R, ()>
     where
         OnHit: FnOnce(&Self::Stored, DepNodeIndex) -> R;
 
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: Self::Key,
-        value: Self::Value,
-        index: DepNodeIndex,
-    ) -> Self::Stored;
+    fn complete(&self, key: Self::Key, value: Self::Value, index: DepNodeIndex) -> Self::Stored;
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    );
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex));
 }
 
 pub struct DefaultCacheSelector;
@@ -62,11 +53,16 @@ impl<K: Eq + Hash, V: Clone> CacheSelector<K, V> for DefaultCacheSelector {
     type Cache = DefaultCache<K, V>;
 }
 
-pub struct DefaultCache<K, V>(PhantomData<(K, V)>);
+pub struct DefaultCache<K, V> {
+    #[cfg(parallel_compiler)]
+    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<FxHashMap<K, (V, DepNodeIndex)>>,
+}
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache(PhantomData)
+        DefaultCache { cache: Default::default() }
     }
 }
 
@@ -87,49 +83,51 @@ where
     V: Clone + Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, R, OnHit>(
-        &self,
-        state: &'s QueryCacheStore<Self>,
-        key: &K,
-        on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
     where
         OnHit: FnOnce(&V, DepNodeIndex) -> R,
     {
-        let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let key_hash = sharded::make_hash(key);
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&value.0, value.1);
             Ok(hit_result)
         } else {
-            Err(lookup)
+            Err(())
         }
     }
 
     #[inline]
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: K,
-        value: V,
-        index: DepNodeIndex,
-    ) -> Self::Stored {
-        lock_sharded_storage.insert(key, (value.clone(), index));
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, (value.clone(), index));
         value
     }
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    ) {
-        let shards = shards.lock_shards();
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    f(k, &v.0, v.1);
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter() {
                 f(k, &v.0, v.1);
             }
         }
@@ -144,12 +142,15 @@ impl<'tcx, K: Eq + Hash, V: 'tcx> CacheSelector<K, V> for ArenaCacheSelector<'tc
 
 pub struct ArenaCache<'tcx, K, V> {
     arena: WorkerLocal<TypedArena<(V, DepNodeIndex)>>,
-    phantom: PhantomData<(K, &'tcx V)>,
+    #[cfg(parallel_compiler)]
+    cache: Sharded<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
+    #[cfg(not(parallel_compiler))]
+    cache: Lock<FxHashMap<K, &'tcx (V, DepNodeIndex)>>,
 }
 
 impl<'tcx, K, V> Default for ArenaCache<'tcx, K, V> {
     fn default() -> Self {
-        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), phantom: PhantomData }
+        ArenaCache { arena: WorkerLocal::new(|_| TypedArena::default()), cache: Default::default() }
     }
 }
 
@@ -171,51 +172,53 @@ where
     V: Debug,
 {
     type Key = K;
-    type Sharded = FxHashMap<K, &'tcx (V, DepNodeIndex)>;
 
     #[inline(always)]
-    fn lookup<'s, R, OnHit>(
-        &self,
-        state: &'s QueryCacheStore<Self>,
-        key: &K,
-        on_hit: OnHit,
-    ) -> Result<R, QueryLookup>
+    fn lookup<R, OnHit>(&self, key: &K, on_hit: OnHit) -> Result<R, ()>
     where
         OnHit: FnOnce(&&'tcx V, DepNodeIndex) -> R,
     {
-        let (lookup, lock) = state.get_lookup(key);
-        let result = lock.raw_entry().from_key_hashed_nocheck(lookup.key_hash, key);
+        let key_hash = sharded::make_hash(key);
+        #[cfg(parallel_compiler)]
+        let lock = self.cache.get_shard_by_hash(key_hash).lock();
+        #[cfg(not(parallel_compiler))]
+        let lock = self.cache.lock();
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
 
         if let Some((_, value)) = result {
             let hit_result = on_hit(&&value.0, value.1);
             Ok(hit_result)
         } else {
-            Err(lookup)
+            Err(())
         }
     }
 
     #[inline]
-    fn complete(
-        &self,
-        lock_sharded_storage: &mut Self::Sharded,
-        key: K,
-        value: V,
-        index: DepNodeIndex,
-    ) -> Self::Stored {
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) -> Self::Stored {
         let value = self.arena.alloc((value, index));
         let value = unsafe { &*(value as *const _) };
-        lock_sharded_storage.insert(key, value);
+        #[cfg(parallel_compiler)]
+        let mut lock = self.cache.get_shard_by_value(&key).lock();
+        #[cfg(not(parallel_compiler))]
+        let mut lock = self.cache.lock();
+        lock.insert(key, value);
         &value.0
     }
 
-    fn iter(
-        &self,
-        shards: &Sharded<Self::Sharded>,
-        f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex),
-    ) {
-        let shards = shards.lock_shards();
-        for shard in shards.iter() {
-            for (k, v) in shard.iter() {
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        #[cfg(parallel_compiler)]
+        {
+            let shards = self.cache.lock_shards();
+            for shard in shards.iter() {
+                for (k, v) in shard.iter() {
+                    f(k, &v.0, v.1);
+                }
+            }
+        }
+        #[cfg(not(parallel_compiler))]
+        {
+            let map = self.cache.lock();
+            for (k, v) in map.iter() {
                 f(k, &v.0, v.1);
             }
         }

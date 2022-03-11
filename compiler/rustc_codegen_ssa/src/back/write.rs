@@ -1033,6 +1033,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     } else {
         tcx.backend_optimization_level(())
     };
+    let backend_features = tcx.global_backend_features(());
     let cgcx = CodegenContext::<B> {
         backend: backend.clone(),
         crate_types: sess.crate_types().to_vec(),
@@ -1054,7 +1055,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: backend.target_machine_factory(tcx.sess, ol),
+        tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
@@ -1709,7 +1710,7 @@ impl Emitter for SharedEmitter {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: diag.message(),
             code: diag.code.clone(),
-            lvl: diag.level,
+            lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
@@ -1753,7 +1754,7 @@ impl SharedEmitterMain {
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg);
 
                     let mut err = match level {
-                        Level::Error { lint: false } => sess.struct_err(&msg),
+                        Level::Error { lint: false } => sess.struct_err(&msg).forget_guarantee(),
                         Level::Warning => sess.struct_warn(&msg),
                         Level::Note => sess.struct_note_without_error(&msg),
                         _ => bug!("Invalid inline asm diagnostic level"),

@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             if let ty::Adt(def, _) = arg_ty.kind() {
-                if match_def_path(cx, def.did, &paths::MEM_MANUALLY_DROP) {
+                if def.is_manually_drop() {
                     continue;
                 }
             }
@@ -543,10 +543,10 @@ impl<'a, 'tcx> PossibleBorrowerVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_borrower.reachable_from(&row);
+            let borrowers = self.possible_borrower.reachable_from(row);
             if !borrowers.is_empty() {
                 let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
+                for c in borrowers {
                     if c != mir::Local::from_usize(0) {
                         bs.insert(c);
                     }
@@ -663,10 +663,10 @@ impl<'a, 'tcx> PossibleOriginVisitor<'a, 'tcx> {
                 continue;
             }
 
-            let borrowers = self.possible_origin.reachable_from(&row);
+            let borrowers = self.possible_origin.reachable_from(row);
             if !borrowers.is_empty() {
                 let mut bs = HybridBitSet::new_empty(self.body.local_decls.len());
-                for &c in borrowers {
+                for c in borrowers {
                     if c != mir::Local::from_usize(0) {
                         bs.insert(c);
                     }

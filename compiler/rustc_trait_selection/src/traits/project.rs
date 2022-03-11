@@ -22,7 +22,7 @@ use crate::traits::error_reporting::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -295,6 +295,32 @@ where
     result
 }
 
+#[instrument(level = "info", skip(selcx, param_env, cause, obligations))]
+pub fn try_normalize_with_depth_to<'a, 'b, 'tcx, T>(
+    selcx: &'a mut SelectionContext<'b, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    cause: ObligationCause<'tcx>,
+    depth: usize,
+    value: T,
+    obligations: &mut Vec<PredicateObligation<'tcx>>,
+) -> T
+where
+    T: TypeFoldable<'tcx>,
+{
+    debug!(obligations.len = obligations.len());
+    let mut normalizer = AssocTypeNormalizer::new_without_eager_inference_replacement(
+        selcx,
+        param_env,
+        cause,
+        depth,
+        obligations,
+    );
+    let result = ensure_sufficient_stack(|| normalizer.fold(value));
+    debug!(?result, obligations.len = normalizer.obligations.len());
+    debug!(?normalizer.obligations,);
+    result
+}
+
 pub(crate) fn needs_normalization<'tcx, T: TypeFoldable<'tcx>>(value: &T, reveal: Reveal) -> bool {
     match reveal {
         Reveal::UserFacing => value
@@ -314,6 +340,10 @@ struct AssocTypeNormalizer<'a, 'b, 'tcx> {
     obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     depth: usize,
     universes: Vec<Option<ty::UniverseIndex>>,
+    /// If true, when a projection is unable to be completed, an inference
+    /// variable will be created and an obligation registered to project to that
+    /// inference variable. Also, constants will be eagerly evaluated.
+    eager_inference_replacement: bool,
 }
 
 impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
@@ -324,7 +354,33 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         depth: usize,
         obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
-        AssocTypeNormalizer { selcx, param_env, cause, obligations, depth, universes: vec![] }
+        AssocTypeNormalizer {
+            selcx,
+            param_env,
+            cause,
+            obligations,
+            depth,
+            universes: vec![],
+            eager_inference_replacement: true,
+        }
+    }
+
+    fn new_without_eager_inference_replacement(
+        selcx: &'a mut SelectionContext<'b, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        cause: ObligationCause<'tcx>,
+        depth: usize,
+        obligations: &'a mut Vec<PredicateObligation<'tcx>>,
+    ) -> AssocTypeNormalizer<'a, 'b, 'tcx> {
+        AssocTypeNormalizer {
+            selcx,
+            param_env,
+            cause,
+            obligations,
+            depth,
+            universes: vec![],
+            eager_inference_replacement: false,
+        }
     }
 
     fn fold<T: TypeFoldable<'tcx>>(&mut self, value: T) -> T {
@@ -428,14 +484,28 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
                 // there won't be bound vars there.
 
                 let data = data.super_fold_with(self);
-                let normalized_ty = normalize_projection_type(
-                    self.selcx,
-                    self.param_env,
-                    data,
-                    self.cause.clone(),
-                    self.depth,
-                    &mut self.obligations,
-                );
+                let normalized_ty = if self.eager_inference_replacement {
+                    normalize_projection_type(
+                        self.selcx,
+                        self.param_env,
+                        data,
+                        self.cause.clone(),
+                        self.depth,
+                        &mut self.obligations,
+                    )
+                } else {
+                    opt_normalize_projection_type(
+                        self.selcx,
+                        self.param_env,
+                        data,
+                        self.cause.clone(),
+                        self.depth,
+                        &mut self.obligations,
+                    )
+                    .ok()
+                    .flatten()
+                    .unwrap_or_else(|| ty::Term::Ty(ty.super_fold_with(self)))
+                };
                 debug!(
                     ?self.depth,
                     ?ty,
@@ -501,7 +571,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        if self.selcx.tcx().lazy_normalization() {
+        if self.selcx.tcx().lazy_normalization() || !self.eager_inference_replacement {
             constant
         } else {
             let constant = constant.super_fold_with(self);
@@ -1326,7 +1396,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
-                        .map_err(|ErrorReported| ())?;
+                        .map_err(|ErrorGuaranteed| ())?;
 
                 if node_item.is_final() {
                     // Non-specializable items are always projectable.
@@ -1830,9 +1900,8 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
     let param_env = obligation.param_env;
-    let assoc_ty = match assoc_def(selcx, impl_def_id, assoc_item_id) {
-        Ok(assoc_ty) => assoc_ty,
-        Err(ErrorReported) => return Progress { term: tcx.ty_error().into(), obligations: nested },
+    let Ok(assoc_ty) = assoc_def(selcx, impl_def_id, assoc_item_id) else {
+        return Progress { term: tcx.ty_error().into(), obligations: nested };
     };
 
     if !assoc_ty.item.defaultness.has_value() {
@@ -1919,7 +1988,7 @@ fn assoc_def(
     selcx: &SelectionContext<'_, '_>,
     impl_def_id: DefId,
     assoc_def_id: DefId,
-) -> Result<specialization_graph::LeafDef, ErrorReported> {
+) -> Result<specialization_graph::LeafDef, ErrorGuaranteed> {
     let tcx = selcx.tcx();
     let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
     let trait_def = tcx.trait_def(trait_def_id);

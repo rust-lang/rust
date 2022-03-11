@@ -86,7 +86,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
 
     /// Check whether `r_a <= r_b` is found in the relation.
     fn check_relation(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> bool {
-        r_a == r_b || self.relation.contains(&r_a, &r_b)
+        r_a == r_b || self.relation.contains(r_a, r_b)
     }
 
     /// True for free regions other than `'static`.
@@ -119,9 +119,9 @@ impl<'tcx> FreeRegionMap<'tcx> {
         let result = if r_a == r_b {
             r_a
         } else {
-            match self.relation.postdom_upper_bound(&r_a, &r_b) {
+            match self.relation.postdom_upper_bound(r_a, r_b) {
                 None => tcx.lifetimes.re_static,
-                Some(r) => *r,
+                Some(r) => r,
             }
         };
         debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
@@ -132,6 +132,6 @@ impl<'tcx> FreeRegionMap<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;
     fn lift_to_tcx(self, tcx: TyCtxt<'tcx>) -> Option<FreeRegionMap<'tcx>> {
-        self.relation.maybe_map(|&fr| tcx.lift(fr)).map(|relation| FreeRegionMap { relation })
+        self.relation.maybe_map(|fr| tcx.lift(fr)).map(|relation| FreeRegionMap { relation })
     }
 }

@@ -1,3 +1,4 @@
+use rustc_ast::CRATE_NODE_ID;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -21,7 +22,7 @@ crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
 
 crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }
@@ -243,7 +244,9 @@ impl Collector<'_> {
         if matches!(lib.kind, NativeLibKind::Framework { .. }) && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
+                Some(span) => {
+                    struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
+                }
                 None => self.tcx.sess.err(msg),
             }
         }
@@ -389,7 +392,7 @@ impl Collector<'_> {
                     .layout;
                 // In both stdcall and fastcall, we always round up the argument size to the
                 // nearest multiple of 4 bytes.
-                (layout.size.bytes_usize() + 3) & !3
+                (layout.size().bytes_usize() + 3) & !3
             })
             .sum()
     }

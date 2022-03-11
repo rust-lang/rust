@@ -12,13 +12,13 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, PollPending};
 use rustc_hir::{
     intravisit::{walk_expr, Visitor},
-    Arm, Block, Expr, ExprKind, LangItem, MatchSource, Node, Pat, PatKind, QPath, UnOp,
+    Arm, Block, Expr, ExprKind, LangItem, Node, Pat, PatKind, QPath, UnOp,
 };
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
 use rustc_span::sym;
 
-pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::IfLet {
         if_else,
         let_pat,
@@ -27,11 +27,7 @@ pub fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     }) = higher::IfLet::hir(cx, expr)
     {
         find_sugg_for_if_let(cx, expr, let_pat, let_expr, "if", if_else.is_some());
-    }
-    if let ExprKind::Match(op, arms, MatchSource::Normal) = &expr.kind {
-        find_sugg_for_match(cx, expr, op, arms);
-    }
-    if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
+    } else if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
         find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
     }
 }
@@ -59,7 +55,7 @@ fn type_needs_ordered_drop_inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, see
         // Check if any component type has any.
         match ty.kind() {
             ty::Tuple(fields) => fields.iter().any(|ty| type_needs_ordered_drop_inner(cx, ty, seen)),
-            &ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, ty, seen),
+            ty::Array(ty, _) => type_needs_ordered_drop_inner(cx, *ty, seen),
             ty::Adt(adt, subs) => adt
                 .all_fields()
                 .map(|f| f.ty(cx.tcx, subs))
@@ -304,7 +300,7 @@ fn find_sugg_for_if_let<'tcx>(
     );
 }
 
-fn find_sugg_for_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op: &Expr<'_>, arms: &[Arm<'_>]) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pat.kind, &arms[1].pat.kind);
 

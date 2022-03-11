@@ -5,6 +5,7 @@ use rustc_data_structures::binary_search_util;
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
+use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_index::vec::IndexVec;
@@ -510,7 +511,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Adds annotations for `#[rustc_regions]`; see `UniversalRegions::annotate`.
-    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+    crate fn annotate(&self, tcx: TyCtxt<'tcx>, err: &mut Diagnostic) {
         self.universal_regions.annotate(tcx, err)
     }
 
@@ -941,14 +942,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             debug!("try_promote_type_test: ur={:?}", ur);
 
-            let non_local_ub = self.universal_region_relations.non_local_upper_bounds(&ur);
+            let non_local_ub = self.universal_region_relations.non_local_upper_bounds(ur);
             debug!("try_promote_type_test: non_local_ub={:?}", non_local_ub);
 
             // This is slightly too conservative. To show T: '1, given `'2: '1`
             // and `'3: '1` we only need to prove that T: '2 *or* T: '3, but to
             // avoid potential non-determinism we approximate this by requiring
             // T: '1 and T: '2.
-            for &upper_bound in non_local_ub {
+            for upper_bound in non_local_ub {
                 debug_assert!(self.universal_regions.is_universal_region(upper_bound));
                 debug_assert!(!self.universal_regions.is_local_free_region(upper_bound));
 
@@ -1587,12 +1588,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // always will.)  We'll call them `shorter_fr+` -- they're ever
                 // so slightly larger than `shorter_fr`.
                 let shorter_fr_plus =
-                    self.universal_region_relations.non_local_upper_bounds(&shorter_fr);
+                    self.universal_region_relations.non_local_upper_bounds(shorter_fr);
                 debug!(
                     "try_propagate_universal_region_error: shorter_fr_plus={:?}",
                     shorter_fr_plus
                 );
-                for &&fr in &shorter_fr_plus {
+                for fr in shorter_fr_plus {
                     // Push the constraint `fr-: shorter_fr+`
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                         subject: ClosureOutlivesSubject::Region(fr_minus),
@@ -1991,7 +1992,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .find_map(|constraint| {
                 if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
                     // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
-                    // for perforamnce reasons. The error reporting code used by NLL only
+                    // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
                     Some(ObligationCauseCode::BindingObligation(
                         CRATE_DEF_ID.to_def_id(),

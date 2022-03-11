@@ -1,10 +1,11 @@
 use clippy_utils::consts::{constant_simple, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{match_def_path, match_trait_method, paths};
+use clippy_utils::{match_trait_method, paths};
 use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -73,14 +74,10 @@ fn min_max<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<(MinMax, Cons
                 cx.typeck_results()
                     .qpath_res(qpath, path.hir_id)
                     .opt_def_id()
-                    .and_then(|def_id| {
-                        if match_def_path(cx, def_id, &paths::CMP_MIN) {
-                            fetch_const(cx, args, MinMax::Min)
-                        } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
-                            fetch_const(cx, args, MinMax::Max)
-                        } else {
-                            None
-                        }
+                    .and_then(|def_id| match cx.tcx.get_diagnostic_name(def_id) {
+                        Some(sym::cmp_min) => fetch_const(cx, args, MinMax::Min),
+                        Some(sym::cmp_max) => fetch_const(cx, args, MinMax::Max),
+                        _ => None,
                     })
             } else {
                 None

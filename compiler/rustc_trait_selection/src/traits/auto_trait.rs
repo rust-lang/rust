@@ -148,7 +148,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             // traits::project will see that 'T: SomeTrait' is in our ParamEnv, allowing
             // SelectionContext to return it back to us.
 
-            let (new_env, user_env) = match self.evaluate_predicates(
+            let Some((new_env, user_env)) = self.evaluate_predicates(
                 &infcx,
                 trait_did,
                 ty,
@@ -156,9 +156,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 orig_env,
                 &mut fresh_preds,
                 false,
-            ) {
-                Some(e) => e,
-                None => return AutoTraitResult::NegativeImpl,
+            ) else {
+                return AutoTraitResult::NegativeImpl;
             };
 
             let (full_env, full_user_env) = self

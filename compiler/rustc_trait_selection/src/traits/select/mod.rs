@@ -29,14 +29,14 @@ use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::ErrorReported;
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::dep_graph::{DepKind, DepNodeIndex};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams};
+use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
@@ -64,7 +64,7 @@ pub enum IntercrateAmbiguityCause {
 impl IntercrateAmbiguityCause {
     /// Emits notes when the overlap is caused by complex intercrate ambiguities.
     /// See #23980 for details.
-    pub fn add_intercrate_ambiguity_hint(&self, err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+    pub fn add_intercrate_ambiguity_hint(&self, err: &mut Diagnostic) {
         err.note(&self.intercrate_ambiguity_hint());
     }
 
@@ -579,24 +579,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     previous_stack,
                                     subobligations,
                                 );
-                                if let Ok(res) = res {
-                                    if res == EvaluatedToOk || res == EvaluatedToOkModuloRegions {
-                                        if let Some(key) =
-                                            ProjectionCacheKey::from_poly_projection_predicate(
-                                                self, data,
-                                            )
-                                        {
-                                            // If the result is something that we can cache, then mark this
-                                            // entry as 'complete'. This will allow us to skip evaluating the
-                                            // suboligations at all the next time we evaluate the projection
-                                            // predicate.
-                                            self.infcx
-                                                .inner
-                                                .borrow_mut()
-                                                .projection_cache()
-                                                .complete(key, res);
-                                        }
-                                    }
+                                if let Ok(eval_rslt) = res
+                                    && (eval_rslt == EvaluatedToOk || eval_rslt == EvaluatedToOkModuloRegions)
+                                    && let Some(key) =
+                                        ProjectionCacheKey::from_poly_projection_predicate(
+                                            self, data,
+                                        )
+                                {
+                                    // If the result is something that we can cache, then mark this
+                                    // entry as 'complete'. This will allow us to skip evaluating the
+                                    // suboligations at all the next time we evaluate the projection
+                                    // predicate.
+                                    self.infcx
+                                        .inner
+                                        .borrow_mut()
+                                        .projection_cache()
+                                        .complete(key, eval_rslt);
                                 }
                                 res
                             }
@@ -676,8 +674,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorReported)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorReported))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::Reported(ErrorGuaranteed)), _)
+                        | (_, Err(ErrorHandled::Reported(ErrorGuaranteed))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.tcx()),
@@ -2178,8 +2176,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn fast_reject_trait_refs(
         &mut self,
-        obligation: &TraitObligation<'_>,
-        impl_trait_ref: &ty::TraitRef<'_>,
+        obligation: &TraitObligation<'tcx>,
+        impl_trait_ref: &ty::TraitRef<'tcx>,
     ) -> bool {
         // We can avoid creating type variables and doing the full
         // substitution if we find that any of the input types, when
@@ -2195,10 +2193,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let simplified_obligation_ty = fast_reject::simplify_type(
                             self.tcx(),
                             obligation_ty,
-                            SimplifyParams::Yes,
+                            TreatParams::AsBoundTypes,
                         );
-                        let simplified_impl_ty =
-                            fast_reject::simplify_type(self.tcx(), impl_ty, SimplifyParams::No);
+                        let simplified_impl_ty = fast_reject::simplify_type(
+                            self.tcx(),
+                            impl_ty,
+                            TreatParams::AsPlaceholders,
+                        );
 
                         simplified_obligation_ty.is_some()
                             && simplified_impl_ty.is_some()
@@ -2374,28 +2375,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 param_env,
                 predicate,
             });
-        }
-
-        // We are performing deduplication here to avoid exponential blowups
-        // (#38528) from happening, but the real cause of the duplication is
-        // unknown. What we know is that the deduplication avoids exponential
-        // amount of predicates being propagated when processing deeply nested
-        // types.
-        //
-        // This code is hot enough that it's worth avoiding the allocation
-        // required for the FxHashSet when possible. Special-casing lengths 0,
-        // 1 and 2 covers roughly 75-80% of the cases.
-        if obligations.len() <= 1 {
-            // No possibility of duplicates.
-        } else if obligations.len() == 2 {
-            // Only two elements. Drop the second if they are equal.
-            if obligations[0] == obligations[1] {
-                obligations.truncate(1);
-            }
-        } else {
-            // Three or more elements. Use a general deduplication process.
-            let mut seen = FxHashSet::default();
-            obligations.retain(|i| seen.insert(i.clone()));
         }
 
         obligations

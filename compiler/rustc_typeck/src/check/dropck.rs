@@ -1,7 +1,7 @@
 use crate::check::regionck::RegionCtxt;
 use crate::hir;
 use crate::hir::def_id::{DefId, LocalDefId};
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferOk, RegionckMode, TyCtxtInferExt};
 use rustc_infer::traits::TraitEngineExt as _;
@@ -31,7 +31,7 @@ use rustc_trait_selection::traits::{ObligationCause, TraitEngine, TraitEngineExt
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorReported> {
+pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
     let dtor_self_type = tcx.type_of(drop_impl_did);
     let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.kind() {
@@ -59,7 +59,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
                 span,
                 &format!("should have been rejected by coherence check: {}", dtor_self_type),
             );
-            Err(ErrorReported)
+            Err(ErrorGuaranteed)
         }
     }
 }
@@ -69,7 +69,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     drop_impl_did: LocalDefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let drop_impl_hir_id = tcx.hir().local_def_id_to_hir_id(drop_impl_did);
 
     // check that the impl type can be made to match the trait type.
@@ -109,7 +109,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                     ),
                 )
                 .emit();
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
         }
 
@@ -117,7 +117,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
         if !errors.is_empty() {
             // this could be reached when we get lazy normalization
             infcx.report_fulfillment_errors(&errors, None, false);
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
 
         // NB. It seems a bit... suspicious to use an empty param-env
@@ -146,7 +146,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     dtor_predicates: ty::GenericPredicates<'tcx>,
     self_type_did: LocalDefId,
     self_to_impl_substs: SubstsRef<'tcx>,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let mut result = Ok(());
 
     // Here is an example, analogous to that from
@@ -268,7 +268,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             )
             .span_note(item_span, "the implementor must specify the same requirement")
             .emit();
-            result = Err(ErrorReported);
+            result = Err(ErrorGuaranteed);
         }
     }
 

@@ -192,18 +192,15 @@ fn fulfill_implication<'a, 'tcx>(
         impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
 
     // do the impls unify? If not, no specialization.
-    let more_obligations =
-        match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
-        {
-            Ok(InferOk { obligations, .. }) => obligations,
-            Err(_) => {
-                debug!(
-                    "fulfill_implication: {:?} does not unify with {:?}",
-                    source_trait_ref, target_trait_ref
-                );
-                return Err(());
-            }
-        };
+    let Ok(InferOk { obligations: more_obligations, .. }) =
+        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+    else {
+        debug!(
+            "fulfill_implication: {:?} does not unify with {:?}",
+            source_trait_ref, target_trait_ref
+        );
+        return Err(());
+    };
 
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
@@ -450,7 +447,7 @@ fn report_conflicting_impls(
             sg.has_errored = true;
             if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
                 let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-                decorate(LintDiagnosticBuilder::new(err));
+                decorate(LintDiagnosticBuilder::new(err.forget_guarantee()));
             } else {
                 tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check");
             }

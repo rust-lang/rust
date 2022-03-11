@@ -4,10 +4,7 @@ error[E0382]: use of moved value: `b`
 LL |     let b = Box::new(true);
    |         - move occurs because `b` has type `Box<bool>`, which does not implement the `Copy` trait
 LL |     test!({b});
-   |            ^
-   |            |
-   |            value moved here
-   |            value used here after move
+   |            ^ value used here after move
 
 error: aborting due to previous error
 

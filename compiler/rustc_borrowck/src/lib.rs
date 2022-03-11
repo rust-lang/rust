@@ -1,15 +1,16 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
+#![allow(rustc::potential_query_instability)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(stmt_expr_attributes)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -18,7 +19,7 @@ extern crate tracing;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::Node;
@@ -159,16 +160,14 @@ fn do_mir_borrowck<'a, 'tcx>(
     for var_debug_info in &input_body.var_debug_info {
         if let VarDebugInfoContents::Place(place) = var_debug_info.value {
             if let Some(local) = place.as_local() {
-                if let Some(prev_name) = local_names[local] {
-                    if var_debug_info.name != prev_name {
-                        span_bug!(
-                            var_debug_info.source_info.span,
-                            "local {:?} has many names (`{}` vs `{}`)",
-                            local,
-                            prev_name,
-                            var_debug_info.name
-                        );
-                    }
+                if let Some(prev_name) = local_names[local] && var_debug_info.name != prev_name {
+                    span_bug!(
+                        var_debug_info.source_info.span,
+                        "local {:?} has many names (`{}` vs `{}`)",
+                        local,
+                        prev_name,
+                        var_debug_info.name
+                    );
                 }
                 local_names[local] = Some(var_debug_info.name);
             }
@@ -179,7 +178,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     // Gather the upvars of a closure, if any.
     let tables = tcx.typeck_opt_const_arg(def);
-    if let Some(ErrorReported) = tables.tainted_by_errors {
+    if let Some(ErrorGuaranteed) = tables.tainted_by_errors {
         infcx.set_tainted_by_errors();
         errors.set_tainted_by_errors();
     }
@@ -379,7 +378,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // Convert any reservation warnings into lints.
     let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
     for (_, (place, span, location, bk, borrow)) in reservation_warnings {
-        let mut initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
+        let initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
 
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
@@ -398,7 +397,7 @@ fn do_mir_borrowck<'a, 'tcx>(
                 diag.message = initial_diag.styled_message().clone();
                 diag.span = initial_diag.span.clone();
 
-                mbcx.buffer_error(diag);
+                mbcx.buffer_non_error_diag(diag);
             },
         );
         initial_diag.cancel();
@@ -2293,11 +2292,11 @@ mod error {
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
-        /// Errors to be reported buffer
+            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
+        /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     }
 
     impl BorrowckErrors<'_> {
@@ -2309,27 +2308,37 @@ mod error {
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
-            self.tainted_by_errors = Some(ErrorReported {});
+        // FIXME(eddyb) this is a suboptimal API because `tainted_by_errors` is
+        // set before any emission actually happens (weakening the guarantee).
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+            self.tainted_by_errors = Some(ErrorGuaranteed {});
+            t.buffer(&mut self.buffered);
+        }
+
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
             t.buffer(&mut self.buffered);
         }
 
         pub fn set_tainted_by_errors(&mut self) {
-            self.tainted_by_errors = Some(ErrorReported {});
+            self.tainted_by_errors = Some(ErrorGuaranteed {});
         }
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
             self.errors.buffer_error(t);
+        }
+
+        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
+            self.errors.buffer_non_error_diag(t);
         }
 
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
+            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>),
         ) -> bool {
-            if let Some((_, mut diag)) =
+            if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
             {
                 // Cancel the old diagnostic so we don't ICE
@@ -2340,7 +2349,7 @@ mod error {
             }
         }
 
-        pub fn emit_errors(&mut self) -> Option<ErrorReported> {
+        pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
@@ -2365,7 +2374,7 @@ mod error {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx>)> {
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorGuaranteed>)> {
             self.errors.buffered_move_errors.get(move_out_indices)
         }
     }

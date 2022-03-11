@@ -26,7 +26,7 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_attr::{list_contains_name, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -190,25 +190,23 @@ crate fn placeholder_type_error<'tcx>(
         let mut is_fn = false;
         let mut is_const_or_static = false;
 
-        if let Some(hir_ty) = hir_ty {
-            if let hir::TyKind::BareFn(_) = hir_ty.kind {
-                is_fn = true;
+        if let Some(hir_ty) = hir_ty && let hir::TyKind::BareFn(_) = hir_ty.kind {
+            is_fn = true;
 
-                // Check if parent is const or static
-                let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
-                let parent_node = tcx.hir().get(parent_id);
+            // Check if parent is const or static
+            let parent_id = tcx.hir().get_parent_node(hir_ty.hir_id);
+            let parent_node = tcx.hir().get(parent_id);
 
-                is_const_or_static = matches!(
-                    parent_node,
-                    Node::Item(&hir::Item {
-                        kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
-                        ..
-                    }) | Node::TraitItem(&hir::TraitItem {
-                        kind: hir::TraitItemKind::Const(..),
-                        ..
-                    }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
-                );
-            }
+            is_const_or_static = matches!(
+                parent_node,
+                Node::Item(&hir::Item {
+                    kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
+                    ..
+                }) | Node::TraitItem(&hir::TraitItem {
+                    kind: hir::TraitItemKind::Const(..),
+                    ..
+                }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+            );
         }
 
         // if function is wrapped around a const or static,
@@ -321,7 +319,7 @@ fn bad_placeholder<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut spans: Vec<Span>,
     kind: &'static str,
-) -> rustc_errors::DiagnosticBuilder<'tcx> {
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
     let kind = if kind.ends_with('s') { format!("{}es", kind) } else { format!("{}s", kind) };
 
     spans.sort();
@@ -730,7 +728,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         // These don't define types.
         hir::ItemKind::ExternCrate(_)
         | hir::ItemKind::Use(..)
-        | hir::ItemKind::Macro(_)
+        | hir::ItemKind::Macro(..)
         | hir::ItemKind::Mod(_)
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {
@@ -1277,19 +1275,21 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                         return None;
                     }
-                    Some(item) => tcx
-                        .sess
-                        .struct_span_err(item.span, "Not a function")
-                        .span_note(attr_span, "required by this annotation")
-                        .note(
-                            "All `#[rustc_must_implement_one_of]` arguments \
+                    Some(item) => {
+                        tcx.sess
+                            .struct_span_err(item.span, "Not a function")
+                            .span_note(attr_span, "required by this annotation")
+                            .note(
+                                "All `#[rustc_must_implement_one_of]` arguments \
                             must be associated function names",
-                        )
-                        .emit(),
-                    None => tcx
-                        .sess
-                        .struct_span_err(ident.span, "Function not found in this trait")
-                        .emit(),
+                            )
+                            .emit();
+                    }
+                    None => {
+                        tcx.sess
+                            .struct_span_err(ident.span, "Function not found in this trait")
+                            .emit();
+                    }
                 }
 
                 Some(())
@@ -1375,7 +1375,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             match self.tcx.named_region(lt.hir_id) {
                 Some(rl::Region::Static | rl::Region::EarlyBound(..)) => {}
                 Some(
-                    rl::Region::LateBound(debruijn, _, _, _)
+                    rl::Region::LateBound(debruijn, _, _)
                     | rl::Region::LateBoundAnon(debruijn, _, _),
                 ) if debruijn < self.outer_index => {}
                 Some(
@@ -2415,16 +2415,14 @@ fn const_evaluatable_predicates_of<'tcx>(
     let node = tcx.hir().get(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
-    if let hir::Node::Item(item) = node {
-        if let hir::ItemKind::Impl(ref impl_) = item.kind {
-            if let Some(of_trait) = &impl_.of_trait {
-                debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
-                collector.visit_trait_ref(of_trait);
-            }
-
-            debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
-            collector.visit_ty(impl_.self_ty);
+    if let hir::Node::Item(item) = node && let hir::ItemKind::Impl(ref impl_) = item.kind {
+        if let Some(of_trait) = &impl_.of_trait {
+            debug!("const_evaluatable_predicates_of({:?}): visit impl trait_ref", def_id);
+            collector.visit_trait_ref(of_trait);
         }
+
+        debug!("const_evaluatable_predicates_of({:?}): visit_self_ty", def_id);
+        collector.visit_ty(impl_.self_ty);
     }
 
     if let Some(generics) = node.generics() {
@@ -3278,15 +3276,14 @@ fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, id: DefId) -> &'tcx FxHashSet<Sy
 /// Checks if the provided DefId is a method in a trait impl for a trait which has track_caller
 /// applied to the method prototype.
 fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    if let Some(impl_item) = tcx.opt_associated_item(def_id) {
-        if let ty::AssocItemContainer::ImplContainer(_) = impl_item.container {
-            if let Some(trait_item) = impl_item.trait_item_def_id {
-                return tcx
-                    .codegen_fn_attrs(trait_item)
-                    .flags
-                    .intersects(CodegenFnAttrFlags::TRACK_CALLER);
-            }
-        }
+    if let Some(impl_item) = tcx.opt_associated_item(def_id)
+        && let ty::AssocItemContainer::ImplContainer(_) = impl_item.container
+        && let Some(trait_item) = impl_item.trait_item_def_id
+    {
+        return tcx
+            .codegen_fn_attrs(trait_item)
+            .flags
+            .intersects(CodegenFnAttrFlags::TRACK_CALLER);
     }
 
     false

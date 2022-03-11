@@ -99,10 +99,9 @@ impl UniversalRegionRelations<'_> {
     crate fn postdom_upper_bound(&self, fr1: RegionVid, fr2: RegionVid) -> RegionVid {
         assert!(self.universal_regions.is_universal_region(fr1));
         assert!(self.universal_regions.is_universal_region(fr2));
-        *self
-            .inverse_outlives
-            .postdom_upper_bound(&fr1, &fr2)
-            .unwrap_or(&self.universal_regions.fr_static)
+        self.inverse_outlives
+            .postdom_upper_bound(fr1, fr2)
+            .unwrap_or(self.universal_regions.fr_static)
     }
 
     /// Finds an "upper bound" for `fr` that is not local. In other
@@ -110,7 +109,7 @@ impl UniversalRegionRelations<'_> {
     /// outlives `fr` and (b) is not local.
     ///
     /// (*) If there are multiple competing choices, we return all of them.
-    crate fn non_local_upper_bounds<'a>(&'a self, fr: &'a RegionVid) -> Vec<&'a RegionVid> {
+    crate fn non_local_upper_bounds<'a>(&'a self, fr: RegionVid) -> Vec<RegionVid> {
         debug!("non_local_upper_bound(fr={:?})", fr);
         let res = self.non_local_bounds(&self.inverse_outlives, fr);
         assert!(!res.is_empty(), "can't find an upper bound!?");
@@ -120,7 +119,7 @@ impl UniversalRegionRelations<'_> {
     /// Returns the "postdominating" bound of the set of
     /// `non_local_upper_bounds` for the given region.
     crate fn non_local_upper_bound(&self, fr: RegionVid) -> RegionVid {
-        let upper_bounds = self.non_local_upper_bounds(&fr);
+        let upper_bounds = self.non_local_upper_bounds(fr);
 
         // In case we find more than one, reduce to one for
         // convenience.  This is to prevent us from generating more
@@ -130,7 +129,7 @@ impl UniversalRegionRelations<'_> {
         debug!("non_local_bound: post_dom={:?}", post_dom);
 
         post_dom
-            .and_then(|&post_dom| {
+            .and_then(|post_dom| {
                 // If the mutual immediate postdom is not local, then
                 // there is no non-local result we can return.
                 if !self.universal_regions.is_local_free_region(post_dom) {
@@ -150,7 +149,7 @@ impl UniversalRegionRelations<'_> {
     /// one. See `TransitiveRelation::postdom_upper_bound` for details.
     crate fn non_local_lower_bound(&self, fr: RegionVid) -> Option<RegionVid> {
         debug!("non_local_lower_bound(fr={:?})", fr);
-        let lower_bounds = self.non_local_bounds(&self.outlives, &fr);
+        let lower_bounds = self.non_local_bounds(&self.outlives, fr);
 
         // In case we find more than one, reduce to one for
         // convenience.  This is to prevent us from generating more
@@ -159,7 +158,7 @@ impl UniversalRegionRelations<'_> {
 
         debug!("non_local_bound: post_dom={:?}", post_dom);
 
-        post_dom.and_then(|&post_dom| {
+        post_dom.and_then(|post_dom| {
             // If the mutual immediate postdom is not local, then
             // there is no non-local result we can return.
             if !self.universal_regions.is_local_free_region(post_dom) {
@@ -176,11 +175,11 @@ impl UniversalRegionRelations<'_> {
     fn non_local_bounds<'a>(
         &self,
         relation: &'a TransitiveRelation<RegionVid>,
-        fr0: &'a RegionVid,
-    ) -> Vec<&'a RegionVid> {
+        fr0: RegionVid,
+    ) -> Vec<RegionVid> {
         // This method assumes that `fr0` is one of the universally
         // quantified region variables.
-        assert!(self.universal_regions.is_universal_region(*fr0));
+        assert!(self.universal_regions.is_universal_region(fr0));
 
         let mut external_parents = vec![];
         let mut queue = vec![fr0];
@@ -188,7 +187,7 @@ impl UniversalRegionRelations<'_> {
         // Keep expanding `fr` into its parents until we reach
         // non-local regions.
         while let Some(fr) = queue.pop() {
-            if !self.universal_regions.is_local_free_region(*fr) {
+            if !self.universal_regions.is_local_free_region(fr) {
                 external_parents.push(fr);
                 continue;
             }
@@ -205,17 +204,17 @@ impl UniversalRegionRelations<'_> {
     ///
     /// This will only ever be true for universally quantified regions.
     crate fn outlives(&self, fr1: RegionVid, fr2: RegionVid) -> bool {
-        self.outlives.contains(&fr1, &fr2)
+        self.outlives.contains(fr1, fr2)
     }
 
     /// Returns a vector of free regions `x` such that `fr1: x` is
     /// known to hold.
-    crate fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<&RegionVid> {
-        self.outlives.reachable_from(&fr1)
+    crate fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<RegionVid> {
+        self.outlives.reachable_from(fr1)
     }
 
     /// Returns the _non-transitive_ set of known `outlives` constraints between free regions.
-    crate fn known_outlives(&self) -> impl Iterator<Item = (&RegionVid, &RegionVid)> {
+    crate fn known_outlives(&self) -> impl Iterator<Item = (RegionVid, RegionVid)> + '_ {
         self.outlives.base_edges()
     }
 }

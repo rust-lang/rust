@@ -1,0 +1,26 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/well-known-names.rs:6:7
+   |
+LL | #[cfg(target_oz = "linux")]
+   |       ---------^^^^^^^^^^
+   |       |
+   |       help: did you mean: `target_os`
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition name
+  --> $DIR/well-known-names.rs:13:7
+   |
+LL | #[cfg(features = "foo")]
+   |       --------^^^^^^^^
+   |       |
+   |       help: did you mean: `feature`
+
+warning: unexpected `cfg` condition name
+  --> $DIR/well-known-names.rs:20:7
+   |
+LL | #[cfg(uniw)]
+   |       ^^^^ help: did you mean: `unix`
+
+warning: 3 warnings emitted
+

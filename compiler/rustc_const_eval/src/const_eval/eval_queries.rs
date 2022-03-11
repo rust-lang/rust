@@ -361,16 +361,15 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                 Err(err.struct_error(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
-                    |mut diag| {
+                    |diag| {
                         diag.note(note_on_undefined_behavior_error());
                         diag.note(&format!(
                             "the raw bytes of the constant ({}",
                             display_allocation(
                                 *ecx.tcx,
-                                ecx.tcx.global_alloc(alloc_id).unwrap_memory()
+                                ecx.tcx.global_alloc(alloc_id).unwrap_memory().inner()
                             )
                         ));
-                        diag.emit();
                     },
                 ))
             } else {

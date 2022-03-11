@@ -11,11 +11,13 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::walk_list;
 use rustc_ast::*;
-use rustc_ast_pretty::pprust;
+use rustc_ast_pretty::pprust::{self, State};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{error_code, pluralize, struct_span_err, Applicability};
 use rustc_parse::validate_attr;
-use rustc_session::lint::builtin::{MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY};
+use rustc_session::lint::builtin::{
+    DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
+};
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
@@ -62,8 +64,8 @@ struct AstValidator<'a> {
     /// certain positions.
     is_assoc_ty_bound_banned: bool,
 
-    /// Used to allow `let` expressions in certain syntactic locations.
-    is_let_allowed: bool,
+    /// See [ForbiddenLetReason]
+    forbidden_let_reason: Option<ForbiddenLetReason>,
 
     lint_buffer: &'a mut LintBuffer,
 }
@@ -101,24 +103,68 @@ impl<'a> AstValidator<'a> {
         self.is_tilde_const_allowed = old;
     }
 
-    fn with_let_allowed(&mut self, allowed: bool, f: impl FnOnce(&mut Self, bool)) {
-        let old = mem::replace(&mut self.is_let_allowed, allowed);
+    fn with_let_management(
+        &mut self,
+        forbidden_let_reason: Option<ForbiddenLetReason>,
+        f: impl FnOnce(&mut Self, Option<ForbiddenLetReason>),
+    ) {
+        let old = mem::replace(&mut self.forbidden_let_reason, forbidden_let_reason);
         f(self, old);
-        self.is_let_allowed = old;
+        self.forbidden_let_reason = old;
     }
 
     /// Emits an error banning the `let` expression provided in the given location.
-    fn ban_let_expr(&self, expr: &'a Expr) {
+    fn ban_let_expr(&self, expr: &'a Expr, forbidden_let_reason: ForbiddenLetReason) {
         let sess = &self.session;
         if sess.opts.unstable_features.is_nightly_build() {
-            sess.struct_span_err(expr.span, "`let` expressions are not supported here")
-                .note("only supported directly in conditions of `if`- and `while`-expressions")
-                .note("as well as when nested within `&&` and parentheses in those conditions")
-                .emit();
+            let err = "`let` expressions are not supported here";
+            let mut diag = sess.struct_span_err(expr.span, err);
+            diag.note("only supported directly in conditions of `if` and `while` expressions");
+            diag.note("as well as when nested within `&&` and parentheses in those conditions");
+            if let ForbiddenLetReason::ForbiddenWithOr(span) = forbidden_let_reason {
+                diag.span_note(span, "`||` operators are not allowed in let chain expressions");
+            }
+            diag.emit();
         } else {
             sess.struct_span_err(expr.span, "expected expression, found statement (`let`)")
                 .note("variable declaration using `let` is a statement")
                 .emit();
+        }
+    }
+
+    fn check_gat_where(
+        &mut self,
+        id: NodeId,
+        before_predicates: &[WherePredicate],
+        where_clauses: (ast::TyAliasWhereClause, ast::TyAliasWhereClause),
+    ) {
+        if !before_predicates.is_empty() {
+            let mut state = State::new();
+            if !where_clauses.1.0 {
+                state.space();
+                state.word_space("where");
+            } else {
+                state.word_space(",");
+            }
+            let mut first = true;
+            for p in before_predicates.iter() {
+                if !first {
+                    state.word_space(",");
+                }
+                first = false;
+                state.print_where_predicate(p);
+            }
+            let suggestion = state.s.eof();
+            self.lint_buffer.buffer_lint_with_diagnostic(
+                DEPRECATED_WHERE_CLAUSE_LOCATION,
+                id,
+                where_clauses.0.1,
+                "where clause not allowed here",
+                BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(
+                    where_clauses.1.1.shrink_to_hi(),
+                    suggestion,
+                ),
+            );
         }
     }
 
@@ -454,7 +500,7 @@ impl<'a> AstValidator<'a> {
             .emit();
     }
 
-    fn check_foreign_ty_genericless(&self, generics: &Generics) {
+    fn check_foreign_ty_genericless(&self, generics: &Generics, where_span: Span) {
         let cannot_have = |span, descr, remove_descr| {
             self.err_handler()
                 .struct_span_err(
@@ -477,7 +523,7 @@ impl<'a> AstValidator<'a> {
         }
 
         if !generics.where_clause.predicates.is_empty() {
-            cannot_have(generics.where_clause.span, "`where` clauses", "`where` clause");
+            cannot_have(where_span, "`where` clauses", "`where` clause");
         }
     }
 
@@ -950,39 +996,48 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        self.with_let_allowed(false, |this, let_allowed| match &expr.kind {
-            ExprKind::If(cond, then, opt_else) => {
-                this.visit_block(then);
-                walk_list!(this, visit_expr, opt_else);
-                this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                return;
-            }
-            ExprKind::Let(..) if !let_allowed => this.ban_let_expr(expr),
-            ExprKind::Match(expr, arms) => {
-                this.visit_expr(expr);
-                for arm in arms {
-                    this.visit_expr(&arm.body);
-                    this.visit_pat(&arm.pat);
-                    walk_list!(this, visit_attribute, &arm.attrs);
-                    if let Some(ref guard) = arm.guard {
-                        if let ExprKind::Let(_, ref expr, _) = guard.kind {
-                            this.with_let_allowed(true, |this, _| this.visit_expr(expr));
+        self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
+            match &expr.kind {
+                ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
+                    let forbidden_let_reason = Some(ForbiddenLetReason::ForbiddenWithOr(*span));
+                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(lhs));
+                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(rhs));
+                }
+                ExprKind::If(cond, then, opt_else) => {
+                    this.visit_block(then);
+                    walk_list!(this, visit_expr, opt_else);
+                    this.with_let_management(None, |this, _| this.visit_expr(cond));
+                    return;
+                }
+                ExprKind::Let(..) if let Some(elem) = forbidden_let_reason => {
+                    this.ban_let_expr(expr, elem);
+                },
+                ExprKind::Match(scrutinee, arms) => {
+                    this.visit_expr(scrutinee);
+                    for arm in arms {
+                        this.visit_expr(&arm.body);
+                        this.visit_pat(&arm.pat);
+                        walk_list!(this, visit_attribute, &arm.attrs);
+                        if let Some(guard) = &arm.guard && let ExprKind::Let(_, guard_expr, _) = &guard.kind {
+                            this.with_let_management(None, |this, _| {
+                                this.visit_expr(guard_expr)
+                            });
                             return;
                         }
                     }
                 }
+                ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
+                    this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
+                    return;
+                }
+                ExprKind::While(cond, then, opt_label) => {
+                    walk_list!(this, visit_label, opt_label);
+                    this.visit_block(then);
+                    this.with_let_management(None, |this, _| this.visit_expr(cond));
+                    return;
+                }
+                _ => visit::walk_expr(this, expr),
             }
-            ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
-                this.with_let_allowed(let_allowed, |this, _| visit::walk_expr(this, expr));
-                return;
-            }
-            ExprKind::While(cond, then, opt_label) => {
-                walk_list!(this, visit_label, opt_label);
-                this.visit_block(then);
-                this.with_let_allowed(true, |this, _| this.visit_expr(cond));
-                return;
-            }
-            _ => visit::walk_expr(this, expr),
         });
     }
 
@@ -1223,13 +1278,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 let msg = "free static item without body";
                 self.error_item_without_body(item.span, "static", msg, " = <expr>;");
             }
-            ItemKind::TyAlias(box TyAlias { defaultness, ref bounds, ref ty, .. }) => {
+            ItemKind::TyAlias(box TyAlias {
+                defaultness,
+                where_clauses,
+                ref bounds,
+                ref ty,
+                ..
+            }) => {
                 self.check_defaultness(item.span, defaultness);
                 if ty.is_none() {
                     let msg = "free type alias without body";
                     self.error_item_without_body(item.span, "type", msg, " = <type>;");
                 }
                 self.check_type_no_bounds(bounds, "this context");
+                if where_clauses.1.0 {
+                    let mut err = self.err_handler().struct_span_err(
+                        where_clauses.1.1,
+                        "where clauses are not allowed after the type for type aliases",
+                    );
+                    err.note(
+                        "see issue #89122 <https://github.com/rust-lang/rust/issues/89122> for more information",
+                    );
+                    err.emit();
+                }
             }
             _ => {}
         }
@@ -1245,11 +1316,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_foreign_fn_headerless(fi.ident, fi.span, sig.header);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
-            ForeignItemKind::TyAlias(box TyAlias { defaultness, generics, bounds, ty, .. }) => {
+            ForeignItemKind::TyAlias(box TyAlias {
+                defaultness,
+                generics,
+                where_clauses,
+                bounds,
+                ty,
+                ..
+            }) => {
                 self.check_defaultness(fi.span, *defaultness);
                 self.check_foreign_kind_bodyless(fi.ident, "type", ty.as_ref().map(|b| b.span));
                 self.check_type_no_bounds(bounds, "`extern` blocks");
-                self.check_foreign_ty_genericless(generics);
+                self.check_foreign_ty_genericless(generics, where_clauses.0.1);
                 self.check_foreign_item_ascii_only(fi.ident);
             }
             ForeignItemKind::Static(_, _, body) => {
@@ -1503,9 +1581,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     self.check_impl_item_provided(item.span, body, "function", " { <body> }");
                 }
-                AssocItemKind::TyAlias(box TyAlias { bounds, ty, .. }) => {
+                AssocItemKind::TyAlias(box TyAlias {
+                    generics,
+                    where_clauses,
+                    where_predicates_split,
+                    bounds,
+                    ty,
+                    ..
+                }) => {
                     self.check_impl_item_provided(item.span, ty, "type", " = <type>;");
                     self.check_type_no_bounds(bounds, "`impl`s");
+                    if ty.is_some() {
+                        self.check_gat_where(
+                            item.id,
+                            generics.where_clause.predicates.split_at(*where_predicates_split).0,
+                            *where_clauses,
+                        );
+                    }
                 }
                 _ => {}
             }
@@ -1697,10 +1789,19 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
         is_tilde_const_allowed: false,
         is_impl_trait_banned: false,
         is_assoc_ty_bound_banned: false,
-        is_let_allowed: false,
+        forbidden_let_reason: Some(ForbiddenLetReason::GenericForbidden),
         lint_buffer: lints,
     };
     visit::walk_crate(&mut validator, krate);
 
     validator.has_proc_macro_decls
+}
+
+/// Used to forbid `let` expressions in certain syntactic locations.
+#[derive(Clone, Copy)]
+enum ForbiddenLetReason {
+    /// A let chain with the `||` operator
+    ForbiddenWithOr(Span),
+    /// `let` is not valid and the source environment is not important
+    GenericForbidden,
 }

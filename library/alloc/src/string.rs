@@ -2718,7 +2718,7 @@ impl From<String> for Vec<u8> {
     /// let v1 = Vec::from(s1);
     ///
     /// for b in v1 {
-    ///     println!("{}", b);
+    ///     println!("{b}");
     /// }
     /// ```
     fn from(string: String) -> Vec<u8> {

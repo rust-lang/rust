@@ -4,7 +4,7 @@
 #![feature(try_blocks)]
 #![feature(associated_type_defaults)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![allow(rustc::potential_query_instability)]
 
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
@@ -564,7 +564,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
                 let item = self.tcx.hir().expect_item(def_id);
-                if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }) = item.kind {
+                if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }, _) = item.kind {
                     if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                         self.update(def_id, level);
                     }
@@ -686,7 +686,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Macro(ref macro_def) => {
+            hir::ItemKind::Macro(ref macro_def, _) => {
                 self.update_reachability_from_macro(item.def_id, macro_def);
             }
             hir::ItemKind::ForeignMod { items, .. } => {
@@ -852,7 +852,7 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
                         self.visit(self.ev.tcx.type_of(param.def_id));
                     }
                 }
-                GenericParamDefKind::Const { has_default, .. } => {
+                GenericParamDefKind::Const { has_default } => {
                     self.visit(self.ev.tcx.type_of(param.def_id));
                     if has_default {
                         self.visit(self.ev.tcx.const_param_default(param.def_id));

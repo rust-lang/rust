@@ -89,7 +89,7 @@ crate fn merge_bounds(
     cx: &clean::DocContext<'_>,
     bounds: &mut Vec<clean::GenericBound>,
     trait_did: DefId,
-    name: Symbol,
+    assoc: clean::PathSegment,
     rhs: &clean::Term,
 ) -> bool {
     !bounds.iter_mut().any(|b| {
@@ -107,7 +107,7 @@ crate fn merge_bounds(
         match last.args {
             PP::AngleBracketed { ref mut bindings, .. } => {
                 bindings.push(clean::TypeBinding {
-                    name,
+                    assoc: assoc.clone(),
                     kind: clean::TypeBindingKind::Equality { term: rhs.clone() },
                 });
             }

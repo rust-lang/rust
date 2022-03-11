@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, NestedMetaItem};
+use rustc_ast::{ast, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_feature::{AttributeDuplicates, AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
@@ -178,34 +178,7 @@ impl CheckAttrVisitor<'_> {
                 check_duplicates(self.tcx, attr, hir_id, *duplicates, &mut seen);
             }
 
-            // Warn on useless empty attributes.
-            if matches!(
-                attr.name_or_empty(),
-                sym::macro_use
-                    | sym::allow
-                    | sym::warn
-                    | sym::deny
-                    | sym::forbid
-                    | sym::feature
-                    | sym::repr
-                    | sym::target_feature
-            ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
-            {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build("unused attribute")
-                        .span_suggestion(
-                            attr.span,
-                            "remove this attribute",
-                            String::new(),
-                            Applicability::MachineApplicable,
-                        )
-                        .note(&format!(
-                            "attribute `{}` with an empty list has no effect",
-                            attr.name_or_empty()
-                        ))
-                        .emit();
-                });
-            }
+            self.check_unused_attribute(hir_id, attr)
         }
 
         if !is_valid {
@@ -1111,24 +1084,55 @@ impl CheckAttrVisitor<'_> {
     }
 
     /// Warns against some misuses of `#[must_use]`
-    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, _target: Target) -> bool {
+    fn check_must_use(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) -> bool {
         let node = self.tcx.hir().get(hir_id);
-        if let Some(fn_node) = node.fn_kind() {
-            if let rustc_hir::IsAsync::Async = fn_node.asyncness() {
-                self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-                    lint.build(
-                        "`must_use` attribute on `async` functions \
-                              applies to the anonymous `Future` returned by the \
-                              function, not the value within",
-                    )
-                    .span_label(
-                        span,
-                        "this attribute does nothing, the `Future`s \
-                                returned by async functions are already `must_use`",
-                    )
-                    .emit();
-                });
-            }
+        if let Some(kind) = node.fn_kind() && let rustc_hir::IsAsync::Async = kind.asyncness() {
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(
+                    "`must_use` attribute on `async` functions \
+                    applies to the anonymous `Future` returned by the \
+                    function, not the value within",
+                )
+                .span_label(
+                    span,
+                    "this attribute does nothing, the `Future`s \
+                    returned by async functions are already `must_use`",
+                )
+                .emit();
+            });
+        }
+
+        if !matches!(
+            target,
+            Target::Fn
+                | Target::Enum
+                | Target::Struct
+                | Target::Union
+                | Target::Method(_)
+                | Target::ForeignFn
+                // `impl Trait` in return position can trip
+                // `unused_must_use` if `Trait` is marked as
+                // `#[must_use]`
+                | Target::Trait
+        ) {
+            let article = match target {
+                Target::ExternCrate
+                | Target::OpaqueTy
+                | Target::Enum
+                | Target::Impl
+                | Target::Expression
+                | Target::Arm
+                | Target::AssocConst
+                | Target::AssocTy => "an",
+                _ => "a",
+            };
+
+            self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+                lint.build(&format!(
+                    "`#[must_use]` has no effect when applied to {article} {target}"
+                ))
+                .emit();
+            });
         }
 
         // For now, its always valid
@@ -1341,7 +1345,7 @@ impl CheckAttrVisitor<'_> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) -> bool {
-        let is_function = matches!(target, Target::Fn | Target::Method(..));
+        let is_function = matches!(target, Target::Fn);
         if !is_function {
             self.tcx
                 .sess
@@ -1740,8 +1744,8 @@ impl CheckAttrVisitor<'_> {
     fn check_used(&self, attrs: &[Attribute], target: Target) {
         let mut used_linker_span = None;
         let mut used_compiler_span = None;
-        for attr in attrs {
-            if attr.has_name(sym::used) && target != Target::Static {
+        for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
+            if target != Target::Static {
                 self.tcx
                     .sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
@@ -1938,6 +1942,55 @@ impl CheckAttrVisitor<'_> {
             });
         }
     }
+
+    fn check_unused_attribute(&self, hir_id: HirId, attr: &Attribute) {
+        // Warn on useless empty attributes.
+        let note = if matches!(
+            attr.name_or_empty(),
+            sym::macro_use
+                | sym::allow
+                | sym::expect
+                | sym::warn
+                | sym::deny
+                | sym::forbid
+                | sym::feature
+                | sym::repr
+                | sym::target_feature
+        ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
+        {
+            format!(
+                "attribute `{}` with an empty list has no effect",
+                attr.name_or_empty()
+            )
+        } else if matches!(
+                attr.name_or_empty(),
+                sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+            ) && let Some(meta) = attr.meta_item_list()
+            && meta.len() == 1
+            && let Some(item) = meta[0].meta_item()
+            && let MetaItemKind::NameValue(_) = &item.kind
+            && item.path == sym::reason
+        {
+            format!(
+                "attribute `{}` without any lints has no effect",
+                attr.name_or_empty()
+            )
+        } else {
+            return;
+        };
+
+        self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
+            lint.build("unused attribute")
+                .span_suggestion(
+                    attr.span,
+                    "remove this attribute",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                )
+                .note(&note)
+                .emit();
+        });
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
@@ -1951,7 +2004,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(ref macro_def) = item.kind {
+        if let ItemKind::Macro(ref macro_def, _) = item.kind {
             let def_id = item.def_id.to_def_id();
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
@@ -2095,7 +2148,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                             rustc_errors::Applicability::MachineApplicable,
                         );
                     }
-                    err.emit()
+                    err.emit();
                 }
             }
         }

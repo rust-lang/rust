@@ -1,0 +1,80 @@
+- // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` before InstCombine
++ // MIR for `<impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone` after InstCombine
+  
+  fn <impl at $DIR/combine_clone_of_primitives.rs:6:10: 6:15>::clone(_1: &MyThing<T>) -> MyThing<T> {
+      debug self => _1;                    // in scope 0 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+      let mut _0: MyThing<T>;              // return place in scope 0 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+      let _2: &T;                          // in scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+      let _3: &u64;                        // in scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+      let _4: &[f32; 3];                   // in scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      let mut _5: T;                       // in scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+      let mut _6: &T;                      // in scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+      let _7: &T;                          // in scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+      let mut _8: u64;                     // in scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+      let mut _9: &u64;                    // in scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+      let _10: &u64;                       // in scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+      let mut _11: [f32; 3];               // in scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      let mut _12: &[f32; 3];              // in scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      let _13: &[f32; 3];                  // in scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      scope 1 {
+          debug __self_0_0 => _2;          // in scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          debug __self_0_1 => _3;          // in scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+          debug __self_0_2 => _4;          // in scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      }
+  
+      bb0: {
+          _2 = &((*_1).0: T);              // scope 0 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          _3 = &((*_1).1: u64);            // scope 0 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+          _4 = &((*_1).2: [f32; 3]);       // scope 0 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+-         _7 = &(*_2);                     // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+-         _6 = &(*_7);                     // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
++         _7 = _2;                         // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
++         _6 = _7;                         // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+          _5 = <T as Clone>::clone(move _6) -> bb1; // scope 1 at $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+                                           // mir::Constant
+                                           // + span: $DIR/combine_clone_of_primitives.rs:8:5: 8:9
+                                           // + literal: Const { ty: for<'r> fn(&'r T) -> T {<T as Clone>::clone}, val: Value(Scalar(<ZST>)) }
+      }
+  
+      bb1: {
+-         _10 = &(*_3);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+-         _9 = &(*_10);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+-         _8 = <u64 as Clone>::clone(move _9) -> [return: bb2, unwind: bb4]; // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+-                                          // mir::Constant
+-                                          // + span: $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+-                                          // + literal: Const { ty: for<'r> fn(&'r u64) -> u64 {<u64 as Clone>::clone}, val: Value(Scalar(<ZST>)) }
++         _10 = _3;                        // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
++         _9 = _10;                        // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
++         _8 = (*_9);                      // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
++         goto -> bb2;                     // scope 1 at $DIR/combine_clone_of_primitives.rs:9:5: 9:11
+      }
+  
+      bb2: {
+-         _13 = &(*_4);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+-         _12 = &(*_13);                   // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+-         _11 = <[f32; 3] as Clone>::clone(move _12) -> [return: bb3, unwind: bb4]; // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+-                                          // mir::Constant
+-                                          // + span: $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+-                                          // + literal: Const { ty: for<'r> fn(&'r [f32; 3]) -> [f32; 3] {<[f32; 3] as Clone>::clone}, val: Value(Scalar(<ZST>)) }
++         _13 = _4;                        // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
++         _12 = _13;                       // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
++         _11 = (*_12);                    // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
++         goto -> bb3;                     // scope 1 at $DIR/combine_clone_of_primitives.rs:10:5: 10:16
+      }
+  
+      bb3: {
+          (_0.0: T) = move _5;             // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+          (_0.1: u64) = move _8;           // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+          (_0.2: [f32; 3]) = move _11;     // scope 1 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+          return;                          // scope 0 at $DIR/combine_clone_of_primitives.rs:6:15: 6:15
+      }
+  
+      bb4 (cleanup): {
+          drop(_5) -> bb5;                 // scope 1 at $DIR/combine_clone_of_primitives.rs:6:14: 6:15
+      }
+  
+      bb5 (cleanup): {
+          resume;                          // scope 0 at $DIR/combine_clone_of_primitives.rs:6:10: 6:15
+      }
+  }
+  

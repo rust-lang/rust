@@ -16,7 +16,7 @@ use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -49,11 +49,7 @@ crate struct ParserAnyMacro<'a> {
     is_local: bool,
 }
 
-crate fn annotate_err_with_kind(
-    err: &mut DiagnosticBuilder<'_>,
-    kind: AstFragmentKind,
-    span: Span,
-) {
+crate fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
     match kind {
         AstFragmentKind::Ty => {
             err.span_label(span, "this macro call doesn't expand to a type");
@@ -66,7 +62,7 @@ crate fn annotate_err_with_kind(
 }
 
 fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_>,
+    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
@@ -99,7 +95,7 @@ fn emit_frag_parse_err(
     match kind {
         // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
         AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
-            Err(mut err) => err.cancel(),
+            Err(err) => err.cancel(),
             Ok(_) => {
                 e.note(
                     "the macro call doesn't expand to an expression, but it can expand to a statement",
@@ -584,7 +580,10 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
     use mbe::TokenTree;
     for tt in tts {
         match *tt {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => (),
+            TokenTree::Token(..)
+            | TokenTree::MetaVar(..)
+            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(_, ref del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
@@ -673,7 +672,10 @@ impl FirstSets {
             let mut first = TokenSet::empty();
             for tt in tts.iter().rev() {
                 match *tt {
-                    TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                    TokenTree::Token(..)
+                    | TokenTree::MetaVar(..)
+                    | TokenTree::MetaVarDecl(..)
+                    | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(tt.clone());
                     }
                     TokenTree::Delimited(span, ref delimited) => {
@@ -735,7 +737,10 @@ impl FirstSets {
         for tt in tts.iter() {
             assert!(first.maybe_empty);
             match *tt {
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+                TokenTree::Token(..)
+                | TokenTree::MetaVar(..)
+                | TokenTree::MetaVarDecl(..)
+                | TokenTree::MetaVarExpr(..) => {
                     first.add_one(tt.clone());
                     return first;
                 }
@@ -911,7 +916,10 @@ fn check_matcher_core(
         // First, update `last` so that it corresponds to the set
         // of NT tokens that might end the sequence `... token`.
         match *token {
-            TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarDecl(..) => {
+            TokenTree::Token(..)
+            | TokenTree::MetaVar(..)
+            | TokenTree::MetaVarDecl(..)
+            | TokenTree::MetaVarExpr(..) => {
                 if token_can_be_followed_by_any(token) {
                     // don't need to track tokens that work with any,
                     last.replace_with_irrelevant();

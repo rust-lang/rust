@@ -1,7 +1,6 @@
 #![feature(imported_main)]
 #![feature(type_alias_impl_trait)]
 #![allow(incomplete_features)]
-//~^^^ ERROR `main` function not found in crate
 pub mod foo {
     type MainFn = impl Fn();
     //~^ ERROR could not find defining uses
@@ -11,4 +10,4 @@ pub mod foo {
     //~^ ERROR mismatched types [E0308]
 }
 
-use foo::BAR as main;
+use foo::BAR as main; //~ ERROR `main` function not found in crate

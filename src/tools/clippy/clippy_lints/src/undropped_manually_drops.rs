@@ -1,9 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::path_res;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{match_function_call, paths};
-use rustc_hir::{lang_items, Expr};
+use rustc_hir::{lang_items, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -38,9 +39,12 @@ declare_lint_pass!(UndroppedManuallyDrops => [UNDROPPED_MANUALLY_DROPS]);
 
 impl<'tcx> LateLintPass<'tcx> for UndroppedManuallyDrops {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let Some([arg_0, ..]) = match_function_call(cx, expr, &paths::DROP) {
+        if_chain! {
+            if let ExprKind::Call(fun, [arg_0, ..]) = expr.kind;
+            if path_res(cx, fun).opt_def_id() == cx.tcx.get_diagnostic_item(sym::mem_drop);
             let ty = cx.typeck_results().expr_ty(arg_0);
-            if is_type_lang_item(cx, ty, lang_items::LangItem::ManuallyDrop) {
+            if is_type_lang_item(cx, ty, lang_items::LangItem::ManuallyDrop);
+            then {
                 span_lint_and_help(
                     cx,
                     UNDROPPED_MANUALLY_DROPS,

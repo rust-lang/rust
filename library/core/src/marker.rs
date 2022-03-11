@@ -219,7 +219,7 @@ pub trait StructuralEq {
 ///
 /// // `x` has moved into `y`, and so cannot be used
 ///
-/// // println!("{:?}", x); // error: use of moved value
+/// // println!("{x:?}"); // error: use of moved value
 /// ```
 ///
 /// However, if a type implements `Copy`, it instead has 'copy semantics':
@@ -236,7 +236,7 @@ pub trait StructuralEq {
 ///
 /// // `y` is a copy of `x`
 ///
-/// println!("{:?}", x); // A-OK!
+/// println!("{x:?}"); // A-OK!
 /// ```
 ///
 /// It's important to note that in these two examples, the only difference is whether you

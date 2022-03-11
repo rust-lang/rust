@@ -17,7 +17,7 @@ use rustc_span::{BytePos, Span};
 use crate::diagnostics::BorrowedContentSource;
 use crate::MirBorrowckCtxt;
 use rustc_const_eval::util::collect_writes::FindAssignments;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub(crate) enum AccessKind {
@@ -220,8 +220,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    [
-                        proj_base @ ..,
+                    &[
+                        ref proj_base @ ..,
                         ProjectionElem::Deref,
                         ProjectionElem::Field(field, _),
                         ProjectionElem::Deref,
@@ -342,7 +342,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
                 let tcx = self.infcx.tcx;
-                if let ty::Closure(id, _) = the_place_err.ty(self.body, tcx).ty.kind() {
+                if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
                     self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                 }
             }
@@ -382,7 +382,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let tcx = self.infcx.tcx;
                 if let ty::Ref(_, ty, Mutability::Mut) = the_place_err.ty(self.body, tcx).ty.kind()
                 {
-                    if let ty::Closure(id, _) = ty.kind() {
+                    if let ty::Closure(id, _) = *ty.kind() {
                         self.show_mutating_upvar(tcx, id, the_place_err, &mut err);
                     }
                 }
@@ -687,9 +687,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn show_mutating_upvar(
         &self,
         tcx: TyCtxt<'_>,
-        id: &hir::def_id::DefId,
+        id: hir::def_id::DefId,
         the_place_err: PlaceRef<'tcx>,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
     ) {
         let closure_local_def_id = id.expect_local();
         let tables = tcx.typeck(closure_local_def_id);
@@ -701,7 +701,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let upvar = ty::place_to_string_for_capture(tcx, closure_kind_origin);
                 let root_hir_id = upvar_id.var_path.hir_id;
                 // we have an origin for this closure kind starting at this root variable so it's safe to unwrap here
-                let captured_places = tables.closure_min_captures[id].get(&root_hir_id).unwrap();
+                let captured_places = tables.closure_min_captures[&id].get(&root_hir_id).unwrap();
 
                 let origin_projection = closure_kind_origin
                     .projections
@@ -754,7 +754,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     // Attempt to search similar mutable associated items for suggestion.
     // In the future, attempt in all path but initially for RHS of for_loop
-    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut DiagnosticBuilder<'_>) {
+    fn suggest_similar_mut_method_for_for_loop(&self, err: &mut Diagnostic) {
         use hir::{
             BodyId, Expr,
             ExprKind::{Block, Call, DropTemps, Match, MethodCall},
@@ -843,7 +843,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     }
 
     /// Targeted error when encountering an `FnMut` closure where an `Fn` closure was expected.
-    fn expected_fn_found_fn_mut_call(&self, err: &mut DiagnosticBuilder<'_>, sp: Span, act: &str) {
+    fn expected_fn_found_fn_mut_call(&self, err: &mut Diagnostic, sp: Span, act: &str) {
         err.span_label(sp, format!("cannot {}", act));
 
         let hir = self.infcx.tcx.hir();
@@ -1083,24 +1083,20 @@ fn is_closure_or_generator(ty: Ty<'_>) -> bool {
 fn get_mut_span_in_struct_field<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    field: &mir::Field,
+    field: mir::Field,
 ) -> Option<Span> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::Ref(_, ty, _) = ty.kind() {
-        if let ty::Adt(def, _) = ty.kind() {
-            let field = def.all_fields().nth(field.index())?;
-            // Use the HIR types to construct the diagnostic message.
-            let node = tcx.hir().find_by_def_id(field.did.as_local()?)?;
-            // Now we're dealing with the actual struct that we're going to suggest a change to,
-            // we can expect a field that is an immutable reference to a type.
-            if let hir::Node::Field(field) = node {
-                if let hir::TyKind::Rptr(lifetime, hir::MutTy { mutbl: hir::Mutability::Not, ty }) =
-                    field.ty.kind
-                {
-                    return Some(lifetime.span.between(ty.span));
-                }
-            }
-        }
+    if let ty::Ref(_, ty, _) = ty.kind()
+        && let ty::Adt(def, _) = ty.kind()
+        && let field = def.all_fields().nth(field.index())?
+        // Use the HIR types to construct the diagnostic message.
+        && let node = tcx.hir().find_by_def_id(field.did.as_local()?)?
+        // Now we're dealing with the actual struct that we're going to suggest a change to,
+        // we can expect a field that is an immutable reference to a type.
+        && let hir::Node::Field(field) = node
+        && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+    {
+        return Some(lt.span.between(ty.span));
     }
 
     None

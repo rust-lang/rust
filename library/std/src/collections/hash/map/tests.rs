@@ -515,10 +515,10 @@ fn test_show() {
     map.insert(1, 2);
     map.insert(3, 4);
 
-    let map_str = format!("{:?}", map);
+    let map_str = format!("{map:?}");
 
     assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-    assert_eq!(format!("{:?}", empty), "{}");
+    assert_eq!(format!("{empty:?}"), "{}");
 }
 
 #[test]
@@ -702,7 +702,7 @@ fn test_entry_take_doesnt_corrupt() {
     // Test for #19292
     fn check(m: &HashMap<i32, ()>) {
         for k in m.keys() {
-            assert!(m.contains_key(k), "{} is in keys() but not in the map?", k);
+            assert!(m.contains_key(k), "{k} is in keys() but not in the map?");
         }
     }
 

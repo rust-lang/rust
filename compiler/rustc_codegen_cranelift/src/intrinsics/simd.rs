@@ -159,7 +159,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let idx_bytes = match idx_const {
                     ConstValue::ByRef { alloc, offset } => {
                         let size = Size::from_bytes(4 * ret_lane_count /* size_of([u32; ret_lane_count]) */);
-                        alloc.get_bytes(fx, alloc_range(offset, size)).unwrap()
+                        alloc.inner().get_bytes(fx, alloc_range(offset, size)).unwrap()
                     }
                     _ => unreachable!("{:?}", idx_const),
                 };

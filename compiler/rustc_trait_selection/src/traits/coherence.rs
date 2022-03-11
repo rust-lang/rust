@@ -14,12 +14,13 @@ use crate::traits::{
     PredicateObligations, SelectionContext,
 };
 //use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::traits::specialization_graph::OverlapMode;
-use rustc_middle::ty::fast_reject::{self, SimplifyParams};
+use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -50,7 +51,7 @@ pub struct OverlapResult<'tcx> {
     pub involves_placeholder: bool,
 }
 
-pub fn add_placeholder_note(err: &mut rustc_errors::DiagnosticBuilder<'_>) {
+pub fn add_placeholder_note(err: &mut Diagnostic) {
     err.note(
         "this behavior recently changed as a result of a bug fix; \
          see rust-lang/rust#56105 for details",
@@ -86,8 +87,8 @@ where
         impl2_ref.iter().flat_map(|tref| tref.substs.types()),
     )
     .any(|(ty1, ty2)| {
-        let t1 = fast_reject::simplify_type(tcx, ty1, SimplifyParams::No);
-        let t2 = fast_reject::simplify_type(tcx, ty2, SimplifyParams::No);
+        let t1 = fast_reject::simplify_type(tcx, ty1, TreatParams::AsPlaceholders);
+        let t2 = fast_reject::simplify_type(tcx, ty2, TreatParams::AsPlaceholders);
 
         if let (Some(t1), Some(t2)) = (t1, t2) {
             // Simplified successfully
@@ -327,18 +328,15 @@ fn negative_impl<'cx, 'tcx>(
             impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
 
         // do the impls unify? If not, not disjoint.
-        let more_obligations = match infcx
+        let Ok(InferOk { obligations: more_obligations, .. }) = infcx
             .at(&ObligationCause::dummy(), impl1_env)
             .eq(impl1_trait_ref, impl2_trait_ref)
-        {
-            Ok(InferOk { obligations, .. }) => obligations,
-            Err(_) => {
-                debug!(
-                    "explicit_disjoint: {:?} does not unify with {:?}",
-                    impl1_trait_ref, impl2_trait_ref
-                );
-                return false;
-            }
+        else {
+            debug!(
+                "explicit_disjoint: {:?} does not unify with {:?}",
+                impl1_trait_ref, impl2_trait_ref
+            );
+            return false;
         };
 
         let opt_failing_obligation = obligations

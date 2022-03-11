@@ -153,7 +153,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     if let Some(val_back) = ptr.as_ref() {
-    ///         println!("We got back the value: {}!", val_back);
+    ///         println!("We got back the value: {val_back}!");
     ///     }
     /// }
     /// ```
@@ -169,7 +169,7 @@ impl<T: ?Sized> *const T {
     ///
     /// unsafe {
     ///     let val_back = &*ptr;
-    ///     println!("We got back the value: {}!", val_back);
+    ///     println!("We got back the value: {val_back}!");
     /// }
     /// ```
     #[stable(feature = "ptr_as_ref", since = "1.9.0")]
@@ -1032,10 +1032,11 @@ impl<T> *const [T] {
     /// }
     /// ```
     #[unstable(feature = "slice_ptr_get", issue = "74265")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
+    pub const unsafe fn get_unchecked<I>(self, index: I) -> *const I::Output
     where
-        I: SliceIndex<[T]>,
+        I: ~const SliceIndex<[T]>,
     {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         unsafe { index.get_unchecked(self) }

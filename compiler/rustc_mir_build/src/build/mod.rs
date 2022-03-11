@@ -2,7 +2,7 @@ use crate::build;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
 use crate::thir::pattern::pat_from_hir;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
@@ -714,7 +714,7 @@ fn construct_error<'a, 'tcx>(
     hir_id: hir::HirId,
     body_id: hir::BodyId,
     body_owner_kind: hir::BodyOwnerKind,
-    err: ErrorReported,
+    err: ErrorGuaranteed,
 ) -> Body<'tcx> {
     let tcx = infcx.tcx;
     let span = tcx.hir().span(hir_id);
@@ -877,14 +877,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let arg_local = self.local_decls.push(LocalDecl::with_source_info(ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(arg) = arg_opt {
-                if let Some(ident) = arg.pat.simple_ident() {
-                    self.var_debug_info.push(VarDebugInfo {
-                        name: ident.name,
-                        source_info,
-                        value: VarDebugInfoContents::Place(arg_local.into()),
-                    });
-                }
+            if let Some(arg) = arg_opt && let Some(ident) = arg.pat.simple_ident() {
+                self.var_debug_info.push(VarDebugInfo {
+                    name: ident.name,
+                    source_info,
+                    value: VarDebugInfoContents::Place(arg_local.into()),
+                });
             }
         }
 

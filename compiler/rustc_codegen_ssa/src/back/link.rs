@@ -1,8 +1,9 @@
 use rustc_arena::TypedArena;
+use rustc_ast::CRATE_NODE_ID;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::dependency_format::Linkage;
@@ -57,7 +58,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(
     sess: &'a Session,
     codegen_results: &CodegenResults,
     outputs: &OutputFilenames,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types().iter() {
@@ -260,7 +261,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
     flavor: RlibFlavor,
     out_filename: &Path,
     tmpdir: &MaybeTempDir,
-) -> Result<B, ErrorReported> {
+) -> Result<B, ErrorGuaranteed> {
     info!("preparing rlib to {:?}", out_filename);
 
     let lib_search_paths = archive_search_paths(sess);
@@ -407,7 +408,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(
 fn collate_raw_dylibs(
     sess: &Session,
     used_libraries: &[NativeLib],
-) -> Result<Vec<(String, Vec<DllImport>)>, ErrorReported> {
+) -> Result<Vec<(String, Vec<DllImport>)>, ErrorGuaranteed> {
     // Use index maps to preserve original order of imports and libraries.
     let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
 
@@ -459,7 +460,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     let mut ab =
         link_rlib::<B>(sess, codegen_results, RlibFlavor::StaticlibBase, out_filename, tempdir)?;
     let mut all_native_libs = vec![];
@@ -989,7 +990,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
         //
-        // We cannot rely on the .o paths in the exectuable because they may have been
+        // We cannot rely on the .o paths in the executable because they may have been
         // remapped by --remap-path-prefix and therefore invalid, so we need to provide
         // the .o/.dwo paths explicitly.
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
@@ -2434,7 +2435,7 @@ fn add_upstream_native_libraries(
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
     match lib.cfg {
-        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, None),
+        Some(ref cfg) => rustc_attr::cfg_matches(cfg, &sess.parse_sess, CRATE_NODE_ID, None),
         None => true,
     }
 }

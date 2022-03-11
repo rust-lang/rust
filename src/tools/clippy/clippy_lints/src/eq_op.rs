@@ -6,9 +6,7 @@ use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::{ast_utils::is_useless_with_eq_exprs, eq_expr_value, is_in_test_function};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{
-    def::Res, def_id::DefId, BinOpKind, BorrowKind, Expr, ExprKind, GenericArg, ItemKind, QPath, TyKind,
-};
+use rustc_hir::{def::Res, def_id::DefId, BinOpKind, BorrowKind, Expr, ExprKind, GenericArg, ItemKind, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -279,7 +277,11 @@ impl<'tcx> LateLintPass<'tcx> for EqOp {
     }
 }
 
-fn in_impl<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, bin_op: DefId) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
+fn in_impl<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx Expr<'_>,
+    bin_op: DefId,
+) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
     if_chain! {
         if let Some(block) = get_enclosing_block(cx, e.hir_id);
         if let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id());

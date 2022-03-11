@@ -1,4 +1,4 @@
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
@@ -18,8 +18,8 @@ use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
 
 use crate::interpret::{
-    self, compile_time_machine, AllocId, Allocation, Frame, ImmTy, InterpCx, InterpResult, OpTy,
-    PlaceTy, Scalar, StackPopUnwind,
+    self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
+    OpTy, PlaceTy, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -217,8 +217,9 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Comparisons of abstract pointers with null pointers are known if the pointer
             // is in bounds, because if they are in bounds, the pointer can't be null.
             // Inequality with integers other than null can never be known for sure.
-            (Scalar::Int(int), Scalar::Ptr(ptr, _)) | (Scalar::Ptr(ptr, _), Scalar::Int(int)) => {
-                int.is_null() && !self.memory.ptr_may_be_null(ptr.into())
+            (Scalar::Int(int), ptr @ Scalar::Ptr(..))
+            | (ptr @ Scalar::Ptr(..), Scalar::Int(int)) => {
+                int.is_null() && !self.scalar_may_be_null(ptr)
             }
             // FIXME: return `true` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
@@ -250,7 +251,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
-                    throw_inval!(AlreadyReported(ErrorReported {}));
+                    throw_inval!(AlreadyReported(ErrorGuaranteed {}));
                 } else {
                     let path = ecx.tcx.def_path_str(def.did);
                     Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))
@@ -474,13 +475,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn before_access_global(
         memory_extra: &MemoryExtra,
         alloc_id: AllocId,
-        allocation: &Allocation,
+        alloc: ConstAllocation<'tcx>,
         static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
+        let alloc = alloc.inner();
         if is_write {
             // Write access. These are never allowed, but we give a targeted error message.
-            if allocation.mutability == Mutability::Not {
+            if alloc.mutability == Mutability::Not {
                 Err(err_ub!(WriteToReadOnly(alloc_id)).into())
             } else {
                 Err(ConstEvalErrKind::ModifiedGlobal.into())
@@ -503,7 +505,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // But make sure we never accept a read from something mutable, that would be
                 // unsound. The reason is that as the content of this allocation may be different
                 // now and at run-time, so if we permit reading now we might return the wrong value.
-                assert_eq!(allocation.mutability, Mutability::Not);
+                assert_eq!(alloc.mutability, Mutability::Not);
                 Ok(())
             }
         }

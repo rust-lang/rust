@@ -85,9 +85,16 @@ rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
     pub struct LocalExpnId {
         ENCODABLE = custom
+        ORD_IMPL = custom
         DEBUG_FORMAT = "expn{}"
     }
 }
+
+// To ensure correctness of incremental compilation,
+// `LocalExpnId` must not implement `Ord` or `PartialOrd`.
+// See https://github.com/rust-lang/rust/issues/90317.
+impl !Ord for LocalExpnId {}
+impl !PartialOrd for LocalExpnId {}
 
 /// Assert that the provided `HashStableContext` is configured with the 'default'
 /// `HashingControls`. We should always have bailed out before getting to here
@@ -874,19 +881,13 @@ impl Span {
     /// other compiler-generated code to set per-span properties like allowed unstable features.
     /// The returned span belongs to the created expansion and has the new properties,
     /// but its location is inherited from the current span.
-    pub fn fresh_expansion(self, expn_data: ExpnData, ctx: impl HashStableContext) -> Span {
-        self.fresh_expansion_with_transparency(expn_data, Transparency::Transparent, ctx)
-    }
-
-    pub fn fresh_expansion_with_transparency(
-        self,
-        expn_data: ExpnData,
-        transparency: Transparency,
-        ctx: impl HashStableContext,
-    ) -> Span {
-        let expn_id = LocalExpnId::fresh(expn_data, ctx).to_expn_id();
+    pub fn fresh_expansion(self, expn_id: LocalExpnId) -> Span {
         HygieneData::with(|data| {
-            self.with_ctxt(data.apply_mark(SyntaxContext::root(), expn_id, transparency))
+            self.with_ctxt(data.apply_mark(
+                SyntaxContext::root(),
+                expn_id.to_expn_id(),
+                Transparency::Transparent,
+            ))
         })
     }
 
@@ -903,7 +904,8 @@ impl Span {
             allow_internal_unstable,
             ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None, None)
         };
-        self.fresh_expansion(expn_data, ctx)
+        let expn_id = LocalExpnId::fresh(expn_data, ctx);
+        self.fresh_expansion(expn_id)
     }
 }
 

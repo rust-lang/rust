@@ -84,8 +84,8 @@ fn test_format_macro_interface() {
     }
     t!(format!("{:p}", 0x1234 as *const isize), "0x1234");
     t!(format!("{:p}", 0x1234 as *mut isize), "0x1234");
-    t!(format!("{:x}", A), "aloha");
-    t!(format!("{:X}", B), "adios");
+    t!(format!("{A:x}"), "aloha");
+    t!(format!("{B:X}"), "adios");
     t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
     t!(format!("{1} {0}", 0, 1), "1 0");
     t!(format!("{foo} {bar}", foo = 0, bar = 1), "0 1");
@@ -94,11 +94,11 @@ fn test_format_macro_interface() {
     t!(format!("{_foo}", _foo = 6usize), "6");
     t!(format!("{foo_bar}", foo_bar = 1), "1");
     t!(format!("{}", 5 + 5), "10");
-    t!(format!("{:#4}", C), "☃123");
-    t!(format!("{:b}", D), "aa☃bb");
+    t!(format!("{C:#4}"), "☃123");
+    t!(format!("{D:b}"), "aa☃bb");
 
     let a: &dyn fmt::Debug = &1;
-    t!(format!("{:?}", a), "1");
+    t!(format!("{a:?}"), "1");
 
     // Formatting strings and their arguments
     t!(format!("{}", "a"), "a");
@@ -206,7 +206,7 @@ fn test_format_macro_interface() {
     // Test that pointers don't get truncated.
     {
         let val = usize::MAX;
-        let exp = format!("{:#x}", val);
+        let exp = format!("{val:#x}");
         t!(format!("{:p}", val as *const isize), exp);
     }
 
@@ -216,14 +216,14 @@ fn test_format_macro_interface() {
 
     // make sure that format! doesn't move out of local variables
     let a = Box::new(3);
-    format!("{}", a);
-    format!("{}", a);
+    format!("{a}");
+    format!("{a}");
 
     // make sure that format! doesn't cause spurious unused-unsafe warnings when
     // it's inside of an outer unsafe block
     unsafe {
         let a: isize = ::std::mem::transmute(3_usize);
-        format!("{}", a);
+        format!("{a}");
     }
 
     // test that trailing commas are acceptable
@@ -315,9 +315,9 @@ fn test_once() {
 #[test]
 fn test_refcell() {
     let refcell = RefCell::new(5);
-    assert_eq!(format!("{:?}", refcell), "RefCell { value: 5 }");
+    assert_eq!(format!("{refcell:?}"), "RefCell { value: 5 }");
     let borrow = refcell.borrow_mut();
-    assert_eq!(format!("{:?}", refcell), "RefCell { value: <borrowed> }");
+    assert_eq!(format!("{refcell:?}"), "RefCell { value: <borrowed> }");
     drop(borrow);
-    assert_eq!(format!("{:?}", refcell), "RefCell { value: 5 }");
+    assert_eq!(format!("{refcell:?}"), "RefCell { value: 5 }");
 }

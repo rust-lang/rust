@@ -13,6 +13,7 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+impl Copy for i64 {}
 
 // CHECK: define x86_64_sysvcc i64 @has_sysv64_abi
 #[no_mangle]

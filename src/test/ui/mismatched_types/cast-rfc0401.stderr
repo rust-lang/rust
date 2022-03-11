@@ -148,11 +148,13 @@ error[E0606]: casting `char` as `*const u8` is invalid
 LL |     let _ = 'a' as *const u8;
    |             ^^^^^^^^^^^^^^^^
 
-error[E0606]: casting `usize` as `*const [u8]` is invalid
-  --> $DIR/cast-rfc0401.rs:51:13
+error[E0606]: cannot cast `usize` to a pointer that is wide
+  --> $DIR/cast-rfc0401.rs:51:24
    |
 LL |     let _ = 42usize as *const [u8];
-   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |             -------    ^^^^^^^^^^^ creating a `*const [u8]` requires both an address and a length
+   |             |
+   |             consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
 error[E0607]: cannot cast thin pointer `*const u8` to fat pointer `*const [u8]`
   --> $DIR/cast-rfc0401.rs:52:13

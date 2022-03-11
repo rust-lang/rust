@@ -5,8 +5,6 @@ LL |     enum E {
    |           - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         E1(&'a isize)
    |             ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:31:13
@@ -15,8 +13,6 @@ LL |     struct S {
    |             - help: consider introducing lifetime `'a` here: `<'a>`
 LL |         f: &'a isize
    |             ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:16:24
@@ -24,7 +20,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |     fn m4(&self, arg: &'b isize) { }
    |                        ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
@@ -40,7 +35,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |     fn m5(&'b self) { }
    |            ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
@@ -56,7 +50,6 @@ error[E0261]: use of undeclared lifetime name `'b`
 LL |     fn m6(&self, arg: Foo<'b>) { }
    |                           ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'b` here
    |
 LL | impl<'b, 'a> Foo<'a> {
@@ -73,8 +66,6 @@ LL |     type X = Option<&'a isize>;
    |           -          ^^ undeclared lifetime
    |           |
    |           help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:33:14
@@ -83,8 +74,6 @@ LL |     fn f(a: &'a isize) { }
    |         -    ^^ undeclared lifetime
    |         |
    |         help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:41:17
@@ -93,8 +82,6 @@ LL | fn fn_types(a: &'a isize,
    |            -    ^^ undeclared lifetime
    |            |
    |            help: consider introducing lifetime `'a` here: `<'a>`
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'b`
   --> $DIR/regions-name-undeclared.rs:43:36
@@ -103,7 +90,6 @@ LL | ...                   &'b isize,
    |                        ^^ undeclared lifetime
    |
    = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
@@ -120,7 +106,6 @@ LL | ...                   &'b isize)>,
    |                        ^^ undeclared lifetime
    |
    = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'b` here
    |
 LL | fn fn_types<'b>(a: &'a isize,
@@ -138,8 +123,6 @@ LL | fn fn_types(a: &'a isize,
 ...
 LL |             c: &'a isize)
    |                 ^^ undeclared lifetime
-   |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/regions-name-undeclared.rs:53:31
@@ -147,7 +130,6 @@ error[E0261]: use of undeclared lifetime name `'a`
 LL |     async fn buggy(&self) -> &'a str {
    |                               ^^ undeclared lifetime
    |
-   = help: if you want to experiment with in-band lifetime bindings, add `#![feature(in_band_lifetimes)]` to the crate attributes
 help: consider introducing lifetime `'a` here
    |
 LL | impl<'a> Bug {

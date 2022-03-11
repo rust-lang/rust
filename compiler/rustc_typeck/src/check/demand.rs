@@ -4,7 +4,7 @@ use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::ObligationCause;
 
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
@@ -23,7 +23,7 @@ use std::iter;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
@@ -57,7 +57,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -67,7 +67,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match self.at(cause, self.param_env).sup(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -88,7 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -97,7 +97,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match self.at(cause, self.param_env).eq(expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -134,7 +134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase, None) {
@@ -155,7 +155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn annotate_expected_due_to_let_ty(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         error: TypeError<'_>,
     ) {
@@ -251,7 +251,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !lhs.is_syntactic_place_expr() {
                     // We already emitted E0070 "invalid left-hand side of assignment", so we
                     // silence this.
-                    err.delay_as_bug();
+                    err.downgrade_to_delayed_bug();
                 }
             }
             _ => {}
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// sole field is of the found type, suggest such variants. (Issue #42764)
     fn suggest_compatible_variants(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
@@ -276,11 +276,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // we suggest adding a separate return expression instead.
             // (To avoid things like suggesting `Ok(while .. { .. })`.)
             if expr_ty.is_unit() {
+                let mut id = expr.hir_id;
+                let mut parent;
+
+                // Unroll desugaring, to make sure this works for `for` loops etc.
+                loop {
+                    parent = self.tcx.hir().get_parent_node(id);
+                    if let Some(parent_span) = self.tcx.hir().opt_span(parent) {
+                        if parent_span.find_ancestor_inside(expr.span).is_some() {
+                            // The parent node is part of the same span, so is the result of the
+                            // same expansion/desugaring and not the 'real' parent node.
+                            id = parent;
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
                 if let Some(hir::Node::Block(&hir::Block {
                     span: block_span, expr: Some(e), ..
-                })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+                })) = self.tcx.hir().find(parent)
                 {
-                    if e.hir_id == expr.hir_id {
+                    if e.hir_id == id {
                         if let Some(span) = expr.span.find_ancestor_inside(block_span) {
                             let return_suggestions =
                                 if self.tcx.is_diagnostic_item(sym::Result, expected_adt.did) {
@@ -470,7 +487,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let self_ty = self.typeck_results.borrow().node_type(method_expr[0].hir_id);
+        let self_ty = self.typeck_results.borrow().expr_ty(&method_expr[0]);
         let self_ty = format!("{:?}", self_ty);
         let name = method_path.ident.name;
         let is_as_ref_able = (self_ty.starts_with("&std::option::Option")
@@ -566,7 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
-    ) -> Option<(Span, &'static str, String, Applicability, bool /* verbose */)> {
+    ) -> Option<(Span, String, String, Applicability, bool /* verbose */)> {
         let sess = self.sess();
         let sp = expr.span;
 
@@ -587,34 +604,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (&expr.kind, expected.kind(), checked_ty.kind()) {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprKind::Lit(_) = expr.kind {
-                        if let Ok(src) = sm.span_to_snippet(sp) {
-                            if replace_prefix(&src, "b\"", "\"").is_some() {
+                    if let hir::ExprKind::Lit(_) = expr.kind
+                        && let Ok(src) = sm.span_to_snippet(sp)
+                        && replace_prefix(&src, "b\"", "\"").is_some()
+                    {
                                 let pos = sp.lo() + BytePos(1);
                                 return Some((
                                     sp.with_hi(pos),
-                                    "consider removing the leading `b`",
+                                    "consider removing the leading `b`".to_string(),
                                     String::new(),
                                     Applicability::MachineApplicable,
                                     true,
                                 ));
                             }
                         }
-                    }
-                }
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
-                    if let hir::ExprKind::Lit(_) = expr.kind {
-                        if let Ok(src) = sm.span_to_snippet(sp) {
-                            if replace_prefix(&src, "\"", "b\"").is_some() {
+                    if let hir::ExprKind::Lit(_) = expr.kind
+                        && let Ok(src) = sm.span_to_snippet(sp)
+                        && replace_prefix(&src, "\"", "b\"").is_some()
+                    {
                                 return Some((
                                     sp.shrink_to_lo(),
-                                    "consider adding a leading `b`",
+                                    "consider adding a leading `b`".to_string(),
                                     "b".to_string(),
                                     Applicability::MachineApplicable,
                                     true,
                                 ));
-                            }
-                        }
+
                     }
                 }
                 _ => {}
@@ -669,7 +685,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(sugg) = self.can_use_as_ref(expr) {
                             return Some((
                                 sugg.0,
-                                sugg.1,
+                                sugg.1.to_string(),
                                 sugg.2,
                                 Applicability::MachineApplicable,
                                 false,
@@ -697,7 +713,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     return Some((
                                         left_expr.span.shrink_to_lo(),
                                         "consider dereferencing here to assign to the mutable \
-                                         borrowed piece of memory",
+                                         borrowed piece of memory"
+                                            .to_string(),
                                         "*".to_string(),
                                         Applicability::MachineApplicable,
                                         true,
@@ -709,14 +726,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Some(match mutability {
                             hir::Mutability::Mut => (
                                 sp,
-                                "consider mutably borrowing here",
+                                "consider mutably borrowing here".to_string(),
                                 format!("{}&mut {}", prefix, sugg_expr),
                                 Applicability::MachineApplicable,
                                 false,
                             ),
                             hir::Mutability::Not => (
                                 sp,
-                                "consider borrowing here",
+                                "consider borrowing here".to_string(),
                                 format!("{}&{}", prefix, sugg_expr),
                                 Applicability::MachineApplicable,
                                 false,
@@ -745,7 +762,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if sm.span_to_snippet(call_span).is_ok() {
                             return Some((
                                 sp.with_hi(call_span.lo()),
-                                "consider removing the borrow",
+                                "consider removing the borrow".to_string(),
                                 String::new(),
                                 Applicability::MachineApplicable,
                                 true,
@@ -758,7 +775,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if sm.span_to_snippet(expr.span).is_ok() {
                         return Some((
                             sp.with_hi(expr.span.lo()),
-                            "consider removing the borrow",
+                            "consider removing the borrow".to_string(),
                             String::new(),
                             Applicability::MachineApplicable,
                             true,
@@ -824,7 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } {
                                 return Some((
                                     span,
-                                    "consider dereferencing",
+                                    "consider dereferencing".to_string(),
                                     src,
                                     applicability,
                                     true,
@@ -835,60 +852,93 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             _ if sp == expr.span => {
-                if let Some(steps) = self.deref_steps(checked_ty, expected) {
-                    let expr = expr.peel_blocks();
+                if let Some(mut steps) = self.deref_steps(checked_ty, expected) {
+                    let mut expr = expr.peel_blocks();
+                    let mut prefix_span = expr.span.shrink_to_lo();
+                    let mut remove = String::new();
 
-                    if steps == 1 {
+                    // Try peeling off any existing `&` and `&mut` to reach our target type
+                    while steps > 0 {
                         if let hir::ExprKind::AddrOf(_, mutbl, inner) = expr.kind {
                             // If the expression has `&`, removing it would fix the error
-                            let prefix_span = expr.span.with_hi(inner.span.lo());
-                            let message = match mutbl {
-                                hir::Mutability::Not => "consider removing the `&`",
-                                hir::Mutability::Mut => "consider removing the `&mut`",
+                            prefix_span = prefix_span.with_hi(inner.span.lo());
+                            expr = inner;
+                            remove += match mutbl {
+                                hir::Mutability::Not => "&",
+                                hir::Mutability::Mut => "&mut ",
                             };
-                            let suggestion = String::new();
-                            return Some((
-                                prefix_span,
-                                message,
-                                suggestion,
-                                Applicability::MachineApplicable,
-                                false,
-                            ));
+                            steps -= 1;
+                        } else {
+                            break;
                         }
+                    }
+                    // If we've reached our target type with just removing `&`, then just print now.
+                    if steps == 0 {
+                        return Some((
+                            prefix_span,
+                            format!("consider removing the `{}`", remove.trim()),
+                            String::new(),
+                            // Do not remove `&&` to get to bool, because it might be something like
+                            // { a } && b, which we have a separate fixup suggestion that is more
+                            // likely correct...
+                            if remove.trim() == "&&" && expected == self.tcx.types.bool {
+                                Applicability::MaybeIncorrect
+                            } else {
+                                Applicability::MachineApplicable
+                            },
+                            true,
+                        ));
+                    }
 
-                        // For this suggestion to make sense, the type would need to be `Copy`,
-                        // or we have to be moving out of a `Box<T>`
-                        if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
-                            || checked_ty.is_box()
-                        {
-                            let message = if checked_ty.is_box() {
-                                "consider unboxing the value"
-                            } else if checked_ty.is_region_ptr() {
-                                "consider dereferencing the borrow"
-                            } else {
-                                "consider dereferencing the type"
-                            };
-                            let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
-                                Some(ident) => format!("{}: ", ident),
-                                None => String::new(),
-                            };
-                            let (span, suggestion) = if self.is_else_if_block(expr) {
-                                // Don't suggest nonsense like `else *if`
-                                return None;
-                            } else if let Some(expr) = self.maybe_get_block_expr(expr) {
-                                // prefix should be empty here..
-                                (expr.span.shrink_to_lo(), "*".to_string())
-                            } else {
-                                (expr.span.shrink_to_lo(), format!("{}*", prefix))
-                            };
-                            return Some((
-                                span,
-                                message,
-                                suggestion,
-                                Applicability::MachineApplicable,
-                                true,
-                            ));
-                        }
+                    // For this suggestion to make sense, the type would need to be `Copy`,
+                    // or we have to be moving out of a `Box<T>`
+                    if self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp)
+                        // FIXME(compiler-errors): We can actually do this if the checked_ty is
+                        // `steps` layers of boxes, not just one, but this is easier and most likely.
+                        || (checked_ty.is_box() && steps == 1)
+                    {
+                        let deref_kind = if checked_ty.is_box() {
+                            "unboxing the value"
+                        } else if checked_ty.is_region_ptr() {
+                            "dereferencing the borrow"
+                        } else {
+                            "dereferencing the type"
+                        };
+
+                        // Suggest removing `&` if we have removed any, otherwise suggest just
+                        // dereferencing the remaining number of steps.
+                        let message = if remove.is_empty() {
+                            format!("consider {}", deref_kind)
+                        } else {
+                            format!(
+                                "consider removing the `{}` and {} instead",
+                                remove.trim(),
+                                deref_kind
+                            )
+                        };
+
+                        let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
+                            Some(ident) => format!("{}: ", ident),
+                            None => String::new(),
+                        };
+
+                        let (span, suggestion) = if self.is_else_if_block(expr) {
+                            // Don't suggest nonsense like `else *if`
+                            return None;
+                        } else if let Some(expr) = self.maybe_get_block_expr(expr) {
+                            // prefix should be empty here..
+                            (expr.span.shrink_to_lo(), "*".to_string())
+                        } else {
+                            (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
+                        };
+
+                        return Some((
+                            span,
+                            message,
+                            suggestion,
+                            Applicability::MachineApplicable,
+                            true,
+                        ));
                     }
                 }
             }
@@ -899,7 +949,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_for_cast(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -1039,7 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
 
         let suggest_fallible_into_or_lhs_from =
-            |err: &mut DiagnosticBuilder<'_>, exp_to_found_is_fallible: bool| {
+            |err: &mut Diagnostic, exp_to_found_is_fallible: bool| {
                 // If we know the expression the expected type is derived from, we might be able
                 // to suggest a widening conversion rather than a narrowing one (which may
                 // panic). For example, given x: u8 and y: u32, if we know the span of "x",
@@ -1083,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         let suggest_to_change_suffix_or_into =
-            |err: &mut DiagnosticBuilder<'_>,
+            |err: &mut Diagnostic,
              found_to_exp_is_fallible: bool,
              exp_to_found_is_fallible: bool| {
                 let exp_is_lhs =
@@ -1282,11 +1332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     // Report the type inferred by the return statement.
-    fn report_closure_inferred_return_type(
-        &self,
-        err: &mut DiagnosticBuilder<'_>,
-        expected: Ty<'tcx>,
-    ) {
+    fn report_closure_inferred_return_type(&self, err: &mut Diagnostic, expected: Ty<'tcx>) {
         if let Some(sp) = self.ret_coercion_span.get() {
             // If the closure has an explicit return type annotation, or if
             // the closure's return type has been inferred from outside

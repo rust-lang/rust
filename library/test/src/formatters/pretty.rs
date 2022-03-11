@@ -96,7 +96,7 @@ impl<T: Write> PrettyFormatter<T> {
         exec_time: Option<&time::TestExecTime>,
     ) -> io::Result<()> {
         if let (Some(opts), Some(time)) = (self.time_options, exec_time) {
-            let time_str = format!(" <{}>", time);
+            let time_str = format!(" <{time}>");
 
             let color = if self.use_color {
                 if opts.is_critical(desc, time) {
@@ -124,7 +124,7 @@ impl<T: Write> PrettyFormatter<T> {
         inputs: &Vec<(TestDesc, Vec<u8>)>,
         results_type: &str,
     ) -> io::Result<()> {
-        let results_out_str = format!("\n{}:\n", results_type);
+        let results_out_str = format!("\n{results_type}:\n");
 
         self.write_plain(&results_out_str)?;
 
@@ -147,7 +147,7 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_plain(&results_out_str)?;
         results.sort();
         for name in &results {
-            self.write_plain(&format!("    {}\n", name))?;
+            self.write_plain(&format!("    {name}\n"))?;
         }
         Ok(())
     }
@@ -167,9 +167,9 @@ impl<T: Write> PrettyFormatter<T> {
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         if let Some(test_mode) = desc.test_mode() {
-            self.write_plain(&format!("test {} - {} ... ", name, test_mode))?;
+            self.write_plain(&format!("test {name} - {test_mode} ... "))?;
         } else {
-            self.write_plain(&format!("test {} ... ", name))?;
+            self.write_plain(&format!("test {name} ... "))?;
         }
 
         Ok(())
@@ -180,11 +180,11 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         let noun = if test_count != 1 { "tests" } else { "test" };
         let shuffle_seed_msg = if let Some(shuffle_seed) = shuffle_seed {
-            format!(" (shuffle seed: {})", shuffle_seed)
+            format!(" (shuffle seed: {shuffle_seed})")
         } else {
             String::new()
         };
-        self.write_plain(&format!("\nrunning {} {}{}\n", test_count, noun, shuffle_seed_msg))
+        self.write_plain(&format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -266,7 +266,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         self.write_plain(&s)?;
 
         if let Some(ref exec_time) = state.exec_time {
-            let time_str = format!("; finished in {}", exec_time);
+            let time_str = format!("; finished in {exec_time}");
             self.write_plain(&time_str)?;
         }
 

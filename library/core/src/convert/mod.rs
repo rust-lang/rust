@@ -300,7 +300,8 @@ pub trait Into<T>: Sized {
 /// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
 /// details.
 ///
-/// **Note: This trait must not fail**. If the conversion can fail, use [`TryFrom`].
+/// **Note: This trait must not fail**. The `From` trait is intended for perfect conversions.
+/// If the conversion can fail or is not perfect, use [`TryFrom`].
 ///
 /// # Generic Implementations
 ///
@@ -690,7 +691,8 @@ impl AsMut<str> for str {
 pub enum Infallible {}
 
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-impl Clone for Infallible {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl const Clone for Infallible {
     fn clone(&self) -> Infallible {
         match *self {}
     }

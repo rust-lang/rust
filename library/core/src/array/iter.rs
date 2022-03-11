@@ -93,7 +93,7 @@ impl<T, const N: usize> IntoIter<T, N> {
     ///
     /// - The `buffer[initialized]` elements must all be initialized.
     /// - The range must be canonical, with `initialized.start <= initialized.end`.
-    /// - The range must in in-bounds for the buffer, with `initialized.end <= N`.
+    /// - The range must be in-bounds for the buffer, with `initialized.end <= N`.
     ///   (Like how indexing `[0][100..100]` fails despite the range being empty.)
     ///
     /// It's sound to have more elements initialized than mentioned, though that

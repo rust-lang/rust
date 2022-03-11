@@ -551,7 +551,7 @@ mod parse {
     crate fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
         match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
-                *slot = ::num_cpus::get();
+                *slot = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
                 true
             }
             Some(i) => {
@@ -978,9 +978,10 @@ mod parse {
         true
     }
 
-    crate fn parse_branch_protection(slot: &mut BranchProtection, v: Option<&str>) -> bool {
+    crate fn parse_branch_protection(slot: &mut Option<BranchProtection>, v: Option<&str>) -> bool {
         match v {
             Some(s) => {
+                let slot = slot.get_or_insert_default();
                 for opt in s.split(',') {
                     match opt {
                         "bti" => slot.bti = true,
@@ -1155,7 +1156,7 @@ options! {
         (default: no)"),
     borrowck: String = ("migrate".to_string(), parse_string, [UNTRACKED],
         "select which borrowck is used (`mir` or `migrate`) (default: `migrate`)"),
-    branch_protection: BranchProtection = (BranchProtection::default(), parse_branch_protection, [TRACKED],
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
@@ -1336,9 +1337,6 @@ options! {
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
-    partially_uninit_const_threshold: Option<usize> = (None, parse_opt_number, [TRACKED],
-        "allow generating const initializers with mixed init/uninit bytes, \
-        and set the maximum total size of a const allocation for which this is allowed (default: never)"),
     perf_stats: bool = (false, parse_bool, [UNTRACKED],
         "print some performance-related statistics (default: no)"),
     pick_stable_methods_before_any_unstable: bool = (true, parse_bool, [TRACKED],
@@ -1483,6 +1481,9 @@ options! {
         "in diagnostics, use heuristics to shorten paths referring to items"),
     ui_testing: bool = (false, parse_bool, [UNTRACKED],
         "emit compiler diagnostics in a form suitable for UI testing (default: no)"),
+    uninit_const_chunk_threshold: usize = (16, parse_number, [TRACKED],
+        "allow generating const initializers with mixed init/uninit chunks, \
+        and set the maximum number of chunks for which this is allowed (default: 16)"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the brakes off const evaluation. NOTE: this is unsound (default: no)"),
     unpretty: Option<String> = (None, parse_unpretty, [UNTRACKED],
@@ -1490,7 +1491,6 @@ options! {
         `normal`, `identified`,
         `expanded`, `expanded,identified`,
         `expanded,hygiene` (with internal representations),
-        `everybody_loops` (all function bodies replaced with `loop {}`),
         `ast-tree` (raw AST before expansion),
         `ast-tree,expanded` (raw AST after expansion),
         `hir` (the HIR), `hir,identified`,

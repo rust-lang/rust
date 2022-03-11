@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![feature(staged_api)]
+#![feature(deprecated_suggestion)]
 
 #![stable(since = "1.0.0", feature = "test")]
 
@@ -10,9 +11,9 @@
 struct Foo;
 
 impl Foo {
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.0.0",
-        reason = "replaced by `replacement`",
+        note = "replaced by `replacement`",
         suggestion = "replacement",
     )]
     #[stable(since = "1.0.0", feature = "test")]
@@ -22,9 +23,9 @@ impl Foo {
 }
 
 mod bar {
-    #[rustc_deprecated(
+    #[deprecated(
     since = "1.0.0",
-    reason = "replaced by `replacement`",
+    note = "replaced by `replacement`",
     suggestion = "replacement",
     )]
     #[stable(since = "1.0.0", feature = "test")]

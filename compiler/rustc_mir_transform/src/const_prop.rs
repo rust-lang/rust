@@ -31,8 +31,8 @@ use rustc_trait_selection::traits;
 use crate::MirPass;
 use rustc_const_eval::const_eval::ConstEvalErr;
 use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, Allocation, ConstValue, CtfeValidationMode, Frame, ImmTy,
-    Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
+    self, compile_time_machine, AllocId, ConstAllocation, ConstValue, CtfeValidationMode, Frame,
+    ImmTy, Immediate, InterpCx, InterpResult, LocalState, LocalValue, MemPlace, MemoryKind, OpTy,
     Operand as InterpOperand, PlaceTy, Scalar, ScalarMaybeUninit, StackPopCleanup, StackPopUnwind,
 };
 
@@ -274,7 +274,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     fn before_access_global(
         _memory_extra: &(),
         _alloc_id: AllocId,
-        allocation: &Allocation<Self::PointerTag, Self::AllocExtra>,
+        alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
         is_write: bool,
     ) -> InterpResult<'tcx> {
@@ -283,7 +283,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
         }
         // If the static allocation is mutable, then we can't const prop it as its content
         // might be different at runtime.
-        if allocation.mutability == Mutability::Mut {
+        if alloc.inner().mutability == Mutability::Mut {
             throw_machine_stop_str!("can't access mutable globals in ConstProp");
         }
 
@@ -633,24 +633,22 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn propagate_operand(&mut self, operand: &mut Operand<'tcx>) {
         match *operand {
             Operand::Copy(l) | Operand::Move(l) => {
-                if let Some(value) = self.get_const(l) {
-                    if self.should_const_prop(&value) {
-                        // FIXME(felix91gr): this code only handles `Scalar` cases.
-                        // For now, we're not handling `ScalarPair` cases because
-                        // doing so here would require a lot of code duplication.
-                        // We should hopefully generalize `Operand` handling into a fn,
-                        // and use it to do const-prop here and everywhere else
-                        // where it makes sense.
-                        if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
-                            ScalarMaybeUninit::Scalar(scalar),
-                        )) = *value
-                        {
-                            *operand = self.operand_from_scalar(
-                                scalar,
-                                value.layout.ty,
-                                self.source_info.unwrap().span,
-                            );
-                        }
+                if let Some(value) = self.get_const(l) && self.should_const_prop(&value) {
+                    // FIXME(felix91gr): this code only handles `Scalar` cases.
+                    // For now, we're not handling `ScalarPair` cases because
+                    // doing so here would require a lot of code duplication.
+                    // We should hopefully generalize `Operand` handling into a fn,
+                    // and use it to do const-prop here and everywhere else
+                    // where it makes sense.
+                    if let interpret::Operand::Immediate(interpret::Immediate::Scalar(
+                        ScalarMaybeUninit::Scalar(scalar),
+                    )) = *value
+                    {
+                        *operand = self.operand_from_scalar(
+                            scalar,
+                            value.layout.ty,
+                            self.source_info.unwrap().span,
+                        );
                     }
                 }
             }
@@ -1086,15 +1084,13 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 // This will return None if the above `const_prop` invocation only "wrote" a
                 // type whose creation requires no write. E.g. a generator whose initial state
                 // consists solely of uninitialized memory (so it doesn't capture any locals).
-                if let Some(ref value) = self.get_const(place) {
-                    if self.should_const_prop(value) {
-                        trace!("replacing {:?} with {:?}", rval, value);
-                        self.replace_with_const(rval, value, source_info);
-                        if can_const_prop == ConstPropMode::FullConstProp
-                            || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
-                        {
-                            trace!("propagated into {:?}", place);
-                        }
+                if let Some(ref value) = self.get_const(place) && self.should_const_prop(value) {
+                    trace!("replacing {:?} with {:?}", rval, value);
+                    self.replace_with_const(rval, value, source_info);
+                    if can_const_prop == ConstPropMode::FullConstProp
+                        || can_const_prop == ConstPropMode::OnlyInsideOwnBlock
+                    {
+                        trace!("propagated into {:?}", place);
                     }
                 }
                 match can_const_prop {
@@ -1200,12 +1196,21 @@ impl<'tcx> MutVisitor<'tcx> for ConstPropagator<'_, 'tcx> {
                             AssertKind::RemainderByZero(op) => {
                                 Some(AssertKind::RemainderByZero(eval_to_int(op)))
                             }
+                            AssertKind::Overflow(bin_op @ (BinOp::Div | BinOp::Rem), op1, op2) => {
+                                // Division overflow is *UB* in the MIR, and different than the
+                                // other overflow checks.
+                                Some(AssertKind::Overflow(
+                                    *bin_op,
+                                    eval_to_int(op1),
+                                    eval_to_int(op2),
+                                ))
+                            }
                             AssertKind::BoundsCheck { ref len, ref index } => {
                                 let len = eval_to_int(len);
                                 let index = eval_to_int(index);
                                 Some(AssertKind::BoundsCheck { len, index })
                             }
-                            // Overflow is are already covered by checks on the binary operators.
+                            // Remaining overflow errors are already covered by checks on the binary operators.
                             AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => None,
                             // Need proper const propagator for these.
                             _ => None,

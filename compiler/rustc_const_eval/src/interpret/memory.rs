@@ -275,6 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(new_ptr)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn deallocate(
         &mut self,
         ptr: Pointer<Option<M::PointerTag>>,
@@ -304,6 +305,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             .into());
         };
+
+        debug!(?alloc);
 
         if alloc.mutability == Mutability::Not {
             throw_ub_format!("deallocating immutable allocation {}", alloc_id);
@@ -483,21 +486,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         })
     }
-
-    /// Test if the pointer might be null.
-    pub fn ptr_may_be_null(&self, ptr: Pointer<Option<M::PointerTag>>) -> bool {
-        match self.ptr_try_get_alloc(ptr) {
-            Ok((alloc_id, offset, _)) => {
-                let (size, _align) = self
-                    .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
-                    .expect("alloc info with MaybeDead cannot fail");
-                // If the pointer is out-of-bounds, it may be null.
-                // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                offset > size
-            }
-            Err(offset) => offset == 0,
-        }
-    }
 }
 
 /// Allocation accessors
@@ -540,12 +528,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
         M::before_access_global(&self.extra, id, alloc, def_id, is_write)?;
-        let alloc = Cow::Borrowed(alloc);
         // We got tcx memory. Let the machine initialize its "extra" stuff.
         let alloc = M::init_allocation_extra(
             self,
             id, // always use the ID we got as input, not the "hidden" one.
-            alloc,
+            Cow::Borrowed(alloc.inner()),
             M::GLOBAL_KIND.map(MemoryKind::Machine),
         );
         Ok(alloc)
@@ -726,6 +713,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             Some(GlobalAlloc::Memory(alloc)) => {
                 // Need to duplicate the logic here, because the global allocations have
                 // different associated types than the interpreter-local ones.
+                let alloc = alloc.inner();
                 Ok((alloc.size(), alloc.align))
             }
             Some(GlobalAlloc::Function(_)) => bug!("We already checked function pointers above"),
@@ -882,7 +870,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'mir, 'tcx>> std::fmt::Debug for DumpAllocs<'a, 
                                 &mut *fmt,
                                 self.mem.tcx,
                                 &mut allocs_to_print,
-                                alloc,
+                                alloc.inner(),
                             )?;
                         }
                         Some(GlobalAlloc::Function(func)) => {

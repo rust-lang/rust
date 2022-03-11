@@ -4,7 +4,7 @@ use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::intern::Interned;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
@@ -17,7 +17,9 @@ use std::fmt::{self, Write};
 impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
-    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_placeholder_conflict(
+        &self,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -153,7 +155,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (expected_substs, found_substs, trait_def_id) = match value_pairs {
             ValuePairs::TraitRefs(ExpectedFound { expected, found })
                 if expected.def_id == found.def_id =>
@@ -201,7 +203,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
         trait_def_id: DefId,
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let span = cause.span(self.tcx());
         let msg = format!(
             "implementation of `{}` is not general enough",
@@ -306,7 +308,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// due to the number of combinations we have to deal with.
     fn explain_actual_impl_that_was_found(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         sub_placeholder: Option<Region<'tcx>>,
         sup_placeholder: Option<Region<'tcx>>,
         has_sub: Option<usize>,
@@ -335,18 +337,19 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
 
         impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
         where
-            T: for<'a, 'b, 'c> Print<
+            T: for<'a> Print<
                 'tcx,
-                FmtPrinter<'a, 'tcx, &'b mut fmt::Formatter<'c>>,
+                FmtPrinter<'a, 'tcx>,
                 Error = fmt::Error,
+                Output = FmtPrinter<'a, 'tcx>,
             >,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, f, Namespace::TypeNS);
+                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
                 printer.region_highlight_mode = self.highlight;
 
-                self.value.print(printer)?;
-                Ok(())
+                let s = self.value.print(printer)?.into_buffer();
+                f.write_str(&s)
             }
         }
 

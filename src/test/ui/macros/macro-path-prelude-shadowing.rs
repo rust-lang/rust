@@ -1,6 +1,6 @@
 // aux-build:macro-in-other-crate.rs
 
-#![feature(decl_macro, extern_prelude)]
+#![feature(decl_macro)]
 
 macro_rules! add_macro_expanded_things_to_macro_prelude {() => {
     #[macro_use]

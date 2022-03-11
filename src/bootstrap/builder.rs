@@ -11,8 +11,6 @@ use std::path::{Component, Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use build_helper::{output, t};
-
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
 use crate::compile;
@@ -25,8 +23,9 @@ use crate::native;
 use crate::run;
 use crate::test;
 use crate::tool::{self, SourceType};
-use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
-use crate::{Build, DocTests, GitRepo, Mode};
+use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::EXTRA_CHECK_CFGS;
+use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
 // FIXME: replace with std::lazy after it gets stabilized and reaches beta
@@ -884,7 +883,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
-        let mut cmd = Command::new(&self.out.join("bootstrap/debug/rustdoc"));
+        let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
             .env("RUSTC_SYSROOT", self.sysroot(compiler))
             // Note that this is *not* the sysroot_libdir because rustdoc must be linked
@@ -1095,6 +1094,33 @@ impl<'a> Builder<'a> {
             rustflags.arg("-Zunstable-options");
         }
 
+        // #[cfg(not(bootstrap)]
+        if stage != 0 {
+            // Enable cfg checking of cargo features
+            // FIXME: De-comment this when cargo beta get support for it
+            // cargo.arg("-Zcheck-cfg-features");
+
+            // Enable cfg checking of rustc well-known names
+            rustflags.arg("-Zunstable-options").arg("--check-cfg=names()");
+
+            // Add extra cfg not defined in rustc
+            for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
+                if *restricted_mode == None || *restricted_mode == Some(mode) {
+                    // Creating a string of the values by concatenating each value:
+                    // ',"tvos","watchos"' or '' (nothing) when there are no values
+                    let values = match values {
+                        Some(values) => values
+                            .iter()
+                            .map(|val| [",", "\"", val, "\""])
+                            .flatten()
+                            .collect::<String>(),
+                        None => String::new(),
+                    };
+                    rustflags.arg(&format!("--check-cfg=values({name}{values})"));
+                }
+            }
+        }
+
         // FIXME: It might be better to use the same value for both `RUSTFLAGS` and `RUSTDOCFLAGS`,
         // but this breaks CI. At the very least, stage0 `rustdoc` needs `--cfg bootstrap`. See
         // #71458.
@@ -1223,7 +1249,7 @@ impl<'a> Builder<'a> {
             .env("RUSTC_STAGE", stage.to_string())
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
-            .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+            .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))
             .env(
                 "RUSTDOC_REAL",
                 if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
@@ -1237,7 +1263,7 @@ impl<'a> Builder<'a> {
         // Clippy support is a hack and uses the default `cargo-clippy` in path.
         // Don't override RUSTC so that the `cargo-clippy` in path will be run.
         if cmd != "clippy" {
-            cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"));
+            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
         }
 
         // Dealing with rpath here is a little special, so let's go into some
@@ -1511,7 +1537,7 @@ impl<'a> Builder<'a> {
             let cc = ccacheify(&self.cc(target));
             cargo.env(format!("CC_{}", target.triple), &cc);
 
-            let cflags = self.cflags(target, GitRepo::Rustc).join(" ");
+            let cflags = self.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
             cargo.env(format!("CFLAGS_{}", target.triple), &cflags);
 
             if let Some(ar) = self.ar(target) {
@@ -1523,9 +1549,10 @@ impl<'a> Builder<'a> {
 
             if let Ok(cxx) = self.cxx(target) {
                 let cxx = ccacheify(&cxx);
+                let cxxflags = self.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
                 cargo
                     .env(format!("CXX_{}", target.triple), &cxx)
-                    .env(format!("CXXFLAGS_{}", target.triple), cflags);
+                    .env(format!("CXXFLAGS_{}", target.triple), cxxflags);
             }
         }
 

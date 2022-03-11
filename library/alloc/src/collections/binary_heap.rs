@@ -194,7 +194,7 @@ use super::SpecExtend;
 /// // We can iterate over the items in the heap, although they are returned in
 /// // a random order.
 /// for x in &heap {
-///     println!("{}", x);
+///     println!("{x}");
 /// }
 ///
 /// // If we instead pop these scores, they should come back in order.
@@ -779,7 +779,7 @@ impl<T: Ord> BinaryHeap<T> {
 
     /// Retains only the elements specified by the predicate.
     ///
-    /// In other words, remove all elements `e` such that `f(&e)` returns
+    /// In other words, remove all elements `e` for which `f(&e)` returns
     /// `false`. The elements are visited in unsorted (and unspecified) order.
     ///
     /// # Examples
@@ -830,7 +830,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.iter() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1110,7 +1110,7 @@ impl<T> BinaryHeap<T> {
     ///
     /// // Will print in some order
     /// for x in vec {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
@@ -1179,7 +1179,7 @@ impl<T> BinaryHeap<T> {
     /// assert!(!heap.is_empty());
     ///
     /// for x in heap.drain() {
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     ///
     /// assert!(heap.is_empty());
@@ -1624,7 +1624,7 @@ impl<T> IntoIterator for BinaryHeap<T> {
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.into_iter() {
     ///     // x has type i32, not &i32
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     fn into_iter(self) -> IntoIter<T> {

@@ -1,12 +1,15 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::expr_or_init;
-use clippy_utils::ty::is_isize_or_usize;
+use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
+use rustc_ast::ast;
+use rustc_attr::IntType;
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 
-use super::{utils, CAST_POSSIBLE_TRUNCATION};
+use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
 fn constant_int(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<u128> {
     if let Some((Constant::Int(c), _)) = constant(cx, cx.typeck_results(), expr) {
@@ -75,8 +78,8 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
 }
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
-    let msg = match (cast_from.is_integral(), cast_to.is_integral()) {
-        (true, true) => {
+    let msg = match (cast_from.kind(), cast_to.is_integral()) {
+        (ty::Int(_) | ty::Uint(_), true) => {
             let from_nbits = apply_reductions(
                 cx,
                 utils::int_ty_to_nbits(cast_from, cx.tcx),
@@ -108,19 +111,60 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             )
         },
 
-        (false, true) => {
+        (ty::Adt(def, _), true) if def.is_enum() => {
+            let (from_nbits, variant) = if let ExprKind::Path(p) = &cast_expr.kind
+                && let Res::Def(DefKind::Ctor(..), id) = cx.qpath_res(p, cast_expr.hir_id)
+            {
+                let i = def.variant_index_with_ctor_id(id);
+                let variant = &def.variants[i];
+                let nbits = utils::enum_value_nbits(get_discriminant_value(cx.tcx, def, i));
+                (nbits, Some(variant))
+            } else {
+                (utils::enum_ty_to_nbits(def, cx.tcx), None)
+            };
+            let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
+
+            let cast_from_ptr_size = def.repr.int.map_or(true, |ty| {
+                matches!(
+                    ty,
+                    IntType::SignedInt(ast::IntTy::Isize) | IntType::UnsignedInt(ast::UintTy::Usize)
+                )
+            });
+            let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
+                (false, false) if from_nbits > to_nbits => "",
+                (true, false) if from_nbits > to_nbits => "",
+                (false, true) if from_nbits > 64 => "",
+                (false, true) if from_nbits > 32 => " on targets with 32-bit wide pointers",
+                _ => return,
+            };
+
+            if let Some(variant) = variant {
+                span_lint(
+                    cx,
+                    CAST_ENUM_TRUNCATION,
+                    expr.span,
+                    &format!(
+                        "casting `{}::{}` to `{}` will truncate the value{}",
+                        cast_from, variant.name, cast_to, suffix,
+                    ),
+                );
+                return;
+            }
+            format!(
+                "casting `{}` to `{}` may truncate the value{}",
+                cast_from, cast_to, suffix,
+            )
+        },
+
+        (ty::Float(_), true) => {
             format!("casting `{}` to `{}` may truncate the value", cast_from, cast_to)
         },
 
-        (_, _) => {
-            if matches!(cast_from.kind(), &ty::Float(FloatTy::F64))
-                && matches!(cast_to.kind(), &ty::Float(FloatTy::F32))
-            {
-                "casting `f64` to `f32` may truncate the value".to_string()
-            } else {
-                return;
-            }
+        (ty::Float(FloatTy::F64), false) if matches!(cast_to.kind(), &ty::Float(FloatTy::F32)) => {
+            "casting `f64` to `f32` may truncate the value".to_string()
         },
+
+        _ => return,
     };
 
     span_lint(cx, CAST_POSSIBLE_TRUNCATION, expr.span, &msg);

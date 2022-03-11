@@ -436,11 +436,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        let kind = match self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()) {
-            Some(k) => k,
-            None => {
-                return;
-            }
+        let Some(kind) = self.tcx().fn_trait_kind_from_lang_item(obligation.predicate.def_id()) else {
+            return;
         };
 
         // Okay to skip binder because the substs on closure types never
@@ -763,12 +760,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let source = match obligation.self_ty().no_bound_vars() {
-            Some(t) => t,
-            None => {
-                // Don't add any candidates if there are bound regions.
-                return;
-            }
+        let Some(source) = obligation.self_ty().no_bound_vars() else {
+            // Don't add any candidates if there are bound regions.
+            return;
         };
         let target = obligation.predicate.skip_binder().trait_ref.substs.type_at(1);
 

@@ -1,6 +1,6 @@
 // Type Names for Debug Info.
 
-// Notes on targetting MSVC:
+// Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
 // even if the argument is explicitly a symbol name.
 // As such, there are many things that cause parsing issues:
@@ -427,7 +427,7 @@ fn push_debuginfo_type_name<'tcx>(
 
             // calculate the range of values for the dataful variant
             let dataful_discriminant_range =
-                dataful_variant_layout.largest_niche.unwrap().scalar.valid_range;
+                dataful_variant_layout.largest_niche().unwrap().scalar.valid_range;
 
             let min = dataful_discriminant_range.start;
             let min = tag.value.size(&tcx).truncate(min);

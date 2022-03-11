@@ -25,7 +25,8 @@ use crate::errors::{AddressOfTemporaryTaken, ReturnStmtOutsideOfFnBody, StructEx
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::ErrorReported;
+use rustc_errors::Diagnostic;
+use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -42,7 +43,6 @@ use rustc_middle::ty::error::TypeError::{FieldMisMatch, Sorts};
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, AdtKind, Ty, TypeFoldable};
 use rustc_session::parse::feature_err;
-use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::Span;
@@ -60,7 +60,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut Diagnostic),
     ) -> Ty<'tcx> {
         self.check_expr_meets_expectation_or_error(expr, ExpectHasType(expected), extend_err)
     }
@@ -69,7 +69,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expected: Expectation<'tcx>,
-        extend_err: impl Fn(&mut DiagnosticBuilder<'_>),
+        extend_err: impl Fn(&mut Diagnostic),
     ) -> Ty<'tcx> {
         let expected_ty = expected.to_option(&self).unwrap_or(self.tcx.types.bool);
         let mut ty = self.check_expr_with_expectation(expr, expected);
@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Box(subexpr) => self.check_expr_box(subexpr, expected),
             ExprKind::Lit(ref lit) => self.check_lit(&lit, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_binop(expr, op, lhs, rhs),
-            ExprKind::Assign(lhs, rhs, ref span) => {
+            ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
             }
             ExprKind::AssignOp(op, lhs, rhs) => self.check_binop_assign(expr, op, lhs, rhs),
@@ -485,7 +485,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .map_or(false, |x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
         });
         if !is_named {
-            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span })
+            self.tcx.sess.emit_err(AddressOfTemporaryTaken { span: oprnd.span });
         }
     }
 
@@ -809,10 +809,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Use the span of the trailing expression for our cause,
         // not the span of the entire function
         if !explicit_return {
-            if let ExprKind::Block(body, _) = return_expr.kind {
-                if let Some(last_expr) = body.expr {
-                    span = last_expr.span;
-                }
+            if let ExprKind::Block(body, _) = return_expr.kind && let Some(last_expr) = body.expr {
+                span = last_expr.span;
             }
         }
         ret_coercion.borrow_mut().coerce(
@@ -841,7 +839,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(lhs.span, "cannot assign to this expression");
 
-        let mut parent = self.tcx.hir().get_parent_node(lhs.hir_id);
+        self.comes_from_while_condition(lhs.hir_id, |expr| {
+            err.span_suggestion_verbose(
+                expr.span.shrink_to_lo(),
+                "you might have meant to use pattern destructuring",
+                "let ".to_string(),
+                Applicability::MachineApplicable,
+            );
+        });
+
+        err.emit();
+    }
+
+    // Check if an expression `original_expr_id` comes from the condition of a while loop,
+    // as opposed from the body of a while loop, which we can naively check by iterating
+    // parents until we find a loop...
+    pub(super) fn comes_from_while_condition(
+        &self,
+        original_expr_id: HirId,
+        then: impl FnOnce(&hir::Expr<'_>),
+    ) {
+        let mut parent = self.tcx.hir().get_parent_node(original_expr_id);
         while let Some(node) = self.tcx.hir().find(parent) {
             match node {
                 hir::Node::Expr(hir::Expr {
@@ -862,8 +880,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     ..
                 }) => {
-                    // Check if our lhs is a child of the condition of a while loop
-                    let expr_is_ancestor = std::iter::successors(Some(lhs.hir_id), |id| {
+                    // Check if our original expression is a child of the condition of a while loop
+                    let expr_is_ancestor = std::iter::successors(Some(original_expr_id), |id| {
                         self.tcx.hir().find_parent_node(*id)
                     })
                     .take_while(|id| *id != parent)
@@ -871,12 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // if it is, then we have a situation like `while Some(0) = value.get(0) {`,
                     // where `while let` was more likely intended.
                     if expr_is_ancestor {
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            "you might have meant to use pattern destructuring",
-                            "let ".to_string(),
-                            Applicability::MachineApplicable,
-                        );
+                        then(expr);
                     }
                     break;
                 }
@@ -889,8 +902,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-
-        err.emit();
     }
 
     // A generic function for checking the 'then' and 'else' clauses in an 'if'
@@ -981,7 +992,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         lhs: &'tcx hir::Expr<'tcx>,
         rhs: &'tcx hir::Expr<'tcx>,
-        span: &Span,
+        span: Span,
     ) -> Ty<'tcx> {
         let expected_ty = expected.coercion_target_type(self, expr.span);
         if expected_ty == self.tcx.types.bool {
@@ -1013,7 +1024,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             if eq {
                 err.span_suggestion_verbose(
-                    *span,
+                    span,
                     "you might have meant to compare for equality",
                     "==".to_string(),
                     applicability,
@@ -1030,7 +1041,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return self.tcx.ty_error();
         }
 
-        self.check_lhs_assignable(lhs, "E0070", *span);
+        self.check_lhs_assignable(lhs, "E0070", span);
 
         let lhs_ty = self.check_expr_with_needs(&lhs, Needs::MutPlace);
         let rhs_ty = self.check_expr_coercable_to_type(&rhs, lhs_ty, Some(lhs));
@@ -1176,7 +1187,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     deferred_cast_checks.push(cast_check);
                     t_cast
                 }
-                Err(ErrorReported) => self.tcx.ty_error(),
+                Err(ErrorGuaranteed) => self.tcx.ty_error(),
             }
         }
     }
@@ -1469,14 +1480,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                     self.register_predicates(obligations)
                                                 }
                                                 // FIXME: Need better diagnostics for `FieldMisMatch` error
-                                                Err(_) => self
-                                                    .report_mismatched_types(
+                                                Err(_) => {
+                                                    self.report_mismatched_types(
                                                         &cause,
                                                         target_ty,
                                                         fru_ty,
                                                         FieldMisMatch(variant.name, ident.name),
                                                     )
-                                                    .emit(),
+                                                    .emit();
+                                                }
                                             }
                                         }
                                         fru_ty
@@ -1484,27 +1496,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     .collect()
                             }
                             _ => {
-                                return self
-                                    .report_mismatched_types(
-                                        &self.misc(base_expr.span),
-                                        adt_ty,
-                                        base_ty,
-                                        Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
-                                    )
-                                    .emit();
+                                self.report_mismatched_types(
+                                    &self.misc(base_expr.span),
+                                    adt_ty,
+                                    base_ty,
+                                    Sorts(ExpectedFound::new(true, adt_ty, base_ty)),
+                                )
+                                .emit();
+                                return;
                             }
                         }
                     }
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             } else {
                 self.check_expr_has_type_or_error(base_expr, adt_ty, |_| {
-                    let base_ty = self.typeck_results.borrow().node_type(base_expr.hir_id);
+                    let base_ty = self.typeck_results.borrow().expr_ty(*base_expr);
                     let same_adt = match (adt_ty.kind(), base_ty.kind()) {
                         (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt => true,
                         _ => false,
@@ -1528,10 +1540,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })
                         .collect(),
                     _ => {
-                        return self
-                            .tcx
+                        self.tcx
                             .sess
                             .emit_err(FunctionalRecordUpdateOnNonStruct { span: base_expr.span });
+                        return;
                     }
                 }
             };
@@ -1923,7 +1935,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_await_on_field_access(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         field_ident: Ident,
         base: &'tcx hir::Expr<'tcx>,
         ty: Ty<'tcx>,
@@ -1997,8 +2009,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We know by construction that `<expr>.await` is either on Rust 2015
             // or results in `ExprKind::Await`. Suggest switching the edition to 2018.
             err.note("to `.await` a `Future`, switch to Rust 2018 or later");
-            err.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
-            err.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
+            err.help_use_latest_edition();
         }
 
         err.emit();
@@ -2123,7 +2134,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn point_at_param_definition(&self, err: &mut DiagnosticBuilder<'_>, param: ty::ParamTy) {
+    fn point_at_param_definition(&self, err: &mut Diagnostic, param: ty::ParamTy) {
         let generics = self.tcx.generics_of(self.body_id.owner.to_def_id());
         let generic_param = generics.type_param(&param, self.tcx);
         if let ty::GenericParamDefKind::Type { synthetic: true, .. } = generic_param.kind {
@@ -2142,7 +2153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_fields_on_recordish(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         def: &'tcx ty::AdtDef,
         field: Ident,
         access_span: Span,
@@ -2171,7 +2182,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_suggest_array_indexing(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
@@ -2195,7 +2206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn suggest_first_deref_field(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         base: &hir::Expr<'_>,
         field: Ident,
@@ -2212,7 +2223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: Ident,
         expr_t: Ty<'tcx>,
         id: HirId,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 

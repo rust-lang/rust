@@ -8,7 +8,7 @@ use crate::traits::{
     FulfillmentContext, ImplSource, Obligation, ObligationCause, SelectionContext, TraitEngine,
     Unimplemented,
 };
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt};
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
-) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorReported> {
+) -> Result<&'tcx ImplSource<'tcx, ()>, ErrorGuaranteed> {
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
@@ -59,7 +59,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
             Err(Unimplemented) => {
                 // This can trigger when we probe for the source of a `'static` lifetime requirement
@@ -73,7 +73,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorReported);
+                return Err(ErrorGuaranteed);
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)

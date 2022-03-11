@@ -80,6 +80,8 @@ crate struct Options {
     crate extern_strs: Vec<String>,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
     crate cfgs: Vec<String>,
+    /// List of check cfg flags to hand to the compiler.
+    crate check_cfgs: Vec<String>,
     /// Codegen options to hand to the compiler.
     crate codegen_options: CodegenOptions,
     /// Codegen options strings to hand to the compiler.
@@ -172,6 +174,7 @@ impl fmt::Debug for Options {
             .field("libs", &self.libs)
             .field("externs", &FmtExterns(&self.externs))
             .field("cfgs", &self.cfgs)
+            .field("check-cfgs", &self.check_cfgs)
             .field("codegen_options", &"...")
             .field("debugging_options", &"...")
             .field("target", &self.target)
@@ -506,6 +509,7 @@ impl Options {
         };
 
         let cfgs = matches.opt_strs("cfg");
+        let check_cfgs = matches.opt_strs("check-cfg");
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
@@ -677,6 +681,7 @@ impl Options {
             externs,
             extern_strs,
             cfgs,
+            check_cfgs,
             codegen_options,
             codegen_options_strs,
             debugging_opts,

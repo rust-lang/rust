@@ -11,8 +11,8 @@
       let mut _6: usize;                   // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       let mut _7: bool;                    // in scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
       scope 1 (inlined core::str::<impl str>::as_bytes) { // at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          debug self => _3;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          let mut _8: &str;                // in scope 1 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          debug self => _3;                // in scope 1 at $SRC_DIR/core/src/str/mod.rs:LL:COL
+          let mut _8: &str;                // in scope 1 at $SRC_DIR/core/src/str/mod.rs:LL:COL
           scope 2 {
           }
       }
@@ -21,12 +21,12 @@
           StorageLive(_2);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           StorageLive(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
           _3 = _1;                         // scope 0 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          StorageLive(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-          _8 = _3;                         // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
--         _2 = transmute::<&str, &[u8]>(move _8) -> bb14; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
-+         _2 = transmute::<&str, &[u8]>(move _8) -> bb12; // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          StorageLive(_8);                 // scope 2 at $SRC_DIR/core/src/str/mod.rs:LL:COL
+          _8 = _3;                         // scope 2 at $SRC_DIR/core/src/str/mod.rs:LL:COL
+-         _2 = transmute::<&str, &[u8]>(move _8) -> bb14; // scope 2 at $SRC_DIR/core/src/str/mod.rs:LL:COL
++         _2 = transmute::<&str, &[u8]>(move _8) -> bb12; // scope 2 at $SRC_DIR/core/src/str/mod.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $DIR/deduplicate_blocks.rs:3:11: 3:23
+                                           // + span: $SRC_DIR/core/src/str/mod.rs:LL:COL
                                            // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(&str) -> &[u8] {transmute::<&str, &[u8]>}, val: Value(Scalar(<ZST>)) }
       }
   
@@ -97,7 +97,7 @@
   
 -     bb14: {
 +     bb12: {
-          StorageDead(_8);                 // scope 2 at $DIR/deduplicate_blocks.rs:3:11: 3:23
+          StorageDead(_8);                 // scope 2 at $SRC_DIR/core/src/str/mod.rs:LL:COL
           StorageDead(_3);                 // scope 0 at $DIR/deduplicate_blocks.rs:3:22: 3:23
           _6 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37
           _7 = Ge(move _6, const 4_usize); // scope 0 at $DIR/deduplicate_blocks.rs:4:9: 4:37

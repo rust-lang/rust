@@ -97,7 +97,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    fn misc_cast(
+    pub fn misc_cast(
         &self,
         src: &ImmTy<'tcx, M::PointerTag>,
         cast_ty: Ty<'tcx>,
@@ -139,7 +139,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(discr) = src.layout.ty.discriminant_for_variant(*self.tcx, index) {
                     assert!(src.layout.is_zst());
                     let discr_layout = self.layout_of(discr.ty)?;
-                    return Ok(self.cast_from_scalar(discr.val, discr_layout, cast_ty).into());
+                    return Ok(self.cast_from_int_like(discr.val, discr_layout, cast_ty).into());
                 }
             }
             Variants::Multiple { .. } => {}
@@ -169,17 +169,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        // # The remaining source values are scalar.
+        // # The remaining source values are scalar and "int-like".
 
         // For all remaining casts, we either
         // (a) cast a raw ptr to usize, or
         // (b) cast from an integer-like (including bool, char, enums).
         // In both cases we want the bits.
         let bits = src.to_scalar()?.to_bits(src.layout.size)?;
-        Ok(self.cast_from_scalar(bits, src.layout, cast_ty).into())
+        Ok(self.cast_from_int_like(bits, src.layout, cast_ty).into())
     }
 
-    pub(super) fn cast_from_scalar(
+    fn cast_from_int_like(
         &self,
         v: u128, // raw bits (there is no ScalarTy so we separate data+layout)
         src_layout: TyAndLayout<'tcx>,

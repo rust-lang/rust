@@ -55,21 +55,23 @@ This API is completely unstable and subject to change.
 
 */
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
+#![feature(hash_drain_filter)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
-#![feature(nll)]
-#![feature(try_blocks)]
 #![feature(never_type)]
+#![feature(nll)]
+#![feature(once_cell)]
 #![feature(slice_partition_dedup)]
-#![feature(control_flow_enum)]
-#![feature(hash_drain_filter)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate tracing;
@@ -95,7 +97,7 @@ mod outlives;
 mod structured_errors;
 mod variance;
 
-use rustc_errors::{struct_span_err, ErrorReported};
+use rustc_errors::{struct_span_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Node, CRATE_HIR_ID};
@@ -489,7 +491,7 @@ pub fn provide(providers: &mut Providers) {
     hir_wf_check::provide(providers);
 }
 
-pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
+pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     let _prof_timer = tcx.sess.timer("type_check_crate");
 
     // this ensures that later parts of type checking can assume that items
@@ -535,7 +537,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorReported) }
+    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorGuaranteed) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

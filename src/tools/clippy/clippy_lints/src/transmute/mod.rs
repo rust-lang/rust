@@ -358,7 +358,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for transmutes either to or from a type which does not have a defined representation.
+    /// Checks for transmutes between types which do not have a representation defined relative to
+    /// each other.
     ///
     /// ### Why is this bad?
     /// The results of such a transmute are not defined.

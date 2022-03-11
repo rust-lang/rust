@@ -1,4 +1,4 @@
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_span::Span;
 use smallvec::smallvec;
 use smallvec::SmallVec;
@@ -43,12 +43,7 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 
     /// Adds diagnostic labels to `diag` for the expansion path of a trait through all intermediate
     /// trait aliases.
-    pub fn label_with_exp_info(
-        &self,
-        diag: &mut DiagnosticBuilder<'_>,
-        top_label: &str,
-        use_desc: &str,
-    ) {
+    pub fn label_with_exp_info(&self, diag: &mut Diagnostic, top_label: &str, use_desc: &str) {
         diag.span_label(self.top().1, top_label);
         if self.path.len() > 1 {
             for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {

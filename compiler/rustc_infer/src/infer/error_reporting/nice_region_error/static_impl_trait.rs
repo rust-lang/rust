@@ -5,7 +5,7 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{self as hir, GenericBound, Item, ItemKind, Lifetime, LifetimeName, Node, TyKind};
@@ -20,7 +20,7 @@ use std::ops::ControlFlow;
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,
     /// `dyn Trait` or if a method call on a trait object introduces a static requirement.
-    pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_static_impl_trait(&self) -> Option<ErrorGuaranteed> {
         debug!("try_report_static_impl_trait(error={:?})", self.error);
         let tcx = self.tcx();
         let (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans) = match self.error.as_ref()? {
@@ -85,7 +85,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     );
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
                         err.emit();
-                        return Some(ErrorReported);
+                        return Some(ErrorGuaranteed);
                     } else {
                         err.cancel();
                     }
@@ -223,35 +223,32 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
 
         let mut override_error_code = None;
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin {
-            if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
-                // Handle case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a
-                // `'static` lifetime when called as a method on a binding: `bar.qux()`.
-                if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
-                    override_error_code = Some(ctxt.assoc_item.name);
-                }
-            }
+        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin
+            && let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code()
+            // Handle case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a
+            // `'static` lifetime when called as a method on a binding: `bar.qux()`.
+            && self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt)
+        {
+            override_error_code = Some(ctxt.assoc_item.name);
         }
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin {
-            let code = match cause.code() {
+
+        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin
+            && let code = match cause.code() {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
-            };
-            if let (ObligationCauseCode::ItemObligation(item_def_id), None) =
-                (code, override_error_code)
+            }
+            && let (ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
+        {
+            // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
+            // lifetime as above, but called using a fully-qualified path to the method:
+            // `Foo::qux(bar)`.
+            let mut v = TraitObjectVisitor(FxHashSet::default());
+            v.visit_ty(param.param_ty);
+            if let Some((ident, self_ty)) =
+                self.get_impl_ident_and_self_ty_from_trait(*item_def_id, &v.0)
+                && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
             {
-                // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
-                // lifetime as above, but called using a fully-qualified path to the method:
-                // `Foo::qux(bar)`.
-                let mut v = TraitObjectVisitor(FxHashSet::default());
-                v.visit_ty(param.param_ty);
-                if let Some((ident, self_ty)) =
-                    self.get_impl_ident_and_self_ty_from_trait(*item_def_id, &v.0)
-                {
-                    if self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty) {
-                        override_error_code = Some(ident.name);
-                    }
-                }
+                override_error_code = Some(ident.name);
             }
         }
         if let (Some(ident), true) = (override_error_code, fn_returns.is_empty()) {
@@ -280,13 +277,13 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
 
         err.emit();
-        Some(ErrorReported)
+        Some(ErrorGuaranteed)
     }
 }
 
 pub fn suggest_new_region_bound(
     tcx: TyCtxt<'_>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     fn_returns: Vec<&rustc_hir::Ty<'_>>,
     lifetime_name: String,
     arg: Option<String>,
@@ -483,7 +480,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// `'static` obligation. Suggest relaxing that implicit bound.
     fn find_impl_on_dyn_trait(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         ty: Ty<'_>,
         ctxt: &UnifyReceiverContext<'tcx>,
     ) -> bool {
@@ -514,7 +511,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         found_dids: &FxHashSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,

@@ -177,7 +177,7 @@ $ rustdoc src/lib.rs --test
 ```
 
 This flag will run your code examples as tests. For more, see [the chapter
-on documentation tests](documentation-tests.md).
+on documentation tests](write-documentation/documentation-tests.md).
 
 See also `--test-args`.
 
@@ -190,7 +190,7 @@ $ rustdoc src/lib.rs --test --test-args ignored
 ```
 
 This flag will pass options to the test runner when running documentation tests.
-For more, see [the chapter on documentation tests](documentation-tests.md).
+For more, see [the chapter on documentation tests](write-documentation/documentation-tests.md).
 
 See also `--test`.
 
@@ -336,7 +336,7 @@ $ rustdoc src/lib.rs --sysroot /path/to/sysroot
 Similar to `rustc --sysroot`, this lets you change the sysroot `rustdoc` uses
 when compiling your code.
 
-### `--edition`: control the edition of docs and doctests
+## `--edition`: control the edition of docs and doctests
 
 Using this flag looks like this:
 
@@ -403,12 +403,12 @@ encoded as UTF-8.
 ## `--passes`: add more rustdoc passes
 
 This flag is **deprecated**.
-For more details on passes, see [the chapter on them](passes.md).
+For more details on passes, see [the chapter on them](deprecated-features.md#passes).
 
 ## `--no-defaults`: don't run default passes
 
 This flag is **deprecated**.
-For more details on passes, see [the chapter on them](passes.md).
+For more details on passes, see [the chapter on them](deprecated-features.md#passes).
 
 ## `-r`/`--input-format`: input format
 
@@ -417,23 +417,3 @@ This flag is **deprecated** and **has no effect**.
 Rustdoc only supports Rust source code and Markdown input formats. If the
 file ends in `.md` or `.markdown`, `rustdoc` treats it as a Markdown file.
 Otherwise, it assumes that the input file is Rust.
-
-# Unstable command line arguments
-
-## `--nocapture`
-
-When this flag is used with `--test`, the output (stdout and stderr) of your tests won't be
-captured by rustdoc. Instead, the output will be directed to your terminal,
-as if you had run the test executable manually. This is especially useful
-for debugging your tests!
-
-## `--check`
-
-When this flag is supplied, rustdoc will type check and lint your code, but will not generate any
-documentation or run your doctests.
-
-Using this flag looks like:
-
-```bash
-rustdoc -Z unstable-options --check src/lib.rs
-```

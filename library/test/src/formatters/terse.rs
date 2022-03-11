@@ -122,7 +122,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nsuccesses:\n")?;
         successes.sort();
         for name in &successes {
-            self.write_plain(&format!("    {}\n", name))?;
+            self.write_plain(&format!("    {name}\n"))?;
         }
         Ok(())
     }
@@ -148,7 +148,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nfailures:\n")?;
         failures.sort();
         for name in &failures {
-            self.write_plain(&format!("    {}\n", name))?;
+            self.write_plain(&format!("    {name}\n"))?;
         }
         Ok(())
     }
@@ -156,9 +156,9 @@ impl<T: Write> TerseFormatter<T> {
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         if let Some(test_mode) = desc.test_mode() {
-            self.write_plain(&format!("test {} - {} ... ", name, test_mode))?;
+            self.write_plain(&format!("test {name} - {test_mode} ... "))?;
         } else {
-            self.write_plain(&format!("test {} ... ", name))?;
+            self.write_plain(&format!("test {name} ... "))?;
         }
 
         Ok(())
@@ -170,11 +170,11 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         self.total_test_count = test_count;
         let noun = if test_count != 1 { "tests" } else { "test" };
         let shuffle_seed_msg = if let Some(shuffle_seed) = shuffle_seed {
-            format!(" (shuffle seed: {})", shuffle_seed)
+            format!(" (shuffle seed: {shuffle_seed})")
         } else {
             String::new()
         };
-        self.write_plain(&format!("\nrunning {} {}{}\n", test_count, noun, shuffle_seed_msg))
+        self.write_plain(&format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -247,7 +247,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         self.write_plain(&s)?;
 
         if let Some(ref exec_time) = state.exec_time {
-            let time_str = format!("; finished in {}", exec_time);
+            let time_str = format!("; finished in {exec_time}");
             self.write_plain(&time_str)?;
         }
 

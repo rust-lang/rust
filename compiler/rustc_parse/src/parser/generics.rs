@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
                                 // FIXME - try to continue parsing other generics?
                                 return Ok((None, TrailingToken::None));
                             }
-                            Err(mut err) => {
+                            Err(err) => {
                                 err.cancel();
                                 // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
                                 *this = snapshot;

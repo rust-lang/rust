@@ -15,7 +15,7 @@ impl Foo for Fooy {
 struct Fooer<T>(T);
 
 impl<T> Foo for Fooer<T> {
-    type A<'x> where T: 'x = &'x ();
+    type A<'x> = &'x () where T: 'x;
 }
 
 fn f(_arg : Box<dyn for<'a> Foo<A<'a> = &'a ()>>) {}

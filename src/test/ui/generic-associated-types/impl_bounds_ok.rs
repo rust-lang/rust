@@ -22,9 +22,9 @@ impl Foo for Fooy {
 struct Fooer<T>(T);
 
 impl<T> Foo for Fooer<T> {
-    type A<'x> where T: 'x = (&'x ());
-    type B<'u, 'v> where 'u: 'v = (&'v &'u ());
-    type C where Self: Clone + ToOwned = String;
+    type A<'x> = (&'x ()) where T: 'x;
+    type B<'u, 'v> = (&'v &'u ()) where 'u: 'v;
+    type C = String where Self: Clone + ToOwned;
 }
 
 fn main() {}

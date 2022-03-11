@@ -15,7 +15,7 @@ use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, Ty, TyCtxt};
 
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::Symbol;
@@ -368,6 +368,11 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
     MatchImpl(ObligationCause<'tcx>, DefId),
+
+    BinOp {
+        rhs_span: Option<Span>,
+        is_lit: bool,
+    },
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
@@ -841,7 +846,7 @@ impl ObjectSafetyViolation {
         }
     }
 
-    pub fn solution(&self, err: &mut DiagnosticBuilder<'_>) {
+    pub fn solution(&self, err: &mut Diagnostic) {
         match *self {
             ObjectSafetyViolation::SizedSelf(_) | ObjectSafetyViolation::SupertraitSelf(_) => {}
             ObjectSafetyViolation::Method(

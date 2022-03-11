@@ -7,6 +7,7 @@ use crate::SuggestionStyle;
 use crate::ToolMetadata;
 use rustc_lint_defs::Applicability;
 use rustc_serialize::json::Json;
+use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -19,7 +20,10 @@ pub struct SuggestionsDisabled;
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
-    pub level: Level,
+    // NOTE(eddyb) this is private to disallow arbitrary after-the-fact changes,
+    // outside of what methods in this crate themselves allow.
+    crate level: Level,
+
     pub message: Vec<(String, Style)>,
     pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
@@ -117,11 +121,20 @@ impl Diagnostic {
         }
     }
 
+    #[inline(always)]
+    pub fn level(&self) -> Level {
+        self.level
+    }
+
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug | Level::Fatal | Level::Error { .. } | Level::FailureNote => true,
+            Level::Bug
+            | Level::DelayedBug
+            | Level::Fatal
+            | Level::Error { .. }
+            | Level::FailureNote => true,
 
-            Level::Warning | Level::Note | Level::Help | Level::Cancelled | Level::Allow => false,
+            Level::Warning | Level::Note | Level::Help | Level::Allow | Level::Expect(_) => false,
         }
     }
 
@@ -139,15 +152,26 @@ impl Diagnostic {
         }
     }
 
-    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
-    /// canceled or it will panic when dropped).
-    pub fn cancel(&mut self) {
-        self.level = Level::Cancelled;
-    }
+    /// Delay emission of this diagnostic as a bug.
+    ///
+    /// This can be useful in contexts where an error indicates a bug but
+    /// typically this only happens when other compilation errors have already
+    /// happened. In those cases this can be used to defer emission of this
+    /// diagnostic as a bug in the compiler only if no other errors have been
+    /// emitted.
+    ///
+    /// In the meantime, though, callsites are required to deal with the "bug"
+    /// locally in whichever way makes the most sense.
+    #[track_caller]
+    pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
+        assert!(
+            self.is_error(),
+            "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
+            self.level
+        );
+        self.level = Level::DelayedBug;
 
-    /// Check if this diagnostic [was cancelled][Self::cancel()].
-    pub fn cancelled(&self) -> bool {
-        self.level == Level::Cancelled
+        self
     }
 
     /// Adds a span/label to be included in the resulting snippet.
@@ -163,6 +187,20 @@ impl Diagnostic {
         self
     }
 
+    /// Labels all the given spans with the provided label.
+    /// See [`Self::span_label()`] for more information.
+    pub fn span_labels(
+        &mut self,
+        spans: impl IntoIterator<Item = Span>,
+        label: impl AsRef<str>,
+    ) -> &mut Self {
+        let label = label.as_ref();
+        for span in spans {
+            self.span_label(span, label);
+        }
+        self
+    }
+
     pub fn replace_span_with(&mut self, after: Span) -> &mut Self {
         let before = self.span.clone();
         self.set_span(after);
@@ -174,7 +212,7 @@ impl Diagnostic {
         self
     }
 
-    crate fn note_expected_found(
+    pub fn note_expected_found(
         &mut self,
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
@@ -184,7 +222,7 @@ impl Diagnostic {
         self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    crate fn note_unsuccessful_coercion(
+    pub fn note_unsuccessful_coercion(
         &mut self,
         expected: DiagnosticStyledString,
         found: DiagnosticStyledString,
@@ -274,34 +312,46 @@ impl Diagnostic {
 
     /// Prints the span with a note above it.
     /// This is like [`Diagnostic::note()`], but it gets its own span.
-    crate fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
         self
     }
 
     /// Add a warning attached to this diagnostic.
-    crate fn warn(&mut self, msg: &str) -> &mut Self {
+    pub fn warn(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with a warning above it.
     /// This is like [`Diagnostic::warn()`], but it gets its own span.
-    crate fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Warning, msg, sp.into(), None);
         self
     }
 
     /// Add a help message attached to this diagnostic.
-    crate fn help(&mut self, msg: &str) -> &mut Self {
+    pub fn help(&mut self, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, MultiSpan::new(), None);
         self
     }
 
     /// Prints the span with some help above it.
     /// This is like [`Diagnostic::help()`], but it gets its own span.
-    crate fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+    pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
+        self
+    }
+
+    /// Help the user upgrade to the latest edition.
+    /// This is factored out to make sure it does the right thing with `Cargo.toml`.
+    pub fn help_use_latest_edition(&mut self) -> &mut Self {
+        if std::env::var_os("CARGO").is_some() {
+            self.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
+        } else {
+            self.help(&format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION));
+        }
+        self.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         self
     }
 
@@ -634,7 +684,7 @@ impl Diagnostic {
         self.code.clone()
     }
 
-    crate fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
+    pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
         self.message[0] = (msg.into(), Style::NoStyle);
         self
     }

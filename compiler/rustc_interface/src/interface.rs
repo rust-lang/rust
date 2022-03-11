@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::OnDrop;
 use rustc_errors::registry::Registry;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_parse::maybe_new_parser_from_source_str;
@@ -23,7 +23,7 @@ use rustc_span::symbol::sym;
 use std::path::PathBuf;
 use std::result;
 
-pub type Result<T> = result::Result<T, ErrorReported>;
+pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
 /// Represents a compiler session.
 ///
@@ -102,7 +102,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                 }
 
                 match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
-                    Ok(mut parser) => match &mut parser.parse_meta_item() {
+                    Ok(mut parser) => match parser.parse_meta_item() {
                         Ok(meta_item) if parser.token == token::Eof => {
                             if meta_item.path.segments.len() != 1 {
                                 error!("argument key must be an identifier");
@@ -121,7 +121,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
                         Ok(..) => {}
                         Err(err) => err.cancel(),
                     },
-                    Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
+                    Err(errs) => drop(errs),
                 }
 
                 // If the user tried to use a key="value" flag, but is missing the quotes, provide
@@ -165,15 +165,16 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
             }
 
             match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
-                Ok(mut parser) => match &mut parser.parse_meta_item() {
+                Ok(mut parser) => match parser.parse_meta_item() {
                     Ok(meta_item) if parser.token == token::Eof => {
                         if let Some(args) = meta_item.meta_item_list() {
                             if meta_item.has_name(sym::names) {
-                                cfg.names_checked = true;
+                                let names_valid =
+                                    cfg.names_valid.get_or_insert_with(|| FxHashSet::default());
                                 for arg in args {
                                     if arg.is_word() && arg.ident().is_some() {
                                         let ident = arg.ident().expect("multi-segment cfg key");
-                                        cfg.names_valid.insert(ident.name.to_string());
+                                        names_valid.insert(ident.name.to_string());
                                     } else {
                                         error!("`names()` arguments must be simple identifers");
                                     }
@@ -183,13 +184,16 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                 if let Some((name, values)) = args.split_first() {
                                     if name.is_word() && name.ident().is_some() {
                                         let ident = name.ident().expect("multi-segment cfg key");
-                                        cfg.values_checked.insert(ident.to_string());
+                                        let ident_values = cfg
+                                            .values_valid
+                                            .entry(ident.name.to_string())
+                                            .or_insert_with(|| FxHashSet::default());
+
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
                                                 val.literal().map(|lit| &lit.kind)
                                             {
-                                                cfg.values_valid
-                                                    .insert((ident.to_string(), s.to_string()));
+                                                ident_values.insert(s.to_string());
                                             } else {
                                                 error!(
                                                     "`values()` arguments must be string literals"
@@ -203,6 +207,9 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                                             "`values()` first argument must be a simple identifer"
                                         );
                                     }
+                                } else if args.is_empty() {
+                                    cfg.well_known_values = true;
+                                    continue 'specs;
                                 }
                             }
                         }
@@ -210,7 +217,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
                     Ok(..) => {}
                     Err(err) => err.cancel(),
                 },
-                Err(errs) => errs.into_iter().for_each(|mut err| err.cancel()),
+                Err(errs) => drop(errs),
             }
 
             error!(
@@ -219,7 +226,9 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
             );
         }
 
-        cfg.names_valid.extend(cfg.values_checked.iter().cloned());
+        if let Some(names_valid) = &mut cfg.names_valid {
+            names_valid.extend(cfg.values_valid.keys().cloned());
+        }
         cfg
     })
 }

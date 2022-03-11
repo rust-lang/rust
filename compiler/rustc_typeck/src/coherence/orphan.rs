@@ -3,7 +3,7 @@
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::TyCtxtInferExt;
@@ -21,7 +21,7 @@ pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
         for &impl_of_trait in impls_of_trait {
             match orphan_check_impl(tcx, impl_of_trait) {
                 Ok(()) => {}
-                Err(ErrorReported) => errors.push(impl_of_trait),
+                Err(ErrorGuaranteed) => errors.push(impl_of_trait),
             }
         }
 
@@ -33,7 +33,7 @@ pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
 }
 
 #[instrument(skip(tcx), level = "debug")]
-fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorReported> {
+fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let trait_ref = tcx.impl_trait_ref(def_id).unwrap();
     let trait_def_id = trait_ref.def_id;
 
@@ -136,7 +136,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
 
         if let Some((msg, label)) = msg {
             struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
-            return Err(ErrorReported);
+            return Err(ErrorGuaranteed);
         }
     }
 
@@ -145,7 +145,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorRep
             .struct_span_err(sp, "cannot implement trait on type alias impl trait")
             .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
             .emit();
-        return Err(ErrorReported);
+        return Err(ErrorGuaranteed);
     }
 
     Ok(())
@@ -158,8 +158,8 @@ fn emit_orphan_check_error<'tcx>(
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
-) -> Result<!, ErrorReported> {
-    match err {
+) -> Result<!, ErrorGuaranteed> {
+    Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let mut err = struct_span_err!(
                 tcx.sess,
@@ -269,9 +269,7 @@ fn emit_orphan_check_error<'tcx>(
                 .emit(),
             }
         }
-    }
-
-    Err(ErrorReported)
+    })
 }
 
 #[derive(Default)]
@@ -439,6 +437,7 @@ fn fast_reject_auto_impl<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId, self_ty: 
             }
 
             match t.kind() {
+                ty::Adt(def, substs) if def.is_phantom_data() => substs.super_visit_with(self),
                 ty::Adt(def, substs) => {
                     // @lcnr: This is the only place where cycles can happen. We avoid this
                     // by only visiting each `DefId` once.

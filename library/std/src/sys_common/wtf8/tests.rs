@@ -266,7 +266,7 @@ fn wtf8buf_extend() {
 fn wtf8buf_show() {
     let mut string = Wtf8Buf::from_str("a\té \u{7f}💩\r");
     string.push(CodePoint::from_u32(0xD800).unwrap());
-    assert_eq!(format!("{:?}", string), "\"a\\té \\u{7f}\u{1f4a9}\\r\\u{d800}\"");
+    assert_eq!(format!("{string:?}"), "\"a\\té \\u{7f}\u{1f4a9}\\r\\u{d800}\"");
 }
 
 #[test]
@@ -278,7 +278,7 @@ fn wtf8buf_as_slice() {
 fn wtf8buf_show_str() {
     let text = "a\té 💩\r";
     let string = Wtf8Buf::from_str(text);
-    assert_eq!(format!("{:?}", text), format!("{:?}", string));
+    assert_eq!(format!("{text:?}"), format!("{string:?}"));
 }
 
 #[test]

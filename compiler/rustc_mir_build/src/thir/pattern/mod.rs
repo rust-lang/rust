@@ -790,16 +790,14 @@ crate fn compare_const_vals<'tcx>(
         };
     }
 
-    if let ty::Str = ty.kind() {
-        if let (
-            ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
-            ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
-        ) = (a.val(), b.val())
-        {
-            let a_bytes = get_slice_bytes(&tcx, a_val);
-            let b_bytes = get_slice_bytes(&tcx, b_val);
-            return from_bool(a_bytes == b_bytes);
-        }
+    if let ty::Str = ty.kind() && let (
+        ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+        ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
+    ) = (a.val(), b.val())
+    {
+        let a_bytes = get_slice_bytes(&tcx, a_val);
+        let b_bytes = get_slice_bytes(&tcx, b_val);
+        return from_bool(a_bytes == b_bytes);
     }
     fallback()
 }

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::{meets_msrv, msrvs};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, GenericArg, QPath};
@@ -8,6 +8,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -99,7 +100,7 @@ fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<
         if let Some(GenericArg::Type(real_ty)) = args.args.get(0);
 
         if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
-        if match_def_path(cx, def_id, &paths::MEM_SIZE_OF);
+        if cx.tcx.is_diagnostic_item(sym::mem_size_of, def_id);
         then {
             cx.typeck_results().node_substs(count_func.hir_id).types().next().map(|resolved_ty| (real_ty, resolved_ty))
         } else {

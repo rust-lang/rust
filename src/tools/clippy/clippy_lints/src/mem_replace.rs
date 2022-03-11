@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_lang_ctor, match_def_path, meets_msrv, msrvs, paths};
+use clippy_utils::{is_default_equivalent, is_lang_ctor, meets_msrv, msrvs};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
@@ -249,7 +249,7 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
             if let ExprKind::Call(func, func_args) = expr.kind;
             if let ExprKind::Path(ref func_qpath) = func.kind;
             if let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if match_def_path(cx, def_id, &paths::MEM_REPLACE);
+            if cx.tcx.is_diagnostic_item(sym::mem_replace, def_id);
             if let [dest, src] = func_args;
             then {
                 check_replace_option_with_none(cx, src, dest, expr.span);

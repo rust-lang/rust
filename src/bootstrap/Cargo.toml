@@ -3,6 +3,7 @@ name = "bootstrap"
 version = "0.0.0"
 edition = "2021"
 build = "build.rs"
+default-run = "bootstrap"
 
 [lib]
 path = "lib.rs"
@@ -34,10 +35,8 @@ path = "bin/llvm-config-wrapper.rs"
 test = false
 
 [dependencies]
-build_helper = { path = "../build_helper" }
 cmake = "0.1.38"
 filetime = "0.2"
-num_cpus = "1.0"
 getopts = "0.2.19"
 cc = "1.0.69"
 libc = "0.2"

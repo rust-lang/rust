@@ -144,7 +144,7 @@ warning: use of deprecated type alias `unstable_generic_param::Alias5`: test
 LL |     let _: Alias5<isize> = Alias5::Some(0);
    |            ^^^^^^
 
-warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
+warning: use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test
   --> $DIR/generics-default-stability.rs:219:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(1);
@@ -168,7 +168,7 @@ warning: use of deprecated enum `unstable_generic_param::Enum4`: test
 LL |     let _: Enum4<usize> = ENUM4;
    |            ^^^^^
 
-warning: use of deprecated variant `unstable_generic_param::Enum4::Some`: test
+warning: use of deprecated tuple variant `unstable_generic_param::Enum4::Some`: test
   --> $DIR/generics-default-stability.rs:225:34
    |
 LL |     let _: Enum4<isize> = Enum4::Some(0);
@@ -180,7 +180,7 @@ warning: use of deprecated enum `unstable_generic_param::Enum4`: test
 LL |     let _: Enum4<isize> = Enum4::Some(0);
    |            ^^^^^
 
-warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
+warning: use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test
   --> $DIR/generics-default-stability.rs:230:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(1);
@@ -204,7 +204,7 @@ warning: use of deprecated enum `unstable_generic_param::Enum5`: test
 LL |     let _: Enum5<usize> = ENUM5;
    |            ^^^^^
 
-warning: use of deprecated variant `unstable_generic_param::Enum5::Some`: test
+warning: use of deprecated tuple variant `unstable_generic_param::Enum5::Some`: test
   --> $DIR/generics-default-stability.rs:237:34
    |
 LL |     let _: Enum5<isize> = Enum5::Some(0);

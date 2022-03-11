@@ -1710,11 +1710,11 @@ fn document_non_exhaustive(w: &mut Buffer, item: &clean::Item) {
 }
 
 fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
-    fn write_size_of_layout(w: &mut Buffer, layout: &Layout, tag_size: u64) {
-        if layout.abi.is_unsized() {
+    fn write_size_of_layout(w: &mut Buffer, layout: Layout<'_>, tag_size: u64) {
+        if layout.abi().is_unsized() {
             write!(w, "(unsized)");
         } else {
-            let bytes = layout.size.bytes() - tag_size;
+            let bytes = layout.size().bytes() - tag_size;
             write!(w, "{size} byte{pl}", size = bytes, pl = if bytes == 1 { "" } else { "s" },);
         }
     }
@@ -1744,7 +1744,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
             write_size_of_layout(w, ty_layout.layout, 0);
             writeln!(w, "</p>");
             if let Variants::Multiple { variants, tag, tag_encoding, .. } =
-                &ty_layout.layout.variants
+                &ty_layout.layout.variants()
             {
                 if !variants.is_empty() {
                     w.write_str(
@@ -1767,7 +1767,7 @@ fn document_type_layout(w: &mut Buffer, cx: &Context<'_>, ty_def_id: DefId) {
                     for (index, layout) in variants.iter_enumerated() {
                         let name = adt.variants[index].name;
                         write!(w, "<li><code>{name}</code>: ", name = name);
-                        write_size_of_layout(w, layout, tag_size);
+                        write_size_of_layout(w, *layout, tag_size);
                         writeln!(w, "</li>");
                     }
                     w.write_str("</ul>");

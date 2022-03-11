@@ -25,19 +25,21 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(bool_to_option)]
 #![feature(box_patterns)]
+#![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(if_let_guard)]
+#![feature(iter_intersperse)]
 #![feature(iter_order_by)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(control_flow_enum)]
 #![recursion_limit = "256"]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
 
 #[macro_use]
 extern crate rustc_middle;
@@ -49,6 +51,7 @@ pub mod builtin;
 mod context;
 mod early;
 mod enum_intrinsics_non_enums;
+mod expect;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;

@@ -62,7 +62,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
             clean::StructFieldItem(_)
                 | clean::VariantItem(_)
                 | clean::AssocConstItem(_, _)
-                | clean::AssocTypeItem(_, _)
+                | clean::AssocTypeItem(..)
                 | clean::TypedefItem(_, _)
                 | clean::StaticItem(_)
                 | clean::ConstantItem(_)

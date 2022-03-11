@@ -381,12 +381,12 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 }
 
 impl Item {
-    crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
+    crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
         self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
     crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
-        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did)).map(|cs| *cs)
+        self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 
     crate fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
@@ -683,7 +683,7 @@ crate enum ItemKind {
     ///
     /// The bounds may be non-empty if there is a `where` clause.
     /// The `Option<Type>` is the default concrete type (e.g. `trait Trait { type Target = usize; }`)
-    AssocTypeItem(Vec<GenericBound>, Option<Type>),
+    AssocTypeItem(Box<Generics>, Vec<GenericBound>, Option<Type>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem(Symbol),
@@ -721,7 +721,7 @@ impl ItemKind {
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | AssocConstItem(_, _)
-            | AssocTypeItem(_, _)
+            | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem(_) => [].iter(),
         }
@@ -1397,7 +1397,7 @@ crate enum Type {
 
     /// A qualified path to an associated item: `<Type as Trait>::Name`
     QPath {
-        name: Symbol,
+        assoc: Box<PathSegment>,
         self_type: Box<Type>,
         /// FIXME: This is a hack that should be removed; see [this discussion][1].
         ///
@@ -1415,7 +1415,7 @@ crate enum Type {
 
 // `Type` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Type, 72);
+rustc_data_structures::static_assert_size!(Type, 80);
 
 impl Type {
     /// When comparing types for equality, it can help to ignore `&` wrapping.
@@ -1505,12 +1505,12 @@ impl Type {
         self.primitive_type().is_some()
     }
 
-    crate fn projection(&self) -> Option<(&Type, DefId, Symbol)> {
-        let (self_, trait_, name) = match self {
-            QPath { self_type, trait_, name, .. } => (self_type, trait_, name),
-            _ => return None,
-        };
-        Some((&self_, trait_.def_id(), *name))
+    crate fn projection(&self) -> Option<(&Type, DefId, PathSegment)> {
+        if let QPath { self_type, trait_, assoc, .. } = self {
+            Some((&self_type, trait_.def_id(), *assoc.clone()))
+        } else {
+            None
+        }
     }
 
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
@@ -2018,7 +2018,7 @@ crate enum GenericArg {
 // `GenericArg` can occur many times in a single `Path`, so make sure it
 // doesn't increase in size unexpectedly.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(GenericArg, 80);
+rustc_data_structures::static_assert_size!(GenericArg, 88);
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate enum GenericArgs {
@@ -2256,7 +2256,7 @@ crate struct ProcMacro {
 /// `A: Send + Sync` in `Foo<A: Send + Sync>`).
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 crate struct TypeBinding {
-    crate name: Symbol,
+    crate assoc: PathSegment,
     crate kind: TypeBindingKind,
 }
 

@@ -74,7 +74,7 @@ use crate::html::format::{
     PrintWithSpace,
 };
 use crate::html::highlight;
-use crate::html::markdown::{HeadingOffset, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
@@ -773,25 +773,113 @@ fn assoc_const(
 fn assoc_type(
     w: &mut Buffer,
     it: &clean::Item,
+    generics: &clean::Generics,
     bounds: &[clean::GenericBound],
     default: Option<&clean::Type>,
     link: AssocItemLink<'_>,
-    extra: &str,
+    indent: usize,
     cx: &Context<'_>,
 ) {
     write!(
         w,
-        "{}type <a href=\"{}\" class=\"associatedtype\">{}</a>",
-        extra,
-        naive_assoc_href(it, link, cx),
-        it.name.as_ref().unwrap()
+        "{indent}type <a href=\"{href}\" class=\"associatedtype\">{name}</a>{generics}",
+        indent = " ".repeat(indent),
+        href = naive_assoc_href(it, link, cx),
+        name = it.name.as_ref().unwrap(),
+        generics = generics.print(cx),
     );
     if !bounds.is_empty() {
         write!(w, ": {}", print_generic_bounds(bounds, cx))
     }
+    write!(w, "{}", print_where_clause(generics, cx, indent, false));
     if let Some(default) = default {
         write!(w, " = {}", default.print(cx))
     }
+}
+
+fn assoc_method(
+    w: &mut Buffer,
+    meth: &clean::Item,
+    header: hir::FnHeader,
+    g: &clean::Generics,
+    d: &clean::FnDecl,
+    link: AssocItemLink<'_>,
+    parent: ItemType,
+    cx: &Context<'_>,
+    render_mode: RenderMode,
+) {
+    let name = meth.name.as_ref().unwrap();
+    let href = match link {
+        AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
+        AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
+        AssocItemLink::GotoSource(did, provided_methods) => {
+            // We're creating a link from an impl-item to the corresponding
+            // trait-item and need to map the anchored type accordingly.
+            let ty =
+                if provided_methods.contains(name) { ItemType::Method } else { ItemType::TyMethod };
+
+            match (href(did.expect_def_id(), cx), ty) {
+                (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
+                (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
+                (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
+            }
+        }
+    };
+    let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
+    // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
+    // this condition.
+    let constness = match render_mode {
+        RenderMode::Normal => {
+            print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
+        }
+        RenderMode::ForDeref { .. } => "",
+    };
+    let asyncness = header.asyncness.print_with_space();
+    let unsafety = header.unsafety.print_with_space();
+    let defaultness = print_default_space(meth.is_default());
+    let abi = print_abi_with_space(header.abi).to_string();
+
+    // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
+    let generics_len = format!("{:#}", g.print(cx)).len();
+    let mut header_len = "fn ".len()
+        + vis.len()
+        + constness.len()
+        + asyncness.len()
+        + unsafety.len()
+        + defaultness.len()
+        + abi.len()
+        + name.as_str().len()
+        + generics_len;
+
+    let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
+        header_len += 4;
+        let indent_str = "    ";
+        render_attributes_in_pre(w, meth, indent_str);
+        (4, indent_str, false)
+    } else {
+        render_attributes_in_code(w, meth);
+        (0, "", true)
+    };
+    w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
+    write!(
+        w,
+        "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
+         {generics}{decl}{notable_traits}{where_clause}",
+        indent = indent_str,
+        vis = vis,
+        constness = constness,
+        asyncness = asyncness,
+        unsafety = unsafety,
+        defaultness = defaultness,
+        abi = abi,
+        // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
+        href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
+        name = name,
+        generics = g.print(cx),
+        decl = d.full_print(header_len, indent, header.asyncness, cx),
+        notable_traits = notable_traits_decl(d, cx),
+        where_clause = print_where_clause(g, cx, indent, end_newline),
+    )
 }
 
 /// Writes a span containing the versions at which an item became stable and/or const-stable. For
@@ -875,111 +963,25 @@ fn render_assoc_item(
     cx: &Context<'_>,
     render_mode: RenderMode,
 ) {
-    fn method(
-        w: &mut Buffer,
-        meth: &clean::Item,
-        header: hir::FnHeader,
-        g: &clean::Generics,
-        d: &clean::FnDecl,
-        link: AssocItemLink<'_>,
-        parent: ItemType,
-        cx: &Context<'_>,
-        render_mode: RenderMode,
-    ) {
-        let name = meth.name.as_ref().unwrap();
-        let href = match link {
-            AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{}", id)),
-            AssocItemLink::Anchor(None) => Some(format!("#{}.{}", meth.type_(), name)),
-            AssocItemLink::GotoSource(did, provided_methods) => {
-                // We're creating a link from an impl-item to the corresponding
-                // trait-item and need to map the anchored type accordingly.
-                let ty = if provided_methods.contains(name) {
-                    ItemType::Method
-                } else {
-                    ItemType::TyMethod
-                };
-
-                match (href(did.expect_def_id(), cx), ty) {
-                    (Ok(p), ty) => Some(format!("{}#{}.{}", p.0, ty, name)),
-                    (Err(HrefError::DocumentationNotBuilt), ItemType::TyMethod) => None,
-                    (Err(_), ty) => Some(format!("#{}.{}", ty, name)),
-                }
-            }
-        };
-        let vis = meth.visibility.print_with_space(meth.def_id, cx).to_string();
-        // FIXME: Once https://github.com/rust-lang/rust/issues/67792 is implemented, we can remove
-        // this condition.
-        let constness = match render_mode {
-            RenderMode::Normal => {
-                print_constness_with_space(&header.constness, meth.const_stability(cx.tcx()))
-            }
-            RenderMode::ForDeref { .. } => "",
-        };
-        let asyncness = header.asyncness.print_with_space();
-        let unsafety = header.unsafety.print_with_space();
-        let defaultness = print_default_space(meth.is_default());
-        let abi = print_abi_with_space(header.abi).to_string();
-
-        // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
-        let generics_len = format!("{:#}", g.print(cx)).len();
-        let mut header_len = "fn ".len()
-            + vis.len()
-            + constness.len()
-            + asyncness.len()
-            + unsafety.len()
-            + defaultness.len()
-            + abi.len()
-            + name.as_str().len()
-            + generics_len;
-
-        let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
-            header_len += 4;
-            let indent_str = "    ";
-            render_attributes_in_pre(w, meth, indent_str);
-            (4, indent_str, false)
-        } else {
-            render_attributes_in_code(w, meth);
-            (0, "", true)
-        };
-        w.reserve(header_len + "<a href=\"\" class=\"fnname\">{".len() + "</a>".len());
-        write!(
-            w,
-            "{indent}{vis}{constness}{asyncness}{unsafety}{defaultness}{abi}fn <a {href} class=\"fnname\">{name}</a>\
-             {generics}{decl}{notable_traits}{where_clause}",
-            indent = indent_str,
-            vis = vis,
-            constness = constness,
-            asyncness = asyncness,
-            unsafety = unsafety,
-            defaultness = defaultness,
-            abi = abi,
-            // links without a href are valid - https://www.w3schools.com/tags/att_a_href.asp
-            href = href.map(|href| format!("href=\"{}\"", href)).unwrap_or_else(|| "".to_string()),
-            name = name,
-            generics = g.print(cx),
-            decl = d.full_print(header_len, indent, header.asyncness, cx),
-            notable_traits = notable_traits_decl(d, cx),
-            where_clause = print_where_clause(g, cx, indent, end_newline),
-        )
-    }
     match *item.kind {
         clean::StrippedItem(..) => {}
         clean::TyMethodItem(ref m) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
+            assoc_method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::MethodItem(ref m, _) => {
-            method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
+            assoc_method(w, item, m.header, &m.generics, &m.decl, link, parent, cx, render_mode)
         }
         clean::AssocConstItem(ref ty, _) => {
             assoc_const(w, item, ty, link, if parent == ItemType::Trait { "    " } else { "" }, cx)
         }
-        clean::AssocTypeItem(ref bounds, ref default) => assoc_type(
+        clean::AssocTypeItem(ref generics, ref bounds, ref default) => assoc_type(
             w,
             item,
+            generics,
             bounds,
             default.as_ref(),
             link,
-            if parent == ItemType::Trait { "    " } else { "" },
+            if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
         _ => panic!("render_assoc_item called on non-associated-item"),
@@ -1063,14 +1065,15 @@ fn render_assoc_items_inner(
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::empty_from(w);
-        let render_mode = match what {
+        let (render_mode, id) = match what {
             AssocItemRender::All => {
                 tmp_buf.write_str(
                     "<h2 id=\"implementations\" class=\"small-section-header\">\
-                         Implementations<a href=\"#implementations\" class=\"anchor\"></a>\
-                    </h2>",
+                         Implementations\
+                         <a href=\"#implementations\" class=\"anchor\"></a>\
+                     </h2>",
                 );
-                RenderMode::Normal
+                (RenderMode::Normal, "implementations-list".to_owned())
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
@@ -1088,7 +1091,7 @@ fn render_assoc_items_inner(
                     trait_ = trait_.print(cx),
                     type_ = type_.print(cx),
                 );
-                RenderMode::ForDeref { mut_: deref_mut_ }
+                (RenderMode::ForDeref { mut_: deref_mut_ }, cx.derive_id(id))
             }
         };
         let mut impls_buf = Buffer::empty_from(w);
@@ -1113,7 +1116,9 @@ fn render_assoc_items_inner(
         }
         if !impls_buf.is_empty() {
             w.push_buffer(tmp_buf);
+            write!(w, "<div id=\"{}\">", id);
             w.push_buffer(impls_buf);
+            w.write_str("</div>");
         }
     }
 
@@ -1144,7 +1149,8 @@ fn render_assoc_items_inner(
             write!(
                 w,
                 "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
-                     Trait Implementations<a href=\"#trait-implementations\" class=\"anchor\"></a>\
+                     Trait Implementations\
+                     <a href=\"#trait-implementations\" class=\"anchor\"></a>\
                  </h2>\
                  <div id=\"trait-implementations-list\">{}</div>",
                 impls
@@ -1283,7 +1289,16 @@ fn notable_traits_decl(decl: &clean::FnDecl, cx: &Context<'_>) -> String {
                                 let empty_set = FxHashSet::default();
                                 let src_link =
                                     AssocItemLink::GotoSource(trait_did.into(), &empty_set);
-                                assoc_type(&mut out, it, &[], Some(&tydef.type_), src_link, "", cx);
+                                assoc_type(
+                                    &mut out,
+                                    it,
+                                    &tydef.generics,
+                                    &[],
+                                    Some(&tydef.type_),
+                                    src_link,
+                                    0,
+                                    cx,
+                                );
                                 out.push_str(";</span>");
                             }
                         }
@@ -1462,10 +1477,11 @@ fn render_impl(
                 assoc_type(
                     w,
                     item,
-                    &Vec::new(),
+                    &tydef.generics,
+                    &[],
                     Some(&tydef.type_),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    "",
+                    0,
                     cx,
                 );
                 w.write_str("</h4>");
@@ -1493,7 +1509,7 @@ fn render_impl(
                 w.write_str("</h4>");
                 w.write_str("</section>");
             }
-            clean::AssocTypeItem(ref bounds, ref default) => {
+            clean::AssocTypeItem(ref generics, ref bounds, ref default) => {
                 let source_id = format!("{}.{}", item_type, name);
                 let id = cx.derive_id(source_id.clone());
                 write!(w, "<section id=\"{}\" class=\"{}{}\">", id, item_type, in_trait_class,);
@@ -1502,10 +1518,11 @@ fn render_impl(
                 assoc_type(
                     w,
                     item,
+                    generics,
                     bounds,
                     default.as_ref(),
                     link.anchor(if trait_.is_some() { &source_id } else { &id }),
-                    "",
+                    0,
                     cx,
                 );
                 w.write_str("</h4>");
@@ -1726,7 +1743,16 @@ pub(crate) fn render_impl_summary(
             for it in &i.inner_impl().items {
                 if let clean::TypedefItem(ref tydef, _) = *it.kind {
                     w.write_str("<span class=\"where fmt-newline\">  ");
-                    assoc_type(w, it, &[], Some(&tydef.type_), AssocItemLink::Anchor(None), "", cx);
+                    assoc_type(
+                        w,
+                        it,
+                        &tydef.generics,
+                        &[],
+                        Some(&tydef.type_),
+                        AssocItemLink::Anchor(None),
+                        0,
+                        cx,
+                    );
                     w.write_str(";</span>");
                 }
             }
@@ -1950,8 +1976,10 @@ fn small_url_encode(s: String) -> String {
 fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
     let did = it.def_id.expect_def_id();
     let cache = cx.cache();
+
     if let Some(v) = cache.impls.get(&did) {
         let mut used_links = FxHashSet::default();
+        let mut id_map = IdMap::new();
 
         {
             let used_links_bor = &mut used_links;
@@ -1992,7 +2020,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 sidebar_deref_methods(cx, out, impl_, v, &mut derefs);
             }
 
-            let format_impls = |impls: Vec<&Impl>| {
+            let format_impls = |impls: Vec<&Impl>, id_map: &mut IdMap| {
                 let mut links = FxHashSet::default();
 
                 let mut ret = impls
@@ -2001,13 +2029,14 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                         if let Some(ref i) = it.inner_impl().trait_ {
                             let i_display = format!("{:#}", i.print(cx));
                             let out = Escape(&i_display);
-                            let encoded = small_url_encode(format!("{:#}", i.print(cx)));
+                            let encoded =
+                                id_map.derive(small_url_encode(format!("impl-{:#}", i.print(cx))));
                             let prefix = match it.inner_impl().polarity {
                                 ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => "",
                                 ty::ImplPolarity::Negative => "!",
                             };
                             let generated =
-                                format!("<a href=\"#impl-{}\">{}{}</a>", encoded, prefix, out);
+                                format!("<a href=\"#{}\">{}{}</a>", encoded, prefix, out);
                             if links.insert(generated.clone()) { Some(generated) } else { None }
                         } else {
                             None
@@ -2023,9 +2052,9 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
                 concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
 
-            let concrete_format = format_impls(concrete);
-            let synthetic_format = format_impls(synthetic);
-            let blanket_format = format_impls(blanket_impl);
+            let concrete_format = format_impls(concrete, &mut id_map);
+            let synthetic_format = format_impls(synthetic, &mut id_map);
+            let blanket_format = format_impls(blanket_impl, &mut id_map);
 
             if !concrete_format.is_empty() {
                 print_sidebar_block(

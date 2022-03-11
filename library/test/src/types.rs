@@ -117,12 +117,12 @@ pub struct TestId(pub usize);
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
+    #[cfg(not(bootstrap))]
+    pub ignore_message: Option<&'static str>,
     pub should_panic: options::ShouldPanic,
     pub compile_fail: bool,
     pub no_run: bool,
     pub test_type: TestType,
-    #[cfg(bootstrap)]
-    pub allow_fail: bool,
 }
 
 impl TestDesc {

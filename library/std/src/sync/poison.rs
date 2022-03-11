@@ -73,7 +73,7 @@ pub struct Guard {
 ///     Ok(_) => unreachable!(),
 ///     Err(p_err) => {
 ///         let data = p_err.get_ref();
-///         println!("recovered: {}", data);
+///         println!("recovered: {data}");
 ///     }
 /// };
 /// ```

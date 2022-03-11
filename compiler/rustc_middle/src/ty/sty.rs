@@ -977,7 +977,6 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-
         ty::TraitRef { def_id: trait_id, substs: tcx.intern_substs(&substs[..defs.params.len()]) }
     }
 }
@@ -1396,7 +1395,7 @@ impl ParamConst {
 
 /// Use this rather than `TyKind`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Region<'tcx>(pub Interned<'tcx, RegionKind>);
 
 impl<'tcx> Deref for Region<'tcx> {
@@ -1888,6 +1887,15 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
+    pub fn is_array_slice(self) -> bool {
+        match self.kind() {
+            Slice(_) => true,
+            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_)),
+            _ => false,
+        }
+    }
+
+    #[inline]
     pub fn is_array(self) -> bool {
         matches!(self.kind(), Array(..))
     }
@@ -2369,6 +2377,57 @@ impl<'tcx> Ty<'tcx> {
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 bug!("`is_trivially_sized` applied to unexpected type: {:?}", self)
+            }
+        }
+    }
+
+    /// Fast path helper for primitives which are always `Copy` and which
+    /// have a side-effect-free `Clone` impl.
+    ///
+    /// Returning true means the type is known to be pure and `Copy+Clone`.
+    /// Returning `false` means nothing -- could be `Copy`, might not be.
+    ///
+    /// This is mostly useful for optimizations, as there are the types
+    /// on which we can replace cloning with dereferencing.
+    pub fn is_trivially_pure_clone_copy(self) -> bool {
+        match self.kind() {
+            ty::Bool | ty::Char | ty::Never => true,
+
+            // These aren't even `Clone`
+            ty::Str | ty::Slice(..) | ty::Foreign(..) | ty::Dynamic(..) => false,
+
+            ty::Int(..) | ty::Uint(..) | ty::Float(..) => true,
+
+            // The voldemort ZSTs are fine.
+            ty::FnDef(..) => true,
+
+            ty::Array(element_ty, _len) => element_ty.is_trivially_pure_clone_copy(),
+
+            // A 100-tuple isn't "trivial", so doing this only for reasonable sizes.
+            ty::Tuple(field_tys) => {
+                field_tys.len() <= 3 && field_tys.iter().all(Self::is_trivially_pure_clone_copy)
+            }
+
+            // Sometimes traits aren't implemented for every ABI or arity,
+            // because we can't be generic over everything yet.
+            ty::FnPtr(..) => false,
+
+            // Definitely absolutely not copy.
+            ty::Ref(_, _, hir::Mutability::Mut) => false,
+
+            // Thin pointers & thin shared references are pure-clone-copy, but for
+            // anything with custom metadata it might be more complicated.
+            ty::Ref(_, _, hir::Mutability::Not) | ty::RawPtr(..) => false,
+
+            ty::Generator(..) | ty::GeneratorWitness(..) => false,
+
+            // Might be, but not "trivial" so just giving the safe answer.
+            ty::Adt(..) | ty::Closure(..) | ty::Opaque(..) => false,
+
+            ty::Projection(..) | ty::Param(..) | ty::Infer(..) | ty::Error(..) => false,
+
+            ty::Bound(..) | ty::Placeholder(..) => {
+                bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);
             }
         }
     }

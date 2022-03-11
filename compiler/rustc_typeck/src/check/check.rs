@@ -4,7 +4,7 @@ use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_
 use super::*;
 
 use rustc_attr as attr;
-use rustc_errors::{Applicability, ErrorReported};
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -14,7 +14,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::layout::MAX_SIMD_LANES;
+use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, OpaqueTypeKey, ParamEnv, Ty, TyCtxt};
@@ -37,14 +37,16 @@ pub fn check_wf_new(tcx: TyCtxt<'_>) {
 pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
     match tcx.sess.target.is_abi_supported(abi) {
         Some(true) => (),
-        Some(false) => struct_span_err!(
-            tcx.sess,
-            span,
-            E0570,
-            "`{}` is not a supported ABI for the current target",
-            abi
-        )
-        .emit(),
+        Some(false) => {
+            struct_span_err!(
+                tcx.sess,
+                span,
+                E0570,
+                "`{}` is not a supported ABI for the current target",
+                abi
+            )
+            .emit();
+        }
         None => {
             tcx.struct_span_lint_hir(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
                 lint.build("use of calling convention not supported on this target").emit()
@@ -60,7 +62,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
             E0781,
             "the `\"C-cmse-nonsecure-call\"` ABI is only allowed on function pointers"
         )
-        .emit()
+        .emit();
     }
 }
 
@@ -280,13 +282,12 @@ pub(super) fn check_fn<'a, 'tcx>(
                         sess.span_err(decl.inputs[0].span, "argument should be `&PanicInfo`");
                     }
 
-                    if let Node::Item(item) = hir.get(fn_id) {
-                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
-                            if !generics.params.is_empty() {
+                    if let Node::Item(item) = hir.get(fn_id)
+                        && let ItemKind::Fn(_, ref generics, _) = item.kind
+                        && !generics.params.is_empty()
+                    {
                                 sess.span_err(span, "should have no type parameters");
                             }
-                        }
-                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -317,17 +318,15 @@ pub(super) fn check_fn<'a, 'tcx>(
                         sess.span_err(decl.inputs[0].span, "argument should be `Layout`");
                     }
 
-                    if let Node::Item(item) = hir.get(fn_id) {
-                        if let ItemKind::Fn(_, ref generics, _) = item.kind {
-                            if !generics.params.is_empty() {
+                    if let Node::Item(item) = hir.get(fn_id)
+                        && let ItemKind::Fn(_, ref generics, _) = item.kind
+                        && !generics.params.is_empty()
+                    {
                                 sess.span_err(
                                     span,
-                                    "`#[alloc_error_handler]` function should have no type \
-                                     parameters",
+                            "`#[alloc_error_handler]` function should have no type parameters",
                                 );
                             }
-                        }
-                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -415,10 +414,31 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, span: Spa
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
     let ty = tcx.type_of(def_id);
-    let Ok(layout) = tcx.layout_of(ParamEnv::reveal_all().and(ty)) else {
+    let layout = match tcx.layout_of(ParamEnv::reveal_all().and(ty)) {
+        Ok(l) => l,
+        // Foreign statics that overflow their allowed size should emit an error
+        Err(LayoutError::SizeOverflow(_))
+            if {
+                let node = tcx.hir().get_by_def_id(def_id);
+                matches!(
+                    node,
+                    hir::Node::ForeignItem(hir::ForeignItem {
+                        kind: hir::ForeignItemKind::Static(..),
+                        ..
+                    })
+                )
+            } =>
+        {
+            tcx.sess
+                .struct_span_err(span, "extern static is too large for the current architecture")
+                .emit();
+            return;
+        }
         // Generic statics are rejected, but we still reach this case.
-        tcx.sess.delay_span_bug(span, "generic static must be rejected");
-        return;
+        Err(e) => {
+            tcx.sess.delay_span_bug(span, &e.to_string());
+            return;
+        }
     };
     if layout.abi.is_uninhabited() {
         tcx.struct_span_lint_hir(
@@ -603,13 +623,13 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     substs: SubstsRef<'tcx>,
     span: Span,
     origin: &hir::OpaqueTyOrigin,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
         match origin {
             hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
             _ => opaque_type_cycle_error(tcx, def_id, span),
         }
-        Err(ErrorReported)
+        Err(ErrorGuaranteed)
     } else {
         Ok(())
     }
@@ -722,12 +742,11 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                     impl_trait_ref,
                     &impl_.items,
                 );
-                let trait_def_id = impl_trait_ref.def_id;
-                check_on_unimplemented(tcx, trait_def_id, it);
+                check_on_unimplemented(tcx, it);
             }
         }
         hir::ItemKind::Trait(_, _, _, _, ref items) => {
-            check_on_unimplemented(tcx, it.def_id.to_def_id(), it);
+            check_on_unimplemented(tcx, it);
 
             for item in items.iter() {
                 let item = tcx.hir().trait_item(item.id);
@@ -740,7 +759,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         let assoc_item = tcx.associated_item(item.def_id);
                         let trait_substs =
                             InternalSubsts::identity_for_item(tcx, it.def_id.to_def_id());
-                        let _: Result<_, rustc_errors::ErrorReported> = check_type_bounds(
+                        let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
@@ -837,9 +856,9 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     }
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item<'_>) {
+pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
     // an error would be reported if this fails.
-    let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item.def_id.to_def_id());
+    let _ = traits::OnUnimplementedDirective::of_item(tcx, item.def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
@@ -1123,9 +1142,10 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
     if repr.packed() {
         for attr in tcx.get_attrs(def.did).iter() {
             for r in attr::find_repr_attrs(&tcx.sess, attr) {
-                if let attr::ReprPacked(pack) = r {
-                    if let Some(repr_pack) = repr.pack {
-                        if pack as u64 != repr_pack.bytes() {
+                if let attr::ReprPacked(pack) = r
+                    && let Some(repr_pack) = repr.pack
+                    && pack as u64 != repr_pack.bytes()
+                {
                             struct_span_err!(
                                 tcx.sess,
                                 sp,
@@ -1133,8 +1153,6 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: &ty::AdtDef) {
                                 "type has conflicting packed representation hints"
                             )
                             .emit();
-                        }
-                    }
                 }
             }
         }
@@ -1376,12 +1394,11 @@ fn display_discriminant_value<'tcx>(
 ) -> String {
     if let Some(expr) = &variant.disr_expr {
         let body = &tcx.hir().body(expr.body).value;
-        if let hir::ExprKind::Lit(lit) = &body.kind {
-            if let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node {
-                if evaluated != *lit_value {
+        if let hir::ExprKind::Lit(lit) = &body.kind
+            && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
+            && evaluated != *lit_value
+        {
                     return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
-                }
-            }
         }
     }
     format!("`{}`", evaluated)

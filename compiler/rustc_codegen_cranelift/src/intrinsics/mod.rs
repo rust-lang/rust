@@ -1070,7 +1070,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
 
         raw_eq, (v lhs_ref, v rhs_ref) {
-            let size = fx.layout_of(substs.type_at(0)).layout.size;
+            let size = fx.layout_of(substs.type_at(0)).layout.size();
             // FIXME add and use emit_small_memcmp
             let is_eq_value =
                 if size == Size::ZERO {

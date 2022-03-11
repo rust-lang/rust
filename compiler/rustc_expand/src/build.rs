@@ -329,6 +329,10 @@ impl<'a> ExtCtxt<'a> {
         self.expr_call_global(sp, some, vec![expr])
     }
 
+    pub fn expr_none(&self, sp: Span) -> P<ast::Expr> {
+        let none = self.std_path(&[sym::option, sym::Option, sym::None]);
+        self.expr_path(self.path_global(sp, none))
+    }
     pub fn expr_tuple(&self, sp: Span, exprs: Vec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
     }

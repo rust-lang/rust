@@ -370,7 +370,7 @@ impl char {
     ///
     /// ```
     /// for c in '❤'.escape_unicode() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -448,7 +448,7 @@ impl char {
     ///
     /// ```
     /// for c in '\n'.escape_debug() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -504,7 +504,7 @@ impl char {
     ///
     /// ```
     /// for c in '"'.escape_default() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -949,7 +949,7 @@ impl char {
     ///
     /// ```
     /// for c in 'İ'.to_lowercase() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -1016,7 +1016,7 @@ impl char {
     ///
     /// ```
     /// for c in 'ß'.to_uppercase() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```

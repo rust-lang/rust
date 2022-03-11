@@ -575,7 +575,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             item.span,
             item.hir_id(),
         ),
-        ItemKind::Macro(_) => {
+        ItemKind::Macro(..) => {
             visitor.visit_id(item.hir_id());
         }
         ItemKind::Mod(ref module) => {

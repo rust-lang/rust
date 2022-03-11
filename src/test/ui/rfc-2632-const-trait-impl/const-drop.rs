@@ -1,7 +1,6 @@
 // run-pass
 // revisions: stock precise
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 #![feature(const_mut_refs)]
 #![feature(never_type)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]

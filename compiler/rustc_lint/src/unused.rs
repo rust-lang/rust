@@ -240,17 +240,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                 }
                 ty::Tuple(ref tys) => {
                     let mut has_emitted = false;
-                    let spans = if let hir::ExprKind::Tup(comps) = &expr.kind {
+                    let comps = if let hir::ExprKind::Tup(comps) = expr.kind {
                         debug_assert_eq!(comps.len(), tys.len());
-                        comps.iter().map(|e| e.span).collect()
+                        comps
                     } else {
-                        vec![]
+                        &[]
                     };
                     for (i, ty) in tys.iter().enumerate() {
                         let descr_post = &format!(" in tuple element {}", i);
-                        let span = *spans.get(i).unwrap_or(&span);
-                        if check_must_use_ty(cx, ty, expr, span, descr_pre, descr_post, plural_len)
-                        {
+                        let e = comps.get(i).unwrap_or(expr);
+                        let span = e.span;
+                        if check_must_use_ty(cx, ty, e, span, descr_pre, descr_post, plural_len) {
                             has_emitted = true;
                         }
                     }

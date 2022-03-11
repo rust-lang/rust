@@ -85,7 +85,7 @@ fn populate_polonius_move_facts(
 ) {
     all_facts
         .path_is_var
-        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(v, &m)| (m, v)));
+        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
 
     for (child, move_path) in move_data.move_paths.iter_enumerated() {
         if let Some(parent) = move_path.parent {
@@ -135,7 +135,7 @@ fn populate_polonius_move_facts(
         }
     }
 
-    for (local, &path) in move_data.rev_lookup.iter_locals_enumerated() {
+    for (local, path) in move_data.rev_lookup.iter_locals_enumerated() {
         if body.local_kind(local) != LocalKind::Arg {
             // Non-arguments start out deinitialised; we simulate this with an
             // initial move:
@@ -188,6 +188,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
             move_data,
             elements,
             upvars,
+            use_polonius,
         );
 
     if let Some(all_facts) = &mut all_facts {
@@ -225,7 +226,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
                      fr1={:?}, fr2={:?}",
                     fr1, fr2
                 );
-                all_facts.known_placeholder_subset.push((*fr1, *fr2));
+                all_facts.known_placeholder_subset.push((fr1, fr2));
             }
         }
     }
@@ -417,7 +418,7 @@ pub(super) fn dump_annotation<'a, 'tcx>(
         err.note(&format!("Inferred opaque type values:\n{:#?}", opaque_type_values));
     }
 
-    errors.buffer_error(err);
+    errors.buffer_non_error_diag(err);
 }
 
 fn for_each_region_constraint(

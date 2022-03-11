@@ -497,42 +497,40 @@ impl TokenStreamBuilder {
 
         // If `self` is not empty and the last tree within the last stream is a
         // token tree marked with `Joint`...
-        if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut() {
-            if let Some((TokenTree::Token(last_token), Spacing::Joint)) = last_stream_lrc.last() {
-                // ...and `stream` is not empty and the first tree within it is
-                // a token tree...
-                let TokenStream(ref mut stream_lrc) = stream;
-                if let Some((TokenTree::Token(token), spacing)) = stream_lrc.first() {
-                    // ...and the two tokens can be glued together...
-                    if let Some(glued_tok) = last_token.glue(&token) {
-                        // ...then do so, by overwriting the last token
-                        // tree in `self` and removing the first token tree
-                        // from `stream`. This requires using `make_mut()`
-                        // on the last stream in `self` and on `stream`,
-                        // and in practice this doesn't cause cloning 99.9%
-                        // of the time.
+        if let Some(TokenStream(ref mut last_stream_lrc)) = self.0.last_mut()
+            && let Some((TokenTree::Token(last_token), Spacing::Joint)) = last_stream_lrc.last()
+            // ...and `stream` is not empty and the first tree within it is
+            // a token tree...
+            && let TokenStream(ref mut stream_lrc) = stream
+            && let Some((TokenTree::Token(token), spacing)) = stream_lrc.first()
+            // ...and the two tokens can be glued together...
+            && let Some(glued_tok) = last_token.glue(&token)
+        {
+            // ...then do so, by overwriting the last token
+            // tree in `self` and removing the first token tree
+            // from `stream`. This requires using `make_mut()`
+            // on the last stream in `self` and on `stream`,
+            // and in practice this doesn't cause cloning 99.9%
+            // of the time.
 
-                        // Overwrite the last token tree with the merged
-                        // token.
-                        let last_vec_mut = Lrc::make_mut(last_stream_lrc);
-                        *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
+            // Overwrite the last token tree with the merged
+            // token.
+            let last_vec_mut = Lrc::make_mut(last_stream_lrc);
+            *last_vec_mut.last_mut().unwrap() = (TokenTree::Token(glued_tok), *spacing);
 
-                        // Remove the first token tree from `stream`. (This
-                        // is almost always the only tree in `stream`.)
-                        let stream_vec_mut = Lrc::make_mut(stream_lrc);
-                        stream_vec_mut.remove(0);
+            // Remove the first token tree from `stream`. (This
+            // is almost always the only tree in `stream`.)
+            let stream_vec_mut = Lrc::make_mut(stream_lrc);
+            stream_vec_mut.remove(0);
 
-                        // Don't push `stream` if it's empty -- that could
-                        // block subsequent token gluing, by getting
-                        // between two token trees that should be glued
-                        // together.
-                        if !stream.is_empty() {
-                            self.0.push(stream);
-                        }
-                        return;
-                    }
-                }
+            // Don't push `stream` if it's empty -- that could
+            // block subsequent token gluing, by getting
+            // between two token trees that should be glued
+            // together.
+            if !stream.is_empty() {
+                self.0.push(stream);
             }
+            return;
         }
         self.0.push(stream);
     }

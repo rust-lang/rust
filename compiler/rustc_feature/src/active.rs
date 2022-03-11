@@ -2,6 +2,7 @@
 
 use super::{to_nonzero, Feature, State};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
@@ -47,6 +48,8 @@ macro_rules! declare_features {
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
             /// `#![feature]` attrs for non-language (library) features.
             pub declared_lib_features: Vec<(Symbol, Span)>,
+            /// Features enabled for this crate.
+            pub active_features: FxHashSet<Symbol>,
             $(
                 $(#[doc = $doc])*
                 pub $feature: bool
@@ -56,6 +59,11 @@ macro_rules! declare_features {
         impl Features {
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
+            }
+
+            /// Is the given feature active?
+            pub fn active(&self, feature: Symbol) -> bool {
+                self.active_features.contains(&feature)
             }
 
             /// Is the given feature enabled?
@@ -161,6 +169,8 @@ declare_features! (
     (active, staged_api, "1.0.0", None, None),
     /// Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", None, Some(Edition::Edition2018)),
+    /// Added for testing unstable lints; perma-unstable.
+    (active, test_unstable_lint, "1.60.0", None, None),
     /// Allows non-`unsafe` —and thus, unsound— access to `Pin` constructions.
     /// Marked `incomplete` since perma-unstable and unsound.
     (incomplete, unsafe_pin_internals, "1.60.0", None, None),
@@ -330,14 +340,8 @@ declare_features! (
     (active, const_extern_fn, "1.40.0", Some(64926), None),
     /// Allows basic arithmetic on floating point types in a `const fn`.
     (active, const_fn_floating_point_arithmetic, "1.48.0", Some(57241), None),
-    /// Allows using and casting function pointers in a `const fn`.
-    (active, const_fn_fn_ptr_basics, "1.48.0", Some(57563), None),
-    /// Allows trait bounds in `const fn`.
-    (active, const_fn_trait_bound, "1.53.0", Some(93706), None),
     /// Allows `for _ in _` loops in const contexts.
     (active, const_for, "1.56.0", Some(87575), None),
-    /// Allows argument and return position `impl Trait` in a `const fn`.
-    (active, const_impl_trait, "1.48.0", Some(77463), None),
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
     /// Be more precise when looking for live drops in a const context.
@@ -360,6 +364,8 @@ declare_features! (
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
+    /// Allows having using `suggestion` in the `#[deprecated]` attribute.
+    (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows `#[derive(Default)]` and `#[default]` on enums.
     (active, derive_default_enum, "1.56.0", Some(86985), None),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -400,8 +406,6 @@ declare_features! (
     (active, if_let_guard, "1.47.0", Some(51114), None),
     /// Allows using imported `main` function
     (active, imported_main, "1.53.0", Some(28937), None),
-    /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
-    (active, in_band_lifetimes, "1.23.0", Some(44524), None),
     /// Allows inferring `'static` outlives requirements (RFC 2093).
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
     /// Allows associated types in inherent impls.
@@ -426,6 +430,8 @@ declare_features! (
     (active, link_cfg, "1.14.0", Some(37406), None),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (active, lint_reasons, "1.31.0", Some(54503), None),
+    /// Give access to additional metadata about declarative macro meta-variables.
+    (active, macro_metavar_expr, "1.61.0", Some(83527), None),
     /// Allows `#[marker]` on certain traits allowing overlapping implementations.
     (active, marker_trait_attr, "1.30.0", Some(29864), None),
     /// A minimal, sound subset of specialization intended to be used by the

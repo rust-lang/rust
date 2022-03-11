@@ -10,6 +10,7 @@ use std::num::NonZeroUsize;
 use std::ops::{Add, AddAssign, Deref, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
+use rustc_data_structures::intern::Interned;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::json::{Json, ToJson};
@@ -1024,7 +1025,7 @@ rustc_index::newtype_index! {
 }
 
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub enum Variants {
+pub enum Variants<'a> {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -1038,7 +1039,7 @@ pub enum Variants {
         tag: Scalar,
         tag_encoding: TagEncoding,
         tag_field: usize,
-        variants: IndexVec<VariantIdx, Layout>,
+        variants: IndexVec<VariantIdx, Layout<'a>>,
     },
 }
 
@@ -1146,8 +1147,8 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
-pub struct Layout {
+#[derive(PartialEq, Eq, Hash, HashStable_Generic)]
+pub struct LayoutS<'a> {
     /// Says where the fields are located within the layout.
     pub fields: FieldsShape,
 
@@ -1158,7 +1159,7 @@ pub struct Layout {
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.
-    pub variants: Variants,
+    pub variants: Variants<'a>,
 
     /// The `abi` defines how this data is passed between functions, and it defines
     /// value restrictions via `valid_range`.
@@ -1177,12 +1178,12 @@ pub struct Layout {
     pub size: Size,
 }
 
-impl Layout {
+impl<'a> LayoutS<'a> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
-        Layout {
+        LayoutS {
             variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldsShape::Primitive,
             abi: Abi::Scalar(scalar),
@@ -1190,6 +1191,59 @@ impl Layout {
             size,
             align,
         }
+    }
+}
+
+impl<'a> fmt::Debug for LayoutS<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This is how `Layout` used to print before it become
+        // `Interned<LayoutS>`. We print it like this to avoid having to update
+        // expected output in a lot of tests.
+        f.debug_struct("Layout")
+            .field("fields", &self.fields)
+            .field("variants", &self.variants)
+            .field("abi", &self.abi)
+            .field("largest_niche", &self.largest_niche)
+            .field("align", &self.align)
+            .field("size", &self.size)
+            .finish()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+pub struct Layout<'a>(pub Interned<'a, LayoutS<'a>>);
+
+impl<'a> fmt::Debug for Layout<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // See comment on `<LayoutS as Debug>::fmt` above.
+        self.0.0.fmt(f)
+    }
+}
+
+impl<'a> Layout<'a> {
+    pub fn fields(self) -> &'a FieldsShape {
+        &self.0.0.fields
+    }
+
+    pub fn variants(self) -> &'a Variants<'a> {
+        &self.0.0.variants
+    }
+
+    pub fn abi(self) -> Abi {
+        self.0.0.abi
+    }
+
+    pub fn largest_niche(self) -> Option<Niche> {
+        self.0.0.largest_niche
+    }
+
+    pub fn align(self) -> AbiAndPrefAlign {
+        self.0.0.align
+    }
+
+    pub fn size(self) -> Size {
+        self.0.0.size
     }
 }
 
@@ -1203,13 +1257,13 @@ impl Layout {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct TyAndLayout<'a, Ty> {
     pub ty: Ty,
-    pub layout: &'a Layout,
+    pub layout: Layout<'a>,
 }
 
 impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
-    type Target = &'a Layout;
-    fn deref(&self) -> &&'a Layout {
-        &self.layout
+    type Target = &'a LayoutS<'a>;
+    fn deref(&self) -> &&'a LayoutS<'a> {
+        &self.layout.0.0
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
@@ -10,6 +10,7 @@ pub fn target() -> Target {
             abi: "eabi".to_string(),
             // https://developer.android.com/ndk/guides/abis.html#armeabi
             features: "+strict-align,+v5te".to_string(),
+            supported_sanitizers: SanitizerSet::ADDRESS,
             max_atomic_width: Some(32),
             ..super::android_base::opts()
         },

@@ -16,8 +16,7 @@
 // gdb-check:$2 = -1
 
 // gdb-command:print *char_ref
-// gdbg-check:$3 = 97
-// gdbr-check:$3 = 97 'a'
+// gdb-check:$3 = 97
 
 // gdb-command:print/d *i8_ref
 // gdb-check:$4 = 68

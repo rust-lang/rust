@@ -416,7 +416,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Macro(_) => {
+            hir::ItemKind::Macro(..) => {
                 let mut text = "macro".to_owned();
                 let name = self.ident.to_string();
                 text.push_str(&name);

@@ -3,7 +3,7 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/mir/index.html
 
 use crate::mir::coverage::{CodeRegion, CoverageKind};
-use crate::mir::interpret::{Allocation, ConstValue, GlobalAlloc, Scalar};
+use crate::mir::interpret::{ConstAllocation, ConstValue, GlobalAlloc, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -13,7 +13,7 @@ use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::{AdtDef, InstanceDef, Region, ScalarInt, UserTypeAnnotationIndex};
 
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_hir::{self, GeneratorKind};
@@ -286,7 +286,7 @@ pub struct Body<'tcx> {
     predecessor_cache: PredecessorCache,
     is_cyclic: GraphIsCyclicCache,
 
-    pub tainted_by_errors: Option<ErrorReported>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 impl<'tcx> Body<'tcx> {
@@ -300,7 +300,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         generator_kind: Option<GeneratorKind>,
-        tainted_by_errors: Option<ErrorReported>,
+        tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -1292,6 +1292,8 @@ pub enum InlineAsmOperand<'tcx> {
 /// Type for MIR `Assert` terminator error messages.
 pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 
+// FIXME: Change `Successors` to `impl Iterator<Item = BasicBlock>`.
+#[allow(rustc::pass_by_value)]
 pub type Successors<'a> =
     iter::Chain<option::IntoIter<&'a BasicBlock>, slice::Iter<'a, BasicBlock>>;
 pub type SuccessorsMut<'a> =
@@ -1832,7 +1834,8 @@ impl<V, T> ProjectionElem<V, T> {
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
-// At least on 64 bit systems, `PlaceElem` should not be larger than two pointers.
+// This type is fairly frequently used, so we shouldn't unintentionally increase
+// its size.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(PlaceElem<'_>, 24);
 
@@ -1847,6 +1850,7 @@ rustc_index::newtype_index! {
     /// rustc can identify that a field projection refers to either two different regions of memory
     /// or the same one between the base and the 'projection element'.
     /// Read more about projections in the [rustc-dev-guide][mir-datatypes]
+    ///
     /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
@@ -1910,6 +1914,27 @@ impl<'tcx> Place<'tcx> {
             let base = PlaceRef { local: self.local, projection: &self.projection[..i] };
             (base, proj)
         })
+    }
+
+    /// Generates a new place by appending `more_projections` to the existing ones
+    /// and interning the result.
+    pub fn project_deeper(self, more_projections: &[PlaceElem<'tcx>], tcx: TyCtxt<'tcx>) -> Self {
+        if more_projections.is_empty() {
+            return self;
+        }
+
+        let mut v: Vec<PlaceElem<'tcx>>;
+
+        let new_projections = if self.projection.is_empty() {
+            more_projections
+        } else {
+            v = Vec::with_capacity(self.projection.len() + more_projections.len());
+            v.extend(self.projection);
+            v.extend(more_projections);
+            &v
+        };
+
+        Place { local: self.local, projection: tcx.intern_place_elems(new_projections) }
     }
 }
 
@@ -2183,6 +2208,15 @@ impl<'tcx> Operand<'tcx> {
             Operand::Copy(_) | Operand::Move(_) => None,
         }
     }
+
+    /// Gets the `ty::FnDef` from an operand if it's a constant function item.
+    ///
+    /// While this is unlikely in general, it's the normal case of what you'll
+    /// find as the `func` in a [`TerminatorKind::Call`].
+    pub fn const_fn_def(&self) -> Option<(DefId, SubstsRef<'tcx>)> {
+        let const_ty = self.constant()?.literal.ty();
+        if let ty::FnDef(def_id, substs) = *const_ty.kind() { Some((def_id, substs)) } else { None }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2421,11 +2455,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
                         ty::tls::with(|tcx| {
-                            let mut name = String::new();
                             let variant_def = &tcx.adt_def(adt_did).variants[variant];
                             let substs = tcx.lift(substs).expect("could not lift for printing");
-                            FmtPrinter::new(tcx, &mut name, Namespace::ValueNS)
-                                .print_def_path(variant_def.def_id, substs)?;
+                            let name = FmtPrinter::new(tcx, Namespace::ValueNS)
+                                .print_def_path(variant_def.def_id, substs)?
+                                .into_buffer();
 
                             match variant_def.ctor_kind {
                                 CtorKind::Const => fmt.write_str(&name),
@@ -2533,7 +2567,7 @@ pub enum ConstantKind<'tcx> {
 
 impl<'tcx> Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.const_for_ty()?.val().try_to_scalar() {
+        match self.literal.try_to_scalar() {
             Some(Scalar::Ptr(ptr, _size)) => match tcx.global_alloc(ptr.provenance) {
                 GlobalAlloc::Static(def_id) => {
                     assert!(!tcx.is_thread_local_static(def_id));
@@ -2553,7 +2587,14 @@ impl<'tcx> Constant<'tcx> {
 impl<'tcx> From<ty::Const<'tcx>> for ConstantKind<'tcx> {
     #[inline]
     fn from(ct: ty::Const<'tcx>) -> Self {
-        Self::Ty(ct)
+        match ct.val() {
+            ty::ConstKind::Value(cv) => {
+                // FIXME Once valtrees are introduced we need to convert those
+                // into `ConstValue` instances here
+                Self::Val(cv, ct.ty())
+            }
+            _ => Self::Ty(ct),
+        }
     }
 }
 
@@ -2633,6 +2674,27 @@ impl<'tcx> ConstantKind<'tcx> {
             Self::Ty(ct) => ct.try_eval_usize(tcx, param_env),
             Self::Val(val, _) => val.try_to_machine_usize(tcx),
         }
+    }
+
+    pub fn from_bool(tcx: TyCtxt<'tcx>, v: bool) -> Self {
+        let cv = ConstValue::from_bool(v);
+        Self::Val(cv, tcx.types.bool)
+    }
+
+    pub fn from_zero_sized(ty: Ty<'tcx>) -> Self {
+        let cv = ConstValue::Scalar(Scalar::ZST);
+        Self::Val(cv, ty)
+    }
+
+    pub fn from_usize(tcx: TyCtxt<'tcx>, n: u64) -> Self {
+        let ty = tcx.types.usize;
+        let size = tcx
+            .layout_of(ty::ParamEnv::empty().and(ty))
+            .unwrap_or_else(|e| bug!("could not compute layout for {:?}: {:?}", ty, e))
+            .size;
+        let cv = ConstValue::Scalar(Scalar::from_uint(n as u128, size));
+
+        Self::Val(cv, ty)
     }
 }
 
@@ -2847,9 +2909,10 @@ fn pretty_print_const<'tcx>(
     use crate::ty::print::PrettyPrinter;
     ty::tls::with(|tcx| {
         let literal = tcx.lift(c).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const(literal, print_types)?;
+        let cx = cx.pretty_print_const(literal, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }
@@ -2864,9 +2927,10 @@ fn pretty_print_const_value<'tcx>(
     ty::tls::with(|tcx| {
         let val = tcx.lift(val).unwrap();
         let ty = tcx.lift(ty).unwrap();
-        let mut cx = FmtPrinter::new(tcx, fmt, Namespace::ValueNS);
+        let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
         cx.print_alloc_ids = true;
-        cx.pretty_print_const_value(val, ty, print_types)?;
+        let cx = cx.pretty_print_const_value(val, ty, print_types)?;
+        fmt.write_str(&cx.into_buffer())?;
         Ok(())
     })
 }

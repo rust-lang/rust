@@ -282,6 +282,10 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         allow, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
     ),
+    gated!(
+        expect, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk,
+        lint_reasons, experimental!(expect)
+    ),
     ungated!(
         forbid, Normal, template!(List: r#"lint1, lint2, ..., /*opt*/ reason = "...""#), DuplicatesOk
     ),
@@ -457,7 +461,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // DuplicatesOk since it has its own validation
     ungated!(
         rustc_deprecated, Normal,
-        template!(List: r#"since = "version", reason = "...""#), DuplicatesOk // See E0550
+        template!(List: r#"since = "version", note = "...""#), DuplicatesOk // See E0550
     ),
     // DuplicatesOk since it has its own validation
     ungated!(
@@ -602,17 +606,17 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_layout_scalar_valid_range_start, Normal, template!(List: "value"), ErrorFollowing,
         "the `#[rustc_layout_scalar_valid_range_start]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
     rustc_attr!(
         rustc_layout_scalar_valid_range_end, Normal, template!(List: "value"), ErrorFollowing,
         "the `#[rustc_layout_scalar_valid_range_end]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
     rustc_attr!(
         rustc_nonnull_optimization_guaranteed, Normal, template!(Word), WarnFollowing,
         "the `#[rustc_nonnull_optimization_guaranteed]` attribute is just used to enable \
-        niche optimizations in libcore and will never be stable",
+        niche optimizations in libcore and libstd and will never be stable",
     ),
 
     // ==========================================================================

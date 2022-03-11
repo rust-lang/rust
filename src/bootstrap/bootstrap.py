@@ -1267,7 +1267,7 @@ def bootstrap(help_triggered):
     build.check_vendored_status()
 
     build_dir = build.get_toml('build-dir', 'build') or 'build'
-    build.build_dir = os.path.abspath(build_dir.replace("$ROOT", build.rust_root))
+    build.build_dir = os.path.abspath(build_dir)
 
     with open(os.path.join(build.rust_root, "src", "stage0.json")) as f:
         data = json.load(f)
@@ -1302,10 +1302,7 @@ def bootstrap(help_triggered):
     env = os.environ.copy()
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     env["BOOTSTRAP_PYTHON"] = sys.executable
-    env["BUILD_DIR"] = build.build_dir
     env["RUSTC_BOOTSTRAP"] = '1'
-    if toml_path:
-        env["BOOTSTRAP_CONFIG"] = toml_path
     if build.rustc_commit is not None:
         env["BOOTSTRAP_DOWNLOAD_RUSTC"] = '1'
     run(args, env=env, verbose=build.verbose, is_bootstrap=True)

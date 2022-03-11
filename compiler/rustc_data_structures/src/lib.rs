@@ -28,7 +28,7 @@
 #![feature(vec_into_raw_parts)]
 #![allow(rustc::default_hash_types)]
 #![deny(unaligned_references)]
-#![cfg_attr(not(bootstrap), allow(rustc::potential_query_instability))]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -80,6 +80,7 @@ pub mod obligation_forest;
 pub mod owning_ref;
 pub mod sip128;
 pub mod small_c_str;
+pub mod small_str;
 pub mod snapshot_map;
 pub mod stable_map;
 pub mod svh;

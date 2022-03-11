@@ -8,7 +8,7 @@ use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorReported};
+use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(in super::super) fn write_resolution(
         &self,
         hir_id: hir::HirId,
-        r: Result<(DefKind, DefId), ErrorReported>,
+        r: Result<(DefKind, DefId), ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().type_dependent_defs_mut().insert(hir_id, r);
     }
@@ -315,11 +315,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ => bug!(
-                        "while adjusting {:?}, can't compose {:?} and {:?}",
-                        expr,
-                        entry.get(),
-                        adj
+                    _ => self.tcx.sess.delay_span_bug(
+                        expr.span,
+                        &format!(
+                            "while adjusting {:?}, can't compose {:?} and {:?}",
+                            expr,
+                            entry.get(),
+                            adj
+                        ),
                     ),
                 };
                 *entry.get_mut() = adj;
@@ -424,6 +427,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         self.inh.partially_normalize_associated_types_in(
             ObligationCause::misc(span, self.body_id),
+            self.param_env,
+            value,
+        )
+    }
+
+    pub(in super::super) fn normalize_op_associated_types_in_as_infer_ok<T>(
+        &self,
+        span: Span,
+        value: T,
+        opt_input_expr: Option<&hir::Expr<'_>>,
+    ) -> InferOk<'tcx, T>
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        self.inh.partially_normalize_associated_types_in(
+            ObligationCause::new(
+                span,
+                self.body_id,
+                traits::BinOp {
+                    rhs_span: opt_input_expr.map(|expr| expr.span),
+                    is_lit: opt_input_expr
+                        .map_or(false, |expr| matches!(expr.kind, ExprKind::Lit(_))),
+                },
+            ),
             self.param_env,
             value,
         )
@@ -876,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorReported),
+                    _ => Err(ErrorGuaranteed),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register
@@ -953,7 +980,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn note_internal_mutation_in_method(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -998,7 +1025,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(in super::super) fn note_need_for_fn_pointer(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        err: &mut Diagnostic,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) {
@@ -1376,7 +1403,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx.var_for_def(self.span, param)
                         }
                     }
-                    GenericParamDefKind::Const { has_default, .. } => {
+                    GenericParamDefKind::Const { has_default } => {
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
                                 .subst_spanned(tcx, substs.unwrap(), Some(self.span))

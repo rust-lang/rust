@@ -75,12 +75,11 @@ impl NestedMetaItem {
     pub fn name_value_literal(&self) -> Option<(Symbol, &Lit)> {
         self.meta_item().and_then(|meta_item| {
             meta_item.meta_item_list().and_then(|meta_item_list| {
-                if meta_item_list.len() == 1 {
-                    if let Some(ident) = meta_item.ident() {
-                        if let Some(lit) = meta_item_list[0].literal() {
-                            return Some((ident.name, lit));
-                        }
-                    }
+                if meta_item_list.len() == 1
+                    && let Some(ident) = meta_item.ident()
+                    && let Some(lit) = meta_item_list[0].literal()
+                {
+                    return Some((ident.name, lit));
                 }
                 None
             })

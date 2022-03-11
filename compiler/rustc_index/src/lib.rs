@@ -12,6 +12,8 @@ pub mod bit_set;
 pub mod interval;
 pub mod vec;
 
+pub use rustc_macros::newtype_index;
+
 /// Type size assertion. The first argument is a type and the second argument is its expected size.
 #[macro_export]
 macro_rules! static_assert_size {

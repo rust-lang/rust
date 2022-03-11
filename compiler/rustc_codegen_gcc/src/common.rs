@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::{
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::ScalarInt;
 use rustc_middle::ty::layout::{TyAndLayout, LayoutOf};
-use rustc_middle::mir::interpret::{Allocation, GlobalAlloc, Scalar};
+use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
 use rustc_span::Symbol;
 use rustc_target::abi::{self, HasDataLayout, Pointer, Size};
 
@@ -24,18 +24,6 @@ use crate::type_of::LayoutGccExt;
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn const_bytes(&self, bytes: &[u8]) -> RValue<'gcc> {
         bytes_in_context(self, bytes)
-    }
-
-    fn const_cstr(&self, symbol: Symbol, _null_terminated: bool) -> LValue<'gcc> {
-        // TODO(antoyo): handle null_terminated.
-        if let Some(&value) = self.const_cstr_cache.borrow().get(&symbol) {
-            return value;
-        }
-
-        let global = self.global_string(symbol.as_str());
-
-        self.const_cstr_cache.borrow_mut().insert(symbol, global);
-        global
     }
 
     fn global_string(&self, string: &str) -> LValue<'gcc> {
@@ -171,8 +159,12 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_str(&self, s: Symbol) -> (RValue<'gcc>, RValue<'gcc>) {
-        let len = s.as_str().len();
-        let cs = self.const_ptrcast(self.const_cstr(s, false).get_address(None),
+        let s_str = s.as_str();
+        let str_global = *self.const_str_cache.borrow_mut().entry(s).or_insert_with(|| {
+            self.global_string(s_str)
+        });
+        let len = s_str.len();
+        let cs = self.const_ptrcast(str_global.get_address(None),
             self.type_ptr_to(self.layout_of(self.tcx.types.str_).gcc_type(self, true)),
         );
         (cs, self.const_usize(len as u64))
@@ -230,6 +222,7 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Memory(alloc) => {
                             let init = const_alloc_to_gcc(self, alloc);
+                            let alloc = alloc.inner();
                             let value =
                                 match alloc.mutability {
                                     Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
@@ -262,21 +255,21 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: &Allocation) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
     }
 
-    fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: &Allocation, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
-        assert_eq!(alloc.align, layout.align.abi);
+    fn from_const_alloc(&self, layout: TyAndLayout<'tcx>, alloc: ConstAllocation<'tcx>, offset: Size) -> PlaceRef<'tcx, RValue<'gcc>> {
+        assert_eq!(alloc.inner().align, layout.align.abi);
         let ty = self.type_ptr_to(layout.gcc_type(self, true));
         let value =
             if layout.size == Size::ZERO {
-                let value = self.const_usize(alloc.align.bytes());
+                let value = self.const_usize(alloc.inner().align.bytes());
                 self.context.new_cast(None, value, ty)
             }
             else {
                 let init = const_alloc_to_gcc(self, alloc);
-                let base_addr = self.static_addr_of(init, alloc.align, None);
+                let base_addr = self.static_addr_of(init, alloc.inner().align, None);
 
                 let array = self.const_bitcast(base_addr, self.type_i8p());
                 let value = self.context.new_array_access(None, array, self.const_usize(offset.bytes())).get_address(None);

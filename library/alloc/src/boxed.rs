@@ -31,7 +31,7 @@
 //! }
 //!
 //! let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
-//! println!("{:?}", list);
+//! println!("{list:?}");
 //! ```
 //!
 //! This will print `Cons(1, Cons(2, Nil))`.
@@ -1170,8 +1170,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_box", issue = "92521")]
-unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> const Drop for Box<T, A> {
+unsafe impl<#[may_dangle] T: ?Sized, A: Allocator> Drop for Box<T, A> {
     fn drop(&mut self) {
         // FIXME: Do nothing, drop is currently performed by compiler.
     }
@@ -1408,7 +1407,7 @@ impl<T: Copy> From<&[T]> for Box<[T]> {
     /// let slice: &[u8] = &[104, 101, 108, 108, 111];
     /// let boxed_slice: Box<[u8]> = Box::from(slice);
     ///
-    /// println!("{:?}", boxed_slice);
+    /// println!("{boxed_slice:?}");
     /// ```
     fn from(slice: &[T]) -> Box<[T]> {
         let len = slice.len();
@@ -1450,7 +1449,7 @@ impl From<&str> for Box<str> {
     ///
     /// ```rust
     /// let boxed: Box<str> = Box::from("hello");
-    /// println!("{}", boxed);
+    /// println!("{boxed}");
     /// ```
     #[inline]
     fn from(s: &str) -> Box<str> {
@@ -1475,14 +1474,14 @@ impl From<Cow<'_, str>> for Box<str> {
     ///
     /// let unboxed = Cow::Borrowed("hello");
     /// let boxed: Box<str> = Box::from(unboxed);
-    /// println!("{}", boxed);
+    /// println!("{boxed}");
     /// ```
     ///
     /// ```rust
     /// # use std::borrow::Cow;
     /// let unboxed = Cow::Owned("hello".to_string());
     /// let boxed: Box<str> = Box::from(unboxed);
-    /// println!("{}", boxed);
+    /// println!("{boxed}");
     /// ```
     #[inline]
     fn from(cow: Cow<'_, str>) -> Box<str> {
@@ -1529,7 +1528,7 @@ impl<T, const N: usize> From<[T; N]> for Box<[T]> {
     ///
     /// ```rust
     /// let boxed: Box<[u8]> = Box::from([4, 2]);
-    /// println!("{:?}", boxed);
+    /// println!("{boxed:?}");
     /// ```
     fn from(array: [T; N]) -> Box<[T]> {
         box array

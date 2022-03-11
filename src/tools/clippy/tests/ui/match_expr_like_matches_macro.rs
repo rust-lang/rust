@@ -181,4 +181,19 @@ fn main() {
         };
         fun(val);
     }
+
+    {
+        enum E {
+            A,
+            B,
+            C,
+        }
+
+        let _ = match E::A {
+            E::B => true,
+            #[cfg(feature = "foo")]
+            E::A => true,
+            _ => false,
+        };
+    }
 }

@@ -181,7 +181,6 @@ pub trait Encoder {
 // concise.
 pub trait Decoder {
     // Primitive types:
-    fn read_unit(&mut self) -> ();
     fn read_usize(&mut self) -> usize;
     fn read_u128(&mut self) -> u128;
     fn read_u64(&mut self) -> u64;
@@ -198,8 +197,8 @@ pub trait Decoder {
     fn read_f64(&mut self) -> f64;
     fn read_f32(&mut self) -> f32;
     fn read_char(&mut self) -> char;
-    fn read_str(&mut self) -> Cow<'_, str>;
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]);
+    fn read_str(&mut self) -> &str;
+    fn read_raw_bytes(&mut self, len: usize) -> &[u8];
 }
 
 /// Trait for types that can be serialized
@@ -313,7 +312,7 @@ impl<S: Encoder> Encodable<S> for String {
 
 impl<D: Decoder> Decodable<D> for String {
     fn decode(d: &mut D) -> String {
-        d.read_str().into_owned()
+        d.read_str().to_owned()
     }
 }
 
@@ -324,9 +323,7 @@ impl<S: Encoder> Encodable<S> for () {
 }
 
 impl<D: Decoder> Decodable<D> for () {
-    fn decode(d: &mut D) -> () {
-        d.read_unit()
-    }
+    fn decode(_: &mut D) -> () {}
 }
 
 impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
@@ -336,8 +333,7 @@ impl<S: Encoder, T> Encodable<S> for PhantomData<T> {
 }
 
 impl<D: Decoder, T> Decodable<D> for PhantomData<T> {
-    fn decode(d: &mut D) -> PhantomData<T> {
-        d.read_unit();
+    fn decode(_: &mut D) -> PhantomData<T> {
         PhantomData
     }
 }
