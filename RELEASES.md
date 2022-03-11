@@ -11,7 +11,6 @@ Compiler
 - [Enable combining `+crt-static` and `relocation-model=pic` on `x86_64-unknown-linux-gnu`][86374]
 - [Fixes wrong `unreachable_pub` lints on nested and glob public reexport][87487]
 - [Stabilize `-Z instrument-coverage` as `-C instrument-coverage`][90132]
-- [Implement raw-dylib support for windows-gnu][90782]
 - [Stabilize `-Z print-link-args` as `--print link-args`][91606]
 - [`mips64-openwrt-linux-musl`: Add Tier 3 target][92300]
 - [Add new target `armv7-unknown-linux-uclibceabi` (softfloat)][92383]
@@ -60,7 +59,6 @@ Stabilized APIs
 Cargo
 -----
 - [Port cargo from `toml-rs` to `toml_edit`][cargo/10086]
-- [Support rustflags per profile][cargo/10217]
 - [Stabilize `-Ztimings` as `--timings`][cargo/10245]
 - [Stabilize namespaced and weak dependency features.][cargo/10269]
 - [Accept more `cargo:rustc-link-arg-*` types from build script output.][cargo/10274]
@@ -94,7 +92,6 @@ and related tools.
 [89926]: https://github.com/rust-lang/rust/pull/89926
 [90132]: https://github.com/rust-lang/rust/pull/90132
 [90247]: https://github.com/rust-lang/rust/pull/90247
-[90782]: https://github.com/rust-lang/rust/pull/90782
 [91606]: https://github.com/rust-lang/rust/pull/91606
 [92068]: https://github.com/rust-lang/rust/pull/92068
 [92300]: https://github.com/rust-lang/rust/pull/92300
@@ -114,7 +111,6 @@ and related tools.
 [93918]: https://github.com/rust-lang/rust/pull/93918
 
 [cargo/10086]: https://github.com/rust-lang/cargo/pull/10086
-[cargo/10217]: https://github.com/rust-lang/cargo/pull/10217
 [cargo/10245]: https://github.com/rust-lang/cargo/pull/10245
 [cargo/10269]: https://github.com/rust-lang/cargo/pull/10269
 [cargo/10274]: https://github.com/rust-lang/cargo/pull/10274
