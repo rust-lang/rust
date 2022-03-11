@@ -1384,7 +1384,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn get_proc_macro_quoted_span(self, index: usize, sess: &Session) -> Span {
         self.root
-            .tables
+            .proc_macro_data
+            .as_ref()
+            .expect("not a proc macro")
             .proc_macro_quoted_spans
             .get(self, index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {:?}", index))

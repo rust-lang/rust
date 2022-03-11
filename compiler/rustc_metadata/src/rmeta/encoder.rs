@@ -1643,9 +1643,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let macros =
                 self.lazy(tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index));
             let spans = self.tcx.sess.parse_sess.proc_macro_quoted_spans();
+            let mut proc_macro_quoted_spans = TableBuilder::default();
             for (i, span) in spans.into_iter().enumerate() {
                 let span = self.lazy(span);
-                self.tables.proc_macro_quoted_spans.set(i, span);
+                proc_macro_quoted_spans.set(i, span);
             }
 
             record!(self.tables.opt_def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
@@ -1701,7 +1702,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
 
-            Some(ProcMacroData { proc_macro_decls_static, stability, macros })
+            Some(ProcMacroData {
+                proc_macro_decls_static,
+                stability,
+                macros,
+                proc_macro_quoted_spans: proc_macro_quoted_spans.encode(&mut self.opaque),
+            })
         } else {
             None
         }

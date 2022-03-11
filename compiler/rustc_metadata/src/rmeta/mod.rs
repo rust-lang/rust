@@ -170,6 +170,7 @@ crate struct ProcMacroData {
     proc_macro_decls_static: DefIndex,
     stability: Option<attr::Stability>,
     macros: Lazy<[DefIndex]>,
+    proc_macro_quoted_spans: Lazy!(Table<usize, Lazy<Span>>),
 }
 
 /// Serialized metadata for a crate.
@@ -324,7 +325,6 @@ define_tables! {
     // definitions from any given crate.
     def_keys: Table<DefIndex, Lazy<DefKey>>,
     def_path_hashes: Table<DefIndex, Lazy<DefPathHash>>,
-    proc_macro_quoted_spans: Table<usize, Lazy<Span>>,
 }
 
 #[derive(Copy, Clone, MetadataEncodable, MetadataDecodable)]
