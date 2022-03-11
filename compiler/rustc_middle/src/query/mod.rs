@@ -955,10 +955,15 @@ rustc_queries! {
         desc { "get a &core::panic::Location referring to a span" }
     }
 
+    // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
     ) -> Result<ty::Const<'tcx>, LitToConstError> {
         desc { "converting literal to const" }
+    }
+
+    query lit_to_constant(key: LitToConstInput<'tcx>) -> Result<mir::ConstantKind<'tcx>, LitToConstError> {
+        desc { "converting literal to mir constant"}
     }
 
     query check_match(key: DefId) {
