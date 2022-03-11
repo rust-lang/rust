@@ -7,6 +7,7 @@
 //! of the Unstable Book for some examples.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![deny(missing_docs)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 

@@ -7,6 +7,7 @@
 
 #![feature(rustc_private, decl_macro, associated_type_bounds, never_type, trusted_len)]
 #![allow(broken_intra_doc_links)]
+#![deny(missing_docs)]
 #![recursion_limit="256"]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
