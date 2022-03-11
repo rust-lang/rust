@@ -10,7 +10,7 @@ use rustc_span::Span;
 /// need to add more data in the future to correctly support macros 2.0, for example.
 /// Module child can be either a proper item or a reexport (including private imports).
 /// In case of reexport all the fields describe the reexport item itself, not what it refers to.
-#[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct ModChild {
     /// Name of the item.
     pub ident: Ident,
@@ -23,4 +23,25 @@ pub struct ModChild {
     pub span: Span,
     /// A proper `macro_rules` item (not a reexport).
     pub macro_rules: bool,
+}
+
+/// Same as `ModChild`, but without some data that is redundant for reexports.
+#[derive(Clone, Copy, Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct Reexport {
+    /// Name of the item.
+    pub ident: Ident,
+    /// Resolution result corresponding to the item.
+    /// Local variables cannot be exported, so this `Res` doesn't need the ID parameter.
+    pub res: Res<!>,
+    /// Visibility of the item.
+    pub vis: ty::Visibility,
+    /// Span of the item.
+    pub span: Span,
+}
+
+impl Reexport {
+    pub fn mod_child(self) -> ModChild {
+        let Reexport { ident, res, vis, span } = self;
+        ModChild { ident, res, vis, span, macro_rules: false }
+    }
 }

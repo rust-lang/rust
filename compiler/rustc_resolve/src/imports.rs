@@ -15,7 +15,7 @@ use rustc_data_structures::intern::Interned;
 use rustc_errors::{pluralize, struct_span_err, Applicability};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::Reexport;
 use rustc_middle::span_bug;
 use rustc_middle::ty;
 use rustc_session::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
@@ -1410,13 +1410,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 // Ambiguous imports are treated as errors at this point and are
                 // not exposed to other crates (see #36837 for more details).
                 if res != def::Res::Err && !binding.is_ambiguity() {
-                    reexports.push(ModChild {
-                        ident,
-                        res,
-                        vis: binding.vis,
-                        span: binding.span,
-                        macro_rules: false,
-                    });
+                    reexports.push(Reexport { ident, res, vis: binding.vis, span: binding.span });
                 }
             }
         });

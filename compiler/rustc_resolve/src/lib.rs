@@ -52,7 +52,7 @@ use rustc_hir::definitions::{DefKey, DefPathData, Definitions};
 use rustc_hir::TraitCandidate;
 use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{ModChild, Reexport};
 use rustc_middle::middle::privacy::AccessLevels;
 use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
@@ -939,7 +939,7 @@ pub struct Resolver<'a> {
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
-    reexport_map: FxHashMap<LocalDefId, Vec<ModChild>>,
+    reexport_map: FxHashMap<LocalDefId, Vec<Reexport>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -3421,7 +3421,13 @@ impl<'a> Resolver<'a> {
     /// For local modules returns only reexports, for external modules returns all children.
     pub fn module_children_or_reexports(&self, def_id: DefId) -> Vec<ModChild> {
         if let Some(def_id) = def_id.as_local() {
-            self.reexport_map.get(&def_id).cloned().unwrap_or_default()
+            self.reexport_map
+                .get(&def_id)
+                .iter()
+                .copied()
+                .flatten()
+                .map(|reexport| reexport.mod_child())
+                .collect()
         } else {
             self.cstore().module_children_untracked(def_id, self.session)
         }

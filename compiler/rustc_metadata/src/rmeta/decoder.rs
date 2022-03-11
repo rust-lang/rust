@@ -1159,9 +1159,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
 
         match self.kind(id) {
-            EntryKind::Mod(exports) => {
-                for exp in exports.decode((self, sess)) {
-                    callback(exp);
+            EntryKind::Mod(reexports) => {
+                for reexport in reexports.decode((self, sess)) {
+                    callback(reexport.mod_child());
                 }
             }
             EntryKind::Enum(..) | EntryKind::Trait(..) => {}

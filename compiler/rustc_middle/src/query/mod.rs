@@ -1314,7 +1314,7 @@ rustc_queries! {
         desc { "traits in scope at a block" }
     }
 
-    query module_reexports(def_id: LocalDefId) -> Option<&'tcx [ModChild]> {
+    query module_reexports(def_id: LocalDefId) -> Option<&'tcx [Reexport]> {
         desc { |tcx| "looking up reexports of module `{}`", tcx.def_path_str(def_id.to_def_id()) }
     }
 
