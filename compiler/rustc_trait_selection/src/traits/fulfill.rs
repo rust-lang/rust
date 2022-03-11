@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, Binder, Const, Ty, TypeFoldable};
 use std::marker::PhantomData;
 
 use super::const_evaluatable;
-use super::project;
+use super::project::{self, ProjectAndUnifyResult};
 use super::select::SelectionContext;
 use super::wf;
 use super::CodeAmbiguity;
@@ -753,8 +753,8 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
         }
 
         match project::poly_project_and_unify_type(self.selcx, &project_obligation) {
-            Ok(Ok(Some(os))) => ProcessResult::Changed(mk_pending(os)),
-            Ok(Ok(None)) => {
+            ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(os)),
+            ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
                 stalled_on.extend(substs_infer_vars(
                     self.selcx,
@@ -763,10 +763,12 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                 ProcessResult::Unchanged
             }
             // Let the caller handle the recursion
-            Ok(Err(project::InProgress)) => ProcessResult::Changed(mk_pending(vec![
+            ProjectAndUnifyResult::Recursive => ProcessResult::Changed(mk_pending(vec![
                 project_obligation.with(project_obligation.predicate.to_predicate(tcx)),
             ])),
-            Err(e) => ProcessResult::Error(CodeProjectionError(e)),
+            ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
+                ProcessResult::Error(CodeProjectionError(e))
+            }
         }
     }
 }
