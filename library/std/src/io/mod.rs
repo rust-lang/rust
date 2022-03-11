@@ -1085,6 +1085,10 @@ impl<'a> IoSliceMut<'a> {
     /// Also see [`IoSliceMut::advance_slices`] to advance the cursors of
     /// multiple buffers.
     ///
+    /// # Panics
+    ///
+    /// Panics when trying to advance beyond the end of the slice.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1106,15 +1110,18 @@ impl<'a> IoSliceMut<'a> {
         self.0.advance(n)
     }
 
-    /// Advance the internal cursor of the slices.
+    /// Advance a slice of slices.
     ///
-    /// # Notes
+    /// Shrinks the slice to remove any `IoSliceMut`s that are fully advanced over.
+    /// If the cursor ends up in the middle of an `IoSliceMut`, it is modified
+    /// to start at that cursor.
     ///
-    /// Elements in the slice may be modified if the cursor is not advanced to
-    /// the end of the slice. For example if we have a slice of buffers with 2
-    /// `IoSliceMut`s, both of length 8, and we advance the cursor by 10 bytes
-    /// the first `IoSliceMut` will be untouched however the second will be
-    /// modified to remove the first 2 bytes (10 - 8).
+    /// For example, if we have a slice of two 8-byte `IoSliceMut`s, and we advance by 10 bytes,
+    /// the result will only include the second `IoSliceMut`, advanced by 2 bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics when trying to advance beyond the end of the slices.
     ///
     /// # Examples
     ///
@@ -1222,6 +1229,10 @@ impl<'a> IoSlice<'a> {
     /// Also see [`IoSlice::advance_slices`] to advance the cursors of multiple
     /// buffers.
     ///
+    /// # Panics
+    ///
+    /// Panics when trying to advance beyond the end of the slice.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1243,15 +1254,18 @@ impl<'a> IoSlice<'a> {
         self.0.advance(n)
     }
 
-    /// Advance the internal cursor of the slices.
+    /// Advance a slice of slices.
     ///
-    /// # Notes
+    /// Shrinks the slice to remove any `IoSlice`s that are fully advanced over.
+    /// If the cursor ends up in the middle of an `IoSlice`, it is modified
+    /// to start at that cursor.
     ///
-    /// Elements in the slice may be modified if the cursor is not advanced to
-    /// the end of the slice. For example if we have a slice of buffers with 2
-    /// `IoSlice`s, both of length 8, and we advance the cursor by 10 bytes the
-    /// first `IoSlice` will be untouched however the second will be modified to
-    /// remove the first 2 bytes (10 - 8).
+    /// For example, if we have a slice of two 8-byte `IoSlice`s, and we advance by 10 bytes,
+    /// the result will only include the second `IoSlice`, advanced by 2 bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics when trying to advance beyond the end of the slices.
     ///
     /// # Examples
     ///
