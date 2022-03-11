@@ -67,6 +67,7 @@ Cargo
 
 Misc
 ----
+- [Add manifest docs fallback for tier-2 platforms.][92800]
 - [Drop rustc-docs from complete profile][93742]
 - [bootstrap: tidy up flag handling for llvm build][93918]
 
@@ -101,6 +102,7 @@ and related tools.
 [92383]: https://github.com/rust-lang/rust/pull/92383
 [92630]: https://github.com/rust-lang/rust/pull/92630
 [92670]: https://github.com/rust-lang/rust/pull/92670
+[92800]: https://github.com/rust-lang/rust/pull/92800
 [92816]: https://github.com/rust-lang/rust/pull/92816
 [92933]: https://github.com/rust-lang/rust/pull/92933
 [93153]: https://github.com/rust-lang/rust/pull/93153
