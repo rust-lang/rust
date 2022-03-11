@@ -1,4 +1,5 @@
 //! This module resolves `mod foo;` declaration to file.
+use arrayvec::ArrayVec;
 use base_db::{AnchoredPath, FileId};
 use hir_expand::name::Name;
 use limit::Limit;
@@ -63,22 +64,21 @@ impl ModDir {
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&SmolStr>,
-    ) -> Result<(FileId, bool, ModDir), String> {
+    ) -> Result<(FileId, bool, ModDir), Box<[String]>> {
         let orig_file_id = file_id.original_file(db.upcast());
 
-        let mut candidate_files = Vec::new();
+        let mut candidate_files = ArrayVec::<_, 2>::new();
         match attr_path {
             Some(attr_path) => {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
             }
+            None if file_id.is_include_macro(db.upcast()) => {
+                candidate_files.push(format!("{}.rs", name));
+                candidate_files.push(format!("{}/mod.rs", name));
+            }
             None => {
-                if file_id.is_include_macro(db.upcast()) {
-                    candidate_files.push(format!("{}.rs", name));
-                    candidate_files.push(format!("{}/mod.rs", name));
-                } else {
-                    candidate_files.push(format!("{}{}.rs", self.dir_path.0, name));
-                    candidate_files.push(format!("{}{}/mod.rs", self.dir_path.0, name));
-                }
+                candidate_files.push(format!("{}{}.rs", self.dir_path.0, name));
+                candidate_files.push(format!("{}{}/mod.rs", self.dir_path.0, name));
             }
         };
 
@@ -97,7 +97,7 @@ impl ModDir {
                 }
             }
         }
-        Err(candidate_files.remove(0))
+        Err(candidate_files.into_iter().collect())
     }
 }
 

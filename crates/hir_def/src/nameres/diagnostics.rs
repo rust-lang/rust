@@ -15,7 +15,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum DefDiagnosticKind {
-    UnresolvedModule { ast: AstId<ast::Module>, candidate: String },
+    UnresolvedModule { ast: AstId<ast::Module>, candidates: Box<[String]> },
 
     UnresolvedExternCrate { ast: AstId<ast::ExternCrate> },
 
@@ -46,11 +46,11 @@ impl DefDiagnostic {
     pub(super) fn unresolved_module(
         container: LocalModuleId,
         declaration: AstId<ast::Module>,
-        candidate: String,
+        candidates: Box<[String]>,
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::UnresolvedModule { ast: declaration, candidate },
+            kind: DefDiagnosticKind::UnresolvedModule { ast: declaration, candidates },
         }
     }
 

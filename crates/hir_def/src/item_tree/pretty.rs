@@ -423,7 +423,7 @@ impl<'a> Printer<'a> {
                         });
                         wln!(self, "}}");
                     }
-                    ModKind::Outline {} => {
+                    ModKind::Outline => {
                         wln!(self, ";");
                     }
                 }

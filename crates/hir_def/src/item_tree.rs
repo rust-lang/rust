@@ -709,7 +709,7 @@ pub enum ModKind {
     Inline { items: Box<[ModItem]> },
 
     /// `mod m;`
-    Outline {},
+    Outline,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
