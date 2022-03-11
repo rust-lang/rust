@@ -122,7 +122,7 @@ impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
 
 /// An unzipping of `TokenTree`s... see the `stack` field of `MatcherPos`.
 ///
-/// This is used by `inner_parse_loop` to keep track of delimited submatchers that we have
+/// This is used by `parse_tt_inner` to keep track of delimited submatchers that we have
 /// descended into.
 #[derive(Clone)]
 struct MatcherTtFrame<'tt> {
@@ -439,9 +439,8 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
                 Occupied(..) => return Err((sp, format!("duplicated bind name: {}", bind_name))),
             },
-            // FIXME(c410-f3r) MetaVar and MetaVarExpr should be handled instead of being ignored
-            // https://github.com/rust-lang/rust/issues/9390
-            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) | TokenTree::Token(..) => {}
+            TokenTree::Token(..) => (),
+            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         }
 
         Ok(())
@@ -481,21 +480,24 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 ///   successful execution of this function.
 /// - `next_items`: the set of newly generated items. These are used to replenish `cur_items` in
 ///   the function `parse`.
-/// - `eof_items`: the set of items that would be valid if this was the EOF.
 /// - `bb_items`: the set of items that are waiting for the black-box parser.
 /// - `token`: the current token of the parser.
 ///
 /// # Returns
 ///
-/// A `ParseResult`. Note that matches are kept track of through the items generated.
-fn inner_parse_loop<'root, 'tt>(
+/// `Some(result)` if everything is finished, `None` otherwise. Note that matches are kept track of
+/// through the items generated.
+fn parse_tt_inner<'root, 'tt>(
     sess: &ParseSess,
+    ms: &[TokenTree],
     cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-    next_items: &mut Vec<MatcherPosHandle<'root, 'tt>>,
+    next_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-    eof_items: &mut EofItems<'root, 'tt>,
     token: &Token,
-) -> Result<(), (rustc_span::Span, String)> {
+) -> Option<NamedParseResult> {
+    // Matcher positions that would be valid if the macro invocation was over now
+    let mut eof_items = EofItems::None;
+
     // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
         // When unzipped trees end, remove them. This corresponds to backtracking out of a
@@ -522,6 +524,8 @@ fn inner_parse_loop<'root, 'tt>(
             // then we could be at the end of a sequence or at the beginning of the next
             // repetition.
             if let Some(repetition) = &item.repetition {
+                debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
+
                 // At this point, regardless of whether there is a separator, we should add all
                 // matches from the complete repetition of the sequence to the shared, top-level
                 // `matches` list (actually, `up.matches`, which could itself not be the top-level,
@@ -565,7 +569,7 @@ fn inner_parse_loop<'root, 'tt>(
             } else {
                 // If we are not in a repetition, then being at the end of a matcher means that we
                 // have reached the potential end of the input.
-                *eof_items = match eof_items {
+                eof_items = match eof_items {
                     EofItems::None => EofItems::One(item),
                     EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
                 }
@@ -613,7 +617,7 @@ fn inner_parse_loop<'root, 'tt>(
                 // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, None) => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
-                        return Err((span, "missing fragment specifier".to_string()));
+                        return Some(Error(span, "missing fragment specifier".to_string()));
                     }
                 }
 
@@ -655,13 +659,36 @@ fn inner_parse_loop<'root, 'tt>(
                 // rules. NOTE that this is not necessarily an error unless _all_ items in
                 // `cur_items` end up doing this. There may still be some other matchers that do
                 // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => {}
+                TokenTree::Token(..) => {}
+
+                TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
             }
         }
     }
 
-    // Yay a successful parse (so far)!
-    Ok(())
+    // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
+    // either the parse is ambiguous (which should never happen) or there is a syntax error.
+    if *token == token::Eof {
+        Some(match eof_items {
+            EofItems::One(mut eof_item) => {
+                let matches =
+                    eof_item.matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
+                nameize(sess, ms, matches)
+            }
+            EofItems::Multiple => {
+                Error(token.span, "ambiguity: multiple successful parses".to_string())
+            }
+            EofItems::None => Failure(
+                Token::new(
+                    token::Eof,
+                    if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
+                ),
+                "missing tokens in macro arguments",
+            ),
+        })
+    } else {
+        None
+    }
 }
 
 /// Use the given sequence of token trees (`ms`) as a matcher. Match the token
@@ -672,7 +699,7 @@ pub(super) fn parse_tt(
     macro_name: Ident,
 ) -> NamedParseResult {
     // A queue of possible matcher positions. We initialize it with the matcher position in which
-    // the "dot" is before the first token of the first token tree in `ms`. `inner_parse_loop` then
+    // the "dot" is before the first token of the first token tree in `ms`. `parse_tt_inner` then
     // processes all of these possible matcher positions and produces possible next positions into
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
@@ -681,135 +708,118 @@ pub(super) fn parse_tt(
     // there are frequently *no* others! -- are allocated on the heap.
     let mut initial = MatcherPos::new(ms);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
-    let mut next_items = Vec::new();
 
     loop {
-        assert!(next_items.is_empty());
+        let mut next_items = SmallVec::new();
 
         // Matcher positions black-box parsed by parser.rs (`parser`)
         let mut bb_items = SmallVec::new();
 
-        // Matcher positions that would be valid if the macro invocation was over now
-        let mut eof_items = EofItems::None;
-
         // Process `cur_items` until either we have finished the input or we need to get some
         // parsing from the black-box parser done. The result is that `next_items` will contain a
         // bunch of possible next matcher positions in `next_items`.
-        match inner_parse_loop(
+        if let Some(result) = parse_tt_inner(
             parser.sess,
+            ms,
             &mut cur_items,
             &mut next_items,
             &mut bb_items,
-            &mut eof_items,
             &parser.token,
         ) {
-            Ok(()) => {}
-            Err((sp, msg)) => return Error(sp, msg),
+            return result;
         }
 
-        // inner parse loop handled all cur_items, so it's empty
+        // `parse_tt_inner` handled all cur_items, so it's empty.
         assert!(cur_items.is_empty());
 
-        // We need to do some post processing after the `inner_parse_loop`.
+        // We need to do some post processing after the `parse_tt_inner`.
         //
         // Error messages here could be improved with links to original rules.
 
-        // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
-        // either the parse is ambiguous (which should never happen) or there is a syntax error.
-        if parser.token == token::Eof {
-            return match eof_items {
-                EofItems::One(mut eof_item) => {
-                    let matches =
-                        eof_item.matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                    nameize(parser.sess, ms, matches)
-                }
-                EofItems::Multiple => {
-                    Error(parser.token.span, "ambiguity: multiple successful parses".to_string())
-                }
-                EofItems::None => Failure(
-                    Token::new(
-                        token::Eof,
-                        if parser.token.span.is_dummy() {
-                            parser.token.span
-                        } else {
-                            parser.token.span.shrink_to_hi()
-                        },
-                    ),
-                    "missing tokens in macro arguments",
-                ),
-            };
-        }
-        // Performance hack: `eof_items` may share matchers via `Rc` with other things that we want
-        // to modify. Dropping `eof_items` now may drop these refcounts to 1, preventing an
-        // unnecessary implicit clone later in `Rc::make_mut`.
-        drop(eof_items);
-
-        // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then there is a syntax error.
-        if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.token.clone(), "no rules expected this token in macro call");
-        }
-
-        if (!bb_items.is_empty() && !next_items.is_empty()) || bb_items.len() > 1 {
-            // We need to call out to parse some rust nonterminal (black-box) parser. But something
-            // is wrong, because there is not EXACTLY ONE of these.
-            let nts = bb_items
-                .iter()
-                .map(|item| match item.top_elts.get_tt(item.idx) {
-                    TokenTree::MetaVarDecl(_, bind, Some(kind)) => format!("{} ('{}')", kind, bind),
-                    _ => panic!(),
-                })
-                .collect::<Vec<String>>()
-                .join(" or ");
-
-            return Error(
-                parser.token.span,
-                format!(
-                    "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
-                    match next_items.len() {
-                        0 => format!("built-in NTs {}.", nts),
-                        1 => format!("built-in NTs {} or 1 other option.", nts),
-                        n => format!("built-in NTs {} or {} other options.", nts, n),
-                    }
-                ),
-            );
-        }
-
-        if !next_items.is_empty() {
-            // Dump all possible `next_items` into `cur_items` for the next iteration. Then process
-            // the next token.
-            cur_items.extend(next_items.drain(..));
-            parser.to_mut().bump();
-        } else {
-            // Finally, we have the case where we need to call the black-box parser to get some
-            // nonterminal.
-            assert_eq!(bb_items.len(), 1);
-
-            let mut item = bb_items.pop().unwrap();
-            if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx) {
-                let match_cur = item.match_cur;
-                // We use the span of the metavariable declaration to determine any
-                // edition-specific matching behavior for non-terminals.
-                let nt = match parser.to_mut().parse_nonterminal(kind) {
-                    Err(mut err) => {
-                        err.span_label(
-                            span,
-                            format!("while parsing argument for this `{}` macro fragment", kind),
-                        )
-                        .emit();
-                        return ErrorReported;
-                    }
-                    Ok(nt) => nt,
-                };
-                item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
-                item.idx += 1;
-                item.match_cur += 1;
-            } else {
-                unreachable!()
+        match (next_items.len(), bb_items.len()) {
+            (0, 0) => {
+                // There are no possible next positions AND we aren't waiting for the black-box
+                // parser: syntax error.
+                return Failure(parser.token.clone(), "no rules expected this token in macro call");
             }
-            cur_items.push(item);
+
+            (_, 0) => {
+                // Dump all possible `next_items` into `cur_items` for the next iteration. Then
+                // process the next token.
+                cur_items.extend(next_items.drain(..));
+                parser.to_mut().bump();
+            }
+
+            (0, 1) => {
+                // We need to call the black-box parser to get some nonterminal.
+                let mut item = bb_items.pop().unwrap();
+                if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts.get_tt(item.idx)
+                {
+                    let match_cur = item.match_cur;
+                    // We use the span of the metavariable declaration to determine any
+                    // edition-specific matching behavior for non-terminals.
+                    let nt = match parser.to_mut().parse_nonterminal(kind) {
+                        Err(mut err) => {
+                            err.span_label(
+                                span,
+                                format!("while parsing argument for this `{kind}` macro fragment"),
+                            )
+                            .emit();
+                            return ErrorReported;
+                        }
+                        Ok(nt) => nt,
+                    };
+                    item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
+                    item.idx += 1;
+                    item.match_cur += 1;
+                } else {
+                    unreachable!()
+                }
+                cur_items.push(item);
+            }
+
+            (_, _) => {
+                // We need to call the black-box parser to get some nonterminal, but something is
+                // wrong.
+                return bb_items_ambiguity_error(
+                    macro_name,
+                    next_items,
+                    bb_items,
+                    parser.token.span,
+                );
+            }
         }
 
         assert!(!cur_items.is_empty());
     }
+}
+
+fn bb_items_ambiguity_error<'root, 'tt>(
+    macro_name: Ident,
+    next_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+    bb_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+    token_span: rustc_span::Span,
+) -> NamedParseResult {
+    let nts = bb_items
+        .iter()
+        .map(|item| match item.top_elts.get_tt(item.idx) {
+            TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
+                format!("{} ('{}')", kind, bind)
+            }
+            _ => panic!(),
+        })
+        .collect::<Vec<String>>()
+        .join(" or ");
+
+    Error(
+        token_span,
+        format!(
+            "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
+            match next_items.len() {
+                0 => format!("built-in NTs {}.", nts),
+                1 => format!("built-in NTs {} or 1 other option.", nts),
+                n => format!("built-in NTs {} or {} other options.", nts, n),
+            }
+        ),
+    )
 }
