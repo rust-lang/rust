@@ -6,7 +6,7 @@ use crate::{
 use hir::{def_id::DefId, Body, HirId, HirIdMap};
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_hir as hir;
-use rustc_middle::hir::place::PlaceBase;
+use rustc_middle::hir::place::{PlaceBase, Projection, ProjectionKind};
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 
 pub(super) fn find_consumed_and_borrowed<'a, 'tcx>(
@@ -114,12 +114,48 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
             .borrowed
             .insert(TrackedValue::from_place_with_projections_allowed(place_with_id));
 
-        // Keep track of whether this is a borrowed temporary (i.e. a borrow of an RValue)
-        // so that later in generator_interior we can use the correct scope.
+        // Ordinarily a value is consumed by it's parent, but in the special case of a
+        // borrowed RValue, we create a reference that lives as long as the temporary scope
+        // for that expression (typically, the innermost statement, but sometimes the enclosing
+        // block). We record this fact here so that later in generator_interior
+        // we can use the correct scope.
         //
-        // We ignore borrows that are the result of an autoref because these will be
-        // immediately consumed and should not extend the temporary's lifetime.
-        if let (false, PlaceBase::Rvalue) = (is_autoref, place_with_id.place.base) {
+        // We special case borrows through a dereference (`&*x`, `&mut *x` where `x` is
+        // some rvalue expression), since these are essentially a copy of a pointer.
+        // In other words, this borrow does not refer to the
+        // temporary (`*x`), but to the referent (whatever `x` is a borrow of).
+        //
+        // We were considering that we might encounter problems down the line if somehow,
+        // some part of the compiler were to look at this result and try to use it to
+        // drive a borrowck-like analysis (this does not currently happen, as of this writing).
+        // But even this should be fine, because the lifetime of the dereferenced reference
+        // found in the rvalue is only significant as an intermediate 'link' to the value we
+        // are producing, and we separately track whether that value is live over a yield.
+        // Example:
+        //
+        // ```notrust
+        // fn identity<T>(x: &mut T) -> &mut T { x }
+        // let a: A = ...;
+        // let y: &'y mut A = &mut *identity(&'a mut a);
+        //                    ^^^^^^^^^^^^^^^^^^^^^^^^^ the borrow we are talking about
+        // ```
+        //
+        // The expression `*identity(...)` is a deref of an rvalue,
+        // where the `identity(...)` (the rvalue) produces a return type
+        // of `&'rv mut A`, where `'a: 'rv`. We then assign this result to
+        // `'y`, resulting in (transitively) `'a: 'y` (i.e., while `y` is in use,
+        // `a` will be considered borrowed).  Other parts of the code will ensure
+        // that if `y` is live over a yield, `&'y mut A` appears in the generator
+        // state. If `'y` is live, then any sound region analysis must conclude
+        // that `'a` is also live. So if this causes a bug, blame some other
+        // part of the code!
+        let is_deref = place_with_id
+            .place
+            .projections
+            .iter()
+            .any(|Projection { kind, .. }| *kind == ProjectionKind::Deref);
+
+        if let (false, PlaceBase::Rvalue) = (is_deref, place_with_id.place.base) {
             self.places.borrowed_temporaries.insert(place_with_id.hir_id);
         }
     }
