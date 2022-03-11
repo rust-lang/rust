@@ -1538,7 +1538,7 @@ impl<'a> Parser<'a> {
             self.struct_span_err(self.token.span, "found single colon in a struct field type path")
                 .span_suggestion_verbose(
                     self.token.span,
-                    "maybe you meant to write a path separator here",
+                    "write a path separator here",
                     "::".to_string(),
                     Applicability::MaybeIncorrect,
                 )

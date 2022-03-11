@@ -1,33 +1,33 @@
 error: found single colon in a struct field type path
-  --> $DIR/sturct-field-type-including-single-colon.rs:9:11
+  --> $DIR/struct-field-type-including-single-colon.rs:9:11
    |
 LL |     a: foo:A,
    |           ^
    |
-help: maybe you meant to write a path separator here
+help: write a path separator here
    |
 LL |     a: foo::A,
    |           ~~
 
 error: expected `,`, or `}`, found `:`
-  --> $DIR/sturct-field-type-including-single-colon.rs:9:11
+  --> $DIR/struct-field-type-including-single-colon.rs:9:11
    |
 LL |     a: foo:A,
    |           ^
 
 error: found single colon in a struct field type path
-  --> $DIR/sturct-field-type-including-single-colon.rs:15:16
+  --> $DIR/struct-field-type-including-single-colon.rs:15:16
    |
 LL |     b: foo::bar:B,
    |                ^
    |
-help: maybe you meant to write a path separator here
+help: write a path separator here
    |
 LL |     b: foo::bar::B,
    |                ~~
 
 error: expected `,`, or `}`, found `:`
-  --> $DIR/sturct-field-type-including-single-colon.rs:15:16
+  --> $DIR/struct-field-type-including-single-colon.rs:15:16
    |
 LL |     b: foo::bar:B,
    |                ^
