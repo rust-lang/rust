@@ -1,8 +1,8 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 
 use crate::hir::{
-    AttributeMap, BodyId, Crate, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item,
-    ItemId, OwnerNodes, TraitCandidate, TraitItem, TraitItemId, Ty, VisibilityKind,
+    AttributeMap, BodyId, Expr, ForeignItem, ForeignItemId, ImplItem, ImplItemId, Item, ItemId,
+    OwnerNodes, TraitCandidate, TraitItem, TraitItemId, Ty, VisibilityKind,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 use rustc_span::def_id::DefPathHash;
@@ -226,13 +226,6 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
         // the collector and used for the crate hash.
         let AttributeMap { hash, map: _ } = *self;
         hash.hash_stable(hcx, hasher);
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        let Crate { owners: _, hir_hash } = self;
-        hir_hash.hash_stable(hcx, hasher)
     }
 }
 

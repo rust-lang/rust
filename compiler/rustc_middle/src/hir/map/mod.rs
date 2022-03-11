@@ -1,8 +1,6 @@
 use crate::hir::{ModuleItems, Owner};
 use crate::ty::TyCtxt;
 use rustc_ast as ast;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_hir::def::{DefKind, Res};
@@ -13,12 +11,12 @@ use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::*;
 use rustc_index::vec::Idx;
 use rustc_middle::hir::nested_filter;
-use rustc_span::def_id::StableCrateId;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use std::collections::VecDeque;
+use std::time::SystemTime;
 
 fn fn_decl<'hir>(node: Node<'hir>) -> Option<&'hir FnDecl<'hir>> {
     match node {
@@ -1088,69 +1086,12 @@ impl<'hir> intravisit::Map<'hir> for Map<'hir> {
     }
 }
 
-pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
+pub(super) fn crate_hash(_: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     debug_assert_eq!(crate_num, LOCAL_CRATE);
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = krate.hir_hash;
 
-    let upstream_crates = upstream_crates(tcx);
-
-    // We hash the final, remapped names of all local source files so we
-    // don't have to include the path prefix remapping commandline args.
-    // If we included the full mapping in the SVH, we could only have
-    // reproducible builds by compiling from the same directory. So we just
-    // hash the result of the mapping instead of the mapping itself.
-    let mut source_file_names: Vec<_> = tcx
-        .sess
-        .source_map()
-        .files()
-        .iter()
-        .filter(|source_file| source_file.cnum == LOCAL_CRATE)
-        .map(|source_file| source_file.name_hash)
-        .collect();
-
-    source_file_names.sort_unstable();
-
-    let mut hcx = tcx.create_stable_hashing_context();
-    let mut stable_hasher = StableHasher::new();
-    hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
-    upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
-    source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-    if tcx.sess.opts.debugging_opts.incremental_relative_spans {
-        let definitions = &tcx.untracked_resolutions.definitions;
-        let mut owner_spans: Vec<_> = krate
-            .owners
-            .iter_enumerated()
-            .filter_map(|(def_id, info)| {
-                let _ = info.as_owner()?;
-                let def_path_hash = definitions.def_path_hash(def_id);
-                let span = definitions.def_span(def_id);
-                debug_assert_eq!(span.parent(), None);
-                Some((def_path_hash, span))
-            })
-            .collect();
-        owner_spans.sort_unstable_by_key(|bn| bn.0);
-        owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
-    }
-    tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
-    tcx.sess.local_stable_crate_id().hash_stable(&mut hcx, &mut stable_hasher);
-
-    let crate_hash: Fingerprint = stable_hasher.finish();
-    Svh::new(crate_hash.to_smaller_hash())
-}
-
-fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
-    let mut upstream_crates: Vec<_> = tcx
-        .crates(())
-        .iter()
-        .map(|&cnum| {
-            let stable_crate_id = tcx.resolutions(()).cstore.stable_crate_id(cnum);
-            let hash = tcx.crate_hash(cnum);
-            (stable_crate_id, hash)
-        })
-        .collect();
-    upstream_crates.sort_unstable_by_key(|&(stable_crate_id, _)| stable_crate_id);
-    upstream_crates
+    // TEST: Turn crate hash into a time-stamp/build-id
+    let random = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap().as_nanos();
+    Svh::new((random as u64).wrapping_add((random >> 64) as u64))
 }
 
 fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {

@@ -776,7 +776,6 @@ impl<T> MaybeOwner<T> {
 #[derive(Debug)]
 pub struct Crate<'hir> {
     pub owners: IndexVec<LocalDefId, MaybeOwner<&'hir OwnerInfo<'hir>>>,
-    pub hir_hash: Fingerprint,
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the

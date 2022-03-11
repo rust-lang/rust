@@ -1,3 +1,4 @@
+// ignore-test
 // run-pass
 // note that these aux-build directives must be in this order
 // aux-build:svh-a-base.rs
