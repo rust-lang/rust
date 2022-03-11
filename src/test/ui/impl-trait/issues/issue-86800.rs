@@ -27,16 +27,16 @@ type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>
 
 fn execute_transaction_fut<'f, F, O>(
     f: F,
-) -> impl FnOnce(&mut dyn Transaction) -> TransactionFuture<O>
+) -> impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>
 where
-    F: FnOnce(&mut dyn Transaction) -> TransactionFuture<O> + 'f
+    F: FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O> + 'f
 {
     f
 }
 
 impl Context {
     async fn do_transaction<O>(
-        &self, f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<O>
+        &self, f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>
     ) -> TransactionResult<O>
     {
         let mut conn = Connection {};
