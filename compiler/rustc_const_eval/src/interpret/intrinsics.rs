@@ -307,53 +307,57 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_pointer(offset_ptr, dest)?;
             }
             sym::ptr_offset_from => {
-                let a = self.read_immediate(&args[0])?.to_scalar()?;
-                let b = self.read_immediate(&args[1])?.to_scalar()?;
+                let a = self.read_pointer(&args[0])?;
+                let b = self.read_pointer(&args[1])?;
 
                 // Special case: if both scalars are *equal integers*
                 // and not null, we pretend there is an allocation of size 0 right there,
                 // and their offset is 0. (There's never a valid object at null, making it an
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
-                // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
-                //
-                // Control flow is weird because we cannot early-return (to reach the
-                // `go_to_block` at the end).
-                let done = if let (Ok(a), Ok(b)) = (a.try_to_int(), b.try_to_int()) {
-                    let a = a.try_to_machine_usize(*self.tcx).unwrap();
-                    let b = b.try_to_machine_usize(*self.tcx).unwrap();
-                    if a == b && a != 0 {
+                // in the inbounds pointer offset operation (see `ptr_offset_inbounds` below).
+                match (self.memory.ptr_try_get_alloc(a), self.memory.ptr_try_get_alloc(b)) {
+                    (Err(a), Err(b)) if a == b && a != 0 => {
+                        // Both are the same non-null integer.
                         self.write_scalar(Scalar::from_machine_isize(0, self), dest)?;
-                        true
-                    } else {
-                        false
                     }
-                } else {
-                    false
-                };
+                    (Err(offset), _) | (_, Err(offset)) => {
+                        throw_ub!(DanglingIntPointer(offset, CheckInAllocMsg::OffsetFromTest));
+                    }
+                    (Ok((a_alloc_id, a_offset, _)), Ok((b_alloc_id, b_offset, _))) => {
+                        // Both are pointers. They must be into the same allocation.
+                        if a_alloc_id != b_alloc_id {
+                            throw_ub_format!(
+                                "ptr_offset_from cannot compute offset of pointers into different \
+                                allocations.",
+                            );
+                        }
+                        // And they must both be valid for zero-sized accesses ("in-bounds or one past the end").
+                        self.memory.check_ptr_access_align(
+                            a,
+                            Size::ZERO,
+                            Align::ONE,
+                            CheckInAllocMsg::OffsetFromTest,
+                        )?;
+                        self.memory.check_ptr_access_align(
+                            b,
+                            Size::ZERO,
+                            Align::ONE,
+                            CheckInAllocMsg::OffsetFromTest,
+                        )?;
 
-                if !done {
-                    // General case: we need two pointers.
-                    let a = self.scalar_to_ptr(a);
-                    let b = self.scalar_to_ptr(b);
-                    let (a_alloc_id, a_offset, _) = self.memory.ptr_get_alloc(a)?;
-                    let (b_alloc_id, b_offset, _) = self.memory.ptr_get_alloc(b)?;
-                    if a_alloc_id != b_alloc_id {
-                        throw_ub_format!(
-                            "ptr_offset_from cannot compute offset of pointers into different \
-                            allocations.",
-                        );
+                        // Compute offset.
+                        let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                        let isize_layout = self.layout_of(self.tcx.types.isize)?;
+                        let a_offset = ImmTy::from_uint(a_offset.bytes(), usize_layout);
+                        let b_offset = ImmTy::from_uint(b_offset.bytes(), usize_layout);
+                        let (val, _overflowed, _ty) =
+                            self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
+                        let pointee_layout = self.layout_of(substs.type_at(0))?;
+                        let val = ImmTy::from_scalar(val, isize_layout);
+                        let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
+                        self.exact_div(&val, &size, dest)?;
                     }
-                    let usize_layout = self.layout_of(self.tcx.types.usize)?;
-                    let isize_layout = self.layout_of(self.tcx.types.isize)?;
-                    let a_offset = ImmTy::from_uint(a_offset.bytes(), usize_layout);
-                    let b_offset = ImmTy::from_uint(b_offset.bytes(), usize_layout);
-                    let (val, _overflowed, _ty) =
-                        self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
-                    let pointee_layout = self.layout_of(substs.type_at(0))?;
-                    let val = ImmTy::from_scalar(val, isize_layout);
-                    let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
-                    self.exact_div(&val, &size, dest)?;
                 }
             }
 
