@@ -1331,11 +1331,12 @@ pub(crate) fn handle_inlay_hints(
             )
         })
         .transpose()?;
+    let inlay_hints_config = snap.config.inlay_hints();
     Ok(snap
         .analysis
-        .inlay_hints(&snap.config.inlay_hints(), file_id, range)?
+        .inlay_hints(&inlay_hints_config, file_id, range)?
         .into_iter()
-        .map(|it| to_proto::inlay_hint(&line_index, it))
+        .map(|it| to_proto::inlay_hint(inlay_hints_config.render_colons, &line_index, it))
         .collect())
 }
 

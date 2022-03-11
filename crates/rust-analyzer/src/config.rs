@@ -242,6 +242,8 @@ config_data! {
         /// `#rust-analyzer.hoverActions.enable#` is set.
         hoverActions_run: bool             = "true",
 
+        /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
+        inlayHints_renderColons: bool               = "true",
         /// Whether to show inlay type hints for method chains.
         inlayHints_chainingHints: bool              = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
@@ -846,6 +848,7 @@ impl Config {
     }
     pub fn inlay_hints(&self) -> InlayHintsConfig {
         InlayHintsConfig {
+            render_colons: self.data.inlayHints_renderColons,
             type_hints: self.data.inlayHints_typeHints,
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
