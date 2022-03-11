@@ -58,14 +58,11 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    /// Replaces all regions (resp. types) bound by `binder` with placeholder
-    /// regions (resp. types) and return a map indicating which bound-region
-    /// placeholder region. This is the first step of checking subtyping
-    /// when higher-ranked things are involved.
+    /// Replaces all bound variables (lifetimes, types, and constants) bound by
+    /// `binder` with placeholder variables.
     ///
-    /// **Important:** You have to be careful to not leak these placeholders,
-    /// for more information about how placeholders and HRTBs work, see
-    /// the [rustc dev guide].
+    /// This is the first step of checking subtyping when higher-ranked things are involved.
+    /// For more details visit the relevant sections of the [rustc dev guide].
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/hrtb.html
     pub fn replace_bound_vars_with_placeholders<T>(&self, binder: ty::Binder<'tcx, T>) -> T
