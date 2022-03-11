@@ -59,9 +59,10 @@ Stabilized APIs
 
 Cargo
 -----
-- [Print executable name on `cargo test --no-run`.][cargo/9959]
 - [Port cargo from `toml-rs` to `toml_edit`][cargo/10086]
+- [Support rustflags per profile][cargo/10217]
 - [Stabilize `-Ztimings` as `--timings`][cargo/10245]
+- [Stabilize namespaced and weak dependency features.][cargo/10269]
 - [Accept more `cargo:rustc-link-arg-*` types from build script output.][cargo/10274]
 - [cargo-new should not add ignore rule on Cargo.lock inside subdirs][cargo/10379]
 
@@ -76,7 +77,6 @@ Compatibility Notes
 - [Remove compiler-rt linking hack on Android][83822]
 - [Remove deprecated LLVM-style inline assembly][92816]
 - [Reject unsupported naked functions][93153]
-- [Remove deprecated `--host` arg for cargo search and publish cmds][cargo/10327]
 
 Internal Changes
 ----------------
@@ -113,12 +113,12 @@ and related tools.
 [93824]: https://github.com/rust-lang/rust/pull/93824
 [93918]: https://github.com/rust-lang/rust/pull/93918
 
-[cargo/9959]: https://github.com/rust-lang/cargo/pull/9959
 [cargo/10086]: https://github.com/rust-lang/cargo/pull/10086
+[cargo/10217]: https://github.com/rust-lang/cargo/pull/10217
 [cargo/10245]: https://github.com/rust-lang/cargo/pull/10245
+[cargo/10269]: https://github.com/rust-lang/cargo/pull/10269
 [cargo/10274]: https://github.com/rust-lang/cargo/pull/10274
 [cargo/10379]: https://github.com/rust-lang/cargo/pull/10379
-[cargo/10327]: https://github.com/rust-lang/cargo/pull/10327
 
 [arc_new_cyclic]: https://doc.rust-lang.org/stable/std/sync/struct.Arc.html#method.new_cyclic
 [rc_new_cyclic]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.new_cyclic
