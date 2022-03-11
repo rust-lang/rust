@@ -99,9 +99,8 @@ pub(super) fn const_arg_expr(p: &mut Parser) {
             expressions::literal(p);
             lm.complete(p, PREFIX_EXPR);
         }
-        // test const_arg_path
-        // type T = S<u32::MAX>;
         _ => {
+            // This shouldn't be hit by `const_arg`
             let lm = p.start();
             paths::use_path(p);
             lm.complete(p, PATH_EXPR);
