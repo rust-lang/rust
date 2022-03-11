@@ -1,1 +1,1 @@
-struct S<const N: u32 = u32::MAX>;
+type T = S<u32::MAX>;
