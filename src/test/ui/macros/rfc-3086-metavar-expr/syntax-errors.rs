@@ -10,6 +10,7 @@ macro_rules! curly__no_rhs_dollar__round {
 
 macro_rules! curly__no_rhs_dollar__no_round {
     ( $i:ident ) => { ${ count(i) } };
+    //~^ ERROR `count` can not be placed inside the inner-most repetition
 }
 
 macro_rules! curly__rhs_dollar__round {
@@ -121,6 +122,20 @@ macro_rules! open_brackets_without_tokens {
     //~| ERROR expected identifier
 }
 
+macro_rules! unknown_count_ident {
+    ( $( $i:ident )* ) => {
+        ${count(foo)}
+        //~^ ERROR variable `foo` is not recognized in meta-variable expression
+    };
+}
+
+macro_rules! unknown_ignore_ident {
+    ( $( $i:ident )* ) => {
+        ${ignore(bar)}
+        //~^ ERROR variable `bar` is not recognized in meta-variable expression
+    };
+}
+
 macro_rules! unknown_metavar {
     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
     //~^ ERROR unrecognized meta-variable expression
@@ -139,10 +154,12 @@ fn main() {
     //~^ ERROR cannot find value `a` in this scope
 
     extra_garbage_after_metavar!(a);
-    unknown_metavar!(a);
-    metavar_without_parens!(a);
-    metavar_token_without_ident!(a);
     metavar_depth_is_not_literal!(a);
+    metavar_token_without_ident!(a);
     metavar_with_literal_suffix!(a);
-    open_brackets_without_tokens!(a)
+    metavar_without_parens!(a);
+    open_brackets_without_tokens!(a);
+    unknown_count_ident!(a);
+    unknown_ignore_ident!(a);
+    unknown_metavar!(a);
 }
