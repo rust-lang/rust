@@ -2191,10 +2191,29 @@ impl<'tcx> TyCtxt<'tcx> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
+    /// If the given `DefId` describes an item belonging to a trait,
+    /// returns the `DefId` of the trait that the trait item belongs to;
+    /// otherwise, returns `None`.
+    pub fn trait_of_item(self, def_id: DefId) -> Option<DefId> {
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Trait | DefKind::TraitAlias = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
+    }
+
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        self.opt_associated_item(def_id).and_then(|trait_item| trait_item.impl_container(self))
+        if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = self.def_kind(def_id) {
+            let parent = self.parent(def_id);
+            if let DefKind::Impl = self.def_kind(parent) {
+                return Some(parent);
+            }
+        }
+        None
     }
 
     /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.

@@ -9,7 +9,6 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item_def_ids,
         associated_items,
         impl_item_implementor_ids,
-        trait_of_item,
         ..*providers
     };
 }
@@ -38,13 +37,6 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> FxHashMap<DefId
         .in_definition_order()
         .filter_map(|item| item.trait_item_def_id.map(|trait_item| (trait_item, item.def_id)))
         .collect()
-}
-
-/// If the given `DefId` describes an item belonging to a trait,
-/// returns the `DefId` of the trait that the trait item belongs to;
-/// otherwise, returns `None`.
-fn trait_of_item(tcx: TyCtxt<'_>, def_id: DefId) -> Option<DefId> {
-    tcx.opt_associated_item(def_id).and_then(|associated_item| associated_item.trait_container(tcx))
 }
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {

@@ -2129,7 +2129,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         ] = path.segments
                         && data.trait_ref.def_id == *trait_id
-                        && self.tcx.trait_of_item(item_id) == Some(*trait_id)
+                        && self.tcx.trait_of_item(*item_id) == Some(*trait_id)
                         && !self.is_tainted_by_errors()
                     {
                         let (verb, noun) = match self.tcx.associated_item(item_id).kind {

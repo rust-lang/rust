@@ -14,7 +14,7 @@ pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
 
     if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
         // If this is trait/impl method, extract the trait's substs.
-        let trait_substs = match tcx.trait_of_item(def_id) {
+        let trait_substs = match tcx.trait_of_item(def_id.to_def_id()) {
             Some(trait_def_id) => {
                 let trait_substs_count = tcx.generics_of(trait_def_id).count();
                 &InternalSubsts::identity_for_item(tcx, def_id.to_def_id())[..trait_substs_count]
