@@ -7,7 +7,7 @@ pub mod foo {
 pub struct Foo {
   a: Vec<foo::bar:A>,
   //~^ ERROR expected
-  //~| HELP you might have meant to write a path
+  //~| HELP path separator
 }
 
 fn main() {}

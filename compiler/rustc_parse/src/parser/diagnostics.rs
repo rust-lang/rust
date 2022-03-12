@@ -2080,7 +2080,7 @@ impl<'a> Parser<'a> {
                     // Find a mistake like "foo::var:A".
                     err.span_suggestion(
                         snapshot.token.span,
-                        "you might have meant to write a path",
+                        "write a path separator here",
                         "::".to_string(),
                         Applicability::MaybeIncorrect,
                     );

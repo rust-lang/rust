@@ -5,7 +5,7 @@ LL |   a: Vec<foo::bar:A>,
    |                  ^
    |                  |
    |                  expected one of `,` or `>`
-   |                  help: you might have meant to write a path: `::`
+   |                  help: write a path separator here: `::`
 
 error: aborting due to previous error
 
