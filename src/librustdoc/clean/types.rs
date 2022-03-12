@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::hash::Hash;
 use std::lazy::SyncOnceCell as OnceCell;
@@ -121,7 +122,7 @@ crate struct Crate {
     crate module: Item,
     crate primitives: ThinVec<(DefId, PrimitiveType)>,
     /// Only here so that they can be filtered through the rustdoc passes.
-    crate external_traits: Rc<RefCell<FxHashMap<DefId, TraitWithExtraInfo>>>,
+    crate external_traits: Rc<RefCell<BTreeMap<DefId, TraitWithExtraInfo>>>,
 }
 
 // `Crate` is frequently moved by-value. Make sure it doesn't unintentionally get bigger.

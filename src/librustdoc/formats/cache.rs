@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::mem;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -62,7 +63,7 @@ crate struct Cache {
     /// Implementations of a crate should inherit the documentation of the
     /// parent trait if no extra documentation is specified, and default methods
     /// should show up in documentation about trait implementations.
-    crate traits: FxHashMap<DefId, clean::TraitWithExtraInfo>,
+    crate traits: BTreeMap<DefId, clean::TraitWithExtraInfo>,
 
     /// When rendering traits, it's often useful to be able to list all
     /// implementors of the trait, and this mapping is exactly, that: a mapping
