@@ -368,18 +368,28 @@ pub fn expr_empty_block() -> ast::Expr {
 pub fn expr_path(path: ast::Path) -> ast::Expr {
     expr_from_text(&path.to_string())
 }
-pub fn expr_continue() -> ast::Expr {
-    expr_from_text("continue")
+pub fn expr_continue(label: Option<ast::Lifetime>) -> ast::Expr {
+    match label {
+        Some(label) => expr_from_text(&format!("continue {}", label)),
+        None => expr_from_text("continue"),
+    }
 }
 // Consider `op: SyntaxKind` instead for nicer syntax at the call-site?
 pub fn expr_bin_op(lhs: ast::Expr, op: ast::BinaryOp, rhs: ast::Expr) -> ast::Expr {
     expr_from_text(&format!("{} {} {}", lhs, op, rhs))
 }
-pub fn expr_break(expr: Option<ast::Expr>) -> ast::Expr {
-    match expr {
-        Some(expr) => expr_from_text(&format!("break {}", expr)),
-        None => expr_from_text("break"),
+pub fn expr_break(label: Option<ast::Lifetime>, expr: Option<ast::Expr>) -> ast::Expr {
+    let mut s = String::from("break");
+
+    if let Some(label) = label {
+        format_to!(s, " {}", label);
     }
+
+    if let Some(expr) = expr {
+        format_to!(s, " {}", expr);
+    }
+
+    expr_from_text(&s)
 }
 pub fn expr_return(expr: Option<ast::Expr>) -> ast::Expr {
     match expr {
