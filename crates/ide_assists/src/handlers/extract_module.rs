@@ -190,15 +190,13 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
             }
 
             if let Some(impl_) = impl_parent {
-                let node_to_be_removed;
-
                 // Remove complete impl block if it has only one child (as such it will be empty
                 // after deleting that child)
-                if impl_child_count == 1 {
-                    node_to_be_removed = impl_.syntax();
+                let node_to_be_removed = if impl_child_count == 1 {
+                    impl_.syntax()
                 } else {
                     //Remove selected node
-                    node_to_be_removed = &node;
+                    &node
                 };
 
                 builder.delete(node_to_be_removed.text_range());
@@ -715,14 +713,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Function(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -732,14 +728,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Adt(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -749,14 +743,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Variant(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -766,14 +758,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Const(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -783,14 +773,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Static(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -800,14 +788,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::Trait(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
@@ -817,14 +803,12 @@ fn does_source_exists_outside_sel_in_same_mod(
         }
         Definition::TypeAlias(x) => {
             if let Some(source) = x.source(ctx.db()) {
-                let have_same_parent;
-                if let Some(ast_module) = &curr_parent_module {
-                    have_same_parent =
-                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
+                let have_same_parent = if let Some(ast_module) = &curr_parent_module {
+                    compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some()
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
-                    have_same_parent = source_file_id == curr_file_id;
-                }
+                    source_file_id == curr_file_id
+                };
 
                 if have_same_parent {
                     source_exists_outside_sel_in_same_mod =
