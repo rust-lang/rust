@@ -104,9 +104,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.layout_of(ty)
     }
 
+    /// Write a uint of the appropriate size to `dest`.
+    fn write_uint(&mut self, i: impl Into<u128>, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        self.eval_context_mut().write_scalar(Scalar::from_uint(i, dest.layout.size), dest)
+    }
+
+    /// Write an int of the appropriate size to `dest`.
+    fn write_int(&mut self, i: impl Into<i128>, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
+        self.eval_context_mut().write_scalar(Scalar::from_int(i, dest.layout.size), dest)
+    }
+
     /// Write a 0 of the appropriate size to `dest`.
     fn write_null(&mut self, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-        self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
+        self.write_int(0, dest)
     }
 
     /// Test if this pointer equals 0.

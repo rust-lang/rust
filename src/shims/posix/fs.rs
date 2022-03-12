@@ -1270,12 +1270,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let entry =
                     this.malloc(size, /*zero_init:*/ false, MiriMemoryKind::Runtime)?;
 
-                // FIXME: make use of dirent64_layout
-                let ino64_t_layout = this.libc_ty_layout("ino64_t")?;
-                let off64_t_layout = this.libc_ty_layout("off64_t")?;
-                let c_ushort_layout = this.libc_ty_layout("c_ushort")?;
-                let c_uchar_layout = this.libc_ty_layout("c_uchar")?;
-
                 // If the host is a Unix system, fill in the inode number with its real value.
                 // If not, use 0 as a fallback value.
                 #[cfg(unix)]
@@ -1285,15 +1279,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 let file_type = this.file_type_to_d_type(dir_entry.file_type())?;
 
-                let imms = [
-                    immty_from_uint_checked(ino, ino64_t_layout)?, // d_ino
-                    immty_from_uint_checked(0u128, off64_t_layout)?, // d_off
-                    immty_from_uint_checked(size, c_ushort_layout)?, // d_reclen
-                    immty_from_int_checked(file_type, c_uchar_layout)?, // d_type
-                ];
-                let entry_layout = this.layout_of(this.tcx.mk_array(this.tcx.types.u8, size))?;
-                let entry_place = MPlaceTy::from_aligned_ptr(entry, entry_layout);
-                this.write_packed_immediates(&entry_place, &imms)?;
+                let entry_place = MPlaceTy::from_aligned_ptr(entry, dirent64_layout);
+                this.write_uint(ino, &this.mplace_field(&entry_place, 0)?.into())?; // d_ino
+                this.write_uint(0u128, &this.mplace_field(&entry_place, 1)?.into())?; // d_off
+                this.write_uint(size, &this.mplace_field(&entry_place, 2)?.into())?; // d_reclen
+                this.write_int(file_type, &this.mplace_field(&entry_place, 3)?.into())?; // d_type
 
                 let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;
                 this.memory.write_bytes(name_ptr, name_bytes.iter().copied())?;
