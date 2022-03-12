@@ -7,6 +7,7 @@ mod highlight;
 mod format;
 mod macro_;
 mod inject;
+mod escape;
 
 mod html;
 #[cfg(test)]
@@ -16,7 +17,7 @@ use hir::{InFile, Name, Semantics};
 use ide_db::RootDatabase;
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self, IsString},
+    ast::{self},
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
     SyntaxNode, TextRange, WalkEvent, T,
@@ -30,6 +31,7 @@ use crate::{
     FileId, HlMod, HlTag,
 };
 
+use crate::syntax_highlighting::escape::highlight_escape_string;
 pub(crate) use html::highlight_as_html;
 
 #[derive(Debug, Clone, Copy)]
@@ -371,29 +373,20 @@ fn traverse(
         // string highlight injections, note this does not use the descended element as proc-macros
         // can rewrite string literals which invalidates our indices
         if let (Some(token), Some(descended_token)) = (token, descended_element.as_token()) {
-            let string = ast::String::cast(token);
-            let string_to_highlight = ast::String::cast(descended_token.clone());
-            if let Some((string, expanded_string)) = string.zip(string_to_highlight) {
+            if ast::String::can_cast(token.kind()) && ast::String::can_cast(descended_token.kind())
+            {
+                let string = ast::String::cast(token).unwrap();
+                let expanded_string = ast::String::cast(descended_token.clone()).unwrap();
                 if string.is_raw() {
                     if inject::ra_fixture(hl, sema, &string, &expanded_string).is_some() {
                         continue;
                     }
                 }
                 highlight_format_string(hl, &string, &expanded_string, range);
-                // Highlight escape sequences
-                string.escaped_char_ranges(&mut |piece_range, char| {
-                    if char.is_err() {
-                        return;
-                    }
-
-                    if string.text()[piece_range.start().into()..].starts_with('\\') {
-                        hl.add(HlRange {
-                            range: piece_range + range.start(),
-                            highlight: HlTag::EscapeSequence.into(),
-                            binding_hash: None,
-                        });
-                    }
-                });
+                highlight_escape_string(hl, &string, range.start());
+            } else if ast::ByteString::can_cast(token.kind()) {
+                let byte_string = ast::ByteString::cast(token).unwrap();
+                highlight_escape_string(hl, &byte_string, range.start());
             }
         }
 

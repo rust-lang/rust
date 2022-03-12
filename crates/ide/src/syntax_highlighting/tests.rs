@@ -477,6 +477,20 @@ fn main() {
 }
 
 #[test]
+fn test_byte_string_highlight() {
+    check_highlighting(
+        r#"
+fn main() {
+    let _ = "\x28\x28\x00\x63\n";
+    let _ = b"\x28\x28\x00\x63\n";
+}
+"#,
+        expect_file!["./test_data/highlight_byte_string.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
