@@ -22,24 +22,21 @@ pub(crate) fn render_record(
     fields: &[hir::Field],
     name: Option<&str>,
 ) -> RenderedCompound {
-    let fields = fields.iter();
+    let completions = fields.iter().enumerate().format_with(", ", |(idx, field), f| {
+        if snippet_cap.is_some() {
+            f(&format_args!("{}: ${{{}:()}}", field.name(db), idx + 1))
+        } else {
+            f(&format_args!("{}: ()", field.name(db)))
+        }
+    });
 
-    let (completions, types): (Vec<_>, Vec<_>) = fields
-        .enumerate()
-        .map(|(idx, field)| {
-            (
-                if snippet_cap.is_some() {
-                    format!("{}: ${{{}:()}}", field.name(db), idx + 1)
-                } else {
-                    format!("{}: ()", field.name(db))
-                },
-                format!("{}: {}", field.name(db), field.ty(db).display(db)),
-            )
-        })
-        .unzip();
+    let types = fields.iter().format_with(", ", |field, f| {
+        f(&format_args!("{}: {}", field.name(db), field.ty(db).display(db)))
+    });
+
     RenderedCompound {
-        literal: format!("{} {{ {} }}", name.unwrap_or(""), completions.iter().format(", ")),
-        detail: format!("{} {{ {} }}", name.unwrap_or(""), types.iter().format(", ")),
+        literal: format!("{} {{ {} }}", name.unwrap_or(""), completions),
+        detail: format!("{} {{ {} }}", name.unwrap_or(""), types),
     }
 }
 
@@ -51,24 +48,19 @@ pub(crate) fn render_tuple(
     fields: &[hir::Field],
     name: Option<&str>,
 ) -> RenderedCompound {
-    let fields = fields.iter();
+    let completions = fields.iter().enumerate().format_with(", ", |(idx, _), f| {
+        if snippet_cap.is_some() {
+            f(&format_args!("${{{}:()}}", idx + 1))
+        } else {
+            f(&format_args!("()"))
+        }
+    });
 
-    let (completions, types): (Vec<_>, Vec<_>) = fields
-        .enumerate()
-        .map(|(idx, field)| {
-            (
-                if snippet_cap.is_some() {
-                    format!("${{{}:()}}", (idx + 1).to_string())
-                } else {
-                    "()".to_string()
-                },
-                field.ty(db).display(db).to_string(),
-            )
-        })
-        .unzip();
+    let types = fields.iter().format_with(", ", |field, f| f(&field.ty(db).display(db)));
+
     RenderedCompound {
-        literal: format!("{}({})", name.unwrap_or(""), completions.iter().format(", ")),
-        detail: format!("{}({})", name.unwrap_or(""), types.iter().format(", ")),
+        literal: format!("{}({})", name.unwrap_or(""), completions),
+        detail: format!("{}({})", name.unwrap_or(""), types),
     }
 }
 
