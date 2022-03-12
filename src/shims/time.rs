@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::*;
-use helpers::{immty_from_int_checked, immty_from_uint_checked};
 use thread::Time;
 
 /// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
@@ -24,7 +23,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.check_no_isolation("`clock_gettime`")?;
 
         let clk_id = this.read_scalar(clk_id_op)?.to_i32()?;
-        let tp = this.deref_operand(tp_op)?;
 
         let duration = if clk_id == this.eval_libc_i32("CLOCK_REALTIME")? {
             system_time_to_duration(&SystemTime::now())?
@@ -41,12 +39,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tv_sec = duration.as_secs();
         let tv_nsec = duration.subsec_nanos();
 
-        let imms = [
-            immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
-            immty_from_int_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
-        ];
-
-        this.write_packed_immediates(&tp, &imms)?;
+        this.write_int_fields(&[tv_sec.into(), tv_nsec.into()], &this.deref_operand(tp_op)?)?;
 
         Ok(0)
     }
@@ -69,18 +62,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(-1);
         }
 
-        let tv = this.deref_operand(tv_op)?;
-
         let duration = system_time_to_duration(&SystemTime::now())?;
         let tv_sec = duration.as_secs();
         let tv_usec = duration.subsec_micros();
 
-        let imms = [
-            immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
-            immty_from_int_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
-        ];
-
-        this.write_packed_immediates(&tv, &imms)?;
+        this.write_int_fields(&[tv_sec.into(), tv_usec.into()], &this.deref_operand(tv_op)?)?;
 
         Ok(0)
     }
@@ -105,12 +91,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let dwLowDateTime = u32::try_from(duration_ticks & 0x00000000FFFFFFFF).unwrap();
         let dwHighDateTime = u32::try_from((duration_ticks & 0xFFFFFFFF00000000) >> 32).unwrap();
-        let DWORD_tylayout = this.machine.layouts.u32;
-        let imms = [
-            immty_from_uint_checked(dwLowDateTime, DWORD_tylayout)?,
-            immty_from_uint_checked(dwHighDateTime, DWORD_tylayout)?,
-        ];
-        this.write_packed_immediates(&this.deref_operand(LPFILETIME_op)?, &imms)?;
+        this.write_int_fields(
+            &[dwLowDateTime.into(), dwHighDateTime.into()],
+            &this.deref_operand(LPFILETIME_op)?,
+        )?;
+
         Ok(())
     }
 
@@ -185,12 +170,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Since our emulated ticks in `mach_absolute_time` *are* nanoseconds,
         // no scaling needs to happen.
         let (numer, denom) = (1, 1);
-        let imms = [
-            immty_from_int_checked(numer, this.machine.layouts.u32)?,
-            immty_from_int_checked(denom, this.machine.layouts.u32)?,
-        ];
+        this.write_int_fields(&[numer.into(), denom.into()], &info)?;
 
-        this.write_packed_immediates(&info, &imms)?;
         Ok(0) // KERN_SUCCESS
     }
 
