@@ -71,9 +71,9 @@ pub(crate) fn render_tuple(
     }
 }
 
-/// Find all the visible fields in a `HasAttrs`. Returns the list of visible
+/// Find all the visible fields in a given list. Returns the list of visible
 /// fields, plus a boolean for whether the list is comprehensive (contains no
-/// private fields and is not marked `#[non_exhaustive]`).
+/// private fields and its item is not marked `#[non_exhaustive]`).
 pub(crate) fn visible_fields(
     ctx: &RenderContext<'_>,
     fields: &[hir::Field],
