@@ -325,12 +325,6 @@ pub fn suggest_constraining_type_params<'a>(
             }
         }
 
-        // This check is always run on non-valid code
-        // to not trigger ICE
-        if constraints.is_empty() && suggestions.is_empty() {
-            return false;
-        }
-
         if constraints.is_empty() {
             continue;
         }
@@ -518,7 +512,7 @@ pub fn suggest_constraining_type_params<'a>(
         };
 
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
-    } else {
+    } else if suggestions.len() > 1 {
         err.multipart_suggestion_verbose(
             "consider restricting type parameters",
             suggestions.into_iter().map(|(span, suggestion, _)| (span, suggestion)).collect(),
