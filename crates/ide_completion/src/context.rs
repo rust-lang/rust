@@ -59,7 +59,7 @@ pub(super) enum PathKind {
 #[derive(Debug)]
 pub(crate) struct PathCompletionCtx {
     /// If this is a call with () already there
-    has_call_parens: bool,
+    pub(super) has_call_parens: bool,
     /// Whether this path stars with a `::`.
     pub(super) is_absolute_path: bool,
     /// The qualifier of the current path if it exists.
