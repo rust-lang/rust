@@ -394,9 +394,9 @@ struct FileMeta {
 }
 
 fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
-    if let Some((a, b)) = crate_str.split_once("@") {
-        let (version, origin) = match b.split_once(":") {
-            Some(("CratesIo", data)) => match data.split_once(",") {
+    if let Some((a, b)) = crate_str.split_once('@') {
+        let (version, origin) = match b.split_once(':') {
+            Some(("CratesIo", data)) => match data.split_once(',') {
                 Some((version, url)) => {
                     (version, CrateOrigin::CratesIo { repo: Some(url.to_owned()) })
                 }

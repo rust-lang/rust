@@ -178,7 +178,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
             if tree {
                 let tree = format!("{:#?}", parse.syntax_node())
-                    .split_inclusive("\n")
+                    .split_inclusive('\n')
                     .map(|line| format!("// {}", line))
                     .collect::<String>();
                 format_to!(expn_text, "\n{}", tree)

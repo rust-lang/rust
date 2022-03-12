@@ -1238,7 +1238,7 @@ fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json:
     let map = fields
         .iter()
         .map(|(field, ty, doc, default)| {
-            let name = field.replace("_", ".");
+            let name = field.replace('_', ".");
             let name = format!("rust-analyzer.{}", name);
             let props = field_props(field, ty, doc, default);
             (name, props)
@@ -1385,7 +1385,7 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
     fields
         .iter()
         .map(|(field, _ty, doc, default)| {
-            let name = format!("rust-analyzer.{}", field.replace("_", "."));
+            let name = format!("rust-analyzer.{}", field.replace('_', "."));
             let doc = doc_comment_to_string(*doc);
             if default.contains('\n') {
                 format!(
@@ -1428,7 +1428,7 @@ mod tests {
             .trim_start_matches('{')
             .trim_end_matches('}')
             .replace("  ", "    ")
-            .replace("\n", "\n            ")
+            .replace('\n', "\n            ")
             .trim_start_matches('\n')
             .trim_end()
             .to_string();

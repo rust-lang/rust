@@ -47,7 +47,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
 
 //FIXME: like, real html escaping
 fn html_escape(text: &str) -> String {
-    text.replace("<", "&lt;").replace(">", "&gt;")
+    text.replace('<', "&lt;").replace('>', "&gt;")
 }
 
 const STYLE: &str = "
