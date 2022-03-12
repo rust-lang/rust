@@ -21,7 +21,7 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::NodeIdHashingMode;
-use rustc_span::DUMMY_SP;
+use rustc_span::{sym, DUMMY_SP};
 use rustc_target::abi::{Integer, Size, TargetDataLayout};
 use smallvec::SmallVec;
 use std::{fmt, iter};
@@ -1154,6 +1154,14 @@ pub fn normalize_opaque_types<'tcx>(
     val.fold_with(&mut visitor)
 }
 
+/// Determines whether an item is annotated with `doc(hidden)`.
+pub fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    tcx.get_attrs(def_id)
+        .iter()
+        .filter_map(|attr| if attr.has_name(sym::doc) { attr.meta_item_list() } else { None })
+        .any(|items| items.iter().any(|item| item.has_name(sym::hidden)))
+}
+
 pub fn provide(providers: &mut ty::query::Providers) {
-    *providers = ty::query::Providers { normalize_opaque_types, ..*providers }
+    *providers = ty::query::Providers { normalize_opaque_types, is_doc_hidden, ..*providers }
 }
