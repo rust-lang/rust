@@ -175,12 +175,28 @@ Here is an example job for GitHub Actions:
 The explicit `cargo miri setup` helps to keep the output of the actual test step
 clean.
 
+### Testing for alignment issues
+
+Miri can sometimes miss misaligned accesses since allocations can "happen to be"
+aligned just right. You can use `-Zmiri-symbolic-alignment-check` to definitely
+catch all such issues, but that flag will also cause false positives when code
+does manual pointer arithmetic to account for alignment. Another alternative is
+to call Miri with various values for `-Zmiri-seed`; that will alter the
+randomness that is used to determine allocation base addresses. The following
+snippet calls Miri in a loop with different values for the seed:
+
+```
+for seed in $({ echo obase=16; seq 255; } | bc); do
+  MIRIFLAGS=-Zmiri-seed=$seed cargo miri test || { echo "Last seed: $seed"; break; };
+done
+```
+
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
 errors.
 
-### "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
+#### "note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace"
 
 You may see this when trying to get Miri to display a backtrace. By default, Miri
 doesn't expose any environment to the program, so running
