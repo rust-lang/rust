@@ -465,7 +465,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn log2(self) -> u32 {
-                    <$Int>::BITS - 1 - self.leading_zeros()
+                    Self::BITS - 1 - self.leading_zeros()
                 }
 
                 /// Returns the base 10 logarithm of the number, rounded down.
