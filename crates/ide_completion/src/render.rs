@@ -429,14 +429,14 @@ fn main() { Foo::Fo$0 }
             expect![[r#"
                 [
                     CompletionItem {
-                        label: "Foo",
+                        label: "Foo {…}",
                         source_range: 54..56,
                         delete: 54..56,
-                        insert: "Foo",
+                        insert: "Foo { x: ${1:()}, y: ${2:()} }$0",
                         kind: SymbolKind(
                             Variant,
                         ),
-                        detail: "{x: i32, y: i32}",
+                        detail: "Foo { x: i32, y: i32 }",
                     },
                 ]
             "#]],
@@ -444,7 +444,7 @@ fn main() { Foo::Fo$0 }
     }
 
     #[test]
-    fn enum_detail_doesnt_include_tuple_fields() {
+    fn enum_detail_includes_tuple_fields() {
         check(
             r#"
 enum Foo { Foo (i32, i32) }
@@ -458,13 +458,11 @@ fn main() { Foo::Fo$0 }
                         label: "Foo(…)",
                         source_range: 46..48,
                         delete: 46..48,
-                        insert: "Foo($0)",
+                        insert: "Foo(${1:()}, ${2:()})$0",
                         kind: SymbolKind(
                             Variant,
                         ),
-                        lookup: "Foo",
-                        detail: "(i32, i32)",
-                        trigger_call_info: true,
+                        detail: "Foo(i32, i32)",
                     },
                 ]
             "#]],
@@ -511,7 +509,7 @@ fn main() { fo$0 }
     }
 
     #[test]
-    fn enum_detail_just_parentheses_for_unit() {
+    fn enum_detail_just_name_for_unit() {
         check(
             r#"
 enum Foo { Foo }
@@ -525,11 +523,11 @@ fn main() { Foo::Fo$0 }
                         label: "Foo",
                         source_range: 35..37,
                         delete: 35..37,
-                        insert: "Foo",
+                        insert: "Foo$0",
                         kind: SymbolKind(
                             Variant,
                         ),
-                        detail: "()",
+                        detail: "Foo",
                     },
                 ]
             "#]],
@@ -573,15 +571,15 @@ fn main() { let _: m::Spam = S$0 }
                         ),
                     },
                     CompletionItem {
-                        label: "Spam::Bar(…)",
+                        label: "m::Spam::Bar(…)",
                         source_range: 75..76,
                         delete: 75..76,
-                        insert: "Spam::Bar($0)",
+                        insert: "m::Spam::Bar(${1:()})$0",
                         kind: SymbolKind(
                             Variant,
                         ),
                         lookup: "Spam::Bar",
-                        detail: "(i32)",
+                        detail: "m::Spam::Bar(i32)",
                         relevance: CompletionRelevance {
                             exact_name_match: false,
                             type_match: Some(
@@ -592,18 +590,17 @@ fn main() { let _: m::Spam = S$0 }
                             is_private_editable: false,
                             exact_postfix_snippet_match: false,
                         },
-                        trigger_call_info: true,
                     },
                     CompletionItem {
                         label: "m::Spam::Foo",
                         source_range: 75..76,
                         delete: 75..76,
-                        insert: "m::Spam::Foo",
+                        insert: "m::Spam::Foo$0",
                         kind: SymbolKind(
                             Variant,
                         ),
                         lookup: "Spam::Foo",
-                        detail: "()",
+                        detail: "m::Spam::Foo",
                         relevance: CompletionRelevance {
                             exact_name_match: false,
                             type_match: Some(
@@ -788,11 +785,11 @@ use self::E::*;
                         label: "V",
                         source_range: 10..12,
                         delete: 10..12,
-                        insert: "V",
+                        insert: "V$0",
                         kind: SymbolKind(
                             Variant,
                         ),
-                        detail: "()",
+                        detail: "V",
                         documentation: Documentation(
                             "variant docs",
                         ),

@@ -8,6 +8,7 @@ use crate::{context::PathKind, item::Builder, patterns::ImmediateLocation, Compl
 #[derive(Debug)]
 pub(super) enum Params {
     Named(Option<hir::SelfParam>, Vec<hir::Param>),
+    #[allow(dead_code)]
     Anonymous(usize),
 }
 

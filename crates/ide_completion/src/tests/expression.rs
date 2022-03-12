@@ -61,7 +61,7 @@ fn baz() {
             fn function()    fn()
             sc STATIC
             un Union
-            ev TupleV(…)     (u32)
+            ev TupleV(…)     TupleV(u32)
             ct CONST
         "#]],
     )
@@ -171,7 +171,7 @@ impl Unit {
             fn function()   fn()
             sc STATIC
             un Union
-            ev TupleV(…)    (u32)
+            ev TupleV(…)    TupleV(u32)
             ct CONST
         "#]],
     );
@@ -200,7 +200,7 @@ impl Unit {
             fn function() fn()
             sc STATIC
             un Union
-            ev TupleV(…)  (u32)
+            ev TupleV(…)  TupleV(u32)
             ct CONST
         "#]],
     );
@@ -543,9 +543,9 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ev TupleV(…)   (u32)
-            ev RecordV     {field: u32}
-            ev UnitV       ()
+            ev TupleV(…)   TupleV(u32)
+            ev RecordV {…} RecordV { field: u32 }
+            ev UnitV       UnitV
             ct ASSOC_CONST const ASSOC_CONST: ()
             fn assoc_fn()  fn()
             ta AssocType   type AssocType = ()

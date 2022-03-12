@@ -218,7 +218,7 @@ fn foo() {
         expect![[r#"
             kw ref
             kw mut
-            ev E::X  ()
+            ev E::X  E::X
             en E
             ma m!(…) macro_rules! m
         "#]],
@@ -291,9 +291,9 @@ fn func() {
 }
 "#,
         expect![[r#"
-            ev TupleV(…) (u32)
-            ev RecordV   {field: u32}
-            ev UnitV     ()
+            ev TupleV(…)   TupleV(u32)
+            ev RecordV {…} RecordV { field: u32 }
+            ev UnitV       UnitV
         "#]],
     );
 }

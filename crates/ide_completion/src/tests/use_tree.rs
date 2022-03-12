@@ -167,7 +167,7 @@ impl Foo {
 }
 "#,
         expect![[r#"
-            ev Variant ()
+            ev Variant Variant
         "#]],
     );
 }
