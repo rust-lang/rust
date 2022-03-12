@@ -437,7 +437,8 @@ pub(crate) fn inlay_hint(
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint | InlayKind::ParameterHint => false,
+            InlayKind::TypeHint => !render_colons,
+            InlayKind::ParameterHint => false,
             InlayKind::ChainingHint => true,
         }),
         padding_right: Some(match inlay_hint.kind {
