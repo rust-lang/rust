@@ -8,7 +8,7 @@
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
 use hir::{known, ScopeDef};
-use syntax::ast;
+use syntax::{ast, TokenText};
 
 use crate::{
     completions::Completions,
@@ -19,24 +19,24 @@ use crate::{
 pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) {
     let lp = match &ctx.lifetime_ctx {
         Some(LifetimeContext::Lifetime) => None,
-        Some(LifetimeContext::LifetimeParam(param)) => param.as_ref(),
+        Some(LifetimeContext::LifetimeParam { is_decl: false, param }) => Some(param),
         _ => return,
     };
-    let lp_string;
     let param_lifetime = match (&ctx.name_syntax, lp.and_then(|lp| lp.lifetime())) {
         (Some(ast::NameLike::Lifetime(lt)), Some(lp)) if lp == lt.clone() => return,
-        (Some(_), Some(lp)) => {
-            lp_string = lp.to_string();
-            Some(&*lp_string)
-        }
+        (Some(_), Some(lp)) => Some(lp),
         _ => None,
     };
+    let param_lifetime = param_lifetime.as_ref().map(ast::Lifetime::text);
+    let param_lifetime = param_lifetime.as_ref().map(TokenText::as_str);
 
     ctx.scope.process_all_names(&mut |name, res| {
-        if let ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_)) = res {
-            if param_lifetime != Some(&*name.to_smol_str()) {
-                acc.add_lifetime(ctx, name);
-            }
+        if matches!(
+            res,
+            ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))
+                 if param_lifetime != Some(&*name.to_smol_str())
+        ) {
+            acc.add_lifetime(ctx, name);
         }
     });
     if param_lifetime.is_none() {
@@ -193,6 +193,12 @@ fn foo2<'lifetime, T>() where T: Trait<Item = 'a$0> {}
 
     #[test]
     fn complete_lifetime_in_param_list() {
+        check(
+            r#"
+fn foo<'$0>() {}
+"#,
+            expect![[r#""#]],
+        );
         check(
             r#"
 fn foo<'a$0>() {}

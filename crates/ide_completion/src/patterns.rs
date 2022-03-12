@@ -15,7 +15,7 @@ use syntax::{
 };
 
 #[cfg(test)]
-use crate::tests::{check_pattern_is_applicable, check_pattern_is_not_applicable};
+use crate::tests::check_pattern_is_applicable;
 
 /// Immediate previous node to what we are completing.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -289,24 +289,6 @@ fn maximize_name_ref(name_ref: &ast::NameRef) -> SyntaxNode {
 fn find_node_with_range<N: AstNode>(syntax: &SyntaxNode, range: TextRange) -> Option<N> {
     let range = syntax.text_range().intersect(range)?;
     syntax.covering_element(range).ancestors().find_map(N::cast)
-}
-
-pub(crate) fn inside_impl_trait_block(element: SyntaxElement) -> bool {
-    // Here we search `impl` keyword up through the all ancestors, unlike in `has_impl_parent`,
-    // where we only check the first parent with different text range.
-    element
-        .ancestors()
-        .find(|it| it.kind() == IMPL)
-        .map(|it| ast::Impl::cast(it).unwrap())
-        .map(|it| it.trait_().is_some())
-        .unwrap_or(false)
-}
-#[test]
-fn test_inside_impl_trait_block() {
-    check_pattern_is_applicable(r"impl Foo for Bar { f$0 }", inside_impl_trait_block);
-    check_pattern_is_applicable(r"impl Foo for Bar { fn f$0 }", inside_impl_trait_block);
-    check_pattern_is_not_applicable(r"impl A { f$0 }", inside_impl_trait_block);
-    check_pattern_is_not_applicable(r"impl A { fn f$0 }", inside_impl_trait_block);
 }
 
 pub(crate) fn previous_token(element: SyntaxElement) -> Option<SyntaxToken> {

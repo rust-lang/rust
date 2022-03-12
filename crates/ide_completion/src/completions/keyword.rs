@@ -163,6 +163,7 @@ fn add_keyword(acc: &mut Completions, ctx: &CompletionContext, kw: &str, snippet
     match ctx.config.snippet_cap {
         Some(cap) => {
             if snippet.ends_with('}') && ctx.incomplete_let {
+                // complete block expression snippets with a trailing semicolon, if inside an incomplete let
                 cov_mark::hit!(let_semi);
                 item.insert_snippet(cap, format!("{};", snippet));
             } else {
