@@ -580,8 +580,8 @@ impl Foo {
 }
 "#,
             expect![[r#"
-                ev Bar    ()
-                ev Baz    ()
+                ev Bar    Bar
+                ev Baz    Baz
                 me foo(…) fn(self)
             "#]],
         );
@@ -626,7 +626,7 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ev Bar ()
+                ev Bar Bar
             "#]],
         );
     }

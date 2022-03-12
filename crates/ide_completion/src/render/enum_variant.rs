@@ -1,13 +1,15 @@
 //! Renderer for `enum` variants.
 
-use hir::{db::HirDatabase, HasAttrs, HirDisplay, StructKind};
+use hir::{HasAttrs, StructKind};
 use ide_db::SymbolKind;
-use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
     item::{CompletionItem, ImportEdit},
-    render::{builder_ext::Params, compute_ref_match, compute_type_match, RenderContext},
+    render::{
+        compound::{format_literal_label, render_record, render_tuple, RenderedCompound},
+        compute_ref_match, compute_type_match, RenderContext,
+    },
     CompletionRelevance,
 };
 
@@ -46,20 +48,42 @@ fn render(
     let qualified_name = qualified_name.to_string();
     let short_qualified_name: SmolStr = short_qualified_name.to_string().into();
 
-    let mut item = CompletionItem::new(SymbolKind::Variant, ctx.source_range(), qualified_name);
+    let mut rendered = match variant_kind {
+        StructKind::Tuple => {
+            render_tuple(db, ctx.snippet_cap(), &variant.fields(db), Some(&qualified_name))
+        }
+        StructKind::Record => {
+            render_record(db, ctx.snippet_cap(), &variant.fields(db), Some(&qualified_name))
+        }
+        StructKind::Unit => {
+            RenderedCompound { literal: qualified_name.clone(), detail: qualified_name.clone() }
+        }
+    };
+
+    if ctx.snippet_cap().is_some() {
+        rendered.literal.push_str("$0");
+    }
+
+    let mut item = CompletionItem::new(
+        SymbolKind::Variant,
+        ctx.source_range(),
+        format_literal_label(&qualified_name, variant_kind),
+    );
+
     item.set_documentation(variant.docs(db))
         .set_deprecated(ctx.is_deprecated(variant))
-        .detail(detail(db, variant, variant_kind));
+        .detail(rendered.detail);
+
+    match ctx.snippet_cap() {
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, rendered.literal),
+        None => item.insert_text(rendered.literal),
+    };
 
     if let Some(import_to_add) = import_to_add {
         item.add_import(import_to_add);
     }
 
-    if variant_kind == hir::StructKind::Tuple {
-        cov_mark::hit!(inserts_parens_for_tuple_enums);
-        let params = Params::Anonymous(variant.fields(db).len());
-        item.add_call_parens(completion, short_qualified_name, params);
-    } else if qualified {
+    if qualified {
         item.lookup_by(short_qualified_name);
     }
 
@@ -74,51 +98,4 @@ fn render(
     }
 
     item.build()
-}
-
-fn detail(db: &dyn HirDatabase, variant: hir::Variant, variant_kind: StructKind) -> String {
-    let detail_types = variant.fields(db).into_iter().map(|field| (field.name(db), field.ty(db)));
-
-    match variant_kind {
-        hir::StructKind::Tuple | hir::StructKind::Unit => {
-            format!("({})", detail_types.format_with(", ", |(_, t), f| f(&t.display(db))))
-        }
-        hir::StructKind::Record => {
-            format!(
-                "{{{}}}",
-                detail_types.format_with(", ", |(n, t), f| {
-                    f(&n)?;
-                    f(&": ")?;
-                    f(&t.display(db))
-                }),
-            )
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::tests::check_edit;
-
-    #[test]
-    fn inserts_parens_for_tuple_enums() {
-        cov_mark::check!(inserts_parens_for_tuple_enums);
-        check_edit(
-            "Some",
-            r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-fn main() -> Option<i32> {
-    Som$0
-}
-"#,
-            r#"
-enum Option<T> { Some(T), None }
-use Option::*;
-fn main() -> Option<i32> {
-    Some($0)
-}
-"#,
-        );
-    }
 }

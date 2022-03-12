@@ -1,11 +1,15 @@
 //! Renderer for `struct` literal.
 
-use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
-use ide_db::SnippetCap;
-use itertools::Itertools;
+use hir::{HasAttrs, Name, StructKind};
 use syntax::SmolStr;
 
-use crate::{render::RenderContext, CompletionItem, CompletionItemKind};
+use crate::{
+    render::compound::{
+        format_literal_label, render_record, render_tuple, visible_fields, RenderedCompound,
+    },
+    render::RenderContext,
+    CompletionItem, CompletionItemKind,
+};
 
 pub(crate) fn render_struct_literal(
     ctx: RenderContext<'_>,
@@ -25,29 +29,31 @@ pub(crate) fn render_struct_literal(
 
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db())).to_smol_str();
 
-    let literal = render_literal(&ctx, path, &name, strukt.kind(ctx.db()), &visible_fields)?;
+    let rendered = render_literal(&ctx, path, &name, strukt.kind(ctx.db()), &visible_fields)?;
 
-    Some(build_completion(ctx, name, literal, strukt))
+    Some(build_completion(&ctx, name, rendered, strukt.kind(ctx.db()), strukt))
 }
 
 fn build_completion(
-    ctx: RenderContext<'_>,
+    ctx: &RenderContext<'_>,
     name: SmolStr,
-    literal: String,
+    rendered: RenderedCompound,
+    kind: StructKind,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
         CompletionItemKind::Snippet,
         ctx.source_range(),
-        SmolStr::from_iter([&name, " {…}"]),
+        format_literal_label(&name, kind),
     );
+
     item.set_documentation(ctx.docs(def))
         .set_deprecated(ctx.is_deprecated(def))
-        .detail(&literal)
+        .detail(&rendered.detail)
         .set_relevance(ctx.completion_relevance());
     match ctx.snippet_cap() {
-        Some(snippet_cap) => item.insert_snippet(snippet_cap, literal),
-        None => item.insert_text(literal),
+        Some(snippet_cap) => item.insert_snippet(snippet_cap, rendered.literal),
+        None => item.insert_text(rendered.literal),
     };
     item.build()
 }
@@ -58,7 +64,7 @@ fn render_literal(
     name: &str,
     kind: StructKind,
     fields: &[hir::Field],
-) -> Option<String> {
+) -> Option<RenderedCompound> {
     let path_string;
 
     let qualified_name = if let Some(path) = path {
@@ -68,69 +74,18 @@ fn render_literal(
         name
     };
 
-    let mut literal = match kind {
+    let mut rendered = match kind {
         StructKind::Tuple if ctx.snippet_cap().is_some() => {
-            render_tuple_as_literal(fields, qualified_name)
+            render_tuple(ctx.db(), ctx.snippet_cap(), fields, Some(qualified_name))
         }
         StructKind::Record => {
-            render_record_as_literal(ctx.db(), ctx.snippet_cap(), fields, qualified_name)
+            render_record(ctx.db(), ctx.snippet_cap(), fields, Some(qualified_name))
         }
         _ => return None,
     };
 
     if ctx.snippet_cap().is_some() {
-        literal.push_str("$0");
+        rendered.literal.push_str("$0");
     }
-    Some(literal)
-}
-
-fn render_record_as_literal(
-    db: &dyn HirDatabase,
-    snippet_cap: Option<SnippetCap>,
-    fields: &[hir::Field],
-    name: &str,
-) -> String {
-    let fields = fields.iter();
-    if snippet_cap.is_some() {
-        format!(
-            "{name} {{ {} }}",
-            fields
-                .enumerate()
-                .map(|(idx, field)| format!("{}: ${{{}:()}}", field.name(db), idx + 1))
-                .format(", "),
-            name = name
-        )
-    } else {
-        format!(
-            "{name} {{ {} }}",
-            fields.map(|field| format!("{}: ()", field.name(db))).format(", "),
-            name = name
-        )
-    }
-}
-
-fn render_tuple_as_literal(fields: &[hir::Field], name: &str) -> String {
-    format!(
-        "{name}({})",
-        fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).format(", "),
-        name = name
-    )
-}
-
-fn visible_fields(
-    ctx: &RenderContext<'_>,
-    fields: &[hir::Field],
-    item: impl HasAttrs,
-) -> Option<(Vec<hir::Field>, bool)> {
-    let module = ctx.completion.module?;
-    let n_fields = fields.len();
-    let fields = fields
-        .iter()
-        .filter(|field| field.is_visible_from(ctx.db(), module))
-        .copied()
-        .collect::<Vec<_>>();
-
-    let fields_omitted =
-        n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
-    Some((fields, fields_omitted))
+    Some(rendered)
 }
