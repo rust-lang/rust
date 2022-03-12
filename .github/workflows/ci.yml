@@ -58,23 +58,6 @@ jobs:
       - name: Run Clippy
         run: cargo clippy --all-targets --target ${{ matrix.target }}
 
-  miri:
-    name: "miri"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install Miri
-        run: |
-          rustup toolchain install nightly --component miri
-          rustup override set nightly
-          cargo miri setup
-      - name: Test with Miri (failures allowed)
-        continue-on-error: true
-        run: |
-          cargo miri test --test i32_ops
-          cargo miri test --test f32_ops
-          cargo miri test --test cast
-
   x86-tests:
     name: "${{ matrix.target_feature }} on ${{ matrix.target }}"
     runs-on: ${{ matrix.os }}
