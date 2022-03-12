@@ -46,11 +46,19 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let concrete_type = alias.ty()?;
 
     let replacement = if let Some(alias_generics) = alias.generic_param_list() {
-        get_replacement_for_generic_alias(
-            alias_instance.syntax().descendants().find_map(ast::GenericArgList::cast),
-            alias_generics,
+        if alias_generics.generic_params().next().is_none() {
+            cov_mark::hit!(no_generics_params);
+            return None;
+        }
+
+        let instance_args =
+            alias_instance.syntax().descendants().find_map(ast::GenericArgList::cast);
+
+        create_replacement(
+            &LifetimeMap::new(&instance_args, &alias_generics)?,
+            &ConstAndTypeMap::new(&instance_args, &alias_generics)?,
             &concrete_type,
-        )?
+        )
     } else {
         concrete_type.to_string()
     };
@@ -65,6 +73,83 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
             builder.replace(target, replacement);
         },
     )
+}
+
+struct LifetimeMap(HashMap<String, ast::Lifetime>);
+
+impl LifetimeMap {
+    fn new(
+        instance_args: &Option<ast::GenericArgList>,
+        alias_generics: &ast::GenericParamList,
+    ) -> Option<Self> {
+        let mut inner = HashMap::new();
+
+        let wildcard_lifetime = make::lifetime("'_");
+        let lifetimes = alias_generics
+            .lifetime_params()
+            .filter_map(|lp| lp.lifetime())
+            .map(|l| l.to_string())
+            .collect_vec();
+
+        for lifetime in &lifetimes {
+            inner.insert(lifetime.to_string(), wildcard_lifetime.clone());
+        }
+
+        if let Some(instance_generic_args_list) = &instance_args {
+            for (index, lifetime) in instance_generic_args_list
+                .lifetime_args()
+                .filter_map(|arg| arg.lifetime())
+                .enumerate()
+            {
+                let key = match lifetimes.get(index) {
+                    Some(key) => key,
+                    None => {
+                        cov_mark::hit!(too_many_lifetimes);
+                        return None;
+                    }
+                };
+
+                inner.insert(key.clone(), lifetime);
+            }
+        }
+
+        Some(Self(inner))
+    }
+}
+
+struct ConstAndTypeMap(HashMap<String, SyntaxNode>);
+
+impl ConstAndTypeMap {
+    fn new(
+        instance_args: &Option<ast::GenericArgList>,
+        alias_generics: &ast::GenericParamList,
+    ) -> Option<Self> {
+        let mut inner = HashMap::new();
+        let instance_generics = generic_args_to_const_and_type_generics(instance_args);
+        let alias_generics = generic_param_list_to_const_and_type_generics(&alias_generics);
+
+        if instance_generics.len() > alias_generics.len() {
+            cov_mark::hit!(too_many_generic_args);
+            return None;
+        }
+
+        // Any declaration generics that don't have a default value must have one
+        // provided by the instance.
+        for (i, declaration_generic) in alias_generics.iter().enumerate() {
+            let key = declaration_generic.replacement_key()?;
+
+            if let Some(instance_generic) = instance_generics.get(i) {
+                inner.insert(key, instance_generic.replacement_value()?);
+            } else if let Some(value) = declaration_generic.replacement_value() {
+                inner.insert(key, value);
+            } else {
+                cov_mark::hit!(missing_replacement_param);
+                return None;
+            }
+        }
+
+        Some(Self(inner))
+    }
 }
 
 /// This doesn't attempt to ensure specified generics are compatible with those
@@ -94,65 +179,11 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
 /// 3. Remove wildcard lifetimes entirely:
 ///
 ///    &[u64; 100]
-fn get_replacement_for_generic_alias(
-    instance_generic_args_list: Option<ast::GenericArgList>,
-    alias_generics: ast::GenericParamList,
+fn create_replacement(
+    lifetime_map: &LifetimeMap,
+    const_and_type_map: &ConstAndTypeMap,
     concrete_type: &ast::Type,
-) -> Option<String> {
-    if alias_generics.generic_params().count() == 0 {
-        cov_mark::hit!(no_generics_params);
-        return None;
-    }
-
-    let mut lifetime_mappings = HashMap::<&str, ast::Lifetime>::new();
-    let mut other_mappings = HashMap::<String, SyntaxNode>::new();
-
-    let wildcard_lifetime = make::lifetime("'_");
-    let alias_lifetimes = alias_generics.lifetime_params().map(|l| l.to_string()).collect_vec();
-    for lifetime in &alias_lifetimes {
-        lifetime_mappings.insert(lifetime, wildcard_lifetime.clone());
-    }
-
-    if let Some(ref instance_generic_args_list) = instance_generic_args_list {
-        for (index, lifetime) in instance_generic_args_list
-            .lifetime_args()
-            .map(|arg| arg.lifetime().expect("LifetimeArg has a Lifetime"))
-            .enumerate()
-        {
-            if index >= alias_lifetimes.len() {
-                cov_mark::hit!(too_many_lifetimes);
-                return None;
-            }
-
-            let key = &alias_lifetimes[index];
-
-            lifetime_mappings.insert(key, lifetime);
-        }
-    }
-
-    let instance_generics = generic_args_to_other_generics(instance_generic_args_list);
-    let alias_generics = generic_param_list_to_other_generics(&alias_generics);
-
-    if instance_generics.len() > alias_generics.len() {
-        cov_mark::hit!(too_many_generic_args);
-        return None;
-    }
-
-    // Any declaration generics that don't have a default value must have one
-    // provided by the instance.
-    for (i, declaration_generic) in alias_generics.iter().enumerate() {
-        let key = declaration_generic.replacement_key();
-
-        if let Some(instance_generic) = instance_generics.get(i) {
-            other_mappings.insert(key, instance_generic.replacement_value()?);
-        } else if let Some(value) = declaration_generic.replacement_value() {
-            other_mappings.insert(key, value);
-        } else {
-            cov_mark::hit!(missing_replacement_param);
-            return None;
-        }
-    }
-
+) -> String {
     let updated_concrete_type = concrete_type.clone_for_update();
     let mut replacements = Vec::new();
     let mut removals = Vec::new();
@@ -161,20 +192,21 @@ fn get_replacement_for_generic_alias(
         let syntax_string = syntax.to_string();
         let syntax_str = syntax_string.as_str();
 
-        if syntax.kind() == SyntaxKind::LIFETIME {
-            let new = lifetime_mappings.get(syntax_str).expect("lifetime is mapped");
-            if new.text() == "'_" {
-                removals.push(NodeOrToken::Node(syntax.clone()));
+        if let Some(old_lifetime) = ast::Lifetime::cast(syntax.clone()) {
+            if let Some(new_lifetime) = lifetime_map.0.get(&old_lifetime.to_string()) {
+                if new_lifetime.text() == "'_" {
+                    removals.push(NodeOrToken::Node(syntax.clone()));
 
-                if let Some(ws) = syntax.next_sibling_or_token() {
-                    removals.push(ws.clone());
+                    if let Some(ws) = syntax.next_sibling_or_token() {
+                        removals.push(ws.clone());
+                    }
+
+                    continue;
                 }
 
-                continue;
+                replacements.push((syntax.clone(), new_lifetime.syntax().clone_for_update()));
             }
-
-            replacements.push((syntax.clone(), new.syntax().clone_for_update()));
-        } else if let Some(replacement_syntax) = other_mappings.get(syntax_str) {
+        } else if let Some(replacement_syntax) = const_and_type_map.0.get(syntax_str) {
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
                 make::wildcard_pat().syntax().clone_for_update()
@@ -194,7 +226,7 @@ fn get_replacement_for_generic_alias(
         ted::remove(syntax);
     }
 
-    Some(updated_concrete_type.to_string())
+    updated_concrete_type.to_string()
 }
 
 fn get_type_alias(ctx: &AssistContext, path: &ast::PathType) -> Option<ast::TypeAlias> {
@@ -205,57 +237,60 @@ fn get_type_alias(ctx: &AssistContext, path: &ast::PathType) -> Option<ast::Type
     // keep the order, so we must get the `ast::TypeAlias` from the hir
     // definition.
     if let PathResolution::Def(hir::ModuleDef::TypeAlias(ta)) = resolved_path {
-        ast::TypeAlias::cast(ctx.sema.source(ta)?.syntax().value.clone())
+        Some(ctx.sema.source(ta)?.value)
     } else {
         None
     }
 }
 
-enum OtherGeneric {
+enum ConstOrTypeGeneric {
     ConstArg(ast::ConstArg),
     TypeArg(ast::TypeArg),
     ConstParam(ast::ConstParam),
     TypeParam(ast::TypeParam),
 }
 
-impl OtherGeneric {
-    fn replacement_key(&self) -> String {
+impl ConstOrTypeGeneric {
+    fn replacement_key(&self) -> Option<String> {
         // Only params are used as replacement keys.
         match self {
-            OtherGeneric::ConstArg(_) => unreachable!(),
-            OtherGeneric::TypeArg(_) => unreachable!(),
-            OtherGeneric::ConstParam(cp) => cp.name().expect("ConstParam has a name").to_string(),
-            OtherGeneric::TypeParam(tp) => tp.name().expect("TypeParam has a name").to_string(),
+            ConstOrTypeGeneric::ConstParam(cp) => Some(cp.name()?.to_string()),
+            ConstOrTypeGeneric::TypeParam(tp) => Some(tp.name()?.to_string()),
+            _ => None,
         }
     }
 
     fn replacement_value(&self) -> Option<SyntaxNode> {
         Some(match self {
-            OtherGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
-            OtherGeneric::TypeArg(ta) => ta.syntax().clone(),
-            OtherGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
-            OtherGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
+            ConstOrTypeGeneric::ConstArg(ca) => ca.expr()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeArg(ta) => ta.syntax().clone(),
+            ConstOrTypeGeneric::ConstParam(cp) => cp.default_val()?.syntax().clone(),
+            ConstOrTypeGeneric::TypeParam(tp) => tp.default_type()?.syntax().clone(),
         })
     }
 }
 
-fn generic_param_list_to_other_generics(generics: &ast::GenericParamList) -> Vec<OtherGeneric> {
+fn generic_param_list_to_const_and_type_generics(
+    generics: &ast::GenericParamList,
+) -> Vec<ConstOrTypeGeneric> {
     let mut others = Vec::new();
 
     for param in generics.generic_params() {
         match param {
             ast::GenericParam::LifetimeParam(_) => {}
             ast::GenericParam::ConstParam(cp) => {
-                others.push(OtherGeneric::ConstParam(cp));
+                others.push(ConstOrTypeGeneric::ConstParam(cp));
             }
-            ast::GenericParam::TypeParam(tp) => others.push(OtherGeneric::TypeParam(tp)),
+            ast::GenericParam::TypeParam(tp) => others.push(ConstOrTypeGeneric::TypeParam(tp)),
         }
     }
 
     others
 }
 
-fn generic_args_to_other_generics(generics: Option<ast::GenericArgList>) -> Vec<OtherGeneric> {
+fn generic_args_to_const_and_type_generics(
+    generics: &Option<ast::GenericArgList>,
+) -> Vec<ConstOrTypeGeneric> {
     let mut others = Vec::new();
 
     // It's fine for there to be no instance generics because the declaration
@@ -264,10 +299,10 @@ fn generic_args_to_other_generics(generics: Option<ast::GenericArgList>) -> Vec<
         for arg in generics.generic_args() {
             match arg {
                 ast::GenericArg::TypeArg(ta) => {
-                    others.push(OtherGeneric::TypeArg(ta));
+                    others.push(ConstOrTypeGeneric::TypeArg(ta));
                 }
                 ast::GenericArg::ConstArg(ca) => {
-                    others.push(OtherGeneric::ConstArg(ca));
+                    others.push(ConstOrTypeGeneric::ConstArg(ca));
                 }
                 _ => {}
             }
