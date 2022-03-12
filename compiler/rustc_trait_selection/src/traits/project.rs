@@ -19,7 +19,6 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
-use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
@@ -1244,7 +1243,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
         ProjectionCandidate::TraitDef,
         bounds.iter(),
         true,
-    );
+    )
 }
 
 /// In the case of a trait object like
@@ -1309,35 +1308,28 @@ fn assemble_candidates_from_predicates<'cx, 'tcx>(
         let bound_predicate = predicate.kind();
         if let ty::PredicateKind::Projection(data) = predicate.kind().skip_binder() {
             let data = bound_predicate.rebind(data);
-            if data.projection_def_id() != obligation.predicate.item_def_id {
-                continue;
-            }
+            let same_def_id = data.projection_def_id() == obligation.predicate.item_def_id;
 
-            let is_match = infcx.probe(|_| {
-                selcx.match_projection_projections(
-                    obligation,
-                    data,
-                    potentially_unnormalized_candidates,
-                )
-            });
+            let is_match = same_def_id
+                && infcx.probe(|_| {
+                    selcx.match_projection_projections(
+                        obligation,
+                        data,
+                        potentially_unnormalized_candidates,
+                    )
+                });
 
-            match is_match {
-                ProjectionMatchesProjection::Yes => {
-                    candidate_set.push_candidate(ctor(data));
+            if is_match {
+                candidate_set.push_candidate(ctor(data));
 
-                    if potentially_unnormalized_candidates
-                        && !obligation.predicate.has_infer_types_or_consts()
-                    {
-                        // HACK: Pick the first trait def candidate for a fully
-                        // inferred predicate. This is to allow duplicates that
-                        // differ only in normalization.
-                        return;
-                    }
+                if potentially_unnormalized_candidates
+                    && !obligation.predicate.has_infer_types_or_consts()
+                {
+                    // HACK: Pick the first trait def candidate for a fully
+                    // inferred predicate. This is to allow duplicates that
+                    // differ only in normalization.
+                    return;
                 }
-                ProjectionMatchesProjection::Ambiguous => {
-                    candidate_set.mark_ambiguous();
-                }
-                ProjectionMatchesProjection::No => {}
             }
         }
     }
