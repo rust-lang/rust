@@ -126,7 +126,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             .ty;
         let (llptr, llextra) = match self.val {
             OperandValue::Immediate(llptr) => (llptr, None),
-            OperandValue::Pair(llptr, llextra) => (llptr, Some(llextra)),
+            OperandValue::Pair(llptr, llextra) => {
+                // if the box's allocator isn't a ZST, then "llextra" is actually the allocator
+                if self.layout.ty.is_box() && !self.layout.field(cx, 1).is_zst() {
+                    (llptr, None)
+                } else {
+                    (llptr, Some(llextra))
+                }
+            }
             OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self),
         };
         let layout = cx.layout_of(projected_ty);
