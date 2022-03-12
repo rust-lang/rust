@@ -693,7 +693,7 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(
         receiver_ty,
         first_adjustment.clone(),
-        &rest,
+        rest,
         db,
         env.clone(),
         traits_in_scope,
@@ -973,7 +973,7 @@ fn iterate_inherent_methods(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none()
-                    && inherent_impl_substs(db, env.clone(), impl_def, &self_ty).is_none()
+                    && inherent_impl_substs(db, env.clone(), impl_def, self_ty).is_none()
                 {
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
@@ -1152,7 +1152,7 @@ pub fn implements_trait(
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty);
     let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     solution.is_some()
@@ -1164,7 +1164,7 @@ pub fn implements_trait_unique(
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty);
     let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))

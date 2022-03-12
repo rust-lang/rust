@@ -500,7 +500,7 @@ impl<'a> Printer<'a> {
                     if i != 0 {
                         w!(self, ", ");
                     }
-                    self.print_type_ref(&typeref);
+                    self.print_type_ref(typeref);
                 }
                 if *varargs {
                     if !args.is_empty() {
@@ -509,7 +509,7 @@ impl<'a> Printer<'a> {
                     w!(self, "...");
                 }
                 w!(self, ") -> ");
-                self.print_type_ref(&return_type);
+                self.print_type_ref(return_type);
             }
             TypeRef::Macro(_ast_id) => {
                 w!(self, "<macro>");

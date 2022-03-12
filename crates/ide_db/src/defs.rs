@@ -150,9 +150,9 @@ impl IdentClass {
         sema: &Semantics<RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<IdentClass> {
-        NameRefClass::classify_lifetime(sema, &lifetime)
+        NameRefClass::classify_lifetime(sema, lifetime)
             .map(IdentClass::NameRefClass)
-            .or_else(|| NameClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameClass))
+            .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
     pub fn definitions(self) -> ArrayVec<Definition, 2> {

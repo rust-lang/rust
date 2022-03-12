@@ -293,7 +293,7 @@ pub fn eval_const(expr: &Expr, ctx: &mut ConstEvalCtx<'_>) -> Result<ComputedExp
 
 pub fn eval_usize(expr: Idx<Expr>, mut ctx: ConstEvalCtx<'_>) -> Option<u64> {
     let expr = &ctx.exprs[expr];
-    if let Ok(ce) = eval_const(&expr, &mut ctx) {
+    if let Ok(ce) = eval_const(expr, &mut ctx) {
         match ce {
             ComputedExpr::Literal(Literal::Int(x, _)) => return x.try_into().ok(),
             ComputedExpr::Literal(Literal::Uint(x, _)) => return x.try_into().ok(),

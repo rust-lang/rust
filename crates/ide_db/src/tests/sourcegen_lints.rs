@@ -85,7 +85,7 @@ fn generate_lint_descriptor(buf: &mut String) {
         .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
         .collect::<Vec<_>>();
     for (name, description, ..) in &lints {
-        push_lint_completion(buf, &name.replace("-", "_"), &description);
+        push_lint_completion(buf, &name.replace("-", "_"), description);
     }
     buf.push_str("];\n");
     buf.push_str(r#"pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &["#);
@@ -93,10 +93,10 @@ fn generate_lint_descriptor(buf: &mut String) {
         if !children.is_empty() {
             // HACK: warnings is emitted with a general description, not with its members
             if name == &"warnings" {
-                push_lint_group(buf, &name, &description, &Vec::new());
+                push_lint_group(buf, name, description, &Vec::new());
                 continue;
             }
-            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+            push_lint_group(buf, &name.replace("-", "_"), description, children);
         }
     }
     buf.push('\n');
@@ -136,14 +136,14 @@ fn generate_lint_descriptor(buf: &mut String) {
         .collect::<Vec<_>>();
 
     for (name, description, ..) in &lints_rustdoc {
-        push_lint_completion(buf, &name.replace("-", "_"), &description)
+        push_lint_completion(buf, &name.replace("-", "_"), description)
     }
     buf.push_str("];\n");
 
     buf.push_str(r#"pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &["#);
     for (name, description, children) in &lints_rustdoc {
         if !children.is_empty() {
-            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+            push_lint_group(buf, &name.replace("-", "_"), description, children);
         }
     }
     buf.push('\n');

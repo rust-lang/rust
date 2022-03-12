@@ -52,7 +52,7 @@ pub(crate) fn generate_documentation_template(
 
     let parent_syntax = ast_func.syntax();
     let text_range = parent_syntax.text_range();
-    let indent_level = IndentLevel::from_node(&parent_syntax);
+    let indent_level = IndentLevel::from_node(parent_syntax);
 
     acc.add(
         AssistId("generate_documentation_template", AssistKind::Generate),
@@ -202,7 +202,7 @@ fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext) -> bool
 
 /// Returns the name of the current crate
 fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
-    let krate = ctx.sema.scope(&ast_func.syntax()).module()?.krate();
+    let krate = ctx.sema.scope(ast_func.syntax()).module()?.krate();
     Some(krate.display_name(ctx.db())?.to_string())
 }
 
@@ -338,7 +338,7 @@ fn function_call(
     is_unsafe: bool,
 ) -> Option<String> {
     let name = ast_func.name()?;
-    let arguments = arguments_from_params(&param_list);
+    let arguments = arguments_from_params(param_list);
     let function_call = if param_list.self_param().is_some() {
         format!("{}.{}({})", self_name?, name, arguments)
     } else if let Some(implementation) = self_partial_type(ast_func) {

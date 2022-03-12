@@ -667,7 +667,7 @@ impl DocsRangeMap {
         let InFile { file_id, value: source } = self.source_map.source_of_id(idx);
         match source {
             Either::Left(attr) => {
-                let string = get_doc_string_in_attr(&attr)?;
+                let string = get_doc_string_in_attr(attr)?;
                 let text_range = string.open_quote_text_range()?;
                 let range = TextRange::at(
                     text_range.end() + original_line_src_range.start() + relative_range.start(),

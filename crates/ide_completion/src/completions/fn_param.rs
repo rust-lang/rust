@@ -31,7 +31,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
             CompletionItem::new(CompletionItemKind::Binding, ctx.source_range(), label)
         };
         let mut item = match &comma_wrapper {
-            Some(fmt) => mk_item(&fmt(&label)),
+            Some(fmt) => mk_item(&fmt(label)),
             None => mk_item(label),
         };
         item.lookup_by(lookup);
@@ -40,7 +40,7 @@ pub(crate) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
     match param_kind {
         ParamKind::Function(function) => {
-            fill_fn_params(ctx, function, &param_list, add_new_item_to_acc);
+            fill_fn_params(ctx, function, param_list, add_new_item_to_acc);
         }
         ParamKind::Closure(closure) => {
             let stmt_list = closure.syntax().ancestors().find_map(ast::StmtList::cast)?;

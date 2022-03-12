@@ -112,7 +112,7 @@ fn add_custom_completions(
                 None => return,
             };
             let body = snip.snippet();
-            let mut builder = snippet(ctx, cap, &trigger, &body);
+            let mut builder = snippet(ctx, cap, trigger, &body);
             builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
             for import in imports.into_iter() {
                 builder.add_import(import);

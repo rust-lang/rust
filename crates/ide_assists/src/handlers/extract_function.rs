@@ -1448,7 +1448,7 @@ fn make_body(
                 .filter(|it| text_range.contains_range(it.text_range()))
                 .map(|it| match &it {
                     syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
-                        rewrite_body_segment(ctx, &fun.params, &handler, &n),
+                        rewrite_body_segment(ctx, &fun.params, &handler, n),
                     ),
                     _ => it,
                 })

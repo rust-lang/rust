@@ -191,7 +191,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             if let Some((tree, map, _)) = arg.as_deref() {
                 let tt_range = call.token_tree().unwrap().syntax().text_range();
                 let mut ranges = Vec::new();
-                extract_id_ranges(&mut ranges, &map, &tree);
+                extract_id_ranges(&mut ranges, map, tree);
                 for (range, id) in ranges {
                     let idx = (tt_range.start() + range.end()).into();
                     text_edits.push((idx..idx, format!("#{}", id.0)));
@@ -269,7 +269,7 @@ fn reindent(indent: IndentLevel, pp: String) -> String {
     let mut res = lines.next().unwrap().to_string();
     for line in lines {
         if line.trim().is_empty() {
-            res.push_str(&line)
+            res.push_str(line)
         } else {
             format_to!(res, "{}{}", indent, line)
         }

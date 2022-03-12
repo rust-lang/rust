@@ -103,7 +103,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     //for change_visibility and usages for first point mentioned above in the process
     let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
 
-    let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, &ctx);
+    let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
     module.body_items = module.change_visibility(record_fields)?;
     if module.body_items.len() == 0 {
         return None;
@@ -203,7 +203,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 
                 builder.delete(node_to_be_removed.text_range());
                 // Remove preceding indentation from node
-                if let Some(range) = indent_range_before_given_node(&node_to_be_removed) {
+                if let Some(range) = indent_range_before_given_node(node_to_be_removed) {
                     builder.delete(range);
                 }
 
@@ -700,7 +700,7 @@ fn does_source_exists_outside_sel_in_same_mod(
             if let Some(ast_module) = &curr_parent_module {
                 if let Some(hir_module) = x.parent(ctx.db()) {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, hir_module, ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, hir_module, ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -725,7 +725,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -742,7 +742,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -759,7 +759,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -776,7 +776,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -793,7 +793,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -810,7 +810,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;
@@ -827,7 +827,7 @@ fn does_source_exists_outside_sel_in_same_mod(
                 let have_same_parent;
                 if let Some(ast_module) = &curr_parent_module {
                     have_same_parent =
-                        compare_hir_and_ast_module(&ast_module, x.module(ctx.db()), ctx).is_some();
+                        compare_hir_and_ast_module(ast_module, x.module(ctx.db()), ctx).is_some();
                 } else {
                     let source_file_id = source.file_id.original_file(ctx.db());
                     have_same_parent = source_file_id == curr_file_id;

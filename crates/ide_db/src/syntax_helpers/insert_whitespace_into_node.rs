@@ -69,7 +69,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 if indent > 0 {
                     mods.push(do_indent(after, tok, indent));
                 }
-                mods.push(do_nl(after, &tok));
+                mods.push(do_nl(after, tok));
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
                 indent = indent.saturating_sub(1);

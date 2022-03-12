@@ -121,7 +121,7 @@ impl ProcMacroLibraryLibloading {
         let abs_file: &AbsPath = file.try_into().map_err(|_| {
             invalid_data_err(format!("expected an absolute path, got {}", file.display()))
         })?;
-        let version_info = read_dylib_info(&abs_file)?;
+        let version_info = read_dylib_info(abs_file)?;
 
         let lib = load_library(file).map_err(invalid_data_err)?;
         let abi = Abi::from_lib(&lib, symbol_name, version_info)?;

@@ -406,7 +406,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
     }
 
     fn gen_record_pat_field(field_name: &str, pat_name: &str) -> ast::RecordPatField {
-        let pat = make::ext::simple_ident_pat(make::name(&pat_name));
+        let pat = make::ext::simple_ident_pat(make::name(pat_name));
         let name_ref = make::name_ref(field_name);
         make::record_pat_field(name_ref, pat.into())
     }
@@ -455,10 +455,10 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
                             let field_name = field.name()?.to_string();
 
                             let l_name = &format!("l_{}", field_name);
-                            l_fields.push(gen_record_pat_field(&field_name, &l_name));
+                            l_fields.push(gen_record_pat_field(&field_name, l_name));
 
                             let r_name = &format!("r_{}", field_name);
-                            r_fields.push(gen_record_pat_field(&field_name, &r_name));
+                            r_fields.push(gen_record_pat_field(&field_name, r_name));
 
                             let lhs = make::expr_path(make::ext::ident_path(l_name));
                             let rhs = make::expr_path(make::ext::ident_path(r_name));
