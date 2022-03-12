@@ -24,8 +24,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        determine_location, determine_prev_sibling, for_is_prev2, inside_impl_trait_block,
-        is_in_loop_body, previous_token, ImmediateLocation, ImmediatePrevSibling,
+        determine_location, determine_prev_sibling, for_is_prev2, is_in_loop_body, previous_token,
+        ImmediateLocation, ImmediatePrevSibling,
     },
     CompletionConfig,
 };
@@ -94,7 +94,7 @@ pub(super) struct PatternContext {
 
 #[derive(Debug)]
 pub(super) enum LifetimeContext {
-    LifetimeParam(Option<ast::LifetimeParam>),
+    LifetimeParam { is_decl: bool, param: ast::LifetimeParam },
     Lifetime,
     LabelRef,
     LabelDef,
@@ -115,6 +115,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a RootDatabase,
     pub(super) config: &'a CompletionConfig,
     pub(super) position: FilePosition,
+
     /// The token before the cursor, in the original file.
     pub(super) original_token: SyntaxToken,
     /// The token before the cursor, in the macro-expanded file.
@@ -146,32 +147,22 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) existing_derives: FxHashSet<hir::Macro>,
 
     pub(super) locals: Vec<(Name, Local)>,
-
-    no_completion_required: bool,
 }
 
 impl<'a> CompletionContext<'a> {
-    /// Checks whether completions in that particular case don't make much sense.
-    /// Examples:
-    /// - `fn $0` -- we expect function name, it's unlikely that "hint" will be helpful.
-    ///   Exception for this case is `impl Trait for Foo`, where we would like to hint trait method names.
-    /// - `for _ i$0` -- obviously, it'll be "in" keyword.
-    pub(crate) fn no_completion_required(&self) -> bool {
-        self.no_completion_required
-    }
-
     /// The range of the identifier that is being completed.
     pub(crate) fn source_range(&self) -> TextRange {
         // check kind of macro-expanded token, but use range of original token
         let kind = self.token.kind();
-        if kind == IDENT || kind == LIFETIME_IDENT || kind == UNDERSCORE || kind.is_keyword() {
-            self.original_token.text_range()
-        } else if kind == CHAR {
-            // assume we are completing a lifetime but the user has only typed the '
-            cov_mark::hit!(completes_if_lifetime_without_idents);
-            TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
-        } else {
-            TextRange::empty(self.position.offset)
+        match kind {
+            CHAR => {
+                // assume we are completing a lifetime but the user has only typed the '
+                cov_mark::hit!(completes_if_lifetime_without_idents);
+                TextRange::at(self.original_token.text_range().start(), TextSize::from(1))
+            }
+            IDENT | LIFETIME_IDENT | UNDERSCORE => self.original_token.text_range(),
+            _ if kind.is_keyword() => self.original_token.text_range(),
+            _ => TextRange::empty(self.position.offset),
         }
     }
 
@@ -453,7 +444,6 @@ impl<'a> CompletionContext<'a> {
             path_context: None,
             locals,
             incomplete_let: false,
-            no_completion_required: false,
             existing_derives: Default::default(),
         };
         ctx.expand_and_fill(
@@ -740,14 +730,16 @@ impl<'a> CompletionContext<'a> {
     ) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
-        self.previous_token = previous_token(syntax_element.clone());
-        self.no_completion_required = {
-            let inside_impl_trait_block = inside_impl_trait_block(syntax_element.clone());
-            let fn_is_prev = self.previous_token_is(T![fn]);
-            let for_is_prev2 = for_is_prev2(syntax_element.clone());
-            (fn_is_prev && !inside_impl_trait_block) || for_is_prev2
-        };
+        if for_is_prev2(syntax_element.clone()) {
+            // for pat $0
+            // there is nothing to complete here except `in` keyword
+            // don't bother populating the context
+            // FIXME: the completion calculations should end up good enough
+            // such that this special case becomes unnecessary
+            return;
+        }
 
+        self.previous_token = previous_token(syntax_element.clone());
         self.fake_attribute_under_caret = syntax_element.ancestors().find_map(ast::Attr::cast);
 
         self.incomplete_let =
@@ -755,9 +747,7 @@ impl<'a> CompletionContext<'a> {
                 it.syntax().text_range().end() == syntax_element.text_range().end()
             });
 
-        let (expected_type, expected_name) = self.expected_type_and_name();
-        self.expected_type = expected_type;
-        self.expected_name = expected_name;
+        (self.expected_type, self.expected_name) = self.expected_type_and_name();
 
         // Overwrite the path kind for derives
         if let Some((original_file, file_with_fake_ident, offset)) = derive_ctx {
@@ -808,8 +798,7 @@ impl<'a> CompletionContext<'a> {
 
         match name_like {
             ast::NameLike::Lifetime(lifetime) => {
-                self.lifetime_ctx =
-                    Self::classify_lifetime(&self.sema, original_file, lifetime, offset);
+                self.lifetime_ctx = Self::classify_lifetime(&self.sema, original_file, lifetime);
             }
             ast::NameLike::NameRef(name_ref) => {
                 if let Some((path_ctx, pat_ctx)) =
@@ -826,10 +815,9 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn classify_lifetime(
-        sema: &Semantics<RootDatabase>,
-        original_file: &SyntaxNode,
+        _sema: &Semantics<RootDatabase>,
+        _original_file: &SyntaxNode,
         lifetime: ast::Lifetime,
-        offset: TextSize,
     ) -> Option<LifetimeContext> {
         let parent = lifetime.syntax().parent()?;
         if parent.kind() == ERROR {
@@ -838,7 +826,10 @@ impl<'a> CompletionContext<'a> {
 
         Some(match_ast! {
             match parent {
-                ast::LifetimeParam(_) => LifetimeContext::LifetimeParam(sema.find_node_at_offset_with_macros(original_file, offset)),
+                ast::LifetimeParam(param) => LifetimeContext::LifetimeParam {
+                    is_decl: param.lifetime().as_ref() == Some(&lifetime),
+                    param
+                },
                 ast::BreakExpr(_) => LifetimeContext::LabelRef,
                 ast::ContinueExpr(_) => LifetimeContext::LabelRef,
                 ast::Label(_) => LifetimeContext::LabelDef,
