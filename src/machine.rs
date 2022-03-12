@@ -19,7 +19,7 @@ use rustc_middle::{
         Instance, TyCtxt,
     },
 };
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -349,10 +349,14 @@ pub struct Evaluator<'mir, 'tcx> {
 
     /// Equivalent setting as RUST_BACKTRACE on encountering an error.
     pub(crate) backtrace_style: BacktraceStyle,
+
+    /// Crates which are considered local for the purposes of error reporting.
+    pub(crate) local_crates: Vec<CrateNum>,
 }
 
 impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
     pub(crate) fn new(config: &MiriConfig, layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Self {
+        let local_crates = helpers::get_local_crates(&layout_cx.tcx);
         let layouts =
             PrimitiveLayouts::new(layout_cx).expect("Couldn't get layouts of primitive types");
         let profiler = config.measureme_out.as_ref().map(|out| {
@@ -381,11 +385,18 @@ impl<'mir, 'tcx> Evaluator<'mir, 'tcx> {
             exported_symbols_cache: FxHashMap::default(),
             panic_on_unsupported: config.panic_on_unsupported,
             backtrace_style: config.backtrace_style,
+            local_crates,
         }
     }
 
     pub(crate) fn communicate(&self) -> bool {
         self.isolated_op == IsolatedOp::Allow
+    }
+
+    /// Check whether the stack frame that this `FrameInfo` refers to is part of a local crate.
+    pub(crate) fn is_local(&self, frame: &FrameInfo<'_>) -> bool {
+        let def_id = frame.instance.def_id();
+        def_id.is_local() || self.local_crates.contains(&def_id.krate)
     }
 }
 

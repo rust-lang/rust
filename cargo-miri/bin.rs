@@ -482,12 +482,13 @@ path = "lib.rs"
     }
 }
 
-/// Detect the target directory by calling `cargo metadata`.
-fn detect_target_dir() -> PathBuf {
-    #[derive(Deserialize)]
-    struct Metadata {
-        target_directory: PathBuf,
-    }
+#[derive(Deserialize)]
+struct Metadata {
+    target_directory: PathBuf,
+    workspace_members: Vec<String>,
+}
+
+fn get_cargo_metadata() -> Metadata {
     let mut cmd = cargo();
     // `-Zunstable-options` is required by `--config`.
     cmd.args(["metadata", "--no-deps", "--format-version=1", "-Zunstable-options"]);
@@ -514,9 +515,25 @@ fn detect_target_dir() -> PathBuf {
     if !status.success() {
         std::process::exit(status.code().unwrap_or(-1));
     }
-    metadata
-        .unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
-        .target_directory
+    metadata.unwrap_or_else(|e| show_error(format!("invalid `cargo metadata` output: {}", e)))
+}
+
+/// Pulls all the crates in this workspace from the cargo metadata.
+/// Workspace members are emitted like "miri 0.1.0 (path+file:///path/to/miri)"
+/// Additionally, somewhere between cargo metadata and TyCtxt, '-' gets replaced with '_' so we
+/// make that same transformation here.
+fn local_crates(metadata: &Metadata) -> String {
+    assert!(metadata.workspace_members.len() > 0);
+    let mut local_crates = String::new();
+    for member in &metadata.workspace_members {
+        let name = member.split(" ").nth(0).unwrap();
+        let name = name.replace("-", "_");
+        local_crates.push_str(&name);
+        local_crates.push(',');
+    }
+    local_crates.pop(); // Remove the trailing ','
+
+    local_crates
 }
 
 fn phase_cargo_miri(mut args: env::Args) {
@@ -595,8 +612,10 @@ fn phase_cargo_miri(mut args: env::Args) {
         }
     }
 
+    let metadata = get_cargo_metadata();
+
     // Detect the target directory if it's not specified via `--target-dir`.
-    let target_dir = target_dir.get_or_insert_with(detect_target_dir);
+    let target_dir = target_dir.get_or_insert_with(|| metadata.target_directory.clone());
 
     // Set `--target-dir` to `miri` inside the original target directory.
     target_dir.push("miri");
@@ -627,6 +646,8 @@ fn phase_cargo_miri(mut args: env::Args) {
 
     // Set rustdoc to us as well, so we can run doctests.
     cmd.env("RUSTDOC", &cargo_miri_path);
+
+    cmd.env("MIRI_LOCAL_CRATES", local_crates(&metadata));
 
     // Run cargo.
     if verbose {

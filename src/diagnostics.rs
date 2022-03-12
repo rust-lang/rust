@@ -4,7 +4,7 @@ use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
 use crate::stacked_borrows::{AccessKind, SbTag};
@@ -94,7 +94,7 @@ fn prune_stacktrace<'mir, 'tcx>(
             // Only prune frames if there is at least one local frame. This check ensures that if
             // we get a backtrace that never makes it to the user code because it has detected a
             // bug in the Rust runtime, we don't prune away every frame.
-            let has_local_frame = stacktrace.iter().any(|frame| frame.instance.def_id().is_local());
+            let has_local_frame = stacktrace.iter().any(|frame| ecx.machine.is_local(frame));
             if has_local_frame {
                 // This is part of the logic that `std` uses to select the relevant part of a
                 // backtrace. But here, we only look for __rust_begin_short_backtrace, not
@@ -115,7 +115,7 @@ fn prune_stacktrace<'mir, 'tcx>(
                 // This len check ensures that we don't somehow remove every frame, as doing so breaks
                 // the primary error message.
                 while stacktrace.len() > 1
-                    && stacktrace.last().map_or(false, |e| !e.instance.def_id().is_local())
+                    && stacktrace.last().map_or(false, |frame| !ecx.machine.is_local(frame))
                 {
                     stacktrace.pop();
                 }
@@ -218,7 +218,7 @@ pub fn report_error<'tcx, 'mir>(
     e.print_backtrace();
     msg.insert(0, e.to_string());
     report_msg(
-        *ecx.tcx,
+        ecx,
         DiagLevel::Error,
         &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
         msg,
@@ -264,8 +264,8 @@ pub fn report_error<'tcx, 'mir>(
 /// We want to present a multi-line span message for some errors. Diagnostics do not support this
 /// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
 /// additional `span_label` or `note` call.
-fn report_msg<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn report_msg<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
     diag_level: DiagLevel,
     title: &str,
     span_msg: Vec<String>,
@@ -273,10 +273,11 @@ fn report_msg<'tcx>(
     stacktrace: &[FrameInfo<'tcx>],
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
+    let sess = ecx.tcx.sess;
     let mut err = match diag_level {
-        DiagLevel::Error => tcx.sess.struct_span_err(span, title).forget_guarantee(),
-        DiagLevel::Warning => tcx.sess.struct_span_warn(span, title),
-        DiagLevel::Note => tcx.sess.diagnostic().span_note_diag(span, title),
+        DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
+        DiagLevel::Warning => sess.struct_span_warn(span, title),
+        DiagLevel::Note => sess.diagnostic().span_note_diag(span, title),
     };
 
     // Show main message.
@@ -306,7 +307,7 @@ fn report_msg<'tcx>(
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
-        let is_local = frame_info.instance.def_id().is_local();
+        let is_local = ecx.machine.is_local(frame_info);
         // No span for non-local frames and the first frame (which is the error site).
         if is_local && idx > 0 {
             err.span_note(frame_info.span, &frame_info.to_string());
@@ -426,7 +427,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     _ => ("tracking was triggered", DiagLevel::Note),
                 };
 
-                report_msg(*this.tcx, diag_level, title, vec![msg], vec![], &stacktrace);
+                report_msg(this, diag_level, title, vec![msg], vec![], &stacktrace);
             }
         });
     }

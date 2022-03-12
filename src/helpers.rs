@@ -12,7 +12,7 @@ use rustc_middle::ty::{
     layout::{LayoutOf, TyAndLayout},
     List, TyCtxt,
 };
-use rustc_span::Symbol;
+use rustc_span::{def_id::CrateNum, Symbol};
 use rustc_target::abi::{Align, FieldsShape, Size, Variants};
 use rustc_target::spec::abi::Abi;
 
@@ -774,4 +774,23 @@ pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
         "{} not available when isolation is enabled",
         name,
     )))
+}
+
+/// Retrieve the list of local crates that should have been passed by cargo-miri in
+/// MIRI_LOCAL_CRATES and turn them into `CrateNum`s.
+pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
+    // Convert the local crate names from the passed-in config into CrateNums so that they can
+    // be looked up quickly during execution
+    let local_crate_names = std::env::var("MIRI_LOCAL_CRATES")
+        .map(|crates| crates.split(",").map(|krate| krate.to_string()).collect::<Vec<_>>())
+        .unwrap_or_default();
+    let mut local_crates = Vec::new();
+    for &crate_num in tcx.crates(()) {
+        let name = tcx.crate_name(crate_num);
+        let name = name.as_str();
+        if local_crate_names.iter().any(|local_name| local_name == name) {
+            local_crates.push(crate_num);
+        }
+    }
+    local_crates
 }
