@@ -42,11 +42,9 @@ impl<'tcx> EnvVars<'tcx> {
         forwarded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
         let target_os = ecx.tcx.sess.target.os.as_str();
-        if target_os == "windows" {
-            // Temporary hack: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-            // Can be removed once https://github.com/rust-lang/miri/issues/1013 is resolved.
-            excluded_env_vars.push("TERM".to_owned());
-        }
+        // HACK: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+        // This is (a) very slow and (b) does not work on Windows.
+        excluded_env_vars.push("TERM".to_owned());
 
         // Skip the loop entirely if we don't want to forward anything.
         if ecx.machine.communicate() || !forwarded_env_vars.is_empty() {
