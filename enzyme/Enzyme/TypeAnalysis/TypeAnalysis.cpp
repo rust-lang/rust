@@ -804,10 +804,9 @@ void TypeAnalyzer::considerTBAA() {
         }
         if (F) {
           std::set<std::string> JuliaKnownTypes = {
-              "julia.gc_alloc_obj",
-              "jl_alloc_array_1d",
-              "jl_alloc_array_2d",
-              "jl_alloc_array_3d",
+              "julia.gc_alloc_obj", "jl_alloc_array_1d",  "jl_alloc_array_2d",
+              "jl_alloc_array_3d",  "ijl_alloc_array_1d", "ijl_alloc_array_2d",
+              "ijl_alloc_array_3d",
           };
           if (JuliaKnownTypes.count(F->getName().str())) {
             visitCallInst(*call);
