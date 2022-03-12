@@ -94,7 +94,7 @@ impl TextEdit {
 
         let text_size = TextSize::of(&*text);
         let mut total_len = text_size;
-        let mut max_total_len = text_size.clone();
+        let mut max_total_len = text_size;
         for indel in &self.indels {
             total_len += TextSize::of(&indel.insert);
             total_len -= indel.delete.len();

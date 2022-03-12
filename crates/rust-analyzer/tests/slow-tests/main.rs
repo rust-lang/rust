@@ -533,7 +533,7 @@ mod bar;
 
 fn main() {{}}
 "#,
-        PROJECT = project.to_string(),
+        PROJECT = project,
     );
 
     let server =

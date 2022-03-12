@@ -79,7 +79,7 @@ pub(crate) fn annotations(
                             .map(|variant| {
                                 variant.source(db).and_then(|node| name_range(db, node, file_id))
                             })
-                            .filter_map(std::convert::identity)
+                            .flatten()
                             .for_each(|range| {
                                 annotations.push(Annotation {
                                     range,

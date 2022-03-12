@@ -1812,14 +1812,12 @@ impl Macro {
 
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
-            MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
-                MacroExpander::BuiltInDerive(_) => true,
-                _ => false,
-            },
-            MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
-                MacroExpander::BuiltInDerive(_) => true,
-                _ => false,
-            },
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+            }
+            MacroId::MacroRulesId(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+            }
             MacroId::ProcMacroId(_) => false,
         }
     }

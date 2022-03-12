@@ -103,10 +103,7 @@ fn are_same_types(
     for (other_arm_type_name, other_arm_type) in arm_types {
         match (current_arm_types.get(&other_arm_type_name), other_arm_type) {
             (Some(Some(current_arm_type)), Some(other_arm_type))
-                if other_arm_type.original == current_arm_type.original =>
-            {
-                ()
-            }
+                if other_arm_type.original == current_arm_type.original => {}
             _ => return false,
         }
     }

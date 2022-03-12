@@ -504,10 +504,8 @@ impl DefCollector<'_> {
         } else {
             PathKind::Abs
         };
-        let path = ModPath::from_segments(
-            path_kind.clone(),
-            [krate.clone(), name![prelude], edition].into_iter(),
-        );
+        let path =
+            ModPath::from_segments(path_kind, [krate.clone(), name![prelude], edition].into_iter());
         // Fall back to the older `std::prelude::v1` for compatibility with Rust <1.52.0
         // FIXME remove this fallback
         let fallback_path =

@@ -120,7 +120,7 @@ impl Path {
         let res = Path {
             type_anchor: self.type_anchor.clone(),
             mod_path: Interned::new(ModPath::from_segments(
-                self.mod_path.kind.clone(),
+                self.mod_path.kind,
                 self.mod_path.segments()[..self.mod_path.segments().len() - 1].iter().cloned(),
             )),
             generic_args: self.generic_args[..self.generic_args.len() - 1].to_vec().into(),

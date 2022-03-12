@@ -176,7 +176,7 @@ mod tests {
         );
 
         let mut actual = tt.to_string();
-        actual.push_str("\n");
+        actual.push('\n');
 
         expect.indent(false);
         expect.assert_eq(&actual);

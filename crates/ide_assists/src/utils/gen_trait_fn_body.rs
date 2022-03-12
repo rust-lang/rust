@@ -206,7 +206,7 @@ fn gen_debug_impl(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
 
                             // => <expr>.field(field)
                             let method_name = make::name_ref("field");
-                            let field_path = &format!("{}", name);
+                            let field_path = &name.to_string();
                             let field_path = make::expr_path(make::ext::ident_path(field_path));
                             let args = make::arg_list(vec![field_path]);
                             expr = make::expr_method_call(expr, method_name, args);

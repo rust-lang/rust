@@ -108,7 +108,7 @@ impl FamousDefs<'_, '_> {
             self.test(),
             self.proc_macro(),
         ])
-        .filter_map(|it| it)
+        .flatten()
     }
 
     fn find_trait(&self, path: &str) -> Option<Trait> {
