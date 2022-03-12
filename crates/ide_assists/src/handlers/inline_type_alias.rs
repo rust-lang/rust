@@ -13,7 +13,7 @@ use syntax::{
         HasGenericParams, HasName,
     },
     ted::{self},
-    AstNode, NodeOrToken, SyntaxKind, SyntaxNode,
+    AstNode, NodeOrToken, SyntaxNode,
 };
 
 use crate::{
