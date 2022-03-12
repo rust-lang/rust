@@ -269,7 +269,8 @@ function serverPath(config: Config): string | null {
 async function isNixOs(): Promise<boolean> {
     try {
         const contents = (await vscode.workspace.fs.readFile(vscode.Uri.file("/etc/os-release"))).toString();
-        return contents.indexOf("ID=nixos") !== -1;
+        const idString = contents.split('\n').find((a) => a.startsWith("ID="));
+        return idString?.toLowerCase()?.indexOf("nixos") !== -1;
     } catch {
         return false;
     }
