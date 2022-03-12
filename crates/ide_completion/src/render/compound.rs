@@ -9,8 +9,8 @@ use itertools::Itertools;
 /// auto-completion (`literal`, using `field: ()`) and display in the
 /// completions menu (`detail`, using `field: type`).
 pub(crate) struct RenderedCompound {
-    pub literal: String,
-    pub detail: String,
+    pub(crate) literal: String,
+    pub(crate) detail: String,
 }
 
 /// Render a record type (or sub-type) to a `RenderedCompound`. Use `None` for
