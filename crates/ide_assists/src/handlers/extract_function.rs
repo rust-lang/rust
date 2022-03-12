@@ -3688,7 +3688,7 @@ fn foo() -> i32 {
         let n = 1;
         $0let k = 1;
         if k == 42 {
-            break 'bar 3;
+            break 'bar 4;
         }
         let m = k + 1;$0
         let h = 1;
