@@ -439,32 +439,15 @@ struct VariantData {
 /// a default, or an in impl, whether it's marked "default".
 #[derive(Copy, Clone, TyEncodable, TyDecodable)]
 enum AssocContainer {
-    TraitRequired,
-    TraitWithDefault,
-    ImplDefault,
-    ImplFinal,
+    Trait,
+    Impl,
 }
 
 impl AssocContainer {
     fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
         match *self {
-            AssocContainer::TraitRequired | AssocContainer::TraitWithDefault => {
-                ty::TraitContainer(def_id)
-            }
-
-            AssocContainer::ImplDefault | AssocContainer::ImplFinal => ty::ImplContainer(def_id),
-        }
-    }
-
-    fn defaultness(&self) -> hir::Defaultness {
-        match *self {
-            AssocContainer::TraitRequired => hir::Defaultness::Default { has_value: false },
-
-            AssocContainer::TraitWithDefault | AssocContainer::ImplDefault => {
-                hir::Defaultness::Default { has_value: true }
-            }
-
-            AssocContainer::ImplFinal => hir::Defaultness::Final,
+            AssocContainer::Trait => ty::TraitContainer(def_id),
+            AssocContainer::Impl => ty::ImplContainer(def_id),
         }
     }
 }

@@ -106,7 +106,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
             let item = tcx.associated_item(def_id);
             match item.kind {
                 ty::AssocKind::Type => {
-                    if item.defaultness.has_value() {
+                    if item.defaultness(tcx).has_value() {
                         cgp::parameters_for(&tcx.type_of(def_id), true)
                     } else {
                         Vec::new()

@@ -1945,7 +1945,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
         self.associated_items(id)
             .in_definition_order()
-            .filter(|item| item.kind == AssocKind::Fn && item.defaultness.has_value())
+            .filter(move |item| item.kind == AssocKind::Fn && item.defaultness(self).has_value())
     }
 
     /// Look up the name of a definition across crates. This does not look at HIR.

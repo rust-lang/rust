@@ -697,7 +697,7 @@ impl<'tcx> SaveContext<'tcx> {
             }
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
-                    if self.tcx.associated_item(decl_id).defaultness.has_value() {
+                    if self.tcx.impl_defaultness(decl_id).has_value() {
                         Some(decl_id)
                     } else {
                         None

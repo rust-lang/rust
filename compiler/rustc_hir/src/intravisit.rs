@@ -948,6 +948,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem<'v>) {
     visitor.visit_ident(trait_item.ident);
     visitor.visit_generics(&trait_item.generics);
+    visitor.visit_defaultness(&trait_item.defaultness);
     match trait_item.kind {
         TraitItemKind::Const(ref ty, default) => {
             visitor.visit_id(trait_item.hir_id());
@@ -980,19 +981,27 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 
 pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: &'v TraitItemRef) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let TraitItemRef { id, ident, ref kind, span: _, ref defaultness } = *trait_item_ref;
+    let TraitItemRef { id, ident, ref kind, span: _ } = *trait_item_ref;
     visitor.visit_nested_trait_item(id);
     visitor.visit_ident(ident);
     visitor.visit_associated_item_kind(kind);
-    visitor.visit_defaultness(defaultness);
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItem { def_id: _, ident, ref generics, ref kind, span: _, vis_span: _ } = *impl_item;
+    let ImplItem {
+        def_id: _,
+        ident,
+        ref generics,
+        ref kind,
+        ref defaultness,
+        span: _,
+        vis_span: _,
+    } = *impl_item;
 
     visitor.visit_ident(ident);
     visitor.visit_generics(generics);
+    visitor.visit_defaultness(defaultness);
     match *kind {
         ImplItemKind::Const(ref ty, body) => {
             visitor.visit_id(impl_item.hir_id());
@@ -1027,12 +1036,10 @@ pub fn walk_foreign_item_ref<'v, V: Visitor<'v>>(
 
 pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'v ImplItemRef) {
     // N.B., deliberately force a compilation error if/when new fields are added.
-    let ImplItemRef { id, ident, ref kind, span: _, ref defaultness, trait_item_def_id: _ } =
-        *impl_item_ref;
+    let ImplItemRef { id, ident, ref kind, span: _, trait_item_def_id: _ } = *impl_item_ref;
     visitor.visit_nested_impl_item(id);
     visitor.visit_ident(ident);
     visitor.visit_associated_item_kind(kind);
-    visitor.visit_defaultness(defaultness);
 }
 
 pub fn walk_struct_def<'v, V: Visitor<'v>>(

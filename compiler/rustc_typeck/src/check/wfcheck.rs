@@ -1007,7 +1007,7 @@ fn check_associated_item(
                 if let ty::AssocItemContainer::TraitContainer(_) = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
-                if item.defaultness.has_value() {
+                if item.defaultness(tcx).has_value() {
                     let ty = tcx.type_of(item.def_id);
                     let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                     wfcx.register_wf_obligation(span, loc, ty.into());

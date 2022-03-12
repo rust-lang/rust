@@ -1098,7 +1098,7 @@ fn check_impl_items_against_trait<'tcx>(
         for &trait_item_id in tcx.associated_item_def_ids(impl_trait_ref.def_id) {
             let is_implemented = ancestors
                 .leaf_def(tcx, trait_item_id)
-                .map_or(false, |node_item| node_item.item.defaultness.has_value());
+                .map_or(false, |node_item| node_item.item.defaultness(tcx).has_value());
 
             if !is_implemented && tcx.impl_defaultness(impl_id).is_final() {
                 missing_items.push(tcx.associated_item(trait_item_id));

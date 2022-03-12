@@ -844,7 +844,8 @@ fn foo(&self) -> Self::T { String::new() }
                         hir::AssocItemKind::Type => {
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
-                            if let hir::Defaultness::Default { has_value: true } = item.defaultness
+                            if let hir::Defaultness::Default { has_value: true } =
+                                self.impl_defaultness(item.id.def_id)
                             {
                                 if self.type_of(item.id.def_id) == found {
                                     diag.span_label(

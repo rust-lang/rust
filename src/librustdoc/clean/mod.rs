@@ -1101,7 +1101,7 @@ impl<'tcx> Clean<'tcx, Item> for hir::ImplItem<'tcx> {
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
                     let m = clean_function(cx, sig, self.generics, body);
-                    let defaultness = cx.tcx.associated_item(self.def_id).defaultness;
+                    let defaultness = cx.tcx.impl_defaultness(self.def_id);
                     MethodItem(m, Some(defaultness))
                 }
                 hir::ImplItemKind::TyAlias(hir_ty) => {
@@ -1140,7 +1140,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
 
                 let provided = match self.container {
                     ty::ImplContainer(_) => true,
-                    ty::TraitContainer(_) => self.defaultness.has_value(),
+                    ty::TraitContainer(_) => tcx.impl_defaultness(self.def_id).has_value(),
                 };
                 if provided {
                     AssocConstItem(ty, ConstantKind::Extern { def_id: self.def_id })
@@ -1179,11 +1179,11 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
 
                 let provided = match self.container {
                     ty::ImplContainer(_) => true,
-                    ty::TraitContainer(_) => self.defaultness.has_value(),
+                    ty::TraitContainer(_) => self.defaultness(tcx).has_value(),
                 };
                 if provided {
                     let defaultness = match self.container {
-                        ty::ImplContainer(_) => Some(self.defaultness),
+                        ty::ImplContainer(_) => Some(self.defaultness(tcx)),
                         ty::TraitContainer(_) => None,
                     };
                     MethodItem(Box::new(Function { generics, decl }), defaultness)
@@ -1280,7 +1280,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                         None => bounds.push(GenericBound::maybe_sized(cx)),
                     }
 
-                    if self.defaultness.has_value() {
+                    if tcx.impl_defaultness(self.def_id).has_value() {
                         AssocTypeItem(
                             Box::new(Typedef {
                                 type_: clean_middle_ty(

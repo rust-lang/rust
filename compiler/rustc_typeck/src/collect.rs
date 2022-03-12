@@ -1234,7 +1234,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::TraitDef {
 
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
-                        if !item.defaultness.has_value() {
+                        if !tcx.impl_defaultness(item.id.def_id).has_value() {
                             tcx.sess
                                 .struct_span_err(
                                     item.span,

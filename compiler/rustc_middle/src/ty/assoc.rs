@@ -47,7 +47,6 @@ pub struct AssocItem {
     pub name: Symbol,
     pub kind: AssocKind,
     pub vis: Visibility,
-    pub defaultness: hir::Defaultness,
     pub container: AssocItemContainer,
 
     /// If this is an item in an impl of a trait then this is the `DefId` of
@@ -62,6 +61,10 @@ pub struct AssocItem {
 impl AssocItem {
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.def_id).unwrap())
+    }
+
+    pub fn defaultness(&self, tcx: TyCtxt<'_>) -> hir::Defaultness {
+        tcx.impl_defaultness(self.def_id)
     }
 
     pub fn signature(&self, tcx: TyCtxt<'_>) -> String {
