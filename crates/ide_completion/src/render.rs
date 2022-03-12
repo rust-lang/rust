@@ -9,6 +9,7 @@ pub(crate) mod pattern;
 pub(crate) mod type_alias;
 pub(crate) mod struct_literal;
 pub(crate) mod compound;
+pub(crate) mod union_literal;
 
 mod builder_ext;
 

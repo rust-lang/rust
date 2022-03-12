@@ -14,12 +14,31 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
             | ImmediateLocation::RecordExprUpdate(record_expr),
         ) => {
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
-            let default_trait = ctx.famous_defs().core_default_Default();
-            let impl_default_trait = default_trait.zip(ty).map_or(false, |(default_trait, ty)| {
-                ty.original.impls_trait(ctx.db, default_trait, &[])
-            });
 
-            let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
+            let default_trait = ctx.famous_defs().core_default_Default();
+            let impl_default_trait =
+                default_trait.zip(ty.as_ref()).map_or(false, |(default_trait, ty)| {
+                    ty.original.impls_trait(ctx.db, default_trait, &[])
+                });
+
+            let missing_fields = match ty.and_then(|t| t.adjusted().as_adt()) {
+                Some(hir::Adt::Union(un)) => {
+                    // ctx.sema.record_literal_missing_fields will always return
+                    // an empty Vec on a union literal. This is normally
+                    // reasonable, but here we'd like to present the full list
+                    // of fields if the literal is empty.
+                    let were_fields_specified = record_expr
+                        .record_expr_field_list()
+                        .and_then(|fl| fl.fields().next())
+                        .is_some();
+
+                    match were_fields_specified {
+                        false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                        true => vec![],
+                    }
+                }
+                _ => ctx.sema.record_literal_missing_fields(record_expr),
+            };
             if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
                 let completion_text = "..Default::default()";
                 let mut item =
@@ -62,14 +81,26 @@ pub(crate) fn complete_record_literal(
         return None;
     }
 
-    if let hir::Adt::Struct(strukt) = ctx.expected_type.as_ref()?.as_adt()? {
-        if ctx.path_qual().is_none() {
-            let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
-            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
+    match ctx.expected_type.as_ref()?.as_adt()? {
+        hir::Adt::Struct(strukt) => {
+            if ctx.path_qual().is_none() {
+                let module =
+                    if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
+                let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
 
-            acc.add_struct_literal(ctx, strukt, path, None);
+                acc.add_struct_literal(ctx, strukt, path, None);
+            }
         }
-    }
+        hir::Adt::Union(un) => {
+            if ctx.path_qual().is_none() {
+                let module = if let Some(module) = ctx.module { module } else { un.module(ctx.db) };
+                let path = module.find_use_path(ctx.db, hir::ModuleDef::from(un));
+
+                acc.add_union_literal(ctx, un, path, None);
+            }
+        }
+        _ => {}
+    };
 
     Some(())
 }
