@@ -1,4 +1,4 @@
-// error-pattern: pointer arithmetic failed: 0x0 is not a valid pointer
+// error-pattern: pointer arithmetic failed: null pointer is not a valid pointer
 
 fn main() {
     let x = 0 as *mut i32;
