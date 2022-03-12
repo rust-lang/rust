@@ -4,7 +4,9 @@ use hir::{HasAttrs, Name, StructKind};
 use syntax::SmolStr;
 
 use crate::{
-    render::compound::{render_record, render_tuple, visible_fields, RenderedCompound},
+    render::compound::{
+        format_literal_label, render_record, render_tuple, visible_fields, RenderedCompound,
+    },
     render::RenderContext,
     CompletionItem, CompletionItemKind,
 };
@@ -42,10 +44,7 @@ fn build_completion(
     let mut item = CompletionItem::new(
         CompletionItemKind::Snippet,
         ctx.source_range(),
-        match kind {
-            StructKind::Tuple => SmolStr::from_iter([&name, "(…)"]),
-            _ => SmolStr::from_iter([&name, " {…}"]),
-        },
+        format_literal_label(&name, kind),
     );
 
     item.set_documentation(ctx.docs(def))

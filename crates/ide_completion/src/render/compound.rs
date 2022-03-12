@@ -1,9 +1,10 @@
 //! Code common to structs, unions, and enum variants.
 
 use crate::render::RenderContext;
-use hir::{db::HirDatabase, HasAttrs, HasVisibility, HirDisplay};
+use hir::{db::HirDatabase, HasAttrs, HasVisibility, HirDisplay, StructKind};
 use ide_db::SnippetCap;
 use itertools::Itertools;
+use syntax::SmolStr;
 
 /// A rendered struct, union, or enum variant, split into fields for actual
 /// auto-completion (`literal`, using `field: ()`) and display in the
@@ -90,4 +91,13 @@ pub(crate) fn visible_fields(
     let fields_omitted =
         n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
     Some((fields, fields_omitted))
+}
+
+/// Format a struct, etc. literal option for display in the completions menu.
+pub(crate) fn format_literal_label(name: &str, kind: StructKind) -> SmolStr {
+    match kind {
+        StructKind::Tuple => SmolStr::from_iter([name, "(…)"]),
+        StructKind::Record => SmolStr::from_iter([name, " {…}"]),
+        StructKind::Unit => name.into(),
+    }
 }

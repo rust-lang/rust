@@ -7,7 +7,7 @@ use syntax::SmolStr;
 use crate::{
     item::{CompletionItem, ImportEdit},
     render::{
-        compound::{render_record, render_tuple, RenderedCompound},
+        compound::{format_literal_label, render_record, render_tuple, RenderedCompound},
         compute_ref_match, compute_type_match, RenderContext,
     },
     CompletionRelevance,
@@ -67,11 +67,7 @@ fn render(
     let mut item = CompletionItem::new(
         SymbolKind::Variant,
         ctx.source_range(),
-        match variant_kind {
-            StructKind::Tuple => SmolStr::from_iter([&qualified_name, "(…)"]),
-            StructKind::Record => SmolStr::from_iter([&qualified_name, " {…}"]),
-            StructKind::Unit => qualified_name.into(),
-        },
+        format_literal_label(&qualified_name, variant_kind),
     );
 
     item.set_documentation(variant.docs(db))
