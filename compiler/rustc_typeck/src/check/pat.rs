@@ -11,6 +11,7 @@ use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
@@ -1308,6 +1309,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .copied()
                 .filter(|(field, _)| {
                     field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                        && !matches!(
+                            tcx.eval_stability(field.did, None, DUMMY_SP, None),
+                            EvalResult::Deny { .. }
+                        )
+                        // We only want to report the error if it is hidden and not local
+                        && !(tcx.is_doc_hidden(field.did) && !field.did.is_local())
                 })
                 .collect();
 

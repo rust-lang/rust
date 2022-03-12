@@ -692,11 +692,11 @@ impl<'tcx> Constructor<'tcx> {
     }
 
     /// Checks if the `Constructor` is a `Constructor::Variant` with a `#[doc(hidden)]`
-    /// attribute.
+    /// attribute from a type not local to the current crate.
     pub(super) fn is_doc_hidden_variant(&self, pcx: PatCtxt<'_, '_, 'tcx>) -> bool {
         if let Constructor::Variant(idx) = self && let ty::Adt(adt, _) = pcx.ty.kind() {
-            let variant_def_id = adt.variant(*idx).def_id;
-            return pcx.cx.tcx.is_doc_hidden(variant_def_id);
+            let variant_def_id = adt.variants()[*idx].def_id;
+            return pcx.cx.tcx.is_doc_hidden(variant_def_id) && !variant_def_id.is_local();
         }
         false
     }

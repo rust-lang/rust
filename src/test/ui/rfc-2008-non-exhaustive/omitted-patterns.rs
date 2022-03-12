@@ -13,7 +13,7 @@ use enums::{
     EmptyNonExhaustiveEnum, NestedNonExhaustive, NonExhaustiveEnum, NonExhaustiveSingleVariant,
     VariantNonExhaustive,
 };
-use unstable::{UnstableEnum, OnlyUnstableEnum};
+use unstable::{UnstableEnum, OnlyUnstableEnum, UnstableStruct, OnlyUnstableStruct};
 use structs::{FunctionalRecord, MixedVisFields, NestedStruct, NormalStruct};
 
 #[non_exhaustive]
@@ -145,6 +145,7 @@ fn main() {
     }
     //~^^ some variants are not matched explicitly
 
+    // Ok: the feature is on and all variants are matched
     #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
         UnstableEnum::Stable => {}
@@ -167,4 +168,20 @@ fn main() {
         _ => {}
     }
     //~^^ some variants are not matched explicitly
+
+    #[warn(non_exhaustive_omitted_patterns)]
+    let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
+    //~^ some fields are not explicitly listed
+
+    // OK: both unstable fields are matched with feature on
+    #[warn(non_exhaustive_omitted_patterns)]
+    let OnlyUnstableStruct { unstable, unstable2, .. } = OnlyUnstableStruct::new();
+
+    #[warn(non_exhaustive_omitted_patterns)]
+    let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
+    //~^ some fields are not explicitly listed
+
+    // OK: both unstable and stable fields are matched with feature on
+    #[warn(non_exhaustive_omitted_patterns)]
+    let UnstableStruct { stable, stable2, unstable, .. } = UnstableStruct::default();
 }
