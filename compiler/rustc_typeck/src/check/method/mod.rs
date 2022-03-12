@@ -589,9 +589,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let ty::Adt(adt_def, _) = self_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
-                    .variants
+                    .variants()
                     .iter()
-                    .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did));
+                    .find(|vd| tcx.hygienic_eq(method_name, vd.ident(tcx), adt_def.did()));
                 if let Some(variant_def) = variant_def {
                     // Braced variants generate unusable names in value namespace (reserved for
                     // possible future use), so variants resolved as associated items may refer to

@@ -736,13 +736,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             ProjectionElem::Downcast(maybe_name, index) => match base_ty.kind() {
                 ty::Adt(adt_def, _substs) if adt_def.is_enum() => {
-                    if index.as_usize() >= adt_def.variants.len() {
+                    if index.as_usize() >= adt_def.variants().len() {
                         PlaceTy::from_ty(span_mirbug_and_err!(
                             self,
                             place,
                             "cast to variant #{:?} but enum only has {:?}",
                             index,
-                            adt_def.variants.len()
+                            adt_def.variants().len()
                         ))
                     } else {
                         PlaceTy { ty: base_ty, variant_index: Some(index) }
@@ -816,7 +816,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let (variant, substs) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
-                ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
+                ty::Adt(adt_def, substs) => (adt_def.variant(variant_index), substs),
                 ty::Generator(def_id, substs, _) => {
                     let mut variants = substs.as_generator().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
@@ -835,7 +835,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             },
             PlaceTy { ty, variant_index: None } => match *ty.kind() {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() => {
-                    (&adt_def.variants[VariantIdx::new(0)], substs)
+                    (adt_def.variant(VariantIdx::new(0)), substs)
                 }
                 ty::Closure(_, substs) => {
                     return match substs
@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         );
                     }
                 };
-                if variant_index.as_usize() >= adt.variants.len() {
+                if variant_index.as_usize() >= adt.variants().len() {
                     span_bug!(
                         stmt.source_info.span,
                         "bad set discriminant ({:?} = {:?}): value of of range",
@@ -1928,7 +1928,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         match *ak {
             AggregateKind::Adt(adt_did, variant_index, substs, _, active_field_index) => {
                 let def = tcx.adt_def(adt_did);
-                let variant = &def.variants[variant_index];
+                let variant = &def.variant(variant_index);
                 let adj_field_index = active_field_index.unwrap_or(field_index);
                 if let Some(field) = variant.fields.get(adj_field_index) {
                     Ok(self.normalize(field.ty(tcx, substs), location))

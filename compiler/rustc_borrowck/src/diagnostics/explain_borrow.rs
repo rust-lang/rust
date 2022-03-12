@@ -138,7 +138,7 @@ impl BorrowExplanation {
                 let mut ty = local_decl.ty;
                 if local_decl.source_info.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
                     if let ty::Adt(adt, substs) = local_decl.ty.kind() {
-                        if tcx.is_diagnostic_item(sym::Option, adt.did) {
+                        if tcx.is_diagnostic_item(sym::Option, adt.did()) {
                             // in for loop desugaring, only look at the `Some(..)` inner type
                             ty = substs.type_at(0);
                         }
@@ -148,7 +148,7 @@ impl BorrowExplanation {
                     // If type is an ADT that implements Drop, then
                     // simplify output by reporting just the ADT name.
                     ty::Adt(adt, _substs) if adt.has_dtor(tcx) && !adt.is_box() => {
-                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did)))
+                        ("`Drop` code", format!("type `{}`", tcx.def_path_str(adt.did())))
                     }
 
                     // Otherwise, just report the whole type (and use

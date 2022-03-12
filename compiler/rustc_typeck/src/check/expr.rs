@@ -1333,7 +1333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");
-        if !adt.did.is_local() && variant.is_field_list_non_exhaustive() {
+        if !adt.did().is_local() && variant.is_field_list_non_exhaustive() {
             self.tcx
                 .sess
                 .emit_err(StructExprNonExhaustive { span: expr.span, what: adt.variant_descr() });
@@ -1863,7 +1863,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(base_def, substs) if !base_def.is_enum() => {
                     debug!("struct named {:?}", base_t);
                     let (ident, def_scope) =
-                        self.tcx.adjust_ident_and_get_scope(field, base_def.did, self.body_id);
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.body_id);
                     let fields = &base_def.non_enum_variant().fields;
                     if let Some(index) = fields
                         .iter()
@@ -1882,7 +1882,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
                             return field_ty;
                         }
-                        private_candidate = Some((adjustments, base_def.did, field_ty));
+                        private_candidate = Some((adjustments, base_def.did(), field_ty));
                     }
                 }
                 ty::Tuple(tys) => {
@@ -2103,9 +2103,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let ty::RawPtr(ty_and_mut) = expr_t.kind() {
                 if let ty::Adt(adt_def, _) = ty_and_mut.ty.kind() {
-                    if adt_def.variants.len() == 1
+                    if adt_def.variants().len() == 1
                         && adt_def
-                            .variants
+                            .variants()
                             .iter()
                             .next()
                             .unwrap()
@@ -2154,7 +2154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_fields_on_recordish(
         &self,
         err: &mut Diagnostic,
-        def: &'tcx ty::AdtDef,
+        def: ty::AdtDef<'tcx>,
         field: Ident,
         access_span: Span,
     ) {

@@ -822,13 +822,13 @@ fn suggestion_signature(assoc: &ty::AssocItem, tcx: TyCtxt<'_>) -> String {
 }
 
 /// Emit an error when encountering two or more variants in a transparent enum.
-fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, did: DefId) {
+fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, did: DefId) {
     let variant_spans: Vec<_> = adt
-        .variants
+        .variants()
         .iter()
         .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
         .collect();
-    let msg = format!("needs exactly one variant, but has {}", adt.variants.len(),);
+    let msg = format!("needs exactly one variant, but has {}", adt.variants().len(),);
     let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
     err.span_label(sp, &msg);
     if let [start @ .., end] = &*variant_spans {
@@ -844,7 +844,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
 /// enum.
 fn bad_non_zero_sized_fields<'tcx>(
     tcx: TyCtxt<'tcx>,
-    adt: &'tcx ty::AdtDef,
+    adt: ty::AdtDef<'tcx>,
     field_count: usize,
     field_spans: impl Iterator<Item = Span>,
     sp: Span,

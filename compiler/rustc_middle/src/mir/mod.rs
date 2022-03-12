@@ -2455,7 +2455,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Adt(adt_did, variant, substs, _user_ty, _) => {
                         ty::tls::with(|tcx| {
-                            let variant_def = &tcx.adt_def(adt_did).variants[variant];
+                            let variant_def = &tcx.adt_def(adt_did).variant(variant);
                             let substs = tcx.lift(substs).expect("could not lift for printing");
                             let name = FmtPrinter::new(tcx, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?
@@ -2783,7 +2783,7 @@ impl<'tcx> UserTypeProjections {
         self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
     }
 
-    pub fn variant(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx, field: Field) -> Self {
+    pub fn variant(self, adt_def: AdtDef<'tcx>, variant_index: VariantIdx, field: Field) -> Self {
         self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
     }
 }
@@ -2834,12 +2834,12 @@ impl UserTypeProjection {
 
     pub(crate) fn variant(
         mut self,
-        adt_def: &AdtDef,
+        adt_def: AdtDef<'_>,
         variant_index: VariantIdx,
         field: Field,
     ) -> Self {
         self.projs.push(ProjectionElem::Downcast(
-            Some(adt_def.variants[variant_index].name),
+            Some(adt_def.variant(variant_index).name),
             variant_index,
         ));
         self.projs.push(ProjectionElem::Field(field, ()));

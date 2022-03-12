@@ -496,7 +496,7 @@ pub fn check_must_not_suspend_ty<'tcx>(
             let descr_pre = &format!("{}boxed ", data.descr_pre);
             check_must_not_suspend_ty(fcx, boxed_ty, hir_id, SuspendCheckData { descr_pre, ..data })
         }
-        ty::Adt(def, _) => check_must_not_suspend_def(fcx.tcx, def.did, hir_id, data),
+        ty::Adt(def, _) => check_must_not_suspend_def(fcx.tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
         ty::Opaque(def, _) => {
             let mut has_emitted = false;

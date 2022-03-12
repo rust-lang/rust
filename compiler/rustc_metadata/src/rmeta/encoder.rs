@@ -1029,9 +1029,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
     }
 
-    fn encode_enum_variant_info(&mut self, def: &ty::AdtDef, index: VariantIdx) {
+    fn encode_enum_variant_info(&mut self, def: ty::AdtDef<'tcx>, index: VariantIdx) {
         let tcx = self.tcx;
-        let variant = &def.variants[index];
+        let variant = &def.variant(index);
         let def_id = variant.def_id;
         debug!("EncodeContext::encode_enum_variant_info({:?})", def_id);
 
@@ -1057,9 +1057,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
     }
 
-    fn encode_enum_variant_ctor(&mut self, def: &ty::AdtDef, index: VariantIdx) {
+    fn encode_enum_variant_ctor(&mut self, def: ty::AdtDef<'tcx>, index: VariantIdx) {
         let tcx = self.tcx;
-        let variant = &def.variants[index];
+        let variant = &def.variant(index);
         let def_id = variant.ctor_def_id.unwrap();
         debug!("EncodeContext::encode_enum_variant_ctor({:?})", def_id);
 
@@ -1122,11 +1122,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_field(
         &mut self,
-        adt_def: &ty::AdtDef,
+        adt_def: ty::AdtDef<'tcx>,
         variant_index: VariantIdx,
         field_index: usize,
     ) {
-        let variant = &adt_def.variants[variant_index];
+        let variant = &adt_def.variant(variant_index);
         let field = &variant.fields[field_index];
 
         let def_id = field.did;
@@ -1137,7 +1137,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_item_type(def_id);
     }
 
-    fn encode_struct_ctor(&mut self, adt_def: &ty::AdtDef, def_id: DefId) {
+    fn encode_struct_ctor(&mut self, adt_def: ty::AdtDef<'tcx>, def_id: DefId) {
         debug!("EncodeContext::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
         let variant = adt_def.non_enum_variant();
@@ -1149,7 +1149,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr));
+        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr()));
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1414,7 +1414,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_explicit_item_bounds(def_id);
                 EntryKind::OpaqueTy
             }
-            hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr),
+            hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr()),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 let variant = adt_def.non_enum_variant();
@@ -1433,7 +1433,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         ctor,
                         is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                     }),
-                    adt_def.repr,
+                    adt_def.repr(),
                 )
             }
             hir::ItemKind::Union(..) => {
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         ctor: None,
                         is_non_exhaustive: variant.is_field_list_non_exhaustive(),
                     }),
-                    adt_def.repr,
+                    adt_def.repr(),
                 )
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
@@ -1500,7 +1500,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
             hir::ItemKind::Enum(..) => record!(self.tables.children[def_id] <-
-                self.tcx.adt_def(def_id).variants.iter().map(|v| {
+                self.tcx.adt_def(def_id).variants().iter().map(|v| {
                     assert!(v.def_id.is_local());
                     v.def_id.index
                 })
@@ -1926,8 +1926,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EncodeContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
-    fn encode_fields(&mut self, adt_def: &ty::AdtDef) {
-        for (variant_index, variant) in adt_def.variants.iter_enumerated() {
+    fn encode_fields(&mut self, adt_def: ty::AdtDef<'tcx>) {
+        for (variant_index, variant) in adt_def.variants().iter_enumerated() {
             for (field_index, _field) in variant.fields.iter().enumerate() {
                 self.encode_field(adt_def, variant_index, field_index);
             }
@@ -1991,7 +1991,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def = self.tcx.adt_def(item.def_id.to_def_id());
                 self.encode_fields(def);
 
-                for (i, variant) in def.variants.iter_enumerated() {
+                for (i, variant) in def.variants().iter_enumerated() {
                     self.encode_enum_variant_info(def, i);
 
                     if let Some(_ctor_def_id) = variant.ctor_def_id {

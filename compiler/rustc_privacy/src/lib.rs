@@ -9,6 +9,7 @@
 use rustc_ast::MacroDef;
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::intern::Interned;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -182,7 +183,7 @@ where
         let tcx = self.def_id_visitor.tcx();
         // InternalSubsts are not visited here because they are visited below in `super_visit_with`.
         match *ty.kind() {
-            ty::Adt(&ty::AdtDef { did: def_id, .. }, ..)
+            ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), ..)
             | ty::Foreign(def_id)
             | ty::FnDef(def_id, ..)
             | ty::Closure(def_id, ..)
@@ -930,7 +931,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         &mut self,
         use_ctxt: Span,        // syntax context of the field name at the use site
         span: Span,            // span of the field pattern, e.g., `x: 0`
-        def: &'tcx ty::AdtDef, // definition of the struct or enum
+        def: ty::AdtDef<'tcx>, // definition of the struct or enum
         field: &'tcx ty::FieldDef,
         in_update_syntax: bool,
     ) {
@@ -941,7 +942,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         // definition of the field
         let ident = Ident::new(kw::Empty, use_ctxt);
         let hir_id = self.tcx.hir().local_def_id_to_hir_id(self.current_item);
-        let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did, hir_id).1;
+        let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
             let label = if in_update_syntax {
                 format!("field `{}` is private", field.name)
@@ -956,7 +957,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
                 "field `{}` of {} `{}` is private",
                 field.name,
                 def.variant_descr(),
-                self.tcx.def_path_str(def.did)
+                self.tcx.def_path_str(def.did())
             )
             .span_label(span, label)
             .emit();

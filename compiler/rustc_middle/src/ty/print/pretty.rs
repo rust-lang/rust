@@ -618,7 +618,7 @@ pub trait PrettyPrinter<'tcx>:
                 ty::BoundTyKind::Param(p) => p!(write("{}", p)),
             },
             ty::Adt(def, substs) => {
-                p!(print_def_path(def.did, substs));
+                p!(print_def_path(def.did(), substs));
             }
             ty::Dynamic(data, r) => {
                 let print_r = self.should_print_region(r);
@@ -1487,7 +1487,7 @@ pub trait PrettyPrinter<'tcx>:
                         }
                         p!(")");
                     }
-                    ty::Adt(def, _) if def.variants.is_empty() => {
+                    ty::Adt(def, _) if def.variants().is_empty() => {
                         self = self.typed_value(
                             |mut this| {
                                 write!(this, "unreachable()")?;
@@ -1500,7 +1500,7 @@ pub trait PrettyPrinter<'tcx>:
                     ty::Adt(def, substs) => {
                         let variant_idx =
                             contents.variant.expect("destructed const of adt without variant idx");
-                        let variant_def = &def.variants[variant_idx];
+                        let variant_def = &def.variant(variant_idx);
                         p!(print_value_path(variant_def.def_id, substs));
 
                         match variant_def.ctor_kind {

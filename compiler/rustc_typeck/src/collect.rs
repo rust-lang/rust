@@ -917,7 +917,7 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
 
 fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::Variant<'_>]) {
     let def = tcx.adt_def(def_id);
-    let repr_type = def.repr.discr_type();
+    let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
     let mut prev_discr = None::<Discr<'_>>;
 
@@ -1012,7 +1012,7 @@ fn convert_variant(
     )
 }
 
-fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::AdtDef {
+fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
     use rustc_hir::*;
 
     let def_id = def_id.expect_local();

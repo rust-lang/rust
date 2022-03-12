@@ -759,7 +759,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                                 .ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
-                                .variants
+                                .variants()
                                 .len();
                             assert!(usize::try_from(variant_index).unwrap() < variants_len);
                             VariantIdx::from_u32(variant_index)

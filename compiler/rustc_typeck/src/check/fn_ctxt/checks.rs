@@ -577,13 +577,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return None;
             }
             Res::Def(DefKind::Variant, _) => match ty.kind() {
-                ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did, substs)),
+                ty::Adt(adt, substs) => Some((adt.variant_of_res(def), adt.did(), substs)),
                 _ => bug!("unexpected type: {:?}", ty),
             },
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::TyAlias | DefKind::AssocTy, _)
             | Res::SelfTy { .. } => match ty.kind() {
                 ty::Adt(adt, substs) if !adt.is_enum() => {
-                    Some((adt.non_enum_variant(), adt.did, substs))
+                    Some((adt.non_enum_variant(), adt.did(), substs))
                 }
                 _ => None,
             },

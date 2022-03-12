@@ -119,9 +119,9 @@ pub(super) fn check<'tcx>(
             if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
             if let ExprKind::MethodCall(path, [filter_arg], _) = filter_body.value.kind;
             if let Some(opt_ty) = cx.typeck_results().expr_ty(filter_arg).ty_adt_def();
-            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did) {
+            if let Some(is_result) = if cx.tcx.is_diagnostic_item(sym::Option, opt_ty.did()) {
                 Some(false)
-            } else if cx.tcx.is_diagnostic_item(sym::Result, opt_ty.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, opt_ty.did()) {
                 Some(true)
             } else {
                 None

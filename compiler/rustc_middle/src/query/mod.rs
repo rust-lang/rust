@@ -523,7 +523,7 @@ rustc_queries! {
         storage(ArenaCacheSelector<'tcx>)
         separate_provide_extern
     }
-    query adt_def(key: DefId) -> &'tcx ty::AdtDef {
+    query adt_def(key: DefId) -> ty::AdtDef<'tcx> {
         desc { |tcx| "computing ADT definition for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern

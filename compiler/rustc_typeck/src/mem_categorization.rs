@@ -576,7 +576,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ) -> McResult<usize> {
         let ty = self.typeck_results.node_type(pat_hir_id);
         match ty.kind() {
-            ty::Adt(adt_def, _) => Ok(adt_def.variants[variant_index].fields.len()),
+            ty::Adt(adt_def, _) => Ok(adt_def.variant(variant_index).fields.len()),
             _ => {
                 self.tcx()
                     .sess

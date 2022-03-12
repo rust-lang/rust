@@ -149,7 +149,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                 ty::Ref(_, r, _) if *r.kind() == ty::Str,
             ) || matches!(
                 ty.ty_adt_def(),
-                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did),
+                Some(ty_def) if cx.tcx.is_diagnostic_item(sym::String, ty_def.did()),
             );
 
             let (suggest_display, suggest_debug) = cx.tcx.infer_ctxt().enter(|infcx| {

@@ -1050,7 +1050,7 @@ impl<'tcx> LateContext<'tcx> {
             ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, substs) = self_ty.kind() {
-                        return self.print_def_path(def.did, substs);
+                        return self.print_def_path(def.did(), substs);
                     }
                 }
 

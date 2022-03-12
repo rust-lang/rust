@@ -248,13 +248,13 @@ enum LenOutput<'tcx> {
 fn parse_len_output<'tcx>(cx: &LateContext<'_>, sig: FnSig<'tcx>) -> Option<LenOutput<'tcx>> {
     match *sig.output().kind() {
         ty::Int(_) | ty::Uint(_) => Some(LenOutput::Integral),
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did) => {
-            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did))
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) => {
+            subs.type_at(0).is_integral().then(|| LenOutput::Option(adt.did()))
         },
-        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did) => subs
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) => subs
             .type_at(0)
             .is_integral()
-            .then(|| LenOutput::Result(adt.did, subs.type_at(1))),
+            .then(|| LenOutput::Result(adt.did(), subs.type_at(1))),
         _ => None,
     }
 }
@@ -263,8 +263,8 @@ impl LenOutput<'_> {
     fn matches_is_empty_output(self, ty: Ty<'_>) -> bool {
         match (self, ty.kind()) {
             (_, &ty::Bool) => true,
-            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did => subs.type_at(0).is_bool(),
-            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did => {
+            (Self::Option(id), &ty::Adt(adt, subs)) if id == adt.did() => subs.type_at(0).is_bool(),
+            (Self::Result(id, err_ty), &ty::Adt(adt, subs)) if id == adt.did() => {
                 subs.type_at(0).is_bool() && subs.type_at(1) == err_ty
             },
             _ => false,
@@ -488,7 +488,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 .any(|item| is_is_empty(cx, item))
         }),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
-        ty::Adt(id, _) => has_is_empty_impl(cx, id.did),
+        ty::Adt(id, _) => has_is_empty_impl(cx, id.did()),
         ty::Array(..) | ty::Slice(..) | ty::Str => true,
         _ => false,
     }

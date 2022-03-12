@@ -377,10 +377,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Note that this returns only the constraints for the
     /// destructor of `def` itself. For the destructors of the
     /// contents, you need `adt_dtorck_constraint`.
-    pub fn destructor_constraints(self, def: &'tcx ty::AdtDef) -> Vec<ty::subst::GenericArg<'tcx>> {
+    pub fn destructor_constraints(self, def: ty::AdtDef<'tcx>) -> Vec<ty::subst::GenericArg<'tcx>> {
         let dtor = match def.destructor(self) {
             None => {
-                debug!("destructor_constraints({:?}) - no dtor", def.did);
+                debug!("destructor_constraints({:?}) - no dtor", def.did());
                 return vec![];
             }
             Some(dtor) => dtor.did,
@@ -415,7 +415,7 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => bug!(),
         };
 
-        let item_substs = match *self.type_of(def.did).kind() {
+        let item_substs = match *self.type_of(def.did()).kind() {
             ty::Adt(def_, substs) if def_ == def => substs,
             _ => bug!(),
         };
@@ -445,7 +445,7 @@ impl<'tcx> TyCtxt<'tcx> {
             })
             .map(|(item_param, _)| item_param)
             .collect();
-        debug!("destructor_constraint({:?}) = {:?}", def.did, result);
+        debug!("destructor_constraint({:?}) = {:?}", def.did(), result);
         result
     }
 

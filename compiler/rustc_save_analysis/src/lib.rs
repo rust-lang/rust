@@ -554,7 +554,7 @@ impl<'tcx> SaveContext<'tcx> {
                     Some(Data::RefData(Ref {
                         kind: RefKind::Type,
                         span,
-                        ref_id: id_from_def_id(def.did),
+                        ref_id: id_from_def_id(def.did()),
                     }))
                 }
                 _ => {

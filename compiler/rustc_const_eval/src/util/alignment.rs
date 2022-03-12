@@ -55,7 +55,7 @@ where
             ProjectionElem::Field(..) => {
                 let ty = place_base.ty(local_decls, tcx).ty;
                 match ty.kind() {
-                    ty::Adt(def, _) => return def.repr.pack,
+                    ty::Adt(def, _) => return def.repr().pack,
                     _ => {}
                 }
             }

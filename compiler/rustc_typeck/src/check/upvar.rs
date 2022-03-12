@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::Adt(def, substs) => {
                 // Multi-varaint enums are captured in entirety,
                 // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
-                assert_eq!(def.variants.len(), 1);
+                assert_eq!(def.variants().len(), 1);
 
                 // Only Field projections can be applied to a non-box Adt.
                 assert!(
@@ -1422,7 +1422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ProjectionKind::Field(..)
                     ))
                 );
-                def.variants.get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
+                def.variants().get(VariantIdx::new(0)).unwrap().fields.iter().enumerate().any(
                     |(i, field)| {
                         let paths_using_field = captured_by_move_projs
                             .iter()
@@ -1649,7 +1649,7 @@ fn restrict_repr_packed_field_ref_capture<'tcx>(
         // Return true for fields of packed structs, unless those fields have alignment 1.
         match p.kind {
             ProjectionKind::Field(..) => match ty.kind() {
-                ty::Adt(def, _) if def.repr.packed() => {
+                ty::Adt(def, _) if def.repr().packed() => {
                     // We erase regions here because they cannot be hashed
                     match tcx.layout_of(param_env.and(tcx.erase_regions(p.ty))) {
                         Ok(layout) if layout.align.abi.bytes() == 1 => {

@@ -540,7 +540,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
 
                 ty::Adt(def, substs) => {
                     // WfNominalType
-                    let obligations = self.nominal_obligations(def.did, substs);
+                    let obligations = self.nominal_obligations(def.did(), substs);
                     self.out.extend(obligations);
                 }
 

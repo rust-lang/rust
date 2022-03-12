@@ -33,7 +33,7 @@ pub fn ty_is_representable<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, sp: Span) -> R
     // cleared when recursing to check A, but `shadow_seen` won't, so that we
     // can catch cases of mutual recursion where A also contains B).
     let mut seen: Vec<Ty<'_>> = Vec::new();
-    let mut shadow_seen: Vec<&'tcx ty::AdtDef> = Vec::new();
+    let mut shadow_seen: Vec<ty::AdtDef<'tcx>> = Vec::new();
     let mut representable_cache = FxHashMap::default();
     let mut force_result = false;
     let r = is_type_structurally_recursive(
@@ -63,7 +63,7 @@ fn are_inner_types_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
+    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
     force_result: &mut bool,
@@ -150,7 +150,7 @@ fn are_inner_types_recursive<'tcx>(
                             .take(shadow_seen.len() - 1)
                             .any(|seen_def| seen_def == def)
                     {
-                        let adt_def_id = def.did;
+                        let adt_def_id = def.did();
                         let raw_adt_ty = tcx.type_of(adt_def_id);
                         debug!("are_inner_types_recursive: checking nested type: {:?}", raw_adt_ty);
 
@@ -236,7 +236,7 @@ fn are_inner_types_recursive<'tcx>(
     }
 }
 
-fn same_adt<'tcx>(ty: Ty<'tcx>, def: &'tcx ty::AdtDef) -> bool {
+fn same_adt<'tcx>(ty: Ty<'tcx>, def: ty::AdtDef<'tcx>) -> bool {
     match *ty.kind() {
         ty::Adt(ty_def, _) => ty_def == def,
         _ => false,
@@ -249,7 +249,7 @@ fn is_type_structurally_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
+    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
     force_result: &mut bool,
@@ -281,7 +281,7 @@ fn is_type_structurally_recursive_inner<'tcx>(
     tcx: TyCtxt<'tcx>,
     sp: Span,
     seen: &mut Vec<Ty<'tcx>>,
-    shadow_seen: &mut Vec<&'tcx ty::AdtDef>,
+    shadow_seen: &mut Vec<ty::AdtDef<'tcx>>,
     representable_cache: &mut FxHashMap<Ty<'tcx>, Representability>,
     ty: Ty<'tcx>,
     force_result: &mut bool,
@@ -332,7 +332,7 @@ fn is_type_structurally_recursive_inner<'tcx>(
             // For structs and enums, track all previously seen types by pushing them
             // onto the 'seen' stack.
             seen.push(ty);
-            shadow_seen.push(def);
+            shadow_seen.push(*def);
             let out = are_inner_types_recursive(
                 tcx,
                 sp,

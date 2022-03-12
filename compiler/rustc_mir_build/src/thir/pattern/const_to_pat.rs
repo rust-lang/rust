@@ -110,8 +110,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn adt_derive_msg(&self, adt_def: &AdtDef) -> String {
-        let path = self.tcx().def_path_str(adt_def.did);
+    fn adt_derive_msg(&self, adt_def: AdtDef<'tcx>) -> String {
+        let path = self.tcx().def_path_str(adt_def.did());
         format!(
             "to use a constant of type `{}` in a pattern, \
             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
@@ -346,7 +346,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     adt_def,
                     cv.ty()
                 );
-                let path = tcx.def_path_str(adt_def.did);
+                let path = tcx.def_path_str(adt_def.did());
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
                      `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
@@ -363,7 +363,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
                 let destructured = tcx.destructure_const(param_env.and(cv));
                 PatKind::Variant {
-                    adt_def,
+                    adt_def: *adt_def,
                     substs,
                     variant_index: destructured
                         .variant

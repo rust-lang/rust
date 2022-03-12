@@ -398,7 +398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let candidate_found = autoderef.any(|(ty, _)| {
                                     if let ty::Adt(adt_deref, _) = ty.kind() {
                                         self.tcx
-                                            .inherent_impls(adt_deref.did)
+                                            .inherent_impls(adt_deref.did())
                                             .iter()
                                             .filter_map(|def_id| {
                                                 self.associated_value(*def_id, item_name)
@@ -470,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if let Some(def) = actual.ty_adt_def() {
-                    if let Some(full_sp) = tcx.hir().span_if_local(def.did) {
+                    if let Some(full_sp) = tcx.hir().span_if_local(def.did()) {
                         let def_sp = tcx.sess.source_map().guess_head_span(full_sp);
                         err.span_label(
                             def_sp,
@@ -615,7 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 .get(self.tcx.hir().local_def_id_to_hir_id(did)),
                                         )
                                     }
-                                    ty::Adt(def, _) => def.did.as_local().map(|def_id| {
+                                    ty::Adt(def, _) => def.did().as_local().map(|def_id| {
                                         self.tcx
                                             .hir()
                                             .get(self.tcx.hir().local_def_id_to_hir_id(def_id))
@@ -646,7 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                         match &self_ty.kind() {
                             // Point at the type that couldn't satisfy the bound.
-                            ty::Adt(def, _) => bound_spans.push((def_span(def.did), msg)),
+                            ty::Adt(def, _) => bound_spans.push((def_span(def.did()), msg)),
                             // Point at the trait object that couldn't satisfy the bound.
                             ty::Dynamic(preds, _) => {
                                 for pred in preds.iter() {
@@ -885,10 +885,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ty.is_str()
                                     || matches!(
                                         ty.kind(),
-                                        ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::String, adt.did)
+                                        ty::Adt(adt, _) if self.tcx.is_diagnostic_item(sym::String, adt.did())
                                     )
                             }
-                            ty::Adt(adt, _) => self.tcx.is_diagnostic_item(sym::String, adt.did),
+                            ty::Adt(adt, _) => self.tcx.is_diagnostic_item(sym::String, adt.did()),
                             _ => false,
                         };
                         if is_string_or_ref_str && item_name.name == sym::iter {
@@ -903,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let ty::Adt(adt, _) = rcvr_ty.kind() {
                             let mut inherent_impls_candidate = self
                                 .tcx
-                                .inherent_impls(adt.did)
+                                .inherent_impls(adt.did())
                                 .iter()
                                 .copied()
                                 .filter(|def_id| {
@@ -1046,7 +1046,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if unsatisfied_predicates.is_empty() && actual.is_enum() {
                     let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggestion) = lev_distance::find_best_match_for_name(
-                        &adt_def.variants.iter().map(|s| s.name).collect::<Vec<_>>(),
+                        &adt_def.variants().iter().map(|s| s.name).collect::<Vec<_>>(),
                         item_name.name,
                         None,
                     ) {
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_local_types_needing_impls =
             errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Trait(pred) => match pred.self_ty().kind() {
-                    ty::Adt(def, _) => def.did.is_local(),
+                    ty::Adt(def, _) => def.did().is_local(),
                     _ => false,
                 },
                 _ => false,
@@ -1189,7 +1189,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let def_ids = preds
             .iter()
             .filter_map(|pred| match pred.self_ty().kind() {
-                ty::Adt(def, _) => Some(def.did),
+                ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
             .collect::<FxHashSet<_>>();
@@ -1207,7 +1207,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             match pred.self_ty().kind() {
                 ty::Adt(def, _) => {
                     spans.push_span_label(
-                        sm.guess_head_span(self.tcx.def_span(def.did)),
+                        sm.guess_head_span(self.tcx.def_span(def.did())),
                         format!("must implement `{}`", pred.trait_ref.print_only_trait_path()),
                     );
                 }
@@ -1255,7 +1255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
             let adt = match trait_pred.self_ty().ty_adt_def() {
-                Some(adt) if adt.did.is_local() => adt,
+                Some(adt) if adt.did().is_local() => adt,
                 _ => continue,
             };
             if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if can_derive {
                     let self_name = trait_pred.self_ty().to_string();
-                    let self_span = self.tcx.def_span(adt.did);
+                    let self_span = self.tcx.def_span(adt.did());
                     if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
                         for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())
                         {
@@ -1336,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Print out the type for use in value namespace.
     fn ty_to_value_string(&self, ty: Ty<'tcx>) -> String {
         match ty.kind() {
-            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did, substs)),
+            ty::Adt(def, substs) => format!("{}", ty::Instance::new(def.did(), substs)),
             _ => self.ty_to_string(ty),
         }
     }
@@ -1930,7 +1930,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         fn is_local(ty: Ty<'_>) -> bool {
             match ty.kind() {
-                ty::Adt(def, _) => def.did.is_local(),
+                ty::Adt(def, _) => def.did().is_local(),
                 ty::Foreign(did) => did.is_local(),
                 ty::Dynamic(tr, ..) => tr.principal().map_or(false, |d| d.def_id().is_local()),
                 ty::Param(_) => true,

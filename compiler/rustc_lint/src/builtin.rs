@@ -658,7 +658,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
             let impl_ty = cx.tcx.type_of(parent);
             let outerdef = match impl_ty.kind() {
-                ty::Adt(def, _) => Some(def.did),
+                ty::Adt(def, _) => Some(def.did()),
                 ty::Foreign(def_id) => Some(*def_id),
                 _ => None,
             };
@@ -841,7 +841,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             let mut impls = LocalDefIdSet::default();
             cx.tcx.for_each_impl(debug, |d| {
                 if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
-                    if let Some(def_id) = ty_def.did.as_local() {
+                    if let Some(def_id) = ty_def.did().as_local() {
                         impls.insert(def_id);
                     }
                 }
@@ -2535,9 +2535,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         /// Test if this enum has several actually "existing" variants.
         /// Zero-sized uninhabited variants do not always have a tag assigned and thus do not "exist".
-        fn is_multi_variant(adt: &ty::AdtDef) -> bool {
+        fn is_multi_variant<'tcx>(adt: ty::AdtDef<'tcx>) -> bool {
             // As an approximation, we only count dataless variants. Those are definitely inhabited.
-            let existing_variants = adt.variants.iter().filter(|v| v.fields.is_empty()).count();
+            let existing_variants = adt.variants().iter().filter(|v| v.fields.is_empty()).count();
             existing_variants > 1
         }
 
@@ -2571,7 +2571,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                 Adt(adt_def, substs) if !adt_def.is_union() => {
                     // First check if this ADT has a layout attribute (like `NonNull` and friends).
                     use std::ops::Bound;
-                    match tcx.layout_scalar_valid_range(adt_def.did) {
+                    match tcx.layout_scalar_valid_range(adt_def.did()) {
                         // We exploit here that `layout_scalar_valid_range` will never
                         // return `Bound::Excluded`.  (And we have tests checking that we
                         // handle the attribute correctly.)
@@ -2592,12 +2592,12 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         _ => {}
                     }
                     // Now, recurse.
-                    match adt_def.variants.len() {
+                    match adt_def.variants().len() {
                         0 => Some(("enums with no variants have no valid value".to_string(), None)),
                         1 => {
                             // Struct, or enum with exactly one variant.
                             // Proceed recursively, check all fields.
-                            let variant = &adt_def.variants[VariantIdx::from_u32(0)];
+                            let variant = &adt_def.variant(VariantIdx::from_u32(0));
                             variant.fields.iter().find_map(|field| {
                                 ty_find_init_error(tcx, field.ty(tcx, substs), init).map(
                                     |(mut msg, span)| {
@@ -2622,8 +2622,8 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         }
                         // Multi-variant enum.
                         _ => {
-                            if init == InitKind::Uninit && is_multi_variant(adt_def) {
-                                let span = tcx.def_span(adt_def.did);
+                            if init == InitKind::Uninit && is_multi_variant(*adt_def) {
+                                let span = tcx.def_span(adt_def.did());
                                 Some((
                                     "enums have to be initialized to a variant".to_string(),
                                     Some(span),
@@ -2819,15 +2819,15 @@ impl ClashingExternDeclarations {
                 let mut ty = ty;
                 loop {
                     if let ty::Adt(def, substs) = *ty.kind() {
-                        let is_transparent = def.subst(tcx, substs).repr.transparent();
-                        let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, &def);
+                        let is_transparent = def.subst(tcx, substs).repr().transparent();
+                        let is_non_null = crate::types::nonnull_optimization_guaranteed(tcx, def);
                         debug!(
                             "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
                             ty, is_transparent, is_non_null
                         );
                         if is_transparent && !is_non_null {
-                            debug_assert!(def.variants.len() == 1);
-                            let v = &def.variants[VariantIdx::new(0)];
+                            debug_assert!(def.variants().len() == 1);
+                            let v = &def.variant(VariantIdx::new(0));
                             ty = transparent_newtype_field(tcx, v)
                                 .expect(
                                     "single-variant transparent structure with zero-sized field",
@@ -2892,8 +2892,8 @@ impl ClashingExternDeclarations {
                             }
 
                             // Grab a flattened representation of all fields.
-                            let a_fields = a_def.variants.iter().flat_map(|v| v.fields.iter());
-                            let b_fields = b_def.variants.iter().flat_map(|v| v.fields.iter());
+                            let a_fields = a_def.variants().iter().flat_map(|v| v.fields.iter());
+                            let b_fields = b_def.variants().iter().flat_map(|v| v.fields.iter());
 
                             // Perform a structural comparison for each field.
                             a_fields.eq_by(

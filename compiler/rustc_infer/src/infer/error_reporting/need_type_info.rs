@@ -958,7 +958,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
         let t = match t.kind() {
             // We'll hide this type only if all its type params are hidden as well.
             ty::Adt(def, substs) => {
-                let generics = self.tcx().generics_of(def.did);
+                let generics = self.tcx().generics_of(def.did());
                 // Account for params with default values, like `Vec`, where we
                 // want to show `Vec<T>`, not `Vec<T, _>`. If we replaced that
                 // subst, then we'd get the incorrect output, so we passthrough.
@@ -985,7 +985,7 @@ impl<'tcx> TypeFolder<'tcx> for ResolvedTypeParamEraser<'tcx> {
                 };
                 if self.level == 1 || substs.iter().any(should_keep) {
                     let substs = self.tcx().intern_substs(&substs[..]);
-                    self.tcx().mk_ty(ty::Adt(def, substs))
+                    self.tcx().mk_ty(ty::Adt(*def, substs))
                 } else {
                     self.tcx().ty_error()
                 }

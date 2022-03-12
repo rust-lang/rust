@@ -84,9 +84,9 @@ fn lint_cstring_as_ptr(
 ) {
     let source_type = cx.typeck_results().expr_ty(source);
     if let ty::Adt(def, substs) = source_type.kind() {
-        if cx.tcx.is_diagnostic_item(sym::Result, def.did) {
+        if cx.tcx.is_diagnostic_item(sym::Result, def.did()) {
             if let ty::Adt(adt, _) = substs.type_at(0).kind() {
-                if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did) {
+                if cx.tcx.is_diagnostic_item(sym::cstring_type, adt.did()) {
                     cx.struct_span_lint(TEMPORARY_CSTRING_AS_PTR, as_ptr_span, |diag| {
                         let mut diag = diag
                             .build("getting the inner pointer of a temporary `CString`");

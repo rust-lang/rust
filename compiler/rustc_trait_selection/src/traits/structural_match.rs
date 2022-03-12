@@ -12,7 +12,7 @@ use std::ops::ControlFlow;
 
 #[derive(Debug)]
 pub enum NonStructuralMatchTy<'tcx> {
-    Adt(&'tcx AdtDef),
+    Adt(AdtDef<'tcx>),
     Param,
     Dynamic,
     Foreign,
@@ -208,14 +208,14 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for Search<'a, 'tcx> {
             }
         };
 
-        if !self.seen.insert(adt_def.did) {
+        if !self.seen.insert(adt_def.did()) {
             debug!("Search already seen adt_def: {:?}", adt_def);
             return ControlFlow::CONTINUE;
         }
 
         if !self.type_marked_structural(ty) {
             debug!("Search found ty: {:?}", ty);
-            return ControlFlow::Break(NonStructuralMatchTy::Adt(&adt_def));
+            return ControlFlow::Break(NonStructuralMatchTy::Adt(adt_def));
         }
 
         // structural-match does not care about the

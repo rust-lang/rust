@@ -850,7 +850,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => {
                         let (type_def_id, item_def_id) = match pat_ty.kind() {
                             Adt(def, _) => match res {
-                                Res::Def(DefKind::Const, def_id) => (Some(def.did), Some(def_id)),
+                                Res::Def(DefKind::Const, def_id) => (Some(def.did()), Some(def_id)),
                                 _ => (None, None),
                             },
                             _ => (None, None),
@@ -1286,7 +1286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Require `..` if struct has non_exhaustive attribute.
-        let non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did.is_local();
+        let non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
         if non_exhaustive && !has_rest_pat {
             self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }
@@ -2042,8 +2042,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .find_map(|(ty, _)| {
                         match ty.kind() {
                             ty::Adt(adt_def, _)
-                                if self.tcx.is_diagnostic_item(sym::Option, adt_def.did)
-                                    || self.tcx.is_diagnostic_item(sym::Result, adt_def.did) =>
+                                if self.tcx.is_diagnostic_item(sym::Option, adt_def.did())
+                                    || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                             {
                                 // Slicing won't work here, but `.as_deref()` might (issue #91328).
                                 err.span_suggestion(

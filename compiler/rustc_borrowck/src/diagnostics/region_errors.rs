@@ -345,8 +345,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ty::Adt(adt, substs) => {
                         let generic_arg = substs[param_index as usize];
                         let identity_substs =
-                            InternalSubsts::identity_for_item(self.infcx.tcx, adt.did);
-                        let base_ty = self.infcx.tcx.mk_adt(adt, identity_substs);
+                            InternalSubsts::identity_for_item(self.infcx.tcx, adt.did());
+                        let base_ty = self.infcx.tcx.mk_adt(*adt, identity_substs);
                         let base_generic_arg = identity_substs[param_index as usize];
                         let adt_desc = adt.descr();
 
@@ -410,7 +410,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 "returns a closure that contains a reference to a captured variable, which then \
                  escapes the closure body"
             }
-            ty::Adt(def, _) if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did) => {
+            ty::Adt(def, _) if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did()) => {
                 "returns an `async` block that contains a reference to a captured variable, which then \
                  escapes the closure body"
             }

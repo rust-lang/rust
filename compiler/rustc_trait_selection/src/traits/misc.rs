@@ -43,7 +43,7 @@ pub fn can_type_implement_copy<'tcx>(
         };
 
         let mut infringing = Vec::new();
-        for variant in &adt.variants {
+        for variant in adt.variants() {
             for field in &variant.fields {
                 let ty = field.ty(tcx, substs);
                 if ty.references_error() {
@@ -56,7 +56,7 @@ pub fn can_type_implement_copy<'tcx>(
                 // If it does not, then this field probably doesn't normalize
                 // to begin with, and point to the bad field's span instead.
                 let cause = if field
-                    .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did))
+                    .ty(tcx, traits::InternalSubsts::identity_for_item(tcx, adt.did()))
                     .has_param_types_or_consts()
                 {
                     cause.clone()

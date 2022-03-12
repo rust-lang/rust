@@ -228,7 +228,7 @@ impl<'tcx> Cx<'tcx> {
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
                                 if let UserType::TypeOf(ref mut did, _) = &mut u_ty.value {
-                                    *did = adt_def.did;
+                                    *did = adt_def.did();
                                 }
                                 u_ty
                             });
@@ -376,7 +376,7 @@ impl<'tcx> Cx<'tcx> {
                         let user_ty = user_provided_types.get(expr.hir_id).copied();
                         debug!("make_mirror_unadjusted: (struct/union) user_ty={:?}", user_ty);
                         ExprKind::Adt(Box::new(Adt {
-                            adt_def: adt,
+                            adt_def: *adt,
                             variant_index: VariantIdx::new(0),
                             substs,
                             user_ty,
@@ -402,7 +402,7 @@ impl<'tcx> Cx<'tcx> {
                                 let user_ty = user_provided_types.get(expr.hir_id).copied();
                                 debug!("make_mirror_unadjusted: (variant) user_ty={:?}", user_ty);
                                 ExprKind::Adt(Box::new(Adt {
-                                    adt_def: adt,
+                                    adt_def: *adt,
                                     variant_index: index,
                                     substs,
                                     user_ty,
@@ -680,7 +680,7 @@ impl<'tcx> Cx<'tcx> {
                                     let idx = adt_def.variant_index_with_ctor_id(variant_ctor_id);
                                     let (d, o) = adt_def.discriminant_def_for_variant(idx);
                                     use rustc_middle::ty::util::IntTypeExt;
-                                    let ty = adt_def.repr.discr_type();
+                                    let ty = adt_def.repr().discr_type();
                                     let ty = ty.to_ty(self.tcx());
                                     Some((d, o, ty))
                                 }
@@ -924,7 +924,7 @@ impl<'tcx> Cx<'tcx> {
                     // A unit struct/variant which is used as a value.
                     // We return a completely different ExprKind here to account for this special case.
                     ty::Adt(adt_def, substs) => ExprKind::Adt(Box::new(Adt {
-                        adt_def,
+                        adt_def: *adt_def,
                         variant_index: adt_def.variant_index_with_ctor_id(def_id),
                         substs,
                         user_ty: user_provided_type,

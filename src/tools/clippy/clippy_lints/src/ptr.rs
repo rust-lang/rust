@@ -405,13 +405,13 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 // Check that the name as typed matches the actual name of the type.
                 // e.g. `fn foo(_: &Foo)` shouldn't trigger the lint when `Foo` is an alias for `Vec`
                 if let [.., name] = path.segments;
-                if cx.tcx.item_name(adt.did) == name.ident.name;
+                if cx.tcx.item_name(adt.did()) == name.ident.name;
 
                 if !is_lint_allowed(cx, PTR_ARG, hir_ty.hir_id);
                 if params.get(i).map_or(true, |p| !is_lint_allowed(cx, PTR_ARG, p.hir_id));
 
                 then {
-                    let (method_renames, deref_ty, deref_impl_id) = match cx.tcx.get_diagnostic_name(adt.did) {
+                    let (method_renames, deref_ty, deref_impl_id) = match cx.tcx.get_diagnostic_name(adt.did()) {
                         Some(sym::Vec) => (
                             [("clone", ".to_owned()")].as_slice(),
                             DerefTy::Slice(
@@ -462,7 +462,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                     return Some(PtrArg {
                         idx: i,
                         span: hir_ty.span,
-                        ty_did: adt.did,
+                        ty_did: adt.did(),
                         ty_name: name.ident.name,
                         method_renames,
                         ref_prefix: RefPrefix {
@@ -570,7 +570,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             .map(|sig| sig.input(i).skip_binder().peel_refs())
                             .map_or(true, |ty| match *ty.kind() {
                                 ty::Param(_) => true,
-                                ty::Adt(def, _) => def.did == args.ty_did,
+                                ty::Adt(def, _) => def.did() == args.ty_did,
                                 _ => false,
                             })
                         {
@@ -607,7 +607,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
                             ty::Adt(def, _)
-                                if def.did == args.ty_did
+                                if def.did() == args.ty_did
                                     && (i != 0
                                         || self.cx.tcx.trait_of_item(id).is_some()
                                         || !args.deref_assoc_items.map_or(false, |(id, items)| {

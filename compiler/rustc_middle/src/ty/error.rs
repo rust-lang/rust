@@ -247,7 +247,7 @@ impl<'tcx> Ty<'tcx> {
             }
             ty::Tuple(ref tys) if tys.is_empty() => format!("`{}`", self).into(),
 
-            ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
+            ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did())).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::Array(t, n) => {
                 if t.is_simple_ty() {
