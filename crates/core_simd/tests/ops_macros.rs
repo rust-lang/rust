@@ -239,6 +239,18 @@ macro_rules! impl_signed_tests {
                     let b = Vector::<LANES>::splat(0);
                     assert_eq!(a.max(b), a);
                 }
+
+                fn clamp<const LANES: usize>() {
+                    let min = Vector::<LANES>::splat(Scalar::MIN);
+                    let max = Vector::<LANES>::splat(Scalar::MAX);
+                    let zero = Vector::<LANES>::splat(0);
+                    let one = Vector::<LANES>::splat(1);
+                    let negone = Vector::<LANES>::splat(-1);
+                    assert_eq!(zero.clamp(min, max), zero);
+                    assert_eq!(zero.clamp(min, one), zero);
+                    assert_eq!(zero.clamp(one, max), one);
+                    assert_eq!(zero.clamp(min, negone), negone);
+                }
             }
 
             test_helpers::test_lanes_panic! {
