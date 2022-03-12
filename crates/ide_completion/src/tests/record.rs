@@ -204,3 +204,39 @@ fn main() {
         "#]],
     );
 }
+
+#[test]
+fn empty_union_literal() {
+    check(
+        r#"
+union Union { foo: u32, bar: f32 }
+
+fn foo() {
+    let other = Union {
+        $0
+    };
+}
+        "#,
+        expect![[r#"
+            fd foo u32
+            fd bar f32
+        "#]],
+    )
+}
+
+#[test]
+fn dont_suggest_additional_union_fields() {
+    check(
+        r#"
+union Union { foo: u32, bar: f32 }
+
+fn foo() {
+    let other = Union {
+        foo: 1,
+        $0
+    };
+}
+        "#,
+        expect![[r#""#]],
+    )
+}

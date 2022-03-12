@@ -9,6 +9,7 @@ pub(crate) mod pattern;
 pub(crate) mod type_alias;
 pub(crate) mod struct_literal;
 pub(crate) mod compound;
+pub(crate) mod union_literal;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{helpers::item_name, RootDatabase, SnippetCap, SymbolKind};

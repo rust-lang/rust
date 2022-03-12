@@ -35,6 +35,7 @@ use crate::{
         render_field, render_resolution, render_tuple_field,
         struct_literal::render_struct_literal,
         type_alias::{render_type_alias, render_type_alias_with_eq},
+        union_literal::render_union_literal,
         RenderContext,
     },
     CompletionContext, CompletionItem, CompletionItemKind,
@@ -231,6 +232,17 @@ impl Completions {
         local_name: Option<hir::Name>,
     ) {
         let item = render_struct_literal(RenderContext::new(ctx, false), strukt, path, local_name);
+        self.add_opt(item);
+    }
+
+    pub(crate) fn add_union_literal(
+        &mut self,
+        ctx: &CompletionContext,
+        un: hir::Union,
+        path: Option<hir::ModPath>,
+        local_name: Option<hir::Name>,
+    ) {
+        let item = render_union_literal(RenderContext::new(ctx, false), un, path, local_name);
         self.add_opt(item);
     }
 
