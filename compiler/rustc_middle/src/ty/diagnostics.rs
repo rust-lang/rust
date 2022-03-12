@@ -512,7 +512,7 @@ pub fn suggest_constraining_type_params<'a>(
         };
 
         err.span_suggestion_verbose(span, msg, suggestion, applicability);
-    } else {
+    } else if suggestions.len() > 1 {
         err.multipart_suggestion_verbose(
             "consider restricting type parameters",
             suggestions.into_iter().map(|(span, suggestion, _)| (span, suggestion)).collect(),
