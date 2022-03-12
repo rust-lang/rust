@@ -75,7 +75,7 @@ fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehav
         lhs.split_prefix(&lhs_prefix);
         rhs.split_prefix(&rhs_prefix);
     }
-    recursive_merge(&lhs, &rhs, merge)
+    recursive_merge(lhs, rhs, merge)
 }
 
 /// Recursively merges rhs to lhs
@@ -157,7 +157,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                 }
                 lhs_t.split_prefix(&lhs_prefix);
                 rhs_t.split_prefix(&rhs_prefix);
-                recursive_merge(&lhs_t, &rhs_t, merge)?;
+                recursive_merge(lhs_t, &rhs_t, merge)?;
             }
             Err(_)
                 if merge == MergeBehavior::Module

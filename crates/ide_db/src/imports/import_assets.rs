@@ -430,8 +430,8 @@ fn module_with_segment_name(
     candidate: ItemInNs,
 ) -> Option<Module> {
     let mut current_module = match candidate {
-        ItemInNs::Types(module_def_id) => ModuleDef::from(module_def_id).module(db),
-        ItemInNs::Values(module_def_id) => ModuleDef::from(module_def_id).module(db),
+        ItemInNs::Types(module_def_id) => module_def_id.module(db),
+        ItemInNs::Values(module_def_id) => module_def_id.module(db),
         ItemInNs::Macros(macro_def_id) => ModuleDef::from(macro_def_id).module(db),
     };
     while let Some(module) = current_module {

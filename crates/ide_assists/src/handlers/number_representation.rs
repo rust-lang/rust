@@ -57,7 +57,7 @@ fn remove_separators(acc: &mut Assists, literal: ast::IntNumber) -> Option<()> {
         AssistId("reformat_number_literal", AssistKind::RefactorInline),
         "Remove digit separators",
         range,
-        |builder| builder.replace(range, literal.text().replace("_", "")),
+        |builder| builder.replace(range, literal.text().replace('_', "")),
     )
 }
 

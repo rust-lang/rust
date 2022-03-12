@@ -40,7 +40,7 @@ pub(crate) fn merge_match_arms(acc: &mut Assists, ctx: &AssistContext) -> Option
     }
     let current_expr = current_arm.expr()?;
     let current_text_range = current_arm.syntax().text_range();
-    let current_arm_types = get_arm_types(&ctx, &current_arm);
+    let current_arm_types = get_arm_types(ctx, &current_arm);
 
     // We check if the following match arms match this one. We could, but don't,
     // compare to the previous match arm as well.
@@ -99,14 +99,11 @@ fn are_same_types(
     arm: &ast::MatchArm,
     ctx: &AssistContext,
 ) -> bool {
-    let arm_types = get_arm_types(&ctx, &arm);
+    let arm_types = get_arm_types(ctx, arm);
     for (other_arm_type_name, other_arm_type) in arm_types {
         match (current_arm_types.get(&other_arm_type_name), other_arm_type) {
             (Some(Some(current_arm_type)), Some(other_arm_type))
-                if other_arm_type.original == current_arm_type.original =>
-            {
-                ()
-            }
+                if other_arm_type.original == current_arm_type.original => {}
             _ => return false,
         }
     }
@@ -163,7 +160,7 @@ fn get_arm_types(
         }
     }
 
-    recurse(&mut mapping, &context, &arm.pat());
+    recurse(&mut mapping, context, &arm.pat());
     mapping
 }
 

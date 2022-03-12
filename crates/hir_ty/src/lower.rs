@@ -1059,7 +1059,7 @@ pub(crate) fn generic_predicates_for_param_query(
             | WherePredicate::TypeBound { target, bound, .. } => {
                 match target {
                     WherePredicateTypeTarget::TypeRef(type_ref) => {
-                        if ctx.lower_ty_only_param(type_ref) != Some(param_id.into()) {
+                        if ctx.lower_ty_only_param(type_ref) != Some(param_id) {
                             return false;
                         }
                     }

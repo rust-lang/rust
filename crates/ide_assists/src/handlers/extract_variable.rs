@@ -52,7 +52,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext) -> Option
         }
     }
 
-    let reference_modifier = match get_receiver_type(&ctx, &to_extract) {
+    let reference_modifier = match get_receiver_type(ctx, &to_extract) {
         Some(receiver_type) if receiver_type.is_mutable_reference() => "&mut ",
         Some(receiver_type) if receiver_type.is_reference() => "&",
         _ => "",

@@ -278,7 +278,7 @@ impl InherentImpls {
         impls.collect_def_map(db, &crate_def_map);
         impls.shrink_to_fit();
 
-        return Arc::new(impls);
+        Arc::new(impls)
     }
 
     pub(crate) fn inherent_impls_in_block_query(
@@ -291,7 +291,7 @@ impl InherentImpls {
             impls.shrink_to_fit();
             return Some(Arc::new(impls));
         }
-        return None;
+        None
     }
 
     fn shrink_to_fit(&mut self) {
@@ -663,7 +663,7 @@ pub fn iterate_method_candidates_dyn(
             iterate_method_candidates_for_self_ty(
                 ty,
                 db,
-                env.clone(),
+                env,
                 traits_in_scope,
                 visible_from_module,
                 name,
@@ -693,7 +693,7 @@ fn iterate_method_candidates_with_autoref(
     iterate_method_candidates_by_receiver(
         receiver_ty,
         first_adjustment.clone(),
-        &rest,
+        rest,
         db,
         env.clone(),
         traits_in_scope,
@@ -731,7 +731,7 @@ fn iterate_method_candidates_with_autoref(
         first_adjustment.with_autoref(Mutability::Mut),
         deref_chain,
         db,
-        env.clone(),
+        env,
         traits_in_scope,
         visible_from_module,
         name,
@@ -973,7 +973,7 @@ fn iterate_inherent_methods(
                 // already happens in `is_valid_candidate` above; if not, we
                 // check it here
                 if receiver_ty.is_none()
-                    && inherent_impl_substs(db, env.clone(), impl_def, &self_ty).is_none()
+                    && inherent_impl_substs(db, env.clone(), impl_def, self_ty).is_none()
                 {
                     cov_mark::hit!(impl_self_type_match_without_receiver);
                     continue;
@@ -1105,7 +1105,7 @@ pub(crate) fn inherent_impl_substs(
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
     let suffix =
-        Substitution::from_iter(Interner, substs.iter(Interner).cloned().skip(self_ty_vars));
+        Substitution::from_iter(Interner, substs.iter(Interner).skip(self_ty_vars).cloned());
     Some(fallback_bound_vars(suffix, self_ty_vars))
 }
 
@@ -1152,7 +1152,7 @@ pub fn implements_trait(
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty);
     let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     solution.is_some()
@@ -1164,7 +1164,7 @@ pub fn implements_trait_unique(
     env: Arc<TraitEnvironment>,
     trait_: TraitId,
 ) -> bool {
-    let goal = generic_implements_goal(db, env.clone(), trait_, &ty);
+    let goal = generic_implements_goal(db, env.clone(), trait_, ty);
     let solution = db.trait_solve(env.krate, goal.cast(Interner));
 
     matches!(solution, Some(crate::Solution::Unique(_)))

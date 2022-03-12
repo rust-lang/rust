@@ -41,7 +41,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
     let match_arm_list = match_expr.match_arm_list()?;
     let target_range = ctx.sema.original_range(match_expr.syntax()).range;
 
-    if let None = cursor_at_trivial_match_arm_list(&ctx, &match_expr, &match_arm_list) {
+    if let None = cursor_at_trivial_match_arm_list(ctx, &match_expr, &match_arm_list) {
         let arm_list_range = ctx.sema.original_range(match_arm_list.syntax()).range;
         let cursor_in_range = arm_list_range.contains_range(ctx.selection_trimmed());
         if cursor_in_range {

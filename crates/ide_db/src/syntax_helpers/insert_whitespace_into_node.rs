@@ -69,7 +69,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 if indent > 0 {
                     mods.push(do_indent(after, tok, indent));
                 }
-                mods.push(do_nl(after, &tok));
+                mods.push(do_nl(after, tok));
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
                 indent = indent.saturating_sub(1);
@@ -85,7 +85,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 }
                 mods.push(do_nl(after, tok));
             }
-            LIFETIME_IDENT if is_next(|it| is_text(it), true) => {
+            LIFETIME_IDENT if is_next(is_text, true) => {
                 mods.push(do_ws(after, tok));
             }
             AS_KW | DYN_KW | IMPL_KW => {

@@ -94,14 +94,14 @@ impl TextEdit {
 
         let text_size = TextSize::of(&*text);
         let mut total_len = text_size;
-        let mut max_total_len = text_size.clone();
+        let mut max_total_len = text_size;
         for indel in &self.indels {
             total_len += TextSize::of(&indel.insert);
             total_len -= indel.delete.len();
             max_total_len = max(max_total_len, total_len);
         }
 
-        if let Some(additional) = max_total_len.checked_sub(text_size.into()) {
+        if let Some(additional) = max_total_len.checked_sub(text_size) {
             text.reserve(additional.into());
         }
 

@@ -156,7 +156,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) 
                             }
                             None => {
                                 let offset = strukt.syntax().text_range().end();
-                                let snippet = format!("\n\n{}", impl_def.syntax().to_string());
+                                let snippet = format!("\n\n{}", impl_def.syntax());
                                 builder.insert(offset, snippet);
                             }
                         }

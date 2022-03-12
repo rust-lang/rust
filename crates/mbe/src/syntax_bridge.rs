@@ -170,9 +170,9 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
             Some(it) => it,
             None => break,
         };
-        let synth_id = token.synthetic_id(&conv);
+        let synth_id = token.synthetic_id(conv);
 
-        let kind = token.kind(&conv);
+        let kind = token.kind(conv);
         if kind == COMMENT {
             if let Some(tokens) = conv.convert_doc_comment(&token) {
                 // FIXME: There has to be a better way to do this
@@ -227,7 +227,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                 continue;
             }
 
-            let spacing = match conv.peek().map(|next| next.kind(&conv)) {
+            let spacing = match conv.peek().map(|next| next.kind(conv)) {
                 Some(kind)
                     if !kind.is_trivia()
                         && kind.is_punct()
@@ -240,7 +240,7 @@ fn convert_tokens<C: TokenConvertor>(conv: &mut C) -> tt::Subtree {
                 }
                 _ => tt::Spacing::Alone,
             };
-            let char = match token.to_char(&conv) {
+            let char = match token.to_char(conv) {
                 Some(c) => c,
                 None => {
                     panic!("Token from lexer must be single char: token = {:#?}", token);

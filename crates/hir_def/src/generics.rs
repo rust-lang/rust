@@ -72,7 +72,7 @@ impl TypeOrConstParamData {
 
     pub fn type_param(&self) -> Option<&TypeParamData> {
         match self {
-            TypeOrConstParamData::TypeParamData(x) => Some(&x),
+            TypeOrConstParamData::TypeParamData(x) => Some(x),
             TypeOrConstParamData::ConstParamData(_) => None,
         }
     }

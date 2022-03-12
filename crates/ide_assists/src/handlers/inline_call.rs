@@ -305,7 +305,7 @@ fn inline(
     let body = fn_body.clone_for_update();
     let usages_for_locals = |local| {
         Definition::Local(local)
-            .usages(&sema)
+            .usages(sema)
             .all()
             .references
             .remove(&function_def_file_id)
@@ -369,12 +369,12 @@ fn inline(
             // inline single use literals
             [usage] if matches!(expr, ast::Expr::Literal(_)) => {
                 cov_mark::hit!(inline_call_inline_literal);
-                inline_direct(usage, &expr);
+                inline_direct(usage, expr);
             }
             // inline direct local arguments
-            [_, ..] if expr_as_name_ref(&expr).is_some() => {
+            [_, ..] if expr_as_name_ref(expr).is_some() => {
                 cov_mark::hit!(inline_call_inline_locals);
-                usages.into_iter().for_each(|usage| inline_direct(usage, &expr));
+                usages.iter().for_each(|usage| inline_direct(usage, expr));
             }
             // can't inline, emit a let statement
             _ => {

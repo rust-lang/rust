@@ -117,12 +117,7 @@ fn make_fixes(
     }
 
     // If there are existing `mod m;` items, append after them (after the first group of them, rather).
-    match ast
-        .items()
-        .skip_while(|item| !is_outline_mod(item))
-        .take_while(|item| is_outline_mod(item))
-        .last()
-    {
+    match ast.items().skip_while(|item| !is_outline_mod(item)).take_while(is_outline_mod).last() {
         Some(last) => {
             cov_mark::hit!(unlinked_file_append_to_existing_mods);
             let offset = last.syntax().text_range().end();

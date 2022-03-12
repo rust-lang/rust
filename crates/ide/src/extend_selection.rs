@@ -283,7 +283,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
         let final_node = delimiter_node
             .next_sibling_or_token()
             .and_then(|it| it.into_token())
-            .filter(|node| is_single_line_ws(node))
+            .filter(is_single_line_ws)
             .unwrap_or(delimiter_node);
 
         return Some(TextRange::new(node.text_range().start(), final_node.text_range().end()));

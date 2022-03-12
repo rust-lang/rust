@@ -421,12 +421,12 @@ impl BodySourceMap {
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
-        let src = node.map(|it| AstPtr::new(it));
+        let src = node.map(AstPtr::new);
         self.expr_map.get(&src).cloned()
     }
 
     pub fn node_macro_file(&self, node: InFile<&ast::MacroCall>) -> Option<HirFileId> {
-        let src = node.map(|it| AstPtr::new(it));
+        let src = node.map(AstPtr::new);
         self.expansions.get(&src).cloned()
     }
 
@@ -449,7 +449,7 @@ impl BodySourceMap {
     }
 
     pub fn node_label(&self, node: InFile<&ast::Label>) -> Option<LabelId> {
-        let src = node.map(|it| AstPtr::new(it));
+        let src = node.map(AstPtr::new);
         self.label_map.get(&src).cloned()
     }
 
@@ -457,7 +457,7 @@ impl BodySourceMap {
         self.field_map_back[&expr].clone()
     }
     pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
-        let src = node.map(|it| AstPtr::new(it));
+        let src = node.map(AstPtr::new);
         self.field_map.get(&src).cloned()
     }
 

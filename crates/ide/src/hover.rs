@@ -145,7 +145,7 @@ pub(crate) fn hover(
     if result.is_none() {
         // fallbacks, show keywords or types
 
-        let res = descended.iter().find_map(|token| render::keyword(sema, config, &token));
+        let res = descended.iter().find_map(|token| render::keyword(sema, config, token));
         if let Some(res) = res {
             return Some(RangeInfo::new(original_token.text_range(), res));
         }

@@ -138,7 +138,7 @@ fn structure_node(node: &SyntaxNode) -> Option<StructureNode> {
                     collapse_ws(param_list.syntax(), &mut detail);
                 }
                 if let Some(ret_type) = it.ret_type() {
-                    detail.push_str(" ");
+                    detail.push(' ');
                     collapse_ws(ret_type.syntax(), &mut detail);
                 }
 

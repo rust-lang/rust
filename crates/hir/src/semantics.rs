@@ -398,7 +398,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn scope_at_offset(&self, node: &SyntaxNode, offset: TextSize) -> SemanticsScope<'db> {
-        self.imp.scope_at_offset(&node, offset)
+        self.imp.scope_at_offset(node, offset)
     }
 
     pub fn scope_for_def(&self, def: Trait) -> SemanticsScope<'db> {

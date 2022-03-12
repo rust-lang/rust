@@ -88,9 +88,8 @@ fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, ExpandError> {
         debug!("parsed item has no name");
         ExpandError::Other("missing name".into())
     })?;
-    let name_token_id = token_map
-        .token_by_range(name.syntax().text_range())
-        .unwrap_or_else(|| TokenId::unspecified());
+    let name_token_id =
+        token_map.token_by_range(name.syntax().text_range()).unwrap_or_else(TokenId::unspecified);
     let name_token = tt::Ident { id: name_token_id, text: name.text().into() };
     let type_or_const_params =
         params.map_or(0, |type_param_list| type_param_list.type_or_const_params().count());

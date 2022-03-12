@@ -75,7 +75,7 @@ fn generate_lint_descriptor(buf: &mut String) {
                 format!("lint group for: {}", lints.trim()).into(),
                 lints
                     .split_ascii_whitespace()
-                    .map(|s| s.trim().trim_matches(',').replace("-", "_"))
+                    .map(|s| s.trim().trim_matches(',').replace('-', "_"))
                     .collect(),
             )
         });
@@ -85,7 +85,7 @@ fn generate_lint_descriptor(buf: &mut String) {
         .sorted_by(|(ident, ..), (ident2, ..)| ident.cmp(ident2))
         .collect::<Vec<_>>();
     for (name, description, ..) in &lints {
-        push_lint_completion(buf, &name.replace("-", "_"), &description);
+        push_lint_completion(buf, &name.replace('-', "_"), description);
     }
     buf.push_str("];\n");
     buf.push_str(r#"pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &["#);
@@ -93,10 +93,10 @@ fn generate_lint_descriptor(buf: &mut String) {
         if !children.is_empty() {
             // HACK: warnings is emitted with a general description, not with its members
             if name == &"warnings" {
-                push_lint_group(buf, &name, &description, &Vec::new());
+                push_lint_group(buf, name, description, &Vec::new());
                 continue;
             }
-            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+            push_lint_group(buf, &name.replace('-', "_"), description, children);
         }
     }
     buf.push('\n');
@@ -124,7 +124,7 @@ fn generate_lint_descriptor(buf: &mut String) {
                     format!("lint group for: {}", lints.trim()).into(),
                     lints
                         .split_ascii_whitespace()
-                        .map(|s| s.trim().trim_matches(',').replace("-", "_"))
+                        .map(|s| s.trim().trim_matches(',').replace('-', "_"))
                         .collect(),
                 )
             },
@@ -136,14 +136,14 @@ fn generate_lint_descriptor(buf: &mut String) {
         .collect::<Vec<_>>();
 
     for (name, description, ..) in &lints_rustdoc {
-        push_lint_completion(buf, &name.replace("-", "_"), &description)
+        push_lint_completion(buf, &name.replace('-', "_"), description)
     }
     buf.push_str("];\n");
 
     buf.push_str(r#"pub const RUSTDOC_LINT_GROUPS: &[LintGroup] = &["#);
     for (name, description, children) in &lints_rustdoc {
         if !children.is_empty() {
-            push_lint_group(buf, &name.replace("-", "_"), &description, children);
+            push_lint_group(buf, &name.replace('-', "_"), description, children);
         }
     }
     buf.push('\n');
@@ -159,7 +159,7 @@ fn generate_feature_descriptor(buf: &mut String, src_dir: &Path) {
             path.extension().unwrap_or_default().to_str().unwrap_or_default() == "md"
         })
         .map(|path| {
-            let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace("-", "_");
+            let feature_ident = path.file_stem().unwrap().to_str().unwrap().replace('-', "_");
             let doc = fs::read_to_string(path).unwrap();
             (feature_ident, doc)
         })

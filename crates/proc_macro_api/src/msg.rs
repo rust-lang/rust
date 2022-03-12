@@ -74,14 +74,11 @@ pub trait Message: Serialize + DeserializeOwned {
 impl Message for Request {}
 impl Message for Response {}
 
-fn read_json<'a>(
-    inp: &mut impl BufRead,
-    mut buf: &'a mut String,
-) -> io::Result<Option<&'a String>> {
+fn read_json<'a>(inp: &mut impl BufRead, buf: &'a mut String) -> io::Result<Option<&'a String>> {
     loop {
         buf.clear();
 
-        inp.read_line(&mut buf)?;
+        inp.read_line(buf)?;
         buf.pop(); // Remove trailing '\n'
 
         if buf.is_empty() {

@@ -24,7 +24,7 @@ fn diagnostic_severity(
             // HACK: special case for `warnings` rustc lint.
             Some(code)
                 if config.warnings_as_hint.iter().any(|lint| {
-                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, &lint)
+                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
                 }) =>
             {
                 lsp_types::DiagnosticSeverity::HINT
@@ -32,7 +32,7 @@ fn diagnostic_severity(
             // HACK: special case for `warnings` rustc lint.
             Some(code)
                 if config.warnings_as_info.iter().any(|lint| {
-                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, &lint)
+                    lint == "warnings" || ide_db::helpers::lint_eq_or_in_group(&code.code, lint)
                 }) =>
             {
                 lsp_types::DiagnosticSeverity::INFORMATION

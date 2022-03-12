@@ -231,7 +231,7 @@ impl Crate {
             return None;
         }
 
-        let doc_url = doc_attr_q.tt_values().map(|tt| {
+        let doc_url = doc_attr_q.tt_values().filter_map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident { text, ..} )) if text == "html_root_url"))
                 .nth(2);
@@ -240,7 +240,7 @@ impl Crate {
                 Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
                 _ => None
             }
-        }).flatten().next();
+        }).next();
 
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
@@ -1530,11 +1530,7 @@ impl SelfParam {
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = db.trait_environment(self.func.into());
 
-        Type {
-            krate,
-            env: environment.clone(),
-            ty: ctx.lower_ty(&db.function_data(self.func).params[0].1),
-        }
+        Type { krate, env: environment, ty: ctx.lower_ty(&db.function_data(self.func).params[0].1) }
     }
 }
 
@@ -1816,14 +1812,12 @@ impl Macro {
 
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
         match self.id {
-            MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
-                MacroExpander::BuiltInDerive(_) => true,
-                _ => false,
-            },
-            MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
-                MacroExpander::BuiltInDerive(_) => true,
-                _ => false,
-            },
+            MacroId::Macro2Id(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+            }
+            MacroId::MacroRulesId(it) => {
+                matches!(it.lookup(db.upcast()).expander, MacroExpander::BuiltInDerive(_))
+            }
             MacroId::ProcMacroId(_) => false,
         }
     }

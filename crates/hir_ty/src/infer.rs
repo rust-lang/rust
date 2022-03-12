@@ -82,7 +82,7 @@ pub(crate) fn normalize(db: &dyn HirDatabase, owner: DefWithBodyId, ty: Ty) -> T
     let trait_env = owner
         .as_generic_def_id()
         .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
-    let mut table = unify::InferenceTable::new(db, trait_env.clone());
+    let mut table = unify::InferenceTable::new(db, trait_env);
 
     let ty_with_vars = table.normalize_associated_types_in(ty);
     table.resolve_obligations_as_possible();

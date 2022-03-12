@@ -78,7 +78,7 @@ pub(super) fn ra_fixture(
     Some(())
 }
 
-const RUSTDOC_FENCE: &'static str = "```";
+const RUSTDOC_FENCE: &str = "```";
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(

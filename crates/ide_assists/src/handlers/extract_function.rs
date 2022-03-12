@@ -1448,7 +1448,7 @@ fn make_body(
                 .filter(|it| text_range.contains_range(it.text_range()))
                 .map(|it| match &it {
                     syntax::NodeOrToken::Node(n) => syntax::NodeOrToken::Node(
-                        rewrite_body_segment(ctx, &fun.params, &handler, &n),
+                        rewrite_body_segment(ctx, &fun.params, &handler, n),
                     ),
                     _ => it,
                 })
@@ -1518,7 +1518,7 @@ fn make_body(
                 make::expr_path(make::path_from_text("ControlFlow::Continue")),
                 make::arg_list(iter::once(make::expr_unit())),
             );
-            with_tail_expr(block, controlflow_continue.into())
+            with_tail_expr(block, controlflow_continue)
         }
         FlowHandler::IfOption { .. } => {
             let none = make::expr_path(make::ext::ident_path("None"));

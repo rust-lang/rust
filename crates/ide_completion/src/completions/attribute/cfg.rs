@@ -29,7 +29,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext) {
         Some("target_endian") => ["little", "big"].into_iter().for_each(add_completion),
         Some(name) => {
             if let Some(krate) = ctx.krate {
-                krate.potential_cfg(ctx.db).get_cfg_values(&name).cloned().for_each(|s| {
+                krate.potential_cfg(ctx.db).get_cfg_values(name).cloned().for_each(|s| {
                     let insert_text = format!(r#""{}""#, s);
                     let mut item =
                         CompletionItem::new(SymbolKind::BuiltinAttr, ctx.source_range(), s);

@@ -150,9 +150,9 @@ impl IdentClass {
         sema: &Semantics<RootDatabase>,
         lifetime: &ast::Lifetime,
     ) -> Option<IdentClass> {
-        NameRefClass::classify_lifetime(sema, &lifetime)
+        NameRefClass::classify_lifetime(sema, lifetime)
             .map(IdentClass::NameRefClass)
-            .or_else(|| NameClass::classify_lifetime(sema, &lifetime).map(IdentClass::NameClass))
+            .or_else(|| NameClass::classify_lifetime(sema, lifetime).map(IdentClass::NameClass))
     }
 
     pub fn definitions(self) -> ArrayVec<Definition, 2> {
@@ -306,7 +306,7 @@ impl NameClass {
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
             sema.to_def(&it).map(Into::into).map(Definition::GenericParam)
-        } else if let Some(it) = ast::Label::cast(parent.clone()) {
+        } else if let Some(it) = ast::Label::cast(parent) {
             sema.to_def(&it).map(Definition::Label)
         } else {
             None

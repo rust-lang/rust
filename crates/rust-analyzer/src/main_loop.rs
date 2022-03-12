@@ -167,7 +167,7 @@ impl GlobalState {
             self.handle_event(event)?
         }
 
-        return Err("client exited without proper shutdown sequence".into());
+        Err("client exited without proper shutdown sequence".into())
     }
 
     fn next_event(&self, inbox: &Receiver<lsp_server::Message>) -> Option<Event> {

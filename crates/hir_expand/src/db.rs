@@ -149,11 +149,11 @@ pub fn expand_speculative(
     let token_range = token_to_map.text_range();
 
     // Build the subtree and token mapping for the speculative args
-    let censor = censor_for_macro_input(&loc, &speculative_args);
-    let mut fixups = fixup::fixup_syntax(&speculative_args);
+    let censor = censor_for_macro_input(&loc, speculative_args);
+    let mut fixups = fixup::fixup_syntax(speculative_args);
     fixups.replace.extend(censor.into_iter().map(|node| (node, Vec::new())));
     let (mut tt, spec_args_tmap, _) = mbe::syntax_node_to_token_tree_with_modifications(
-        &speculative_args,
+        speculative_args,
         fixups.token_map,
         fixups.next_id,
         fixups.replace,

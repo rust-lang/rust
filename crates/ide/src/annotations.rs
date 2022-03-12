@@ -79,7 +79,7 @@ pub(crate) fn annotations(
                             .map(|variant| {
                                 variant.source(db).and_then(|node| name_range(db, node, file_id))
                             })
-                            .filter_map(std::convert::identity)
+                            .flatten()
                             .for_each(|range| {
                                 annotations.push(Annotation {
                                     range,
@@ -170,10 +170,9 @@ pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) 
                 result
                     .into_iter()
                     .flat_map(|res| res.references)
-                    .map(|(file_id, access)| {
+                    .flat_map(|(file_id, access)| {
                         access.into_iter().map(move |(range, _)| FileRange { file_id, range })
                     })
-                    .flatten()
                     .collect()
             });
         }

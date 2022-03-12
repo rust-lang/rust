@@ -307,7 +307,7 @@ impl ast::IntNumber {
 
     pub fn value(&self) -> Option<u128> {
         let (_, text, _) = self.split_into_parts();
-        let value = u128::from_str_radix(&text.replace("_", ""), self.radix() as u32).ok()?;
+        let value = u128::from_str_radix(&text.replace('_', ""), self.radix() as u32).ok()?;
         Some(value)
     }
 

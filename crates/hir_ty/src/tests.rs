@@ -337,7 +337,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.value.clone()) {
                 (self_param.name().unwrap().syntax().text_range(), "self".to_string())
             } else {
-                (node.value.text_range(), node.value.text().to_string().replace("\n", " "))
+                (node.value.text_range(), node.value.text().to_string().replace('\n', " "))
             };
             let macro_prefix = if node.file_id != file_id.into() { "!" } else { "" };
             format_to!(
