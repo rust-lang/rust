@@ -417,7 +417,7 @@ impl Module {
         replacements.append(&mut impl_item_replacements);
 
         record_field_parents.into_iter().for_each(|x| {
-            x.1.descendants().filter_map(|x| ast::RecordField::cast(x)).for_each(|desc| {
+            x.1.descendants().filter_map(ast::RecordField::cast).for_each(|desc| {
                 let is_record_field_present = record_fields
                     .clone()
                     .into_iter()

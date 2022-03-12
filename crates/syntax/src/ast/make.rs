@@ -49,7 +49,7 @@ pub mod ext {
     ) -> Option<ast::Expr> {
         let mut iter = parts.into_iter();
         let base = expr_path(ext::ident_path(iter.next()?));
-        let expr = iter.fold(base, |base, s| expr_field(base, s));
+        let expr = iter.fold(base, expr_field);
         Some(expr)
     }
 

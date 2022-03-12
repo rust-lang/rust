@@ -66,7 +66,7 @@ impl FunctionData {
             .by_key("rustc_legacy_const_generics")
             .tt_values()
             .next()
-            .map(|arg| parse_rustc_legacy_const_generics(arg))
+            .map(parse_rustc_legacy_const_generics)
             .unwrap_or_default();
 
         Arc::new(FunctionData {

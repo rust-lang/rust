@@ -85,7 +85,7 @@ pub fn insert_ws_into(syn: SyntaxNode) -> SyntaxNode {
                 }
                 mods.push(do_nl(after, tok));
             }
-            LIFETIME_IDENT if is_next(|it| is_text(it), true) => {
+            LIFETIME_IDENT if is_next(is_text, true) => {
                 mods.push(do_ws(after, tok));
             }
             AS_KW | DYN_KW | IMPL_KW => {

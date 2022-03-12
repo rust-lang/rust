@@ -128,6 +128,6 @@ mod unsafe_tls {
         // type.
         let static_p: &DebugContext<'static> =
             unsafe { std::mem::transmute::<&DebugContext, &DebugContext<'static>>(&ctx) };
-        PROGRAM.set(static_p, || op())
+        PROGRAM.set(static_p, op)
     }
 }
