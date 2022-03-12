@@ -120,8 +120,7 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
         // we specifically avoid calling SymbolsDatabase::module_symbols here, even they do the same thing,
         // as the index for a library is not going to really ever change, and we do not want to store each
         // module's index in salsa.
-        .map(|module| SymbolCollector::collect(db.upcast(), module))
-        .flatten()
+        .flat_map(|module| SymbolCollector::collect(db.upcast(), module))
         .collect();
 
     Arc::new(SymbolIndex::new(symbols))

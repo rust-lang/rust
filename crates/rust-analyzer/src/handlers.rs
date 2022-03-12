@@ -532,7 +532,7 @@ pub(crate) fn handle_will_rename_files(
     let mut source_change = source_changes.next().unwrap_or_default();
     source_change.file_system_edits.clear();
     // no collect here because we want to merge text edits on same file ids
-    source_change.extend(source_changes.map(|it| it.source_file_edits).flatten());
+    source_change.extend(source_changes.flat_map(|it| it.source_file_edits));
     if source_change.source_file_edits.is_empty() {
         Ok(None)
     } else {

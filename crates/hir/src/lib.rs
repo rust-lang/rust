@@ -231,7 +231,7 @@ impl Crate {
             return None;
         }
 
-        let doc_url = doc_attr_q.tt_values().map(|tt| {
+        let doc_url = doc_attr_q.tt_values().filter_map(|tt| {
             let name = tt.token_trees.iter()
                 .skip_while(|tt| !matches!(tt, TokenTree::Leaf(Leaf::Ident(Ident { text, ..} )) if text == "html_root_url"))
                 .nth(2);
@@ -240,7 +240,7 @@ impl Crate {
                 Some(TokenTree::Leaf(Leaf::Literal(Literal{ref text, ..}))) => Some(text),
                 _ => None
             }
-        }).flatten().next();
+        }).next();
 
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
