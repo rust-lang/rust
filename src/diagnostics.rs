@@ -7,7 +7,8 @@ use log::trace;
 use rustc_middle::ty;
 use rustc_span::{source_map::DUMMY_SP, Span, SpanData, Symbol};
 
-use crate::stacked_borrows::{AccessKind, SbTag};
+use crate::helpers::HexRange;
+use crate::stacked_borrows::{AccessKind, SbTag, TagHistory};
 use crate::*;
 
 /// Details of premature program termination.
@@ -19,6 +20,7 @@ pub enum TerminationInfo {
         msg: String,
         help: Option<String>,
         url: String,
+        history: Option<TagHistory>,
     },
     Deadlock,
     MultipleSymbolDefinitions {
@@ -155,12 +157,46 @@ pub fn report_error<'tcx, 'mir>(
                         (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
                         (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                     ],
-                ExperimentalUb { url, help, .. } => {
+                ExperimentalUb { url, help, history, .. } => {
                     msg.extend(help.clone());
-                    vec![
+                    let mut helps = vec![
                         (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),
-                        (None, format!("see {} for further information", url))
-                    ]
+                        (None, format!("see {} for further information", url)),
+                    ];
+                    match history {
+                        Some(TagHistory::Tagged {tag, created: (created_range, created_span), invalidated, protected }) => {
+                            let msg = format!("{:?} was created due to a retag at offsets {}", tag, HexRange(*created_range));
+                            helps.push((Some(created_span.clone()), msg));
+                            if let Some((invalidated_range, invalidated_span)) = invalidated {
+                                let msg = format!("{:?} was later invalidated due to a retag at offsets {}", tag, HexRange(*invalidated_range));
+                                helps.push((Some(invalidated_span.clone()), msg));
+                            }
+                            if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
+                                helps.push((Some(protecting_tag_span.clone()), format!("{:?} was protected due to {:?} which was created here", tag, protecting_tag)));
+                                helps.push((Some(protection_span.clone()), "this protector is live for this call".to_string()));
+                            }
+                        }
+                        Some(TagHistory::Untagged{ recently_created, recently_invalidated, matching_created, protected }) => {
+                            if let Some((range, span)) = recently_created {
+                                let msg = format!("tag was most recently created at offsets {}", HexRange(*range));
+                                helps.push((Some(span.clone()), msg));
+                            }
+                            if let Some((range, span)) = recently_invalidated {
+                                let msg = format!("tag was later invalidated at offsets {}", HexRange(*range));
+                                helps.push((Some(span.clone()), msg));
+                            }
+                            if let Some((range, span)) = matching_created {
+                                let msg = format!("this tag was also created here at offsets {}", HexRange(*range));
+                                helps.push((Some(span.clone()), msg));
+                            }
+                            if let Some((protecting_tag, protecting_tag_span, protection_span)) = protected {
+                                helps.push((Some(protecting_tag_span.clone()), format!("{:?} was protected due to a tag which was created here", protecting_tag)));
+                                helps.push((Some(protection_span.clone()), "this protector is live for this call".to_string()));
+                            }
+                        }
+                        None => {}
+                    }
+                    helps
                 }
                 MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
                     vec![

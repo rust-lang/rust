@@ -813,3 +813,12 @@ pub fn get_local_crates(tcx: &TyCtxt<'_>) -> Vec<CrateNum> {
     }
     local_crates
 }
+
+/// Formats an AllocRange like [0x1..0x3], for use in diagnostics.
+pub struct HexRange(pub AllocRange);
+
+impl std::fmt::Display for HexRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{:#x}..{:#x}]", self.0.start.bytes(), self.0.end().bytes())
+    }
+}

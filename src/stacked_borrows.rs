@@ -3,6 +3,7 @@
 
 use log::trace;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::fmt;
 use std::num::NonZeroU64;
 
@@ -14,9 +15,11 @@ use rustc_middle::ty::{
     layout::{HasParamEnv, LayoutOf},
 };
 use rustc_span::DUMMY_SP;
+use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 use std::collections::HashSet;
 
+use crate::helpers::HexRange;
 use crate::*;
 
 pub type PtrId = NonZeroU64;
@@ -111,7 +114,53 @@ pub struct GlobalStateInner {
     tracked_call_ids: HashSet<CallId>,
     /// Whether to track raw pointers.
     tag_raw: bool,
+    /// Extra per-allocation information
+    extras: HashMap<AllocId, AllocHistory>,
+    /// Current span
+    pub(crate) current_span: Span,
 }
+
+#[derive(Debug, Default)]
+struct AllocHistory {
+    // The time tags can be compressed down to one bit per event, by just storing a Vec<u8>
+    // where each bit is set to indicate if the event was a creation or a retag
+    current_time: usize,
+    creations: Vec<Event>,
+    invalidations: Vec<Event>,
+    protectors: Vec<Protection>,
+}
+
+#[derive(Debug)]
+struct Protection {
+    orig_tag: SbTag,
+    tag: SbTag,
+    span: Span,
+}
+
+#[derive(Debug)]
+struct Event {
+    time: usize,
+    parent: Option<SbTag>,
+    tag: SbTag,
+    range: AllocRange,
+    span: Span,
+}
+
+pub enum TagHistory {
+    Tagged {
+        tag: SbTag,
+        created: (AllocRange, SpanData),
+        invalidated: Option<(AllocRange, SpanData)>,
+        protected: Option<(SbTag, SpanData, SpanData)>,
+    },
+    Untagged {
+        recently_created: Option<(AllocRange, SpanData)>,
+        recently_invalidated: Option<(AllocRange, SpanData)>,
+        matching_created: Option<(AllocRange, SpanData)>,
+        protected: Option<(SbTag, SpanData, SpanData)>,
+    },
+}
+
 /// We need interior mutable access to the global state.
 pub type GlobalState = RefCell<GlobalStateInner>;
 
@@ -171,6 +220,8 @@ impl GlobalStateInner {
             tracked_pointer_tags,
             tracked_call_ids,
             tag_raw,
+            extras: HashMap::new(),
+            current_span: DUMMY_SP,
         }
     }
 
@@ -218,16 +269,155 @@ impl GlobalStateInner {
         self.base_ptr_ids.try_insert(id, tag).unwrap();
         tag
     }
+
+    fn add_creation(
+        &mut self,
+        parent: Option<SbTag>,
+        tag: SbTag,
+        alloc: AllocId,
+        range: AllocRange,
+    ) {
+        let extras = self.extras.entry(alloc).or_default();
+        extras.creations.push(Event {
+            parent,
+            tag,
+            range,
+            span: self.current_span,
+            time: extras.current_time,
+        });
+        extras.current_time += 1;
+    }
+
+    fn add_invalidation(&mut self, tag: SbTag, alloc: AllocId, range: AllocRange) {
+        let extras = self.extras.entry(alloc).or_default();
+        extras.invalidations.push(Event {
+            parent: None,
+            tag,
+            range,
+            span: self.current_span,
+            time: extras.current_time,
+        });
+        extras.current_time += 1;
+    }
+
+    fn add_protector(&mut self, orig_tag: SbTag, tag: SbTag, alloc: AllocId) {
+        let extras = self.extras.entry(alloc).or_default();
+        extras.protectors.push(Protection { orig_tag, tag, span: self.current_span });
+        extras.current_time += 1;
+    }
+
+    fn get_stack_history(
+        &self,
+        tag: SbTag,
+        alloc: AllocId,
+        alloc_range: AllocRange,
+        offset: Size,
+        protector_tag: Option<SbTag>,
+    ) -> Option<TagHistory> {
+        let extras = self.extras.get(&alloc)?;
+        let protected = protector_tag
+            .and_then(|protector| {
+                extras.protectors.iter().find_map(|protection| {
+                    if protection.tag == protector {
+                        Some((protection.orig_tag, protection.span.data()))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .and_then(|(tag, call_span)| {
+                extras.creations.iter().rev().find_map(|event| {
+                    if event.tag == tag {
+                        Some((event.parent?, event.span.data(), call_span))
+                    } else {
+                        None
+                    }
+                })
+            });
+        if let SbTag::Tagged(_) = tag {
+            let get_matching = |events: &[Event]| {
+                events.iter().rev().find_map(|event| {
+                    if event.tag == tag { Some((event.range, event.span.data())) } else { None }
+                })
+            };
+            Some(TagHistory::Tagged {
+                tag,
+                created: get_matching(&extras.creations)?,
+                invalidated: get_matching(&extras.invalidations),
+                protected,
+            })
+        } else {
+            let mut created_time = 0;
+            // Find the most recently created tag that satsfies this offset
+            let recently_created = extras.creations.iter().rev().find_map(|event| {
+                if event.tag == tag && offset >= event.range.start && offset < event.range.end() {
+                    created_time = event.time;
+                    Some((event.range, event.span.data()))
+                } else {
+                    None
+                }
+            });
+
+            // Find a different recently created tag that satisfies this whole operation, predates
+            // the recently created tag, and has a different span.
+            // We're trying to make a guess at which span the user wanted to provide the tag that
+            // they're using.
+            let matching_created = if let Some((_created_range, created_span)) = recently_created {
+                extras.creations.iter().rev().find_map(|event| {
+                    if event.tag == tag
+                        && alloc_range.start >= event.range.start
+                        && alloc_range.end() <= event.range.end()
+                        && event.span.data() != created_span
+                        && event.time != created_time
+                    {
+                        Some((event.range, event.span.data()))
+                    } else {
+                        None
+                    }
+                })
+            } else {
+                None
+            };
+
+            let recently_invalidated = if recently_created.is_some() {
+                // Find the most recent invalidation of this tag which post-dates the creation
+                let mut found = None;
+                for event in extras.invalidations.iter().rev() {
+                    if event.time < created_time {
+                        break;
+                    }
+                    if event.tag == tag && offset >= event.range.start && offset < event.range.end()
+                    {
+                        found = Some((event.range, event.span.data()))
+                    }
+                }
+                found
+            } else {
+                None
+            };
+            Some(TagHistory::Untagged {
+                recently_created,
+                matching_created,
+                recently_invalidated,
+                protected,
+            })
+        }
+    }
 }
 
 /// Error reporting
-fn err_sb_ub(msg: String, help: Option<String>) -> InterpError<'static> {
+fn err_sb_ub(
+    msg: String,
+    help: Option<String>,
+    history: Option<TagHistory>,
+) -> InterpError<'static> {
     err_machine_stop!(TerminationInfo::ExperimentalUb {
         msg,
         help,
         url: format!(
             "https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md"
         ),
+        history
     })
 }
 
@@ -308,30 +498,38 @@ impl<'tcx> Stack {
     /// `None` during a deallocation.
     fn check_protector(
         item: &Item,
-        provoking_access: Option<(SbTag, AccessKind)>,
+        provoking_access: Option<(SbTag, AllocId, AllocRange, Size)>, // just for debug printing amd error messages
         global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         if let SbTag::Tagged(id) = item.tag {
             if global.tracked_pointer_tags.contains(&id) {
                 register_diagnostic(NonHaltingDiagnostic::PoppedPointerTag(
                     *item,
-                    provoking_access,
+                    None,
                 ));
             }
         }
         if let Some(call) = item.protector {
             if global.is_active(call) {
-                if let Some((tag, _)) = provoking_access {
+                if let Some((tag, alloc_id, alloc_range, offset)) = provoking_access {
                     Err(err_sb_ub(
                         format!(
                             "not granting access to tag {:?} because incompatible item is protected: {:?}",
                             tag, item
                         ),
                         None,
+                        global.get_stack_history(
+                            tag,
+                            alloc_id,
+                            alloc_range,
+                            offset,
+                            Some(item.tag),
+                        ),
                     ))?
                 } else {
                     Err(err_sb_ub(
                         format!("deallocating while item is protected: {:?}", item),
+                        None,
                         None,
                     ))?
                 }
@@ -348,15 +546,15 @@ impl<'tcx> Stack {
         &mut self,
         access: AccessKind,
         tag: SbTag,
-        (alloc_id, range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
-        global: &GlobalStateInner,
+        (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
+        global: &mut GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let granting_idx = self
-            .find_granting(access, tag)
-            .ok_or_else(|| self.access_error(access, tag, alloc_id, range, offset))?;
+        let granting_idx = self.find_granting(access, tag).ok_or_else(|| {
+            self.access_error(access, tag, alloc_id, alloc_range, offset, global)
+        })?;
 
         // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
         // items.  Behavior differs for reads and writes.
@@ -366,7 +564,8 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                Stack::check_protector(&item, Some((tag, access)), global)?;
+                Stack::check_protector(&item, Some((tag, alloc_id, alloc_range, offset)), global)?;
+                global.add_invalidation(item.tag, alloc_id, alloc_range);
             }
         } else {
             // On a read, *disable* all `Unique` above the granting item.  This ensures U2 for read accesses.
@@ -381,8 +580,13 @@ impl<'tcx> Stack {
                 let item = &mut self.borrows[idx];
                 if item.perm == Permission::Unique {
                     trace!("access: disabling item {:?}", item);
-                    Stack::check_protector(item, Some((tag, access)), global)?;
+                    Stack::check_protector(
+                        item,
+                        Some((tag, alloc_id, alloc_range, offset)),
+                        global,
+                    )?;
                     item.perm = Permission::Disabled;
+                    global.add_invalidation(item.tag, alloc_id, alloc_range);
                 }
             }
         }
@@ -396,15 +600,18 @@ impl<'tcx> Stack {
     fn dealloc(
         &mut self,
         tag: SbTag,
-        dbg_ptr: Pointer<AllocId>, // just for debug printing and error messages
+        (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing amd error messages
         global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
             err_sb_ub(format!(
                 "no item granting write access for deallocation to tag {:?} at {:?} found in borrow stack",
-                tag, dbg_ptr,
-            ), None)
+                tag, alloc_id,
+                ),
+                None,
+                global.get_stack_history(tag, alloc_id, alloc_range, offset, None),
+            )
         })?;
 
         // Step 2: Remove all items.  Also checks for protectors.
@@ -426,16 +633,16 @@ impl<'tcx> Stack {
         derived_from: SbTag,
         new: Item,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
-        global: &GlobalStateInner,
+        global: &mut GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
             if new.perm.grants(AccessKind::Write) { AccessKind::Write } else { AccessKind::Read };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let granting_idx = self
-            .find_granting(access, derived_from)
-            .ok_or_else(|| self.grant_error(derived_from, new, alloc_id, alloc_range, offset))?;
+        let granting_idx = self.find_granting(access, derived_from).ok_or_else(|| {
+            self.grant_error(derived_from, new, alloc_id, alloc_range, offset, global)
+        })?;
 
         // Compute where to put the new item.
         // Either way, we ensure that we insert the new item in a way such that between
@@ -483,6 +690,7 @@ impl<'tcx> Stack {
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
+        global: &GlobalStateInner,
     ) -> InterpError<'static> {
         let action = format!(
             "trying to reborrow {:?} for {:?} permission at {}[{:#x}]",
@@ -494,6 +702,7 @@ impl<'tcx> Stack {
         err_sb_ub(
             format!("{}{}", action, self.error_cause(derived_from)),
             Some(Self::operation_summary("a reborrow", alloc_id, alloc_range)),
+            global.get_stack_history(derived_from, alloc_id, alloc_range, error_offset, None),
         )
     }
 
@@ -505,6 +714,7 @@ impl<'tcx> Stack {
         alloc_id: AllocId,
         alloc_range: AllocRange,
         error_offset: Size,
+        global: &GlobalStateInner,
     ) -> InterpError<'static> {
         let action = format!(
             "attempting a {} using {:?} at {}[{:#x}]",
@@ -516,6 +726,7 @@ impl<'tcx> Stack {
         err_sb_ub(
             format!("{}{}", action, self.error_cause(tag)),
             Some(Self::operation_summary("an access", alloc_id, alloc_range)),
+            global.get_stack_history(tag, alloc_id, alloc_range, error_offset, None),
         )
     }
 
@@ -525,11 +736,10 @@ impl<'tcx> Stack {
         alloc_range: AllocRange,
     ) -> String {
         format!(
-            "this error occurs as part of {} at {:?}[{:#x}..{:#x}]",
+            "this error occurs as part of {} at {:?}{}",
             operation,
             alloc_id,
-            alloc_range.start.bytes(),
-            alloc_range.end().bytes()
+            HexRange(alloc_range)
         )
     }
 
@@ -620,6 +830,7 @@ impl Stacks {
                 (tag, Permission::SharedReadWrite)
             }
         };
+        extra.add_creation(None, base_tag, id, alloc_range(Size::ZERO, size));
         Stacks::new(size, perm, base_tag)
     }
 
@@ -637,11 +848,11 @@ impl Stacks {
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let global = &*state.borrow();
         self.for_each(range, move |offset, stack| {
-            stack.access(AccessKind::Read, tag, (alloc_id, range, offset), global)
+            let mut state = state.borrow_mut();
+            stack.access(AccessKind::Read, tag, (alloc_id, range, offset), &mut state)
         })
-    }
+   }
 
     #[inline(always)]
     pub fn memory_written<'tcx>(
@@ -649,7 +860,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: SbTag,
         range: AllocRange,
-        state: &mut GlobalState,
+        state: &GlobalState,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -657,9 +868,9 @@ impl Stacks {
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let global = state.get_mut();
         self.for_each_mut(range, move |offset, stack| {
-            stack.access(AccessKind::Write, tag, (alloc_id, range, offset), global)
+            let mut state = state.borrow_mut();
+            stack.access(AccessKind::Write, tag, (alloc_id, range, offset), &mut state)
         })
     }
 
@@ -669,13 +880,15 @@ impl Stacks {
         alloc_id: AllocId,
         tag: SbTag,
         range: AllocRange,
-        state: &mut GlobalState,
+        state: &GlobalState,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
-        let global = state.get_mut();
         self.for_each_mut(range, move |offset, stack| {
-            stack.dealloc(tag, Pointer::new(alloc_id, offset), global)
-        })
+            let mut state = state.borrow_mut();
+            stack.dealloc(tag, (alloc_id, range, offset), &mut state)
+        })?;
+        state.borrow_mut().extras.remove(&alloc_id);
+        Ok(())
     }
 }
 
@@ -704,6 +917,17 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             return Ok(());
         }
         let (alloc_id, base_offset, orig_tag) = this.ptr_get_alloc_id(place.ptr)?;
+
+        let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
+        mem_extra.add_creation(
+            Some(orig_tag),
+            new_tag,
+            alloc_id,
+            alloc_range(base_offset, base_offset + size),
+        );
+        if protect {
+            mem_extra.add_protector(orig_tag, new_tag, alloc_id);
+        }
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) =
@@ -753,7 +977,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let extra = this.get_alloc_extra(alloc_id)?;
                 let stacked_borrows =
                     extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-                let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -765,7 +988,9 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     };
                     let item = Item { perm, tag: new_tag, protector };
                     stacked_borrows.for_each(range, |offset, stack| {
-                        stack.grant(orig_tag, item, (alloc_id, range, offset), &*global)
+                        let mut global =
+                            this.machine.stacked_borrows.as_ref().unwrap().borrow_mut();
+                        stack.grant(orig_tag, item, (alloc_id, range, offset), &mut *global)
                     })
                 })?;
                 return Ok(());
@@ -777,11 +1002,11 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let (alloc_extra, memory_extra) = this.get_alloc_extra_mut(alloc_id)?;
         let stacked_borrows =
             alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
-        let global = memory_extra.stacked_borrows.as_mut().unwrap().get_mut();
         let item = Item { perm, tag: new_tag, protector };
         let range = alloc_range(base_offset, size);
-        stacked_borrows.for_each_mut(alloc_range(base_offset, size), |offset, stack| {
-            stack.grant(orig_tag, item, (alloc_id, range, offset), global)
+        stacked_borrows.for_each_mut(range, |offset, stack| {
+            let mut global = memory_extra.stacked_borrows.as_ref().unwrap().borrow_mut();
+            stack.grant(orig_tag, item, (alloc_id, range, offset), &mut *global)
         })?;
         Ok(())
     }
@@ -807,14 +1032,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
 
         // Compute new borrow.
-        let new_tag = {
-            let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
-            match kind {
-                // Give up tracking for raw pointers.
-                RefKind::Raw { .. } if !mem_extra.tag_raw => SbTag::Untagged,
-                // All other pointers are properly tracked.
-                _ => SbTag::Tagged(mem_extra.new_ptr()),
-            }
+        let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
+        let new_tag = match kind {
+            // Give up tracking for raw pointers.
+            RefKind::Raw { .. } if !mem_extra.tag_raw => SbTag::Untagged,
+            // All other pointers are properly tracked.
+            _ => SbTag::Tagged(mem_extra.new_ptr()),
         };
 
         // Reborrow.

@@ -632,7 +632,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc_id,
                 tag,
                 range,
-                machine.stacked_borrows.as_ref().unwrap(),
+                 machine.stacked_borrows.as_ref().unwrap(),
             )
         } else {
             Ok(())
@@ -655,7 +655,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc_id,
                 tag,
                 range,
-                machine.stacked_borrows.as_mut().unwrap(),
+                machine.stacked_borrows.as_ref().unwrap(),
             )
         } else {
             Ok(())
@@ -681,7 +681,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
                 alloc_id,
                 tag,
                 range,
-                machine.stacked_borrows.as_mut().unwrap(),
+                machine.stacked_borrows.as_ref().unwrap(),
             )
         } else {
             Ok(())
