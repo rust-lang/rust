@@ -31,8 +31,8 @@ on Windows.
 Run the following in a terminal:
 
 ```powershell
-winget install python
-winget install cmake
+winget install -e Python.Python.3
+winget install -e Kitware.CMake
 ```
 
 If any of those is installed already, winget will detect it.
