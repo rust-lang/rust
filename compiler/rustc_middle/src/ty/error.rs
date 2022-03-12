@@ -673,7 +673,7 @@ impl<T> Trait<T> for X {
             // the associated type or calling a method that returns the associated type".
             let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
                 diag,
-                assoc.container.id(),
+                assoc.container_id(self),
                 current_method_ident,
                 proj_ty.item_def_id,
                 values.expected,

@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt};
 use rustc_span::Span;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -202,7 +202,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.associated_item(obj.item_def_id).container.id(),
+                    tcx.parent(obj.item_def_id),
                     obj.substs,
                     required_predicates,
                     explicit_map,

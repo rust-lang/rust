@@ -1222,7 +1222,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     |s| s.print_trait_item(ast_item),
                 );
 
-                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(AssocContainer::Trait));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocConst(ty::AssocItemContainer::TraitContainer));
                 record!(self.tables.mir_const_qualif[def_id] <- mir::ConstQualifs::default());
                 record!(self.tables.rendered_const[def_id] <- rendered);
             }
@@ -1238,14 +1238,14 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
                 self.tables.constness.set(def_id.index, hir::Constness::NotConst);
-                record!(self.tables.kind[def_id] <- EntryKind::AssocFn(self.lazy(AssocFnData {
-                    container:AssocContainer::Trait,
+                record!(self.tables.kind[def_id] <- EntryKind::AssocFn {
+                    container: ty::AssocItemContainer::TraitContainer,
                     has_self: trait_item.fn_has_self_parameter,
-                })));
+                });
             }
             ty::AssocKind::Type => {
                 self.encode_explicit_item_bounds(def_id);
-                record!(self.tables.kind[def_id] <- EntryKind::AssocType(AssocContainer::Trait));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocType(ty::AssocItemContainer::TraitContainer));
             }
         }
         match trait_item.kind {
@@ -1277,7 +1277,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
                     let const_data = self.encode_rendered_const_for_body(body_id);
 
-                    record!(self.tables.kind[def_id] <- EntryKind::AssocConst(AssocContainer::Impl));
+                    record!(self.tables.kind[def_id] <- EntryKind::AssocConst(ty::AssocItemContainer::ImplContainer));
                     record!(self.tables.mir_const_qualif[def_id] <- qualifs);
                     record!(self.tables.rendered_const[def_id] <- const_data);
                 } else {
@@ -1295,13 +1295,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     hir::Constness::NotConst
                 };
                 self.tables.constness.set(def_id.index, constness);
-                record!(self.tables.kind[def_id] <- EntryKind::AssocFn(self.lazy(AssocFnData {
-                    container:AssocContainer::Impl,
+                record!(self.tables.kind[def_id] <- EntryKind::AssocFn {
+                    container: ty::AssocItemContainer::ImplContainer,
                     has_self: impl_item.fn_has_self_parameter,
-                })));
+                });
             }
             ty::AssocKind::Type => {
-                record!(self.tables.kind[def_id] <- EntryKind::AssocType(AssocContainer::Impl));
+                record!(self.tables.kind[def_id] <- EntryKind::AssocType(ty::AssocItemContainer::ImplContainer));
             }
         }
         self.encode_item_type(def_id);

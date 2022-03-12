@@ -775,7 +775,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
                                 |did| {
                                     let ai = self.tcx.associated_item(did);
-                                    ai.container == ty::TraitContainer(clone_trait)
+                                    ai.trait_container(self.tcx) == Some(clone_trait)
                                 },
                             ),
                             segment.ident.name,

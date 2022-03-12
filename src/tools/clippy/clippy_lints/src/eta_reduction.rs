@@ -220,9 +220,11 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure_ty: Ty<'tcx>, call_ty: Ty<'tc
 }
 
 fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
-    match cx.tcx.associated_item(method_def_id).container {
-        ty::TraitContainer(def_id) => cx.tcx.def_path_str(def_id),
-        ty::ImplContainer(def_id) => {
+    let assoc_item = cx.tcx.associated_item(method_def_id);
+    let def_id = assoc_item.container_id(cx.tcx);
+    match assoc_item.container {
+        ty::TraitContainer => cx.tcx.def_path_str(def_id),
+        ty::ImplContainer => {
             let ty = cx.tcx.type_of(def_id);
             match ty.kind() {
                 ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),

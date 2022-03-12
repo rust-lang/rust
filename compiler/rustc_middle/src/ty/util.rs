@@ -402,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Some(dtor) => dtor.did,
         };
 
-        let impl_def_id = self.associated_item(dtor).container.id();
+        let impl_def_id = self.parent(dtor);
         let impl_generics = self.generics_of(impl_def_id);
 
         // We have a destructor - all the parameters that are not

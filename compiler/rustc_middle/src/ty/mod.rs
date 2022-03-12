@@ -2194,10 +2194,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// If the given `DefId` describes a method belonging to an impl, returns the
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
-        self.opt_associated_item(def_id).and_then(|trait_item| match trait_item.container {
-            TraitContainer(_) => None,
-            ImplContainer(def_id) => Some(def_id),
-        })
+        self.opt_associated_item(def_id).and_then(|trait_item| trait_item.impl_container(self))
     }
 
     /// If the given `DefId` belongs to a trait that was automatically derived, returns `true`.

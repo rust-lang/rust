@@ -212,7 +212,7 @@ where
                 // `impl Pub<Priv> { pub fn my_method() {} }` is considered a private type,
                 // so we need to visit the self type additionally.
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id) {
-                    if let ty::ImplContainer(impl_def_id) = assoc_item.container {
+                    if let Some(impl_def_id) = assoc_item.impl_container(tcx) {
                         tcx.type_of(impl_def_id).visit_with(self)?;
                     }
                 }

@@ -564,8 +564,8 @@ impl<'tcx> SaveContext<'tcx> {
                     return None;
                 };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
-                    ty::ImplContainer(_) => (Some(method_id), None),
-                    ty::TraitContainer(_) => (None, Some(method_id)),
+                    ty::ImplContainer => (Some(method_id), None),
+                    ty::TraitContainer => (None, Some(method_id)),
                 };
                 let sub_span = seg.ident.span;
                 filter!(self.span_utils, sub_span);

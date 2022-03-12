@@ -1090,13 +1090,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 is_alias_variant_ctor = true;
             }
             Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
-                let container = tcx.associated_item(def_id).container;
-                debug!(?def_id, ?container);
+                let assoc_item = tcx.associated_item(def_id);
+                let container = assoc_item.container;
+                let container_id = assoc_item.container_id(tcx);
+                debug!(?def_id, ?container, ?container_id);
                 match container {
-                    ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(tcx, span, None, span, trait_did)
+                    ty::TraitContainer => {
+                        callee::check_legal_trait_for_method_call(tcx, span, None, span, container_id)
                     }
-                    ty::ImplContainer(impl_def_id) => {
+                    ty::ImplContainer => {
                         if segments.len() == 1 {
                             // `<T>::assoc` will end up here, and so
                             // can `T::assoc`. It this came from an
@@ -1104,7 +1106,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // `T` for posterity (see `UserSelfTy` for
                             // details).
                             let self_ty = self_ty.expect("UFCS sugared assoc missing Self");
-                            user_self_ty = Some(UserSelfTy { impl_def_id, self_ty });
+                            user_self_ty = Some(UserSelfTy { impl_def_id: container_id, self_ty });
                         }
                     }
                 }

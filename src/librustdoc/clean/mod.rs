@@ -1139,8 +1139,8 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                 let ty = clean_middle_ty(tcx.type_of(self.def_id), cx, Some(self.def_id));
 
                 let provided = match self.container {
-                    ty::ImplContainer(_) => true,
-                    ty::TraitContainer(_) => tcx.impl_defaultness(self.def_id).has_value(),
+                    ty::ImplContainer => true,
+                    ty::TraitContainer => tcx.impl_defaultness(self.def_id).has_value(),
                 };
                 if provided {
                     AssocConstItem(ty, ConstantKind::Extern { def_id: self.def_id })
@@ -1159,8 +1159,8 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
 
                 if self.fn_has_self_parameter {
                     let self_ty = match self.container {
-                        ty::ImplContainer(def_id) => tcx.type_of(def_id),
-                        ty::TraitContainer(_) => tcx.types.self_param,
+                        ty::ImplContainer => tcx.type_of(self.container_id(tcx)),
+                        ty::TraitContainer => tcx.types.self_param,
                     };
                     let self_arg_ty = sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
@@ -1178,13 +1178,13 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                 }
 
                 let provided = match self.container {
-                    ty::ImplContainer(_) => true,
-                    ty::TraitContainer(_) => self.defaultness(tcx).has_value(),
+                    ty::ImplContainer => true,
+                    ty::TraitContainer => self.defaultness(tcx).has_value(),
                 };
                 if provided {
                     let defaultness = match self.container {
-                        ty::ImplContainer(_) => Some(self.defaultness(tcx)),
-                        ty::TraitContainer(_) => None,
+                        ty::ImplContainer => Some(self.defaultness(tcx)),
+                        ty::TraitContainer => None,
                     };
                     MethodItem(Box::new(Function { generics, decl }), defaultness)
                 } else {
@@ -1215,7 +1215,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                     }
                 }
 
-                if let ty::TraitContainer(_) = self.container {
+                if let ty::TraitContainer = self.container {
                     let bounds = tcx.explicit_item_bounds(self.def_id);
                     let predicates = ty::GenericPredicates { parent: None, predicates: bounds };
                     let mut generics =
@@ -1232,7 +1232,7 @@ impl<'tcx> Clean<'tcx, Item> for ty::AssocItem {
                                 if assoc.name != my_name {
                                     return false;
                                 }
-                                if trait_.def_id() != self.container.id() {
+                                if trait_.def_id() != self.container_id(tcx) {
                                     return false;
                                 }
                                 match **self_type {
@@ -1356,7 +1356,7 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             }
 
             let trait_segments = &p.segments[..p.segments.len() - 1];
-            let trait_def = cx.tcx.associated_item(p.res.def_id()).container.id();
+            let trait_def = cx.tcx.associated_item(p.res.def_id()).container_id(cx.tcx);
             let trait_ = self::Path {
                 res: Res::Def(DefKind::Trait, trait_def),
                 segments: trait_segments.iter().map(|x| x.clean(cx)).collect(),

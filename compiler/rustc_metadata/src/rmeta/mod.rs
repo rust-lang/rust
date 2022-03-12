@@ -419,9 +419,9 @@ enum EntryKind {
     Generator,
     Trait,
     Impl,
-    AssocFn(LazyValue<AssocFnData>),
-    AssocType(AssocContainer),
-    AssocConst(AssocContainer),
+    AssocFn { container: ty::AssocItemContainer, has_self: bool },
+    AssocType(ty::AssocItemContainer),
+    AssocConst(ty::AssocItemContainer),
     TraitAlias,
 }
 
@@ -432,30 +432,6 @@ struct VariantData {
     /// If this is unit or tuple-variant/struct, then this is the index of the ctor id.
     ctor: Option<DefIndex>,
     is_non_exhaustive: bool,
-}
-
-/// Describes whether the container of an associated item
-/// is a trait or an impl and whether, in a trait, it has
-/// a default, or an in impl, whether it's marked "default".
-#[derive(Copy, Clone, TyEncodable, TyDecodable)]
-enum AssocContainer {
-    Trait,
-    Impl,
-}
-
-impl AssocContainer {
-    fn with_def_id(&self, def_id: DefId) -> ty::AssocItemContainer {
-        match *self {
-            AssocContainer::Trait => ty::TraitContainer(def_id),
-            AssocContainer::Impl => ty::ImplContainer(def_id),
-        }
-    }
-}
-
-#[derive(MetadataEncodable, MetadataDecodable)]
-struct AssocFnData {
-    container: AssocContainer,
-    has_self: bool,
 }
 
 #[derive(TyEncodable, TyDecodable)]
@@ -475,7 +451,6 @@ pub fn provide(providers: &mut Providers) {
 
 trivially_parameterized_over_tcx! {
     VariantData,
-    AssocFnData,
     EntryKind,
     RawDefId,
     TraitImpls,

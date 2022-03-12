@@ -977,11 +977,14 @@ fn check_associated_item(
         let item = tcx.associated_item(item_id);
 
         let (mut implied_bounds, self_ty) = match item.container {
-            ty::TraitContainer(_) => (FxHashSet::default(), tcx.types.self_param),
-            ty::ImplContainer(def_id) => (
-                impl_implied_bounds(tcx, wfcx.param_env, def_id.expect_local(), span),
-                tcx.type_of(def_id),
-            ),
+            ty::TraitContainer => (FxHashSet::default(), tcx.types.self_param),
+            ty::ImplContainer => {
+                let def_id = item.container_id(tcx);
+                (
+                    impl_implied_bounds(tcx, wfcx.param_env, def_id.expect_local(), span),
+                    tcx.type_of(def_id),
+                )
+            }
         };
 
         match item.kind {
@@ -1004,7 +1007,7 @@ fn check_associated_item(
                 check_method_receiver(wfcx, hir_sig, item, self_ty);
             }
             ty::AssocKind::Type => {
-                if let ty::AssocItemContainer::TraitContainer(_) = item.container {
+                if let ty::AssocItemContainer::TraitContainer = item.container {
                     check_associated_type_bounds(wfcx, item, span)
                 }
                 if item.defaultness(tcx).has_value() {

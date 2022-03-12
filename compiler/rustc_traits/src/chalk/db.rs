@@ -8,9 +8,7 @@
 
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{
-    self, AssocItemContainer, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
-};
+use rustc_middle::ty::{self, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 
 use rustc_ast::ast;
 use rustc_attr as attr;
@@ -74,7 +72,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyDatum<RustInterner<'tcx>>> {
         let def_id = assoc_type_id.0;
         let assoc_item = self.interner.tcx.associated_item(def_id);
-        let AssocItemContainer::TraitContainer(trait_def_id) = assoc_item.container else {
+        let Some(trait_def_id) = assoc_item.trait_container(self.interner.tcx) else {
             unimplemented!("Not possible??");
         };
         match assoc_item.kind {
@@ -455,7 +453,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
     ) -> Arc<chalk_solve::rust_ir::AssociatedTyValue<RustInterner<'tcx>>> {
         let def_id = associated_ty_id.0;
         let assoc_item = self.interner.tcx.associated_item(def_id);
-        let impl_id = assoc_item.container.id();
+        let impl_id = assoc_item.container_id(self.interner.tcx);
         match assoc_item.kind {
             AssocKind::Type => {}
             _ => unimplemented!("Not possible??"),

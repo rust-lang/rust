@@ -1160,7 +1160,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
-                        def_path: tcx.def_path_str(assoc_item.container.id()),
+                        def_path: tcx.def_path_str(assoc_item.container_id(tcx)),
                     });
                 })
                 .or_insert(binding.span);

@@ -255,7 +255,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 trait_bound_spans.push(*span);
             }
             for assoc_item in items {
-                let trait_def_id = assoc_item.container.id();
+                let trait_def_id = assoc_item.container_id(tcx);
                 names.push(format!(
                     "`{}` (from trait `{}`)",
                     assoc_item.name,
@@ -321,7 +321,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut dupes = false;
             for item in assoc_items {
                 let prefix = if names[&item.name] > 1 {
-                    let trait_def_id = item.container.id();
+                    let trait_def_id = item.container_id(tcx);
                     dupes = true;
                     format!("{}::", tcx.def_path_str(trait_def_id))
                 } else {
@@ -376,7 +376,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let mut label = vec![];
                 for item in assoc_items {
                     let postfix = if names[&item.name] > 1 {
-                        let trait_def_id = item.container.id();
+                        let trait_def_id = item.container_id(tcx);
                         format!(" (from trait `{}`)", tcx.def_path_str(trait_def_id))
                     } else {
                         String::new()
