@@ -161,9 +161,9 @@ fn rustup_installed() -> bool {
 }
 
 fn stage_dir_exists(stage_path: &str) -> bool {
-    match fs::create_dir(&stage_path[..]) {
+    match fs::create_dir(&stage_path) {
         Ok(_) => true,
-        Err(_) => Path::new(&stage_path[..]).exists(),
+        Err(_) => Path::new(&stage_path).exists(),
     }
 }
 
@@ -179,7 +179,7 @@ fn attempt_toolchain_link(stage_path: &str) {
         return;
     }
 
-    if try_link_toolchain(&stage_path[..]) {
+    if try_link_toolchain(&stage_path) {
         println!(
             "Added `stage1` rustup toolchain; try `cargo +stage1 build` on a separate rust project to run a newly-built toolchain"
         );
@@ -188,7 +188,7 @@ fn attempt_toolchain_link(stage_path: &str) {
         println!(
             "To manually link stage 1 build to `stage1` toolchain, run:\n
             `rustup toolchain link stage1 {}`",
-            &stage_path[..]
+            &stage_path
         );
     }
 }
@@ -222,7 +222,7 @@ fn toolchain_is_linked() -> bool {
 fn try_link_toolchain(stage_path: &str) -> bool {
     Command::new("rustup")
         .stdout(std::process::Stdio::null())
-        .args(&["toolchain", "link", "stage1", &stage_path[..]])
+        .args(&["toolchain", "link", "stage1", &stage_path])
         .output()
         .map_or(false, |output| output.status.success())
 }
