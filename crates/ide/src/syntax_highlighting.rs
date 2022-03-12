@@ -17,21 +17,17 @@ use hir::{InFile, Name, Semantics};
 use ide_db::RootDatabase;
 use rustc_hash::FxHashMap;
 use syntax::{
-    ast::{self},
-    AstNode, AstToken, NodeOrToken,
-    SyntaxKind::*,
-    SyntaxNode, TextRange, WalkEvent, T,
+    ast, AstNode, AstToken, NodeOrToken, SyntaxKind::*, SyntaxNode, TextRange, WalkEvent, T,
 };
 
 use crate::{
     syntax_highlighting::{
-        format::highlight_format_string, highlights::Highlights, macro_::MacroHighlighter,
-        tags::Highlight,
+        escape::highlight_escape_string, format::highlight_format_string, highlights::Highlights,
+        macro_::MacroHighlighter, tags::Highlight,
     },
     FileId, HlMod, HlTag,
 };
 
-use crate::syntax_highlighting::escape::highlight_escape_string;
 pub(crate) use html::highlight_as_html;
 
 #[derive(Debug, Clone, Copy)]
