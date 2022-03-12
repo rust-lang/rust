@@ -375,18 +375,23 @@ fn traverse(
         if let (Some(token), Some(descended_token)) = (token, descended_element.as_token()) {
             if ast::String::can_cast(token.kind()) && ast::String::can_cast(descended_token.kind())
             {
-                let string = ast::String::cast(token).unwrap();
-                let expanded_string = ast::String::cast(descended_token.clone()).unwrap();
-                if string.is_raw() {
-                    if inject::ra_fixture(hl, sema, &string, &expanded_string).is_some() {
-                        continue;
+                let string = ast::String::cast(token);
+                let string_to_highlight = ast::String::cast(descended_token.clone());
+                if let Some((string, expanded_string)) = string.zip(string_to_highlight) {
+                    if string.is_raw() {
+                        if inject::ra_fixture(hl, sema, &string, &expanded_string).is_some() {
+                            continue;
+                        }
                     }
+                    highlight_format_string(hl, &string, &expanded_string, range);
+                    highlight_escape_string(hl, &string, range.start());
                 }
-                highlight_format_string(hl, &string, &expanded_string, range);
-                highlight_escape_string(hl, &string, range.start());
-            } else if ast::ByteString::can_cast(token.kind()) {
-                let byte_string = ast::ByteString::cast(token).unwrap();
-                highlight_escape_string(hl, &byte_string, range.start());
+            } else if ast::ByteString::can_cast(token.kind())
+                && ast::ByteString::can_cast(descended_token.kind())
+            {
+                if let Some(byte_string) = ast::ByteString::cast(token) {
+                    highlight_escape_string(hl, &byte_string, range.start());
+                }
             }
         }
 
