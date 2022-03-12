@@ -12,6 +12,7 @@ use crate::FileId;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
+    pub render_colons: bool,
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
@@ -574,6 +575,7 @@ mod tests {
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
     const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
+        render_colons: true,
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
@@ -590,6 +592,7 @@ mod tests {
     fn check_params(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: true,
                 type_hints: false,
                 chaining_hints: false,
@@ -604,6 +607,7 @@ mod tests {
     fn check_types(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: true,
                 chaining_hints: false,
@@ -618,6 +622,7 @@ mod tests {
     fn check_chains(ra_fixture: &str) {
         check_with_config(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
@@ -649,6 +654,7 @@ mod tests {
     fn hints_disabled() {
         check_with_config(
             InlayHintsConfig {
+                render_colons: true,
                 type_hints: false,
                 parameter_hints: false,
                 chaining_hints: false,
@@ -1104,6 +1110,7 @@ fn main() {
         let inlay_hints = analysis
             .inlay_hints(
                 &InlayHintsConfig {
+                    render_colons: true,
                     parameter_hints: false,
                     type_hints: true,
                     chaining_hints: false,
@@ -1413,6 +1420,7 @@ fn main() {
     fn skip_constructor_and_enum_type_hints() {
         check_with_config(
             InlayHintsConfig {
+                render_colons: true,
                 type_hints: true,
                 parameter_hints: true,
                 chaining_hints: true,
@@ -1590,6 +1598,7 @@ fn main() {
     fn chaining_hints_ignore_comments() {
         check_expect(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
@@ -1647,6 +1656,7 @@ fn main() {
     fn struct_access_chaining_hints() {
         check_expect(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
@@ -1692,6 +1702,7 @@ fn main() {
     fn generic_chaining_hints() {
         check_expect(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,
@@ -1738,6 +1749,7 @@ fn main() {
     fn shorten_iterator_chaining_hints() {
         check_expect(
             InlayHintsConfig {
+                render_colons: true,
                 parameter_hints: false,
                 type_hints: false,
                 chaining_hints: true,

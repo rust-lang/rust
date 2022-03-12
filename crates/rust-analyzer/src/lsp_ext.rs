@@ -255,7 +255,7 @@ impl InlayHintKind {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InlayHint {
-    pub label: String,
+    pub label: InlayHintLabel,
     pub position: Position,
     pub kind: Option<InlayHintKind>,
     pub tooltip: Option<String>,
@@ -263,6 +263,24 @@ pub struct InlayHint {
     pub padding_right: Option<bool>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum InlayHintLabel {
+    String(String),
+    Parts(Vec<InlayHintLabelPart>),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlayHintLabelPart {
+    pub value: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tooltip: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<lsp_types::LocationLink>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub command: Option<lsp_types::Command>,
+}
 pub enum Ssr {}
 
 impl Request for Ssr {

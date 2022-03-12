@@ -413,13 +413,17 @@ pub(crate) fn signature_help(
     }
 }
 
-pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_ext::InlayHint {
+pub(crate) fn inlay_hint(
+    render_colons: bool,
+    line_index: &LineIndex,
+    inlay_hint: InlayHint,
+) -> lsp_ext::InlayHint {
     lsp_ext::InlayHint {
-        label: match inlay_hint.kind {
-            InlayKind::ParameterHint => format!("{}:", inlay_hint.label),
-            InlayKind::TypeHint => format!(": {}", inlay_hint.label),
-            InlayKind::ChainingHint => inlay_hint.label.to_string(),
-        },
+        label: lsp_ext::InlayHintLabel::String(match inlay_hint.kind {
+            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
+            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
+            _ => inlay_hint.label.to_string(),
+        }),
         position: match inlay_hint.kind {
             InlayKind::ParameterHint => position(line_index, inlay_hint.range.start()),
             InlayKind::TypeHint | InlayKind::ChainingHint => {
@@ -433,14 +437,12 @@ pub(crate) fn inlay_hint(line_index: &LineIndex, inlay_hint: InlayHint) -> lsp_e
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => false,
-            InlayKind::ParameterHint => false,
+            InlayKind::TypeHint | InlayKind::ParameterHint => false,
             InlayKind::ChainingHint => true,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::TypeHint => false,
+            InlayKind::TypeHint | InlayKind::ChainingHint => false,
             InlayKind::ParameterHint => true,
-            InlayKind::ChainingHint => false,
         }),
     }
 }

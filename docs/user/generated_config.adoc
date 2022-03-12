@@ -347,6 +347,11 @@ Whether to show `References` action. Only applies when
 Whether to show `Run` action. Only applies when
 `#rust-analyzer.hoverActions.enable#` is set.
 --
+[[rust-analyzer.inlayHints.renderColons]]rust-analyzer.inlayHints.renderColons (default: `true`)::
++
+--
+Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
+--
 [[rust-analyzer.inlayHints.chainingHints]]rust-analyzer.inlayHints.chainingHints (default: `true`)::
 +
 --
