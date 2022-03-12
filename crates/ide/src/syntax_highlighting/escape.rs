@@ -1,9 +1,9 @@
+//! Syntax highlighting for escape sequences
 use crate::syntax_highlighting::highlights::Highlights;
 use crate::{HlRange, HlTag};
 use syntax::ast::IsString;
 use syntax::TextSize;
 
-/// Highlight escape sequences
 pub(super) fn highlight_escape_string<T: IsString>(
     stack: &mut Highlights,
     string: &T,
