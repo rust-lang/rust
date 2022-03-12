@@ -1937,7 +1937,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             }
                             // We only want to suggest public or local traits (#45781).
-                            item.vis.is_public() || info.def_id.is_local()
+                            item.visibility(self.tcx).is_public() || info.def_id.is_local()
                         })
                         .is_some()
             })

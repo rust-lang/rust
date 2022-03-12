@@ -59,8 +59,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
             if let Some(impl_item_ref) =
                 impl_.items.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
-                let assoc_item =
-                    associated_item_from_impl_item_ref(tcx, parent_def_id, impl_item_ref);
+                let assoc_item = associated_item_from_impl_item_ref(parent_def_id, impl_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }
@@ -70,8 +69,7 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
             if let Some(trait_item_ref) =
                 trait_item_refs.iter().find(|i| i.id.def_id.to_def_id() == def_id)
             {
-                let assoc_item =
-                    associated_item_from_trait_item_ref(tcx, parent_def_id, trait_item_ref);
+                let assoc_item = associated_item_from_trait_item_ref(parent_def_id, trait_item_ref);
                 debug_assert_eq!(assoc_item.def_id, def_id);
                 return assoc_item;
             }
@@ -88,7 +86,6 @@ fn associated_item(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AssocItem {
 }
 
 fn associated_item_from_trait_item_ref(
-    tcx: TyCtxt<'_>,
     parent_def_id: LocalDefId,
     trait_item_ref: &hir::TraitItemRef,
 ) -> ty::AssocItem {
@@ -102,7 +99,6 @@ fn associated_item_from_trait_item_ref(
     ty::AssocItem {
         name: trait_item_ref.ident.name,
         kind,
-        vis: tcx.visibility(def_id),
         def_id: def_id.to_def_id(),
         trait_item_def_id: Some(def_id.to_def_id()),
         container: ty::TraitContainer(parent_def_id.to_def_id()),
@@ -111,7 +107,6 @@ fn associated_item_from_trait_item_ref(
 }
 
 fn associated_item_from_impl_item_ref(
-    tcx: TyCtxt<'_>,
     parent_def_id: LocalDefId,
     impl_item_ref: &hir::ImplItemRef,
 ) -> ty::AssocItem {
@@ -125,7 +120,6 @@ fn associated_item_from_impl_item_ref(
     ty::AssocItem {
         name: impl_item_ref.ident.name,
         kind,
-        vis: tcx.visibility(def_id),
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
         container: ty::ImplContainer(parent_def_id.to_def_id()),

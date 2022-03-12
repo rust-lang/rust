@@ -1151,7 +1151,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         ty::AssocItem {
             name,
             kind,
-            vis: self.get_visibility(id),
             def_id: self.local_def_id(id),
             trait_item_def_id: self.get_trait_item_def_id(id),
             container: container.with_def_id(parent),
