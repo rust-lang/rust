@@ -134,7 +134,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let dest = this.force_allocation(dest)?;
         if let ty::Adt(adt, _) = dest.layout.ty.kind() {
-            if !adt.repr.c() {
+            if !adt.repr().c() {
                 throw_ub_format!(
                     "miri_resolve_frame must be declared with a `#[repr(C)]` return type"
                 );
