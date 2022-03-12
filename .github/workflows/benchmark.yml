@@ -50,4 +50,4 @@ jobs:
     - name: make bench-enzyme
       run: cd enzyme/build && make bench-enzyme
     - name: results
-      run: cat enzyme/benchmarks/*/results.txt
+      run: cat enzyme/benchmarks/*/*/results.txt
