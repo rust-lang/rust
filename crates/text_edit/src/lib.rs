@@ -101,7 +101,7 @@ impl TextEdit {
             max_total_len = max(max_total_len, total_len);
         }
 
-        if let Some(additional) = max_total_len.checked_sub(text_size.into()) {
+        if let Some(additional) = max_total_len.checked_sub(text_size) {
             text.reserve(additional.into());
         }
 

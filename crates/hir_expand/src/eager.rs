@@ -146,7 +146,7 @@ pub fn expand_eager_macro(
     if let MacroDefKind::BuiltInEager(eager, _) = def.kind {
         let res = eager.expand(db, arg_id, &subtree);
         if let Some(err) = res.err {
-            diagnostic_sink(err.into());
+            diagnostic_sink(err);
         }
 
         let loc = MacroCallLoc {

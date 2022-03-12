@@ -82,8 +82,8 @@ impl From<GenericParam> for GenericParamId {
     fn from(id: GenericParam) -> Self {
         match id {
             GenericParam::LifetimeParam(it) => GenericParamId::LifetimeParamId(it.id),
-            GenericParam::ConstParam(it) => GenericParamId::ConstParamId(it.id.into()),
-            GenericParam::TypeParam(it) => GenericParamId::TypeParamId(it.id.into()),
+            GenericParam::ConstParam(it) => GenericParamId::ConstParamId(it.id),
+            GenericParam::TypeParam(it) => GenericParamId::TypeParamId(it.id),
         }
     }
 }

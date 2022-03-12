@@ -267,7 +267,7 @@ impl Module {
                 match (item.syntax()) {
                     ast::Adt(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::Adt(nod.into());
+                            let node_def = Definition::Adt(nod);
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
 
                             //Enum Fields are not allowed to explicitly specify pub, it is implied
@@ -301,25 +301,25 @@ impl Module {
                     },
                     ast::TypeAlias(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::TypeAlias(nod.into());
+                            let node_def = Definition::TypeAlias(nod);
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Const(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::Const(nod.into());
+                            let node_def = Definition::Const(nod);
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Static(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::Static(nod.into());
+                            let node_def = Definition::Static(nod);
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },
                     ast::Fn(it) => {
                         if let Some( nod ) = ctx.sema.to_def(&it) {
-                            let node_def = Definition::Function(nod.into());
+                            let node_def = Definition::Function(nod);
                             self.expand_and_group_usages_file_wise(ctx, node_def, &mut refs);
                         }
                     },

@@ -1518,7 +1518,7 @@ fn make_body(
                 make::expr_path(make::path_from_text("ControlFlow::Continue")),
                 make::arg_list(iter::once(make::expr_unit())),
             );
-            with_tail_expr(block, controlflow_continue.into())
+            with_tail_expr(block, controlflow_continue)
         }
         FlowHandler::IfOption { .. } => {
             let none = make::expr_path(make::ext::ident_path("None"));

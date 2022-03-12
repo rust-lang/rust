@@ -570,7 +570,7 @@ impl DefCollector<'_> {
 
         let proc_macro_id =
             ProcMacroLoc { container: module_id, id, expander, kind }.intern(self.db);
-        self.define_proc_macro(def.name.clone(), proc_macro_id.into());
+        self.define_proc_macro(def.name.clone(), proc_macro_id);
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
             self.def_map
                 .exported_derives
