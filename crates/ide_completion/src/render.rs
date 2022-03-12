@@ -8,6 +8,7 @@ pub(crate) mod const_;
 pub(crate) mod pattern;
 pub(crate) mod type_alias;
 pub(crate) mod struct_literal;
+pub(crate) mod compound;
 
 mod builder_ext;
 
