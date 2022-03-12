@@ -1,19 +1,19 @@
 error: pattern requires `..` due to inaccessible fields
   --> $DIR/doc-hidden-fields.rs:15:9
    |
-LL |     let HiddenStruct { one, two, } = HiddenStruct::default();
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let HiddenStruct { one, two } = HiddenStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: ignore the inaccessible and unused fields
    |
-LL |     let HiddenStruct { one, two, .., } = HiddenStruct::default();
+LL |     let HiddenStruct { one, two, .. } = HiddenStruct::default();
    |                                ++++
 
 error[E0027]: pattern does not mention field `two` and inaccessible fields
   --> $DIR/doc-hidden-fields.rs:18:9
    |
-LL |     let HiddenStruct { one, } = HiddenStruct::default();
-   |         ^^^^^^^^^^^^^^^^^^^^^ missing field `two` and inaccessible fields
+LL |     let HiddenStruct { one } = HiddenStruct::default();
+   |         ^^^^^^^^^^^^^^^^^^^^ missing field `two` and inaccessible fields
    |
 help: include the missing field in the pattern and ignore the inaccessible fields
    |
