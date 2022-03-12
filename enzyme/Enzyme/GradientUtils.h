@@ -611,6 +611,28 @@ public:
             todo.push_back(std::make_pair(I, (Value *)cur));
         }
       } else if (auto load = dyn_cast<LoadInst>(cur)) {
+
+        // If loaded value is an int or pointer, may need
+        // to preserve initialization within the primal.
+        auto TT = TR.query(load)[{-1}];
+        if (!TT.isFloat()) {
+          // ok to duplicate in forward /
+          // reverse if it is a stack or GC allocation.
+          // Said memory will still be shadow initialized.
+          StringRef funcName = "";
+          if (auto CI = dyn_cast<CallInst>(V))
+            if (Function *originCall = getFunctionFromCall(CI))
+              funcName = originCall->getName();
+          if (isa<AllocaInst>(V) || hasMetadata(V, "enzyme_fromstack") ||
+              funcName == "jl_alloc_array_1d" ||
+              funcName == "jl_alloc_array_2d" ||
+              funcName == "jl_alloc_array_3d" || funcName == "jl_array_copy" ||
+              funcName == "julia.gc_alloc_obj") {
+            primalInitializationOfShadow = true;
+          } else {
+            shadowpromotable = false;
+          }
+        }
         loads.insert(load);
       } else if (auto store = dyn_cast<StoreInst>(cur)) {
         // TODO only add store to shadow iff non float type
@@ -770,10 +792,7 @@ public:
       outer = getAncestor(outer, OrigLI.getLoopFor(S->getParent()));
     }
 
-    if (!shadowpromotable)
-      return;
-
-    if (!isConstantValue(V)) {
+    if (shadowpromotable && !isConstantValue(V)) {
       backwardsOnlyShadows[V] = ShadowRematerializer(
           stores, frees, primalInitializationOfShadow, outer);
     }

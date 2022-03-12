@@ -10443,10 +10443,12 @@ public:
 #endif
         tapeIdx = 0;
 
-        if (subretType == DIFFE_TYPE::DUP_ARG ||
-            subretType == DIFFE_TYPE::DUP_NONEED) {
+        if (!orig->getType()->isVoidTy()) {
           returnIdx = 1;
-          differetIdx = 2;
+          if (subretType == DIFFE_TYPE::DUP_ARG ||
+              subretType == DIFFE_TYPE::DUP_NONEED) {
+            differetIdx = 2;
+          }
         }
 
       } else {
