@@ -46,7 +46,6 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
                     acc.add_resolution(ctx, name, def);
                 }
             }
-            return;
         }
         None if is_absolute_path => acc.add_crate_roots(ctx),
         // only show modules in a fresh UseTree

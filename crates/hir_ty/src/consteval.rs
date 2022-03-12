@@ -235,7 +235,7 @@ pub fn eval_const(expr: &Expr, ctx: &mut ConstEvalCtx<'_>) -> Result<ComputedExp
                     Ok(ComputedExpr::Literal(Literal::Int(r, None)))
                 }
                 BinaryOp::LogicOp(_) => Err(ConstEvalError::TypeError),
-                _ => return Err(ConstEvalError::NotSupported("bin op on this operators")),
+                _ => Err(ConstEvalError::NotSupported("bin op on this operators")),
             }
         }
         Expr::Block { statements, tail, .. } => {

@@ -333,7 +333,7 @@ impl Module {
             }
         });
 
-        return (refs, adt_fields);
+        (refs, adt_fields)
     }
 
     fn expand_and_group_usages_file_wise(
@@ -563,7 +563,7 @@ impl Module {
                     }
                 });
             }
-            return use_opt;
+            use_opt
         });
 
         let mut use_tree_str_opt: Option<Vec<ast::Path>> = None;
@@ -646,7 +646,7 @@ impl Module {
             return Some(item);
         }
 
-        return None;
+        None
     }
 
     fn process_use_stmt_for_import_resolve(
@@ -842,7 +842,7 @@ fn does_source_exists_outside_sel_in_same_mod(
         _ => {}
     }
 
-    return source_exists_outside_sel_in_same_mod;
+    source_exists_outside_sel_in_same_mod
 }
 
 fn get_replacements_for_visibilty_change(
@@ -890,7 +890,7 @@ fn get_replacements_for_visibilty_change(
         }
     });
 
-    return (body_items, replacements, record_field_parents, impls);
+    (body_items, replacements, record_field_parents, impls)
 }
 
 fn get_use_tree_paths_from_path(
@@ -943,15 +943,13 @@ fn compare_hir_and_ast_module(
         return None;
     }
 
-    return Some(());
+    Some(())
 }
 
 fn indent_range_before_given_node(node: &SyntaxNode) -> Option<TextRange> {
-    let x = node.siblings_with_tokens(syntax::Direction::Prev).find(|x| {
-        return x.kind() == WHITESPACE;
-    })?;
-
-    return Some(x.text_range());
+    node.siblings_with_tokens(syntax::Direction::Prev)
+        .find(|x| x.kind() == WHITESPACE)
+        .map(|x| x.text_range())
 }
 
 #[cfg(test)]

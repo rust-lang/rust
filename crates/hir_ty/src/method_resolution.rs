@@ -278,7 +278,7 @@ impl InherentImpls {
         impls.collect_def_map(db, &crate_def_map);
         impls.shrink_to_fit();
 
-        return Arc::new(impls);
+        Arc::new(impls)
     }
 
     pub(crate) fn inherent_impls_in_block_query(
@@ -291,7 +291,7 @@ impl InherentImpls {
             impls.shrink_to_fit();
             return Some(Arc::new(impls));
         }
-        return None;
+        None
     }
 
     fn shrink_to_fit(&mut self) {

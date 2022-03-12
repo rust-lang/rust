@@ -14,7 +14,7 @@ pub(super) fn complete_repr(acc: &mut Completions, ctx: &CompletionContext, inpu
                     ast::Expr::PathExpr(path) => path.path()?.as_single_name_ref(),
                     ast::Expr::CallExpr(call) => match call.expr()? {
                         ast::Expr::PathExpr(path) => path.path()?.as_single_name_ref(),
-                        _ => return None,
+                        _ => None,
                     },
                     _ => None,
                 })
