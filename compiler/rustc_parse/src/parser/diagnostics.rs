@@ -2073,6 +2073,19 @@ impl<'a> Parser<'a> {
                     let value = self.mk_expr_err(start.to(expr.span));
                     err.emit();
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
+                } else if token::Colon == snapshot.token.kind
+                    && expr.span.lo() == snapshot.token.span.hi()
+                    && matches!(expr.kind, ExprKind::Path(..))
+                {
+                    // Find a mistake like "foo::var:A".
+                    err.span_suggestion(
+                        snapshot.token.span,
+                        "write a path separator here",
+                        "::".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    return Ok(GenericArg::Type(self.mk_ty(start.to(expr.span), TyKind::Err)));
                 } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
                 {
                     // Avoid the following output by checking that we consumed a full const arg:
