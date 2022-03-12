@@ -15,50 +15,50 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
         ) => {
             let ty = ctx.sema.type_of_expr(&Expr::RecordExpr(record_expr.clone()));
 
-            let default_trait = ctx.famous_defs().core_default_Default();
-            let impl_default_trait =
-                default_trait.zip(ty.as_ref()).map_or(false, |(default_trait, ty)| {
-                    ty.original.impls_trait(ctx.db, default_trait, &[])
-                });
+            if let Some(hir::Adt::Union(un)) = ty.as_ref().and_then(|t| t.original.as_adt()) {
+                // ctx.sema.record_literal_missing_fields will always return
+                // an empty Vec on a union literal. This is normally
+                // reasonable, but here we'd like to present the full list
+                // of fields if the literal is empty.
+                let were_fields_specified = record_expr
+                    .record_expr_field_list()
+                    .and_then(|fl| fl.fields().next())
+                    .is_some();
 
-            let missing_fields = match ty.and_then(|t| t.adjusted().as_adt()) {
-                Some(hir::Adt::Union(un)) => {
-                    // ctx.sema.record_literal_missing_fields will always return
-                    // an empty Vec on a union literal. This is normally
-                    // reasonable, but here we'd like to present the full list
-                    // of fields if the literal is empty.
-                    let were_fields_specified = record_expr
-                        .record_expr_field_list()
-                        .and_then(|fl| fl.fields().next())
-                        .is_some();
-
-                    match were_fields_specified {
-                        false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
-                        true => vec![],
-                    }
+                match were_fields_specified {
+                    false => un.fields(ctx.db).into_iter().map(|f| (f, f.ty(ctx.db))).collect(),
+                    true => vec![],
                 }
-                _ => ctx.sema.record_literal_missing_fields(record_expr),
-            };
-            if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
-                let completion_text = "..Default::default()";
-                let mut item =
-                    CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
-                let completion_text =
-                    completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
-                item.insert_text(completion_text).set_relevance(CompletionRelevance {
-                    exact_postfix_snippet_match: true,
-                    ..Default::default()
-                });
-                item.add_to(acc);
+            } else {
+                let missing_fields = ctx.sema.record_literal_missing_fields(record_expr);
+
+                let default_trait = ctx.famous_defs().core_default_Default();
+                let impl_default_trait =
+                    default_trait.zip(ty.as_ref()).map_or(false, |(default_trait, ty)| {
+                        ty.original.impls_trait(ctx.db, default_trait, &[])
+                    });
+
+                if impl_default_trait && !missing_fields.is_empty() && ctx.path_qual().is_none() {
+                    let completion_text = "..Default::default()";
+                    let mut item =
+                        CompletionItem::new(SymbolKind::Field, ctx.source_range(), completion_text);
+                    let completion_text =
+                        completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
+                    item.insert_text(completion_text).set_relevance(CompletionRelevance {
+                        exact_postfix_snippet_match: true,
+                        ..Default::default()
+                    });
+                    item.add_to(acc);
+                }
+                if ctx.previous_token_is(T![.]) {
+                    let mut item =
+                        CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
+                    item.insert_text(".");
+                    item.add_to(acc);
+                    return None;
+                }
+                missing_fields
             }
-            if ctx.previous_token_is(T![.]) {
-                let mut item =
-                    CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), "..");
-                item.insert_text(".");
-                item.add_to(acc);
-                return None;
-            }
-            missing_fields
         }
         Some(ImmediateLocation::RecordPat(record_pat)) => {
             ctx.sema.record_pattern_missing_fields(record_pat)
@@ -82,22 +82,17 @@ pub(crate) fn complete_record_literal(
     }
 
     match ctx.expected_type.as_ref()?.as_adt()? {
-        hir::Adt::Struct(strukt) => {
-            if ctx.path_qual().is_none() {
-                let module =
-                    if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
-                let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
+        hir::Adt::Struct(strukt) if ctx.path_qual().is_none() => {
+            let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
+            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
 
-                acc.add_struct_literal(ctx, strukt, path, None);
-            }
+            acc.add_struct_literal(ctx, strukt, path, None);
         }
-        hir::Adt::Union(un) => {
-            if ctx.path_qual().is_none() {
-                let module = if let Some(module) = ctx.module { module } else { un.module(ctx.db) };
-                let path = module.find_use_path(ctx.db, hir::ModuleDef::from(un));
+        hir::Adt::Union(un) if ctx.path_qual().is_none() => {
+            let module = if let Some(module) = ctx.module { module } else { un.module(ctx.db) };
+            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(un));
 
-                acc.add_union_literal(ctx, un, path, None);
-            }
+            acc.add_union_literal(ctx, un, path, None);
         }
         _ => {}
     };
