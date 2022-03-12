@@ -57,8 +57,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&mut self, path: &[&str]) -> InterpResult<'tcx, Scalar<Tag>> {
-        let this = self.eval_context_mut();
+    fn eval_path_scalar(&self, path: &[&str]) -> InterpResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_ref();
         let instance = this.resolve_path(path);
         let cid = GlobalId { instance, promoted: None };
         let const_val = this.eval_to_allocation(cid)?;
@@ -67,51 +67,98 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     }
 
     /// Helper function to get a `libc` constant as a `Scalar`.
-    fn eval_libc(&mut self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut().eval_path_scalar(&["libc", name])
+    fn eval_libc(&self, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_path_scalar(&["libc", name])
     }
 
     /// Helper function to get a `libc` constant as an `i32`.
-    fn eval_libc_i32(&mut self, name: &str) -> InterpResult<'tcx, i32> {
+    fn eval_libc_i32(&self, name: &str) -> InterpResult<'tcx, i32> {
         // TODO: Cache the result.
         self.eval_libc(name)?.to_i32()
     }
 
     /// Helper function to get a `windows` constant as a `Scalar`.
-    fn eval_windows(&mut self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
-        self.eval_context_mut().eval_path_scalar(&["std", "sys", "windows", module, name])
+    fn eval_windows(&self, module: &str, name: &str) -> InterpResult<'tcx, Scalar<Tag>> {
+        self.eval_context_ref().eval_path_scalar(&["std", "sys", "windows", module, name])
     }
 
     /// Helper function to get a `windows` constant as a `u64`.
-    fn eval_windows_u64(&mut self, module: &str, name: &str) -> InterpResult<'tcx, u64> {
+    fn eval_windows_u64(&self, module: &str, name: &str) -> InterpResult<'tcx, u64> {
         // TODO: Cache the result.
         self.eval_windows(module, name)?.to_u64()
     }
 
     /// Helper function to get the `TyAndLayout` of a `libc` type
-    fn libc_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        let this = self.eval_context_mut();
+    fn libc_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+        let this = self.eval_context_ref();
         let ty = this.resolve_path(&["libc", name]).ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
     /// Helper function to get the `TyAndLayout` of a `windows` type
-    fn windows_ty_layout(&mut self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
-        let this = self.eval_context_mut();
+    fn windows_ty_layout(&self, name: &str) -> InterpResult<'tcx, TyAndLayout<'tcx>> {
+        let this = self.eval_context_ref();
         let ty = this
             .resolve_path(&["std", "sys", "windows", "c", name])
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty)
     }
 
-    /// Write a uint of the appropriate size to `dest`.
-    fn write_uint(&mut self, i: impl Into<u128>, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-        self.eval_context_mut().write_scalar(Scalar::from_uint(i, dest.layout.size), dest)
+    /// Project to the given *named* field of the mplace (which must be a struct or union type).
+    fn mplace_field_named(
+        &self,
+        mplace: &MPlaceTy<'tcx, Tag>,
+        name: &str,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, Tag>> {
+        let this = self.eval_context_ref();
+        let adt = mplace.layout.ty.ty_adt_def().unwrap();
+        for (idx, field) in adt.non_enum_variant().fields.iter().enumerate() {
+            if field.name.as_str() == name {
+                return this.mplace_field(mplace, idx);
+            }
+        }
+        bug!("No field named {} in type {}", name, mplace.layout.ty);
     }
 
-    /// Write an int of the appropriate size to `dest`.
+    /// Write an int of the appropriate size to `dest`. The target type may be signed or unsigned,
+    /// we try to do the right thing anyway. `i128` can fit all integer types except for `u128` so
+    /// this method is fine for almost all integer types.
     fn write_int(&mut self, i: impl Into<i128>, dest: &PlaceTy<'tcx, Tag>) -> InterpResult<'tcx> {
-        self.eval_context_mut().write_scalar(Scalar::from_int(i, dest.layout.size), dest)
+        assert!(dest.layout.abi.is_scalar(), "write_int on non-scalar type {}", dest.layout.ty);
+        let val = if dest.layout.abi.is_signed() {
+            Scalar::from_int(i, dest.layout.size)
+        } else {
+            Scalar::from_uint(u64::try_from(i.into()).unwrap(), dest.layout.size)
+        };
+        self.eval_context_mut().write_scalar(val, dest)
+    }
+
+    /// Write the first N fields of the given place.
+    fn write_int_fields(
+        &mut self,
+        values: &[i128],
+        dest: &MPlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        for (idx, &val) in values.iter().enumerate() {
+            let field = this.mplace_field(dest, idx)?;
+            this.write_int(val, &field.into())?;
+        }
+        Ok(())
+    }
+
+    /// Write the given fields of the given place.
+    fn write_int_fields_named(
+        &mut self,
+        values: &[(&str, i128)],
+        dest: &MPlaceTy<'tcx, Tag>,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        for &(name, val) in values.iter() {
+            let field = this.mplace_field_named(dest, name)?;
+            this.write_int(val, &field.into())?;
+        }
+        Ok(())
     }
 
     /// Write a 0 of the appropriate size to `dest`.
@@ -381,27 +428,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 bug!("we should have already handled unions in `visit_value`")
             }
         }
-    }
-
-    // Writes several `ImmTy`s contiguously into memory. This is useful when you have to pack
-    // different values into a struct.
-    fn write_packed_immediates(
-        &mut self,
-        place: &MPlaceTy<'tcx, Tag>,
-        imms: &[ImmTy<'tcx, Tag>],
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-
-        let mut offset = Size::from_bytes(0);
-
-        for &imm in imms {
-            this.write_immediate(
-                *imm,
-                &place.offset(offset, MemPlaceMeta::None, imm.layout, &*this.tcx)?.into(),
-            )?;
-            offset += imm.layout.size;
-        }
-        Ok(())
     }
 
     /// Helper function used inside the shims of foreign functions to check that isolation is
@@ -748,26 +774,6 @@ pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
         "{} not available when isolation is enabled",
         name,
     )))
-}
-
-pub fn immty_from_int_checked<'tcx>(
-    int: impl Into<i128>,
-    layout: TyAndLayout<'tcx>,
-) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
-    let int = int.into();
-    Ok(ImmTy::try_from_int(int, layout).ok_or_else(|| {
-        err_unsup_format!("signed value {:#x} does not fit in {} bits", int, layout.size.bits())
-    })?)
-}
-
-pub fn immty_from_uint_checked<'tcx>(
-    int: impl Into<u128>,
-    layout: TyAndLayout<'tcx>,
-) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
-    let int = int.into();
-    Ok(ImmTy::try_from_uint(int, layout).ok_or_else(|| {
-        err_unsup_format!("unsigned value {:#x} does not fit in {} bits", int, layout.size.bits())
-    })?)
 }
 
 pub fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Tag> {
