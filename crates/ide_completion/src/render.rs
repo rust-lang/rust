@@ -10,8 +10,6 @@ pub(crate) mod type_alias;
 pub(crate) mod struct_literal;
 pub(crate) mod compound;
 
-mod builder_ext;
-
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
 use ide_db::{helpers::item_name, RootDatabase, SnippetCap, SymbolKind};
 use syntax::{SmolStr, SyntaxKind, TextRange};

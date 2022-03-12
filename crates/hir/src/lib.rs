@@ -1325,7 +1325,7 @@ impl Function {
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let krate = self.krate_id(db);
         let ret_type = &db.function_data(self.id).ret_type;
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let ty = ctx.lower_ty(ret_type);
@@ -1341,7 +1341,7 @@ impl Function {
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {
         let resolver = self.id.resolver(db.upcast());
-        let krate = self.id.lookup(db.upcast()).container.module(db.upcast()).krate();
+        let krate = self.krate_id(db);
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = db.trait_environment(self.id.into());
         db.function_data(self.id)
@@ -1359,9 +1359,25 @@ impl Function {
         if self.self_param(db).is_none() {
             return None;
         }
-        let mut res = self.assoc_fn_params(db);
-        res.remove(0);
-        Some(res)
+        Some(self.params_without_self(db))
+    }
+
+    pub fn params_without_self(self, db: &dyn HirDatabase) -> Vec<Param> {
+        let resolver = self.id.resolver(db.upcast());
+        let krate = self.krate_id(db);
+        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
+        let environment = db.trait_environment(self.id.into());
+        let skip = if db.function_data(self.id).has_self_param() { 1 } else { 0 };
+        db.function_data(self.id)
+            .params
+            .iter()
+            .enumerate()
+            .skip(skip)
+            .map(|(idx, (_, type_ref))| {
+                let ty = Type { krate, env: environment.clone(), ty: ctx.lower_ty(type_ref) };
+                Param { func: self, ty, idx }
+            })
+            .collect()
     }
 
     pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
@@ -1409,6 +1425,10 @@ impl Function {
         }
 
         result
+    }
+
+    fn krate_id(self, db: &dyn HirDatabase) -> CrateId {
+        self.id.lookup(db.upcast()).module(db.upcast()).krate()
     }
 }
 
