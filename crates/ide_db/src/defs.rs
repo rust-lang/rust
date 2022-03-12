@@ -306,7 +306,7 @@ impl NameClass {
 
         if let Some(it) = ast::LifetimeParam::cast(parent.clone()) {
             sema.to_def(&it).map(Into::into).map(Definition::GenericParam)
-        } else if let Some(it) = ast::Label::cast(parent.clone()) {
+        } else if let Some(it) = ast::Label::cast(parent) {
             sema.to_def(&it).map(Definition::Label)
         } else {
             None

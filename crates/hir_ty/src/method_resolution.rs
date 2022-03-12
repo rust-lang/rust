@@ -663,7 +663,7 @@ pub fn iterate_method_candidates_dyn(
             iterate_method_candidates_for_self_ty(
                 ty,
                 db,
-                env.clone(),
+                env,
                 traits_in_scope,
                 visible_from_module,
                 name,
@@ -731,7 +731,7 @@ fn iterate_method_candidates_with_autoref(
         first_adjustment.with_autoref(Mutability::Mut),
         deref_chain,
         db,
-        env.clone(),
+        env,
         traits_in_scope,
         visible_from_module,
         name,

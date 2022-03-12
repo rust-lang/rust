@@ -52,7 +52,7 @@ impl DefMap {
                     return Ok(ResolvedAttr::Other);
                 }
             }
-            None => return Err(UnresolvedMacro { path: ast_id.path.clone() }),
+            None => return Err(UnresolvedMacro { path: ast_id.path }),
         };
 
         Ok(ResolvedAttr::Macro(attr_macro_as_call_id(

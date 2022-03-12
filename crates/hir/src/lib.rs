@@ -1530,11 +1530,7 @@ impl SelfParam {
         let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
         let environment = db.trait_environment(self.func.into());
 
-        Type {
-            krate,
-            env: environment.clone(),
-            ty: ctx.lower_ty(&db.function_data(self.func).params[0].1),
-        }
+        Type { krate, env: environment, ty: ctx.lower_ty(&db.function_data(self.func).params[0].1) }
     }
 }
 
