@@ -1105,7 +1105,7 @@ pub(crate) fn inherent_impl_substs(
     // Unknown, and in that case we want the result to contain Unknown in those
     // places again.
     let suffix =
-        Substitution::from_iter(Interner, substs.iter(Interner).cloned().skip(self_ty_vars));
+        Substitution::from_iter(Interner, substs.iter(Interner).skip(self_ty_vars).cloned());
     Some(fallback_bound_vars(suffix, self_ty_vars))
 }
 

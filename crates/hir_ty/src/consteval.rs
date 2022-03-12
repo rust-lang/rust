@@ -241,8 +241,8 @@ pub fn eval_const(expr: &Expr, ctx: &mut ConstEvalCtx<'_>) -> Result<ComputedExp
         Expr::Block { statements, tail, .. } => {
             let mut prev_values = HashMap::<Name, Option<ComputedExpr>>::default();
             for statement in &**statements {
-                match statement {
-                    &hir_def::expr::Statement::Let { pat, initializer, .. } => {
+                match *statement {
+                    hir_def::expr::Statement::Let { pat, initializer, .. } => {
                         let pat = &ctx.pats[pat];
                         let name = match pat {
                             Pat::Bind { name, subpat, .. } if subpat.is_none() => name.clone(),
@@ -261,7 +261,7 @@ pub fn eval_const(expr: &Expr, ctx: &mut ConstEvalCtx<'_>) -> Result<ComputedExp
                             ctx.local_data.insert(name, value);
                         }
                     }
-                    &hir_def::expr::Statement::Expr { .. } => {
+                    hir_def::expr::Statement::Expr { .. } => {
                         return Err(ConstEvalError::NotSupported("this kind of statement"))
                     }
                 }

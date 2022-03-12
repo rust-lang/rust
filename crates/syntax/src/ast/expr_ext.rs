@@ -392,10 +392,8 @@ impl AstNode for CallableExpr {
     {
         if let Some(it) = ast::CallExpr::cast(syntax.clone()) {
             Some(Self::Call(it))
-        } else if let Some(it) = ast::MethodCallExpr::cast(syntax) {
-            Some(Self::MethodCall(it))
         } else {
-            None
+            ast::MethodCallExpr::cast(syntax).map(Self::MethodCall)
         }
     }
 

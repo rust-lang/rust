@@ -195,11 +195,11 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                 // Remove complete impl block if it has only one child (as such it will be empty
                 // after deleting that child)
                 if impl_child_count == 1 {
-                    node_to_be_removed = impl_.syntax()
+                    node_to_be_removed = impl_.syntax();
                 } else {
                     //Remove selected node
                     node_to_be_removed = &node;
-                }
+                };
 
                 builder.delete(node_to_be_removed.text_range());
                 // Remove preceding indentation from node
@@ -418,11 +418,8 @@ impl Module {
 
         record_field_parents.into_iter().for_each(|x| {
             x.1.descendants().filter_map(ast::RecordField::cast).for_each(|desc| {
-                let is_record_field_present = record_fields
-                    .clone()
-                    .into_iter()
-                    .find(|x| x.to_string() == desc.to_string())
-                    .is_some();
+                let is_record_field_present =
+                    record_fields.clone().into_iter().any(|x| x.to_string() == desc.to_string());
                 if is_record_field_present {
                     replacements.push((desc.visibility(), desc.syntax().clone()));
                 }
@@ -520,7 +517,7 @@ impl Module {
         let mut exists_inside_sel = false;
         let mut exists_outside_sel = false;
         usage_res.clone().into_iter().for_each(|x| {
-            let mut non_use_nodes_itr = (&x.1).into_iter().filter_map(|x| {
+            let mut non_use_nodes_itr = (&x.1).iter().filter_map(|x| {
                 if find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none() {
                     let path_opt = find_node_at_range::<ast::Path>(file.syntax(), x.range);
                     return path_opt;
@@ -531,15 +528,11 @@ impl Module {
 
             if non_use_nodes_itr
                 .clone()
-                .find(|x| !selection_range.contains_range(x.syntax().text_range()))
-                .is_some()
+                .any(|x| !selection_range.contains_range(x.syntax().text_range()))
             {
                 exists_outside_sel = true;
             }
-            if non_use_nodes_itr
-                .find(|x| selection_range.contains_range(x.syntax().text_range()))
-                .is_some()
-            {
+            if non_use_nodes_itr.any(|x| selection_range.contains_range(x.syntax().text_range())) {
                 exists_inside_sel = true;
             }
         });
@@ -556,7 +549,7 @@ impl Module {
             let file_id = x.0;
             let mut use_opt: Option<ast::Use> = None;
             if file_id == curr_file_id {
-                (&x.1).into_iter().for_each(|x| {
+                (&x.1).iter().for_each(|x| {
                     let node_opt: Option<ast::Use> = find_node_at_range(file.syntax(), x.range);
                     if let Some(node) = node_opt {
                         use_opt = Some(node);

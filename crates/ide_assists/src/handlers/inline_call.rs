@@ -374,7 +374,7 @@ fn inline(
             // inline direct local arguments
             [_, ..] if expr_as_name_ref(expr).is_some() => {
                 cov_mark::hit!(inline_call_inline_locals);
-                usages.into_iter().for_each(|usage| inline_direct(usage, expr));
+                usages.iter().for_each(|usage| inline_direct(usage, expr));
             }
             // can't inline, emit a let statement
             _ => {
