@@ -615,6 +615,7 @@ fn buffer_capacity_required(mut file: &File) -> usize {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -646,6 +647,7 @@ impl Read for File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
@@ -671,6 +673,7 @@ impl Seek for File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for &File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -702,6 +705,7 @@ impl Read for &File {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for &File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)

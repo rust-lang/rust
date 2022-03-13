@@ -541,7 +541,6 @@ where
 /// [`std::io`]: self
 /// [`File`]: crate::fs::File
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning
@@ -1351,7 +1350,6 @@ impl<'a> Deref for IoSlice<'a> {
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoWrite")]
 pub trait Write {
     /// Write a buffer into this writer, returning how many bytes were written.

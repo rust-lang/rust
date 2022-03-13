@@ -439,6 +439,7 @@ fn vec_write_vectored(
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for Cursor<&mut [u8]> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -462,6 +463,7 @@ impl Write for Cursor<&mut [u8]> {
 }
 
 #[stable(feature = "cursor_mut_vec", since = "1.25.0")]
+#[doc(notable_trait)]
 impl Write for Cursor<&mut Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, self.inner, buf)
@@ -483,6 +485,7 @@ impl Write for Cursor<&mut Vec<u8>> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for Cursor<Vec<u8>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         vec_write(&mut self.pos, &mut self.inner, buf)
@@ -504,6 +507,7 @@ impl Write for Cursor<Vec<u8>> {
 }
 
 #[stable(feature = "cursor_box_slice", since = "1.5.0")]
+#[doc(notable_trait)]
 impl Write for Cursor<Box<[u8]>> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
