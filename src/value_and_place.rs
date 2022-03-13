@@ -24,7 +24,7 @@ fn codegen_field<'tcx>(
         }
         match field_layout.ty.kind() {
             ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
-            ty::Adt(def, _) if def.repr.packed() => {
+            ty::Adt(def, _) if def.repr().packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
                 simple(fx)
             }
@@ -816,7 +816,7 @@ pub(crate) fn assert_assignable<'tcx>(
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
         (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
-            if adt_def_a.did == adt_def_b.did =>
+            if adt_def_a.did() == adt_def_b.did() =>
         {
             let mut types_a = substs_a.types();
             let mut types_b = substs_b.types();
