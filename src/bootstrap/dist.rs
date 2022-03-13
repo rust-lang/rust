@@ -821,6 +821,11 @@ impl Step for Src {
                 // not needed and contains symlinks which rustup currently
                 // chokes on when unpacking.
                 "library/backtrace/crates",
+                // these are 30MB combined and aren't necessary for building
+                // the standard library.
+                "library/stdarch/crates/Cargo.toml",
+                "library/stdarch/crates/stdarch-verify",
+                "library/stdarch/crates/intrinsic-test",
             ],
             &dst_src,
         );

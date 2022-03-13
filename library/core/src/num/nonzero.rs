@@ -465,7 +465,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn log2(self) -> u32 {
-                    <$Int>::BITS - 1 - self.leading_zeros()
+                    Self::BITS - 1 - self.leading_zeros()
                 }
 
                 /// Returns the base 10 logarithm of the number, rounded down.
@@ -1088,5 +1088,43 @@ nonzero_min_max_signed! {
     NonZeroI32(i32);
     NonZeroI64(i64);
     NonZeroI128(i128);
+    NonZeroIsize(isize);
+}
+
+macro_rules! nonzero_bits {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// The size of this non-zero integer type in bits.
+                ///
+                #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_bits)]
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
+                /// ```
+                #[unstable(feature = "nonzero_bits", issue = "94881")]
+                pub const BITS: u32 = <$Int>::BITS;
+            }
+        )+
+    }
+}
+
+nonzero_bits! {
+    NonZeroU8(u8);
+    NonZeroI8(i8);
+    NonZeroU16(u16);
+    NonZeroI16(i16);
+    NonZeroU32(u32);
+    NonZeroI32(i32);
+    NonZeroU64(u64);
+    NonZeroI64(i64);
+    NonZeroU128(u128);
+    NonZeroI128(i128);
+    NonZeroUsize(usize);
     NonZeroIsize(isize);
 }
