@@ -418,6 +418,7 @@ impl fmt::Debug for Stdin {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
@@ -452,6 +453,7 @@ impl StdinLock<'_> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for StdinLock<'_> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -677,6 +679,7 @@ impl fmt::Debug for Stdout {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&*self).write(buf)
@@ -703,6 +706,7 @@ impl Write for Stdout {
 }
 
 #[stable(feature = "write_mt", since = "1.48.0")]
+#[doc(notable_trait)]
 impl Write for &Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
@@ -729,6 +733,7 @@ impl Write for &Stdout {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for StdoutLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)
@@ -897,6 +902,7 @@ impl fmt::Debug for Stderr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         (&*self).write(buf)
@@ -923,6 +929,7 @@ impl Write for Stderr {
 }
 
 #[stable(feature = "write_mt", since = "1.48.0")]
+#[doc(notable_trait)]
 impl Write for &Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
@@ -949,6 +956,7 @@ impl Write for &Stderr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for StderrLock<'_> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.borrow_mut().write(buf)

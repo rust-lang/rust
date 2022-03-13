@@ -57,6 +57,7 @@ pub const fn empty() -> Empty {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for Empty {
     #[inline]
     fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
@@ -179,6 +180,7 @@ pub const fn repeat(byte: u8) -> Repeat {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Read for Repeat {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -272,6 +274,7 @@ pub const fn sink() -> Sink {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(notable_trait)]
 impl Write for Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -296,6 +299,7 @@ impl Write for Sink {
 }
 
 #[stable(feature = "write_mt", since = "1.48.0")]
+#[doc(notable_trait)]
 impl Write for &Sink {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {

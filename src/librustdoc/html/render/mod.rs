@@ -1345,6 +1345,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
                 let trait_did = trait_.def_id();
 
                 if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
+                    || i.is_notable()
                 {
                     has_notable_trait = true;
                 }
