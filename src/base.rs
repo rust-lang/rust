@@ -90,7 +90,7 @@ pub(crate) fn codegen_fn<'tcx>(
     } else if arg_uninhabited {
         fx.bcx.append_block_params_for_function_params(fx.block_map[START_BLOCK]);
         fx.bcx.switch_to_block(fx.block_map[START_BLOCK]);
-        crate::trap::trap_unreachable(&mut fx, "function has uninhabited argument");
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
     } else {
         tcx.sess.time("codegen clif ir", || {
             tcx.sess
@@ -424,18 +424,16 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
                         fx.bcx.ins().jump(destination_block, &[]);
                     }
                     None => {
-                        crate::trap::trap_unreachable(
-                            fx,
-                            "[corruption] Returned from noreturn inline asm",
-                        );
+                        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
                     }
                 }
             }
             TerminatorKind::Resume | TerminatorKind::Abort => {
-                trap_unreachable(fx, "[corruption] Unwinding bb reached.");
+                // FIXME implement unwinding
+                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
             }
             TerminatorKind::Unreachable => {
-                trap_unreachable(fx, "[corruption] Hit unreachable code.");
+                fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdge { .. }
@@ -925,5 +923,5 @@ pub(crate) fn codegen_panic_inner<'tcx>(
         args,
     );
 
-    crate::trap::trap_unreachable(fx, "panic lang item returned");
+    fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
 }
