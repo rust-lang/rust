@@ -1,4 +1,4 @@
-#![feature(rustc_private, decl_macro)]
+#![feature(rustc_private)]
 #![cfg_attr(feature = "jit", feature(never_type, vec_into_raw_parts, once_cell))]
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]

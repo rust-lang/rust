@@ -1,46 +1,32 @@
 //! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
-mod cpuid;
-mod llvm;
-mod simd;
-
-pub(crate) use cpuid::codegen_cpuid_call;
-pub(crate) use llvm::codegen_llvm_intrinsic_call;
-
-use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_span::symbol::{kw, sym, Symbol};
-
-use crate::prelude::*;
-use cranelift_codegen::ir::AtomicRmwOp;
-
-macro intrinsic_pat {
+macro_rules! intrinsic_pat {
     (_) => {
         _
-    },
+    };
     ($name:ident) => {
         sym::$name
-    },
+    };
     (kw.$name:ident) => {
         kw::$name
-    },
+    };
     ($name:literal) => {
         $name
-    },
+    };
 }
 
-macro intrinsic_arg {
-    (o $fx:expr, $arg:ident) => {},
+macro_rules! intrinsic_arg {
+    (o $fx:expr, $arg:ident) => {};
     (c $fx:expr, $arg:ident) => {
         let $arg = codegen_operand($fx, $arg);
-    },
+    };
     (v $fx:expr, $arg:ident) => {
         let $arg = codegen_operand($fx, $arg).load_scalar($fx);
-    }
+    };
 }
 
-macro intrinsic_match {
+macro_rules! intrinsic_match {
     ($fx:expr, $intrinsic:expr, $args:expr,
     _ => $unknown:block;
     $(
@@ -61,6 +47,20 @@ macro intrinsic_match {
         }
     }
 }
+
+mod cpuid;
+mod llvm;
+mod simd;
+
+pub(crate) use cpuid::codegen_cpuid_call;
+pub(crate) use llvm::codegen_llvm_intrinsic_call;
+
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_span::symbol::{kw, sym, Symbol};
+
+use crate::prelude::*;
+use cranelift_codegen::ir::AtomicRmwOp;
 
 fn report_atomic_type_validation_error<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
