@@ -10,6 +10,6 @@ rust-version = "1.57"
 anyhow = "1.0.26"
 flate2 = "1.0"
 write-json = "0.1.0"
-xshell = "0.1"
+xshell = "0.2.0"
 xflags = "0.2.1"
 # Avoid adding more dependencies to this crate

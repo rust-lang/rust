@@ -3,14 +3,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, pushd, pushenv, read_file};
+use xshell::{cmd, Shell};
 
 #[test]
 fn check_code_formatting() {
-    let _dir = pushd(sourcegen::project_root()).unwrap();
-    let _e = pushenv("RUSTUP_TOOLCHAIN", "stable");
+    let sh = &Shell::new().unwrap();
+    sh.change_dir(sourcegen::project_root());
+    sh.set_var("RUSTUP_TOOLCHAIN", "stable");
 
-    let out = cmd!("rustfmt --version").read().unwrap();
+    let out = cmd!(sh, "rustfmt --version").read().unwrap();
     if !out.contains("stable") {
         panic!(
             "Failed to run rustfmt from toolchain 'stable'. \
@@ -18,25 +19,27 @@ fn check_code_formatting() {
         )
     }
 
-    let res = cmd!("cargo fmt -- --check").run();
+    let res = cmd!(sh, "cargo fmt -- --check").run();
     if res.is_err() {
-        let _ = cmd!("cargo fmt").run();
+        let _ = cmd!(sh, "cargo fmt").run();
     }
     res.unwrap()
 }
 
 #[test]
 fn check_lsp_extensions_docs() {
+    let sh = &Shell::new().unwrap();
+
     let expected_hash = {
-        let lsp_ext_rs =
-            read_file(sourcegen::project_root().join("crates/rust-analyzer/src/lsp_ext.rs"))
-                .unwrap();
+        let lsp_ext_rs = sh
+            .read_file(sourcegen::project_root().join("crates/rust-analyzer/src/lsp_ext.rs"))
+            .unwrap();
         stable_hash(lsp_ext_rs.as_str())
     };
 
     let actual_hash = {
         let lsp_extensions_md =
-            read_file(sourcegen::project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+            sh.read_file(sourcegen::project_root().join("docs/dev/lsp-extensions.md")).unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp_ext.rs hash:"))
@@ -62,6 +65,8 @@ Please adjust docs/dev/lsp-extensions.md.
 
 #[test]
 fn files_are_tidy() {
+    let sh = &Shell::new().unwrap();
+
     let files = sourcegen::list_files(&sourcegen::project_root().join("crates"));
 
     let mut tidy_docs = TidyDocs::default();
@@ -70,7 +75,7 @@ fn files_are_tidy() {
         let extension = path.extension().unwrap_or_default().to_str().unwrap_or_default();
         match extension {
             "rs" => {
-                let text = read_file(&path).unwrap();
+                let text = sh.read_file(&path).unwrap();
                 check_todo(&path, &text);
                 check_dbg(&path, &text);
                 check_test_attrs(&path, &text);
@@ -80,7 +85,7 @@ fn files_are_tidy() {
                 tidy_marks.visit(&path, &text);
             }
             "toml" => {
-                let text = read_file(&path).unwrap();
+                let text = sh.read_file(&path).unwrap();
                 check_cargo_toml(&path, text);
             }
             _ => (),
@@ -139,8 +144,10 @@ fn check_cargo_toml(path: &Path, text: String) {
 
 #[test]
 fn check_merge_commits() {
-    let bors = cmd!("git rev-list --merges --author 'bors\\[bot\\]' HEAD~19..").read().unwrap();
-    let all = cmd!("git rev-list --merges HEAD~19..").read().unwrap();
+    let sh = &Shell::new().unwrap();
+
+    let bors = cmd!(sh, "git rev-list --merges --author 'bors\\[bot\\]' HEAD~19..").read().unwrap();
+    let all = cmd!(sh, "git rev-list --merges HEAD~19..").read().unwrap();
     if bors != all {
         panic!(
             "
@@ -213,6 +220,8 @@ See https://github.com/rust-lang/rust-clippy/issues/5537 for discussion.
 
 #[test]
 fn check_licenses() {
+    let sh = &Shell::new().unwrap();
+
     let expected = "
 0BSD OR MIT OR Apache-2.0
 Apache-2.0
@@ -235,7 +244,7 @@ Zlib OR Apache-2.0 OR MIT
     .filter(|it| !it.is_empty())
     .collect::<Vec<_>>();
 
-    let meta = cmd!("cargo metadata --format-version 1").read().unwrap();
+    let meta = cmd!(sh, "cargo metadata --format-version 1").read().unwrap();
     let mut licenses = meta
         .split(|c| c == ',' || c == '{' || c == '}')
         .filter(|it| it.contains(r#""license""#))

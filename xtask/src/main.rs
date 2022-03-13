@@ -14,15 +14,16 @@ mod release;
 mod dist;
 mod metrics;
 
-use anyhow::{bail, Result};
+use anyhow::bail;
 use std::{
     env,
     path::{Path, PathBuf},
 };
-use xshell::{cmd, cp, pushd, pushenv};
+use xshell::{cmd, Shell};
 
-fn main() -> Result<()> {
-    let _d = pushd(project_root())?;
+fn main() -> anyhow::Result<()> {
+    let sh = &Shell::new()?;
+    sh.change_dir(project_root());
 
     let flags = flags::Xtask::from_env()?;
     match flags.subcommand {
@@ -30,18 +31,21 @@ fn main() -> Result<()> {
             println!("{}", flags::Xtask::HELP);
             Ok(())
         }
-        flags::XtaskCmd::Install(cmd) => cmd.run(),
-        flags::XtaskCmd::FuzzTests(_) => run_fuzzer(),
-        flags::XtaskCmd::Release(cmd) => cmd.run(),
-        flags::XtaskCmd::Promote(cmd) => cmd.run(),
-        flags::XtaskCmd::Dist(cmd) => cmd.run(),
-        flags::XtaskCmd::Metrics(cmd) => cmd.run(),
+        flags::XtaskCmd::Install(cmd) => cmd.run(sh),
+        flags::XtaskCmd::FuzzTests(_) => run_fuzzer(sh),
+        flags::XtaskCmd::Release(cmd) => cmd.run(sh),
+        flags::XtaskCmd::Promote(cmd) => cmd.run(sh),
+        flags::XtaskCmd::Dist(cmd) => cmd.run(sh),
+        flags::XtaskCmd::Metrics(cmd) => cmd.run(sh),
         flags::XtaskCmd::Bb(cmd) => {
             {
-                let _d = pushd("./crates/rust-analyzer")?;
-                cmd!("cargo build --release --features jemalloc").run()?;
+                let _d = sh.push_dir("./crates/rust-analyzer");
+                cmd!(sh, "cargo build --release --features jemalloc").run()?;
             }
-            cp("./target/release/rust-analyzer", format!("./target/rust-analyzer-{}", cmd.suffix))?;
+            sh.copy_file(
+                "./target/release/rust-analyzer",
+                format!("./target/rust-analyzer-{}", cmd.suffix),
+            )?;
             Ok(())
         }
     }
@@ -57,25 +61,25 @@ fn project_root() -> PathBuf {
     .to_path_buf()
 }
 
-fn run_fuzzer() -> Result<()> {
-    let _d = pushd("./crates/syntax")?;
-    let _e = pushenv("RUSTUP_TOOLCHAIN", "nightly");
-    if cmd!("cargo fuzz --help").read().is_err() {
-        cmd!("cargo install cargo-fuzz").run()?;
+fn run_fuzzer(sh: &Shell) -> anyhow::Result<()> {
+    let _d = sh.push_dir("./crates/syntax");
+    let _e = sh.push_env("RUSTUP_TOOLCHAIN", "nightly");
+    if cmd!(sh, "cargo fuzz --help").read().is_err() {
+        cmd!(sh, "cargo install cargo-fuzz").run()?;
     };
 
     // Expecting nightly rustc
-    let out = cmd!("rustc --version").read()?;
+    let out = cmd!(sh, "rustc --version").read()?;
     if !out.contains("nightly") {
         bail!("fuzz tests require nightly rustc")
     }
 
-    cmd!("cargo fuzz run parser").run()?;
+    cmd!(sh, "cargo fuzz run parser").run()?;
     Ok(())
 }
 
-fn date_iso() -> Result<String> {
-    let res = cmd!("date -u +%Y-%m-%d").read()?;
+fn date_iso(sh: &Shell) -> anyhow::Result<String> {
+    let res = cmd!(sh, "date -u +%Y-%m-%d").read()?;
     Ok(res)
 }
 

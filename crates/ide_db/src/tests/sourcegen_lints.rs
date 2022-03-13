@@ -4,16 +4,20 @@ use std::{borrow::Cow, fs, path::Path};
 use itertools::Itertools;
 use stdx::format_to;
 use test_utils::project_root;
-use xshell::cmd;
+use xshell::{cmd, Shell};
 
 /// This clones rustc repo, and so is not worth to keep up-to-date. We update
 /// manually by un-ignoring the test from time to time.
 #[test]
 #[ignore]
 fn sourcegen_lint_completions() {
+    let sh = &Shell::new().unwrap();
+
     let rust_repo = project_root().join("./target/rust");
     if !rust_repo.exists() {
-        cmd!("git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}").run().unwrap();
+        cmd!(sh, "git clone --depth=1 https://github.com/rust-lang/rust {rust_repo}")
+            .run()
+            .unwrap();
     }
 
     let mut contents = String::from(
@@ -30,16 +34,19 @@ pub struct LintGroup {
 ",
     );
 
-    generate_lint_descriptor(&mut contents);
+    generate_lint_descriptor(sh, &mut contents);
     contents.push('\n');
 
     generate_feature_descriptor(&mut contents, &rust_repo.join("src/doc/unstable-book/src"));
     contents.push('\n');
 
     let lints_json = project_root().join("./target/clippy_lints.json");
-    cmd!("curl https://rust-lang.github.io/rust-clippy/master/lints.json --output {lints_json}")
-        .run()
-        .unwrap();
+    cmd!(
+        sh,
+        "curl https://rust-lang.github.io/rust-clippy/master/lints.json --output {lints_json}"
+    )
+    .run()
+    .unwrap();
     generate_descriptor_clippy(&mut contents, &lints_json);
 
     let contents = sourcegen::add_preamble("sourcegen_lints", sourcegen::reformat(contents));
@@ -48,10 +55,10 @@ pub struct LintGroup {
     sourcegen::ensure_file_contents(destination.as_path(), &contents);
 }
 
-fn generate_lint_descriptor(buf: &mut String) {
+fn generate_lint_descriptor(sh: &Shell, buf: &mut String) {
     // FIXME: rustdoc currently requires an input file for -Whelp cc https://github.com/rust-lang/rust/pull/88831
     let file = project_root().join(file!());
-    let stdout = cmd!("rustdoc -W help {file}").read().unwrap();
+    let stdout = cmd!(sh, "rustdoc -W help {file}").read().unwrap();
     let start_lints = stdout.find("----  -------  -------").unwrap();
     let start_lint_groups = stdout.find("----  ---------").unwrap();
     let start_lints_rustdoc =
