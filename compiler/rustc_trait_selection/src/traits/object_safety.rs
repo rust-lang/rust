@@ -131,16 +131,18 @@ fn object_safety_violations_for_trait(
             }),
     );
 
-    violations.extend(
-        tcx.associated_items(trait_def_id)
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Type)
-            .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
-            .map(|item| {
-                let ident = item.ident(tcx);
-                ObjectSafetyViolation::GAT(ident.name, ident.span)
-            }),
-    );
+    if !tcx.features().generic_associated_types_extended {
+        violations.extend(
+            tcx.associated_items(trait_def_id)
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Type)
+                .filter(|item| !tcx.generics_of(item.def_id).params.is_empty())
+                .map(|item| {
+                    let ident = item.ident(tcx);
+                    ObjectSafetyViolation::GAT(ident.name, ident.span)
+                }),
+        );
+    }
 
     debug!(
         "object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",

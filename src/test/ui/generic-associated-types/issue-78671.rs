@@ -1,4 +1,8 @@
+// revisions: base extended
+
 #![feature(generic_associated_types)]
+#![cfg_attr(extended, feature(generic_associated_types_extended))]
+#![cfg_attr(extended, allow(incomplete_features))]
 
 trait CollectionFamily {
     type Member<T>;
@@ -6,7 +10,7 @@ trait CollectionFamily {
 fn floatify() {
     Box::new(Family) as &dyn CollectionFamily<Member=usize>
     //~^ ERROR: missing generics for associated type
-    //~| ERROR: the trait `CollectionFamily` cannot be made into an object
+    //[base]~^^ ERROR: the trait `CollectionFamily` cannot be made into an object
 }
 
 struct Family;
