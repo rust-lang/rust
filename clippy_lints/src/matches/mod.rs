@@ -16,6 +16,7 @@ mod match_same_arms;
 mod match_single_binding;
 mod match_wild_enum;
 mod match_wild_err_arm;
+mod needless_match;
 mod overlapping_arms;
 mod redundant_pattern_match;
 mod rest_pat_in_fully_bound_struct;
@@ -566,6 +567,49 @@ declare_clippy_lint! {
     "`match` with identical arm bodies"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for unnecessary `match` or match-like `if let` returns for `Option` and `Result`
+    /// when function signatures are the same.
+    ///
+    /// ### Why is this bad?
+    /// This `match` block does nothing and might not be what the coder intended.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// fn foo() -> Result<(), i32> {
+    ///     match result {
+    ///         Ok(val) => Ok(val),
+    ///         Err(err) => Err(err),
+    ///     }
+    /// }
+    ///
+    /// fn bar() -> Option<i32> {
+    ///     if let Some(val) = option {
+    ///         Some(val)
+    ///     } else {
+    ///         None
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// Could be replaced as
+    ///
+    /// ```rust,ignore
+    /// fn foo() -> Result<(), i32> {
+    ///     result
+    /// }
+    ///
+    /// fn bar() -> Option<i32> {
+    ///     option
+    /// }
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub NEEDLESS_MATCH,
+    complexity,
+    "`match` or match-like `if let` that are unnecessary"
+}
+
 #[derive(Default)]
 pub struct Matches {
     msrv: Option<RustcVersion>,
@@ -599,6 +643,7 @@ impl_lint_pass!(Matches => [
     REDUNDANT_PATTERN_MATCHING,
     MATCH_LIKE_MATCHES_MACRO,
     MATCH_SAME_ARMS,
+    NEEDLESS_MATCH,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Matches {
@@ -622,6 +667,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
+                    needless_match::check_match(cx, ex, arms);
 
                     if self.infallible_destructuring_match_linted {
                         self.infallible_destructuring_match_linted = false;
@@ -640,6 +686,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_like_matches::check(cx, expr);
             }
             redundant_pattern_match::check(cx, expr);
+            needless_match::check(cx, expr);
         }
     }
 

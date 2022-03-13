@@ -138,6 +138,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(matches::MATCH_OVERLAPPING_ARM),
     LintId::of(matches::MATCH_REF_PATS),
     LintId::of(matches::MATCH_SINGLE_BINDING),
+    LintId::of(matches::NEEDLESS_MATCH),
     LintId::of(matches::REDUNDANT_PATTERN_MATCHING),
     LintId::of(matches::SINGLE_MATCH),
     LintId::of(matches::WILDCARD_IN_OR_PATTERNS),

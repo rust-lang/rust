@@ -260,6 +260,7 @@ store.register_lints(&[
     matches::MATCH_SINGLE_BINDING,
     matches::MATCH_WILDCARD_FOR_SINGLE_VARIANTS,
     matches::MATCH_WILD_ERR_ARM,
+    matches::NEEDLESS_MATCH,
     matches::REDUNDANT_PATTERN_MATCHING,
     matches::REST_PAT_IN_FULLY_BOUND_STRUCTS,
     matches::SINGLE_MATCH,
