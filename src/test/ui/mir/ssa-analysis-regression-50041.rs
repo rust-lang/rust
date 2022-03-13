@@ -6,7 +6,7 @@
 #![no_std]
 
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T);
+pub struct Box<T: ?Sized>(*mut T, ());
 
 impl<T: ?Sized> Drop for Box<T> {
     fn drop(&mut self) {
@@ -15,7 +15,7 @@ impl<T: ?Sized> Drop for Box<T> {
 
 #[lang = "box_free"]
 #[inline(always)]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+unsafe fn box_free<T: ?Sized>(ptr: *mut T, _: ()) {
     dealloc(ptr)
 }
 
