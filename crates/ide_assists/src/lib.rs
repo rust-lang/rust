@@ -183,6 +183,7 @@ mod handlers {
     mod sort_items;
     mod toggle_ignore;
     mod unmerge_use;
+    mod unnecessary_async;
     mod unwrap_block;
     mod unwrap_result_return_type;
     mod wrap_return_type_in_result;
@@ -268,6 +269,7 @@ mod handlers {
             split_import::split_import,
             toggle_ignore::toggle_ignore,
             unmerge_use::unmerge_use,
+            unnecessary_async::unnecessary_async,
             unwrap_block::unwrap_block,
             unwrap_result_return_type::unwrap_result_return_type,
             wrap_return_type_in_result::wrap_return_type_in_result,

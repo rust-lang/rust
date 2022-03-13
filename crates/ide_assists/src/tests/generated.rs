@@ -2107,6 +2107,21 @@ use std::fmt::Display;
 }
 
 #[test]
+fn doctest_unnecessary_async() {
+    check_doc_test(
+        "unnecessary_async",
+        r#####"
+pub async f$0n foo() {}
+pub async fn bar() { foo().await }
+"#####,
+        r#####"
+pub fn foo() {}
+pub async fn bar() { foo() }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unwrap_block() {
     check_doc_test(
         "unwrap_block",
