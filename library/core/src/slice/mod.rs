@@ -3536,7 +3536,7 @@ impl<T> [T] {
     ///         suffix.iter().copied().sum(),
     ///     ]);
     ///     let sums = middle.iter().copied().fold(sums, f32x4::add);
-    ///     sums.horizontal_sum()
+    ///     sums.reduce_sum()
     /// }
     ///
     /// let numbers: Vec<f32> = (1..101).map(|x| x as _).collect();

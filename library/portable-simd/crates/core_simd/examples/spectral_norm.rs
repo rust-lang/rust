@@ -20,7 +20,7 @@ fn mult_av(v: &[f64], out: &mut [f64]) {
             sum += b / a;
             j += 2
         }
-        *out = sum.horizontal_sum();
+        *out = sum.reduce_sum();
     }
 }
 
@@ -38,7 +38,7 @@ fn mult_atv(v: &[f64], out: &mut [f64]) {
             sum += b / a;
             j += 2
         }
-        *out = sum.horizontal_sum();
+        *out = sum.reduce_sum();
     }
 }
 
