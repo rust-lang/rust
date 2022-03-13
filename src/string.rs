@@ -315,25 +315,43 @@ fn break_string(max_width: usize, trim_end: bool, line_end: &str, input: &[&str]
         // Found a whitespace and what is on its left side is big enough.
         Some(index) if index >= MIN_STRING => break_at(index),
         // No whitespace found, try looking for a punctuation instead
-        _ => match input[0..max_width_index_in_input]
-            .iter()
-            .rposition(|grapheme| is_punctuation(grapheme))
+        _ => match (0..max_width_index_in_input)
+            .rev()
+            .skip_while(|pos| !is_valid_linebreak(input, *pos))
+            .next()
         {
             // Found a punctuation and what is on its left side is big enough.
             Some(index) if index >= MIN_STRING => break_at(index),
             // Either no boundary character was found to the left of `input[max_chars]`, or the line
             // got too small. We try searching for a boundary character to the right.
-            _ => match input[max_width_index_in_input..]
-                .iter()
-                .position(|grapheme| is_whitespace(grapheme) || is_punctuation(grapheme))
+            _ => match (max_width_index_in_input..input.len())
+                .skip_while(|pos| !is_valid_linebreak(input, *pos))
+                .next()
             {
                 // A boundary was found after the line limit
-                Some(index) => break_at(max_width_index_in_input + index),
+                Some(index) => break_at(index),
                 // No boundary to the right, the input cannot be broken
                 None => SnippetState::EndOfInput(input.concat()),
             },
         },
     }
+}
+
+fn is_valid_linebreak(input: &[&str], pos: usize) -> bool {
+    let is_whitespace = is_whitespace(input[pos]);
+    if is_whitespace {
+        return true;
+    }
+    let is_punctuation = is_punctuation(input[pos]);
+    if is_punctuation && !is_part_of_type(input, pos) {
+        return true;
+    }
+    false
+}
+
+fn is_part_of_type(input: &[&str], pos: usize) -> bool {
+    input.get(pos..=pos + 1) == Some(&[":", ":"])
+        || input.get(pos.saturating_sub(1)..=pos) == Some(&[":", ":"])
 }
 
 fn is_new_line(grapheme: &str) -> bool {
@@ -367,6 +385,19 @@ mod test {
         let config = Default::default();
         let fmt = StringFormat::new(Shape::legacy(2, Indent::empty()), &config);
         rewrite_string("eq_", &fmt, 2);
+    }
+
+    #[test]
+    fn line_break_at_valid_points_test() {
+        let string = "[TheName](Dont::break::my::type::That::would::be::very::nice) break here";
+        let graphemes = UnicodeSegmentation::graphemes(&*string, false).collect::<Vec<&str>>();
+        assert_eq!(
+            break_string(20, false, "", &graphemes[..]),
+            SnippetState::LineEnd(
+                "[TheName](Dont::break::my::type::That::would::be::very::nice) ".to_string(),
+                62
+            )
+        );
     }
 
     #[test]
