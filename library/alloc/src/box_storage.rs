@@ -4,6 +4,7 @@ use core::alloc::LayoutError;
 use core::cmp;
 use core::intrinsics;
 use core::mem;
+use core::mem::MaybeUninit;
 use core::ptr::NonNull;
 
 #[cfg(not(no_global_oom_handling))]
@@ -170,7 +171,7 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
 
         if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when `elem_size` is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
+            // 0, getting to here necessarily means the boxed-slice is overfull.
             return Err(CapacityOverflow.into());
         }
 
@@ -183,12 +184,11 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
         let cap = cmp::max(cap * 2, required_cap);
         let cap = cmp::max(Self::MIN_NON_ZERO_CAP, cap);
 
-        let new_layout = Layout::array::<T>(cap);
-
-        replace(self, |ptr, len, alloc| {
+        replace(self, |current_memory, alloc| {
+            let new_layout = Layout::array::<T>(cap);
             // `finish_grow` is non-generic over `T`.
-            let ptr = finish_grow(new_layout, slice_layout(ptr, len), alloc)?;
-            Ok((ptr.as_mut_ptr().cast(), cap))
+            let ptr = finish_grow(new_layout, current_memory, alloc)?;
+            Ok(Some((ptr, cap)))
         })
     }
 
@@ -198,24 +198,23 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
     fn grow_exact(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
         if mem::size_of::<T>() == 0 {
             // Since we return a capacity of `usize::MAX` when the type size is
-            // 0, getting to here necessarily means the `RawVec` is overfull.
+            // 0, getting to here necessarily means the boxed-slice is overfull.
             return Err(CapacityOverflow.into());
         }
         let cap = len.checked_add(additional).ok_or(CapacityOverflow)?;
-        let new_layout = Layout::array::<T>(cap);
 
-        replace(self, |ptr, len, alloc| {
+        replace(self, |current_memory, alloc| {
+            let new_layout = Layout::array::<T>(cap);
             // `finish_grow` is non-generic over `T`.
-            let ptr = finish_grow(new_layout, slice_layout(ptr, len), alloc)?;
-            Ok((ptr.as_mut_ptr().cast(), cap))
+            let ptr = finish_grow(new_layout, current_memory, alloc)?;
+            Ok(Some((ptr, cap)))
         })
     }
 
     fn shrink(&mut self, cap: usize) -> Result<(), TryReserveError> {
         assert!(cap <= self.capacity(), "Tried to shrink to a larger capacity");
-        replace(self, |ptr, len, alloc| {
-            let (ptr, layout) =
-                if let Some(mem) = slice_layout(ptr, len) { mem } else { return Ok((ptr, len)) };
+        replace(self, |current_memory, alloc| {
+            let (ptr, layout) = if let Some(mem) = current_memory { mem } else { return Ok(None) };
 
             let ptr = unsafe {
                 // `Layout::array` cannot overflow here because it would have
@@ -225,12 +224,12 @@ impl<T, A: Allocator> BoxStorage for Box<[mem::MaybeUninit<T>], A> {
                     .shrink(ptr, layout, new_layout)
                     .map_err(|_| AllocError { layout: new_layout, non_exhaustive: () })?
             };
-            Ok((ptr.as_mut_ptr().cast(), cap))
+            Ok(Some((ptr, cap)))
         })
     }
 }
 
-pub(crate) unsafe fn from_raw_slice_parts_in<T, A: Allocator>(
+pub(crate) unsafe fn storage_from_raw_parts_in<T, A: Allocator>(
     ptr: *mut T,
     len: usize,
     alloc: A,
@@ -241,43 +240,42 @@ pub(crate) unsafe fn from_raw_slice_parts_in<T, A: Allocator>(
     }
 }
 
-pub(crate) fn box_into_raw_slice_parts<T, A: Allocator>(
-    mut this: Box<[T], A>,
-) -> (*mut T, usize, A) {
-    let len = this.len();
-    let ptr = this.as_mut_ptr();
-    let (_, alloc) = Box::into_raw_with_allocator(this);
-    (ptr, len, alloc)
-}
-
 fn replace<T, A: Allocator>(
     dst: &mut Box<[mem::MaybeUninit<T>], A>,
-    f: impl FnOnce(*mut T, usize, &mut A) -> Result<(*mut T, usize), TryReserveError>,
+    f: impl FnOnce(
+        Option<(NonNull<u8>, Layout)>,
+        &A,
+    ) -> Result<Option<(NonNull<[u8]>, usize)>, TryReserveError>,
 ) -> Result<(), TryReserveError> {
     unsafe {
-        let this = core::ptr::read(dst);
-        let (ptr, len, mut alloc) = box_into_raw_slice_parts(this);
-        match f(ptr.cast(), len, &mut alloc) {
-            Ok((ptr, len)) => {
-                Ok(core::ptr::write(dst, from_raw_slice_parts_in(ptr.cast(), len, alloc)))
+        let current_memory = slice_layout(&mut *dst);
+        let alloc = Box::allocator(dst);
+        match f(current_memory, &alloc) {
+            Ok(None) => Ok(()),
+            Ok(Some((ptr, len))) => {
+                // hack because we don't have access to box here :()
+                let raw =
+                    core::slice::from_raw_parts_mut(ptr.as_ptr().cast::<MaybeUninit<T>>(), len);
+                let this = core::ptr::read(dst);
+                let (_, alloc) = Box::into_raw_with_allocator(this);
+                let this = Box::from_raw_in(raw, alloc);
+                core::ptr::write(dst, this);
+                Ok(())
             }
-            Err(err) => {
-                core::ptr::write(dst, from_raw_slice_parts_in(ptr, len, alloc));
-                Err(err)
-            }
+            Err(err) => Err(err),
         }
     }
 }
 
-fn slice_layout<T>(ptr: *mut T, len: usize) -> Option<(core::ptr::NonNull<u8>, Layout)> {
-    if mem::size_of::<T>() == 0 || len == 0 {
+fn slice_layout<T>(slice: &mut [MaybeUninit<T>]) -> Option<(NonNull<u8>, Layout)> {
+    if mem::size_of::<T>() == 0 || slice.len() == 0 {
         None
     } else {
         // We have an allocated chunk of memory, so we can bypass runtime
         // checks to get our current layout.
         unsafe {
-            let layout = Layout::array::<T>(len).unwrap_unchecked();
-            Some((core::ptr::NonNull::new_unchecked(ptr.cast()), layout))
+            let layout = Layout::array::<T>(slice.len()).unwrap_unchecked();
+            Some((NonNull::new_unchecked(slice.as_mut_ptr().cast()), layout))
         }
     }
 }
@@ -290,7 +288,7 @@ fn slice_layout<T>(ptr: *mut T, len: usize) -> Option<(core::ptr::NonNull<u8>, L
 fn finish_grow<A>(
     new_layout: Result<Layout, LayoutError>,
     current_memory: Option<(NonNull<u8>, Layout)>,
-    alloc: &mut A,
+    alloc: &A,
 ) -> Result<NonNull<[u8]>, TryReserveError>
 where
     A: Allocator,
@@ -365,11 +363,11 @@ pub(crate) fn allocate_in<T, A: Allocator>(
         // LLVM IR generated.
         let layout = match Layout::array::<T>(capacity) {
             Ok(layout) => layout,
-            Err(_) => crate::box_storage::capacity_overflow(),
+            Err(_) => capacity_overflow(),
         };
-        match crate::box_storage::alloc_guard(layout.size()) {
+        match alloc_guard(layout.size()) {
             Ok(_) => {}
-            Err(_) => crate::box_storage::capacity_overflow(),
+            Err(_) => capacity_overflow(),
         }
         let result = match init {
             AllocInit::Uninitialized => alloc.allocate(layout),
@@ -383,6 +381,6 @@ pub(crate) fn allocate_in<T, A: Allocator>(
         // Allocators currently return a `NonNull<[u8]>` whose length
         // matches the size requested. If that ever changes, the capacity
         // here should change to `ptr.len() / mem::size_of::<T>()`.
-        unsafe { crate::box_storage::from_raw_slice_parts_in(ptr.as_ptr().cast(), capacity, alloc) }
+        unsafe { storage_from_raw_parts_in(ptr.as_ptr().cast(), capacity, alloc) }
     }
 }

@@ -72,26 +72,6 @@ impl<T: Sized> Unique<T> {
     pub const fn dangling() -> Self {
         Self::from(NonNull::dangling())
     }
-
-    /// Creates a new `Unique` that is dangling, but well-aligned.
-    ///
-    /// This is useful for initializing types which lazily allocate, like
-    /// `Vec::new` does.
-    ///
-    /// Note that the pointer value may potentially represent a valid pointer to
-    /// a `T`, which means this must not be used as a "not yet initialized"
-    /// sentinel value. Types that lazily allocate must track initialization by
-    /// some other means.
-    #[must_use]
-    #[inline]
-    pub const fn dangling_slice() -> Unique<[T]> {
-        // SAFETY: mem::align_of() returns a valid, non-null pointer. The
-        // conditions to call new_unchecked() are thus respected.
-        unsafe {
-            let slice = core::slice::from_raw_parts_mut(mem::align_of::<T>() as *mut T, 0);
-            Unique::new_unchecked(slice)
-        }
-    }
 }
 
 #[unstable(feature = "ptr_internals", issue = "none")]

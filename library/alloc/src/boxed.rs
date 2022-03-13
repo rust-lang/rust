@@ -157,6 +157,7 @@ use crate::alloc::{handle_alloc_error, WriteCloneIntoRaw};
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::Cow;
+use crate::box_storage::storage_from_raw_parts_in;
 #[cfg(not(no_global_oom_handling))]
 use crate::str::from_boxed_utf8_unchecked;
 #[cfg(not(no_global_oom_handling))]
@@ -666,7 +667,7 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate(layout)?;
-            Ok(crate::box_storage::from_raw_slice_parts_in(ptr.as_mut_ptr() as *mut _, len, Global))
+            Ok(storage_from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global))
         }
     }
 
@@ -698,7 +699,7 @@ impl<T> Box<[T]> {
                 Err(_) => return Err(AllocError),
             };
             let ptr = Global.allocate_zeroed(layout)?;
-            Ok(crate::box_storage::from_raw_slice_parts_in(ptr.as_mut_ptr() as *mut _, len, Global))
+            Ok(storage_from_raw_parts_in(ptr.as_mut_ptr() as *mut _, len, Global))
         }
     }
 
@@ -723,7 +724,10 @@ impl<T, A: Allocator> Box<[T], A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub const fn empty_in(alloc: A) -> Self {
-        Box(Unique::dangling_slice(), alloc)
+        unsafe {
+            let slice = core::slice::from_raw_parts_mut(mem::align_of::<T>() as *mut T, 0);
+            Self::from_raw_in(slice, alloc)
+        }
     }
 
     /// Constructs a new boxed slice with uninitialized contents in the provided allocator.

@@ -71,7 +71,7 @@ use core::slice::{self, SliceIndex};
 
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
-use crate::box_storage::BoxStorage;
+use crate::box_storage::{storage_from_raw_parts_in, BoxStorage};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
 
@@ -686,12 +686,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
-        unsafe {
-            Vec {
-                buf: crate::box_storage::from_raw_slice_parts_in(ptr.cast(), capacity, alloc),
-                len: length,
-            }
-        }
+        unsafe { Vec { buf: storage_from_raw_parts_in(ptr.cast(), capacity, alloc), len: length } }
     }
 
     /// Decomposes a `Vec<T>` into its raw components.
@@ -792,7 +787,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.buf.len()
+        self.buf.capacity()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -1731,7 +1726,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.capacity() {
+        if self.len == self.buf.capacity() {
             self.buf.reserve_for_push(self.len);
         }
         unsafe {

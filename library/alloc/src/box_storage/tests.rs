@@ -86,7 +86,6 @@ struct ZST;
 fn zst_sanity<T>(v: &Box<[MaybeUninit<T>]>) {
     assert_eq!(v.capacity(), usize::MAX);
     assert_eq!(v.as_ptr().cast::<T>(), core::ptr::Unique::<T>::dangling().as_ptr() as *const T);
-    // assert_eq!(v.current_memory(), None);
 }
 
 #[test]

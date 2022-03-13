@@ -107,6 +107,7 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
 #![feature(core_c_str)]
+#![feature(const_slice_from_raw_parts)]
 #![feature(core_intrinsics)]
 #![feature(core_ffi_c)]
 #![feature(const_eval_select)]
