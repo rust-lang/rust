@@ -713,7 +713,7 @@ fn render_impls(
             let did = i.trait_did().unwrap();
             let provided_trait_methods = i.inner_impl().provided_trait_methods(tcx);
             let assoc_link = AssocItemLink::GotoSource(did.into(), &provided_trait_methods);
-            let mut buffer = if w.is_for_html() { Buffer::html() } else { Buffer::new() };
+            let mut buffer = Buffer::empty_from(w);
             render_impl(
                 &mut buffer,
                 cx,
@@ -1147,20 +1147,36 @@ fn render_assoc_items_inner(
             traits.iter().partition(|t| t.inner_impl().kind.is_auto());
         let (blanket_impl, concrete): (Vec<&&Impl>, _) =
             concrete.into_iter().partition(|t| t.inner_impl().kind.is_blanket());
+        let (notable, concrete): (Vec<&&Impl>, _) = concrete.into_iter().partition(|t| {
+            t.is_notable() || {
+                t.trait_did()
+                    .and_then(|trait_did| cx.cache().traits.get(&trait_did))
+                    .map_or(false, |t| t.is_notable)
+            }
+        });
 
-        let mut impls = Buffer::empty_from(w);
-        render_impls(cx, &mut impls, &concrete, containing_item, true);
-        let impls = impls.into_inner();
-        if !impls.is_empty() {
-            write!(
-                w,
+        if !notable.is_empty() {
+            w.write_str(
+                "<h2 id=\"notable-trait-implementations\" class=\"small-section-header\">\
+                        Notable Trait Implementations\
+                        <a href=\"#notable-trait-implementations\" class=\"anchor\"></a>\
+                    </h2>\
+                    <div id=\"notable-trait-implementations-list\">)",
+            );
+            render_impls(cx, w, &notable, containing_item, true);
+            w.write_str("</div>");
+        }
+
+        if !concrete.is_empty() {
+            w.write_str(
                 "<h2 id=\"trait-implementations\" class=\"small-section-header\">\
                      Trait Implementations\
                      <a href=\"#trait-implementations\" class=\"anchor\"></a>\
                  </h2>\
-                 <div id=\"trait-implementations-list\">{}</div>",
-                impls
+                 <div id=\"trait-implementations-list\">)",
             );
+            render_impls(cx, w, &concrete, containing_item, true);
+            w.write_str("</div>");
         }
 
         if !synthetic.is_empty() {

@@ -134,10 +134,6 @@ impl Buffer {
         self.into_inner()
     }
 
-    crate fn is_for_html(&self) -> bool {
-        self.for_html
-    }
-
     crate fn reserve(&mut self, additional: usize) {
         self.buffer.reserve(additional)
     }
