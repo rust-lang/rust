@@ -397,17 +397,17 @@ nav.sub {
 	overflow-y: hidden;
 }
 
-.source .sidebar > *:not(:first-child) {
-	transition: opacity 0.5s;
+.source .sidebar > *:not(#sidebar-toggle) {
 	opacity: 0;
 	visibility: hidden;
+	transition: opacity 0.5s;
 }
 
 .source .sidebar.expanded {
 	overflow-y: auto;
 }
 
-.source .sidebar.expanded > * {
+.source .sidebar.expanded > *:not(#sidebar-toggle) {
 	opacity: 1;
 	visibility: visible;
 }
