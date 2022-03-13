@@ -462,6 +462,7 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_min<const LANES: usize>() {
+                    use core_simd::simd::SimdFloat;
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
                         &Vector::<LANES>::simd_min,
@@ -485,6 +486,7 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_max<const LANES: usize>() {
+                    use core_simd::simd::SimdFloat;
                     // Regular conditions (both values aren't zero)
                     test_helpers::test_binary_elementwise(
                         &Vector::<LANES>::simd_max,
@@ -508,6 +510,7 @@ macro_rules! impl_float_tests {
                 }
 
                 fn simd_clamp<const LANES: usize>() {
+                    use core_simd::simd::SimdFloat;
                     test_helpers::test_3(&|value: [Scalar; LANES], mut min: [Scalar; LANES], mut max: [Scalar; LANES]| {
                         for (min, max) in min.iter_mut().zip(max.iter_mut()) {
                             if max < min {

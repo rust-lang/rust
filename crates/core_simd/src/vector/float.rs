@@ -134,42 +134,6 @@ macro_rules! impl_float_vector {
                 let magnitude = self.to_bits() & !Self::splat(-0.).to_bits();
                 Self::from_bits(sign_bit | magnitude)
             }
-
-            /// Returns the minimum of each lane.
-            ///
-            /// If one of the values is `NAN`, then the other value is returned.
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn simd_min(self, other: Self) -> Self {
-                unsafe { intrinsics::simd_fmin(self, other) }
-            }
-
-            /// Returns the maximum of each lane.
-            ///
-            /// If one of the values is `NAN`, then the other value is returned.
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn simd_max(self, other: Self) -> Self {
-                unsafe { intrinsics::simd_fmax(self, other) }
-            }
-
-            /// Restrict each lane to a certain interval unless it is NaN.
-            ///
-            /// For each lane in `self`, returns the corresponding lane in `max` if the lane is
-            /// greater than `max`, and the corresponding lane in `min` if the lane is less
-            /// than `min`.  Otherwise returns the lane in `self`.
-            #[inline]
-            #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn simd_clamp(self, min: Self, max: Self) -> Self {
-                assert!(
-                    min.simd_le(max).all(),
-                    "each lane in `min` must be less than or equal to the corresponding lane in `max`",
-                );
-                let mut x = self;
-                x = x.simd_lt(min).select(min, x);
-                x = x.simd_gt(max).select(max, x);
-                x
-            }
         }
     };
 }
@@ -197,3 +161,73 @@ pub type f64x4 = Simd<f64, 4>;
 
 /// Vector of eight `f64` values
 pub type f64x8 = Simd<f64, 8>;
+
+mod sealed {
+    pub trait Sealed {}
+}
+use sealed::Sealed;
+
+/// SIMD operations on vectors of floating point numbers.
+pub trait SimdFloat: Sized + Sealed {
+    /// Returns the minimum of each lane.
+    ///
+    /// If one of the values is `NAN`, then the other value is returned.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn simd_min(self, other: Self) -> Self;
+
+    /// Returns the maximum of each lane.
+    ///
+    /// If one of the values is `NAN`, then the other value is returned.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn simd_max(self, other: Self) -> Self;
+
+    /// Restrict each lane to a certain interval unless it is NaN.
+    ///
+    /// For each lane in `self`, returns the corresponding lane in `max` if the lane is
+    /// greater than `max`, and the corresponding lane in `min` if the lane is less
+    /// than `min`.  Otherwise returns the lane in `self`.
+    #[must_use = "method returns a new vector and does not mutate the original value"]
+    fn simd_clamp(self, min: Self, max: Self) -> Self;
+}
+
+macro_rules! impl_simd_float {
+    { $($float:ty),* } => {
+        $(
+        impl <const LANES: usize> Sealed for Simd<$float, LANES>
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+        }
+
+        impl <const LANES: usize> SimdFloat for Simd<$float, LANES>
+        where
+            LaneCount<LANES>: SupportedLaneCount,
+        {
+            #[inline]
+            #[must_use = "method returns a new vector and does not mutate the original value"]
+            fn simd_min(self, other: Self) -> Self {
+                unsafe { intrinsics::simd_fmin(self, other) }
+            }
+
+            #[inline]
+            fn simd_max(self, other: Self) -> Self {
+                unsafe { intrinsics::simd_fmax(self, other) }
+            }
+
+            #[inline]
+            fn simd_clamp(self, min: Self, max: Self) -> Self {
+                assert!(
+                    min.simd_le(max).all(),
+                    "each lane in `min` must be less than or equal to the corresponding lane in `max`",
+                );
+                let mut x = self;
+                x = x.simd_lt(min).select(min, x);
+                x = x.simd_gt(max).select(max, x);
+                x
+            }
+        }
+        )*
+    }
+}
+
+impl_simd_float! { f32, f64 }
