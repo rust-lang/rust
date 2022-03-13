@@ -11,8 +11,8 @@ use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
-use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Subst, SubstsRef};
+use rustc_middle::ty::{self, GenericParamDefKind, Ty};
 use rustc_middle::ty::{ToPolyTraitRef, ToPredicate};
 use rustc_span::def_id::DefId;
 
@@ -487,18 +487,80 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .collect();
 
         for assoc_type in assoc_types {
-            if !tcx.generics_of(assoc_type).params.is_empty() {
+            let defs: &ty::Generics = tcx.generics_of(assoc_type);
+
+            if !defs.params.is_empty() && !tcx.features().generic_associated_types_extended {
                 tcx.sess.delay_span_bug(
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );
                 return Err(SelectionError::Unimplemented);
             }
+
             // This maybe belongs in wf, but that can't (doesn't) handle
             // higher-ranked things.
             // Prevent, e.g., `dyn Iterator<Item = str>`.
             for bound in self.tcx().item_bounds(assoc_type) {
-                let subst_bound = bound.subst(tcx, trait_predicate.trait_ref.substs);
+                let subst_bound =
+                    if defs.count() == 0 {
+                        bound.subst(tcx, trait_predicate.trait_ref.substs)
+                    } else {
+                        let mut substs = smallvec::SmallVec::with_capacity(defs.count());
+                        substs.extend(trait_predicate.trait_ref.substs.iter());
+                        let mut bound_vars: smallvec::SmallVec<[ty::BoundVariableKind; 8]> =
+                            smallvec::SmallVec::with_capacity(
+                                bound.kind().bound_vars().len() + defs.count(),
+                            );
+                        bound_vars.extend(bound.kind().bound_vars().into_iter());
+                        InternalSubsts::fill_single(&mut substs, defs, &mut |param, _| match param
+                            .kind
+                        {
+                            GenericParamDefKind::Type { .. } => {
+                                let kind = ty::BoundTyKind::Param(param.name);
+                                let bound_var = ty::BoundVariableKind::Ty(kind);
+                                bound_vars.push(bound_var);
+                                tcx.mk_ty(ty::Bound(
+                                    ty::INNERMOST,
+                                    ty::BoundTy {
+                                        var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                        kind,
+                                    },
+                                ))
+                                .into()
+                            }
+                            GenericParamDefKind::Lifetime => {
+                                let kind = ty::BoundRegionKind::BrNamed(param.def_id, param.name);
+                                let bound_var = ty::BoundVariableKind::Region(kind);
+                                bound_vars.push(bound_var);
+                                tcx.mk_region(ty::ReLateBound(
+                                    ty::INNERMOST,
+                                    ty::BoundRegion {
+                                        var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                        kind,
+                                    },
+                                ))
+                                .into()
+                            }
+                            GenericParamDefKind::Const { .. } => {
+                                let bound_var = ty::BoundVariableKind::Const;
+                                bound_vars.push(bound_var);
+                                tcx.mk_const(ty::ConstS {
+                                    ty: tcx.type_of(param.def_id),
+                                    val: ty::ConstKind::Bound(
+                                        ty::INNERMOST,
+                                        ty::BoundVar::from_usize(bound_vars.len() - 1),
+                                    ),
+                                })
+                                .into()
+                            }
+                        });
+                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let assoc_ty_substs = tcx.intern_substs(&substs);
+
+                        let bound_vars = tcx.mk_bound_variable_kinds(bound_vars.into_iter());
+                        let bound = bound.kind().skip_binder().subst(tcx, assoc_ty_substs);
+                        tcx.mk_predicate(ty::Binder::bind_with_vars(bound, bound_vars))
+                    };
                 let normalized_bound = normalize_with_depth_to(
                     self,
                     obligation.param_env,
