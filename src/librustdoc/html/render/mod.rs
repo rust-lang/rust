@@ -1161,7 +1161,7 @@ fn render_assoc_items_inner(
                         Notable Trait Implementations\
                         <a href=\"#notable-trait-implementations\" class=\"anchor\"></a>\
                     </h2>\
-                    <div id=\"notable-trait-implementations-list\">)",
+                    <div id=\"notable-trait-implementations-list\">",
             );
             render_impls(cx, w, &notable, containing_item, true);
             w.write_str("</div>");
@@ -1173,7 +1173,7 @@ fn render_assoc_items_inner(
                      Trait Implementations\
                      <a href=\"#trait-implementations\" class=\"anchor\"></a>\
                  </h2>\
-                 <div id=\"trait-implementations-list\">)",
+                 <div id=\"trait-implementations-list\">",
             );
             render_impls(cx, w, &concrete, containing_item, true);
             w.write_str("</div>");
@@ -2072,14 +2072,31 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
                 ret
             };
 
-            let (synthetic, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                v.iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_auto());
-            let (blanket_impl, concrete): (Vec<&Impl>, Vec<&Impl>) =
-                concrete.into_iter().partition::<Vec<_>, _>(|i| i.inner_impl().kind.is_blanket());
+            let (synthetic, concrete): (Vec<&Impl>, _) =
+                v.iter().partition(|i| i.inner_impl().kind.is_auto());
+            let (blanket_impl, concrete): (Vec<&Impl>, _) =
+                concrete.into_iter().partition(|i| i.inner_impl().kind.is_blanket());
+            let (notable, concrete): (Vec<&Impl>, _) = concrete.into_iter().partition(|i| {
+                i.is_notable() || {
+                    i.trait_did()
+                        .and_then(|trait_did| cx.cache().traits.get(&trait_did))
+                        .map_or(false, |i| i.is_notable)
+                }
+            });
 
+            let notable_format = format_impls(notable, &mut id_map);
             let concrete_format = format_impls(concrete, &mut id_map);
             let synthetic_format = format_impls(synthetic, &mut id_map);
             let blanket_format = format_impls(blanket_impl, &mut id_map);
+
+            if !notable_format.is_empty() {
+                print_sidebar_block(
+                    out,
+                    "notable-trait-implementations",
+                    "Notable Trait Implementations",
+                    notable_format.iter(),
+                );
+            }
 
             if !concrete_format.is_empty() {
                 print_sidebar_block(
