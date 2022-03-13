@@ -129,19 +129,15 @@ struct LoweringContext<'a, 'hir: 'a> {
     /// written at all (e.g., `&T` or `std::cell::Ref<T>`).
     anonymous_lifetime_mode: AnonymousLifetimeMode,
 
-    /// Used to create lifetime definitions from in-band lifetime usages.
-    /// e.g., `fn foo(x: &'x u8) -> &'x u8` to `fn foo<'x>(x: &'x u8) -> &'x u8`
-    /// When a named lifetime is encountered in a function or impl header and
-    /// has not been defined
-    /// (i.e., it doesn't appear in the in_scope_lifetimes list), it is added
+    /// Used to create lifetime definitions for anonymous lifetimes.
+    /// When an anonymous lifetime is encountered in a function or impl header and
+    /// requires to create a fresh lifetime parameter, it is added
     /// to this list. The results of this list are then added to the list of
     /// lifetime definitions in the corresponding impl or function generics.
     lifetimes_to_define: Vec<(Span, NodeId)>,
 
-    /// `true` if in-band lifetimes are being collected. This is used to
-    /// indicate whether or not we're in a place where new lifetimes will result
-    /// in in-band lifetime definitions, such a function or an impl header,
-    /// including implicit lifetimes from `impl_header_lifetime_elision`.
+    /// If anonymous lifetimes are being collected, this field holds the parent
+    /// `LocalDefId` to create the fresh lifetime parameters' `LocalDefId`.
     is_collecting_anonymous_lifetimes: Option<LocalDefId>,
 
     /// Currently in-scope lifetimes defined in impl headers, fn headers, or HRTB.
