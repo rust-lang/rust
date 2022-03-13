@@ -80,11 +80,16 @@ rm src/test/ui/consts/min_const_fn/address_of_const.rs # same
 rm src/test/ui/consts/issue-miri-1910.rs # same
 rm src/test/ui/generic-associated-types/bugs/issue-80626.rs # same
 rm src/test/ui/generic-associated-types/bugs/issue-89008.rs # same
+rm src/test/ui/chalkify/bugs/async.rs # same
 rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
 rm src/test/ui/cfg/cfg-panic.rs
 rm -r src/test/ui/hygiene/
+
+rm src/test/ui/mir/ssa-analysis-regression-50041.rs # uses old definition of Box
+
+rm src/test/ui/target-feature/missing-plusminus.rs # error not implemented
 
 rm -r src/test/ui/polymorphization/ # polymorphization not yet supported
 rm src/test/codegen-units/polymorphization/unused_type_parameters.rs # same
