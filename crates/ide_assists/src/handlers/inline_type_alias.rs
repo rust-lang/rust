@@ -723,24 +723,22 @@ fn main() {
     }
 
     #[test]
-    fn imported_external() {
+    fn full_path_type_is_replaced() {
         check_assist(
             inline_type_alias,
             r#"
 mod foo {
-    type A = String;
+    pub type A = String;
 }
 fn main() {
-    use foo::A;
-    let a: $0A;
+    let a: foo::$0A;
 }
 "#,
             r#"
 mod foo {
-    type A = String;
+    pub type A = String;
 }
 fn main() {
-    use foo::A;
     let a: String;
 }
 "#,
