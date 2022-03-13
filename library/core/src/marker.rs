@@ -792,6 +792,13 @@ impl<T: ?Sized> Unpin for *const T {}
 #[stable(feature = "pin_raw", since = "1.38.0")]
 impl<T: ?Sized> Unpin for *mut T {}
 
+/// A marker for types that can be dropped.
+///
+/// The compiler logic for this trait is currently unimplemented.
+#[unstable(feature = "const_trait_impl", issue = "67792")]
+#[cfg_attr(not(bootstrap), lang = "destructible")]
+pub trait Destructible {}
+
 /// Implementations of `Copy` for primitive types.
 ///
 /// Implementations that cannot be described in Rust
