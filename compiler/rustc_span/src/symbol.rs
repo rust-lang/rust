@@ -722,6 +722,7 @@ symbols! {
         gen_future,
         gen_kill,
         generator,
+        generator_clone,
         generator_return,
         generator_state,
         generators,
