@@ -1,5 +1,5 @@
 #![feature(rustc_private)]
-#![cfg_attr(feature = "jit", feature(never_type, vec_into_raw_parts, once_cell))]
+// Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -196,7 +196,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
                 #[cfg(feature = "jit")]
-                let _: ! = driver::jit::run_jit(tcx, config);
+                driver::jit::run_jit(tcx, config);
 
                 #[cfg(not(feature = "jit"))]
                 tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
