@@ -3609,3 +3609,40 @@ fn f<F: Foo>() {
         "#]],
     );
 }
+
+#[test]
+fn dyn_map() {
+    check_types(
+        r#"
+pub struct Key<K, V, P = (K, V)> {}
+
+pub trait Policy {
+    type K;
+    type V;
+}
+
+impl<K, V> Policy for (K, V) {
+    type K = K;
+    type V = V;
+}
+
+pub struct KeyMap<KEY> {}
+
+impl<P: Policy> KeyMap<Key<P::K, P::V, P>> {
+    pub fn get(&self, key: &P::K) -> P::V {
+        loop {}
+    }
+}
+
+struct Fn {}
+struct FunctionId {}
+
+fn test() {
+    let key_map: &KeyMap<Key<Fn, FunctionId>> = loop {};
+    let key;
+    let result = key_map.get(key);
+      //^^^^^^ FunctionId
+}
+"#,
+    )
+}
