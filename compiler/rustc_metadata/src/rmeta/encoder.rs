@@ -1048,6 +1048,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
@@ -1077,6 +1078,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1155,6 +1157,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.repr_options[def_id] <- adt_def.repr());
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
         record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data)));
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
@@ -1417,6 +1420,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
                 record!(self.tables.repr_options[def_id] <- adt_def.repr());
+                record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method

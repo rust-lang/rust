@@ -559,7 +559,7 @@ rustc_queries! {
     ///
     /// **Do not call this function manually.** It is only meant to cache the base data for the
     /// `is_const_fn` function.
-    query is_const_fn_raw(key: DefId) -> bool {
+    query impl_constness(key: DefId) -> hir::Constness {
         desc { |tcx| "checking if item is const fn: `{}`", tcx.def_path_str(key) }
         separate_provide_extern
     }
@@ -1326,11 +1326,6 @@ rustc_queries! {
 
     query impl_defaultness(def_id: DefId) -> hir::Defaultness {
         desc { |tcx| "looking up whether `{}` is a default impl", tcx.def_path_str(def_id) }
-        separate_provide_extern
-    }
-
-    query impl_constness(def_id: DefId) -> hir::Constness {
-        desc { |tcx| "looking up whether `{}` is a const impl", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
 

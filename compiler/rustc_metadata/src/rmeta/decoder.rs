@@ -14,7 +14,6 @@ use rustc_data_structures::sync::{Lock, LockGuard, Lrc, OnceCell};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, ProcMacroDerive};
-use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
@@ -1417,19 +1416,6 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             }
             _ => bug!(),
         }
-    }
-
-    // This replicates some of the logic of the crate-local `is_const_fn_raw` query, because we
-    // don't serialize constness for tuple variant and tuple struct constructors.
-    fn is_const_fn_raw(self, id: DefIndex) -> bool {
-        let constness = match self.kind(id) {
-            EntryKind::AssocFn(_) | EntryKind::Fn | EntryKind::ForeignFn => {
-                self.root.tables.impl_constness.get(self, id).unwrap().decode(self)
-            }
-            EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
-            _ => hir::Constness::NotConst,
-        };
-        constness == hir::Constness::Const
     }
 
     fn is_foreign_item(self, id: DefIndex) -> bool {
