@@ -268,18 +268,22 @@ impl<'tcx> Visitor<'tcx> for SideEffectVisit<'tcx> {
                 pat, init: Some(init), ..
             }) => {
                 self.visit_pat_expr(pat, init, false);
+                self.ret_vars.clear();
             },
             StmtKind::Item(i) => {
                 let item = self.ty_ctx.hir().item(i);
                 self.visit_item(item);
+                self.ret_vars.clear();
             },
-            StmtKind::Expr(e) | StmtKind::Semi(e) => self.visit_expr(e),
+            StmtKind::Expr(e) | StmtKind::Semi(e) => {
+                self.visit_expr(e);
+                self.ret_vars.clear();
+            },
             StmtKind::Local(_) => {},
         }
     }
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        debug_assert!(self.ret_vars.is_empty());
         match ex.kind {
             ExprKind::Array(exprs) | ExprKind::Tup(exprs) => {
                 self.ret_vars = exprs
