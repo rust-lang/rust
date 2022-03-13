@@ -1035,6 +1035,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Determines whether an item is annotated with `doc(hidden)`.
+    query is_doc_hidden(def_id: DefId) -> bool {
+        desc { |tcx| "checking whether `{}` is `doc(hidden)`", tcx.def_path_str(def_id) }
+    }
+
     query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
