@@ -378,7 +378,8 @@ pub enum GenericParamDefKind {
         synthetic: bool,
     },
     Const {
-        ty: Type,
+        #[serde(rename = "type")]
+        type_: Type,
         default: Option<String>,
     },
 }
@@ -386,9 +387,19 @@ pub enum GenericParamDefKind {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
-    RegionPredicate { lifetime: String, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Term },
+    BoundPredicate {
+        #[serde(rename = "type")]
+        type_: Type,
+        bounds: Vec<GenericBound>,
+    },
+    RegionPredicate {
+        lifetime: String,
+        bounds: Vec<GenericBound>,
+    },
+    EqPredicate {
+        lhs: Type,
+        rhs: Term,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

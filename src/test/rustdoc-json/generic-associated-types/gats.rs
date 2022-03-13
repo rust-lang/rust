@@ -13,10 +13,12 @@ pub trait LendingIterator {
     // @count - "$.index[*][?(@.name=='LendingItem')].inner.generics.params[*]" 1
     // @is - "$.index[*][?(@.name=='LendingItem')].inner.generics.params[*].name" \"\'a\"
     // @count - "$.index[*][?(@.name=='LendingItem')].inner.generics.where_predicates[*]" 1
-    // @is - "$.index[*][?(@.name=='LendingItem')].inner.generics.where_predicates[*].bound_predicate.ty.inner" \"Self\"
+    // @is - "$.index[*][?(@.name=='LendingItem')].inner.generics.where_predicates[*].bound_predicate.type.inner" \"Self\"
     // @is - "$.index[*][?(@.name=='LendingItem')].inner.generics.where_predicates[*].bound_predicate.bounds[*].outlives" \"\'a\"
     // @count - "$.index[*][?(@.name=='LendingItem')].inner.bounds[*]" 1
-    type LendingItem<'a>: Display where Self: 'a;
+    type LendingItem<'a>: Display
+    where
+        Self: 'a;
 
     // @is - "$.index[*][?(@.name=='lending_next')].inner.decl.output.kind" \"qualified_path\"
     // @count - "$.index[*][?(@.name=='lending_next')].inner.decl.output.inner.args.angle_bracketed.args[*]" 1

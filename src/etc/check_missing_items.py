@@ -31,7 +31,7 @@ def check_generics(generics):
     for where_predicate in generics["where_predicates"]:
         if "bound_predicate" in where_predicate:
             pred = where_predicate["bound_predicate"]
-            check_type(pred["ty"])
+            check_type(pred["type"])
             for bound in pred["bounds"]:
                 check_generic_bound(bound)
         elif "region_predicate" in where_predicate:
