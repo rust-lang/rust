@@ -389,37 +389,6 @@ macro_rules! define_config {
             where
                 D: Deserializer<'de>,
             {
-                #[allow(non_camel_case_types)]
-                enum FieldName {
-                    $($field,)*
-                }
-                struct FieldNameVisitor;
-                impl<'de> serde::de::Visitor<'de> for FieldNameVisitor {
-                    type Value = FieldName;
-                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        f.write_str("field identifier")
-                    }
-
-                    #[inline]
-                    fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
-                    where
-                        E: serde::de::Error,
-                    {
-                        match value {
-                            $($field_key => Ok(FieldName::$field),)*
-                            _ => Err(serde::de::Error::unknown_field(value, FIELDS)),
-                        }
-                    }
-                }
-                impl<'de> Deserialize<'de> for FieldName {
-                    #[inline]
-                    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-                    where
-                        D: Deserializer<'de>,
-                    {
-                        Deserializer::deserialize_identifier(deserializer, FieldNameVisitor)
-                    }
-                }
                 struct Field;
                 impl<'de> serde::de::Visitor<'de> for Field {
                     type Value = $name;
@@ -434,15 +403,15 @@ macro_rules! define_config {
                     {
                         $(let mut $field: Option<$field_ty> = None;)*
                         while let Some(key) =
-                            match serde::de::MapAccess::next_key::<FieldName>(&mut map) {
+                            match serde::de::MapAccess::next_key::<String>(&mut map) {
                                 Ok(val) => val,
                                 Err(err) => {
                                     return Err(err);
                                 }
                             }
                         {
-                            match key {
-                                $(FieldName::$field => {
+                            match &*key {
+                                $($field_key => {
                                     if $field.is_some() {
                                         return Err(<A::Error as serde::de::Error>::duplicate_field(
                                             $field_key,
@@ -457,6 +426,9 @@ macro_rules! define_config {
                                         }
                                     };
                                 })*
+                                key => {
+                                    return Err(serde::de::Error::unknown_field(key, FIELDS));
+                                }
                             }
                         }
                         Ok($name { $($field),* })
