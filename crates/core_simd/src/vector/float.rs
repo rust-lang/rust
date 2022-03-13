@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SimdPartialEq, SimdPartialOrd, SupportedLaneCount};
 
 /// Implements inherent methods for a float vector containing multiple
 /// `$lanes` of float `$type`, which uses `$bits_ty` as its binary
@@ -74,35 +74,35 @@ macro_rules! impl_float_vector {
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_sign_negative(self) -> Mask<$mask_ty, LANES> {
                 let sign_bits = self.to_bits() & Simd::splat((!0 >> 1) + 1);
-                sign_bits.lanes_gt(Simd::splat(0))
+                sign_bits.simd_gt(Simd::splat(0))
             }
 
             /// Returns true for each lane if its value is `NaN`.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_nan(self) -> Mask<$mask_ty, LANES> {
-                self.lanes_ne(self)
+                self.simd_ne(self)
             }
 
             /// Returns true for each lane if its value is positive infinity or negative infinity.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_infinite(self) -> Mask<$mask_ty, LANES> {
-                self.abs().lanes_eq(Self::splat(<$type>::INFINITY))
+                self.abs().simd_eq(Self::splat(<$type>::INFINITY))
             }
 
             /// Returns true for each lane if its value is neither infinite nor `NaN`.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_finite(self) -> Mask<$mask_ty, LANES> {
-                self.abs().lanes_lt(Self::splat(<$type>::INFINITY))
+                self.abs().simd_lt(Self::splat(<$type>::INFINITY))
             }
 
             /// Returns true for each lane if its value is subnormal.
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_subnormal(self) -> Mask<$mask_ty, LANES> {
-                self.abs().lanes_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(<$type>::INFINITY).to_bits()).lanes_eq(Simd::splat(0))
+                self.abs().simd_ne(Self::splat(0.0)) & (self.to_bits() & Self::splat(<$type>::INFINITY).to_bits()).simd_eq(Simd::splat(0))
             }
 
             /// Returns true for each lane if its value is neither zero, infinite,
@@ -110,7 +110,7 @@ macro_rules! impl_float_vector {
             #[inline]
             #[must_use = "method returns a new mask and does not mutate the original value"]
             pub fn is_normal(self) -> Mask<$mask_ty, LANES> {
-                !(self.abs().lanes_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
+                !(self.abs().simd_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
             }
 
             /// Replaces each lane with a number that represents its sign.
@@ -140,7 +140,7 @@ macro_rules! impl_float_vector {
             /// If one of the values is `NAN`, then the other value is returned.
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn min(self, other: Self) -> Self {
+            pub fn simd_min(self, other: Self) -> Self {
                 unsafe { intrinsics::simd_fmin(self, other) }
             }
 
@@ -149,7 +149,7 @@ macro_rules! impl_float_vector {
             /// If one of the values is `NAN`, then the other value is returned.
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn max(self, other: Self) -> Self {
+            pub fn simd_max(self, other: Self) -> Self {
                 unsafe { intrinsics::simd_fmax(self, other) }
             }
 
@@ -160,14 +160,14 @@ macro_rules! impl_float_vector {
             /// than `min`.  Otherwise returns the lane in `self`.
             #[inline]
             #[must_use = "method returns a new vector and does not mutate the original value"]
-            pub fn clamp(self, min: Self, max: Self) -> Self {
+            pub fn simd_clamp(self, min: Self, max: Self) -> Self {
                 assert!(
-                    min.lanes_le(max).all(),
+                    min.simd_le(max).all(),
                     "each lane in `min` must be less than or equal to the corresponding lane in `max`",
                 );
                 let mut x = self;
-                x = x.lanes_lt(min).select(min, x);
-                x = x.lanes_gt(max).select(max, x);
+                x = x.simd_lt(min).select(min, x);
+                x = x.simd_gt(max).select(max, x);
                 x
             }
         }

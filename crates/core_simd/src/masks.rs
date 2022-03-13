@@ -15,7 +15,7 @@ mod mask_impl;
 mod to_bitmask;
 pub use to_bitmask::ToBitMask;
 
-use crate::simd::{intrinsics, LaneCount, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{intrinsics, LaneCount, Simd, SimdElement, SimdPartialEq, SupportedLaneCount};
 use core::cmp::Ordering;
 use core::{fmt, mem};
 
@@ -56,7 +56,7 @@ macro_rules! impl_element {
             where
                 LaneCount<LANES>: SupportedLaneCount,
             {
-                (value.lanes_eq(Simd::splat(0)) | value.lanes_eq(Simd::splat(-1))).all()
+                (value.simd_eq(Simd::splat(0 as _)) | value.simd_eq(Simd::splat(-1 as _))).all()
             }
 
             fn eq(self, other: Self) -> bool { self == other }

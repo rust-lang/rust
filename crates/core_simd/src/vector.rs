@@ -10,7 +10,7 @@ pub use uint::*;
 pub(crate) mod ptr;
 
 use crate::simd::intrinsics;
-use crate::simd::{LaneCount, Mask, MaskElement, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, MaskElement, SimdPartialOrd, SupportedLaneCount};
 
 /// A SIMD vector of `LANES` elements of type `T`. `Simd<T, N>` has the same shape as [`[T; N]`](array), but operates like `T`.
 ///
@@ -243,7 +243,7 @@ where
         idxs: Simd<usize, LANES>,
         or: Self,
     ) -> Self {
-        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.simd_lt(Simd::splat(slice.len()));
         // Safety: We have masked-off out-of-bounds lanes.
         unsafe { Self::gather_select_unchecked(slice, enable, idxs, or) }
     }
@@ -260,13 +260,13 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # use core_simd::simd::{Simd, SimdPartialOrd, Mask};
     /// let vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 5]);
     /// let alt = Simd::from_array([-5, -4, -3, -2]);
     /// let enable = Mask::from_array([true, true, true, false]); // Note the final mask lane.
     /// // If this mask was used to gather, it would be unsound. Let's fix that.
-    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.simd_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to gather now.
     /// let result = unsafe { Simd::gather_select_unchecked(&vec, enable, idxs, alt) };
@@ -317,7 +317,7 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # use core_simd::simd::{Simd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
@@ -333,7 +333,7 @@ where
         enable: Mask<isize, LANES>,
         idxs: Simd<usize, LANES>,
     ) {
-        let enable: Mask<isize, LANES> = enable & idxs.lanes_lt(Simd::splat(slice.len()));
+        let enable: Mask<isize, LANES> = enable & idxs.simd_lt(Simd::splat(slice.len()));
         // Safety: We have masked-off out-of-bounds lanes.
         unsafe { self.scatter_select_unchecked(slice, enable, idxs) }
     }
@@ -351,13 +351,13 @@ where
     /// # Examples
     /// ```
     /// # #![feature(portable_simd)]
-    /// # use core::simd::{Simd, Mask};
+    /// # use core_simd::simd::{Simd, SimdPartialOrd, Mask};
     /// let mut vec: Vec<i32> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     /// let idxs = Simd::from_array([9, 3, 0, 0]);
     /// let vals = Simd::from_array([-27, 82, -41, 124]);
     /// let enable = Mask::from_array([true, true, true, false]); // Note the mask of the last lane.
     /// // If this mask was used to scatter, it would be unsound. Let's fix that.
-    /// let enable = enable & idxs.lanes_lt(Simd::splat(vec.len()));
+    /// let enable = enable & idxs.simd_lt(Simd::splat(vec.len()));
     ///
     /// // We have masked the OOB lane, so it's safe to scatter now.
     /// unsafe { vals.scatter_select_unchecked(&mut vec, enable, idxs); }
