@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, GeneratorSubsts};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -323,6 +323,9 @@ fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -
             builder.tuple_like_shim(dest, src, substs.as_closure().upvar_tys())
         }
         ty::Tuple(..) => builder.tuple_like_shim(dest, src, self_ty.tuple_fields()),
+        ty::Generator(gen_def_id, substs, hir::Movability::Movable) => {
+            builder.generator_shim(dest, src, *gen_def_id, substs.as_generator())
+        }
         _ => bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty),
     };
 
@@ -388,7 +391,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     /// offset=0 will give you the index of the next BasicBlock,
     /// offset=1 will give the index of the next-to-next block,
     /// offset=-1 will give you the index of the last-created block
-    fn block_index_offset(&mut self, offset: usize) -> BasicBlock {
+    fn block_index_offset(&self, offset: usize) -> BasicBlock {
         BasicBlock::new(self.blocks.len() + offset)
     }
 
@@ -461,49 +464,111 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         );
     }
 
-    fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>, src: Place<'tcx>, tys: I)
+    fn clone_fields<I>(
+        &mut self,
+        dest: Place<'tcx>,
+        src: Place<'tcx>,
+        target: BasicBlock,
+        mut unwind: BasicBlock,
+        tys: I,
+    ) -> BasicBlock
     where
         I: IntoIterator<Item = Ty<'tcx>>,
     {
-        let mut previous_field = None;
         for (i, ity) in tys.into_iter().enumerate() {
             let field = Field::new(i);
             let src_field = self.tcx.mk_place_field(src, field, ity);
 
             let dest_field = self.tcx.mk_place_field(dest, field, ity);
 
-            // #(2i + 1) is the cleanup block for the previous clone operation
-            let cleanup_block = self.block_index_offset(1);
-            // #(2i + 2) is the next cloning block
-            // (or the Return terminator if this is the last block)
+            let next_unwind = self.block_index_offset(1);
             let next_block = self.block_index_offset(2);
-
-            // BB #(2i)
-            // `dest.i = Clone::clone(&src.i);`
-            // Goto #(2i + 2) if ok, #(2i + 1) if unwinding happens.
-            self.make_clone_call(dest_field, src_field, ity, next_block, cleanup_block);
-
-            // BB #(2i + 1) (cleanup)
-            if let Some((previous_field, previous_cleanup)) = previous_field.take() {
-                // Drop previous field and goto previous cleanup block.
-                self.block(
-                    vec![],
-                    TerminatorKind::Drop {
-                        place: previous_field,
-                        target: previous_cleanup,
-                        unwind: None,
-                    },
-                    true,
-                );
-            } else {
-                // Nothing to drop, just resume.
-                self.block(vec![], TerminatorKind::Resume, true);
-            }
-
-            previous_field = Some((dest_field, cleanup_block));
+            self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
+            self.block(
+                vec![],
+                TerminatorKind::Drop {
+                    place: dest_field,
+                    target: unwind,
+                    unwind: None,
+                },
+                true,
+            );
+            unwind = next_unwind;
         }
+        self.block(
+            vec![],
+            TerminatorKind::Goto { target },
+            false,
+        );
+        unwind
+    }
 
-        self.block(vec![], TerminatorKind::Return, false);
+    fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>, src: Place<'tcx>, tys: I)
+    where
+        I: IntoIterator<Item = Ty<'tcx>>,
+    {
+        self.block(
+            vec![],
+            TerminatorKind::Goto { target: self.block_index_offset(3) },
+            false,
+        );
+        let unwind = self.block(vec![], TerminatorKind::Resume, true);
+        let target = self.block(vec![], TerminatorKind::Return, false);
+
+        let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, tys);
+    }
+
+    fn generator_shim(
+        &mut self,
+        dest: Place<'tcx>,
+        src: Place<'tcx>,
+        gen_def_id: DefId,
+        substs: GeneratorSubsts<'tcx>,
+    ) {
+        self.block(
+            vec![],
+            TerminatorKind::Goto { target: self.block_index_offset(3) },
+            false,
+        );
+        let unwind = self.block(vec![], TerminatorKind::Resume, true);
+        // This will get overwritten with a switch once we know the target blocks
+        let switch = self.block(vec![], TerminatorKind::Unreachable, false);
+        let unwind = self.clone_fields(dest, src, switch, unwind, substs.upvar_tys());
+        let target = self.block(vec![], TerminatorKind::Return, false);
+        let unreachable = self.block(vec![], TerminatorKind::Unreachable, false);
+        let mut cases = Vec::with_capacity(substs.state_tys(gen_def_id, self.tcx).count());
+        for (index, state_tys) in substs.state_tys(gen_def_id, self.tcx).enumerate() {
+            let variant_index = VariantIdx::new(index);
+            let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
+            let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
+            let start_block = self.block_index_offset(0);
+            let clone_block = self.block_index_offset(1);
+            cases.push((index as u128, start_block));
+            self.block(
+                vec![self.make_statement(StatementKind::SetDiscriminant {
+                    place: Box::new(Place::return_place()),
+                    variant_index,
+                })],
+                TerminatorKind::Goto { target: clone_block },
+                false,
+            );
+            let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, state_tys);
+        }
+        let discr_ty = substs.discr_ty(self.tcx);
+        let temp = self.make_place(Mutability::Mut, discr_ty);
+        let rvalue = Rvalue::Discriminant(src);
+        let statement = self.make_statement(StatementKind::Assign(Box::new((temp, rvalue))));
+        match &mut self.blocks[switch] {
+            BasicBlockData { statements, terminator: Some(Terminator { kind, .. }), .. } => {
+                statements.push(statement);
+                *kind = TerminatorKind::SwitchInt {
+                    discr: Operand::Move(temp),
+                    switch_ty: discr_ty,
+                    targets: SwitchTargets::new(cases.into_iter(), unreachable),
+                };
+            },
+            BasicBlockData { terminator: None, .. } => unreachable!(),
+        }
     }
 }
 
