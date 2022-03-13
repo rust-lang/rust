@@ -233,7 +233,7 @@ pub fn simd_inv4x4(m: Matrix4x4) -> Option<Matrix4x4> {
     let det = det.rotate_lanes_right::<2>() + det;
     let det = det.reverse().rotate_lanes_right::<2>() + det;
 
-    if det.horizontal_sum() == 0. {
+    if det.reduce_sum() == 0. {
         return None;
     }
     // calculate the reciprocal
