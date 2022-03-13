@@ -179,7 +179,7 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
         let id = item.def_id;
         if let Some(mut new_item) = self.convert_item(item) {
             if let types::ItemEnum::Trait(ref mut t) = new_item.inner {
-                t.implementors = self.get_trait_implementors(id.expect_def_id())
+                t.implementations = self.get_trait_implementors(id.expect_def_id())
             } else if let types::ItemEnum::Struct(ref mut s) = new_item.inner {
                 s.impls = self.get_impls(id.expect_def_id())
             } else if let types::ItemEnum::Enum(ref mut e) = new_item.inner {

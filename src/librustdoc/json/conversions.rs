@@ -517,7 +517,7 @@ impl FromWithTcx<clean::Trait> for Trait {
             items: ids(items),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            implementors: Vec::new(), // Added in JsonRenderer::item
+            implementations: Vec::new(), // Added in JsonRenderer::item
         }
     }
 }
