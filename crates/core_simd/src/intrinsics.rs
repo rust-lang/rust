@@ -18,7 +18,6 @@
 //!
 //! Unless stated otherwise, all intrinsics for binary operations require SIMD vectors of equal types and lengths.
 
-
 // These intrinsics aren't linked directly from LLVM and are mostly undocumented, however they are
 // mostly lowered to the matching LLVM instructions by the compiler in a fairly straightforward manner.
 // The associated LLVM instruction or intrinsic is documented alongside each Rust intrinsic function.
@@ -130,6 +129,14 @@ extern "platform-intrinsic" {
     pub(crate) fn simd_reduce_xor<T, U>(x: T) -> U;
 
     // truncate integer vector to bitmask
+    // `fn simd_bitmask(vector) -> unsigned integer` takes a vector of integers and
+    // returns either an unsigned integer or array of `u8`.
+    // Every element in the vector becomes a single bit in the returned bitmask.
+    // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+    // The bit order of the result depends on the byte endianness. LSB-first for little
+    // endian and MSB-first for big endian.
+    //
+    // UB if called on a vector with values other than 0 and -1.
     #[allow(unused)]
     pub(crate) fn simd_bitmask<T, U>(x: T) -> U;
 
