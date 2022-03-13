@@ -303,7 +303,7 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
 
                 let target = fx.get_block(*target);
                 let failure = fx.bcx.create_block();
-                // FIXME Mark failure block as cold once Cranelift supports it
+                fx.bcx.set_cold_block(failure);
 
                 if *expected {
                     fx.bcx.ins().brz(cond, failure, &[]);

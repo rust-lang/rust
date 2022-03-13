@@ -370,7 +370,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
         .unwrap_or(false);
     if is_cold {
-        // FIXME Mark current_block block as cold once Cranelift supports it
+        fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+        if let Some((_place, destination_block)) = destination {
+            fx.bcx.set_cold_block(fx.get_block(destination_block));
+        }
     }
 
     // Unpack arguments tuple for closures
