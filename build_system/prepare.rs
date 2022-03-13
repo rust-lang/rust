@@ -14,6 +14,7 @@ pub(crate) fn prepare() {
     eprintln!("[INSTALL] hyperfine");
     Command::new("cargo").arg("install").arg("hyperfine").spawn().unwrap().wait().unwrap();
 
+    // FIXME download source archives where possible instead
     clone_repo(
         "rand",
         "https://github.com/rust-random/rand.git",

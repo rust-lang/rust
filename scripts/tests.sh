@@ -57,7 +57,6 @@ function base_sysroot_tests() {
     fi
 
     echo "[AOT] dst_field_align"
-    # FIXME Re-add -Zmir-opt-level=2 once rust-lang/rust#67529 is fixed.
     $MY_RUSTC example/dst-field-align.rs --crate-name dst_field_align --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
