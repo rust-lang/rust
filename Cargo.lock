@@ -2327,7 +2327,6 @@ dependencies = [
  "compiletest_rs",
  "env_logger 0.9.0",
  "getrandom 0.2.0",
- "hex 0.4.2",
  "libc",
  "log",
  "measureme 9.1.2",
