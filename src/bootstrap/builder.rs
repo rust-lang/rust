@@ -1097,7 +1097,12 @@ impl<'a> Builder<'a> {
             // cargo.arg("-Zcheck-cfg-features");
 
             // Enable cfg checking of rustc well-known names
-            rustflags.arg("-Zunstable-options").arg("--check-cfg=names()");
+            rustflags
+                .arg("-Zunstable-options")
+                // Enable checking of well known names
+                .arg("--check-cfg=names()")
+                // Enable checking of well known values
+                .arg("--check-cfg=values()");
 
             // Add extra cfg not defined in rustc
             for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
