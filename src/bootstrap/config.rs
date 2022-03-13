@@ -17,7 +17,7 @@ use crate::channel::GitInfo;
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
 use crate::util::{exe, t};
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 
 macro_rules! check_ci_llvm {
     ($name:expr) => {
@@ -362,13 +362,13 @@ impl Merge for TomlConfig {
 
 // We are using a decl macro instead of a derive proc macro here to reduce the compile time of
 // rustbuild.
-macro_rules! derive_merge {
+macro_rules! define_config {
     ($(#[$attr:meta])* struct $name:ident {
-        $($field:ident: $field_ty:ty,)*
+        $($field:ident: Option<$field_ty:ty> = $field_key:literal,)*
     }) => {
         $(#[$attr])*
         struct $name {
-            $($field: $field_ty,)*
+            $($field: Option<$field_ty>,)*
         }
 
         impl Merge for $name {
@@ -380,115 +380,173 @@ macro_rules! derive_merge {
                 )*
             }
         }
+
+        // The following is a trimmed version of what serde_derive generates. All parts not relevant
+        // for toml deserialization have been removed. This reduces the binary size and improves
+        // compile time of rustbuild.
+        impl<'de> Deserialize<'de> for $name {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct Field;
+                impl<'de> serde::de::Visitor<'de> for Field {
+                    type Value = $name;
+                    fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str(concat!("struct ", stringify!($name)))
+                    }
+
+                    #[inline]
+                    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+                    where
+                        A: serde::de::MapAccess<'de>,
+                    {
+                        $(let mut $field: Option<$field_ty> = None;)*
+                        while let Some(key) =
+                            match serde::de::MapAccess::next_key::<String>(&mut map) {
+                                Ok(val) => val,
+                                Err(err) => {
+                                    return Err(err);
+                                }
+                            }
+                        {
+                            match &*key {
+                                $($field_key => {
+                                    if $field.is_some() {
+                                        return Err(<A::Error as serde::de::Error>::duplicate_field(
+                                            $field_key,
+                                        ));
+                                    }
+                                    $field = match serde::de::MapAccess::next_value::<$field_ty>(
+                                        &mut map,
+                                    ) {
+                                        Ok(val) => Some(val),
+                                        Err(err) => {
+                                            return Err(err);
+                                        }
+                                    };
+                                })*
+                                key => {
+                                    return Err(serde::de::Error::unknown_field(key, FIELDS));
+                                }
+                            }
+                        }
+                        Ok($name { $($field),* })
+                    }
+                }
+                const FIELDS: &'static [&'static str] = &[
+                    $($field_key,)*
+                ];
+                Deserializer::deserialize_struct(
+                    deserializer,
+                    stringify!($name),
+                    FIELDS,
+                    Field,
+                )
+            }
+        }
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global build decisions.
-    #[derive(Deserialize, Default)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+    #[derive(Default)]
     struct Build {
-        build: Option<String>,
-        host: Option<Vec<String>>,
-        target: Option<Vec<String>>,
-        build_dir: Option<String>,
-        cargo: Option<String>,
-        rustc: Option<String>,
-        rustfmt: Option<PathBuf>,
-        docs: Option<bool>,
-        compiler_docs: Option<bool>,
-        docs_minification: Option<bool>,
-        submodules: Option<bool>,
-        fast_submodules: Option<bool>,
-        gdb: Option<String>,
-        nodejs: Option<String>,
-        npm: Option<String>,
-        python: Option<String>,
-        locked_deps: Option<bool>,
-        vendor: Option<bool>,
-        full_bootstrap: Option<bool>,
-        extended: Option<bool>,
-        tools: Option<HashSet<String>>,
-        verbose: Option<usize>,
-        sanitizers: Option<bool>,
-        profiler: Option<bool>,
-        cargo_native_static: Option<bool>,
-        low_priority: Option<bool>,
-        configure_args: Option<Vec<String>>,
-        local_rebuild: Option<bool>,
-        print_step_timings: Option<bool>,
-        print_step_rusage: Option<bool>,
-        check_stage: Option<u32>,
-        doc_stage: Option<u32>,
-        build_stage: Option<u32>,
-        test_stage: Option<u32>,
-        install_stage: Option<u32>,
-        dist_stage: Option<u32>,
-        bench_stage: Option<u32>,
-        patch_binaries_for_nix: Option<bool>,
+        build: Option<String> = "build",
+        host: Option<Vec<String>> = "host",
+        target: Option<Vec<String>> = "target",
+        build_dir: Option<String> = "build-dir",
+        cargo: Option<String> = "cargo",
+        rustc: Option<String> = "rustc",
+        rustfmt: Option<PathBuf> = "rustfmt",
+        docs: Option<bool> = "docs",
+        compiler_docs: Option<bool> = "compiler-docs",
+        docs_minification: Option<bool> = "docs-minification",
+        submodules: Option<bool> = "submodules",
+        fast_submodules: Option<bool> = "fast-submodules",
+        gdb: Option<String> = "gdb",
+        nodejs: Option<String> = "nodejs",
+        npm: Option<String> = "npm",
+        python: Option<String> = "python",
+        locked_deps: Option<bool> = "locked-deps",
+        vendor: Option<bool> = "vendor",
+        full_bootstrap: Option<bool> = "full-bootstrap",
+        extended: Option<bool> = "extended",
+        tools: Option<HashSet<String>> = "tools",
+        verbose: Option<usize> = "verbose",
+        sanitizers: Option<bool> = "sanitizers",
+        profiler: Option<bool> = "profiler",
+        cargo_native_static: Option<bool> = "cargo-native-static",
+        low_priority: Option<bool> = "low-priority",
+        configure_args: Option<Vec<String>> = "configure-args",
+        local_rebuild: Option<bool> = "local-rebuild",
+        print_step_timings: Option<bool> = "print-step-timings",
+        print_step_rusage: Option<bool> = "print-step-rusage",
+        check_stage: Option<u32> = "check-stage",
+        doc_stage: Option<u32> = "doc-stage",
+        build_stage: Option<u32> = "build-stage",
+        test_stage: Option<u32> = "test-stage",
+        install_stage: Option<u32> = "install-stage",
+        dist_stage: Option<u32> = "dist-stage",
+        bench_stage: Option<u32> = "bench-stage",
+        patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of various global install decisions.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Install {
-        prefix: Option<String>,
-        sysconfdir: Option<String>,
-        docdir: Option<String>,
-        bindir: Option<String>,
-        libdir: Option<String>,
-        mandir: Option<String>,
-        datadir: Option<String>,
+        prefix: Option<String> = "prefix",
+        sysconfdir: Option<String> = "sysconfdir",
+        docdir: Option<String> = "docdir",
+        bindir: Option<String> = "bindir",
+        libdir: Option<String> = "libdir",
+        mandir: Option<String> = "mandir",
+        datadir: Option<String> = "datadir",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the LLVM build is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Llvm {
-        skip_rebuild: Option<bool>,
-        optimize: Option<bool>,
-        thin_lto: Option<bool>,
-        release_debuginfo: Option<bool>,
-        assertions: Option<bool>,
-        tests: Option<bool>,
-        plugins: Option<bool>,
-        ccache: Option<StringOrBool>,
-        version_check: Option<bool>,
-        static_libstdcpp: Option<bool>,
-        ninja: Option<bool>,
-        targets: Option<String>,
-        experimental_targets: Option<String>,
-        link_jobs: Option<u32>,
-        link_shared: Option<bool>,
-        version_suffix: Option<String>,
-        clang_cl: Option<String>,
-        cflags: Option<String>,
-        cxxflags: Option<String>,
-        ldflags: Option<String>,
-        use_libcxx: Option<bool>,
-        use_linker: Option<String>,
-        allow_old_toolchain: Option<bool>,
-        polly: Option<bool>,
-        clang: Option<bool>,
-        download_ci_llvm: Option<StringOrBool>,
-        build_config: Option<HashMap<String, String>>,
+        skip_rebuild: Option<bool> = "skip-rebuild",
+        optimize: Option<bool> = "optimize",
+        thin_lto: Option<bool> = "thin-lto",
+        release_debuginfo: Option<bool> = "release-debuginfo",
+        assertions: Option<bool> = "assertions",
+        tests: Option<bool> = "tests",
+        plugins: Option<bool> = "plugins",
+        ccache: Option<StringOrBool> = "ccache",
+        version_check: Option<bool> = "version-check",
+        static_libstdcpp: Option<bool> = "static-libstdcpp",
+        ninja: Option<bool> = "ninja",
+        targets: Option<String> = "targets",
+        experimental_targets: Option<String> = "experimental-targets",
+        link_jobs: Option<u32> = "link-jobs",
+        link_shared: Option<bool> = "link-shared",
+        version_suffix: Option<String> = "version-suffix",
+        clang_cl: Option<String> = "clang-cl",
+        cflags: Option<String> = "cflags",
+        cxxflags: Option<String> = "cxxflags",
+        ldflags: Option<String> = "ldflags",
+        use_libcxx: Option<bool> = "use-libcxx",
+        use_linker: Option<String> = "use-linker",
+        allow_old_toolchain: Option<bool> = "allow-old-toolchain",
+        polly: Option<bool> = "polly",
+        clang: Option<bool> = "clang",
+        download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
+        build_config: Option<HashMap<String, String>> = "build-config",
     }
 }
 
-derive_merge! {
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
+define_config! {
     struct Dist {
-        sign_folder: Option<String>,
-        gpg_password_file: Option<String>,
-        upload_addr: Option<String>,
-        src_tarball: Option<bool>,
-        missing_tools: Option<bool>,
-        compression_formats: Option<Vec<String>>,
+        sign_folder: Option<String> = "sign-folder",
+        gpg_password_file: Option<String> = "gpg-password-file",
+        upload_addr: Option<String> = "upload-addr",
+        src_tarball: Option<bool> = "src-tarball",
+        missing_tools: Option<bool> = "missing-tools",
+        compression_formats: Option<Vec<String>> = "compression-formats",
     }
 }
 
@@ -505,83 +563,79 @@ impl Default for StringOrBool {
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how the Rust build is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct Rust {
-        optimize: Option<bool>,
-        debug: Option<bool>,
-        codegen_units: Option<u32>,
-        codegen_units_std: Option<u32>,
-        debug_assertions: Option<bool>,
-        debug_assertions_std: Option<bool>,
-        overflow_checks: Option<bool>,
-        overflow_checks_std: Option<bool>,
-        debug_logging: Option<bool>,
-        debuginfo_level: Option<u32>,
-        debuginfo_level_rustc: Option<u32>,
-        debuginfo_level_std: Option<u32>,
-        debuginfo_level_tools: Option<u32>,
-        debuginfo_level_tests: Option<u32>,
-        run_dsymutil: Option<bool>,
-        backtrace: Option<bool>,
-        incremental: Option<bool>,
-        parallel_compiler: Option<bool>,
-        default_linker: Option<String>,
-        channel: Option<String>,
-        description: Option<String>,
-        musl_root: Option<String>,
-        rpath: Option<bool>,
-        verbose_tests: Option<bool>,
-        optimize_tests: Option<bool>,
-        codegen_tests: Option<bool>,
-        ignore_git: Option<bool>,
-        dist_src: Option<bool>,
-        save_toolstates: Option<String>,
-        codegen_backends: Option<Vec<String>>,
-        lld: Option<bool>,
-        use_lld: Option<bool>,
-        llvm_tools: Option<bool>,
-        deny_warnings: Option<bool>,
-        backtrace_on_ice: Option<bool>,
-        verify_llvm_ir: Option<bool>,
-        thin_lto_import_instr_limit: Option<u32>,
-        remap_debuginfo: Option<bool>,
-        jemalloc: Option<bool>,
-        test_compare_mode: Option<bool>,
-        llvm_libunwind: Option<String>,
-        control_flow_guard: Option<bool>,
-        new_symbol_mangling: Option<bool>,
-        profile_generate: Option<String>,
-        profile_use: Option<String>,
+        optimize: Option<bool> = "optimize",
+        debug: Option<bool> = "debug",
+        codegen_units: Option<u32> = "codegen-units",
+        codegen_units_std: Option<u32> = "codegen-units-std",
+        debug_assertions: Option<bool> = "debug-assertions",
+        debug_assertions_std: Option<bool> = "debug-assertions-std",
+        overflow_checks: Option<bool> = "overflow-checks",
+        overflow_checks_std: Option<bool> = "overflow-checks-std",
+        debug_logging: Option<bool> = "debug-logging",
+        debuginfo_level: Option<u32> = "debuginfo-level",
+        debuginfo_level_rustc: Option<u32> = "debuginfo-level-rustc",
+        debuginfo_level_std: Option<u32> = "debuginfo-level-std",
+        debuginfo_level_tools: Option<u32> = "debuginfo-level-tools",
+        debuginfo_level_tests: Option<u32> = "debuginfo-level-tests",
+        run_dsymutil: Option<bool> = "run-dsymutil",
+        backtrace: Option<bool> = "backtrace",
+        incremental: Option<bool> = "incremental",
+        parallel_compiler: Option<bool> = "parallel-compiler",
+        default_linker: Option<String> = "default-linker",
+        channel: Option<String> = "channel",
+        description: Option<String> = "description",
+        musl_root: Option<String> = "musl-root",
+        rpath: Option<bool> = "rpath",
+        verbose_tests: Option<bool> = "verbose-tests",
+        optimize_tests: Option<bool> = "optimize-tests",
+        codegen_tests: Option<bool> = "codegen-tests",
+        ignore_git: Option<bool> = "ignore-git",
+        dist_src: Option<bool> = "dist-src",
+        save_toolstates: Option<String> = "save-toolstates",
+        codegen_backends: Option<Vec<String>> = "codegen-backends",
+        lld: Option<bool> = "lld",
+        use_lld: Option<bool> = "use-lld",
+        llvm_tools: Option<bool> = "llvm-tools",
+        deny_warnings: Option<bool> = "deny-warnings",
+        backtrace_on_ice: Option<bool> = "backtrace-on-ice",
+        verify_llvm_ir: Option<bool> = "verify-llvm-ir",
+        thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
+        remap_debuginfo: Option<bool> = "remap-debuginfo",
+        jemalloc: Option<bool> = "jemalloc",
+        test_compare_mode: Option<bool> = "test-compare-mode",
+        llvm_libunwind: Option<String> = "llvm-libunwind",
+        control_flow_guard: Option<bool> = "control-flow-guard",
+        new_symbol_mangling: Option<bool> = "new-symbol-mangling",
+        profile_generate: Option<String> = "profile-generate",
+        profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
-        download_rustc: Option<StringOrBool>,
+        download_rustc: Option<StringOrBool> = "download-rustc",
     }
 }
 
-derive_merge! {
+define_config! {
     /// TOML representation of how each build target is configured.
-    #[derive(Deserialize)]
-    #[serde(deny_unknown_fields, rename_all = "kebab-case")]
     struct TomlTarget {
-        cc: Option<String>,
-        cxx: Option<String>,
-        ar: Option<String>,
-        ranlib: Option<String>,
-        default_linker: Option<PathBuf>,
-        linker: Option<String>,
-        llvm_config: Option<String>,
-        llvm_filecheck: Option<String>,
-        android_ndk: Option<String>,
-        sanitizers: Option<bool>,
-        profiler: Option<bool>,
-        crt_static: Option<bool>,
-        musl_root: Option<String>,
-        musl_libdir: Option<String>,
-        wasi_root: Option<String>,
-        qemu_rootfs: Option<String>,
-        no_std: Option<bool>,
+        cc: Option<String> = "cc",
+        cxx: Option<String> = "cxx",
+        ar: Option<String> = "ar",
+        ranlib: Option<String> = "ranlib",
+        default_linker: Option<PathBuf> = "default-linker",
+        linker: Option<String> = "linker",
+        llvm_config: Option<String> = "llvm-config",
+        llvm_filecheck: Option<String> = "llvm-filecheck",
+        android_ndk: Option<String> = "android-ndk",
+        sanitizers: Option<bool> = "sanitizers",
+        profiler: Option<bool> = "profiler",
+        crt_static: Option<bool> = "crt-static",
+        musl_root: Option<String> = "musl-root",
+        musl_libdir: Option<String> = "musl-libdir",
+        wasi_root: Option<String> = "wasi-root",
+        qemu_rootfs: Option<String> = "qemu-rootfs",
+        no_std: Option<bool> = "no-std",
     }
 }
 
@@ -649,7 +703,11 @@ impl Config {
 
             let contents =
                 t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            match toml::from_str(&contents) {
+            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+            // TomlConfig and sub types to be monomorphized 5x by toml.
+            match toml::from_str(&contents)
+                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            {
                 Ok(table) => table,
                 Err(err) => {
                     println!("failed to parse TOML configuration '{}': {}", file.display(), err);
