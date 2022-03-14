@@ -95,6 +95,7 @@ impl<'a> Visitor<'a> for ItemLowerer<'a, '_, '_> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
+        debug!(in_scope_lifetimes = ?self.lctx.in_scope_lifetimes);
         self.lctx.with_hir_id_owner(item.id, |lctx| match ctxt {
             AssocCtxt::Trait => hir::OwnerNode::TraitItem(lctx.lower_trait_item(item)),
             AssocCtxt::Impl => hir::OwnerNode::ImplItem(lctx.lower_impl_item(item)),
@@ -118,35 +119,42 @@ impl<'hir> LoweringContext<'_, 'hir> {
     // This should only be used with generics that have already had their
     // in-band lifetimes added. In practice, this means that this function is
     // only used when lowering a child item of a trait or impl.
+    #[tracing::instrument(level = "debug", skip(self, f))]
     fn with_parent_item_lifetime_defs<T>(
         &mut self,
         parent_hir_id: LocalDefId,
         f: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        let old_len = self.in_scope_lifetimes.len();
-
         let parent_generics = match self.owners[parent_hir_id].unwrap().node().expect_item().kind {
             hir::ItemKind::Impl(hir::Impl { ref generics, .. })
             | hir::ItemKind::Trait(_, _, ref generics, ..) => generics.params,
             _ => &[],
         };
-        let lt_def_names = parent_generics.iter().filter_map(|param| match param.kind {
-            hir::GenericParamKind::Lifetime { .. } => Some(param.name.normalize_to_macros_2_0()),
-            _ => None,
-        });
-        self.in_scope_lifetimes.extend(lt_def_names);
+        let lt_def_names = parent_generics
+            .iter()
+            .filter_map(|param| match param.kind {
+                hir::GenericParamKind::Lifetime { .. } => {
+                    Some(param.name.normalize_to_macros_2_0())
+                }
+                _ => None,
+            })
+            .collect();
+        let old_in_scope_lifetimes = mem::replace(&mut self.in_scope_lifetimes, lt_def_names);
+        debug!(in_scope_lifetimes = ?self.in_scope_lifetimes);
 
         let res = f(self);
 
-        self.in_scope_lifetimes.truncate(old_len);
+        self.in_scope_lifetimes = old_in_scope_lifetimes;
         res
     }
 
     // Clears (and restores) the `in_scope_lifetimes` field. Used when
     // visiting nested items, which never inherit in-scope lifetimes
     // from their surrounding environment.
+    #[tracing::instrument(level = "debug", skip(self, f))]
     fn without_in_scope_lifetime_defs<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let old_in_scope_lifetimes = mem::replace(&mut self.in_scope_lifetimes, vec![]);
+        debug!(?old_in_scope_lifetimes);
 
         // this vector is only used when walking over impl headers,
         // input types, and the like, and should not be non-empty in
