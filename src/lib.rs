@@ -105,7 +105,6 @@ mod prelude {
     pub(crate) use crate::common::*;
     pub(crate) use crate::debuginfo::{DebugContext, UnwindContext};
     pub(crate) use crate::pointer::Pointer;
-    pub(crate) use crate::trap::*;
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
 }
 

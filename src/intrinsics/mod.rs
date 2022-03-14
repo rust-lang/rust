@@ -229,7 +229,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // Insert non returning intrinsics here
             match intrinsic {
                 sym::abort => {
-                    trap_abort(fx, "Called intrinsic::abort.");
+                    fx.bcx.ins().trap(TrapCode::User(0));
                 }
                 sym::transmute => {
                     crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
@@ -1119,6 +1119,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
         let ret_block = fx.get_block(dest);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
     }
 }
