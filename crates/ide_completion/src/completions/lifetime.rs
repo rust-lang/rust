@@ -30,7 +30,7 @@ pub(crate) fn complete_lifetime(acc: &mut Completions, ctx: &CompletionContext) 
     let param_lifetime = param_lifetime.as_ref().map(ast::Lifetime::text);
     let param_lifetime = param_lifetime.as_ref().map(TokenText::as_str);
 
-    ctx.scope.process_all_names(&mut |name, res| {
+    ctx.process_all_names_raw(&mut |name, res| {
         if matches!(
             res,
             ScopeDef::GenericParam(hir::GenericParam::LifetimeParam(_))
@@ -49,7 +49,7 @@ pub(crate) fn complete_label(acc: &mut Completions, ctx: &CompletionContext) {
     if !matches!(ctx.lifetime_ctx, Some(LifetimeContext::LabelRef)) {
         return;
     }
-    ctx.scope.process_all_names(&mut |name, res| {
+    ctx.process_all_names_raw(&mut |name, res| {
         if let ScopeDef::Label(_) = res {
             acc.add_label(ctx, name);
         }
