@@ -2113,6 +2113,8 @@ void PreProcessCache::optimizeIntermediate(Function *F) {
         auto &use = *I;
         ++I;
         auto cext = ConstantExpr::getBitCast(&Impl, Specification->getType());
+        if (cast<Instruction>(use.getUser())->getParent()->getParent() == &Impl)
+          continue;
         use.set(cext);
         if (auto CI = dyn_cast<CallInst>(use.getUser())) {
 #if LLVM_VERSION_MAJOR >= 11
