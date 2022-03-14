@@ -39,13 +39,13 @@ declare { double, double } @__enzyme_fwdsplit({ double, double } ({ double, doub
 ; CHECK-NEXT:   %15 = insertvalue { double, double } %13, double %14, 1
 ; CHECK-NEXT:   %16 = extractvalue { double, double } %"in'", 0
 ; CHECK-NEXT:   %17 = extractvalue { double, double } %"in'", 1
-; CHECK-NEXT:   %18 = fmul fast double %14, %17
-; CHECK-NEXT:   %19 = fmul fast double %12, %16
-; CHECK-NEXT:   %20 = fsub fast double %19, %18
+; CHECK-DAG:    %[[a18:.+]] = fmul fast double %14, %17
+; CHECK-DAG:    %[[a19:.+]] = fmul fast double %12, %16
+; CHECK-NEXT:   %20 = fsub fast double %[[a19]], %[[a18]]
 ; CHECK-NEXT:   %21 = insertvalue { double, double } %15, double %20, 0
-; CHECK-NEXT:   %22 = fmul fast double %12, %17
-; CHECK-NEXT:   %23 = fmul fast double %14, %16
-; CHECK-NEXT:   %24 = fadd fast double %23, %22
+; CHECK-DAG:    %[[a22:.+]] = fmul fast double %12, %17
+; CHECK-DAG:    %[[a23:.+]] = fmul fast double %14, %16
+; CHECK-NEXT:   %24 = fadd fast double %[[a23]], %[[a22]]
 ; CHECK-NEXT:   %25 = insertvalue { double, double } %21, double %24, 1
 ; CHECK-NEXT:   ret { double, double } %25
 ; CHECK-NEXT: }
