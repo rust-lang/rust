@@ -22,12 +22,20 @@ if (${LLVM_VERSION_MAJOR} LESS 8)
 if (${Clang_FOUND})
     add_llvm_loadable_module( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
+        Clang/EnzymePassLoader.cpp
         DEPENDS
         intrinsics_gen
         PLUGIN_TOOL
         opt
     )
 endif()
+add_llvm_loadable_module( LLDEnzyme-${LLVM_VERSION_MAJOR}
+        ${ENZYME_SRC} Clang/EnzymePassLoader.cpp
+        DEPENDS
+        intrinsics_gen
+        PLUGIN_TOOL
+        opt
+    )
 else()
 # on windows `PLUGIN_TOOL` doesn't link against LLVM.dll
 if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
@@ -42,6 +50,7 @@ if ((WIN32 OR CYGWIN) AND LLVM_LINK_LLVM_DYLIB)
 if (${Clang_FOUND})
     add_llvm_library( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
+        Clang/EnzymePassLoader.cpp
         MODULE
         DEPENDS
         intrinsics_gen
@@ -49,6 +58,14 @@ if (${Clang_FOUND})
 	LLVM
     )
 endif()
+        add_llvm_library( LLDEnzyme-${LLVM_VERSION_MAJOR}
+        ${ENZYME_SRC} Clang/EnzymePassLoader.cpp
+        MODULE
+        DEPENDS
+        intrinsics_gen
+	LINK_COMPONENTS
+	LLVM
+    )
 else()
     add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC}
@@ -61,6 +78,7 @@ else()
 if (${Clang_FOUND})
     add_llvm_library( ClangEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymeClang.cpp
+        Clang/EnzymePassLoader.cpp
         MODULE
         DEPENDS
         intrinsics_gen
@@ -68,6 +86,14 @@ if (${Clang_FOUND})
         opt
     )
 endif()
+    add_llvm_library( LLDEnzyme-${LLVM_VERSION_MAJOR}
+        ${ENZYME_SRC} Clang/EnzymePassLoader.cpp
+        MODULE
+        DEPENDS
+        intrinsics_gen
+        PLUGIN_TOOL
+        opt
+    )
 endif()
 endif()
 
@@ -92,6 +118,8 @@ if (${Clang_FOUND})
 set_target_properties(ClangEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
         LINK_FLAGS "-Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif()
+set_target_properties(LLDEnzyme-${LLVM_VERSION_MAJOR} PROPERTIES
+        LINK_FLAGS "-Wl,-flat_namespace -Wl,-undefined -Wl,suppress")
 endif()
 
 install(TARGETS LLVMEnzyme-${LLVM_VERSION_MAJOR}
@@ -107,3 +135,8 @@ install(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
     PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
     COMPONENT dev)
 endif()
+install(TARGETS LLDEnzyme-${LLVM_VERSION_MAJOR}
+    EXPORT EnzymeTargets
+    LIBRARY DESTINATION lib COMPONENT shlib
+    PUBLIC_HEADER DESTINATION "${INSTALL_INCLUDE_DIR}/Enzyme"
+    COMPONENT dev)

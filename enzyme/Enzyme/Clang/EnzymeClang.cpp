@@ -22,68 +22,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Transforms/IPO/PassManagerBuilder.h"
-
-#include "../Enzyme.h"
-#include "../PreserveNVVM.h"
-
-#include "llvm/LinkAllPasses.h"
-
-using namespace llvm;
-
-// This function is of type PassManagerBuilder::ExtensionFn
-static void loadPass(const PassManagerBuilder &Builder,
-                     legacy::PassManagerBase &PM) {
-  PM.add(createPreserveNVVMPass(/*Begin=*/true));
-  PM.add(createGVNPass());
-  PM.add(createSROAPass());
-  PM.add(createEnzymePass(/*PostOpt*/ true));
-  PM.add(createPreserveNVVMPass(/*Begin=*/false));
-  PM.add(createGVNPass());
-  PM.add(createSROAPass());
-  PM.add(createLoopDeletionPass());
-  PM.add(createGlobalOptimizerPass());
-  // PM.add(SimplifyCFGPass());
-}
-
-static void loadNVVMPass(const PassManagerBuilder &Builder,
-                         legacy::PassManagerBase &PM) {
-  PM.add(createPreserveNVVMPass(/*Begin=*/true));
-}
-
-// These constructors add our pass to a list of global extensions.
-static RegisterStandardPasses
-    clangtoolLoader_Ox(PassManagerBuilder::EP_VectorizerStart, loadPass);
-static RegisterStandardPasses
-    clangtoolLoader_O0(PassManagerBuilder::EP_EnabledOnOptLevel0, loadPass);
-static RegisterStandardPasses
-    clangtoolLoader_OEarly(PassManagerBuilder::EP_EarlyAsPossible,
-                           loadNVVMPass);
-
-#if LLVM_VERSION_MAJOR >= 9
-
-static void loadLTOPass(const PassManagerBuilder &Builder,
-                        legacy::PassManagerBase &PM) {
-  loadPass(Builder, PM);
-  PassManagerBuilder Builder2 = Builder;
-  Builder2.Inliner = nullptr;
-  Builder2.LibraryInfo = nullptr;
-  Builder2.ExportSummary = nullptr;
-  Builder2.ImportSummary = nullptr;
-  /*
-  Builder2.LoopVectorize = false;
-  Builder2.SLPVectorize = false;
-  Builder2.DisableUnrollLoops = true;
-  Builder2.RerollLoops = true;
-  */
-  const_cast<PassManagerBuilder &>(Builder2).populateModulePassManager(PM);
-}
-
-static RegisterStandardPasses
-    clangtoolLoader_LTO(PassManagerBuilder::EP_FullLinkTimeOptimizationEarly,
-                        loadLTOPass);
-
 #include "clang/AST/Attr.h"
 #include "clang/AST/DeclGroup.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -142,4 +80,3 @@ public:
 // register the PluginASTAction in the registry.
 static clang::FrontendPluginRegistry::Add<EnzymeAction<EnzymePlugin>>
     X("enzyme", "Enzyme Plugin");
-#endif

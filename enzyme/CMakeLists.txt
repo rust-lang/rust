@@ -196,6 +196,10 @@ if (${Clang_FOUND})
 export(TARGETS ClangEnzyme-${LLVM_VERSION_MAJOR}
     APPEND FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
 endif()
+
+export(TARGETS LLDEnzyme-${LLVM_VERSION_MAJOR}
+    APPEND FILE "${PROJECT_BINARY_DIR}/EnzymeTargets.cmake")
+
 export(PACKAGE Enzyme)
 
 set(CONF_LLVM_VERSION_MAJOR ${LLVM_VERSION_MAJOR})
