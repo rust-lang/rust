@@ -4,8 +4,12 @@
 
 fn static_id<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'static { t }
+//~^ WARN unnecessary lifetime parameter `'a`
+
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
+//~^ WARN unnecessary lifetime parameter `'b`
+
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
     t
     //[base]~^ ERROR E0312

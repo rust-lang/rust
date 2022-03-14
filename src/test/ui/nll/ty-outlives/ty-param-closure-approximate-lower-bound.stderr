@@ -52,10 +52,13 @@ LL | | }
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
    |
-LL | fn generic_fail<'a, T>(cell: Cell<&'a ()>, value: T) {
-   |                     - help: consider adding an explicit lifetime bound...: `T: 'a`
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn generic_fail<'a, T: 'a>(cell: Cell<&'a ()>, value: T) {
+   |                      ++++
 
 error: aborting due to previous error
 

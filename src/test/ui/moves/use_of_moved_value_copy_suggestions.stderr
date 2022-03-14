@@ -121,10 +121,10 @@ LL |     (t, t)
    |      |
    |      value moved here
    |
-help: consider further restricting type parameter `T`
+help: consider further restricting this bound
    |
-LL |     T: B, T: Trait, T: Copy
-   |         ~~~~~~~~~~~~~~~~~~~
+LL |     T: A + Trait + Copy,
+   |          ++++++++++++++
 
 error[E0382]: use of moved value: `t`
   --> $DIR/use_of_moved_value_copy_suggestions.rs:69:9
@@ -139,8 +139,8 @@ LL |     (t, t)
    |
 help: consider further restricting this bound
    |
-LL |     T: B + Trait + Copy,
-   |          ++++++++++++++
+LL | fn duplicate_custom_4<T: A + Trait + Copy>(t: S<T>) -> (S<T>, S<T>)
+   |                            ++++++++++++++
 
 error[E0382]: use of moved value: `t`
   --> $DIR/use_of_moved_value_copy_suggestions.rs:83:9
@@ -153,10 +153,10 @@ LL |     [t, t];
    |      |
    |      value moved here
    |
-help: consider further restricting this bound
+help: consider further restricting type parameter `T`
    |
-LL |     T: Copy,
-   |        ++++
+LL |     T:, T: Copy
+   |       ~~~~~~~~~
 
 error[E0382]: use of moved value: `t`
   --> $DIR/use_of_moved_value_copy_suggestions.rs:75:9
@@ -171,8 +171,8 @@ LL |     [t, t];
    |
 help: consider restricting type parameter `T`
    |
-LL | fn existing_colon<T: Copy>(t: T) {
-   |                      ++++
+LL | fn existing_colon<T: Copy:>(t: T) {
+   |                    ++++++
 
 error: aborting due to 11 previous errors
 

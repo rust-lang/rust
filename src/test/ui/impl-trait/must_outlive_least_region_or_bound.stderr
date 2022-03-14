@@ -128,9 +128,12 @@ error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:38:51
    |
 LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
-   |                                 --                ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
-   |                                 |
-   |                                 help: consider adding an explicit lifetime bound...: `T: 'static +`
+   |                                                   ^^^^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | fn ty_param_wont_outlive_static<T:Debug + 'static>(x: T) -> impl Debug + 'static {
+   |                                         +++++++++
 
 error[E0759]: `x` has an anonymous lifetime `'_` but it needs to satisfy a `'static` lifetime requirement
   --> $DIR/must_outlive_least_region_or_bound.rs:16:50

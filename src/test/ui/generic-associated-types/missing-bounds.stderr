@@ -87,10 +87,10 @@ note: tuple struct defined here
    |
 LL | struct E<B>(B);
    |        ^
-help: consider further restricting type parameter `B`
+help: consider further restricting this bound
    |
-LL | impl<B: Add> Add for E<B> where <B as Add>::Output = B, B: Add<Output = B> {
-   |                                                       ++++++++++++++++++++
+LL | impl<B: Add + Add<Output = B>> Add for E<B> where <B as Add>::Output = B {
+   |             +++++++++++++++++
 
 error: aborting due to 5 previous errors
 

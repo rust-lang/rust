@@ -41,8 +41,11 @@ LL | fn bar<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                     ^^^^^^^^^^^^^^^^^^
 help: consider introducing an explicit lifetime bound
    |
-LL | fn bar<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-   |        ~~~~~                                                   ++++
+LL ~ fn bar<'a, G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+LL |
+LL | where
+LL ~     G: Get<T> + 'a,
+   |
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:48:45
@@ -62,8 +65,8 @@ LL | fn qux<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                             ^^^^^^^^^^^^^^^^^^
 help: consider introducing an explicit lifetime bound
    |
-LL | fn qux<'b, 'a, G: 'b + 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'b
-   |        +++     ~~~~~~~                                                  ++++
+LL | fn qux<'b, 'a, G: 'a + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'b
+   |        +++           ++++                                               ++++
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:60:58
@@ -83,8 +86,8 @@ LL |     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |                                                          ^^^^^^^^^^^^^^^^^^
 help: consider introducing an explicit lifetime bound
    |
-LL |     fn qux<'c, 'b, G: 'c + Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'c {
-   |            +++     ~~~~~~~                                                           ++++
+LL |     fn qux<'c, 'b, G: Get<T> + 'b + 'c, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'c {
+   |            +++                    ++++                                               ++++
 
 error[E0621]: explicit lifetime required in the type of `dest`
   --> $DIR/missing-lifetimes-in-signature.rs:69:45
@@ -98,9 +101,12 @@ error[E0309]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:80:44
    |
 LL | fn bak<'a, G, T>(g: G, dest: &'a mut T) -> impl FnOnce() + 'a
-   |            -                               ^^^^^^^^^^^^^^^^^^ ...so that the type `[closure@$DIR/missing-lifetimes-in-signature.rs:85:5: 87:6]` will meet its required lifetime bounds
-   |            |
-   |            help: consider adding an explicit lifetime bound...: `G: 'a`
+   |                                            ^^^^^^^^^^^^^^^^^^ ...so that the type `[closure@$DIR/missing-lifetimes-in-signature.rs:85:5: 87:6]` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     G: Get<T> + 'a,
+   |               ++++
 
 error: aborting due to 7 previous errors
 

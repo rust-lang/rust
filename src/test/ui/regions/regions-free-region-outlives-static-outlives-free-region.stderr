@@ -1,8 +1,8 @@
 warning: unnecessary lifetime parameter `'a`
-  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:13:5
+  --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:12:11
    |
-LL |     'a: 'static,
-   |     ^^
+LL |     where 'a: 'static
+   |           ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
 

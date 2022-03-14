@@ -2,7 +2,7 @@ warning: unnecessary lifetime parameter `'a`
   --> $DIR/bounds-are-checked.rs:8:6
    |
 LL | fn f<'a: 'static>(t: &'a str) -> X<'a> {
-   |      ^^^^^^^^^^^
+   |      ^^
    |
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
