@@ -5,7 +5,8 @@ use crate::Substitution;
 use crate::SubstitutionPart;
 use crate::SuggestionStyle;
 use crate::ToolMetadata;
-use rustc_lint_defs::Applicability;
+use rustc_data_structures::stable_map::FxHashMap;
+use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_serialize::json::Json;
 use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::{MultiSpan, Span, DUMMY_SP};
@@ -135,6 +136,28 @@ impl Diagnostic {
             | Level::FailureNote => true,
 
             Level::Warning | Level::Note | Level::Help | Level::Allow | Level::Expect(_) => false,
+        }
+    }
+
+    pub fn update_unstable_expectation_id(
+        &mut self,
+        unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
+    ) {
+        if let Level::Expect(expectation_id) = &mut self.level {
+            if expectation_id.is_stable() {
+                return;
+            }
+
+            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
+            // The lint index inside the attribute is manually transferred here.
+            let lint_index = expectation_id.get_lint_index();
+            expectation_id.set_lint_index(None);
+            let mut stable_id = *unstable_to_stable
+                .get(&expectation_id)
+                .expect("each unstable `LintExpectationId` must have a matching stable id");
+
+            stable_id.set_lint_index(lint_index);
+            *expectation_id = stable_id;
         }
     }
 

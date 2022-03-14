@@ -324,8 +324,11 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
                 TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
                 TokenTree::MetaVar(..) => 0,
                 TokenTree::MetaVarDecl(..) => 1,
-                // FIXME(c410-f3r) MetaVarExpr should be handled instead of being ignored
-                // https://github.com/rust-lang/rust/issues/9390
+                // Panicking here would abort execution because `parse_tree` makes use of this
+                // function. In other words, RHS meta-variable expressions eventually end-up here.
+                //
+                // `0` is still returned to inform that no meta-variable was found. `Meta-variables
+                // != Meta-variable expressions`
                 TokenTree::MetaVarExpr(..) => 0,
                 TokenTree::Sequence(_, ref seq) => seq.num_captures,
                 TokenTree::Token(..) => 0,

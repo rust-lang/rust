@@ -2680,7 +2680,6 @@ fn from_target_feature(
             // Only allow features whose feature gates have been enabled.
             let allowed = match feature_gate.as_ref().copied() {
                 Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::aarch64_target_feature) => rust_features.aarch64_target_feature,
                 Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
                 Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
                 Some(sym::mips_target_feature) => rust_features.mips_target_feature,
@@ -2696,6 +2695,7 @@ fn from_target_feature(
                 Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
                 Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
                 Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
+                Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };

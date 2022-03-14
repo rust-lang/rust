@@ -278,6 +278,7 @@ symbols! {
         _task_context,
         a32,
         aarch64_target_feature,
+        aarch64_ver_target_feature,
         abi,
         abi_amdgpu_kernel,
         abi_avr_interrupt,

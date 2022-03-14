@@ -337,8 +337,12 @@ fn check_occurrences(
             let name = MacroRulesNormalizedIdent::new(name);
             check_ops_is_prefix(sess, node_id, macros, binders, ops, span, name);
         }
-        // FIXME(c410-f3r) Check token (https://github.com/rust-lang/rust/issues/93902)
-        TokenTree::MetaVarExpr(..) => {}
+        TokenTree::MetaVarExpr(dl, ref mve) => {
+            let Some(name) = mve.ident().map(MacroRulesNormalizedIdent::new) else {
+                return;
+            };
+            check_ops_is_prefix(sess, node_id, macros, binders, ops, dl.entire(), name);
+        }
         TokenTree::Delimited(_, ref del) => {
             check_nested_occurrences(sess, node_id, &del.tts, macros, binders, ops, valid);
         }
