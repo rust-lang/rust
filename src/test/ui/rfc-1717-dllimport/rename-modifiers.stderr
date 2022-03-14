@@ -1,0 +1,8 @@
+error: overriding linking modifiers from command line is not supported
+  --> $DIR/rename-modifiers.rs:9:1
+   |
+LL | extern "C" {}
+   | ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

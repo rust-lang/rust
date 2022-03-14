@@ -1937,33 +1937,27 @@ fn parse_native_lib_kind(
     };
 
     let kind = match kind {
-        "dylib" => NativeLibKind::Dylib { as_needed: None },
-        "framework" => NativeLibKind::Framework { as_needed: None },
         "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
         "static-nobundle" => {
             early_warn(
                 error_format,
                 "library kind `static-nobundle` has been superseded by specifying \
-                `-bundle` on library kind `static`. Try `static:-bundle`",
+                 modifier `-bundle` with library kind `static`. Try `static:-bundle`",
             );
-            if modifiers.is_some() {
-                early_error(
-                    error_format,
-                    "linking modifier can't be used with library kind `static-nobundle`",
-                )
-            }
             if !nightly_options::match_is_nightly_build(matches) {
                 early_error(
                     error_format,
-                    "library kind `static-nobundle` are currently unstable and only accepted on \
-                the nightly compiler",
+                    "library kind `static-nobundle` is unstable \
+                     and only accepted on the nightly compiler",
                 );
             }
             NativeLibKind::Static { bundle: Some(false), whole_archive: None }
         }
-        s => early_error(
+        "dylib" => NativeLibKind::Dylib { as_needed: None },
+        "framework" => NativeLibKind::Framework { as_needed: None },
+        _ => early_error(
             error_format,
-            &format!("unknown library kind `{s}`, expected one of dylib, framework, or static"),
+            &format!("unknown library kind `{kind}`, expected one of: static, dylib, framework"),
         ),
     };
     match modifiers {
@@ -1978,21 +1972,6 @@ fn parse_native_lib_modifiers(
     error_format: ErrorOutputType,
     matches: &getopts::Matches,
 ) -> (NativeLibKind, Option<bool>) {
-    let report_unstable_modifier = |modifier| {
-        if !nightly_options::is_unstable_enabled(matches) {
-            let why = if nightly_options::match_is_nightly_build(matches) {
-                " and only accepted on the nightly compiler"
-            } else {
-                ", the `-Z unstable-options` flag must also be passed to use it"
-            };
-            early_error(
-                error_format,
-                &format!("{modifier} linking modifier is currently unstable{why}"),
-            )
-        }
-    };
-
-    let mut has_duplicate_modifiers = false;
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
         let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
@@ -2000,56 +1979,63 @@ fn parse_native_lib_modifiers(
             None => early_error(
                 error_format,
                 "invalid linking modifier syntax, expected '+' or '-' prefix \
-                    before one of: bundle, verbatim, whole-archive, as-needed",
+                 before one of: bundle, verbatim, whole-archive, as-needed",
             ),
         };
 
+        let report_unstable_modifier = || {
+            if !nightly_options::is_unstable_enabled(matches) {
+                let why = if nightly_options::match_is_nightly_build(matches) {
+                    " and only accepted on the nightly compiler"
+                } else {
+                    ", the `-Z unstable-options` flag must also be passed to use it"
+                };
+                early_error(
+                    error_format,
+                    &format!("linking modifier `{modifier}` is unstable{why}"),
+                )
+            }
+        };
+        let assign_modifier = |dst: &mut Option<bool>| {
+            if dst.is_some() {
+                let msg = format!("multiple `{modifier}` modifiers in a single `-l` option");
+                early_error(error_format, &msg)
+            } else {
+                *dst = Some(value);
+            }
+        };
         match (modifier, &mut kind) {
             ("bundle", NativeLibKind::Static { bundle, .. }) => {
-                report_unstable_modifier(modifier);
-                if bundle.is_some() {
-                    has_duplicate_modifiers = true;
-                }
-                *bundle = Some(value);
+                report_unstable_modifier();
+                assign_modifier(bundle)
             }
             ("bundle", _) => early_error(
                 error_format,
-                "bundle linking modifier is only compatible with \
-                    `static` linking kind",
+                "linking modifier `bundle` is only compatible with `static` linking kind",
             ),
 
             ("verbatim", _) => {
-                report_unstable_modifier(modifier);
-                if verbatim.is_some() {
-                    has_duplicate_modifiers = true;
-                }
-                verbatim = Some(value);
+                report_unstable_modifier();
+                assign_modifier(&mut verbatim)
             }
 
             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
-                if whole_archive.is_some() {
-                    has_duplicate_modifiers = true;
-                }
-                *whole_archive = Some(value);
+                assign_modifier(whole_archive)
             }
             ("whole-archive", _) => early_error(
                 error_format,
-                "whole-archive linking modifier is only compatible with \
-                    `static` linking kind",
+                "linking modifier `whole-archive` is only compatible with `static` linking kind",
             ),
 
             ("as-needed", NativeLibKind::Dylib { as_needed })
             | ("as-needed", NativeLibKind::Framework { as_needed }) => {
-                report_unstable_modifier(modifier);
-                if as_needed.is_some() {
-                    has_duplicate_modifiers = true;
-                }
-                *as_needed = Some(value);
+                report_unstable_modifier();
+                assign_modifier(as_needed)
             }
             ("as-needed", _) => early_error(
                 error_format,
-                "as-needed linking modifier is only compatible with \
-                    `dylib` and `framework` linking kinds",
+                "linking modifier `as-needed` is only compatible with \
+                 `dylib` and `framework` linking kinds",
             ),
 
             // Note: this error also excludes the case with empty modifier
@@ -2057,14 +2043,11 @@ fn parse_native_lib_modifiers(
             _ => early_error(
                 error_format,
                 &format!(
-                    "unrecognized linking modifier `{modifier}`, expected one \
-                    of: bundle, verbatim, whole-archive, as-needed"
+                    "unknown linking modifier `{modifier}`, expected one \
+                     of: bundle, verbatim, whole-archive, as-needed"
                 ),
             ),
         }
-    }
-    if has_duplicate_modifiers {
-        report_unstable_modifier("duplicating")
     }
 
     (kind, verbatim)
@@ -2093,6 +2076,9 @@ fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<
                 None => (name, None),
                 Some((name, new_name)) => (name.to_string(), Some(new_name.to_owned())),
             };
+            if name.is_empty() {
+                early_error(error_format, "library name must not be empty");
+            }
             NativeLib { name, new_name, kind, verbatim }
         })
         .collect()

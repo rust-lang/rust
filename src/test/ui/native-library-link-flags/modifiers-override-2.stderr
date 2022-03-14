@@ -1,2 +1,2 @@
-error: duplicating linking modifier is currently unstable and only accepted on the nightly compiler
+error: multiple `whole-archive` modifiers in a single `-l` option
 

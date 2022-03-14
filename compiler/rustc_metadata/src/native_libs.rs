@@ -1,4 +1,4 @@
-use rustc_ast::CRATE_NODE_ID;
+use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -9,8 +9,7 @@ use rustc_session::cstore::{DllCallingConvention, DllImport, NativeLib};
 use rustc_session::parse::feature_err;
 use rustc_session::utils::NativeLibKind;
 use rustc_session::Session;
-use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
@@ -51,283 +50,315 @@ impl<'tcx> Collector<'tcx> {
 
         // Process all of the #[link(..)]-style arguments
         let sess = &self.tcx.sess;
+        let features = self.tcx.features();
         for m in self.tcx.hir().attrs(it.hir_id()).iter().filter(|a| a.has_name(sym::link)) {
             let Some(items) = m.meta_item_list() else {
                 continue;
             };
-            let mut lib = NativeLib {
-                name: None,
-                kind: NativeLibKind::Unspecified,
-                cfg: None,
-                foreign_module: Some(it.def_id.to_def_id()),
-                wasm_import_module: None,
-                verbatim: None,
-                dll_imports: Vec::new(),
-            };
-            let mut kind_specified = false;
 
+            let mut name = None;
+            let mut kind = None;
+            let mut modifiers = None;
+            let mut cfg = None;
+            let mut wasm_import_module = None;
             for item in items.iter() {
-                if item.has_name(sym::kind) {
-                    kind_specified = true;
-                    let Some(kind) = item.value_str() else {
-                        continue; // skip like historical compilers
-                    };
-                    lib.kind = match kind.as_str() {
-                        "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
-                        "static-nobundle" => {
-                            sess.struct_span_warn(
-                                item.span(),
-                                "library kind `static-nobundle` has been superseded by specifying \
-                                modifier `-bundle` with library kind `static`",
-                            )
-                            .emit();
-                            if !self.tcx.features().static_nobundle {
-                                feature_err(
-                                    &self.tcx.sess.parse_sess,
-                                    sym::static_nobundle,
-                                    item.span(),
-                                    "kind=\"static-nobundle\" is unstable",
+                match item.name_or_empty() {
+                    sym::name => {
+                        if name.is_some() {
+                            let msg = "multiple `name` arguments in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_name) = item.value_str() else {
+                            let msg = "link name must be of the form `name = \"string\"`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        let span = item.name_value_literal_span().unwrap();
+                        if link_name.is_empty() {
+                            struct_span_err!(sess, span, E0454, "link name must not be empty")
+                                .span_label(span, "empty link name")
+                                .emit();
+                        }
+                        name = Some((link_name, span));
+                    }
+                    sym::kind => {
+                        if kind.is_some() {
+                            let msg = "multiple `kind` arguments in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_kind) = item.value_str() else {
+                            let msg = "link kind must be of the form `kind = \"string\"`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+
+                        let span = item.name_value_literal_span().unwrap();
+                        let link_kind = match link_kind.as_str() {
+                            "static" => NativeLibKind::Static { bundle: None, whole_archive: None },
+                            "static-nobundle" => {
+                                sess.struct_span_warn(
+                                    span,
+                                    "link kind `static-nobundle` has been superseded by specifying \
+                                     modifier `-bundle` with link kind `static`",
                                 )
                                 .emit();
+                                if !features.static_nobundle {
+                                    feature_err(
+                                        &sess.parse_sess,
+                                        sym::static_nobundle,
+                                        span,
+                                        "link kind `static-nobundle` is unstable",
+                                    )
+                                    .emit();
+                                }
+                                NativeLibKind::Static { bundle: Some(false), whole_archive: None }
                             }
-                            NativeLibKind::Static { bundle: Some(false), whole_archive: None }
-                        }
-                        "dylib" => NativeLibKind::Dylib { as_needed: None },
-                        "framework" => NativeLibKind::Framework { as_needed: None },
-                        "raw-dylib" => NativeLibKind::RawDylib,
-                        k => {
-                            struct_span_err!(sess, item.span(), E0458, "unknown kind: `{}`", k)
-                                .span_label(item.span(), "unknown kind")
-                                .span_label(m.span, "")
-                                .emit();
-                            NativeLibKind::Unspecified
-                        }
-                    };
-                } else if item.has_name(sym::name) {
-                    lib.name = item.value_str();
-                } else if item.has_name(sym::cfg) {
-                    let Some(cfg) = item.meta_item_list() else {
-                        continue; // skip like historical compilers
-                    };
-                    if cfg.is_empty() {
-                        sess.span_err(item.span(), "`cfg()` must have an argument");
-                    } else if let cfg @ Some(..) = cfg[0].meta_item() {
-                        lib.cfg = cfg.cloned();
-                    } else {
-                        sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
-                    }
-                } else if item.has_name(sym::wasm_import_module) {
-                    match item.value_str() {
-                        Some(s) => lib.wasm_import_module = Some(s),
-                        None => {
-                            let msg = "must be of the form `#[link(wasm_import_module = \"...\")]`";
-                            sess.span_err(item.span(), msg);
-                        }
-                    }
-                } else {
-                    // currently, like past compilers, ignore unknown
-                    // directives here.
-                }
-            }
-
-            // Do this outside the above loop so we don't depend on modifiers coming
-            // after kinds
-            let mut modifiers_count = 0;
-            for item in items.iter().filter(|item| item.has_name(sym::modifiers)) {
-                if let Some(modifiers) = item.value_str() {
-                    modifiers_count += 1;
-                    let span = item.name_value_literal_span().unwrap();
-                    let mut has_duplicate_modifiers = false;
-                    for modifier in modifiers.as_str().split(',') {
-                        let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
-                            Some(m) => (m, modifier.starts_with('+')),
-                            None => {
-                                // Note: this error also excludes the case with empty modifier
-                                // string, like `modifiers = ""`.
-                                sess.span_err(
-                                    span,
-                                    "invalid linking modifier syntax, expected '+' or '-' prefix \
-                                    before one of: bundle, verbatim, whole-archive, as-needed",
+                            "dylib" => NativeLibKind::Dylib { as_needed: None },
+                            "framework" => {
+                                if !sess.target.is_like_osx {
+                                    struct_span_err!(
+                                        sess,
+                                        span,
+                                        E0455,
+                                        "link kind `framework` is only supported on Apple targets"
+                                    )
+                                    .emit();
+                                }
+                                NativeLibKind::Framework { as_needed: None }
+                            }
+                            "raw-dylib" => {
+                                if !sess.target.is_like_windows {
+                                    struct_span_err!(
+                                        sess,
+                                        span,
+                                        E0455,
+                                        "link kind `raw-dylib` is only supported on Windows targets"
+                                    )
+                                    .emit();
+                                } else if !features.raw_dylib {
+                                    feature_err(
+                                        &sess.parse_sess,
+                                        sym::raw_dylib,
+                                        span,
+                                        "link kind `raw-dylib` is unstable",
+                                    )
+                                    .emit();
+                                }
+                                NativeLibKind::RawDylib
+                            }
+                            kind => {
+                                let msg = format!(
+                                    "unknown link kind `{kind}`, expected one of: \
+                                     static, dylib, framework, raw-dylib"
                                 );
+                                struct_span_err!(sess, span, E0458, "{}", msg)
+                                    .span_label(span, "unknown link kind")
+                                    .emit();
                                 continue;
                             }
                         };
-
-                        match (modifier, &mut lib.kind) {
-                            ("bundle", NativeLibKind::Static { bundle, .. }) => {
-                                if bundle.is_some() {
-                                    has_duplicate_modifiers = true;
-                                }
-                                *bundle = Some(value);
-                            }
-                            ("bundle", _) => {
-                                sess.span_err(
-                                    span,
-                                    "bundle linking modifier is only compatible with \
-                                `static` linking kind",
-                                );
-                            }
-
-                            ("verbatim", _) => {
-                                if lib.verbatim.is_some() {
-                                    has_duplicate_modifiers = true;
-                                }
-                                lib.verbatim = Some(value);
-                            }
-
-                            ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
-                                if whole_archive.is_some() {
-                                    has_duplicate_modifiers = true;
-                                }
-                                *whole_archive = Some(value);
-                            }
-                            ("whole-archive", _) => {
-                                sess.span_err(
-                                    span,
-                                    "whole-archive linking modifier is only compatible with \
-                                `static` linking kind",
-                                );
-                            }
-
-                            ("as-needed", NativeLibKind::Dylib { as_needed })
-                            | ("as-needed", NativeLibKind::Framework { as_needed }) => {
-                                if as_needed.is_some() {
-                                    has_duplicate_modifiers = true;
-                                }
-                                *as_needed = Some(value);
-                            }
-                            ("as-needed", _) => {
-                                sess.span_err(
-                                    span,
-                                    "as-needed linking modifier is only compatible with \
-                                `dylib` and `framework` linking kinds",
-                                );
-                            }
-
-                            _ => {
-                                sess.span_err(
-                                    span,
-                                    &format!(
-                                        "unrecognized linking modifier `{}`, expected one \
-                                    of: bundle, verbatim, whole-archive, as-needed",
-                                        modifier
-                                    ),
-                                );
-                            }
-                        }
+                        kind = Some(link_kind);
                     }
-                    if has_duplicate_modifiers {
-                        let msg =
-                            "same modifier is used multiple times in a single `modifiers` argument";
+                    sym::modifiers => {
+                        if modifiers.is_some() {
+                            let msg =
+                                "multiple `modifiers` arguments in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_modifiers) = item.value_str() else {
+                            let msg = "link modifiers must be of the form `modifiers = \"string\"`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        modifiers = Some((link_modifiers, item.name_value_literal_span().unwrap()));
+                    }
+                    sym::cfg => {
+                        if cfg.is_some() {
+                            let msg = "multiple `cfg` arguments in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_cfg) = item.meta_item_list() else {
+                            let msg = "link cfg must be of the form `cfg(/* predicate */)`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        let [NestedMetaItem::MetaItem(link_cfg)] = link_cfg else {
+                            let msg = "link cfg must have a single predicate argument";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        if !features.link_cfg {
+                            feature_err(
+                                &sess.parse_sess,
+                                sym::link_cfg,
+                                item.span(),
+                                "link cfg is unstable",
+                            )
+                            .emit();
+                        }
+                        cfg = Some(link_cfg.clone());
+                    }
+                    sym::wasm_import_module => {
+                        if wasm_import_module.is_some() {
+                            let msg = "multiple `wasm_import_module` arguments \
+                                       in a single `#[link]` attribute";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        }
+                        let Some(link_wasm_import_module) = item.value_str() else {
+                            let msg = "wasm import module must be of the form \
+                                       `wasm_import_module = \"string\"`";
+                            sess.span_err(item.span(), msg);
+                            continue;
+                        };
+                        wasm_import_module = Some((link_wasm_import_module, item.span()));
+                    }
+                    _ => {
+                        let msg = "unexpected `#[link]` argument, expected one of: \
+                                   name, kind, modifiers, cfg, wasm_import_module";
                         sess.span_err(item.span(), msg);
                     }
-                } else {
-                    let msg = "must be of the form `#[link(modifiers = \"...\")]`";
-                    sess.span_err(item.span(), msg);
                 }
             }
 
-            if modifiers_count > 1 {
-                let msg = "multiple `modifiers` arguments in a single `#[link]` attribute";
-                sess.span_err(m.span, msg);
+            // Do this outside the above loop so we don't depend on modifiers coming after kinds
+            let mut verbatim = None;
+            if let Some((modifiers, span)) = modifiers {
+                for modifier in modifiers.as_str().split(',') {
+                    let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
+                        Some(m) => (m, modifier.starts_with('+')),
+                        None => {
+                            sess.span_err(
+                                span,
+                                "invalid linking modifier syntax, expected '+' or '-' prefix \
+                                before one of: bundle, verbatim, whole-archive, as-needed",
+                            );
+                            continue;
+                        }
+                    };
+
+                    macro report_unstable_modifier($feature: ident) {
+                        if !features.$feature {
+                            feature_err(
+                                &sess.parse_sess,
+                                sym::$feature,
+                                span,
+                                &format!("linking modifier `{modifier}` is unstable"),
+                            )
+                            .emit();
+                        }
+                    }
+                    let assign_modifier = |dst: &mut Option<bool>| {
+                        if dst.is_some() {
+                            let msg = format!(
+                                "multiple `{modifier}` modifiers in a single `modifiers` argument"
+                            );
+                            sess.span_err(span, &msg);
+                        } else {
+                            *dst = Some(value);
+                        }
+                    };
+                    match (modifier, &mut kind) {
+                        ("bundle", Some(NativeLibKind::Static { bundle, .. })) => {
+                            report_unstable_modifier!(native_link_modifiers_bundle);
+                            assign_modifier(bundle)
+                        }
+                        ("bundle", _) => {
+                            sess.span_err(
+                                span,
+                                "linking modifier `bundle` is only compatible with \
+                                 `static` linking kind",
+                            );
+                        }
+
+                        ("verbatim", _) => {
+                            report_unstable_modifier!(native_link_modifiers_verbatim);
+                            assign_modifier(&mut verbatim)
+                        }
+
+                        ("whole-archive", Some(NativeLibKind::Static { whole_archive, .. })) => {
+                            assign_modifier(whole_archive)
+                        }
+                        ("whole-archive", _) => {
+                            sess.span_err(
+                                span,
+                                "linking modifier `whole-archive` is only compatible with \
+                                 `static` linking kind",
+                            );
+                        }
+
+                        ("as-needed", Some(NativeLibKind::Dylib { as_needed }))
+                        | ("as-needed", Some(NativeLibKind::Framework { as_needed })) => {
+                            report_unstable_modifier!(native_link_modifiers_as_needed);
+                            assign_modifier(as_needed)
+                        }
+                        ("as-needed", _) => {
+                            sess.span_err(
+                                span,
+                                "linking modifier `as-needed` is only compatible with \
+                                 `dylib` and `framework` linking kinds",
+                            );
+                        }
+
+                        _ => {
+                            sess.span_err(
+                                span,
+                                format!(
+                                    "unknown linking modifier `{modifier}`, expected one of: \
+                                     bundle, verbatim, whole-archive, as-needed"
+                                ),
+                            );
+                        }
+                    }
+                }
             }
 
-            // In general we require #[link(name = "...")] but we allow
-            // #[link(wasm_import_module = "...")] without the `name`.
-            let requires_name = kind_specified || lib.wasm_import_module.is_none();
-            if lib.name.is_none() && requires_name {
+            if let Some((_, span)) = wasm_import_module {
+                if name.is_some() || kind.is_some() || modifiers.is_some() || cfg.is_some() {
+                    let msg = "`wasm_import_module` is incompatible with \
+                               other arguments in `#[link]` attributes";
+                    sess.span_err(span, msg);
+                }
+            } else if name.is_none() {
                 struct_span_err!(
                     sess,
                     m.span,
                     E0459,
-                    "`#[link(...)]` specified without \
-                                  `name = \"foo\"`"
+                    "`#[link]` attribute requires a `name = \"string\"` argument"
                 )
                 .span_label(m.span, "missing `name` argument")
                 .emit();
             }
 
-            if lib.kind == NativeLibKind::RawDylib {
-                lib.dll_imports.extend(
+            let dll_imports = match kind {
+                Some(NativeLibKind::RawDylib) => {
+                    if let Some((name, span)) = name && name.as_str().contains('\0') {
+                        sess.span_err(
+                            span,
+                            "link name must not contain NUL characters if link kind is `raw-dylib`",
+                        );
+                    }
                     foreign_mod_items
                         .iter()
-                        .map(|child_item| self.build_dll_import(abi, child_item)),
-                );
-            }
-
-            self.register_native_lib(Some(m.span), lib);
-        }
-    }
-
-    fn register_native_lib(&mut self, span: Option<Span>, lib: NativeLib) {
-        if lib.name.as_ref().map_or(false, |&s| s == kw::Empty) {
-            match span {
-                Some(span) => {
-                    struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0454,
-                        "`#[link(name = \"\")]` given with empty name"
-                    )
-                    .span_label(span, "empty name given")
-                    .emit();
+                        .map(|child_item| self.build_dll_import(abi, child_item))
+                        .collect()
                 }
-                None => {
-                    self.tcx.sess.err("empty library name given via `-l`");
-                }
-            }
-            return;
-        }
-        let is_osx = self.tcx.sess.target.is_like_osx;
-        if matches!(lib.kind, NativeLibKind::Framework { .. }) && !is_osx {
-            let msg = "native frameworks are only available on macOS targets";
-            match span {
-                Some(span) => {
-                    struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
-                }
-                None => {
-                    self.tcx.sess.err(msg);
-                }
-            }
-        }
-        if lib.cfg.is_some() && !self.tcx.features().link_cfg {
-            feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::link_cfg,
-                span.unwrap(),
-                "kind=\"link_cfg\" is unstable",
-            )
-            .emit();
-        }
-        // this just unwraps lib.name; we already established that it isn't empty above.
-        if let (NativeLibKind::RawDylib, Some(lib_name)) = (lib.kind, lib.name) {
-            let Some(span) = span else {
-                bug!("raw-dylib libraries are not supported on the command line");
+                _ => Vec::new(),
             };
-
-            if !self.tcx.sess.target.options.is_like_windows {
-                self.tcx.sess.span_fatal(
-                    span,
-                    "`#[link(...)]` with `kind = \"raw-dylib\"` only supported on Windows",
-                );
-            }
-
-            if lib_name.as_str().contains('\0') {
-                self.tcx.sess.span_err(span, "library name may not contain NUL characters");
-            }
-
-            if !self.tcx.features().raw_dylib {
-                feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::raw_dylib,
-                    span,
-                    "kind=\"raw-dylib\" is unstable",
-                )
-                .emit();
-            }
+            self.libs.push(NativeLib {
+                name: name.map(|(name, _)| name),
+                kind: kind.unwrap_or(NativeLibKind::Unspecified),
+                cfg,
+                foreign_module: Some(it.def_id.to_def_id()),
+                wasm_import_module: wasm_import_module.map(|(name, _)| name),
+                verbatim,
+                dll_imports,
+            });
         }
-
-        self.libs.push(lib);
     }
 
     // Process libs passed on the command line
@@ -335,6 +366,10 @@ impl<'tcx> Collector<'tcx> {
         // First, check for errors
         let mut renames = FxHashSet::default();
         for lib in &self.tcx.sess.opts.libs {
+            if let NativeLibKind::Framework { .. } = lib.kind && !self.tcx.sess.target.is_like_osx {
+                // Cannot check this when parsing options because the target is not yet available.
+                self.tcx.sess.err("library kind `framework` is only supported on Apple targets");
+            }
             if let Some(ref new_name) = lib.new_name {
                 let any_duplicate = self
                     .libs
@@ -342,19 +377,19 @@ impl<'tcx> Collector<'tcx> {
                     .filter_map(|lib| lib.name.as_ref())
                     .any(|n| n.as_str() == lib.name);
                 if new_name.is_empty() {
-                    self.tcx.sess.err(&format!(
+                    self.tcx.sess.err(format!(
                         "an empty renaming target was specified for library `{}`",
                         lib.name
                     ));
                 } else if !any_duplicate {
-                    self.tcx.sess.err(&format!(
+                    self.tcx.sess.err(format!(
                         "renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
                                                 attributes referencing this library",
                         lib.name
                     ));
                 } else if !renames.insert(&lib.name) {
-                    self.tcx.sess.err(&format!(
+                    self.tcx.sess.err(format!(
                         "multiple renamings were \
                                                 specified for library `{}`",
                         lib.name
@@ -404,7 +439,7 @@ impl<'tcx> Collector<'tcx> {
             if existing.is_empty() {
                 // Add if not found
                 let new_name: Option<&str> = passed_lib.new_name.as_deref();
-                let lib = NativeLib {
+                self.libs.push(NativeLib {
                     name: Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name))),
                     kind: passed_lib.kind,
                     cfg: None,
@@ -412,8 +447,7 @@ impl<'tcx> Collector<'tcx> {
                     wasm_import_module: None,
                     verbatim: passed_lib.verbatim,
                     dll_imports: Vec::new(),
-                };
-                self.register_native_lib(None, lib);
+                });
             } else {
                 // Move all existing libraries with the same name to the
                 // end of the command line.

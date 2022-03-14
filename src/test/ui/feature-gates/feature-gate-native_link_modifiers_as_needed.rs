@@ -1,5 +1,5 @@
-#[link(name = "foo", modifiers = "+as-needed")]
-//~^ ERROR: `#[link(modifiers="as-needed")]` is unstable
+#[link(name = "foo", kind = "dylib", modifiers = "+as-needed")]
+//~^ ERROR: linking modifier `as-needed` is unstable
 extern "C" {}
 
 fn main() {}

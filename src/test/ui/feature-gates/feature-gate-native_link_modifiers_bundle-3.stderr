@@ -1,2 +1,2 @@
-error: bundle linking modifier is currently unstable and only accepted on the nightly compiler
+error: linking modifier `bundle` is unstable and only accepted on the nightly compiler
 
