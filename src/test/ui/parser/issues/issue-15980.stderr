@@ -1,9 +1,9 @@
 error: expected identifier, found keyword `return`
-  --> $DIR/issue-15980.rs:8:13
+  --> $DIR/issue-15980.rs:10:13
    |
 LL |         Err(ref e) if e.kind == io::EndOfFile {
    |                                 ------------- while parsing this struct
-LL |
+...
 LL |             return
    |             ^^^^^^ expected identifier, found keyword
    |
@@ -12,14 +12,16 @@ help: escape `return` to use it as an identifier
 LL |             r#return
    |             ++
 
-error: expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
-  --> $DIR/issue-15980.rs:13:9
+error: expected one of `!`, `.`, `::`, `=>`, `?`, or an operator, found `{`
+  --> $DIR/issue-15980.rs:6:47
    |
-LL |         }
-   |          - expected one of `.`, `=>`, `?`, or an operator
-LL |
-LL |         _ => {}
-   |         ^ unexpected token
+LL |         Err(ref e) if e.kind == io::EndOfFile {
+   |                                               ^ expected one of `!`, `.`, `::`, `=>`, `?`, or an operator
+   |
+help: try adding a fat arrow here
+   |
+LL |         Err(ref e) if e.kind == io::EndOfFile => {
+   |                                               ++
 
 error: aborting due to 2 previous errors
 

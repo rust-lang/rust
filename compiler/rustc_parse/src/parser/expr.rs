@@ -2480,7 +2480,7 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let cond = this.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+                let cond = this.parse_match_guard_cond()?;
                 let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
                 if has_let_expr {
                     if does_not_have_bin_op {
@@ -2624,6 +2624,26 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::try_blocks, span);
             Ok(self.mk_expr(span, ExprKind::TryBlock(body), attrs))
         }
+    }
+
+    fn parse_match_guard_cond(&mut self) -> PResult<'a, P<Expr>> {
+        let snapshot = self.clone();
+        let mut cond = self.parse_expr()?;
+        let (is_lhs_struct, is_rhs_struct) = match cond.kind {
+            ExprKind::Binary(_, ref lhs, ref rhs) => {
+                (matches!(lhs.kind, ExprKind::Struct(..)), matches!(rhs.kind, ExprKind::Struct(..)))
+            }
+            _ => (false, false),
+        };
+        if !is_lhs_struct
+            && (!is_rhs_struct
+                || is_rhs_struct && self.token.kind != token::OpenDelim(token::Brace))
+            && self.token.kind != token::FatArrow
+        {
+            *self = snapshot;
+            cond = self.parse_cond_expr()?;
+        }
+        Ok(cond)
     }
 
     fn is_do_catch_block(&self) -> bool {
