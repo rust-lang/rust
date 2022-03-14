@@ -3,7 +3,6 @@
 #![allow(clippy::stable_sort_primitive)]
 
 use std::cell::Ref;
-use std::cmp::Reverse;
 
 fn unnecessary_sort_by() {
     fn id(x: isize) -> isize {
@@ -76,7 +75,6 @@ mod issue_5754 {
 
 // The closure parameter is not dereferenced anymore, so non-Copy types can be linted
 mod issue_6001 {
-    use super::*;
     struct Test(String);
 
     impl Test {

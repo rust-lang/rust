@@ -74,6 +74,10 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         self.inter_expr().eq_expr(left, right)
     }
 
+    pub fn eq_path(&mut self, left: &Path<'_>, right: &Path<'_>) -> bool {
+        self.inter_expr().eq_path(left, right)
+    }
+
     pub fn eq_path_segment(&mut self, left: &PathSegment<'_>, right: &PathSegment<'_>) -> bool {
         self.inter_expr().eq_path_segment(left, right)
     }
@@ -362,7 +366,7 @@ impl HirEqInterExpr<'_, '_, '_> {
         }
     }
 
-    fn eq_path(&mut self, left: &Path<'_>, right: &Path<'_>) -> bool {
+    pub fn eq_path(&mut self, left: &Path<'_>, right: &Path<'_>) -> bool {
         match (left.res, right.res) {
             (Res::Local(l), Res::Local(r)) => l == r || self.locals.get(&l) == Some(&r),
             (Res::Local(_), _) | (_, Res::Local(_)) => false,

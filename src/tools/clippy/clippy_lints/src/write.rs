@@ -7,7 +7,7 @@ use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use rustc_ast::ast::{Expr, ExprKind, Impl, Item, ItemKind, MacCall, Path, StrLit, StrStyle};
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_lexer::unescape::{self, EscapeError};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_parse::parser;
@@ -534,7 +534,7 @@ impl Write {
             match parser
                 .parse_expr()
                 .map(rustc_ast::ptr::P::into_inner)
-                .map_err(|e| e.cancel())
+                .map_err(DiagnosticBuilder::cancel)
             {
                 // write!(e, ...)
                 Ok(p) if parser.eat(&token::Comma) => Some(p),
@@ -563,7 +563,7 @@ impl Write {
             }
 
             let comma_span = parser.prev_token.span;
-            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(|err| err.cancel()) {
+            let token_expr = if let Ok(expr) = parser.parse_expr().map_err(DiagnosticBuilder::cancel) {
                 expr
             } else {
                 return (Some(fmtstr), None);

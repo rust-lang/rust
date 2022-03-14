@@ -2,6 +2,6 @@ max_width = 120
 comment_width = 100
 match_block_trailing_comma = true
 wrap_comments = true
-edition = "2018"
+edition = "2021"
 error_on_line_overflow = true
 version = "Two"
