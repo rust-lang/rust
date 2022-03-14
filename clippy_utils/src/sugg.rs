@@ -808,7 +808,7 @@ pub fn deref_closure_args<'tcx>(cx: &LateContext<'_>, closure: &'tcx hir::Expr<'
             closure_arg_is_type_annotated_double_ref,
             next_pos: closure.span.lo(),
             suggestion_start: String::new(),
-            applicability: Applicability::MaybeIncorrect,
+            applicability: Applicability::MachineApplicable,
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(closure.hir_id);
