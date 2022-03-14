@@ -373,7 +373,7 @@ fn print_item(cx: &LateContext<'_>, item: &hir::Item<'_>) {
             let item_ty = cx.tcx.type_of(did);
             println!("function of type {:#?}", item_ty);
         },
-        hir::ItemKind::Macro(ref macro_def) => {
+        hir::ItemKind::Macro(ref macro_def, _) => {
             if macro_def.macro_rules {
                 println!("macro introduced by `macro_rules!`");
             } else {

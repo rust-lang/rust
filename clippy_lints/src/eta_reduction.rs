@@ -224,7 +224,7 @@ fn get_ufcs_type_name(cx: &LateContext<'_>, method_def_id: DefId) -> String {
         ty::ImplContainer(def_id) => {
             let ty = cx.tcx.type_of(def_id);
             match ty.kind() {
-                ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did),
+                ty::Adt(adt, _) => cx.tcx.def_path_str(adt.did()),
                 _ => ty.to_string(),
             }
         },

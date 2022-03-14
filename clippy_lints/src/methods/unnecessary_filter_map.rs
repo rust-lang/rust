@@ -33,21 +33,20 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         found_filtering |= return_visitor.found_filtering;
 
         let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
-        let sugg =
-            if !found_filtering {
-                if name == "filter_map" { "map" } else { "map(..).next()" }
-            } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
-                match cx.typeck_results().expr_ty(&body.value).kind() {
-                    ty::Adt(adt, subst)
-                        if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && in_ty == subst.type_at(0) =>
-                    {
-                        if name == "filter_map" { "filter" } else { "find" }
-                    },
-                    _ => return,
-                }
-            } else {
-                return;
-            };
+        let sugg = if !found_filtering {
+            if name == "filter_map" { "map" } else { "map(..).next()" }
+        } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
+            match cx.typeck_results().expr_ty(&body.value).kind() {
+                ty::Adt(adt, subst)
+                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
+                {
+                    if name == "filter_map" { "filter" } else { "find" }
+                },
+                _ => return,
+            }
+        } else {
+            return;
+        };
         span_lint(
             cx,
             if name == "filter_map" {

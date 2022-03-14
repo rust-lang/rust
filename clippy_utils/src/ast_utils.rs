@@ -285,12 +285,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -388,12 +390,14 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)
@@ -432,12 +436,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: lg,
                 bounds: lb,
                 ty: lt,
+                ..
             }),
             TyAlias(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
                 ty: rt,
+                ..
             }),
         ) => {
             eq_defaultness(*ld, *rd)

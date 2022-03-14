@@ -593,7 +593,8 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
         ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty().kind() {
             ty::Ref(_, tam, _) => match tam.kind() {
                 ty::Str => String::from_utf8(
-                    data.inspect_with_uninit_and_ptr_outside_interpreter(start..end)
+                    data.inner()
+                        .inspect_with_uninit_and_ptr_outside_interpreter(start..end)
                         .to_owned(),
                 )
                 .ok()
@@ -606,6 +607,7 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
             ty::Array(sub_type, len) => match sub_type.kind() {
                 ty::Float(FloatTy::F32) => match miri_to_const(*len) {
                     Some(Constant::Int(len)) => alloc
+                        .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(4 * len as usize))
                         .to_owned()
                         .chunks(4)
@@ -620,6 +622,7 @@ pub fn miri_to_const(result: ty::Const<'_>) -> Option<Constant> {
                 },
                 ty::Float(FloatTy::F64) => match miri_to_const(*len) {
                     Some(Constant::Int(len)) => alloc
+                        .inner()
                         .inspect_with_uninit_and_ptr_outside_interpreter(0..(8 * len as usize))
                         .to_owned()
                         .chunks(8)

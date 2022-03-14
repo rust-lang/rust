@@ -55,9 +55,9 @@ pub(super) fn check<'tcx>(
     // lint if caller of `.map().flatten()` is an Option or Result
     let caller_type = match cx.typeck_results().expr_ty(recv).kind() {
         ty::Adt(adt, _) => {
-            if cx.tcx.is_diagnostic_item(sym::Option, adt.did) {
+            if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) {
                 "Option"
-            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, adt.did()) {
                 "Result"
             } else {
                 return;

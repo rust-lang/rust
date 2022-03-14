@@ -152,7 +152,7 @@ fn parse_iter_usage<'tcx>(
                     return if_chain! {
                         if match_def_path(cx, did, &paths::ITERTOOLS_NEXT_TUPLE);
                         if let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind();
-                        if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did);
+                        if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did());
                         if let ty::Tuple(subs) = subs.type_at(0).kind();
                         if subs.len() == 2;
                         then {

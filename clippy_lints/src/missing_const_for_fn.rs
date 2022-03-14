@@ -3,6 +3,7 @@ use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::ty::has_drop;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, meets_msrv, msrvs, trait_ref_of_method};
 use rustc_hir as hir;
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, Constness, FnDecl, GenericParamKind, HirId};
 use rustc_lint::{LateContext, LateLintPass};
@@ -129,6 +130,18 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                 }
             },
             FnKind::Closure => return,
+        }
+
+        // Const fns are not allowed as methods in a trait.
+        {
+            let parent = cx.tcx.hir().get_parent_item(hir_id);
+            if parent != CRATE_DEF_ID {
+                if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(parent) {
+                    if let hir::ItemKind::Trait(..) = &item.kind {
+                        return;
+                    }
+                }
+            }
         }
 
         let mir = cx.tcx.optimized_mir(def_id);

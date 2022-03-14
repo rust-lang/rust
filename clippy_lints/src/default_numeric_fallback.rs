@@ -148,7 +148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NumericFallbackVisitor<'a, 'tcx> {
                 if_chain! {
                     if let Some(adt_def) = ty.ty_adt_def();
                     if adt_def.is_struct();
-                    if let Some(variant) = adt_def.variants.iter().next();
+                    if let Some(variant) = adt_def.variants().iter().next();
                     then {
                         let fields_def = &variant.fields;
 

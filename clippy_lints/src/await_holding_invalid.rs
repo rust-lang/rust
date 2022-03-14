@@ -149,7 +149,7 @@ impl LateLintPass<'_> for AwaitHolding {
 fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorTypeCause<'_>], span: Span) {
     for ty_cause in ty_causes {
         if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
-            if is_mutex_guard(cx, adt.did) {
+            if is_mutex_guard(cx, adt.did()) {
                 span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_LOCK,
@@ -167,7 +167,7 @@ fn check_interior_types(cx: &LateContext<'_>, ty_causes: &[GeneratorInteriorType
                     },
                 );
             }
-            if is_refcell_ref(cx, adt.did) {
+            if is_refcell_ref(cx, adt.did()) {
                 span_lint_and_then(
                     cx,
                     AWAIT_HOLDING_REFCELL_REF,

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{walk_body, walk_expr, walk_inf, walk_ty, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, GenericArg, Item, ItemKind, QPath, TyKind};
@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
 
         fn suggestion<'tcx>(
             cx: &LateContext<'tcx>,
-            diag: &mut DiagnosticBuilder<'_>,
+            diag: &mut Diagnostic,
             generics_span: Span,
             generics_suggestion_span: Span,
             target: &ImplicitHasherType<'_>,
