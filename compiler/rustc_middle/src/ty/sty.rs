@@ -2252,12 +2252,13 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
-    /// Returns the type of metadata for (potentially fat) pointers to this type.
+    /// Returns the type of metadata for (potentially fat) pointers to this type,
+    /// and a boolean signifying if this is conditional on this type being `Sized`.
     pub fn ptr_metadata_ty(
         self,
         tcx: TyCtxt<'tcx>,
         normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> (Ty<'tcx>, bool) {
         let tail = tcx.struct_tail_with_normalize(self, normalize);
         match tail.kind() {
             // Sized types
@@ -2277,28 +2278,30 @@ impl<'tcx> Ty<'tcx> {
             | ty::Closure(..)
             | ty::Never
             | ty::Error(_)
+            // Extern types have metadata = ().
             | ty::Foreign(..)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
             // If returned by `struct_tail_without_normalization` this is the empty tuple,
             // a.k.a. unit type, which is Sized
-            | ty::Tuple(..) => tcx.types.unit,
+            | ty::Tuple(..) => (tcx.types.unit, false),
 
-            ty::Str | ty::Slice(_) => tcx.types.usize,
+            ty::Str | ty::Slice(_) => (tcx.types.usize, false),
             ty::Dynamic(..) => {
                 let dyn_metadata = tcx.lang_items().dyn_metadata().unwrap();
-                tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()])
+                (tcx.type_of(dyn_metadata).subst(tcx, &[tail.into()]), false)
             },
 
-            ty::Projection(_)
-            | ty::Param(_)
-            | ty::Opaque(..)
-            | ty::Infer(ty::TyVar(_))
+            // type parameters only have unit metadata if they're sized, so return true
+            // to make sure we double check this during confirmation
+            ty::Param(_) |  ty::Projection(_) | ty::Opaque(..) => (tcx.types.unit, true),
+
+            ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
-                bug!("`ptr_metadata_ty` applied to unexpected type: {:?}", tail)
+                bug!("`ptr_metadata_ty` applied to unexpected type: {:?} (tail = {:?})", self, tail)
             }
         }
     }
