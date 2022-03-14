@@ -364,6 +364,10 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// The results of such a transmute are not defined.
     ///
+    /// ### Known problems
+    /// This lint has had multiple problems in the past and was moved to `nursery`. See issue
+    /// [#8496](https://github.com/rust-lang/rust-clippy/issues/8496) for more details.
+    ///
     /// ### Example
     /// ```rust
     /// struct Foo<T>(u32, T);

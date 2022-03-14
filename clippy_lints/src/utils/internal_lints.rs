@@ -25,7 +25,7 @@ use rustc_hir::{
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::interpret::ConstValue;
-use rustc_middle::ty;
+use rustc_middle::ty::{self, subst::GenericArgKind};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Spanned;
@@ -335,6 +335,15 @@ declare_clippy_lint! {
     pub MISSING_CLIPPY_VERSION_ATTRIBUTE,
     internal,
     "found clippy lint without `clippy::version` attribute"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Check that the `extract_msrv_attr!` macro is used, when a lint has a MSRV.
+    ///
+    pub MISSING_MSRV_ATTR_IMPL,
+    internal,
+    "checking if all necessary steps were taken when adding a MSRV to a lint"
 }
 
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
@@ -1313,4 +1322,47 @@ fn if_chain_local_span(cx: &LateContext<'_>, local: &Local<'_>, if_chain_span: S
         span.ctxt(),
         span.parent(),
     )
+}
+
+declare_lint_pass!(MsrvAttrImpl => [MISSING_MSRV_ATTR_IMPL]);
+
+impl LateLintPass<'_> for MsrvAttrImpl {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
+        if_chain! {
+            if let hir::ItemKind::Impl(hir::Impl {
+                of_trait: Some(lint_pass_trait_ref),
+                self_ty,
+                items,
+                ..
+            }) = &item.kind;
+            if let Some(lint_pass_trait_def_id) = lint_pass_trait_ref.trait_def_id();
+            let is_late_pass = match_def_path(cx, lint_pass_trait_def_id, &paths::LATE_LINT_PASS);
+            if is_late_pass || match_def_path(cx, lint_pass_trait_def_id, &paths::EARLY_LINT_PASS);
+            let self_ty = hir_ty_to_ty(cx.tcx, self_ty);
+            if let ty::Adt(self_ty_def, _) = self_ty.kind();
+            if self_ty_def.is_struct();
+            if self_ty_def.all_fields().any(|f| {
+                cx.tcx
+                    .type_of(f.did)
+                    .walk()
+                    .filter(|t| matches!(t.unpack(), GenericArgKind::Type(_)))
+                    .any(|t| match_type(cx, t.expect_ty(), &paths::RUSTC_VERSION))
+            });
+            if !items.iter().any(|item| item.ident.name == sym!(enter_lint_attrs));
+            then {
+                let context = if is_late_pass { "LateContext" } else { "EarlyContext" };
+                let lint_pass = if is_late_pass { "LateLintPass" } else { "EarlyLintPass" };
+                let span = cx.sess().source_map().span_through_char(item.span, '{');
+                span_lint_and_sugg(
+                    cx,
+                    MISSING_MSRV_ATTR_IMPL,
+                    span,
+                    &format!("`extract_msrv_attr!` macro missing from `{lint_pass}` implementation"),
+                    &format!("add `extract_msrv_attr!({context})` to the `{lint_pass}` implementation"),
+                    format!("{}\n    extract_msrv_attr!({context});", snippet(cx, span, "..")),
+                    Applicability::MachineApplicable,
+                );
+            }
+        }
+    }
 }

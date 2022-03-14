@@ -14,10 +14,7 @@ use super::RESULT_MAP_OR_INTO_OPTION;
 
 // The expression inside a closure may or may not have surrounding braces
 // which causes problems when generating a suggestion.
-fn reduce_unit_expression<'a>(
-    cx: &LateContext<'_>,
-    expr: &'a hir::Expr<'_>,
-) -> Option<(&'a hir::Expr<'a>, &'a [hir::Expr<'a>])> {
+fn reduce_unit_expression<'a>(expr: &'a hir::Expr<'_>) -> Option<(&'a hir::Expr<'a>, &'a [hir::Expr<'a>])> {
     match expr.kind {
         hir::ExprKind::Call(func, arg_char) => Some((func, arg_char)),
         hir::ExprKind::Block(block, _) => {
@@ -25,7 +22,7 @@ fn reduce_unit_expression<'a>(
                 (&[], Some(inner_expr)) => {
                     // If block only contains an expression,
                     // reduce `|x| { x + 1 }` to `|x| x + 1`
-                    reduce_unit_expression(cx, inner_expr)
+                    reduce_unit_expression(inner_expr)
                 },
                 _ => None,
             }
@@ -77,7 +74,7 @@ pub(super) fn check<'tcx>(
         if let hir::ExprKind::Closure(_, _, id, span, _) = map_arg.kind;
             let arg_snippet = snippet(cx, span, "..");
             let body = cx.tcx.hir().body(id);
-                if let Some((func, [arg_char])) = reduce_unit_expression(cx, &body.value);
+                if let Some((func, [arg_char])) = reduce_unit_expression(&body.value);
                 if let Some(id) = path_def_id(cx, func).and_then(|ctor_id| cx.tcx.parent(ctor_id));
                 if Some(id) == cx.tcx.lang_items().option_some_variant();
                 then {
