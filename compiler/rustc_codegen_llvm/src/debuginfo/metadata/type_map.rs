@@ -145,7 +145,6 @@ impl<'ll> DINodeCreationResult<'ll> {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Stub<'ll> {
     Struct,
@@ -233,7 +232,7 @@ pub(super) fn stub<'ll, 'tcx>(
 /// This function enables creating debuginfo nodes that can recursively refer to themselves.
 /// It will first insert the given stub into the type map and only then execute the `members`
 /// and `generics` closures passed in. These closures have access to the stub so they can
-/// directly attach fields to them. If build the type of a field transitively refers back
+/// directly attach fields to them. If the type of a field transitively refers back
 /// to the type currently being built, the stub will already be found in the type map,
 /// which effectively breaks the recursion cycle.
 pub(super) fn build_type_with_children<'ll, 'tcx>(

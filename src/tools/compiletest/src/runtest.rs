@@ -669,6 +669,8 @@ impl<'test> TestCx<'test> {
         // type is present in the PDB, which is very confusing.
         // Therefore we delete any existing PDB file before compiling the test
         // case.
+        // FIXME: If can reliably detect that MSVC's link.exe is used, then
+        //        passing `/INCREMENTAL:NO` might be a cleaner way to do this.
         let pdb_file = exe_file.with_extension(".pdb");
         if pdb_file.exists() {
             std::fs::remove_file(pdb_file).unwrap();

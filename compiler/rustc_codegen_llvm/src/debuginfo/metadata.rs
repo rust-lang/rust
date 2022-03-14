@@ -359,7 +359,10 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
             NO_GENERICS,
         )
     } else {
-        bug!("Only ty::Dynamic is valid for dyn_type_metadata(). Found {:?} instead.", dyn_type)
+        bug!(
+            "Only ty::Dynamic is valid for build_dyn_type_di_node(). Found {:?} instead.",
+            dyn_type
+        )
     }
 }
 
@@ -390,15 +393,15 @@ fn build_slice_type_di_node<'ll, 'tcx>(
         ty::Str => cx.tcx.types.u8,
         _ => {
             bug!(
-                "Only ty::Slice is valid for slice_type_metadata(). Found {:?} instead.",
+                "Only ty::Slice is valid for build_slice_type_di_node(). Found {:?} instead.",
                 slice_type
             )
         }
     };
 
-    let element_type_metadata = type_di_node(cx, element_type);
+    let element_type_di_node = type_di_node(cx, element_type);
     return_if_di_node_created_in_meantime!(cx, unique_type_id);
-    DINodeCreationResult { di_node: element_type_metadata, already_stored_in_typemap: false }
+    DINodeCreationResult { di_node: element_type_di_node, already_stored_in_typemap: false }
 }
 
 /// Get the debuginfo node for the given type.
@@ -445,7 +448,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
         // Type parameters from polymorphized functions.
         ty::Param(_) => build_param_type_di_node(cx, t),
-        _ => bug!("debuginfo: unexpected type in type_metadata: {:?}", t),
+        _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
     {
@@ -456,7 +459,7 @@ pub fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) -> &'ll D
                     Some(di_node) => di_node,
                     None => {
                         bug!(
-                            "expected type di_node for unique \
+                            "expected type debuginfo node for unique \
                                type ID '{:?}' to already be in \
                                the `debuginfo::TypeMap` but it \
                                was not.",
@@ -754,7 +757,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     name_in_debuginfo.push("@");
     name_in_debuginfo.push(codegen_unit_name);
 
-    debug!("compile_unit_metadata: {:?}", name_in_debuginfo);
+    debug!("build_compile_unit_di_node: {:?}", name_in_debuginfo);
     let rustc_producer =
         format!("rustc version {}", option_env!("CFG_VERSION").expect("CFG_VERSION"),);
     // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
@@ -1003,7 +1006,7 @@ fn closure_saved_names_of_captured_variables(tcx: TyCtxt<'_>, def_id: DefId) -> 
 fn build_upvar_field_di_nodes<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     closure_or_generator_ty: Ty<'tcx>,
-    closure_or_generator_metadata: &'ll DIType,
+    closure_or_generator_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_generator_ty.kind() {
         ty::Generator(def_id, substs, _) => {
@@ -1016,7 +1019,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
         _ => {
             bug!(
-                "new_upvar_member_descriptions() called with non-closure-or-generator-type: {:?}",
+                "build_upvar_field_di_nodes() called with non-closure-or-generator-type: {:?}",
                 closure_or_generator_ty
             )
         }
@@ -1038,7 +1041,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         .map(|(index, (up_var_ty, capture_name))| {
             build_field_di_node(
                 cx,
-                closure_or_generator_metadata,
+                closure_or_generator_di_node,
                 capture_name,
                 cx.size_and_align_of(up_var_ty),
                 layout.fields.offset(index),
@@ -1074,14 +1077,14 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
             DIFlags::FlagZero,
         ),
         // Fields:
-        |cx, tuple_metadata| {
+        |cx, tuple_di_node| {
             component_types
                 .into_iter()
                 .enumerate()
                 .map(|(index, component_type)| {
                     build_field_di_node(
                         cx,
-                        tuple_metadata,
+                        tuple_di_node,
                         &tuple_field_name(index),
                         cx.size_and_align_of(component_type),
                         tuple_type_and_layout.fields.offset(index),
@@ -1095,14 +1098,14 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
     )
 }
 
-/// Builds the debufinfo node for a closure environment.
+/// Builds the debuginfo node for a closure environment.
 fn build_closure_env_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
 ) -> DINodeCreationResult<'ll> {
     let closure_env_type = unique_type_id.expect_ty();
     let &ty::Closure(def_id, _substs) = closure_env_type.kind() else {
-        bug!("new_closure_env_metadata() called with non-closure-type: {:?}", closure_env_type)
+        bug!("build_closure_env_di_node() called with non-closure-type: {:?}", closure_env_type)
     };
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
@@ -1225,7 +1228,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                     if let GenericArgKind::Type(ty) = kind.unpack() {
                         let actual_type =
                             cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
-                        let actual_type_metadata = type_di_node(cx, actual_type);
+                        let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
                         Some(unsafe {
                             llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
@@ -1233,7 +1236,7 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
                                 None,
                                 name.as_ptr().cast(),
                                 name.len(),
-                                actual_type_metadata,
+                                actual_type_di_node,
                             )
                         })
                     } else {

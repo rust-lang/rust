@@ -364,7 +364,7 @@ fn push_debuginfo_type_name<'tcx>(
             // "{async_fn_env#0}<T1, T2, ...>", etc.
             // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
             // an artificial `enum$<>` type, as defined in msvc_enum_fallback().
-            if cpp_like_debuginfo && matches!(t.kind(), ty::Generator(..)) {
+            if cpp_like_debuginfo && t.is_generator() {
                 let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
                 msvc_enum_fallback(
                     tcx,
