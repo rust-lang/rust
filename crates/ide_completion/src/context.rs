@@ -12,7 +12,7 @@ use ide_db::{
     famous_defs::FamousDefs,
     RootDatabase,
 };
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
     ast::{self, AttrKind, HasName, NameOrNameRef},
@@ -146,7 +146,7 @@ pub(crate) struct CompletionContext<'a> {
 
     pub(super) existing_derives: FxHashSet<hir::Macro>,
 
-    pub(super) locals: Vec<(Name, Local)>,
+    pub(super) locals: FxHashMap<Name, Local>,
 }
 
 impl<'a> CompletionContext<'a> {
@@ -293,6 +293,10 @@ impl<'a> CompletionContext<'a> {
         self.path_context.as_ref().and_then(|it| it.kind)
     }
 
+    pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
+        self.token.kind() == BANG && self.token.parent().map_or(false, |it| it.kind() == MACRO_CALL)
+    }
+
     /// Checks if an item is visible and not `doc(hidden)` at the completion site.
     pub(crate) fn is_visible<I>(&self, item: &I) -> Visible
     where
@@ -318,11 +322,6 @@ impl<'a> CompletionContext<'a> {
             _ => false,
         }
     }
-
-    pub(crate) fn is_immediately_after_macro_bang(&self) -> bool {
-        self.token.kind() == BANG && self.token.parent().map_or(false, |it| it.kind() == MACRO_CALL)
-    }
-
     /// Whether the given trait is an operator trait or not.
     pub(crate) fn is_ops_trait(&self, trait_: hir::Trait) -> bool {
         match trait_.attrs(self.db).lang() {
@@ -340,7 +339,12 @@ impl<'a> CompletionContext<'a> {
             }
 
             f(name, def);
-        })
+        });
+    }
+
+    pub(crate) fn process_all_names_raw(&self, f: &mut dyn FnMut(Name, ScopeDef)) {
+        let _p = profile::span("CompletionContext::process_all_names_raw");
+        self.scope.process_all_names(&mut |name, def| f(name, def));
     }
 
     fn is_visible_impl(
@@ -372,16 +376,11 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
-        let krate = match self.krate {
-            Some(it) => it,
-            None => return true,
-        };
-        if krate != defining_crate && attrs.has_doc_hidden() {
+        match self.krate {
             // `doc(hidden)` items are only completed within the defining crate.
-            return true;
+            Some(krate) => krate != defining_crate && attrs.has_doc_hidden(),
+            None => true,
         }
-
-        false
     }
 }
 
@@ -413,10 +412,10 @@ impl<'a> CompletionContext<'a> {
         let scope = sema.scope_at_offset(&token.parent()?, offset);
         let krate = scope.krate();
         let module = scope.module();
-        let mut locals = vec![];
+        let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
-                locals.push((name, local));
+                locals.insert(name, local);
             }
         });
 

@@ -1,5 +1,5 @@
 //! Name resolution façade.
-use std::sync::Arc;
+use std::{hash::BuildHasherDefault, sync::Arc};
 
 use base_db::CrateId;
 use hir_expand::name::{name, Name};
@@ -352,7 +352,7 @@ impl Resolver {
     /// Returns a set of names available in the current scope.
     ///
     /// Note that this is a somewhat fuzzy concept -- internally, the compiler
-    /// doesn't necessary follow a strict scoping discipline. Rathe, it just
+    /// doesn't necessary follow a strict scoping discipline. Rather, it just
     /// tells for each ident what it resolves to.
     ///
     /// A good example is something like `str::from_utf8`. From scopes point of
@@ -387,10 +387,13 @@ impl Resolver {
     /// The result is ordered *roughly* from the innermost scope to the
     /// outermost: when the name is introduced in two namespaces in two scopes,
     /// we use the position of the first scope.
-    pub fn names_in_scope(&self, db: &dyn DefDatabase) -> IndexMap<Name, SmallVec<[ScopeDef; 1]>> {
+    pub fn names_in_scope(
+        &self,
+        db: &dyn DefDatabase,
+    ) -> FxIndexMap<Name, SmallVec<[ScopeDef; 1]>> {
         let mut res = ScopeNames::default();
         for scope in self.scopes() {
-            scope.process_names(db, &mut res);
+            scope.process_names(&mut res, db);
         }
         res.map
     }
@@ -475,7 +478,7 @@ impl Resolver {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ScopeDef {
     ModuleDef(ModuleDefId),
     Unknown,
@@ -487,7 +490,7 @@ pub enum ScopeDef {
 }
 
 impl Scope {
-    fn process_names(&self, db: &dyn DefDatabase, acc: &mut ScopeNames) {
+    fn process_names(&self, acc: &mut ScopeNames, db: &dyn DefDatabase) {
         match self {
             Scope::ModuleScope(m) => {
                 // FIXME: should we provide `self` here?
@@ -700,9 +703,10 @@ fn to_type_ns(per_ns: PerNs) -> Option<TypeNs> {
     Some(res)
 }
 
+type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<rustc_hash::FxHasher>>;
 #[derive(Default)]
 struct ScopeNames {
-    map: IndexMap<Name, SmallVec<[ScopeDef; 1]>>,
+    map: FxIndexMap<Name, SmallVec<[ScopeDef; 1]>>,
 }
 
 impl ScopeNames {

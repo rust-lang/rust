@@ -1327,14 +1327,14 @@ impl<'a> SemanticsScope<'a> {
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                     resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                    resolver::ScopeDef::Local(pat_id) => {
-                        let parent = self.resolver.body_owner().unwrap();
-                        ScopeDef::Local(Local { parent, pat_id })
-                    }
-                    resolver::ScopeDef::Label(label_id) => {
-                        let parent = self.resolver.body_owner().unwrap();
-                        ScopeDef::Label(Label { parent, label_id })
-                    }
+                    resolver::ScopeDef::Local(pat_id) => match self.resolver.body_owner() {
+                        Some(parent) => ScopeDef::Local(Local { parent, pat_id }),
+                        None => continue,
+                    },
+                    resolver::ScopeDef::Label(label_id) => match self.resolver.body_owner() {
+                        Some(parent) => ScopeDef::Label(Label { parent, label_id }),
+                        None => continue,
+                    },
                 };
                 f(name.clone(), def)
             }
