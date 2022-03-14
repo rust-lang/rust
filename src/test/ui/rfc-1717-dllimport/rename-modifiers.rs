@@ -1,5 +1,5 @@
 // compile-flags: -l dylib=foo:bar
-// error-pattern: overriding linking modifiers from command line is not supported
+// error-pattern: override for library `foo` must specify modifiers
 
 #![feature(native_link_modifiers_as_needed)]
 

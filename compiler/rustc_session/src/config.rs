@@ -1339,7 +1339,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                              Optional comma separated MODIFIERS (bundle|verbatim|whole-archive|as-needed)
                              may be specified each with a prefix of either '+' to
                              enable or '-' to disable.",
-            "[KIND[:MODIFIERS]=]NAME[:RENAME]",
+            "[KIND[:MODIFIERS]=]NAME[:OVERRIDE_NAME]",
         ),
         make_crate_type_option(),
         opt::opt_s("", "crate-name", "Specify the name of the crate being built", "NAME"),

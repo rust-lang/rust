@@ -37,7 +37,7 @@ KIND=PATH` where `KIND` may be one of:
 <a id="option-l-link-lib"></a>
 ## `-l`: link the generated crate to a native library
 
-Syntax: `-l [KIND[:MODIFIERS]=]NAME[:RENAME]`.
+Syntax: `-l [KIND[:MODIFIERS]=]NAME[:OVERRIDE_NAME]`.
 
 This flag allows you to specify linking to a specific native library when building
 a crate.
@@ -56,15 +56,18 @@ Specifying multiple `modifiers` arguments in a single `link` attribute,
 or multiple identical modifiers in the same `modifiers` argument is not currently supported. \
 Example: `-l static:+whole-archive=mylib`.
 
-The kind of library and the modifiers can also be specified in a [`#[link]`
-attribute][link-attribute]. If the kind is not specified in the `link`
-attribute or on the command-line, it will link a dynamic library if available,
-otherwise it will use a static library. If the kind is specified on the
-command-line, it will override the kind specified in a `link` attribute.
+Unspecified kind is equivalent to `dylib`.
 
-The name used in a `link` attribute may be overridden using the form `-l
-ATTR_NAME:LINK_NAME` where `ATTR_NAME` is the name in the `link` attribute,
-and `LINK_NAME` is the name of the actual library that will be linked.
+Depending on the used linker, `dylib` is typically a preference (a static library with the same
+name can still be linked if the dynamic library is not found), but `static` is typically a
+requirement (an error is reported if the static library is not found).
+
+If the `:OVERRIDE_NAME` component is specified, then a new library won't be linked, but the option
+will instead modify one of the libraries previously passed with
+[`#[link]` attributes][link-attribute]. \
+`OVERRIDE_NAME` will be used as a name for the library to link instead of the `name` argument
+passed to `#[link]`, and the `KIND` and `MODIFIERS` (if explicitly specified) will also replace
+original `kind` and `modifiers` arguments from the `#[link]` attribute.
 
 [link-attribute]: ../reference/items/external-blocks.html#the-link-attribute
 

@@ -12,7 +12,5 @@
     //~^ ERROR multiple `modifiers` arguments in a single `#[link]` attribute
 )]
 extern "C" {}
-//~^ ERROR overriding linking modifiers from command line is not supported
-//~| ERROR overriding linking modifiers from command line is not supported
 
 fn main() {}

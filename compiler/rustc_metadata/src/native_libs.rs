@@ -1,6 +1,6 @@
 use rustc_ast::{NestedMetaItem, CRATE_NODE_ID};
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -12,12 +12,17 @@ use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_target::spec::abi::Abi;
 
+use std::{iter, mem};
+
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLib> {
-    let mut collector = Collector { tcx, libs: Vec::new() };
+    let mut collector = Collector { tcx, libs: Vec::new(), attr_libs: 0 };
     for id in tcx.hir().items() {
         collector.process_item(id);
     }
+    collector.attr_libs = collector.libs.len();
     collector.process_command_line();
+    collector.unify_kinds_and_modifiers();
+    collector.compat_reorder();
     collector.libs
 }
 
@@ -31,6 +36,7 @@ crate fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
 struct Collector<'tcx> {
     tcx: TyCtxt<'tcx>,
     libs: Vec<NativeLib>,
+    attr_libs: usize,
 }
 
 impl<'tcx> Collector<'tcx> {
@@ -363,97 +369,130 @@ impl<'tcx> Collector<'tcx> {
 
     // Process libs passed on the command line
     fn process_command_line(&mut self) {
-        // First, check for errors
-        let mut renames = FxHashSet::default();
-        for lib in &self.tcx.sess.opts.libs {
-            if let NativeLibKind::Framework { .. } = lib.kind && !self.tcx.sess.target.is_like_osx {
+        // Collect overrides and check them for errors
+        let mut overrides = FxHashMap::default();
+        for cmd_lib in &self.tcx.sess.opts.libs {
+            if let NativeLibKind::Framework { .. } = cmd_lib.kind && !self.tcx.sess.target.is_like_osx {
                 // Cannot check this when parsing options because the target is not yet available.
                 self.tcx.sess.err("library kind `framework` is only supported on Apple targets");
             }
-            if let Some(ref new_name) = lib.new_name {
-                let any_duplicate = self
+            if let Some(override_name) = &cmd_lib.new_name {
+                if override_name.is_empty() {
+                    self.tcx.sess.err(&format!(
+                        "empty override name was specified for library `{}`",
+                        cmd_lib.name
+                    ));
+                } else if self
                     .libs
                     .iter()
-                    .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n.as_str() == lib.name);
-                if new_name.is_empty() {
-                    self.tcx.sess.err(format!(
-                        "an empty renaming target was specified for library `{}`",
-                        lib.name
+                    .filter_map(|attr_lib| attr_lib.name)
+                    .all(|attr_lib_name| attr_lib_name.as_str() != cmd_lib.name)
+                {
+                    self.tcx.sess.err(&format!(
+                        "override of the library `{}` was specified, however this crate \
+                         contains no `#[link]` attributes referencing this library",
+                        cmd_lib.name
                     ));
-                } else if !any_duplicate {
-                    self.tcx.sess.err(format!(
-                        "renaming of the library `{}` was specified, \
-                                                however this crate contains no `#[link(...)]` \
-                                                attributes referencing this library",
-                        lib.name
-                    ));
-                } else if !renames.insert(&lib.name) {
-                    self.tcx.sess.err(format!(
-                        "multiple renamings were \
-                                                specified for library `{}`",
-                        lib.name
+                } else if overrides.insert(&cmd_lib.name, cmd_lib).is_some() {
+                    self.tcx.sess.err(&format!(
+                        "multiple overrides were specified for library `{}`",
+                        cmd_lib.name
                     ));
                 }
             }
         }
 
-        // Update kind and, optionally, the name of all native libraries
-        // (there may be more than one) with the specified name.  If any
-        // library is mentioned more than once, keep the latest mention
-        // of it, so that any possible dependent libraries appear before
-        // it.  (This ensures that the linker is able to see symbols from
-        // all possible dependent libraries before linking in the library
-        // in question.)
-        for passed_lib in &self.tcx.sess.opts.libs {
-            // If we've already added any native libraries with the same
-            // name, they will be pulled out into `existing`, so that we
-            // can move them to the end of the list below.
-            let mut existing = self
-                .libs
-                .drain_filter(|lib| {
-                    if let Some(lib_name) = lib.name {
-                        if lib_name.as_str() == passed_lib.name {
-                            // FIXME: This whole logic is questionable, whether modifiers are
-                            // involved or not, library reordering and kind overriding without
-                            // explicit `:rename` in particular.
-                            if lib.has_modifiers() || passed_lib.has_modifiers() {
-                                self.tcx.sess.span_err(
-                                    self.tcx.def_span(lib.foreign_module.unwrap()),
-                                    "overriding linking modifiers from command line is not supported"
-                                );
+        // Apply overrides
+        if !overrides.is_empty() {
+            let orig_attr_lib_names = Vec::from_iter(self.libs.iter().map(|lib| lib.name));
+            for (name, override_lib) in overrides {
+                for (orig_attr_lib_name, attr_lib) in
+                    iter::zip(&orig_attr_lib_names, &mut self.libs)
+                {
+                    if let Some(orig_attr_lib_name) = orig_attr_lib_name
+                        && orig_attr_lib_name.as_str() == name {
+                        // The name is overridden unconditionally
+                        attr_lib.name =
+                            Some(Symbol::intern(&override_lib.new_name.as_ref().unwrap()));
+                        // The kind and modifiers are overridden only if the override specifies
+                        // them explicitly
+                        if override_lib.kind != NativeLibKind::Unspecified {
+                            if attr_lib.has_modifiers() && !override_lib.has_modifiers() {
+                                // Not clear what behavior is desirable here
+                                self.tcx.sess.err(&format!(
+                                    "override for library `{name}` must specify modifiers because \
+                                     the overridden `#[link]` attribute specified modifiers",
+                                ));
                             }
-                            if passed_lib.kind != NativeLibKind::Unspecified {
-                                lib.kind = passed_lib.kind;
-                            }
-                            if let Some(new_name) = &passed_lib.new_name {
-                                lib.name = Some(Symbol::intern(new_name));
-                            }
-                            lib.verbatim = passed_lib.verbatim;
-                            return true;
+                            attr_lib.kind = override_lib.kind;
+                            attr_lib.verbatim = override_lib.verbatim;
                         }
                     }
-                    false
-                })
-                .collect::<Vec<_>>();
-            if existing.is_empty() {
-                // Add if not found
-                let new_name: Option<&str> = passed_lib.new_name.as_deref();
+                }
+            }
+        }
+
+        // Add regular (non-override) libraries from the command line
+        for cmd_lib in &self.tcx.sess.opts.libs {
+            if cmd_lib.new_name.is_none() {
                 self.libs.push(NativeLib {
-                    name: Some(Symbol::intern(new_name.unwrap_or(&passed_lib.name))),
-                    kind: passed_lib.kind,
+                    name: Some(Symbol::intern(&cmd_lib.name)),
+                    kind: cmd_lib.kind,
                     cfg: None,
                     foreign_module: None,
                     wasm_import_module: None,
-                    verbatim: passed_lib.verbatim,
+                    verbatim: cmd_lib.verbatim,
                     dll_imports: Vec::new(),
                 });
-            } else {
-                // Move all existing libraries with the same name to the
-                // end of the command line.
-                self.libs.append(&mut existing);
             }
         }
+    }
+
+    fn unify_kinds_and_modifiers(&mut self) {
+        let mut kinds_and_modifiers =
+            FxHashMap::<Symbol, FxHashSet<(NativeLibKind, Option<bool>)>>::default();
+        for NativeLib { name, kind, verbatim, cfg, .. } in &self.libs {
+            if let Some(name) = *name && *kind != NativeLibKind::Unspecified && cfg.is_none() {
+                kinds_and_modifiers.entry(name).or_default().insert((*kind, *verbatim));
+            }
+        }
+
+        for NativeLib { name, kind, verbatim, .. } in &mut self.libs {
+            if let Some(name) = name
+                && *kind == NativeLibKind::Unspecified
+                && let Some(kinds_and_modifiers) = kinds_and_modifiers.get(name) {
+                    if kinds_and_modifiers.len() == 1 {
+                        (*kind, *verbatim) = *kinds_and_modifiers.iter().next().unwrap();
+                    } else {
+                        self.tcx.sess.err(&format!(
+                            "cannot infer kind for library `{name}`, it is linked more than once \
+                             with different kinds or modifiers",
+                        ));
+                    }
+            }
+        }
+    }
+
+    fn compat_reorder(&mut self) {
+        let mut tmp = Vec::with_capacity(self.libs.len());
+
+        let mut cmd_libs = Vec::from_iter(self.libs.drain(self.attr_libs..));
+        cmd_libs.reverse();
+        let mut attr_libs = mem::take(&mut self.libs);
+        attr_libs.reverse();
+
+        while !cmd_libs.is_empty() {
+            let cmd_lib = cmd_libs.remove(0);
+            let name = cmd_lib.name;
+            tmp.push(cmd_lib);
+            tmp.extend(cmd_libs.drain_filter(|cmd_lib| cmd_lib.name == name));
+            tmp.extend(attr_libs.drain_filter(|attr_lib| attr_lib.name == name));
+        }
+
+        tmp.append(&mut attr_libs);
+        tmp.reverse();
+
+        self.libs = tmp;
     }
 
     fn i686_arg_list_size(&self, item: &hir::ForeignItemRef) -> usize {
