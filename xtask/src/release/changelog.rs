@@ -1,16 +1,17 @@
 use std::fmt::Write;
 use std::{env, iter};
 
-use anyhow::{bail, Result};
-use xshell::cmd;
+use anyhow::bail;
+use xshell::{cmd, Shell};
 
 pub(crate) fn get_changelog(
+    sh: &Shell,
     changelog_n: usize,
     commit: &str,
     prev_tag: &str,
     today: &str,
-) -> Result<String> {
-    let git_log = cmd!("git log {prev_tag}..HEAD --merges --reverse").read()?;
+) -> anyhow::Result<String> {
+    let git_log = cmd!(sh, "git log {prev_tag}..HEAD --merges --reverse").read()?;
     let mut features = String::new();
     let mut fixes = String::new();
     let mut internal = String::new();
@@ -30,14 +31,15 @@ pub(crate) fn get_changelog(
 
                 // we don't use an HTTPS client or JSON parser to keep the build times low
                 let pr_json =
-                    cmd!("curl -s -H {accept} -H {authorization} {pr_url}/{pr}").read()?;
-                let pr_title = cmd!("jq .title").stdin(&pr_json).read()?;
+                    cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}").read()?;
+                let pr_title = cmd!(sh, "jq .title").stdin(&pr_json).read()?;
                 let pr_title = unescape(&pr_title[1..pr_title.len() - 1]);
-                let pr_comment = cmd!("jq .body").stdin(pr_json).read()?;
+                let pr_comment = cmd!(sh, "jq .body").stdin(pr_json).read()?;
 
                 let comments_json =
-                    cmd!("curl -s -H {accept} -H {authorization} {pr_url}/{pr}/comments").read()?;
-                let pr_comments = cmd!("jq .[].body").stdin(comments_json).read()?;
+                    cmd!(sh, "curl -s -H {accept} -H {authorization} {pr_url}/{pr}/comments")
+                        .read()?;
+                let pr_comments = cmd!(sh, "jq .[].body").stdin(comments_json).read()?;
 
                 let l = iter::once(pr_comment.as_str())
                     .chain(pr_comments.lines())
