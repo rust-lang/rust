@@ -4,7 +4,6 @@
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
 // build-pass
-// #![allow(arithmetic_overflow, unconditional_panic)]
 
 const fn assert_static<T>(_: &'static T) {}
 
