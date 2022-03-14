@@ -30,10 +30,6 @@ fn emit_unfulfilled_expectation_lint(
     hir_id: HirId,
     expectation: &LintExpectation,
 ) {
-    // FIXME: The current implementation doesn't cover cases where the
-    // `unfulfilled_lint_expectations` is actually expected by another lint
-    // expectation. This can be added here by checking the lint level and
-    // retrieving the `LintExpectationId` if it was expected.
     tcx.struct_span_lint_hir(
         builtin::UNFULFILLED_LINT_EXPECTATIONS,
         hir_id,
@@ -43,6 +39,11 @@ fn emit_unfulfilled_expectation_lint(
             if let Some(rationale) = expectation.reason {
                 diag.note(&rationale.as_str());
             }
+
+            if expectation.is_unfulfilled_lint_expectations {
+                diag.note("the `unfulfilled_lint_expectations` lint can't be expected and will always produce this message");
+            }
+
             diag.emit();
         },
     );

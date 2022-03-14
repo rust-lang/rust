@@ -522,6 +522,11 @@ impl Drop for HandlerInner {
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
+
+        assert!(
+            self.unstable_expect_diagnostics.is_empty(),
+            "all diagnostics with unstable expectations should have been converted",
+        );
     }
 }
 
@@ -942,29 +947,30 @@ impl Handler {
 
         let mut inner = self.inner.borrow_mut();
         for mut diag in diags.into_iter() {
-            let mut unstable_id = diag
+            diag.update_unstable_expectation_id(unstable_to_stable);
+
+            let stable_id = diag
                 .level
                 .get_expectation_id()
                 .expect("all diagnostics inside `unstable_expect_diagnostics` must have a `LintExpectationId`");
-
-            // The unstable to stable map only maps the unstable `AttrId` to a stable `HirId` with an attribute index.
-            // The lint index inside the attribute is manually transferred here.
-            let lint_index = unstable_id.get_lint_index();
-            unstable_id.set_lint_index(None);
-            let mut stable_id = *unstable_to_stable
-                .get(&unstable_id)
-                .expect("each unstable `LintExpectationId` must have a matching stable id");
-
-            stable_id.set_lint_index(lint_index);
-            diag.level = Level::Expect(stable_id);
             inner.fulfilled_expectations.insert(stable_id);
 
             (*TRACK_DIAGNOSTICS)(&diag);
         }
+
+        inner
+            .stashed_diagnostics
+            .values_mut()
+            .for_each(|diag| diag.update_unstable_expectation_id(unstable_to_stable));
+        inner
+            .future_breakage_diagnostics
+            .iter_mut()
+            .for_each(|diag| diag.update_unstable_expectation_id(unstable_to_stable));
     }
 
     /// This methods steals all [`LintExpectationId`]s that are stored inside
     /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
+    #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
         assert!(
             self.inner.borrow().unstable_expect_diagnostics.is_empty(),

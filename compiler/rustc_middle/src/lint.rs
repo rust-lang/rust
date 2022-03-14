@@ -204,11 +204,19 @@ pub struct LintExpectation {
     pub reason: Option<Symbol>,
     /// The [`Span`] of the attribute that this expectation originated from.
     pub emission_span: Span,
+    /// Lint messages for the `unfulfilled_lint_expectations` lint will be
+    /// adjusted to include an additional note. Therefore, we have to track if
+    /// the expectation is for the lint.
+    pub is_unfulfilled_lint_expectations: bool,
 }
 
 impl LintExpectation {
-    pub fn new(reason: Option<Symbol>, attr_span: Span) -> Self {
-        Self { reason, emission_span: attr_span }
+    pub fn new(
+        reason: Option<Symbol>,
+        emission_span: Span,
+        is_unfulfilled_lint_expectations: bool,
+    ) -> Self {
+        Self { reason, emission_span, is_unfulfilled_lint_expectations }
     }
 }
 

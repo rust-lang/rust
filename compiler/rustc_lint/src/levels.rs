@@ -14,7 +14,7 @@ use rustc_middle::lint::{
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::lint::{
-    builtin::{self, FORBIDDEN_LINT_GROUPS},
+    builtin::{self, FORBIDDEN_LINT_GROUPS, UNFULFILLED_LINT_EXPECTATIONS},
     Level, Lint, LintExpectationId, LintId,
 };
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
@@ -218,6 +218,14 @@ impl<'s> LintLevelsBuilder<'s> {
                 }
             }
         }
+
+        // The lint `unfulfilled_lint_expectations` can't be expected, as it would suppress itself.
+        // Handling expectations of this lint would add additional complexity with little to no
+        // benefit. The expect level for this lint will therefore be ignored.
+        if let Level::Expect(_) = level && id == LintId::of(UNFULFILLED_LINT_EXPECTATIONS) {
+            return;
+        }
+
         if let Level::ForceWarn = old_level {
             self.current_specs_mut().insert(id, (old_level, old_src));
         } else {
@@ -350,6 +358,22 @@ impl<'s> LintLevelsBuilder<'s> {
                     self.store.check_lint_name(&name, tool_name, self.registered_tools);
                 match &lint_result {
                     CheckLintNameResult::Ok(ids) => {
+                        // This checks for instances where the user writes `#[expect(unfulfilled_lint_expectations)]`
+                        // in that case we want to avoid overriding the lint level but instead add an expectation that
+                        // can't be fulfilled. The lint message will include an explanation, that the
+                        // `unfulfilled_lint_expectations` lint can't be expected.
+                        if let Level::Expect(expect_id) = level {
+                            // The `unfulfilled_lint_expectations` lint is not part of any lint groups. Therefore. we
+                            // only need to check the slice if it contains a single lint.
+                            let is_unfulfilled_lint_expectations = match ids {
+                                [lint] => *lint == LintId::of(UNFULFILLED_LINT_EXPECTATIONS),
+                                _ => false,
+                            };
+                            self.lint_expectations.push((
+                                expect_id,
+                                LintExpectation::new(reason, sp, is_unfulfilled_lint_expectations),
+                            ));
+                        }
                         let src = LintLevelSource::Node(
                             meta_item.path.segments.last().expect("empty lint name").ident.name,
                             sp,
@@ -359,10 +383,6 @@ impl<'s> LintLevelsBuilder<'s> {
                             if self.check_gated_lint(id, attr.span) {
                                 self.insert_spec(id, (level, src));
                             }
-                        }
-                        if let Level::Expect(expect_id) = level {
-                            self.lint_expectations
-                                .push((expect_id, LintExpectation::new(reason, sp)));
                         }
                     }
 
@@ -381,7 +401,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations
-                                        .push((expect_id, LintExpectation::new(reason, sp)));
+                                        .push((expect_id, LintExpectation::new(reason, sp, false)));
                                 }
                             }
                             Err((Some(ids), ref new_lint_name)) => {
@@ -425,7 +445,7 @@ impl<'s> LintLevelsBuilder<'s> {
                                 }
                                 if let Level::Expect(expect_id) = level {
                                     self.lint_expectations
-                                        .push((expect_id, LintExpectation::new(reason, sp)));
+                                        .push((expect_id, LintExpectation::new(reason, sp, false)));
                                 }
                             }
                             Err((None, _)) => {
@@ -531,7 +551,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         }
                         if let Level::Expect(expect_id) = level {
                             self.lint_expectations
-                                .push((expect_id, LintExpectation::new(reason, sp)));
+                                .push((expect_id, LintExpectation::new(reason, sp, false)));
                         }
                     } else {
                         panic!("renamed lint does not exist: {}", new_name);
