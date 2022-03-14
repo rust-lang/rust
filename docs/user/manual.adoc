@@ -714,22 +714,24 @@ include::./generated_diagnostic.adoc[]
 
 ==== Color configurations
 
-It is possible to change the foreground/background color of inlay hints.
+It is possible to change the foreground/background color and font family/size of inlay hints.
 Just add this to your `settings.json`:
 
 [source,jsonc]
 ----
 {
+  "editor.inlayHints.fontFamily": "Courier New",
+  "editor.inlayHints.fontSize": 11,
+  
   "workbench.colorCustomizations": {
     // Name of the theme you are currently using
     "[Default Dark+]": {
-      "rust_analyzer.inlayHints.foreground": "#868686f0",
-      "rust_analyzer.inlayHints.background": "#3d3d3d48",
+      "editorInlayHint.foreground": "#868686f0",
+      "editorInlayHint.background": "#3d3d3d48",
 
       // Overrides for specific kinds of inlay hints
-      "rust_analyzer.inlayHints.foreground.typeHints": "#fdb6fdf0",
-      "rust_analyzer.inlayHints.foreground.paramHints": "#fdb6fdf0",
-      "rust_analyzer.inlayHints.background.chainingHints": "#6b0c0c81"
+      "editorInlayHint.typeForeground": "#fdb6fdf0",
+      "editorInlayHint.parameterForeground": "#fdb6fdf0",
     }
   }
 }
