@@ -1410,7 +1410,7 @@ impl CheckAttrVisitor<'_> {
                             span,
                             format!(
                                 "there {} only {} argument{}",
-                                if arg_count != 1 { "are" } else { "is" },
+                                pluralize!("is", arg_count),
                                 arg_count,
                                 pluralize!(arg_count)
                             ),
