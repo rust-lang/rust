@@ -134,7 +134,6 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// assert!(ControlFlow::<i32, String>::Break(3).is_break());
@@ -151,7 +150,6 @@ impl<B, C> ControlFlow<B, C> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(control_flow_enum)]
     /// use std::ops::ControlFlow;
     ///
     /// assert!(!ControlFlow::<i32, String>::Break(3).is_continue());
