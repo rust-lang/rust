@@ -62,9 +62,9 @@ impl MetaVarExpr {
         Ok(rslt)
     }
 
-    crate fn ident(&self) -> Option<&Ident> {
-        match self {
-            MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(&ident),
+    crate fn ident(&self) -> Option<Ident> {
+        match *self {
+            MetaVarExpr::Count(ident, _) | MetaVarExpr::Ignore(ident) => Some(ident),
             MetaVarExpr::Index(..) | MetaVarExpr::Length(..) => None,
         }
     }

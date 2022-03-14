@@ -399,7 +399,7 @@ fn lockstep_iter_size(
         TokenTree::MetaVarExpr(_, ref expr) => {
             let default_rslt = LockstepIterSize::Unconstrained;
             let Some(ident) = expr.ident() else { return default_rslt; };
-            let name = MacroRulesNormalizedIdent::new(ident.clone());
+            let name = MacroRulesNormalizedIdent::new(ident);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(MatchedSeq(ref ads)) => {
                     default_rslt.with(LockstepIterSize::Constraint(ads.len(), name))
@@ -479,7 +479,7 @@ fn count_repetitions<'a>(
     count(cx, 0, depth_opt, matched, sp)
 }
 
-/// Returns a `NamedMatch` item declared on the RHS given an arbitrary [Ident]
+/// Returns a `NamedMatch` item declared on the LHS given an arbitrary [Ident]
 fn matched_from_ident<'ctx, 'interp, 'rslt>(
     cx: &ExtCtxt<'ctx>,
     ident: Ident,
