@@ -42,11 +42,13 @@ use hir_def::{
     type_ref::{ConstScalar, Rawness},
     TypeOrConstParamId,
 };
+use itertools::Either;
+use utils::Generics;
 
 use crate::{db::HirDatabase, utils::generics};
 
 pub use autoderef::autoderef;
-pub use builder::TyBuilder;
+pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use infer::{could_unify, InferenceDiagnostic, InferenceResult};
 pub use interner::Interner;
@@ -140,18 +142,56 @@ where
     Binders::empty(Interner, value.shifted_in_from(Interner, DebruijnIndex::ONE))
 }
 
-pub(crate) fn make_only_type_binders<T: HasInterner<Interner = Interner>>(
-    num_vars: usize,
+pub(crate) fn make_type_and_const_binders<T: HasInterner<Interner = Interner>>(
+    which_is_const: impl Iterator<Item = Option<Ty>>,
     value: T,
 ) -> Binders<T> {
     Binders::new(
         VariableKinds::from_iter(
             Interner,
-            std::iter::repeat(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General))
-                .take(num_vars),
+            which_is_const.map(|x| {
+                if let Some(ty) = x {
+                    chalk_ir::VariableKind::Const(ty)
+                } else {
+                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
+                }
+            }),
         ),
         value,
     )
+}
+
+pub(crate) fn make_single_type_binders<T: HasInterner<Interner = Interner>>(
+    value: T,
+) -> Binders<T> {
+    Binders::new(
+        VariableKinds::from_iter(
+            Interner,
+            std::iter::once(chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)),
+        ),
+        value,
+    )
+}
+
+pub(crate) fn make_binders_with_count<T: HasInterner<Interner = Interner>>(
+    db: &dyn HirDatabase,
+    count: usize,
+    generics: &Generics,
+    value: T,
+) -> Binders<T> {
+    let it = generics.iter_id().take(count).map(|id| match id {
+        Either::Left(_) => None,
+        Either::Right(id) => Some(db.const_param_ty(id)),
+    });
+    crate::make_type_and_const_binders(it, value)
+}
+
+pub(crate) fn make_binders<T: HasInterner<Interner = Interner>>(
+    db: &dyn HirDatabase,
+    generics: &Generics,
+    value: T,
+) -> Binders<T> {
+    make_binders_with_count(db, usize::MAX, generics, value)
 }
 
 // FIXME: get rid of this
@@ -288,11 +328,17 @@ pub fn dummy_usize_const() -> Const {
 
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner>>(
     t: T,
-    f: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
+    for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
+    for_const: impl FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
 ) -> T::Result {
     use chalk_ir::{fold::Folder, Fallible};
-    struct FreeVarFolder<F>(F);
-    impl<'i, F: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i> Folder<Interner> for FreeVarFolder<F> {
+    struct FreeVarFolder<F1, F2>(F1, F2);
+    impl<
+            'i,
+            F1: FnMut(BoundVar, DebruijnIndex) -> Ty + 'i,
+            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const + 'i,
+        > Folder<Interner> for FreeVarFolder<F1, F2>
+    {
         type Error = NoSolution;
 
         fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
@@ -310,13 +356,38 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner
         ) -> Fallible<Ty> {
             Ok(self.0(bound_var, outer_binder))
         }
+
+        fn fold_free_var_const(
+            &mut self,
+            ty: Ty,
+            bound_var: BoundVar,
+            outer_binder: DebruijnIndex,
+        ) -> Fallible<Const> {
+            Ok(self.1(ty, bound_var, outer_binder))
+        }
     }
-    t.fold_with(&mut FreeVarFolder(f), DebruijnIndex::INNERMOST).expect("fold failed unexpectedly")
+    t.fold_with(&mut FreeVarFolder(for_ty, for_const), DebruijnIndex::INNERMOST)
+        .expect("fold failed unexpectedly")
 }
 
 pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
     t: T,
-    f: impl FnMut(Ty, DebruijnIndex) -> Ty,
+    mut for_ty: impl FnMut(Ty, DebruijnIndex) -> Ty,
+    binders: DebruijnIndex,
+) -> T::Result {
+    fold_tys_and_consts(
+        t,
+        |x, d| match x {
+            Either::Left(x) => Either::Left(for_ty(x, d)),
+            Either::Right(x) => Either::Right(x),
+        },
+        binders,
+    )
+}
+
+pub(crate) fn fold_tys_and_consts<T: HasInterner<Interner = Interner> + Fold<Interner>>(
+    t: T,
+    f: impl FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const>,
     binders: DebruijnIndex,
 ) -> T::Result {
     use chalk_ir::{
@@ -324,7 +395,9 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
         Fallible,
     };
     struct TyFolder<F>(F);
-    impl<'i, F: FnMut(Ty, DebruijnIndex) -> Ty + 'i> Folder<Interner> for TyFolder<F> {
+    impl<'i, F: FnMut(Either<Ty, Const>, DebruijnIndex) -> Either<Ty, Const> + 'i> Folder<Interner>
+        for TyFolder<F>
+    {
         type Error = NoSolution;
 
         fn as_dyn(&mut self) -> &mut dyn Folder<Interner, Error = Self::Error> {
@@ -337,7 +410,11 @@ pub(crate) fn fold_tys<T: HasInterner<Interner = Interner> + Fold<Interner>>(
 
         fn fold_ty(&mut self, ty: Ty, outer_binder: DebruijnIndex) -> Fallible<Ty> {
             let ty = ty.super_fold_with(self.as_dyn(), outer_binder)?;
-            Ok(self.0(ty, outer_binder))
+            Ok(self.0(Either::Left(ty), outer_binder).left().unwrap())
+        }
+
+        fn fold_const(&mut self, c: Const, outer_binder: DebruijnIndex) -> Fallible<Const> {
+            Ok(self.0(Either::Right(c), outer_binder).right().unwrap())
         }
     }
     t.fold_with(&mut TyFolder(f), binders).expect("fold failed unexpectedly")

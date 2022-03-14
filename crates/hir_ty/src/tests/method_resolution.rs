@@ -1359,7 +1359,69 @@ impl<T> [T] {
 fn f() {
     let v = [1, 2].map::<_, usize>(|x| -> x * 2);
     v;
-  //^ [usize; _]
+  //^ [usize; 2]
+}
+    "#,
+    );
+}
+
+#[test]
+fn resolve_const_generic_method() {
+    check_types(
+        r#"
+struct Const<const N: usize>;
+
+#[lang = "array"]
+impl<T, const N: usize> [T; N] {
+    pub fn my_map<F, U, const X: usize>(self, f: F, c: Const<X>) -> [U; X]
+    where
+        F: FnMut(T) -> U,
+    { loop {} }
+}
+
+#[lang = "slice"]
+impl<T> [T] {
+    pub fn my_map<F, const X: usize, U>(self, f: F, c: Const<X>) -> &[U]
+    where
+        F: FnMut(T) -> U,
+    { loop {} }
+}
+
+fn f<const C: usize, P>() {
+    let v = [1, 2].my_map::<_, (), 12>(|x| -> x * 2, Const::<12>);
+    v;
+  //^ [(); 12]
+    let v = [1, 2].my_map::<_, P, C>(|x| -> x * 2, Const::<C>);
+    v;
+  //^ [P; C]
+}
+    "#,
+    );
+}
+
+#[test]
+fn const_generic_type_alias() {
+    check_types(
+        r#"
+struct Const<const N: usize>;
+type U2 = Const<2>;
+type U5 = Const<5>;
+
+impl U2 {
+    fn f(self) -> Const<12> {
+        loop {}
+    }
+}
+
+impl U5 {
+    fn f(self) -> Const<15> {
+        loop {}
+    }
+}
+
+fn f(x: U2) {
+    let y = x.f();
+      //^ Const<12>
 }
     "#,
     );

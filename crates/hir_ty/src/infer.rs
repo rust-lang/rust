@@ -16,7 +16,7 @@
 use std::ops::Index;
 use std::sync::Arc;
 
-use chalk_ir::{cast::Cast, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
+use chalk_ir::{cast::Cast, ConstValue, DebruijnIndex, Mutability, Safety, Scalar, TypeFlags};
 use hir_def::{
     body::Body,
     data::{ConstData, FunctionData, StaticData},
@@ -29,14 +29,16 @@ use hir_def::{
     TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
+use itertools::Either;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
 use stdx::impl_from;
 
 use crate::{
-    db::HirDatabase, fold_tys, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
-    to_assoc_type_id, AliasEq, AliasTy, DomainGoal, Goal, InEnvironment, Interner, ProjectionTy,
-    Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    builder::ParamKind, db::HirDatabase, fold_tys_and_consts, infer::coerce::CoerceMany,
+    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
+    GenericArg, GenericArgData, Goal, InEnvironment, Interner, ProjectionTy, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -354,11 +356,11 @@ impl Index<PatId> for InferenceResult {
 
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
-struct InferenceContext<'a> {
-    db: &'a dyn HirDatabase,
+pub(crate) struct InferenceContext<'a> {
+    pub(crate) db: &'a dyn HirDatabase,
     owner: DefWithBodyId,
-    body: Arc<Body>,
-    resolver: Resolver,
+    pub(crate) body: Arc<Body>,
+    pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
     result: InferenceResult,
@@ -488,6 +490,20 @@ impl<'a> InferenceContext<'a> {
         self.make_ty_with_mode(type_ref, ImplTraitLoweringMode::Disallowed)
     }
 
+    /// Replaces ConstScalar::Unknown by a new type var, so we can maybe still infer it.
+    fn insert_const_vars_shallow(&mut self, c: Const) -> Const {
+        let data = c.data(Interner);
+        match data.value {
+            ConstValue::Concrete(cc) => match cc.interned {
+                hir_def::type_ref::ConstScalar::Usize(_) => c,
+                hir_def::type_ref::ConstScalar::Unknown => {
+                    self.table.new_const_var(data.ty.clone())
+                }
+            },
+            _ => c,
+        }
+    }
+
     /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty.kind(Interner) {
@@ -505,7 +521,14 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn insert_type_vars(&mut self, ty: Ty) -> Ty {
-        fold_tys(ty, |ty, _| self.insert_type_vars_shallow(ty), DebruijnIndex::INNERMOST)
+        fold_tys_and_consts(
+            ty,
+            |x, _| match x {
+                Either::Left(ty) => Either::Left(self.insert_type_vars_shallow(ty)),
+                Either::Right(c) => Either::Right(self.insert_const_vars_shallow(c)),
+            },
+            DebruijnIndex::INNERMOST,
+        )
     }
 
     fn resolve_obligations_as_possible(&mut self) {
@@ -533,7 +556,7 @@ impl<'a> InferenceContext<'a> {
         &mut self,
         inner_ty: Ty,
         assoc_ty: Option<TypeAliasId>,
-        params: &[Ty],
+        params: &[GenericArg],
     ) -> Ty {
         match assoc_ty {
             Some(res_assoc_ty) => {
@@ -542,9 +565,10 @@ impl<'a> InferenceContext<'a> {
                     _ => panic!("resolve_associated_type called with non-associated type"),
                 };
                 let ty = self.table.new_type_var();
+                let mut param_iter = params.iter().cloned();
                 let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                     .push(inner_ty)
-                    .fill(params.iter().cloned())
+                    .fill(|_| param_iter.next().unwrap())
                     .build();
                 let alias_eq = AliasEq {
                     alias: AliasTy::Projection(ProjectionTy {
@@ -627,13 +651,21 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::SelfType(impl_id) => {
                 let generics = crate::utils::generics(self.db.upcast(), impl_id.into());
-                let substs = generics.type_params_subst(self.db);
+                let substs = generics.placeholder_subst(self.db);
                 let ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }
             TypeNs::TypeAliasId(it) => {
                 let ty = TyBuilder::def_ty(self.db, it.into())
-                    .fill(std::iter::repeat_with(|| self.table.new_type_var()))
+                    .fill(|x| match x {
+                        ParamKind::Type => {
+                            GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
+                        }
+                        ParamKind::Const(ty) => {
+                            GenericArgData::Const(self.table.new_const_var(ty.clone()))
+                                .intern(Interner)
+                        }
+                    })
                     .build();
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }
@@ -827,7 +859,7 @@ impl<'a> InferenceContext<'a> {
 /// When inferring an expression, we propagate downward whatever type hint we
 /// are able in the form of an `Expectation`.
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum Expectation {
+pub(crate) enum Expectation {
     None,
     HasType(Ty),
     // Castable(Ty), // rustc has this, we currently just don't propagate an expectation for casts

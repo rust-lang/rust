@@ -1301,7 +1301,7 @@ impl<I: Iterator> IntoIterator for I {
 
 #[test]
 fn bug_11659() {
-    check_infer(
+    check_no_mismatches(
         r#"
 struct LinkArray<const N: usize, LD>(LD);
 fn f<const N: usize, LD>(x: LD) -> LinkArray<N, LD> {
@@ -1314,26 +1314,8 @@ fn test() {
     let y = LinkArray::<52, LinkArray<2, i32>>(x);
 }
         "#,
-        expect![[r#"
-        67..68 'x': LD
-        94..138 '{     ...   r }': LinkArray<{unknown}, LD>
-        104..105 'r': LinkArray<{unknown}, LD>
-        108..126 'LinkAr...N, LD>': LinkArray<{unknown}, LD>(LD) -> LinkArray<{unknown}, LD>
-        108..129 'LinkAr...LD>(x)': LinkArray<{unknown}, LD>
-        127..128 'x': LD
-        135..136 'r': LinkArray<{unknown}, LD>
-        150..232 '{     ...(x); }': ()
-        160..161 'x': LinkArray<{unknown}, {unknown}>
-        164..175 'f::<2, i32>': fn f<i32, i32>(i32) -> LinkArray<{unknown}, {unknown}>
-        164..178 'f::<2, i32>(5)': LinkArray<{unknown}, {unknown}>
-        176..177 '5': i32
-        188..189 'y': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
-        192..226 'LinkAr... i32>>': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>(LinkArray<{unknown}, {unknown}>) -> LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
-        192..229 'LinkAr...2>>(x)': LinkArray<LinkArray<i32, {unknown}>, LinkArray<{unknown}, {unknown}>>
-        227..228 'x': LinkArray<{unknown}, {unknown}>
-        "#]],
     );
-    check_infer(
+    check_no_mismatches(
         r#"
 struct LinkArray<LD, const N: usize>(LD);
 fn f<const N: usize, LD>(x: LD) -> LinkArray<LD, N> {
@@ -1346,23 +1328,106 @@ fn test() {
     let y = LinkArray::<LinkArray<i32, 2>, 52>(x);
 }
         "#,
-        expect![[r#"
-        67..68 'x': LD
-        94..138 '{     ...   r }': LinkArray<LD, {unknown}>
-        104..105 'r': LinkArray<LD, {unknown}>
-        108..126 'LinkAr...LD, N>': LinkArray<LD, {unknown}>(LD) -> LinkArray<LD, {unknown}>
-        108..129 'LinkAr... N>(x)': LinkArray<LD, {unknown}>
-        127..128 'x': LD
-        135..136 'r': LinkArray<LD, {unknown}>
-        150..232 '{     ...(x); }': ()
-        160..161 'x': LinkArray<i32, {unknown}>
-        164..175 'f::<i32, 2>': fn f<i32, i32>(i32) -> LinkArray<i32, {unknown}>
-        164..178 'f::<i32, 2>(5)': LinkArray<i32, {unknown}>
-        176..177 '5': i32
-        188..189 'y': LinkArray<LinkArray<i32, {unknown}>, {unknown}>
-        192..226 'LinkAr...>, 52>': LinkArray<LinkArray<i32, {unknown}>, {unknown}>(LinkArray<i32, {unknown}>) -> LinkArray<LinkArray<i32, {unknown}>, {unknown}>
-        192..229 'LinkAr...52>(x)': LinkArray<LinkArray<i32, {unknown}>, {unknown}>
-        227..228 'x': LinkArray<i32, {unknown}>
-        "#]],
     );
+}
+
+#[test]
+fn const_generic_error_tolerance() {
+    check_no_mismatches(
+        r#"
+#[lang = "sized"]
+pub trait Sized {}
+
+struct CT<const N: usize, T>(T);
+struct TC<T, const N: usize>(T);
+fn f<const N: usize, T>(x: T) -> (CT<N, T>, TC<T, N>) {
+    let l = CT::<N, T>(x);
+    let r = TC::<N, T>(x);
+    (l, r)
+}
+
+trait TR1<const N: usize>;
+trait TR2<const N: usize>;
+
+impl<const N: usize, T> TR1<N> for CT<N, T>;
+impl<const N: usize, T> TR1<5> for TC<T, N>;
+impl<const N: usize, T> TR2<N> for CT<T, N>;
+
+trait TR3<const N: usize> {
+    fn tr3(&self) -> &Self;
+}
+
+impl<const N: usize, T> TR3<5> for TC<T, N> {
+    fn tr3(&self) -> &Self {
+        self
+    }
+}
+
+impl<const N: usize, T> TR3<Item = 5> for TC<T, N> {}
+impl<const N: usize, T> TR3<T> for TC<T, N> {}
+
+fn impl_trait<const N: usize>(inp: impl TR1<N>) {}
+fn dyn_trait<const N: usize>(inp: &dyn TR2<N>) {}
+fn impl_trait_bad<'a, const N: usize>(inp: impl TR1<i32>) -> impl TR1<'a, i32> {}
+fn impl_trait_very_bad<const N: usize>(inp: impl TR1<Item = i32>) -> impl TR1<'a, Item = i32, 5, Foo = N> {}
+
+fn test() {
+    f::<2, i32>(5);
+    f::<2, 2>(5);
+    f(5);
+    f::<i32>(5);
+    CT::<52, CT<2, i32>>(x);
+    CT::<CT<2, i32>>(x);
+    impl_trait_bad(5);
+    impl_trait_bad(12);
+    TR3<5>::tr3();
+    TR3<{ 2+3 }>::tr3();
+    TC::<i32, 10>(5).tr3();
+    TC::<i32, 20>(5).tr3();
+    TC::<i32, i32>(5).tr3();
+    TC::<i32, { 7 + 3 }>(5).tr3();
+}
+        "#,
+    );
+}
+
+#[test]
+fn const_generic_impl_trait() {
+    check_no_mismatches(
+        r#"
+        //- minicore: from
+
+        struct Foo<T, const M: usize>;
+
+        trait Tr<T> {
+            fn f(T) -> Self;
+        }
+
+        impl<T, const M: usize> Tr<[T; M]> for Foo<T, M> {
+            fn f(_: [T; M]) -> Self {
+                Self
+            }
+        }
+
+        fn test() {
+            Foo::f([1, 2, 7, 10]);
+        }
+        "#,
+    );
+}
+
+#[test]
+fn nalgebra_factorial() {
+    check_no_mismatches(
+        r#"
+        const FACTORIAL: [u128; 4] = [1, 1, 2, 6];
+
+        fn factorial(n: usize) -> u128 {
+            match FACTORIAL.get(n) {
+                Some(f) => *f,
+                None => panic!("{}! is greater than u128::MAX", n),
+            }
+        }
+        "#,
+    )
 }

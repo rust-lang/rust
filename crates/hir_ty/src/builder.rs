@@ -8,14 +8,24 @@ use chalk_ir::{
     interner::HasInterner,
     AdtId, BoundVar, DebruijnIndex, Scalar,
 };
-use hir_def::{builtin_type::BuiltinType, GenericDefId, TraitId, TypeAliasId};
+use hir_def::{
+    builtin_type::BuiltinType, generics::TypeOrConstParamData, ConstParamId, GenericDefId, TraitId,
+    TypeAliasId,
+};
 use smallvec::SmallVec;
 
 use crate::{
-    db::HirDatabase, primitive, to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders,
-    CallableSig, GenericArg, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt,
-    TyKind, ValueTyDefId,
+    consteval::unknown_const_as_generic, db::HirDatabase, primitive, to_assoc_type_id,
+    to_chalk_trait_id, utils::generics, Binders, CallableSig, ConstData, ConstValue, GenericArg,
+    GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
+    ValueTyDefId,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ParamKind {
+    Type,
+    Const(Ty),
+}
 
 /// This is a builder for `Ty` or anything that needs a `Substitution`.
 pub struct TyBuilder<D> {
@@ -23,51 +33,110 @@ pub struct TyBuilder<D> {
     /// ADT, a `TraitRef`, ...).
     data: D,
     vec: SmallVec<[GenericArg; 2]>,
-    param_count: usize,
+    param_kinds: SmallVec<[ParamKind; 2]>,
+}
+
+impl<A> TyBuilder<A> {
+    fn with_data<B>(self, data: B) -> TyBuilder<B> {
+        TyBuilder { data, param_kinds: self.param_kinds, vec: self.vec }
+    }
 }
 
 impl<D> TyBuilder<D> {
-    fn new(data: D, param_count: usize) -> TyBuilder<D> {
-        TyBuilder { data, param_count, vec: SmallVec::with_capacity(param_count) }
+    fn new(data: D, param_kinds: SmallVec<[ParamKind; 2]>) -> TyBuilder<D> {
+        TyBuilder { data, vec: SmallVec::with_capacity(param_kinds.len()), param_kinds }
     }
 
     fn build_internal(self) -> (D, Substitution) {
-        assert_eq!(self.vec.len(), self.param_count);
+        assert_eq!(self.vec.len(), self.param_kinds.len());
+        for (a, e) in self.vec.iter().zip(self.param_kinds.iter()) {
+            self.assert_match_kind(a, e);
+        }
         let subst = Substitution::from_iter(Interner, self.vec);
         (self.data, subst)
     }
 
     pub fn push(mut self, arg: impl CastTo<GenericArg>) -> Self {
-        self.vec.push(arg.cast(Interner));
+        let arg = arg.cast(Interner);
+        let expected_kind = &self.param_kinds[self.vec.len()];
+        let arg_kind = match arg.data(Interner) {
+            chalk_ir::GenericArgData::Ty(_) => ParamKind::Type,
+            chalk_ir::GenericArgData::Lifetime(_) => panic!("Got lifetime in TyBuilder::push"),
+            chalk_ir::GenericArgData::Const(c) => {
+                let c = c.data(Interner);
+                ParamKind::Const(c.ty.clone())
+            }
+        };
+        assert_eq!(*expected_kind, arg_kind);
+        self.vec.push(arg);
         self
     }
 
     pub fn remaining(&self) -> usize {
-        self.param_count - self.vec.len()
+        self.param_kinds.len() - self.vec.len()
     }
 
     pub fn fill_with_bound_vars(self, debruijn: DebruijnIndex, starting_from: usize) -> Self {
-        self.fill(
-            (starting_from..)
-                .map(|idx| TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner)),
-        )
+        // self.fill is inlined to make borrow checker happy
+        let mut this = self;
+        let other = this.param_kinds.iter().skip(this.vec.len());
+        let filler = (starting_from..).zip(other).map(|(idx, kind)| match kind {
+            ParamKind::Type => {
+                GenericArgData::Ty(TyKind::BoundVar(BoundVar::new(debruijn, idx)).intern(Interner))
+                    .intern(Interner)
+            }
+            ParamKind::Const(ty) => GenericArgData::Const(
+                ConstData {
+                    value: ConstValue::BoundVar(BoundVar::new(debruijn, idx)),
+                    ty: ty.clone(),
+                }
+                .intern(Interner),
+            )
+            .intern(Interner),
+        });
+        this.vec.extend(filler.take(this.remaining()).casted(Interner));
+        assert_eq!(this.remaining(), 0);
+        this
     }
 
     pub fn fill_with_unknown(self) -> Self {
-        self.fill(iter::repeat(TyKind::Error.intern(Interner)))
+        // self.fill is inlined to make borrow checker happy
+        let mut this = self;
+        let filler = this.param_kinds.iter().skip(this.vec.len()).map(|x| match x {
+            ParamKind::Type => GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner),
+            ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+        });
+        this.vec.extend(filler.casted(Interner));
+        assert_eq!(this.remaining(), 0);
+        this
     }
 
-    pub fn fill(mut self, filler: impl Iterator<Item = impl CastTo<GenericArg>>) -> Self {
-        self.vec.extend(filler.take(self.remaining()).casted(Interner));
+    pub fn fill(mut self, filler: impl FnMut(&ParamKind) -> GenericArg) -> Self {
+        self.vec.extend(self.param_kinds.iter().skip(self.vec.len()).map(filler));
         assert_eq!(self.remaining(), 0);
         self
     }
 
     pub fn use_parent_substs(mut self, parent_substs: &Substitution) -> Self {
         assert!(self.vec.is_empty());
-        assert!(parent_substs.len(Interner) <= self.param_count);
-        self.vec.extend(parent_substs.iter(Interner).cloned());
+        assert!(parent_substs.len(Interner) <= self.param_kinds.len());
+        self.extend(parent_substs.iter(Interner).cloned());
         self
+    }
+
+    fn extend(&mut self, it: impl Iterator<Item = GenericArg> + Clone) {
+        for x in it.clone().zip(self.param_kinds.iter().skip(self.vec.len())) {
+            self.assert_match_kind(&x.0, &x.1);
+        }
+        self.vec.extend(it);
+    }
+
+    fn assert_match_kind(&self, a: &chalk_ir::GenericArg<Interner>, e: &ParamKind) {
+        match (a.data(Interner), e) {
+            (chalk_ir::GenericArgData::Ty(_), ParamKind::Type)
+            | (chalk_ir::GenericArgData::Const(_), ParamKind::Const(_)) => (),
+            _ => panic!("Mismatched kinds: {:?}, {:?}, {:?}", a, self.vec, self.param_kinds),
+        }
     }
 }
 
@@ -101,16 +170,26 @@ impl TyBuilder<()> {
         TyKind::Slice(argument).intern(Interner)
     }
 
-    pub fn type_params_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
+    pub fn placeholder_subst(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> Substitution {
         let params = generics(db.upcast(), def.into());
-        params.type_params_subst(db)
+        params.placeholder_subst(db)
     }
 
     pub fn subst_for_def(db: &dyn HirDatabase, def: impl Into<GenericDefId>) -> TyBuilder<()> {
         let def = def.into();
         let params = generics(db.upcast(), def);
-        let param_count = params.len();
-        TyBuilder::new((), param_count)
+        TyBuilder::new(
+            (),
+            params
+                .iter()
+                .map(|(id, data)| match data {
+                    TypeOrConstParamData::TypeParamData(_) => ParamKind::Type,
+                    TypeOrConstParamData::ConstParamData(_) => {
+                        ParamKind::Const(db.const_param_ty(ConstParamId::from_unchecked(id)))
+                    }
+                })
+                .collect(),
+        )
     }
 
     pub fn build(self) -> Substitution {
@@ -120,10 +199,8 @@ impl TyBuilder<()> {
 }
 
 impl TyBuilder<hir_def::AdtId> {
-    pub fn adt(db: &dyn HirDatabase, adt: hir_def::AdtId) -> TyBuilder<hir_def::AdtId> {
-        let generics = generics(db.upcast(), adt.into());
-        let param_count = generics.len();
-        TyBuilder::new(adt, param_count)
+    pub fn adt(db: &dyn HirDatabase, def: hir_def::AdtId) -> TyBuilder<hir_def::AdtId> {
+        TyBuilder::subst_for_def(db, def).with_data(def)
     }
 
     pub fn fill_with_defaults(
@@ -133,14 +210,15 @@ impl TyBuilder<hir_def::AdtId> {
     ) -> Self {
         let defaults = db.generic_defaults(self.data.into());
         for default_ty in defaults.iter().skip(self.vec.len()) {
-            if default_ty.skip_binders().is_unknown() {
-                self.vec.push(fallback().cast(Interner));
-            } else {
-                // each default can depend on the previous parameters
-                let subst_so_far = Substitution::from_iter(Interner, self.vec.clone());
-                self.vec
-                    .push(default_ty.clone().substitute(Interner, &subst_so_far).cast(Interner));
-            }
+            if let GenericArgData::Ty(x) = default_ty.skip_binders().data(Interner) {
+                if x.is_unknown() {
+                    self.vec.push(fallback().cast(Interner));
+                    continue;
+                }
+            };
+            // each default can depend on the previous parameters
+            let subst_so_far = Substitution::from_iter(Interner, self.vec.clone());
+            self.vec.push(default_ty.clone().substitute(Interner, &subst_so_far).cast(Interner));
         }
         self
     }
@@ -154,7 +232,7 @@ impl TyBuilder<hir_def::AdtId> {
 pub struct Tuple(usize);
 impl TyBuilder<Tuple> {
     pub fn tuple(size: usize) -> TyBuilder<Tuple> {
-        TyBuilder::new(Tuple(size), size)
+        TyBuilder::new(Tuple(size), iter::repeat(ParamKind::Type).take(size).collect())
     }
 
     pub fn build(self) -> Ty {
@@ -164,10 +242,8 @@ impl TyBuilder<Tuple> {
 }
 
 impl TyBuilder<TraitId> {
-    pub fn trait_ref(db: &dyn HirDatabase, trait_id: TraitId) -> TyBuilder<TraitId> {
-        let generics = generics(db.upcast(), trait_id.into());
-        let param_count = generics.len();
-        TyBuilder::new(trait_id, param_count)
+    pub fn trait_ref(db: &dyn HirDatabase, def: TraitId) -> TyBuilder<TraitId> {
+        TyBuilder::subst_for_def(db, def).with_data(def)
     }
 
     pub fn build(self) -> TraitRef {
@@ -177,13 +253,8 @@ impl TyBuilder<TraitId> {
 }
 
 impl TyBuilder<TypeAliasId> {
-    pub fn assoc_type_projection(
-        db: &dyn HirDatabase,
-        type_alias: TypeAliasId,
-    ) -> TyBuilder<TypeAliasId> {
-        let generics = generics(db.upcast(), type_alias.into());
-        let param_count = generics.len();
-        TyBuilder::new(type_alias, param_count)
+    pub fn assoc_type_projection(db: &dyn HirDatabase, def: TypeAliasId) -> TyBuilder<TypeAliasId> {
+        TyBuilder::subst_for_def(db, def).with_data(def)
     }
 
     pub fn build(self) -> ProjectionTy {
@@ -194,8 +265,16 @@ impl TyBuilder<TypeAliasId> {
 
 impl<T: HasInterner<Interner = Interner> + Fold<Interner>> TyBuilder<Binders<T>> {
     fn subst_binders(b: Binders<T>) -> Self {
-        let param_count = b.binders.len(Interner);
-        TyBuilder::new(b, param_count)
+        let param_kinds = b
+            .binders
+            .iter(Interner)
+            .map(|x| match x {
+                chalk_ir::VariableKind::Ty(_) => ParamKind::Type,
+                chalk_ir::VariableKind::Lifetime => panic!("Got lifetime parameter"),
+                chalk_ir::VariableKind::Const(ty) => ParamKind::Const(ty.clone()),
+            })
+            .collect();
+        TyBuilder::new(b, param_kinds)
     }
 
     pub fn build(self) -> <T as Fold<Interner>>::Result {

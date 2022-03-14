@@ -24,8 +24,8 @@ use crate::{
     keys,
     src::{HasChildSource, HasSource},
     type_ref::{LifetimeRef, TypeBound, TypeRef},
-    AdtId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId, LocalTypeOrConstParamId,
-    Lookup, TypeOrConstParamId,
+    AdtId, ConstParamId, GenericDefId, HasModule, LifetimeParamId, LocalLifetimeParamId,
+    LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 
 /// Data about a generic type parameter (to a function, struct, impl, ...).
@@ -99,7 +99,7 @@ impl_from!(TypeParamData, ConstParamData for TypeOrConstParamData);
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug, Default, Hash)]
 pub struct GenericParams {
-    pub tocs: Arena<TypeOrConstParamData>,
+    pub type_or_consts: Arena<TypeOrConstParamData>,
     pub lifetimes: Arena<LifetimeParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
@@ -138,13 +138,14 @@ impl GenericParams {
     pub fn type_iter<'a>(
         &'a self,
     ) -> impl Iterator<Item = (Idx<TypeOrConstParamData>, &TypeParamData)> {
-        self.tocs.iter().filter_map(|x| x.1.type_param().map(|y| (x.0, y)))
+        self.type_or_consts.iter().filter_map(|x| x.1.type_param().map(|y| (x.0, y)))
     }
 
-    pub fn toc_iter<'a>(
+    /// Iterator of type_or_consts field
+    pub fn iter<'a>(
         &'a self,
-    ) -> impl Iterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
-        self.tocs.iter()
+    ) -> impl DoubleEndedIterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
+        self.type_or_consts.iter()
     }
 
     pub(crate) fn generic_params_query(
@@ -251,7 +252,7 @@ impl GenericParams {
                         default,
                         provenance: TypeParamProvenance::TypeParamList,
                     };
-                    self.tocs.alloc(param.into());
+                    self.type_or_consts.alloc(param.into());
                     let type_ref = TypeRef::Path(name.into());
                     self.fill_bounds(lower_ctx, &type_param, Either::Left(type_ref));
                 }
@@ -261,7 +262,7 @@ impl GenericParams {
                         .ty()
                         .map_or(TypeRef::Error, |it| TypeRef::from_ast(lower_ctx, it));
                     let param = ConstParamData { name, ty: Interned::new(ty) };
-                    self.tocs.alloc(param.into());
+                    self.type_or_consts.alloc(param.into());
                 }
             }
         }
@@ -348,7 +349,7 @@ impl GenericParams {
                     default: None,
                     provenance: TypeParamProvenance::ArgumentImplTrait,
                 };
-                let param_id = self.tocs.alloc(param.into());
+                let param_id = self.type_or_consts.alloc(param.into());
                 for bound in bounds {
                     self.where_predicates.push(WherePredicate::TypeBound {
                         target: WherePredicateTypeTarget::TypeOrConstParam(param_id),
@@ -372,27 +373,34 @@ impl GenericParams {
     }
 
     pub(crate) fn shrink_to_fit(&mut self) {
-        let Self { lifetimes, tocs: types, where_predicates } = self;
+        let Self { lifetimes, type_or_consts: types, where_predicates } = self;
         lifetimes.shrink_to_fit();
         types.shrink_to_fit();
         where_predicates.shrink_to_fit();
     }
 
-    pub fn find_type_by_name(&self, name: &Name) -> Option<LocalTypeOrConstParamId> {
-        self.tocs
-            .iter()
-            .filter(|x| matches!(x.1, TypeOrConstParamData::TypeParamData(_)))
-            .find_map(|(id, p)| if p.name().as_ref() == Some(&name) { Some(id) } else { None })
+    pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {
+        self.type_or_consts.iter().find_map(|(id, p)| {
+            if p.name().as_ref() == Some(&name) && p.type_param().is_some() {
+                Some(TypeParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
+            } else {
+                None
+            }
+        })
     }
 
-    pub fn find_type_or_const_by_name(&self, name: &Name) -> Option<LocalTypeOrConstParamId> {
-        self.tocs
-            .iter()
-            .find_map(|(id, p)| if p.name().as_ref() == Some(&name) { Some(id) } else { None })
+    pub fn find_const_by_name(&self, name: &Name, parent: GenericDefId) -> Option<ConstParamId> {
+        self.type_or_consts.iter().find_map(|(id, p)| {
+            if p.name().as_ref() == Some(&name) && p.const_param().is_some() {
+                Some(ConstParamId::from_unchecked(TypeOrConstParamId { local_id: id, parent }))
+            } else {
+                None
+            }
+        })
     }
 
     pub fn find_trait_self_param(&self) -> Option<LocalTypeOrConstParamId> {
-        self.tocs.iter().find_map(|(id, p)| {
+        self.type_or_consts.iter().find_map(|(id, p)| {
             if let TypeOrConstParamData::TypeParamData(p) = p {
                 if p.provenance == TypeParamProvenance::TraitSelf {
                     Some(id)
@@ -451,7 +459,7 @@ impl HasChildSource<LocalTypeOrConstParamId> for GenericDefId {
         db: &dyn DefDatabase,
     ) -> InFile<ArenaMap<LocalTypeOrConstParamId, Self::Value>> {
         let generic_params = db.generic_params(*self);
-        let mut idx_iter = generic_params.tocs.iter().map(|(idx, _)| idx);
+        let mut idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
 
         let (file_id, generic_params_list) = file_id_and_params_of(*self, db);
 
@@ -505,7 +513,7 @@ impl ChildBySource for GenericDefId {
         }
 
         let generic_params = db.generic_params(*self);
-        let mut toc_idx_iter = generic_params.tocs.iter().map(|(idx, _)| idx);
+        let mut toc_idx_iter = generic_params.type_or_consts.iter().map(|(idx, _)| idx);
         let lts_idx_iter = generic_params.lifetimes.iter().map(|(idx, _)| idx);
 
         // For traits the first type index is `Self`, skip it.

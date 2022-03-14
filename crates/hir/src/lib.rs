@@ -55,7 +55,9 @@ use hir_def::{
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     autoderef,
-    consteval::{eval_const, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt},
+    consteval::{
+        eval_const, unknown_const_as_generic, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt,
+    },
     could_unify,
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
@@ -63,9 +65,9 @@ use hir_ty::{
     subst_prefix,
     traits::FnTrait,
     AliasEq, AliasTy, BoundVar, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, Cast,
-    DebruijnIndex, InEnvironment, Interner, QuantifiedWhereClause, Scalar, Solution, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyVariableKind,
-    WhereClause,
+    DebruijnIndex, GenericArgData, InEnvironment, Interner, ParamKind, QuantifiedWhereClause,
+    Scalar, Solution, Substitution, TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt,
+    TyKind, TyVariableKind, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -796,7 +798,7 @@ impl Field {
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent.id.into(),
         };
-        let substs = TyBuilder::type_params_subst(db, generic_def_id);
+        let substs = TyBuilder::placeholder_subst(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
         Type::new(db, self.parent.module(db).id.krate(), var_id, ty)
     }
@@ -983,7 +985,10 @@ impl_from!(Struct, Union, Enum for Adt);
 impl Adt {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.into());
-        subst.iter().any(|ty| ty.skip_binders().is_unknown())
+        subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
+            GenericArgData::Ty(x) => x.is_unknown(),
+            _ => false,
+        })
     }
 
     /// Turns this ADT into a type. Any type parameters of the ADT will be
@@ -1680,7 +1685,10 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn has_non_default_type_params(self, db: &dyn HirDatabase) -> bool {
         let subst = db.generic_defaults(self.id.into());
-        subst.iter().any(|ty| ty.skip_binders().is_unknown())
+        subst.iter().any(|ty| match ty.skip_binders().data(Interner) {
+            GenericArgData::Ty(x) => x.is_unknown(),
+            _ => false,
+        })
     }
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -2047,7 +2055,7 @@ impl_from!(
 impl GenericDef {
     pub fn params(self, db: &dyn HirDatabase) -> Vec<GenericParam> {
         let generics = db.generic_params(self.into());
-        let ty_params = generics.tocs.iter().map(|(local_id, _)| {
+        let ty_params = generics.type_or_consts.iter().map(|(local_id, _)| {
             let toc = TypeOrConstParam { id: TypeOrConstParamId { parent: self.into(), local_id } };
             match toc.split(db) {
                 Either::Left(x) => GenericParam::ConstParam(x),
@@ -2067,7 +2075,7 @@ impl GenericDef {
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
         let generics = db.generic_params(self.into());
         generics
-            .tocs
+            .type_or_consts
             .iter()
             .map(|(local_id, _)| TypeOrConstParam {
                 id: TypeOrConstParamId { parent: self.into(), local_id },
@@ -2351,9 +2359,14 @@ impl TypeParam {
         let resolver = self.id.parent().resolver(db.upcast());
         let krate = self.id.parent().module(db.upcast()).krate();
         let ty = params.get(local_idx)?.clone();
-        let subst = TyBuilder::type_params_subst(db, self.id.parent());
+        let subst = TyBuilder::placeholder_subst(db, self.id.parent());
         let ty = ty.substitute(Interner, &subst_prefix(&subst, local_idx));
-        Some(Type::new_with_resolver_inner(db, krate, &resolver, ty))
+        match ty.data(Interner) {
+            GenericArgData::Ty(x) => {
+                Some(Type::new_with_resolver_inner(db, krate, &resolver, x.clone()))
+            }
+            _ => None,
+        }
     }
 }
 
@@ -2389,7 +2402,7 @@ impl ConstParam {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent());
-        match params.tocs[self.id.local_id()].name() {
+        match params.type_or_consts[self.id.local_id()].name() {
             Some(x) => x.clone(),
             None => {
                 never!();
@@ -2421,7 +2434,7 @@ pub struct TypeOrConstParam {
 impl TypeOrConstParam {
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         let params = db.generic_params(self.id.parent);
-        match params.tocs[self.id.local_id].name() {
+        match params.type_or_consts[self.id.local_id].name() {
             Some(n) => n.clone(),
             _ => Name::missing(),
         }
@@ -2437,12 +2450,12 @@ impl TypeOrConstParam {
 
     pub fn split(self, db: &dyn HirDatabase) -> Either<ConstParam, TypeParam> {
         let params = db.generic_params(self.id.parent);
-        match &params.tocs[self.id.local_id] {
+        match &params.type_or_consts[self.id.local_id] {
             hir_def::generics::TypeOrConstParamData::TypeParamData(_) => {
-                Either::Right(TypeParam { id: self.id.into() })
+                Either::Right(TypeParam { id: TypeParamId::from_unchecked(self.id) })
             }
             hir_def::generics::TypeOrConstParamData::ConstParamData(_) => {
-                Either::Left(ConstParam { id: self.id.into() })
+                Either::Left(ConstParam { id: ConstParamId::from_unchecked(self.id) })
             }
         }
     }
@@ -2688,9 +2701,19 @@ impl Type {
     }
 
     pub fn impls_trait(&self, db: &dyn HirDatabase, trait_: Trait, args: &[Type]) -> bool {
+        let mut it = args.iter().map(|t| t.ty.clone());
         let trait_ref = TyBuilder::trait_ref(db, trait_.id)
             .push(self.ty.clone())
-            .fill(args.iter().map(|t| t.ty.clone()))
+            .fill(|x| {
+                let r = it.next().unwrap();
+                match x {
+                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Const(ty) => {
+                        // FIXME: this code is not covered in tests.
+                        unknown_const_as_generic(ty.clone())
+                    }
+                }
+            })
             .build();
 
         let goal = Canonical {
@@ -2707,9 +2730,18 @@ impl Type {
         args: &[Type],
         alias: TypeAlias,
     ) -> Option<Type> {
+        let mut args = args.iter();
         let projection = TyBuilder::assoc_type_projection(db, alias.id)
             .push(self.ty.clone())
-            .fill(args.iter().map(|t| t.ty.clone()))
+            .fill(|x| {
+                // FIXME: this code is not covered in tests.
+                match x {
+                    ParamKind::Type => {
+                        GenericArgData::Ty(args.next().unwrap().ty.clone()).intern(Interner)
+                    }
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                }
+            })
             .build();
         let goal = hir_ty::make_canonical(
             InEnvironment::new(

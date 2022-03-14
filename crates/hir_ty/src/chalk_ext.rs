@@ -237,11 +237,11 @@ impl TyExt for Ty {
             TyKind::Placeholder(idx) => {
                 let id = from_placeholder_idx(db, *idx);
                 let generic_params = db.generic_params(id.parent);
-                let param_data = &generic_params.tocs[id.local_id];
+                let param_data = &generic_params.type_or_consts[id.local_id];
                 match param_data {
                     TypeOrConstParamData::TypeParamData(p) => match p.provenance {
                         hir_def::generics::TypeParamProvenance::ArgumentImplTrait => {
-                            let substs = TyBuilder::type_params_subst(db, id.parent);
+                            let substs = TyBuilder::placeholder_subst(db, id.parent);
                             let predicates = db
                                 .generic_predicates(id.parent)
                                 .iter()

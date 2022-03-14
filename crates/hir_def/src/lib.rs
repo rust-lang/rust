@@ -343,11 +343,13 @@ impl TypeParamId {
     }
 }
 
-impl From<TypeOrConstParamId> for TypeParamId {
-    fn from(x: TypeOrConstParamId) -> Self {
+impl TypeParamId {
+    /// Caller should check if this toc id really belongs to a type
+    pub fn from_unchecked(x: TypeOrConstParamId) -> Self {
         Self(x)
     }
 }
+
 impl From<TypeParamId> for TypeOrConstParamId {
     fn from(x: TypeParamId) -> Self {
         x.0
@@ -367,11 +369,13 @@ impl ConstParamId {
     }
 }
 
-impl From<TypeOrConstParamId> for ConstParamId {
-    fn from(x: TypeOrConstParamId) -> Self {
+impl ConstParamId {
+    /// Caller should check if this toc id really belongs to a const
+    pub fn from_unchecked(x: TypeOrConstParamId) -> Self {
         Self(x)
     }
 }
+
 impl From<ConstParamId> for TypeOrConstParamId {
     fn from(x: ConstParamId) -> Self {
         x.0
