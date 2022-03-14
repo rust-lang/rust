@@ -147,7 +147,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             patch.add_assign(
                 parent_end,
                 Place::from(second_discriminant_temp),
-                Rvalue::Discriminant(opt_data.child_place),
+                Rvalue::Discriminant { place: opt_data.child_place, relative: false },
             );
 
             // create temp to store inequality comparison between the two discriminants, `_t` in
@@ -354,7 +354,7 @@ fn evaluate_candidate<'tcx>(
         = &bbs[child].statements.first().map(|x| &x.kind) else {
         return None;
     };
-    let (_, Rvalue::Discriminant(child_place)) = &**boxed else {
+    let (_, Rvalue::Discriminant { place: child_place, relative: false }) = &**boxed else {
         return None;
     };
     let destination = parent_dest.unwrap_or(child_targets.otherwise());
@@ -394,7 +394,7 @@ fn verify_candidate_branch<'tcx>(
     let StatementKind::Assign(boxed) = &branch.statements[0].kind else {
         return false
     };
-    let (discr_place, Rvalue::Discriminant(from_place)) = &**boxed else {
+    let (discr_place, Rvalue::Discriminant { place: from_place, relative: false }) = &**boxed else {
         return false
     };
     if *from_place != place {

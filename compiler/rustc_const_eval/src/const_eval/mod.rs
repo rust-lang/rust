@@ -109,7 +109,7 @@ fn const_to_valtree_inner<'tcx>(
                 bug!("uninhabited types should have errored and never gotten converted to valtree")
             }
 
-            let variant = ecx.read_discriminant(&place.into()).unwrap().1;
+            let variant = ecx.read_discriminant(&place.into(), false).unwrap().1;
 
             branches(def.variant(variant).fields.len(), def.is_enum().then_some(variant))
         }
@@ -152,7 +152,7 @@ pub(crate) fn try_destructure_const<'tcx>(
         // index).
         ty::Adt(def, _) if def.variants().is_empty() => throw_ub!(Unreachable),
         ty::Adt(def, _) => {
-            let variant = ecx.read_discriminant(&op)?.1;
+            let variant = ecx.read_discriminant(&op, false)?.1;
             let down = ecx.operand_downcast(&op, variant)?;
             (def.variant(variant).fields.len(), Some(variant), down)
         }

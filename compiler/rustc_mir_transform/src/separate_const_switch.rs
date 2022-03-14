@@ -219,7 +219,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                         Rvalue::Cast(_, Operand::Copy(place) | Operand::Move(place), _)
                         | Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
                         | Rvalue::UnaryOp(_, Operand::Copy(place) | Operand::Move(place))
-                        | Rvalue::Discriminant(place) => tracked_place = place,
+                        | Rvalue::Discriminant { place, .. } => tracked_place = place,
                     }
                 }
             }
@@ -280,7 +280,7 @@ fn find_determining_place<'tcx>(
                     | Rvalue::UnaryOp(_, Operand::Copy(new) | Operand::Move(new))
                     | Rvalue::Cast(_, Operand::Move(new) | Operand::Copy(new), _)
                     | Rvalue::Repeat(Operand::Move(new) | Operand::Copy(new), _)
-                    | Rvalue::Discriminant(new)
+                    | Rvalue::Discriminant { place: new, .. }
                     => switch_place = new,
 
                     // The following rvalues might still make the block

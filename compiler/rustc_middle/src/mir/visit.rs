@@ -698,7 +698,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(op, location);
                     }
 
-                    Rvalue::Discriminant(place) => {
+                    Rvalue::Discriminant { place, .. } => {
                         self.visit_place(
                             place,
                             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect),

@@ -297,9 +297,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.cast(&src, cast_kind, cast_ty, &dest)?;
             }
 
-            Discriminant(place) => {
+            Discriminant { place, relative } => {
                 let op = self.eval_place_to_op(place, None)?;
-                let discr_val = self.read_discriminant(&op)?.0;
+                let discr_val = self.read_discriminant(&op, relative)?.0;
                 self.write_scalar(discr_val, &dest)?;
             }
         }

@@ -612,7 +612,7 @@ impl<'tcx> SimplifyBranchSameOptimizationFinder<'_, 'tcx> {
                         if Some(*place) == discr_switched_on.place() =>
                     {
                         match rhs {
-                            Rvalue::Discriminant(adt_place) if adt_place.ty(self.body, self.tcx).ty.is_enum() => adt_place,
+                            Rvalue::Discriminant { place, .. } if place.ty(self.body, self.tcx).ty.is_enum() => place,
                             _ => {
                                 trace!("NO: expected a discriminant read of an enum instead of: {:?}", rhs);
                                 return None;

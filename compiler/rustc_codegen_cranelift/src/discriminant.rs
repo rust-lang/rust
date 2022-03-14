@@ -60,10 +60,13 @@ pub(crate) fn codegen_set_discriminant<'tcx>(
     }
 }
 
+/// If `relative` is true, we instead calculate the *relative* discriminant (see
+/// `RValue::Discriminant`).
 pub(crate) fn codegen_get_discriminant<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     value: CValue<'tcx>,
     dest_layout: TyAndLayout<'tcx>,
+    relative: bool,
 ) -> CValue<'tcx> {
     let layout = value.layout();
 
@@ -131,38 +134,46 @@ pub(crate) fn codegen_get_discriminant<'tcx>(
                 // FIXME handle niche_start > i64::MAX
                 fx.bcx.ins().iadd_imm(tag, -i64::try_from(niche_start).unwrap())
             };
-            let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-            let is_niche = {
-                codegen_icmp_imm(
-                    fx,
-                    IntCC::UnsignedLessThanOrEqual,
-                    relative_discr,
-                    i128::from(relative_max),
-                )
-            };
 
-            // NOTE(eddyb) this addition needs to be performed on the final
-            // type, in case the niche itself can't represent all variant
-            // indices (e.g. `u8` niche with more than `256` variants,
-            // but enough uninhabited variants so that the remaining variants
-            // fit in the niche).
-            // In other words, `niche_variants.end - niche_variants.start`
-            // is representable in the niche, but `niche_variants.end`
-            // might not be, in extreme cases.
-            let niche_discr = {
-                let relative_discr = if relative_max == 0 {
-                    // HACK(eddyb) since we have only one niche, we know which
-                    // one it is, and we can avoid having a dynamic value here.
-                    fx.bcx.ins().iconst(cast_to, 0)
-                } else {
-                    clif_intcast(fx, relative_discr, cast_to, false)
+            if relative {
+                CValue::by_val(clif_intcast(fx, relative_discr, cast_to, false), dest_layout)
+            } else {
+                let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+                let is_niche = {
+                    codegen_icmp_imm(
+                        fx,
+                        IntCC::UnsignedLessThanOrEqual,
+                        relative_discr,
+                        i128::from(relative_max),
+                    )
                 };
-                fx.bcx.ins().iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
-            };
 
-            let dataful_variant = fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
-            let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
-            CValue::by_val(discr, dest_layout)
+                // NOTE(eddyb) this addition needs to be performed on the final
+                // type, in case the niche itself can't represent all variant
+                // indices (e.g. `u8` niche with more than `256` variants,
+                // but enough uninhabited variants so that the remaining variants
+                // fit in the niche).
+                // In other words, `niche_variants.end - niche_variants.start`
+                // is representable in the niche, but `niche_variants.end`
+                // might not be, in extreme cases.
+                let niche_discr = {
+                    let relative_discr = if relative_max == 0 {
+                        // HACK(eddyb) since we have only one niche, we know which
+                        // one it is, and we can avoid having a dynamic value here.
+                        fx.bcx.ins().iconst(cast_to, 0)
+                    } else {
+                        clif_intcast(fx, relative_discr, cast_to, false)
+                    };
+                    fx.bcx
+                        .ins()
+                        .iadd_imm(relative_discr, i64::from(niche_variants.start().as_u32()))
+                };
+
+                let dataful_variant =
+                    fx.bcx.ins().iconst(cast_to, i64::from(dataful_variant.as_u32()));
+                let discr = fx.bcx.ins().select(is_niche, niche_discr, dataful_variant);
+                CValue::by_val(discr, dest_layout)
+            }
         }
     }
 }

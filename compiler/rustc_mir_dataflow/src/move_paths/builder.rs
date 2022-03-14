@@ -330,7 +330,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             }
             Rvalue::Ref(..)
             | Rvalue::AddressOf(..)
-            | Rvalue::Discriminant(..)
+            | Rvalue::Discriminant { .. }
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
         }

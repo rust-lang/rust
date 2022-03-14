@@ -634,6 +634,7 @@ fn codegen_stmt<'tcx>(
                             fx,
                             operand,
                             fx.layout_of(operand.layout().ty.discriminant_ty(fx.tcx)),
+                            false,
                         )
                         .load_scalar(fx);
 
@@ -684,11 +685,15 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
-                Rvalue::Discriminant(place) => {
+                Rvalue::Discriminant { place, relative } => {
                     let place = codegen_place(fx, place);
                     let value = place.to_cvalue(fx);
-                    let discr =
-                        crate::discriminant::codegen_get_discriminant(fx, value, dest_layout);
+                    let discr = crate::discriminant::codegen_get_discriminant(
+                        fx,
+                        value,
+                        dest_layout,
+                        relative,
+                    );
                     lval.write_cvalue(fx, discr);
                 }
                 Rvalue::Repeat(ref operand, times) => {

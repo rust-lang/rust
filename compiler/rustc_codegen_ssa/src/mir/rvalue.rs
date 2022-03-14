@@ -469,12 +469,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef { val: OperandValue::Immediate(llval), layout: operand.layout })
             }
 
-            mir::Rvalue::Discriminant(ref place) => {
+            mir::Rvalue::Discriminant { ref place, relative } => {
                 let discr_ty = rvalue.ty(self.mir, bx.tcx());
                 let discr_ty = self.monomorphize(discr_ty);
                 let discr = self
                     .codegen_place(&mut bx, place.as_ref())
-                    .codegen_get_discr(&mut bx, discr_ty);
+                    .codegen_get_discr(&mut bx, discr_ty, relative);
                 (
                     bx,
                     OperandRef {
@@ -751,7 +751,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::BinaryOp(..) |
             mir::Rvalue::CheckedBinaryOp(..) |
             mir::Rvalue::UnaryOp(..) |
-            mir::Rvalue::Discriminant(..) |
+            mir::Rvalue::Discriminant { .. } |
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
             mir::Rvalue::Use(..) => // (*)

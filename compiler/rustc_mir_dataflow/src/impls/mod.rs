@@ -708,9 +708,10 @@ fn switch_on_enum_discriminant<'mir, 'tcx>(
 ) -> Option<(mir::Place<'tcx>, ty::AdtDef<'tcx>)> {
     for statement in block.statements.iter().rev() {
         match &statement.kind {
-            mir::StatementKind::Assign(box (lhs, mir::Rvalue::Discriminant(discriminated)))
-                if *lhs == switch_on =>
-            {
+            mir::StatementKind::Assign(box (
+                lhs,
+                mir::Rvalue::Discriminant { place: discriminated, relative: false },
+            )) if *lhs == switch_on => {
                 match discriminated.ty(body, tcx).ty.kind() {
                     ty::Adt(def, _) => return Some((*discriminated, *def)),
 

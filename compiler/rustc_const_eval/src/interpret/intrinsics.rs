@@ -230,7 +230,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
             sym::discriminant_value => {
                 let place = self.deref_operand(&args[0])?;
-                let discr_val = self.read_discriminant(&place.into())?.0;
+                let discr_val = self.read_discriminant(&place.into(), false)?.0;
                 self.write_scalar(discr_val, dest)?;
             }
             sym::unchecked_shl

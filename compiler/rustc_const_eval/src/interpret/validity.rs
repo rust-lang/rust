@@ -704,7 +704,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx, VariantIdx> {
         self.with_elem(PathElem::EnumTag, move |this| {
             Ok(try_validation!(
-                this.ecx.read_discriminant(op),
+                this.ecx.read_discriminant(op, /*relative*/false),
                 this.path,
                 err_ub!(InvalidTag(val)) =>
                     { "{:x}", val } expected { "a valid enum tag" },

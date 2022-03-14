@@ -2308,7 +2308,16 @@ pub enum Rvalue<'tcx> {
     ///
     /// Undefined (i.e., no effort is made to make it defined, but there’s no reason why it cannot
     /// be defined to return, say, a 0) if ADT is not an enum.
-    Discriminant(Place<'tcx>),
+    ///
+    /// If `relative` is true, and the ADT has the niche-filling optimization, yields
+    /// the *relative* discriminant. The relative discriminant is essentially the value of the tag
+    /// minus `niche_variants.start()`; that is, it's relative to the niche variants.
+    /// The ability to calculate the relative discriminant exists only for the `AddNicheCases`
+    /// optimization.
+    Discriminant {
+        place: Place<'tcx>,
+        relative: bool,
+    },
 
     /// Creates an aggregate value, like a tuple or struct. This is
     /// only needed because we want to distinguish `dest = Foo { x:
@@ -2444,7 +2453,10 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
-            Discriminant(ref place) => write!(fmt, "discriminant({:?})", place),
+            Discriminant { ref place, relative: false } => write!(fmt, "discriminant({:?})", place),
+            Discriminant { ref place, relative: true } => {
+                write!(fmt, "relative_discriminant({:?})", place)
+            }
             NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
             ThreadLocalRef(did) => ty::tls::with(|tcx| {
                 let muta = tcx.static_mutability(did).unwrap().prefix_str();

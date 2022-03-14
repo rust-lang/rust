@@ -486,7 +486,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 self.validate_operand(operand)?;
             }
 
-            Rvalue::Discriminant(place) | Rvalue::Len(place) => {
+            Rvalue::Discriminant { place, .. } | Rvalue::Len(place) => {
                 self.validate_place(place.as_ref())?
             }
 

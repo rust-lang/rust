@@ -289,7 +289,10 @@ impl<'tcx> TransformVisitor<'tcx> {
         let self_place = Place::from(SELF_ARG);
         let assign = Statement {
             source_info: SourceInfo::outermost(body.span),
-            kind: StatementKind::Assign(Box::new((temp, Rvalue::Discriminant(self_place)))),
+            kind: StatementKind::Assign(Box::new((
+                temp,
+                Rvalue::Discriminant { place: self_place, relative: false },
+            ))),
         };
         (assign, temp)
     }

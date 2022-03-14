@@ -135,7 +135,7 @@ macro_rules! make_value_visitor {
                 &mut self,
                 op: &OpTy<'tcx, M::PointerTag>,
             ) -> InterpResult<'tcx, VariantIdx> {
-                Ok(self.ecx().read_discriminant(op)?.1)
+                Ok(self.ecx().read_discriminant(op, /*relative*/ false)?.1)
             }
 
             // Recursive actions, ready to be overloaded.

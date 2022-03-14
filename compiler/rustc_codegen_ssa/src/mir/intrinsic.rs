@@ -359,7 +359,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::discriminant_value => {
                 if ret_ty.is_integral() {
-                    args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty)
+                    args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty, false)
                 } else {
                     span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
                 }

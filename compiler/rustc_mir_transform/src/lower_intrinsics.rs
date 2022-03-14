@@ -118,7 +118,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
                                     destination,
-                                    Rvalue::Discriminant(arg),
+                                    Rvalue::Discriminant { place: arg, relative: false },
                                 ))),
                             });
                             terminator.kind = TerminatorKind::Goto { target };

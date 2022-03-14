@@ -107,7 +107,7 @@ where
             | mir::Rvalue::CheckedBinaryOp(..)
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
-            | mir::Rvalue::Discriminant(..)
+            | mir::Rvalue::Discriminant { .. }
             | mir::Rvalue::Aggregate(..) => {}
         }
     }

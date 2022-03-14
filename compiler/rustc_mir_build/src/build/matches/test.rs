@@ -192,7 +192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_eq!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "found canididates for untested discriminant: {:?}",
+                                "found candidates for untested discriminant: {:?}",
                                 discr,
                             );
                             None
@@ -207,7 +207,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     self.source_info(scrutinee_span),
                     discr,
-                    Rvalue::Discriminant(place),
+                    Rvalue::Discriminant { place, relative: false },
                 );
                 self.cfg.terminate(
                     block,

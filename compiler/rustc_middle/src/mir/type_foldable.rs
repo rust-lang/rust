@@ -214,7 +214,9 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 Box::new((rhs.try_fold_with(folder)?, lhs.try_fold_with(folder)?)),
             ),
             UnaryOp(op, val) => UnaryOp(op, val.try_fold_with(folder)?),
-            Discriminant(place) => Discriminant(place.try_fold_with(folder)?),
+            Discriminant { place, relative } => {
+                Discriminant { place: place.try_fold_with(folder)?, relative }
+            }
             NullaryOp(op, ty) => NullaryOp(op, ty.try_fold_with(folder)?),
             Aggregate(kind, fields) => {
                 let kind = kind.try_map_id(|kind| {
@@ -265,7 +267,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
                 lhs.visit_with(visitor)
             }
             UnaryOp(_, ref val) => val.visit_with(visitor),
-            Discriminant(ref place) => place.visit_with(visitor),
+            Discriminant { ref place, .. } => place.visit_with(visitor),
             NullaryOp(_, ty) => ty.visit_with(visitor),
             Aggregate(ref kind, ref fields) => {
                 match **kind {

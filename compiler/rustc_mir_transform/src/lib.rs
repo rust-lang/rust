@@ -40,6 +40,7 @@ use pass_manager::{self as pm, Lint, MirLint, WithMinOptLevel};
 mod abort_unwinding_calls;
 mod add_call_guards;
 mod add_moves_for_packed_drops;
+mod add_niche_cases;
 mod add_retag;
 mod check_const_item_mutation;
 mod check_packed_ref;
@@ -483,6 +484,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &o1(simplify_branches::SimplifyConstCondition::new("after-const-prop")),
             &early_otherwise_branch::EarlyOtherwiseBranch,
+            &add_niche_cases::AddNicheCases,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &simplify_try::SimplifyArmIdentity,
             &simplify_try::SimplifyBranchSame,

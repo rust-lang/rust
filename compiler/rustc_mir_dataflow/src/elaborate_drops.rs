@@ -579,7 +579,7 @@ where
         // way lies only trouble.
         let discr_ty = adt.repr().discr_type().to_ty(self.tcx());
         let discr = Place::from(self.new_temp(discr_ty));
-        let discr_rv = Rvalue::Discriminant(self.place);
+        let discr_rv = Rvalue::Discriminant { place: self.place, relative: false };
         let switch_block = BasicBlockData {
             statements: vec![self.assign(discr, discr_rv)],
             terminator: Some(Terminator {

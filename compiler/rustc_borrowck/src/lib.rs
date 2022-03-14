@@ -1280,10 +1280,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.consume_operand(location, (operand, span), flow_state)
             }
 
-            Rvalue::Len(place) | Rvalue::Discriminant(place) => {
+            Rvalue::Len(place) | Rvalue::Discriminant { place, .. } => {
                 let af = match *rvalue {
                     Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
-                    Rvalue::Discriminant(..) => None,
+                    Rvalue::Discriminant { .. } => None,
                     _ => unreachable!(),
                 };
                 self.access_place(

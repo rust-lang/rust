@@ -204,10 +204,14 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     }
 
     /// Obtain the actual discriminant of a value.
+    ///
+    /// If `relative` is true, instead calculate the *relative* discriminant (see
+    /// `RValue::Discriminant`).
     pub fn codegen_get_discr<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
         cast_to: Ty<'tcx>,
+        relative: bool,
     ) -> V {
         let cast_to = bx.cx().immediate_backend_type(bx.cx().layout_of(cast_to));
         if self.layout.abi.is_uninhabited() {
@@ -266,44 +270,49 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 } else {
                     bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start))
                 };
-                let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-                let is_niche = if relative_max == 0 {
-                    // Avoid calling `const_uint`, which wouldn't work for pointers.
-                    // Also use canonical == 0 instead of non-canonical u<= 0.
-                    // FIXME(eddyb) check the actual primitive type here.
-                    bx.icmp(IntPredicate::IntEQ, relative_discr, bx.cx().const_null(niche_llty))
+                let relative_max = niche_variants.size_hint().1.unwrap() - 1;
+
+                if relative {
+                    bx.intcast(relative_discr, cast_to, false)
                 } else {
-                    let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
-                    bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
-                };
-
-                // NOTE(eddyb) this addition needs to be performed on the final
-                // type, in case the niche itself can't represent all variant
-                // indices (e.g. `u8` niche with more than `256` variants,
-                // but enough uninhabited variants so that the remaining variants
-                // fit in the niche).
-                // In other words, `niche_variants.end - niche_variants.start`
-                // is representable in the niche, but `niche_variants.end`
-                // might not be, in extreme cases.
-                let niche_discr = {
-                    let relative_discr = if relative_max == 0 {
-                        // HACK(eddyb) since we have only one niche, we know which
-                        // one it is, and we can avoid having a dynamic value here.
-                        bx.cx().const_uint(cast_to, 0)
-                    } else {
-                        bx.intcast(relative_discr, cast_to, false)
+                    // NOTE(eddyb) this addition needs to be performed on the final
+                    // type, in case the niche itself can't represent all variant
+                    // indices (e.g. `u8` niche with more than `256` variants,
+                    // but enough uninhabited variants so that the remaining variants
+                    // fit in the niche).
+                    // In other words, `niche_variants.end - niche_variants.start`
+                    // is representable in the niche, but `niche_variants.end`
+                    // might not be, in extreme cases.
+                    let niche_discr = {
+                        let relative_discr = if relative_max == 0 {
+                            // HACK(eddyb) since we have only one niche, we know which
+                            // one it is, and we can avoid having a dynamic value here.
+                            bx.cx().const_uint(cast_to, 0)
+                        } else {
+                            bx.intcast(relative_discr, cast_to, false)
+                        };
+                        bx.add(
+                            relative_discr,
+                            bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
+                        )
                     };
-                    bx.add(
-                        relative_discr,
-                        bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
-                    )
-                };
 
-                bx.select(
-                    is_niche,
-                    niche_discr,
-                    bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
-                )
+                    let is_niche = if relative_max == 0 {
+                        // Avoid calling `const_uint`, which wouldn't work for pointers.
+                        // Also use canonical == 0 instead of non-canonical u<= 0.
+                        // FIXME(eddyb) check the actual primitive type here.
+                        bx.icmp(IntPredicate::IntEQ, relative_discr, bx.cx().const_null(niche_llty))
+                    } else {
+                        let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
+                        bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
+                    };
+
+                    bx.select(
+                        is_niche,
+                        niche_discr,
+                        bx.cx().const_uint(cast_to, dataful_variant.as_u32() as u64),
+                    )
+                }
             }
         }
     }

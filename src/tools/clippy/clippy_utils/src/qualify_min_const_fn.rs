@@ -123,9 +123,10 @@ fn check_rvalue<'tcx>(
     match rvalue {
         Rvalue::ThreadLocalRef(_) => Err((span, "cannot access thread local storage in const fn".into())),
         Rvalue::Repeat(operand, _) | Rvalue::Use(operand) => check_operand(tcx, operand, span, body),
-        Rvalue::Len(place) | Rvalue::Discriminant(place) | Rvalue::Ref(_, _, place) | Rvalue::AddressOf(_, place) => {
-            check_place(tcx, *place, span, body)
-        },
+        Rvalue::Len(place)
+        | Rvalue::Discriminant { place, .. }
+        | Rvalue::Ref(_, _, place)
+        | Rvalue::AddressOf(_, place) => check_place(tcx, *place, span, body),
         Rvalue::Cast(CastKind::Misc, operand, cast_ty) => {
             use rustc_middle::ty::cast::CastTy;
             let cast_in = CastTy::from_ty(operand.ty(body, tcx)).expect("bad input type for cast");
