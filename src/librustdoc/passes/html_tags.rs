@@ -197,13 +197,9 @@ fn extract_tags(
 impl<'a, 'tcx> DocVisitor for InvalidHtmlTagsLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
-            Some(hir_id) => hir_id,
-            None => {
-                // If non-local, no need to check anything.
-                return;
-            }
-        };
+        let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.def_id)
+        // If non-local, no need to check anything.
+        else { return };
         let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
         if !dox.is_empty() {
             let report_diag = |msg: &str, range: &Range<usize>, is_open_tag: bool| {

@@ -1064,10 +1064,7 @@ fn render_assoc_items_inner(
 ) {
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = cx.cache();
-    let v = match cache.impls.get(&it) {
-        Some(v) => v,
-        None => return,
-    };
+    let Some(v) = cache.impls.get(&it) else { return };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut tmp_buf = Buffer::empty_from(w);
@@ -2664,12 +2661,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     let tcx = cx.tcx();
     let def_id = item.def_id.expect_def_id();
     let key = tcx.def_path_hash(def_id);
-    let call_locations = match cx.shared.call_locations.get(&key) {
-        Some(call_locations) => call_locations,
-        _ => {
-            return;
-        }
-    };
+    let Some(call_locations) = cx.shared.call_locations.get(&key) else { return };
 
     // Generate a unique ID so users can link to this section for a given method
     let id = cx.id_map.borrow_mut().derive("scraped-examples");

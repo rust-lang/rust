@@ -107,9 +107,9 @@ impl Clean<Option<GenericBound>> for hir::GenericBound<'_> {
                 let trait_ref = ty::TraitRef::identity(cx.tcx, def_id).skip_binder();
 
                 let generic_args = generic_args.clean(cx);
-                let bindings = match generic_args {
-                    GenericArgs::AngleBracketed { bindings, .. } => bindings,
-                    _ => bug!("clean: parenthesized `GenericBound::LangItemTrait`"),
+                let GenericArgs::AngleBracketed { bindings, .. } = generic_args
+                else {
+                    bug!("clean: parenthesized `GenericBound::LangItemTrait`");
                 };
 
                 let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, &bindings);
@@ -1273,10 +1273,7 @@ impl Clean<Item> for ty::AssocItem {
 
 fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
     let hir::Ty { hir_id: _, span, ref kind } = *hir_ty;
-    let qpath = match kind {
-        hir::TyKind::Path(qpath) => qpath,
-        _ => unreachable!(),
-    };
+    let hir::TyKind::Path(qpath) = kind else { unreachable!() };
 
     match qpath {
         hir::QPath::Resolved(None, ref path) => {

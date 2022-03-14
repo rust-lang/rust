@@ -99,10 +99,7 @@ crate fn load_string<P: AsRef<Path>>(
 fn load_external_files(names: &[String], diag: &rustc_errors::Handler) -> Option<String> {
     let mut out = String::new();
     for name in names {
-        let s = match load_string(name, diag) {
-            Ok(s) => s,
-            Err(_) => return None,
-        };
+        let Ok(s) = load_string(name, diag) else { return None };
         out.push_str(&s);
         out.push('\n');
     }

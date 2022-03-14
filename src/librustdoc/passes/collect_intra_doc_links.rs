@@ -1897,13 +1897,11 @@ fn report_diagnostic(
     DiagnosticInfo { item, ori_link: _, dox, link_range }: &DiagnosticInfo<'_>,
     decorate: impl FnOnce(&mut Diagnostic, Option<rustc_span::Span>),
 ) {
-    let hir_id = match DocContext::as_local_hir_id(tcx, item.def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            // If non-local, no need to check anything.
-            info!("ignoring warning from parent crate: {}", msg);
-            return;
-        }
+    let Some(hir_id) = DocContext::as_local_hir_id(tcx, item.def_id)
+    else {
+        // If non-local, no need to check anything.
+        info!("ignoring warning from parent crate: {}", msg);
+        return;
     };
 
     let sp = item.attr_span(tcx);

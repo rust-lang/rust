@@ -562,7 +562,7 @@ impl Options {
         let edition = config::parse_crate_edition(matches);
 
         let mut id_map = html::markdown::IdMap::new();
-        let external_html = match ExternalHtml::load(
+        let Some(external_html) = ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
             &matches.opt_strs("html-before-content"),
             &matches.opt_strs("html-after-content"),
@@ -573,9 +573,8 @@ impl Options {
             &mut id_map,
             edition,
             &None,
-        ) {
-            Some(eh) => eh,
-            None => return Err(3),
+        ) else {
+            return Err(3);
         };
 
         match matches.opt_str("r").as_deref() {
