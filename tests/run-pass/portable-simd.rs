@@ -102,9 +102,8 @@ fn simd_ops_i32() {
     assert_eq!(a % b, i32x4::from_array([0, 0, 1, 2]));
     assert_eq!(i32x2::splat(i32::MIN) % i32x2::splat(-1), i32x2::splat(0));
     assert_eq!(b.abs(), i32x4::from_array([1, 2, 3, 4]));
-    // FIXME not a per-lane method (https://github.com/rust-lang/portable-simd/issues/247)
-    // assert_eq!(a.max(b * i32x4::splat(4)), i32x4::from_array([10, 10, 12, 10]));
-    // assert_eq!(a.min(b * i32x4::splat(4)), i32x4::from_array([4, 8, 10, -16]));
+    assert_eq!(a.max(b * i32x4::splat(4)), i32x4::from_array([10, 10, 12, 10]));
+    assert_eq!(a.min(b * i32x4::splat(4)), i32x4::from_array([4, 8, 10, -16]));
 
     assert_eq!(
         i8x4::from_array([i8::MAX, -23, 23, i8::MIN]).saturating_add(i8x4::from_array([1, i8::MIN, i8::MAX, 28])),
