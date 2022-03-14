@@ -2480,7 +2480,7 @@ impl<'a> Parser<'a> {
             )?;
             let guard = if this.eat_keyword(kw::If) {
                 let if_span = this.prev_token.span;
-                let cond = this.parse_expr()?;
+                let cond = this.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
                 let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
                 if has_let_expr {
                     if does_not_have_bin_op {
@@ -2496,6 +2496,15 @@ impl<'a> Parser<'a> {
             };
             let arrow_span = this.token.span;
             if let Err(mut err) = this.expect(&token::FatArrow) {
+                if guard.is_some() && this.token.kind == token::OpenDelim(token::Brace) {
+                    err.span_suggestion_verbose(
+                        this.token.span.shrink_to_lo(),
+                        "try adding a fat arrow here",
+                        "=> ".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                }
                 // We might have a `=>` -> `=` or `->` typo (issue #89396).
                 if TokenKind::FatArrow
                     .similar_tokens()

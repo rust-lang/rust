@@ -1,0 +1,13 @@
+error: expected one of `!`, `.`, `::`, `=>`, `?`, or an operator, found `{`
+  --> $DIR/missing-fat-arrow-after-match-guard.rs:7:27
+   |
+LL |         Some(x) if x == y {
+   |                           ^ expected one of `!`, `.`, `::`, `=>`, `?`, or an operator
+   |
+help: try adding a fat arrow here
+   |
+LL |         Some(x) if x == y => {
+   |                           ++
+
+error: aborting due to previous error
+
