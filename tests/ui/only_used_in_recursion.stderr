@@ -1,0 +1,82 @@
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:3:21
+   |
+LL | fn simple(a: usize, b: usize) -> usize {
+   |                     ^ help: if this is intentional, prefix with an underscore: `_b`
+   |
+   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:7:24
+   |
+LL | fn with_calc(a: usize, b: isize) -> usize {
+   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:11:14
+   |
+LL | fn tuple((a, b): (usize, usize)) -> usize {
+   |              ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:15:24
+   |
+LL | fn let_tuple(a: usize, b: usize) -> usize {
+   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:20:14
+   |
+LL | fn array([a, b]: [usize; 2]) -> usize {
+   |              ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:24:20
+   |
+LL | fn index(a: usize, mut b: &[usize], c: usize) -> usize {
+   |                    ^^^^^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:24:37
+   |
+LL | fn index(a: usize, mut b: &[usize], c: usize) -> usize {
+   |                                     ^ help: if this is intentional, prefix with an underscore: `_c`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:28:21
+   |
+LL | fn break_(a: usize, mut b: usize, mut c: usize) -> usize {
+   |                     ^^^^^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:46:23
+   |
+LL | fn mut_ref2(a: usize, b: &mut usize) -> usize {
+   |                       ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:51:28
+   |
+LL | fn not_primitive(a: usize, b: String) -> usize {
+   |                            ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:68:33
+   |
+LL |     fn method2(&self, a: usize, b: usize) -> usize {
+   |                                 ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:90:24
+   |
+LL |     fn hello(a: usize, b: usize) -> usize {
+   |                        ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: parameter is only used in recursion
+  --> $DIR/only_used_in_recursion.rs:94:32
+   |
+LL |     fn hello2(&self, a: usize, b: usize) -> usize {
+   |                                ^ help: if this is intentional, prefix with an underscore: `_b`
+
+error: aborting due to 13 previous errors
+

@@ -2,7 +2,7 @@
 // aux-build:proc_macro_derive.rs
 
 #![warn(clippy::use_self)]
-#![allow(dead_code)]
+#![allow(dead_code, unreachable_code)]
 #![allow(
     clippy::should_implement_trait,
     clippy::upper_case_acronyms,
@@ -516,6 +516,29 @@ mod self_is_ty_param {
         fn test() {
             let _: I::Item;
             let _: I; // this could lint, but is questionable
+        }
+    }
+}
+
+mod use_self_in_pat {
+    enum Foo {
+        Bar,
+        Baz,
+    }
+
+    impl Foo {
+        fn do_stuff(self) {
+            match self {
+                Foo::Bar => unimplemented!(),
+                Foo::Baz => unimplemented!(),
+            }
+            match Some(1) {
+                Some(_) => unimplemented!(),
+                None => unimplemented!(),
+            }
+            if let Foo::Bar = self {
+                unimplemented!()
+            }
         }
     }
 }

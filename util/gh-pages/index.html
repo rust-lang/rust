@@ -25,7 +25,56 @@ Otherwise, have a great day =^.^=
         blockquote { font-size: 1em; }
         [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak { display: none !important; }
 
-        .form-inline .checkbox { margin-right: 0.6em }
+        .dropdown-menu {
+            color: var(--fg);
+            background: var(--theme-popup-bg);
+            border: 1px solid var(--theme-popup-border);
+        }
+
+        .dropdown-menu .divider {
+            background-color: var(--theme-popup-border);
+        }
+
+        .dropdown-menu .checkbox {
+            display: block;
+            white-space: nowrap;
+            margin: 0;
+        }
+        .dropdown-menu .checkbox label {
+            padding: 3px 20px;
+            width: 100%;
+        }
+
+        .dropdown-menu .checkbox input {
+            position: relative;
+            margin: 0 0.5rem 0;
+            padding: 0;
+        }
+
+        .dropdown-menu .checkbox:hover {
+            background-color: var(--theme-hover);
+        }
+
+        div.panel div.panel-body button.dropdown-toggle {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+        }
+
+        div.panel div.panel-body button.dropdown-toggle:hover {
+            box-shadow: 0 0 3px var(--searchbar-shadow-color);
+        }
+
+        div.panel div.panel-body .open button.dropdown-toggle {
+            background: var(--searchbar-bg);
+            color: var(--searchbar-fg);
+            border-color: var(--theme-popup-border);
+            filter: brightness(90%);
+        }
+
+        .dropdown-toggle .badge {
+            background-color: #777;
+        }
 
         .panel-heading { cursor: pointer; }
 
@@ -37,6 +86,16 @@ Otherwise, have a great day =^.^=
 
         .panel .panel-title-name .anchor { display: none; }
         .panel:hover .panel-title-name .anchor { display: inline;}
+
+        .search-control {
+            margin-top: 15px;
+        }
+
+        @media (min-width: 992px) {
+            .search-control {
+                margin-top: 0;
+            }
+        }
 
         .label {
             padding-top: 0.3em;
@@ -143,13 +202,17 @@ Otherwise, have a great day =^.^=
             --inline-code-bg: #191f26;
         }
 
+        .theme-dropdown {
+            position: absolute;
+            margin: 0.7em;
+            z-index: 10;
+        }
+
         /* Applying the mdBook theme */
         .theme-icon {
-            position: absolute;
             text-align: center;
             width: 2em;
             height: 2em;
-            margin: 0.7em;
             line-height: 2em;
             border: solid 1px var(--icons);
             border-radius: 5px;
@@ -160,23 +223,28 @@ Otherwise, have a great day =^.^=
             background: var(--theme-hover);
         }
         .theme-choice {
-            position: absolute;
-            margin-top: calc(2em + 0.7em);
-            margin-left: 0.7em;
+            display: none;
             list-style: none;
             border: 1px solid var(--theme-popup-border);
             border-radius: 5px;
             color: var(--fg);
             background: var(--theme-popup-bg);
             padding: 0 0;
+            overflow: hidden;
         }
+
+        .theme-dropdown.open .theme-choice {
+            display: block;
+        }
+
         .theme-choice > li {
             padding: 5px 10px;
             font-size: 0.8em;
             user-select: none;
             cursor: pointer;
         }
-        .theme-choice > li:hover {
+
+        .theme-choice>li:hover {
             background: var(--theme-hover);
         }
 
@@ -240,17 +308,15 @@ Otherwise, have a great day =^.^=
 
     </style>
 </head>
-<body>
-    <div id="theme-icon" class="theme-icon">&#128396;</div>
-    <ul id="theme-menu" class="theme-choice" style="display: none;">
-        <li id="light">Light</li>
-        <li id="rust">Rust</li>
-        <li id="coal">Coal</li>
-        <li id="navy">Navy</li>
-        <li id="ayu">Ayu</li>
-    </ul>
+<body ng-app="clippy" ng-controller="lintList">
+    <div theme-dropdown class="theme-dropdown">
+        <div id="theme-icon" class="theme-icon">&#128396;</div>
+        <ul id="theme-menu" class="theme-choice">
+            <li id="{{id}}" ng-repeat="(id, name) in themes" ng-click="selectTheme(id)">{{name}}</li>
+        </ul>
+    </div>
 
-    <div class="container" ng-app="clippy" ng-controller="lintList">
+    <div class="container">
         <div class="page-header">
             <h1>Clippy Lints</h1>
         </div>
@@ -271,38 +337,62 @@ Otherwise, have a great day =^.^=
             </div>
 
             <div class="panel panel-default" ng-show="data">
-                <div class="panel-body row filter-panel">
-                    <div class="col-md-6 form-inline">
-                        <div class="form-group form-group-lg">
-                            <p class="h4">
-                                Lint levels
-                                <a href="https://doc.rust-lang.org/rustc/lints/levels.html">(?)</a>
-                            </p>
-                            <div class="checkbox" ng-repeat="(level, enabled) in levels">
-                                <label class="text-capitalize">
-                                    <input type="checkbox" ng-model="levels[level]" />
-                                    {{level}}
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6 form-inline">
-                        <div class="form-group form-group-lg">
-                            <p class="h4">
-                                Lint groups
-                                <a href="https://github.com/rust-lang/rust-clippy/#clippy">(?)</a>
-                            </p>
-                            <div class="checkbox" ng-repeat="(group, enabled) in groups">
-                                <label class="text-capitalize">
-                                    <input type="checkbox" ng-model="groups[group]" />
-                                    {{group}}
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div class="panel-body row">
-                    <div class="col-md-12 form-horizontal">
+                    <div class="col-12 col-md-4">
+                        <div class="btn-group" filter-dropdown>
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Lint levels <span class="badge">{{selectedValuesCount(levels)}}</span> <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li class="checkbox">
+                                    <label ng-click="toggleLevels(true)">
+                                        <input type="checkbox" class="invisible" />
+                                        All
+                                    </label>
+                                </li>
+                                <li class="checkbox">
+                                    <label ng-click="toggleLevels(false)">
+                                        <input type="checkbox" class="invisible" />
+                                        None
+                                    </label>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li class="checkbox" ng-repeat="(level, enabled) in levels">
+                                    <label class="text-capitalize">
+                                        <input type="checkbox" ng-model="levels[level]" />
+                                        {{level}}
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="btn-group" filter-dropdown>
+                            <button type="button" class="btn btn-default dropdown-toggle">
+                                Lint groups <span class="badge">{{selectedValuesCount(groups)}}</span> <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li class="checkbox">
+                                    <label ng-click="toggleGroups(true)">
+                                        <input type="checkbox" class="invisible" />
+                                        All
+                                    </label>
+                                </li>
+                                <li class="checkbox">
+                                    <label ng-click="toggleGroups(false)">
+                                        <input type="checkbox" class="invisible" />
+                                        None
+                                    </label>
+                                </li>
+                                <li role="separator" class="divider"></li>
+                                <li class="checkbox" ng-repeat="(group, enabled) in groups">
+                                    <label class="text-capitalize">
+                                        <input type="checkbox" ng-model="groups[group]" />
+                                        {{group}}
+                                    </label>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-8 search-control">
                         <div class="input-group">
                             <label class="input-group-addon" id="filter-label" for="filter-input">Filter:</label>
                             <input type="text" class="form-control" placeholder="Keywords or search string" id="filter-input" ng-model="search" ng-model-options="{debounce: 50}"/>
@@ -336,7 +426,7 @@ Otherwise, have a great day =^.^=
                     </h2>
                 </header>
 
-                <div class="list-group lint-docs" ng-class="{collapse: true, in: open[lint.id]}">
+                <div class="list-group lint-docs" ng-if="open[lint.id]" ng-class="{collapse: true, in: open[lint.id]}">
                     <div class="list-group-item lint-doc-md" ng-bind-html="lint.docs | markdown"></div>
                     <div class="lint-additional-info-container">
                         <!-- Applicability -->
@@ -365,7 +455,7 @@ Otherwise, have a great day =^.^=
     </div>
 
     <a href="https://github.com/rust-lang/rust-clippy">
-        <img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
+        <img style="position: absolute; top: 0; right: 0; border: 0; clip-path: polygon(0% 0%, 100% 0%, 100% 100%);" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on Github"/>
     </a>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/12.3.2/markdown-it.min.js"></script>
@@ -429,6 +519,46 @@ Otherwise, have a great day =^.^=
                 );
             };
         })
+        .directive('themeDropdown', function ($document) {
+            return {
+                restrict: 'A',
+                link: function ($scope, $element, $attr) {
+                    $element.bind('click', function () {
+                        $element.toggleClass('open');
+                        $element.addClass('open-recent');
+                    });
+
+                    $document.bind('click', function () {
+                        if (!$element.hasClass('open-recent')) {
+                            $element.removeClass('open');
+                        }
+                        $element.removeClass('open-recent');
+                    })
+                }
+            }
+        })
+        .directive('filterDropdown', function ($document) {
+            return {
+                restrict: 'A',
+                link: function ($scope, $element, $attr) {
+                    $element.bind('click', function (event) {
+                        if (event.target.closest('button')) {
+                            $element.toggleClass('open');
+                        } else {
+                            $element.addClass('open');
+                        }
+                        $element.addClass('open-recent');
+                    });
+
+                    $document.bind('click', function () {
+                        if (!$element.hasClass('open-recent')) {
+                            $element.removeClass('open');
+                        }
+                        $element.removeClass('open-recent');
+                    })
+                }
+            }
+        })
         .directive('onFinishRender', function ($timeout) {
             return {
                 restrict: 'A',
@@ -462,6 +592,38 @@ Otherwise, have a great day =^.^=
                 suspicious: true,
             };
             $scope.groups = GROUPS_FILTER_DEFAULT;
+            const THEMES_DEFAULT = {
+                light: "Light",
+                rust: "Rust",
+                coal: "Coal",
+                navy: "Navy",
+                ayu: "Ayu"
+            };
+            $scope.themes = THEMES_DEFAULT;
+
+            $scope.selectTheme = function (theme) {
+                setTheme(theme, true);
+            }
+
+            $scope.toggleLevels = function (value) {
+                const levels = $scope.levels;
+                for (const key in levels) {
+                    if (levels.hasOwnProperty(key)) {
+                        levels[key] = value;
+                    }
+                }
+            };
+            $scope.toggleGroups = function (value) {
+                const groups = $scope.groups;
+                for (const key in groups) {
+                    if (groups.hasOwnProperty(key)) {
+                        groups[key] = value;
+                    }
+                }
+            };
+            $scope.selectedValuesCount = function (obj) {
+                return Object.values(obj).filter(x => x).length;
+            }
             $scope.byGroups = function (lint) {
                 return $scope.groups[lint.group];
             };
@@ -557,28 +719,6 @@ Otherwise, have a great day =^.^=
             }
         }
     }
-
-    function setupListeners() {
-        let themeIcon = document.getElementById("theme-icon");
-        let themeMenu = document.getElementById("theme-menu");
-        themeIcon.addEventListener("click", function(e) {
-            if (themeMenu.style.display == "none") {
-                themeMenu.style.display = "block";
-            } else {
-                themeMenu.style.display = "none";
-            }
-        });
-
-        let children = themeMenu.children;
-        for (let index = 0; index < children.length; index++) {
-            let child = children[index];
-            child.addEventListener("click", function(e) {
-                setTheme(child.id, true);
-            });
-        }
-    }
-
-    setupListeners();
 
     function setTheme(theme, store) {
         let enableHighlight = false;
