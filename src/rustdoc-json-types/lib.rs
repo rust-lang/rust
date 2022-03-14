@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 13;
+pub const FORMAT_VERSION: u32 = 14;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -378,7 +378,8 @@ pub enum GenericParamDefKind {
         synthetic: bool,
     },
     Const {
-        ty: Type,
+        #[serde(rename = "type")]
+        type_: Type,
         default: Option<String>,
     },
 }
@@ -386,9 +387,19 @@ pub enum GenericParamDefKind {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum WherePredicate {
-    BoundPredicate { ty: Type, bounds: Vec<GenericBound> },
-    RegionPredicate { lifetime: String, bounds: Vec<GenericBound> },
-    EqPredicate { lhs: Type, rhs: Term },
+    BoundPredicate {
+        #[serde(rename = "type")]
+        type_: Type,
+        bounds: Vec<GenericBound>,
+    },
+    RegionPredicate {
+        lifetime: String,
+        bounds: Vec<GenericBound>,
+    },
+    EqPredicate {
+        lhs: Type,
+        rhs: Term,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -494,7 +505,7 @@ pub struct Trait {
     pub items: Vec<Id>,
     pub generics: Generics,
     pub bounds: Vec<GenericBound>,
-    pub implementors: Vec<Id>,
+    pub implementations: Vec<Id>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

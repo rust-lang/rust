@@ -31,7 +31,7 @@ def check_generics(generics):
     for where_predicate in generics["where_predicates"]:
         if "bound_predicate" in where_predicate:
             pred = where_predicate["bound_predicate"]
-            check_type(pred["ty"])
+            check_type(pred["type"])
             for bound in pred["bounds"]:
                 check_generic_bound(bound)
         elif "region_predicate" in where_predicate:
@@ -171,7 +171,7 @@ while work_list:
         for bound in item["inner"]["bounds"]:
             check_generic_bound(bound)
         work_list |= (
-            set(item["inner"]["items"]) | set(item["inner"]["implementors"])
+            set(item["inner"]["items"]) | set(item["inner"]["implementations"])
         ) - visited
     elif item["kind"] == "impl":
         check_generics(item["inner"]["generics"])
