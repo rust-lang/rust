@@ -111,10 +111,7 @@ pub fn expand_test_or_bench(
             // These were a warning before #92959 and need to continue being that to avoid breaking
             // stable user code (#94508).
             ast::ItemKind::MacCall(_) => diag.struct_span_warn(attr_sp, msg),
-            // `.forget_guarantee()` needed to get these two arms to match types. Because of how
-            // locally close the `.emit()` call is I'm comfortable with it, but if it can be
-            // reworked in the future to not need it, it'd be nice.
-            _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+            _ => diag.struct_span_err(attr_sp, msg),
         };
         err.span_label(attr_sp, "the `#[test]` macro causes a a function to be run on a test and has no effect on non-functions")
             .span_label(item.span, format!("expected a non-associated function, found {} {}", item.kind.article(), item.kind.descr()))
