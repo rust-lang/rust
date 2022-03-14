@@ -546,9 +546,9 @@ pub(crate) struct PredicateS<'tcx> {
 }
 
 /// Use this rather than `PredicateS`, whenever possible.
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Predicate<'tcx>(Interned<'tcx, PredicateS<'tcx>>);
+pub struct Predicate<'tcx>(Interned<'tcx, WithStableHash<PredicateS<'tcx>>>);
 
 impl<'tcx> Predicate<'tcx> {
     /// Gets the inner `Binder<'tcx, PredicateKind<'tcx>>`.
@@ -627,7 +627,7 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for PredicateS<'tcx> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let PredicateS {
             ref kind,
@@ -636,7 +636,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for Predicate<'tcx> {
             // also contained in `kind`, so no need to hash them.
             flags: _,
             outer_exclusive_binder: _,
-        } = self.0.0;
+        } = self;
 
         kind.hash_stable(hcx, hasher);
     }
