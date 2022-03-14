@@ -206,7 +206,7 @@
 #![feature(asm_const)]
 //
 // Target features:
-#![feature(aarch64_target_feature)]
+#![cfg_attr(bootstrap, feature(aarch64_target_feature))]
 #![feature(adx_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
