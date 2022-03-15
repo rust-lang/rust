@@ -6466,7 +6466,6 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
               dsto, Type::getInt8PtrTy(dsto->getContext()));
         unsigned dstaddr =
             cast<PointerType>(dsto->getType())->getAddressSpace();
-        auto secretpt = PointerType::get(secretty, dstaddr);
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           dsto = Builder2.CreateConstInBoundsGEP1_64(
@@ -6480,13 +6479,13 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
                 ? shadow_src
                 : gutils->lookupM(shadow_src, Builder2);
         if (mode != DerivativeMode::ForwardModeSplit)
-          dsto = Builder2.CreatePointerCast(dsto, secretpt);
+          dsto = Builder2.CreatePointerCast(
+              dsto, PointerType::get(secretty, dstaddr));
         if (srco->getType()->isIntegerTy())
           srco = Builder2.CreateIntToPtr(
               srco, Type::getInt8PtrTy(srco->getContext()));
         unsigned srcaddr =
             cast<PointerType>(srco->getType())->getAddressSpace();
-        secretpt = PointerType::get(secretty, srcaddr);
         if (offset != 0) {
 #if LLVM_VERSION_MAJOR > 7
           srco = Builder2.CreateConstInBoundsGEP1_64(
@@ -6496,7 +6495,8 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
 #endif
         }
         if (mode != DerivativeMode::ForwardModeSplit)
-          srco = Builder2.CreatePointerCast(srco, secretpt);
+          srco = Builder2.CreatePointerCast(
+              srco, PointerType::get(secretty, srcaddr));
 
         if (mode == DerivativeMode::ForwardModeSplit) {
 #if LLVM_VERSION_MAJOR >= 11
@@ -6518,8 +6518,10 @@ void SubTransferHelper(GradientUtils *gutils, DerivativeMode mode,
           }
         } else {
           Value *args[]{
-              Builder2.CreatePointerCast(dsto, secretpt),
-              Builder2.CreatePointerCast(srco, secretpt),
+              Builder2.CreatePointerCast(dsto,
+                                         PointerType::get(secretty, dstaddr)),
+              Builder2.CreatePointerCast(srco,
+                                         PointerType::get(secretty, srcaddr)),
               Builder2.CreateUDiv(
                   gutils->lookupM(length, Builder2),
                   ConstantInt::get(length->getType(),
