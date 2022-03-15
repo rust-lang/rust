@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{eager_or_lazy, usage};
@@ -48,20 +48,16 @@ pub(super) fn check<'tcx>(
                     Applicability::MaybeIncorrect
                 };
 
-                span_lint_and_sugg(
-                    cx,
-                    UNNECESSARY_LAZY_EVALUATIONS,
-                    expr.span,
-                    msg,
-                    &format!("use `{}` instead", simplify_using),
-                    format!(
-                        "{0}.{1}({2})",
-                        snippet(cx, recv.span, ".."),
-                        simplify_using,
-                        snippet(cx, body_expr.span, ".."),
-                    ),
-                    applicability,
-                );
+                if let hir::ExprKind::MethodCall(_, _, span) = expr.kind {
+                    span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
+                        diag.span_suggestion(
+                            span,
+                            &format!("use `{}(..)` instead", simplify_using),
+                            format!("{}({})", simplify_using, snippet(cx, body_expr.span, "..")),
+                            applicability,
+                        );
+                    });
+                }
             }
         }
     }
