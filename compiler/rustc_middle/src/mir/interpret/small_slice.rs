@@ -19,11 +19,18 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 /// a pointer on the host system will encode the bytes directly in the pointer instead of
 /// allocating on the heap.
 pub struct SmallSlice {
+    // INVARIANT: we use the `small` variant if `len <= SMALL_CAPACITY` and the `ptr` variant
+    // otherwise. Even though larger lengths could be encoded via the `ptr` variant, we have
+    // no way to know what variant is being used beyond the length.
     data: SmallPointer,
     len: usize,
 }
 
+// SAFETY: `SmallSlice` is equivalent to `Box<[u8]>`. Since it doesn't actually allow mutating
+// via immutable methods, we can safely share it across threads.
 unsafe impl Sync for SmallSlice {}
+// SAFETY: `SmallSlice` is equivalent to `Box<[u8]>`. Since it doesn't contain anything that
+// msut stay on one thread, we can safely move it to another thread.
 unsafe impl Send for SmallSlice {}
 
 impl Clone for SmallSlice {
