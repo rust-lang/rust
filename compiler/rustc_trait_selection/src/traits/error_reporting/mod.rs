@@ -369,7 +369,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         (true, Some(None)) => {
                                             Some(format!("{cannot_do_this} in const contexts"))
                                         }
-                                        // overriden post message
+                                        // overridden post message
                                         (true, Some(Some(post_message))) => {
                                             Some(format!("{cannot_do_this}{post_message}"))
                                         }

@@ -69,7 +69,7 @@ pub struct SymbolGallery {
 
 impl SymbolGallery {
     /// Insert a symbol and its span into symbol gallery.
-    /// If the symbol has occurred before, ignore the new occurance.
+    /// If the symbol has occurred before, ignore the new occurrance.
     pub fn insert(&self, symbol: Symbol, span: Span) {
         self.symbols.lock().entry(symbol).or_insert(span);
     }

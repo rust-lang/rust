@@ -328,7 +328,7 @@ impl UnsafeCode {
         cx.struct_span_lint(UNSAFE_CODE, span, decorate);
     }
 
-    fn report_overriden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
+    fn report_overridden_symbol_name(&self, cx: &EarlyContext<'_>, span: Span, msg: &str) {
         self.report_unsafe(cx, span, |lint| {
             lint.build(msg)
                 .note(
@@ -380,14 +380,14 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::Fn(..) => {
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overriden_symbol_name(
+                    self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a `no_mangle` function",
                     );
                 }
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overriden_symbol_name(
+                    self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a function with `export_name`",
@@ -397,14 +397,14 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::Static(..) => {
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                    self.report_overriden_symbol_name(
+                    self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a `no_mangle` static",
                     );
                 }
                 if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                    self.report_overriden_symbol_name(
+                    self.report_overridden_symbol_name(
                         cx,
                         attr.span,
                         "declaration of a static with `export_name`",
@@ -419,14 +419,14 @@ impl EarlyLintPass for UnsafeCode {
     fn check_impl_item(&mut self, cx: &EarlyContext<'_>, it: &ast::AssocItem) {
         if let ast::AssocItemKind::Fn(..) = it.kind {
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::no_mangle) {
-                self.report_overriden_symbol_name(
+                self.report_overridden_symbol_name(
                     cx,
                     attr.span,
                     "declaration of a `no_mangle` method",
                 );
             }
             if let Some(attr) = cx.sess().find_by_name(&it.attrs, sym::export_name) {
-                self.report_overriden_symbol_name(
+                self.report_overridden_symbol_name(
                     cx,
                     attr.span,
                     "declaration of a method with `export_name`",

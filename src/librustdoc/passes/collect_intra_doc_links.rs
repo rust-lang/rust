@@ -948,7 +948,7 @@ fn resolve_associated_trait_item<'a>(
 ///
 /// This function returns `None` if no associated item was found in the impl.
 /// This can occur when the trait associated item has a default value that is
-/// not overriden in the impl.
+/// not overridden in the impl.
 ///
 /// This is just a wrapper around [`TyCtxt::impl_item_implementor_ids()`] and
 /// [`TyCtxt::associated_item()`] (with some helpful logging added).
