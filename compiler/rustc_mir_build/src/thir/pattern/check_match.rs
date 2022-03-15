@@ -158,7 +158,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         self.check_patterns(pat, Refutable);
         let mut cx = self.new_cx(scrutinee.hir_id);
         let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-        check_let_reachability(&mut cx, pat.hir_id, tpat, span);
+        self.check_let_reachability(&mut cx, pat.hir_id, tpat, span);
     }
 
     fn check_match(
@@ -176,7 +176,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
                 self.check_patterns(pat, Refutable);
                 let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-                check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
+                self.check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
             }
         }
 
@@ -222,6 +222,157 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, hir_arms, expr_span);
             }
         }
+    }
+
+    fn check_let_reachability(
+        &mut self,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        pat_id: HirId,
+        pat: &'p DeconstructedPat<'p, 'tcx>,
+        span: Span,
+    ) {
+        if self.check_let_chain(cx, pat_id) {
+            return;
+        }
+
+        if is_let_irrefutable(cx, pat_id, pat) {
+            irrefutable_let_pattern(cx.tcx, pat_id, span);
+        }
+    }
+
+    fn check_let_chain(&mut self, cx: &mut MatchCheckCtxt<'p, 'tcx>, pat_id: HirId) -> bool {
+        let hir = self.tcx.hir();
+        let parent = hir.get_parent_node(pat_id);
+
+        // First, figure out if the given pattern is part of a let chain,
+        // and if so, obtain the top node of the chain.
+        let mut top = parent;
+        let mut part_of_chain = false;
+        loop {
+            let new_top = hir.get_parent_node(top);
+            if let hir::Node::Expr(
+                hir::Expr {
+                    kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, lhs, rhs),
+                    ..
+                },
+                ..,
+            ) = hir.get(new_top)
+            {
+                // If this isn't the first iteration, we need to check
+                // if there is a let expr before us in the chain, so
+                // that we avoid doubly checking the let chain.
+
+                // The way a chain of &&s is encoded is ((let ... && let ...) && let ...) && let ...
+                // as && is left-to-right associative. Thus, we need to check rhs.
+                if part_of_chain && matches!(rhs.kind, hir::ExprKind::Let(..)) {
+                    return true;
+                }
+                // If there is a let at the lhs, and we provide the rhs, we don't do any checking either.
+                if !part_of_chain && matches!(lhs.kind, hir::ExprKind::Let(..)) && rhs.hir_id == top
+                {
+                    return true;
+                }
+            } else {
+                // We've reached the top.
+                break;
+            }
+
+            // Since this function is called within a let context, it is reasonable to assume that any parent
+            // `&&` infers a let chain
+            part_of_chain = true;
+            top = new_top;
+        }
+        if !part_of_chain {
+            return false;
+        }
+
+        // Second, obtain the refutabilities of all exprs in the chain,
+        // and record chain members that aren't let exprs.
+        let mut chain_refutabilities = Vec::new();
+        let hir::Node::Expr(top_expr) = hir.get(top) else {
+            // We ensure right above that it's an Expr
+            unreachable!()
+        };
+        let mut cur_expr = top_expr;
+        loop {
+            let mut add = |expr: &hir::Expr<'tcx>| {
+                let refutability = match expr.kind {
+                    hir::ExprKind::Let(hir::Let { pat, init, span, .. }) => {
+                        let mut ncx = self.new_cx(init.hir_id);
+                        let tpat = self.lower_pattern(&mut ncx, pat, &mut false);
+
+                        let refutable = !is_let_irrefutable(&mut ncx, pat.hir_id, tpat);
+                        Some((*span, refutable))
+                    }
+                    _ => None,
+                };
+                chain_refutabilities.push(refutability);
+            };
+            if let hir::Expr {
+                kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, lhs, rhs),
+                ..
+            } = cur_expr
+            {
+                add(rhs);
+                cur_expr = lhs;
+            } else {
+                add(cur_expr);
+                break;
+            }
+        }
+        chain_refutabilities.reverse();
+
+        // Third, emit the actual warnings.
+
+        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, false)))) {
+            // The entire chain is made up of irrefutable `let` statements
+            let let_source = let_source_parent(self.tcx, top, None);
+            irrefutable_let_patterns(
+                cx.tcx,
+                top,
+                let_source,
+                chain_refutabilities.len(),
+                top_expr.span,
+            );
+            return true;
+        }
+        let lint_affix = |affix: &[Option<(Span, bool)>], kind, suggestion| {
+            let span_start = affix[0].unwrap().0;
+            let span_end = affix.last().unwrap().unwrap().0;
+            let span = span_start.to(span_end);
+            let cnt = affix.len();
+            cx.tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, top, span, |lint| {
+                let s = pluralize!(cnt);
+                let mut diag = lint.build(&format!("{kind} irrefutable pattern{s} in let chain"));
+                diag.note(&format!(
+                    "{these} pattern{s} will always match",
+                    these = pluralize!("this", cnt),
+                ));
+                diag.help(&format!(
+                    "consider moving {} {suggestion}",
+                    if cnt > 1 { "them" } else { "it" }
+                ));
+                diag.emit()
+            });
+        };
+        if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
+            // The chain has a non-zero prefix of irrefutable `let` statements.
+
+            // Check if the let source is while, for there is no alternative place to put a prefix,
+            // and we shouldn't lint.
+            let let_source = let_source_parent(self.tcx, top, None);
+            if !matches!(let_source, LetSource::WhileLet) {
+                // Emit the lint
+                let prefix = &chain_refutabilities[..until];
+                lint_affix(prefix, "leading", "outside of the construct");
+            }
+        }
+        if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
+            // The chain has a non-empty suffix of irrefutable `let` statements
+            let suffix = &chain_refutabilities[from + 1..];
+            lint_affix(suffix, "trailing", "into the body");
+        }
+        true
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
@@ -453,6 +604,17 @@ fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
+    let source = let_source(tcx, id);
+    irrefutable_let_patterns(tcx, id, source, 1, span);
+}
+
+fn irrefutable_let_patterns(
+    tcx: TyCtxt<'_>,
+    id: HirId,
+    source: LetSource,
+    count: usize,
+    span: Span,
+) {
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -460,14 +622,15 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
             $note_sufix:expr,
             $help_sufix:expr
         ) => {{
-            let mut diag = $lint.build(concat!("irrefutable ", $source_name, " pattern"));
-            diag.note(concat!("this pattern will always match, so the ", $note_sufix));
+            let s = pluralize!(count);
+            let these = pluralize!("this", count);
+            let mut diag = $lint.build(&format!("irrefutable {} pattern{s}", $source_name));
+            diag.note(&format!("{these} pattern{s} will always match, so the {}", $note_sufix));
             diag.help(concat!("consider ", $help_sufix));
             diag.emit()
         }};
     }
 
-    let source = let_source(tcx, id);
     let span = match source {
         LetSource::LetElse(span) => span,
         _ => span,
@@ -511,16 +674,11 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
     });
 }
 
-fn check_let_reachability<'p, 'tcx>(
+fn is_let_irrefutable<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     pat_id: HirId,
     pat: &'p DeconstructedPat<'p, 'tcx>,
-    span: Span,
-) {
-    if is_let_chain(cx.tcx, pat_id) {
-        return;
-    }
-
+) -> bool {
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
 
@@ -529,10 +687,9 @@ fn check_let_reachability<'p, 'tcx>(
     // `is_uninhabited` check.
     report_arm_reachability(&cx, &report);
 
-    if report.non_exhaustiveness_witnesses.is_empty() {
-        // The match is exhaustive, i.e. the `if let` pattern is irrefutable.
-        irrefutable_let_pattern(cx.tcx, pat_id, span);
-    }
+    // If the list of witnesses is empty, the match is exhaustive,
+    // i.e. the `if let` pattern is irrefutable.
+    report.non_exhaustiveness_witnesses.is_empty()
 }
 
 /// Report unreachable arms, if any.
@@ -941,13 +1098,19 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     let hir = tcx.hir();
 
     let parent = hir.get_parent_node(pat_id);
+    let_source_parent(tcx, parent, Some(pat_id))
+}
+
+fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> LetSource {
+    let hir = tcx.hir();
+
     let parent_node = hir.get(parent);
 
     match parent_node {
         hir::Node::Arm(hir::Arm {
             guard: Some(hir::Guard::IfLet(&hir::Pat { hir_id, .. }, _)),
             ..
-        }) if hir_id == pat_id => {
+        }) if Some(hir_id) == pat_id => {
             return LetSource::IfLetGuard;
         }
         hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
@@ -979,22 +1142,4 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     }
 
     LetSource::GenericLet
-}
-
-// Since this function is called within a let context, it is reasonable to assume that any parent
-// `&&` infers a let chain
-fn is_let_chain(tcx: TyCtxt<'_>, pat_id: HirId) -> bool {
-    let hir = tcx.hir();
-    let parent = hir.get_parent_node(pat_id);
-    let parent_parent = hir.get_parent_node(parent);
-    matches!(
-        hir.get(parent_parent),
-        hir::Node::Expr(
-            hir::Expr {
-                kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, ..),
-                ..
-            },
-            ..
-        )
-    )
 }
