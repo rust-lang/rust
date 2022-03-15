@@ -661,6 +661,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn run_debuginfo_cdb_test_no_opt(&self) {
+        let exe_file = self.make_exe_name();
+
+        // Existing PDB files are update in-place. When changing the debuginfo
+        // the compiler generates for something, this can lead to the situation
+        // where both the old and the new version of the debuginfo for the same
+        // type is present in the PDB, which is very confusing.
+        // Therefore we delete any existing PDB file before compiling the test
+        // case.
+        // FIXME: If can reliably detect that MSVC's link.exe is used, then
+        //        passing `/INCREMENTAL:NO` might be a cleaner way to do this.
+        let pdb_file = exe_file.with_extension(".pdb");
+        if pdb_file.exists() {
+            std::fs::remove_file(pdb_file).unwrap();
+        }
+
         // compile test file (it should have 'compile-flags:-g' in the header)
         let should_run = self.run_if_enabled();
         let compile_result = self.compile_test(should_run, EmitMetadata::No);
@@ -670,8 +685,6 @@ impl<'test> TestCx<'test> {
         if let WillExecute::Disabled = should_run {
             return;
         }
-
-        let exe_file = self.make_exe_name();
 
         let prefixes = {
             static PREFIXES: &[&str] = &["cdb", "cdbg"];

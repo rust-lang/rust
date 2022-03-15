@@ -140,8 +140,8 @@ pub(crate) unsafe fn codegen(
     llvm::LLVMDisposeBuilder(llbuilder);
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CrateDebugContext::new(llmod);
-        debuginfo::metadata::compile_unit_metadata(tcx, module_name, &dbg_cx);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(llmod);
+        debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
 }

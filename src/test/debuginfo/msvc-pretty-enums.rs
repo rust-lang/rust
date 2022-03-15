@@ -4,14 +4,14 @@
 // cdb-command: g
 
 // cdb-command: dx a
-// cdb-check:a                :  Some({...}) [Type: enum$<core::option::Option<enum$<msvc_pretty_enums::CStyleEnum> >, 2, 16, Some>]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<enum$<msvc_pretty_enums::CStyleEnum> >, 2, 16, Some>]
+// cdb-check:a                :  Some({...}) [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum>, 2, 16, Some>]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum>, 2, 16, Some>]
 // cdb-check:    [variant]        :  Some
 // cdb-check:    [+0x000] __0              : Low (0x2) [Type: msvc_pretty_enums::CStyleEnum]
 
 // cdb-command: dx b
-// cdb-check:b                : None [Type: enum$<core::option::Option<enum$<msvc_pretty_enums::CStyleEnum> >, 2, 16, Some>]
-// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<enum$<msvc_pretty_enums::CStyleEnum> >, 2, 16, Some>]
+// cdb-check:b                : None [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum>, 2, 16, Some>]
+// cdb-check:    [<Raw View>]     [Type: enum$<core::option::Option<msvc_pretty_enums::CStyleEnum>, 2, 16, Some>]
 // cdb-check:    [variant]        : None
 
 // cdb-command: dx c
@@ -78,7 +78,7 @@ pub enum NicheLayoutEnum {
     Tag2,
 }
 
-pub enum Empty { }
+pub enum Empty {}
 
 fn main() {
     let a = Some(CStyleEnum::Low);
@@ -97,4 +97,6 @@ fn main() {
     zzz(); // #break
 }
 
-fn zzz() { () }
+fn zzz() {
+    ()
+}

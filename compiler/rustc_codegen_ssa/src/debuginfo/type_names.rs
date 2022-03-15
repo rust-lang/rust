@@ -16,14 +16,17 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, Mutability};
-use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
-use rustc_middle::ty::{self, AdtDef, ExistentialProjection, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialProjection, GeneratorSubsts, ParamEnv, Ty, TyCtxt};
 use rustc_query_system::ich::NodeIdHashingMode;
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use smallvec::SmallVec;
 
+use std::borrow::Cow;
 use std::fmt::Write;
+
+use crate::debuginfo::wants_c_like_enum_debuginfo;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
@@ -71,8 +74,19 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            if def.is_enum() && cpp_like_debuginfo {
-                msvc_enum_fallback(tcx, t, def, substs, output, visited);
+            let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).expect("layout error");
+
+            if def.is_enum() && cpp_like_debuginfo && !wants_c_like_enum_debuginfo(ty_and_layout) {
+                msvc_enum_fallback(
+                    tcx,
+                    ty_and_layout,
+                    &|output, visited| {
+                        push_item_name(tcx, def.did(), true, output);
+                        push_generic_params_internal(tcx, substs, output, visited);
+                    },
+                    output,
+                    visited,
+                );
             } else {
                 push_item_name(tcx, def.did(), qualified, output);
                 push_generic_params_internal(tcx, substs, output, visited);
@@ -348,40 +362,26 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Closure(def_id, substs) | ty::Generator(def_id, substs, ..) => {
             // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
             // "{async_fn_env#0}<T1, T2, ...>", etc.
-            let def_key = tcx.def_key(def_id);
-
-            if qualified {
-                let parent_def_id = DefId { index: def_key.parent.unwrap(), ..def_id };
-                push_item_name(tcx, parent_def_id, true, output);
-                output.push_str("::");
+            // In the case of cpp-like debuginfo, the name additionally gets wrapped inside of
+            // an artificial `enum$<>` type, as defined in msvc_enum_fallback().
+            if cpp_like_debuginfo && t.is_generator() {
+                let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).unwrap();
+                msvc_enum_fallback(
+                    tcx,
+                    ty_and_layout,
+                    &|output, visited| {
+                        push_closure_or_generator_name(tcx, def_id, substs, true, output, visited);
+                    },
+                    output,
+                    visited,
+                );
+            } else {
+                push_closure_or_generator_name(tcx, def_id, substs, qualified, output, visited);
             }
-
-            let mut label = String::with_capacity(20);
-            write!(&mut label, "{}_env", generator_kind_label(tcx.generator_kind(def_id))).unwrap();
-
-            push_disambiguated_special_name(
-                &label,
-                def_key.disambiguated_data.disambiguator,
-                cpp_like_debuginfo,
-                output,
-            );
-
-            // We also need to add the generic arguments of the async fn/generator or
-            // the enclosing function (for closures or async blocks), so that we end
-            // up with a unique name for every instantiation.
-
-            // Find the generics of the enclosing function, as defined in the source code.
-            let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
-            let generics = tcx.generics_of(enclosing_fn_def_id);
-
-            // Truncate the substs to the length of the above generics. This will cut off
-            // anything closure- or generator-specific.
-            let substs = substs.truncate_to(tcx, generics);
-            push_generic_params_internal(tcx, substs, output, visited);
         }
         // Type parameters from polymorphized functions.
         ty::Param(_) => {
-            output.push_str(&format!("{:?}", t));
+            write!(output, "{:?}", t).unwrap();
         }
         ty::Error(_)
         | ty::Infer(_)
@@ -404,24 +404,32 @@ fn push_debuginfo_type_name<'tcx>(
     // `EnumMemberDescriptionFactor::create_member_descriptions`.
     fn msvc_enum_fallback<'tcx>(
         tcx: TyCtxt<'tcx>,
-        ty: Ty<'tcx>,
-        def: AdtDef<'tcx>,
-        substs: SubstsRef<'tcx>,
+        ty_and_layout: TyAndLayout<'tcx>,
+        push_inner: &dyn Fn(/*output*/ &mut String, /*visited*/ &mut FxHashSet<Ty<'tcx>>),
         output: &mut String,
         visited: &mut FxHashSet<Ty<'tcx>>,
     ) {
-        let layout = tcx.layout_of(tcx.param_env(def.did()).and(ty)).expect("layout error");
+        debug_assert!(!wants_c_like_enum_debuginfo(ty_and_layout));
+        let ty = ty_and_layout.ty;
 
         output.push_str("enum$<");
-        push_item_name(tcx, def.did(), true, output);
-        push_generic_params_internal(tcx, substs, output, visited);
+        push_inner(output, visited);
+
+        let variant_name = |variant_index| match ty.kind() {
+            ty::Adt(adt_def, _) => {
+                debug_assert!(adt_def.is_enum());
+                Cow::from(adt_def.variant(variant_index).name.as_str())
+            }
+            ty::Generator(..) => GeneratorSubsts::variant_name(variant_index),
+            _ => unreachable!(),
+        };
 
         if let Variants::Multiple {
             tag_encoding: TagEncoding::Niche { dataful_variant, .. },
             tag,
             variants,
             ..
-        } = &layout.variants
+        } = &ty_and_layout.variants
         {
             let dataful_variant_layout = &variants[*dataful_variant];
 
@@ -435,16 +443,13 @@ fn push_debuginfo_type_name<'tcx>(
             let max = dataful_discriminant_range.end;
             let max = tag.value.size(&tcx).truncate(max);
 
-            let dataful_variant_name = def.variant(*dataful_variant).name.as_str();
-
-            output.push_str(&format!(", {}, {}, {}", min, max, dataful_variant_name));
-        } else if let Variants::Single { index: variant_idx } = &layout.variants {
+            let dataful_variant_name = variant_name(*dataful_variant);
+            write!(output, ", {}, {}, {}", min, max, dataful_variant_name).unwrap();
+        } else if let Variants::Single { index: variant_idx } = &ty_and_layout.variants {
             // Uninhabited enums can't be constructed and should never need to be visualized so
             // skip this step for them.
-            if def.variants().len() != 0 {
-                let variant = def.variant(*variant_idx).name.as_str();
-
-                output.push_str(&format!(", {}", variant));
+            if !ty_and_layout.abi.is_uninhabited() {
+                write!(output, ", {}", variant_name(*variant_idx)).unwrap();
             }
         }
         push_close_angle_bracket(true, output);
@@ -694,6 +699,49 @@ pub fn push_generic_params<'tcx>(tcx: TyCtxt<'tcx>, substs: SubstsRef<'tcx>, out
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
     let mut visited = FxHashSet::default();
     push_generic_params_internal(tcx, substs, output, &mut visited);
+}
+
+fn push_closure_or_generator_name<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    substs: SubstsRef<'tcx>,
+    qualified: bool,
+    output: &mut String,
+    visited: &mut FxHashSet<Ty<'tcx>>,
+) {
+    // Name will be "{closure_env#0}<T1, T2, ...>", "{generator_env#0}<T1, T2, ...>", or
+    // "{async_fn_env#0}<T1, T2, ...>", etc.
+    let def_key = tcx.def_key(def_id);
+    let generator_kind = tcx.generator_kind(def_id);
+
+    if qualified {
+        let parent_def_id = DefId { index: def_key.parent.unwrap(), ..def_id };
+        push_item_name(tcx, parent_def_id, true, output);
+        output.push_str("::");
+    }
+
+    let mut label = String::with_capacity(20);
+    write!(&mut label, "{}_env", generator_kind_label(generator_kind)).unwrap();
+
+    push_disambiguated_special_name(
+        &label,
+        def_key.disambiguated_data.disambiguator,
+        cpp_like_debuginfo(tcx),
+        output,
+    );
+
+    // We also need to add the generic arguments of the async fn/generator or
+    // the enclosing function (for closures or async blocks), so that we end
+    // up with a unique name for every instantiation.
+
+    // Find the generics of the enclosing function, as defined in the source code.
+    let enclosing_fn_def_id = tcx.typeck_root_def_id(def_id);
+    let generics = tcx.generics_of(enclosing_fn_def_id);
+
+    // Truncate the substs to the length of the above generics. This will cut off
+    // anything closure- or generator-specific.
+    let substs = substs.truncate_to(tcx, generics);
+    push_generic_params_internal(tcx, substs, output, visited);
 }
 
 fn push_close_angle_bracket(cpp_like_debuginfo: bool, output: &mut String) {
