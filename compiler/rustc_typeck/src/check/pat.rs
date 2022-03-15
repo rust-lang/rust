@@ -1761,7 +1761,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sp,
             &format!(
                 "include the missing field{} in the pattern{}",
-                if len == 1 { "" } else { "s" },
+                pluralize!(len),
                 if have_inaccessible_fields { " and ignore the inaccessible fields" } else { "" }
             ),
             format!(
@@ -1780,10 +1780,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_suggestion(
             sp,
             &format!(
-                "if you don't care about {} missing field{}, you can explicitly ignore {}",
-                if len == 1 { "this" } else { "these" },
-                if len == 1 { "" } else { "s" },
-                if len == 1 { "it" } else { "them" },
+                "if you don't care about {these} missing field{s}, you can explicitly ignore {them}",
+                these = pluralize!("this", len),
+                s = pluralize!(len),
+                them = if len == 1 { "it" } else { "them" },
             ),
             format!("{}..{}", prefix, postfix),
             Applicability::MachineApplicable,
