@@ -84,7 +84,7 @@ use crate::ptr;
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_stable(since = "1.61.0")]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_check_data_len(data, len);
 
@@ -133,8 +133,7 @@ pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a m
 
 // In debug builds checks that `data` pointer is aligned and non-null and that slice with given `len` would cover less than half the address space
 #[cfg(debug_assertions)]
-#[unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_stable(since = "1.61.0")]
 const fn debug_check_data_len<T>(data: *const T, len: usize) {
     fn rt_check<T>(data: *const T) {
         use crate::intrinsics::is_aligned_and_not_null;
@@ -147,7 +146,7 @@ const fn debug_check_data_len<T>(data: *const T, len: usize) {
     // SAFETY:
     //
     // `rt_check` is just a debug assert to hint users that they are causing UB,
-    // it is not required for safety (the safety must be guatanteed by
+    // it is not required for safety (the safety must be guaranteed by
     // the `from_raw_parts[_mut]` caller).
     //
     // As per our safety precondition, we may assume that assertion above never fails.

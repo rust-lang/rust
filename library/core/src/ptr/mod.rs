@@ -255,7 +255,7 @@ pub const fn null_mut<T>() -> *mut T {
 /// ```
 #[inline]
 #[stable(feature = "slice_from_raw_parts", since = "1.42.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_stable(since = "1.61.0")]
 pub const fn slice_from_raw_parts<T>(data: *const T, len: usize) -> *const [T] {
     from_raw_parts(data.cast(), len)
 }
