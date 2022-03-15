@@ -763,10 +763,10 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if attr.has_name(sym::deprecated) {
-                                            &["since", "note"]
-                                        } else {
+                                        if sess.features_untracked().deprecated_suggestion {
                                             &["since", "note", "suggestion"]
+                                        } else {
+                                            &["since", "note"]
                                         },
                                     ),
                                 );
