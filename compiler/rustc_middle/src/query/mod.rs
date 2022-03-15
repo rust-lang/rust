@@ -684,6 +684,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+        desc { |tcx| "collecting all inherent impls for `{:?}`", key }
+    }
+
     /// The result of unsafety-checking this `LocalDefId`.
     query unsafety_check_result(key: LocalDefId) -> &'tcx mir::UnsafetyCheckResult {
         desc { |tcx| "unsafety-checking `{}`", tcx.def_path_str(key.to_def_id()) }
@@ -1466,6 +1470,15 @@ rustc_queries! {
     /// Return `(impl_id, self_ty)`.
     query implementations_of_trait(_: (CrateNum, DefId)) -> &'tcx [(DefId, Option<SimplifiedType>)] {
         desc { "looking up implementations of a trait in a crate" }
+        separate_provide_extern
+    }
+
+    /// Collects all incoherent impls for the given crate and type.
+    ///
+    /// Do not call this directly, but instead use the `incoherent_impls` query.
+    /// This query is only used to get the data necessary for that query.
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+        desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }
 

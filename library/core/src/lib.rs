@@ -84,6 +84,7 @@
     target_has_atomic_load_store = "ptr",
 ))]
 #![no_core]
+#![cfg_attr(not(bootstrap), rustc_coherence_is_core)]
 //
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]

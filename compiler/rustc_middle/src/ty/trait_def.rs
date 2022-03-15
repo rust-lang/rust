@@ -2,9 +2,11 @@ use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use crate::ty::fold::TypeFoldable;
 use crate::ty::{Ident, Ty, TyCtxt};
+use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::DefPathHash;
+use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
@@ -256,4 +258,20 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
     }
 
     impls
+}
+
+// Query provider for `incoherent_impls`.
+#[instrument(level = "debug", skip(tcx))]
+pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -> &[DefId] {
+    let mut impls = Vec::new();
+
+    for cnum in iter::once(LOCAL_CRATE).chain(tcx.crates(()).iter().copied()) {
+        for &impl_def_id in tcx.crate_incoherent_impls((cnum, simp)) {
+            impls.push(impl_def_id)
+        }
+    }
+
+    debug!(?impls);
+
+    tcx.arena.alloc_slice(&impls)
 }

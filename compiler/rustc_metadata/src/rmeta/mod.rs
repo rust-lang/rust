@@ -212,6 +212,7 @@ crate struct CrateRoot<'tcx> {
     foreign_modules: Lazy<[ForeignModule]>,
     traits: Lazy<[DefIndex]>,
     impls: Lazy<[TraitImpls]>,
+    incoherent_impls: Lazy<[IncoherentImpls]>,
     interpret_alloc_index: Lazy<[u32]>,
     proc_macro_data: Option<ProcMacroData>,
 
@@ -249,6 +250,12 @@ crate struct CrateDep {
 crate struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: Lazy<[(DefIndex, Option<SimplifiedType>)]>,
+}
+
+#[derive(MetadataEncodable, MetadataDecodable)]
+crate struct IncoherentImpls {
+    self_ty: SimplifiedType,
+    impls: Lazy<[DefIndex]>,
 }
 
 /// Define `LazyTables` and `TableBuilders` at the same time.

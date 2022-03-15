@@ -636,6 +636,14 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word), ErrorFollowing,
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
+    rustc_attr!(
+        rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing,
+        "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
+    ),
+    rustc_attr!(
+        rustc_allow_incoherent_impl, AttributeType::Normal, template!(Word), ErrorFollowing,
+        "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
+    ),
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
         type_: Normal,

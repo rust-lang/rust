@@ -579,6 +579,10 @@ impl<'hir> Map<'hir> {
         self.attrs(CRATE_HIR_ID)
     }
 
+    pub fn rustc_coherence_is_core(self) -> bool {
+        self.krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
+    }
+
     pub fn get_module(self, module: LocalDefId) -> (&'hir Mod<'hir>, Span, HirId) {
         let hir_id = HirId::make_owner(module);
         match self.tcx.hir_owner(module).map(|o| o.node) {
