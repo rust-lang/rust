@@ -1335,6 +1335,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    fn can_cache_candidate_globally(
+        &self,
+        result: &SelectionResult<'tcx, SelectionCandidate<'tcx>>,
+    ) -> bool {
+        // We cannot globally cache a result if it has infer variables
+        // (which means it is local to the infcx that holds the variable)
+        // or if the result is a ParamCandidate, which means it's local to
+        // the ParamEnv we are evaluating under.
+        !(result.needs_infer() || matches!(result, Ok(Some(SelectionCandidate::ParamCandidate(_)))))
+    }
+
     fn insert_candidate_cache(
         &mut self,
         mut param_env: ty::ParamEnv<'tcx>,
@@ -1356,7 +1367,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             if let Err(Overflow) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.needs_infer() {
-                if !candidate.needs_infer() {
+                if self.can_cache_candidate_globally(&candidate) {
                     debug!(?pred, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
                     tcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
