@@ -39,7 +39,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
 ) -> Result<(), NotConstEvaluatable> {
     let tcx = infcx.tcx;
 
-    if infcx.tcx.features().generic_const_exprs {
+    if tcx.features().generic_const_exprs {
         match AbstractConst::new(tcx, uv)? {
             // We are looking at a generic abstract constant.
             Some(ct) => {
@@ -342,7 +342,13 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
                 self.is_poly |= self.expr_is_poly(expr);
                 if !self.is_poly {
-                    visit::walk_expr(self, expr)
+                    match expr.kind {
+                        thir::ExprKind::Repeat { value, count } => {
+                            self.visit_expr(&self.thir()[value]);
+                            self.is_poly |= count.has_param_types_or_consts();
+                        }
+                        _ => visit::walk_expr(self, expr),
+                    }
                 }
             }
 
@@ -350,13 +356,17 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
                 self.is_poly |= pat.ty.has_param_types_or_consts();
                 if !self.is_poly {
-                    visit::walk_pat(self, pat);
+                    match pat.kind.as_ref() {
+                        thir::PatKind::Constant { value } => {
+                            self.is_poly |= value.has_param_types_or_consts();
+                        }
+                        thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
+                            self.is_poly |=
+                                lo.has_param_types_or_consts() | hi.has_param_types_or_consts();
+                        }
+                        _ => visit::walk_pat(self, pat),
+                    }
                 }
-            }
-
-            #[instrument(skip(self), level = "debug")]
-            fn visit_const(&mut self, ct: ty::Const<'tcx>) {
-                self.is_poly |= ct.has_param_types_or_consts();
             }
         }
 

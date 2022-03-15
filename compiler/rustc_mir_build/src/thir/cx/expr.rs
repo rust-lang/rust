@@ -876,7 +876,6 @@ impl<'tcx> Cx<'tcx> {
                         val,
                         ty: self.typeck_results().node_type(expr.hir_id),
                     }),
-                    user_ty: None,
                     def_id,
                 }
             }

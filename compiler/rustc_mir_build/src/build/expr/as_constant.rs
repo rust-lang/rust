@@ -17,10 +17,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, yielding a compile-time constant. Assumes that
     /// `expr` is a valid compile-time constant!
     crate fn as_constant(&mut self, expr: &Expr<'tcx>) -> Constant<'tcx> {
-        debug!("expr: {:#?}", expr);
-        // FIXME: Maybe we should try to evaluate here and only create an `Unevaluated`
-        // constant in case the evaluation fails. Need some evaluation function that
-        // allows normalization to fail.
         let create_uneval_from_def_id =
             |tcx: TyCtxt<'tcx>, def_id: DefId, ty: Ty<'tcx>, substs: SubstsRef<'tcx>| {
                 let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
@@ -74,17 +70,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 Constant { user_ty, span, literal }
             }
-            ExprKind::ConstParam { literal, def_id: _, user_ty } => {
-                let user_ty = user_ty.map(|user_ty| {
-                    this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                        span,
-                        user_ty,
-                        inferred_ty: ty,
-                    })
-                });
+            ExprKind::ConstParam { literal, def_id: _ } => {
                 let literal = ConstantKind::Ty(literal);
 
-                Constant { user_ty: user_ty, span, literal }
+                Constant { user_ty: None, span, literal }
             }
             ExprKind::ConstBlock { did: def_id, substs } => {
                 let literal = ConstantKind::Ty(create_uneval_from_def_id(tcx, def_id, ty, substs));

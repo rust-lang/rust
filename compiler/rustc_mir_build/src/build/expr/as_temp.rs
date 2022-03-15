@@ -70,6 +70,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
                 }
+                // FIXME Might have to include `ExprKind::ConstParam` here as well
                 ExprKind::NamedConst { def_id, .. } => {
                     local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
                 }
