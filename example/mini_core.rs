@@ -1,7 +1,14 @@
 #![feature(
-    no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    untagged_unions, decl_macro, rustc_attrs, transparent_unions, auto_traits,
-    thread_local,
+    no_core,
+    lang_items,
+    intrinsics,
+    unboxed_closures,
+    extern_types,
+    decl_macro,
+    rustc_attrs,
+    transparent_unions,
+    auto_traits,
+    thread_local
 )]
 #![no_core]
 #![allow(dead_code)]

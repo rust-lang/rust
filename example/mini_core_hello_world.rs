@@ -7,10 +7,6 @@ extern crate mini_core;
 use mini_core::*;
 use mini_core::libc::*;
 
-unsafe extern "C" fn my_puts(s: *const i8) {
-    puts(s);
-}
-
 macro_rules! assert {
     ($e:expr) => {
         if !$e {
