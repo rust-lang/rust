@@ -8274,6 +8274,97 @@ public:
         }
       }
 
+      if (funcName == "hypot" || funcName == "hypotf" || funcName == "hypotl") {
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, newCall,
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
+        eraseIfUnused(*orig);
+        if (gutils->isConstantInstruction(orig))
+          return;
+
+        switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
+        case DerivativeMode::ForwardMode: {
+          IRBuilder<> Builder2(&call);
+          getForwardBuilder(Builder2);
+
+          Value *x = gutils->getNewFromOriginal(orig->getArgOperand(0));
+          Value *y = gutils->getNewFromOriginal(orig->getArgOperand(1));
+          Value *args[] = {x, y};
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = orig->getCalledOperand();
+#else
+          auto callval = orig->getCalledValue();
+#endif
+          CallInst *cubcall = cast<CallInst>(
+              Builder2.CreateCall(orig->getFunctionType(), callval, args));
+          cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+          cubcall->setCallingConv(orig->getCallingConv());
+
+          auto rule = [&](Value *dx, Value *dy) {
+            Value *t;
+            if (dx)
+              dx = Builder2.CreateFMul(x, dx);
+            if (dy)
+              dy = Builder2.CreateFMul(y, dy);
+            if (dy && dx)
+              t = Builder2.CreateFAdd(dx, dy);
+            else if (dx)
+              t = dx;
+            else
+              t = dy;
+            return Builder2.CreateFDiv(t, cubcall);
+          };
+
+          Value *dif =
+              applyChainRule(call.getType(), Builder2, rule,
+                             gutils->isConstantValue(orig->getOperand(0))
+                                 ? nullptr
+                                 : diffe(orig->getOperand(0), Builder2),
+                             gutils->isConstantValue(orig->getOperand(1))
+                                 ? nullptr
+                                 : diffe(orig->getOperand(1), Builder2));
+          setDiffe(orig, dif, Builder2);
+          return;
+        }
+        case DerivativeMode::ReverseModeGradient:
+        case DerivativeMode::ReverseModeCombined: {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+          Value *y = lookup(gutils->getNewFromOriginal(orig->getArgOperand(1)),
+                            Builder2);
+          Value *args[] = {x, y};
+#if LLVM_VERSION_MAJOR >= 11
+          auto callval = orig->getCalledOperand();
+#else
+          auto callval = orig->getCalledValue();
+#endif
+          CallInst *cubcall = cast<CallInst>(
+              Builder2.CreateCall(orig->getFunctionType(), callval, args));
+          cubcall->setDebugLoc(gutils->getNewFromOriginal(orig->getDebugLoc()));
+          cubcall->setCallingConv(orig->getCallingConv());
+          for (int i = 0; i < 2; i++) {
+            if (!gutils->isConstantValue(orig->getArgOperand(i))) {
+              Value *dif0 = Builder2.CreateFDiv(
+                  Builder2.CreateFMul(diffe(orig, Builder2), args[i]), cubcall);
+              addToDiffe(orig->getArgOperand(i), dif0, Builder2, x->getType());
+            }
+          }
+          return;
+        }
+        case DerivativeMode::ReverseModePrimal: {
+          return;
+        }
+        }
+      }
+
       if (funcName == "tanhf" || funcName == "tanh") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {

@@ -1732,13 +1732,15 @@ public:
       Value *vals[size] = {args...};
 
       for (size_t i = 0; i < size; ++i)
-        assert(cast<ArrayType>(vals[i]->getType())->getNumElements() == width);
+        if (vals[i])
+          assert(cast<ArrayType>(vals[i]->getType())->getNumElements() ==
+                 width);
 
       Type *wrappedType = ArrayType::get(diffType, width);
       Value *res = UndefValue::get(wrappedType);
       for (unsigned int i = 0; i < getWidth(); ++i) {
-        auto tup =
-            std::tuple<Args...>{(Builder.CreateExtractValue(args, {i}))...};
+        auto tup = std::tuple<Args...>{
+            (args ? Builder.CreateExtractValue(args, {i}) : nullptr)...};
         auto diff = std::apply(rule, std::move(tup));
         res = Builder.CreateInsertValue(res, diff, {i});
       }
@@ -1757,11 +1759,13 @@ public:
       Value *vals[size] = {args...};
 
       for (size_t i = 0; i < size; ++i)
-        assert(cast<ArrayType>(vals[i]->getType())->getNumElements() == width);
+        if (vals[i])
+          assert(cast<ArrayType>(vals[i]->getType())->getNumElements() ==
+                 width);
 
       for (unsigned int i = 0; i < getWidth(); ++i) {
-        auto tup =
-            std::tuple<Args...>{(Builder.CreateExtractValue(args, {i}))...};
+        auto tup = std::tuple<Args...>{
+            (args ? Builder.CreateExtractValue(args, {i}) : nullptr)...};
         std::apply(rule, std::move(tup));
       }
     } else {
@@ -1776,6 +1780,7 @@ public:
                         IRBuilder<> &Builder, Func rule) {
     if (width > 1) {
       for (auto diff : diffs) {
+        assert(diff);
         assert(cast<ArrayType>(diff->getType())->getNumElements() == width);
       }
       Type *wrappedType = ArrayType::get(diffType, width);
