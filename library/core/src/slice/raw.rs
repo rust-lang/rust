@@ -84,7 +84,7 @@ use crate::ptr;
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_stable(since = "1.61.0")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.61.0")]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_check_data_len(data, len);
 
