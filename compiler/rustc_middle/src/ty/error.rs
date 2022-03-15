@@ -847,7 +847,7 @@ fn foo(&self) -> Self::T { String::new() }
                 "{some} method{s} {are} available that return{r} `{ty}`",
                 some = if methods.len() == 1 { "a" } else { "some" },
                 s = pluralize!(methods.len()),
-                are = if methods.len() == 1 { "is" } else { "are" },
+                are = pluralize!("is", methods.len()),
                 r = if methods.len() == 1 { "s" } else { "" },
                 ty = expected
             );

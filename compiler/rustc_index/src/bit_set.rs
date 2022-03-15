@@ -656,7 +656,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for ChunkedBitSet<T> {
     fn union(&mut self, other: &HybridBitSet<T>) -> bool {
         // FIXME: This is slow if `other` is dense, but it hasn't been a problem
         // in practice so far.
-        // If a a faster implementation of this operation is required, consider
+        // If a faster implementation of this operation is required, consider
         // reopening https://github.com/rust-lang/rust/pull/94625
         assert_eq!(self.domain_size, other.domain_size());
         sequential_update(|elem| self.insert(elem), other.iter())
@@ -665,7 +665,7 @@ impl<T: Idx> BitRelations<HybridBitSet<T>> for ChunkedBitSet<T> {
     fn subtract(&mut self, other: &HybridBitSet<T>) -> bool {
         // FIXME: This is slow if `other` is dense, but it hasn't been a problem
         // in practice so far.
-        // If a a faster implementation of this operation is required, consider
+        // If a faster implementation of this operation is required, consider
         // reopening https://github.com/rust-lang/rust/pull/94625
         assert_eq!(self.domain_size, other.domain_size());
         sequential_update(|elem| self.remove(elem), other.iter())

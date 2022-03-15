@@ -504,9 +504,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                     for sp in spans {
                         let msg = if sp == last_bound_span {
                             format!(
-                                "...because of {} bound{}",
-                                if bounds.len() <= 2 { "this" } else { "these" },
-                                if bounds.len() <= 2 { "" } else { "s" },
+                                "...because of {these} bound{s}",
+                                these = pluralize!("this", bounds.len() - 1),
+                                s = pluralize!(bounds.len() - 1),
                             )
                         } else {
                             String::new()

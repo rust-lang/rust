@@ -122,6 +122,9 @@
 // gdb-command:whatis has_associated_type_trait
 // gdb-check:type = &(dyn type_names::Trait3<u32, AssocType=isize> + core::marker::Send)
 
+// gdb-command:whatis has_associated_type_but_no_generics_trait
+// gdb-check:type = &dyn type_names::TraitNoGenericsButWithAssocType<Output=isize>
+
 // BARE FUNCTIONS
 // gdb-command:whatis rust_fn
 // gdb-check:type = (fn(core::option::Option<isize>, core::option::Option<&type_names::mod1::Struct2>), usize)
@@ -228,6 +231,7 @@
 // cdb-check:struct ref_mut$<dyn$<type_names::Trait1> > mut_ref_trait = [...]
 // cdb-check:struct alloc::boxed::Box<dyn$<core::marker::Send,core::marker::Sync>,alloc::alloc::Global> no_principal_trait = [...]
 // cdb-check:struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> > has_associated_type_trait = struct ref$<dyn$<type_names::Trait3<u32,assoc$<AssocType,isize> >,core::marker::Send> >
+// cdb-check:struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > > has_associated_type_but_no_generics_trait = struct ref$<dyn$<type_names::TraitNoGenericsButWithAssocType<assoc$<Output,isize> > > >
 
 // BARE FUNCTIONS
 // cdb-command:dv /t *_fn*
@@ -317,11 +321,21 @@ trait Trait3<T> {
         panic!()
     }
 }
+trait TraitNoGenericsButWithAssocType {
+    type Output;
+    fn foo(&self) -> Self::Output;
+}
 
 impl Trait1 for isize {}
 impl<T1, T2> Trait2<T1, T2> for isize {}
 impl<T> Trait3<T> for isize {
     type AssocType = isize;
+}
+impl TraitNoGenericsButWithAssocType for isize {
+    type Output = isize;
+    fn foo(&self) -> Self::Output {
+        *self
+    }
 }
 
 fn rust_fn(_: Option<isize>, _: Option<&mod1::Struct2>) {}
@@ -413,6 +427,8 @@ fn main() {
     let mut_ref_trait = (&mut mut_int1) as &mut dyn Trait1;
     let no_principal_trait = Box::new(0_isize) as Box<(dyn Send + Sync)>;
     let has_associated_type_trait = &0_isize as &(dyn Trait3<u32, AssocType = isize> + Send);
+    let has_associated_type_but_no_generics_trait =
+        &0_isize as &dyn TraitNoGenericsButWithAssocType<Output = isize>;
 
     let generic_box_trait = Box::new(0_isize) as Box<dyn Trait2<i32, mod1::Struct2>>;
     let generic_ref_trait = (&0_isize) as &dyn Trait2<Struct1, Struct1>;

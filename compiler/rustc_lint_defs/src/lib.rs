@@ -20,6 +20,12 @@ macro_rules! pluralize {
     ($x:expr) => {
         if $x != 1 { "s" } else { "" }
     };
+    ("is", $x:expr) => {
+        if $x == 1 { "is" } else { "are" }
+    };
+    ("this", $x:expr) => {
+        if $x == 1 { "this" } else { "these" }
+    };
 }
 
 /// Indicates the confidence in the correctness of a suggestion.

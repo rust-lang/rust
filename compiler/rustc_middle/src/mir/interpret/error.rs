@@ -400,7 +400,7 @@ impl fmt::Display for UndefinedBehaviorInfo<'_> {
                 Pointer::new(*alloc, access.access_offset),
                 access.uninit_size.bytes(),
                 pluralize!(access.uninit_size.bytes()),
-                if access.uninit_size.bytes() != 1 { "are" } else { "is" },
+                pluralize!("is", access.uninit_size.bytes()),
                 Pointer::new(*alloc, access.uninit_offset),
             ),
             InvalidUninitBytes(None) => write!(

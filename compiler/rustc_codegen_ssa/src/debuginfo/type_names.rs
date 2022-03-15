@@ -226,13 +226,18 @@ fn push_debuginfo_type_name<'tcx>(
                 if projection_bounds.len() != 0 {
                     if principal_has_generic_params {
                         // push_generic_params_internal() above added a `>` but we actually
-                        // want to add more items to that list, so remove that again.
+                        // want to add more items to that list, so remove that again...
                         pop_close_angle_bracket(output);
+                        // .. and add a comma to separate the regular generic args from the
+                        // associated types.
+                        push_arg_separator(cpp_like_debuginfo, output);
+                    } else {
+                        // push_generic_params_internal() did not add `<...>`, so we open
+                        // angle brackets here.
+                        output.push('<');
                     }
 
                     for (item_def_id, ty) in projection_bounds {
-                        push_arg_separator(cpp_like_debuginfo, output);
-
                         if cpp_like_debuginfo {
                             output.push_str("assoc$<");
                             push_item_name(tcx, item_def_id, false, output);
@@ -244,8 +249,10 @@ fn push_debuginfo_type_name<'tcx>(
                             output.push('=');
                             push_debuginfo_type_name(tcx, ty, true, output, visited);
                         }
+                        push_arg_separator(cpp_like_debuginfo, output);
                     }
 
+                    pop_arg_separator(output);
                     push_close_angle_bracket(cpp_like_debuginfo, output);
                 }
 
