@@ -76,8 +76,14 @@ fn after_target_name_in_impl() {
             kw for
         "#]],
     );
-    // FIXME: This should emit `kw where`
-    check(r"impl Trait for Type $0", expect![[r#""#]]);
+    // FIXME: This should not emit `kw for`
+    check(
+        r"impl Trait for Type $0",
+        expect![[r#"
+        kw where
+        kw for
+    "#]],
+    );
 }
 
 #[test]
