@@ -1,4 +1,5 @@
 #![deny(rustdoc::broken_intra_doc_links)]
+#![rustc_coherence_is_core]
 #![allow(incomplete_features)] // inherent_associated_types
 #![feature(lang_items)]
 #![feature(no_core)]
