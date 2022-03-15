@@ -1,4 +1,8 @@
+// aux-build:proc_macro_unsafe.rs
+
 #![warn(clippy::undocumented_unsafe_blocks)]
+
+extern crate proc_macro_unsafe;
 
 // Valid comments
 
@@ -239,6 +243,10 @@ fn in_multiline_macro_call(x: *const u32) {
         // Safety: reason
         unsafe { *x },
     );
+}
+
+fn from_proc_macro() {
+    proc_macro_unsafe::unsafe_block!(token);
 }
 
 // Invalid comments

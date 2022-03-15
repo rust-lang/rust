@@ -48,6 +48,7 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
             && !in_external_macro(cx.tcx.sess, block.span)
             && !is_lint_allowed(cx, UNDOCUMENTED_UNSAFE_BLOCKS, block.hir_id)
+            && !is_unsafe_from_proc_macro(cx, block)
             && !block_has_safety_comment(cx, block)
         {
             let source_map = cx.tcx.sess.source_map();
@@ -67,6 +68,17 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
             );
         }
     }
+}
+
+fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, block: &Block<'_>) -> bool {
+    let source_map = cx.sess().source_map();
+    let file_pos = source_map.lookup_byte_offset(block.span.lo());
+    file_pos
+        .sf
+        .src
+        .as_deref()
+        .and_then(|src| src.get(file_pos.pos.to_usize()..))
+        .map_or(true, |src| !src.starts_with("unsafe"))
 }
 
 /// Checks if the lines immediately preceding the block contain a safety comment.
