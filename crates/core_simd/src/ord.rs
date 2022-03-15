@@ -1,10 +1,7 @@
-use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdElement, SupportedLaneCount};
+use crate::simd::{intrinsics, LaneCount, Mask, Simd, SimdPartialEq, SupportedLaneCount};
 
 /// Parallel `PartialOrd`.
-pub trait SimdPartialOrd {
-    /// The mask type returned by each comparison.
-    type Mask;
-
+pub trait SimdPartialOrd: SimdPartialEq {
     /// Test if each lane is less than the corresponding lane in `other`.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn simd_lt(self, other: Self) -> Self::Mask;
@@ -51,8 +48,6 @@ macro_rules! impl_integer {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            type Mask = Mask<<$integer as SimdElement>::Mask, LANES>;
-
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
@@ -118,8 +113,6 @@ macro_rules! impl_float {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            type Mask = Mask<<$float as SimdElement>::Mask, LANES>;
-
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
@@ -161,8 +154,6 @@ macro_rules! impl_mask {
         where
             LaneCount<LANES>: SupportedLaneCount,
         {
-            type Mask = Self;
-
             #[inline]
             fn simd_lt(self, other: Self) -> Self::Mask {
                 // Safety: `self` is a vector, and the result of the comparison
