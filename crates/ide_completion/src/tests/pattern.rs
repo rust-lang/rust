@@ -444,3 +444,25 @@ fn foo() {
         expect![[r#""#]],
     );
 }
+
+#[test]
+fn completes_associated_const() {
+    check_empty(
+        r#"
+#[derive(PartialEq, Eq)]
+struct Ty(u8);
+
+impl Ty {
+    const ABC: Self = Self(0);
+}
+
+fn f(t: Ty) {
+    match t {
+        Ty::$0 => {}
+        _ => {}
+    }
+}
+"#,
+        expect![[""]],
+    )
+}
