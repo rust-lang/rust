@@ -15,6 +15,7 @@ press-key: "ArrowDown"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#titles"
+assert-document-property: ({"URL": "&filter-crate="}, CONTAINS)
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
 // We also check that "lib2" is the filter crate.
