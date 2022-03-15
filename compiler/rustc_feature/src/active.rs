@@ -364,6 +364,8 @@ declare_features! (
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
+    /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
+    (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows `#[derive(Default)]` and `#[default]` on enums.

@@ -563,6 +563,7 @@ symbols! {
         delay_span_bug_from_inside_query,
         deny,
         deprecated,
+        deprecated_safe,
         deprecated_suggestion,
         deref,
         deref_method,
