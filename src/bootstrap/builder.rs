@@ -1684,6 +1684,7 @@ impl<'a> Builder<'a> {
                 rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
             }
         }
+        cargo.env(profile_var("LTO"), "off");
 
         Cargo { command: cargo, rustflags, rustdocflags }
     }
