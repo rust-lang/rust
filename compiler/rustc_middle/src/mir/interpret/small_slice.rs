@@ -23,6 +23,16 @@ pub struct SmallSlice {
     len: usize,
 }
 
+impl Drop for SmallSlice {
+    fn drop(&mut self) {
+        if self.len > Self::SMALL_CAPACITY {
+            unsafe {
+                Box::from_raw(std::ptr::slice_from_raw_parts_mut(self.data.ptr, self.len));
+            }
+        }
+    }
+}
+
 // SAFETY: `SmallSlice` is equivalent to `Box<[u8]>`. Since it doesn't actually allow mutating
 // via immutable methods, we can safely share it across threads.
 unsafe impl Sync for SmallSlice {}
