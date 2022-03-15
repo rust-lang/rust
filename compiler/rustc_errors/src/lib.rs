@@ -522,11 +522,6 @@ impl Drop for HandlerInner {
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
             );
         }
-
-        assert!(
-            self.unstable_expect_diagnostics.is_empty(),
-            "all diagnostics with unstable expectations should have been converted",
-        );
     }
 }
 
