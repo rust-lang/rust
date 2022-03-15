@@ -24,8 +24,8 @@ use text_edit::Indel;
 
 use crate::{
     patterns::{
-        determine_location, determine_prev_sibling, for_is_prev2, is_in_loop_body, previous_token,
-        ImmediateLocation, ImmediatePrevSibling,
+        determine_location, determine_prev_sibling, is_in_loop_body, is_in_token_of_for_loop,
+        previous_token, ImmediateLocation, ImmediatePrevSibling,
     },
     CompletionConfig,
 };
@@ -729,7 +729,7 @@ impl<'a> CompletionContext<'a> {
     ) {
         let fake_ident_token = file_with_fake_ident.token_at_offset(offset).right_biased().unwrap();
         let syntax_element = NodeOrToken::Token(fake_ident_token);
-        if for_is_prev2(syntax_element.clone()) {
+        if is_in_token_of_for_loop(syntax_element.clone()) {
             // for pat $0
             // there is nothing to complete here except `in` keyword
             // don't bother populating the context

@@ -92,6 +92,16 @@ fn quux() {
 "#,
         expect![[r#""#]],
     );
+    check_empty(
+        r#"
+fn foo() {
+    for &$0 in () {}
+}
+"#,
+        expect![[r#"
+            kw mut
+        "#]],
+    );
 }
 
 #[test]
