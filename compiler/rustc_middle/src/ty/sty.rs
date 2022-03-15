@@ -2162,6 +2162,7 @@ impl<'tcx> Ty<'tcx> {
 
     /// Iterates over tuple fields.
     /// Panics when called on anything but a tuple.
+    #[inline]
     pub fn tuple_fields(self) -> &'tcx List<Ty<'tcx>> {
         match self.kind() {
             Tuple(substs) => substs,
