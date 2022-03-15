@@ -116,7 +116,7 @@ impl<'s> LintLevelsBuilder<'s> {
                 continue
             };
             for id in ids {
-                // ForceWarn and Forbid cannot be overriden
+                // ForceWarn and Forbid cannot be overridden
                 if let Some((Level::ForceWarn | Level::Forbid, _)) = self.current_specs().get(&id) {
                     continue;
                 }
@@ -137,7 +137,7 @@ impl<'s> LintLevelsBuilder<'s> {
             self.sets.get_lint_level(id.lint, self.cur, Some(self.current_specs()), &self.sess);
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
-        // `#[forbid(..)]` attribute present, as that is overriden by `--cap-lints`.
+        // `#[forbid(..)]` attribute present, as that is overridden by `--cap-lints`.
         //
         // This means that this only errors if we're truly lowering the lint
         // level from forbid.

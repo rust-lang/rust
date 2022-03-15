@@ -1795,7 +1795,7 @@ impl Rustflags {
     }
 
     /// By default, cargo will pick up on various variables in the environment. However, bootstrap
-    /// reuses those variables to pass additional flags to rustdoc, so by default they get overriden.
+    /// reuses those variables to pass additional flags to rustdoc, so by default they get overridden.
     /// Explicitly add back any previous value in the environment.
     ///
     /// `prefix` is usually `RUSTFLAGS` or `RUSTDOCFLAGS`.

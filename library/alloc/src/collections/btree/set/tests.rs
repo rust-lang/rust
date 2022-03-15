@@ -609,7 +609,7 @@ fn assert_send() {
 
 #[allow(dead_code)]
 // Check that the member-like functions conditionally provided by #[derive()]
-// are not overriden by genuine member functions with a different signature.
+// are not overridden by genuine member functions with a different signature.
 fn assert_derives() {
     fn hash<T: Hash, H: Hasher>(v: BTreeSet<T>, state: &mut H) {
         v.hash(state);

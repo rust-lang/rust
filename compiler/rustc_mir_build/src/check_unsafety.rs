@@ -608,7 +608,7 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
 
     let (thir, expr) = tcx.thir_body(def);
     let thir = &thir.borrow();
-    // If `thir` is empty, a type error occured, skip this body.
+    // If `thir` is empty, a type error occurred, skip this body.
     if thir.exprs.is_empty() {
         return;
     }
