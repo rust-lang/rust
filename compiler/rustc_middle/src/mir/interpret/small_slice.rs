@@ -2,16 +2,13 @@ use std::borrow::Cow;
 use std::fmt;
 use std::hash::Hash;
 use std::mem::size_of;
-use std::ops::{Deref};
+use std::ops::Deref;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::DUMMY_SP;
 
-use super::{
-    InterpError, InterpResult,
-    ResourceExhaustionInfo,
-};
+use super::{InterpError, InterpResult, ResourceExhaustionInfo};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 
