@@ -297,17 +297,11 @@ impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
             _ => ControlFlow::Break(NotUniqueParam::NotParam(t.into())),
         }
     }
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            ty::ReEarlyBound(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(r.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(r.into())),
-        }
+    fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // We don't drop candidates during candidate assembly because of region
+        // constraints, so the behavior for impls only constrained by regions
+        // will not change.
+        ControlFlow::CONTINUE
     }
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.val() {
