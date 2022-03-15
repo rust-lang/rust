@@ -2011,6 +2011,10 @@ pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
 }
 
 fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Option<Span>, bool) {
+    // FIXME(#94854): this code uses an out-of-date method for inferring a span
+    // to suggest. It would be better to thread the ModSpans from the AST into
+    // the HIR, and then use that to drive the suggestion here.
+
     let mut span = None;
     let mut found_use = false;
     let (module, _, _) = tcx.hir().get_module(target_module);

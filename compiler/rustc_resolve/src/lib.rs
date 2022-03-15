@@ -71,7 +71,6 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::ops::ControlFlow;
 use std::{cmp, fmt, iter, mem, ptr};
 use tracing::debug;
 
@@ -315,74 +314,70 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
+#[derive(Debug)]
 struct UsePlacementFinder {
     target_module: NodeId,
-    span: Option<Span>,
-    found_use: bool,
+    first_legal_span: Option<Span>,
+    first_use_span: Option<Span>,
 }
 
 impl UsePlacementFinder {
     fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
-        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        if let ControlFlow::Continue(..) = finder.check_mod(&krate.items, CRATE_NODE_ID) {
-            visit::walk_crate(&mut finder, krate);
+        let mut finder =
+            UsePlacementFinder { target_module, first_legal_span: None, first_use_span: None };
+        finder.visit_crate(krate);
+        if let Some(use_span) = finder.first_use_span {
+            (Some(use_span), true)
+        } else {
+            (finder.first_legal_span, false)
         }
-        (finder.span, finder.found_use)
-    }
-
-    fn check_mod(&mut self, items: &[P<ast::Item>], node_id: NodeId) -> ControlFlow<()> {
-        if self.span.is_some() {
-            return ControlFlow::Break(());
-        }
-        if node_id != self.target_module {
-            return ControlFlow::Continue(());
-        }
-        // find a use statement
-        for item in items {
-            match item.kind {
-                ItemKind::Use(..) => {
-                    // don't suggest placing a use before the prelude
-                    // import or other generated ones
-                    if !item.span.from_expansion() {
-                        self.span = Some(item.span.shrink_to_lo());
-                        self.found_use = true;
-                        return ControlFlow::Break(());
-                    }
-                }
-                // don't place use before extern crate
-                ItemKind::ExternCrate(_) => {}
-                // but place them before the first other item
-                _ => {
-                    if self.span.map_or(true, |span| item.span < span)
-                        && !item.span.from_expansion()
-                    {
-                        self.span = Some(item.span.shrink_to_lo());
-                        // don't insert between attributes and an item
-                        // find the first attribute on the item
-                        // FIXME: This is broken for active attributes.
-                        for attr in &item.attrs {
-                            if !attr.span.is_dummy()
-                                && self.span.map_or(true, |span| attr.span < span)
-                            {
-                                self.span = Some(attr.span.shrink_to_lo());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        ControlFlow::Continue(())
     }
 }
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
-    fn visit_item(&mut self, item: &'tcx ast::Item) {
-        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
-            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
-                return;
+fn is_span_suitable_for_use_injection(s: Span) -> bool {
+    // don't suggest placing a use before the prelude
+    // import or other generated ones
+    !s.from_expansion()
+}
+
+fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
+    for item in items {
+        if let ItemKind::Use(..) = item.kind {
+            if is_span_suitable_for_use_injection(item.span) {
+                return Some(item.span.shrink_to_lo());
             }
         }
-        visit::walk_item(self, item);
+    }
+    return None;
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_crate(&mut self, c: &Crate) {
+        if self.target_module == CRATE_NODE_ID {
+            let inject = c.spans.inject_use_span;
+            if is_span_suitable_for_use_injection(inject) {
+                self.first_legal_span = Some(inject);
+            }
+            self.first_use_span = search_for_any_use_in_items(&c.items);
+            return;
+        } else {
+            visit::walk_crate(self, c);
+        }
+    }
+
+    fn visit_item(&mut self, item: &'tcx ast::Item) {
+        if self.target_module == item.id {
+            if let ItemKind::Mod(_, ModKind::Loaded(items, _inline, mod_spans)) = &item.kind {
+                let inject = mod_spans.inject_use_span;
+                if is_span_suitable_for_use_injection(inject) {
+                    self.first_legal_span = Some(inject);
+                }
+                self.first_use_span = search_for_any_use_in_items(items);
+                return;
+            }
+        } else {
+            visit::walk_item(self, item);
+        }
     }
 }
 
@@ -1282,7 +1277,7 @@ impl<'a> Resolver<'a> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.span,
+            krate.spans.inner_span,
             session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
@@ -1295,7 +1290,7 @@ impl<'a> Resolver<'a> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
+        let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();
