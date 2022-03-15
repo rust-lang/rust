@@ -1140,7 +1140,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub ITER_WITH_DRAIN,
-    perf,
+    nursery,
     "replace `.drain(..)` with `.into_iter()`"
 }
 
