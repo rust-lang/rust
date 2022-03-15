@@ -468,21 +468,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .predicates
             .into_iter()
         {
-            if let ty::PredicateKind::Trait(..) = super_trait.kind().skip_binder() {
-                let normalized_super_trait = normalize_with_depth_to(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    super_trait,
-                    &mut nested,
-                );
-                nested.push(Obligation::new(
-                    obligation.cause.clone(),
-                    obligation.param_env,
-                    normalized_super_trait,
-                ));
-            }
+            let normalized_super_trait = normalize_with_depth_to(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                super_trait,
+                &mut nested,
+            );
+            nested.push(Obligation::new(
+                obligation.cause.clone(),
+                obligation.param_env,
+                normalized_super_trait,
+            ));
         }
 
         let assoc_types: Vec<_> = tcx
