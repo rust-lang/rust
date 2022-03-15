@@ -424,7 +424,7 @@ pub enum ExprKind<'tcx> {
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     ConstParam {
-        literal: ty::Const<'tcx>,
+        param: ty::ParamConst,
         def_id: DefId,
     },
     // FIXME improve docs for `StaticRef` by distinguishing it from `NamedConst`

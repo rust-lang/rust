@@ -70,8 +70,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 Constant { user_ty, span, literal }
             }
-            ExprKind::ConstParam { literal, def_id: _ } => {
-                let literal = ConstantKind::Ty(literal);
+            ExprKind::ConstParam { param, def_id: _ } => {
+                let const_param =
+                    tcx.mk_const(ty::ConstS { val: ty::ConstKind::Param(param), ty: expr.ty });
+                let literal = ConstantKind::Ty(const_param);
 
                 Constant { user_ty: None, span, literal }
             }

@@ -121,7 +121,7 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         Literal { lit: _, neg: _ } => {}
         ScalarLiteral { lit: _, user_ty: _ } => {}
         NamedConst { def_id: _, substs: _, user_ty: _ } => {}
-        ConstParam { literal: _, def_id: _ } => {}
+        ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
         InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
             for op in &**operands {

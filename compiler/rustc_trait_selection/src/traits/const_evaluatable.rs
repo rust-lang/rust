@@ -459,8 +459,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 self.nodes.push(Node::Leaf(constant))
             }
 
-            ExprKind::ConstParam {literal, ..} => {
-                self.nodes.push(Node::Leaf(*literal))
+            ExprKind::ConstParam {param, ..} => {
+                let const_param = self.tcx.mk_const(ty::ConstS {
+                        val: ty::ConstKind::Param(*param),
+                        ty: node.ty,
+                    });
+                self.nodes.push(Node::Leaf(const_param))
             }
 
             ExprKind::Call { fun, args, .. } => {

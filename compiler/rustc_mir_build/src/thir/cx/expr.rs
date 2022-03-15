@@ -869,15 +869,9 @@ impl<'tcx> Cx<'tcx> {
                 let generics = self.tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);
-                let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
+                let param = ty::ParamConst::new(index, name);
 
-                ExprKind::ConstParam {
-                    literal: self.tcx.mk_const(ty::ConstS {
-                        val,
-                        ty: self.typeck_results().node_type(expr.hir_id),
-                    }),
-                    def_id,
-                }
+                ExprKind::ConstParam { param, def_id }
             }
 
             Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssocConst, def_id) => {
