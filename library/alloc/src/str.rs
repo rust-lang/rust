@@ -235,7 +235,7 @@ impl ToOwned for str {
 }
 
 /// Methods for string slices.
-#[lang = "str_alloc"]
+#[cfg_attr(bootstrap, lang = "str_alloc")]
 #[cfg(not(test))]
 impl str {
     /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.

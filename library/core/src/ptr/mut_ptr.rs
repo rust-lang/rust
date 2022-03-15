@@ -3,7 +3,7 @@ use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
 use crate::slice::{self, SliceIndex};
 
-#[lang = "mut_ptr"]
+#[cfg_attr(bootstrap, lang = "mut_ptr")]
 impl<T: ?Sized> *mut T {
     /// Returns `true` if the pointer is null.
     ///
@@ -1240,7 +1240,7 @@ impl<T: ?Sized> *mut T {
     }
 }
 
-#[lang = "mut_slice_ptr"]
+#[cfg_attr(bootstrap, lang = "mut_slice_ptr")]
 impl<T> *mut [T] {
     /// Returns the length of a raw slice.
     ///

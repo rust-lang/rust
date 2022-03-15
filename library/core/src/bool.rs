@@ -2,7 +2,7 @@
 
 use crate::marker::Destruct;
 
-#[lang = "bool"]
+#[cfg_attr(bootstrap, lang = "bool")]
 impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
     /// or `None` otherwise.

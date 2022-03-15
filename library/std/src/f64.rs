@@ -28,7 +28,7 @@ pub use core::f64::{
 };
 
 #[cfg(not(test))]
-#[lang = "f64_runtime"]
+#[cfg_attr(bootstrap, lang = "f64_runtime")]
 impl f64 {
     /// Returns the largest integer less than or equal to a number.
     ///

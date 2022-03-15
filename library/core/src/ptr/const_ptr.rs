@@ -4,7 +4,7 @@ use crate::intrinsics;
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
-#[lang = "const_ptr"]
+#[cfg_attr(bootstrap, lang = "const_ptr")]
 impl<T: ?Sized> *const T {
     /// Returns `true` if the pointer is null.
     ///
@@ -969,7 +969,7 @@ impl<T: ?Sized> *const T {
     }
 }
 
-#[lang = "const_slice_ptr"]
+#[cfg_attr(bootstrap, lang = "const_slice_ptr")]
 impl<T> *const [T] {
     /// Returns the length of a raw slice.
     ///
