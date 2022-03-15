@@ -165,12 +165,19 @@ fn pattern_path_completion(
                         ctx.module,
                         None,
                         |item| {
-                            // Note associated consts cannot be referenced in patterns
-                            if let AssocItem::TypeAlias(ta) = item {
-                                // We might iterate candidates of a trait multiple times here, so deduplicate them.
-                                if seen.insert(item) {
-                                    acc.add_type_alias(ctx, ta);
+                            match item {
+                                AssocItem::TypeAlias(ta) => {
+                                    // We might iterate candidates of a trait multiple times here, so deduplicate them.
+                                    if seen.insert(item) {
+                                        acc.add_type_alias(ctx, ta);
+                                    }
                                 }
+                                AssocItem::Const(c) => {
+                                    if seen.insert(item) {
+                                        acc.add_const(ctx, c);
+                                    }
+                                }
+                                _ => {}
                             }
                             None::<()>
                         },
