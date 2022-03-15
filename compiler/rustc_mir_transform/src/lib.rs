@@ -490,6 +490,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
             &const_debuginfo::ConstDebugInfo,
+            &const_prop::ConstProp,
             &simplify::SimplifyLocals,
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,

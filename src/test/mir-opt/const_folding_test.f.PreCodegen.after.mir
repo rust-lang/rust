@@ -2,13 +2,9 @@
 
 fn f() -> usize {
     let mut _0: usize;                   // return place in scope 0 at $DIR/const_folding_test.rs:3:11: 3:16
-    let mut _1: usize;                   // in scope 0 at $DIR/const_folding_test.rs:4:9: 4:29
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/const_folding_test.rs:4:9: 4:29
-        _1 = const 1_usize;              // scope 0 at $DIR/const_folding_test.rs:4:18: 4:19
-        _0 = Add(const 1_usize, move _1); // scope 0 at $DIR/const_folding_test.rs:4:5: 4:29
-        StorageDead(_1);                 // scope 0 at $DIR/const_folding_test.rs:4:28: 4:29
+        _0 = const 2_usize;              // scope 0 at $DIR/const_folding_test.rs:4:5: 4:29
         return;                          // scope 0 at $DIR/const_folding_test.rs:5:2: 5:2
     }
 }
