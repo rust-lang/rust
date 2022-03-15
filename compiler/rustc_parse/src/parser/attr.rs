@@ -139,7 +139,7 @@ impl<'a> Parser<'a> {
                 Ok(attr::mk_attr_from_item(item, None, style, attr_sp))
             } else {
                 let token_str = pprust::token_to_string(&this.token);
-                let msg = &format!("expected `#`, found `{}`", token_str);
+                let msg = &format!("expected `#`, found `{token_str}`");
                 Err(this.struct_span_err(this.token.span, msg))
             }
         })
@@ -421,7 +421,7 @@ impl<'a> Parser<'a> {
         }
 
         let found = pprust::token_to_string(&self.token);
-        let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
+        let msg = format!("expected unsuffixed literal or identifier, found `{found}`");
         Err(self.struct_span_err(self.token.span, &msg))
     }
 }
