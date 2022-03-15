@@ -10,15 +10,13 @@ use std::ptr;
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
+    Scalar, ScalarMaybeUninit, SmallSlice, UndefinedBehaviorInfo, UninitBytesAccess,
     UnsupportedOpInfo,
 };
-use crate::ty;
 
 /// This type represents an Allocation in the Miri/CTFE core engine.
 ///
@@ -30,7 +28,7 @@ use crate::ty;
 pub struct Allocation<Tag = AllocId, Extra = ()> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
-    bytes: Box<[u8]>,
+    bytes: SmallSlice,
     /// Maps from byte addresses to extra data for each pointer.
     /// Only the first byte of a pointer is inserted into the map; i.e.,
     /// every entry in this map applies to `pointer_size` consecutive bytes starting
@@ -142,7 +140,7 @@ impl<Tag> Allocation<Tag> {
         align: Align,
         mutability: Mutability,
     ) -> Self {
-        let bytes = Box::<[u8]>::from(slice.into());
+        let bytes = SmallSlice::from(slice.into());
         let size = Size::from_bytes(bytes.len());
         Self {
             bytes,
@@ -161,22 +159,7 @@ impl<Tag> Allocation<Tag> {
     /// Try to create an Allocation of `size` bytes, failing if there is not enough memory
     /// available to the compiler to do so.
     pub fn uninit(size: Size, align: Align, panic_on_fail: bool) -> InterpResult<'static, Self> {
-        let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
-            // This results in an error that can happen non-deterministically, since the memory
-            // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-determinstic here because all uses of const
-            // evaluation (including ConstProp!) will make compilation fail (via hard error
-            // or ICE) upon encountering a `MemoryExhausted` error.
-            if panic_on_fail {
-                panic!("Allocation::uninit called with panic_on_fail had allocation failure")
-            }
-            ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
-            });
-            InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
-        })?;
-        // SAFETY: the box was zero-allocated, which is a valid initial value for Box<[u8]>
-        let bytes = unsafe { bytes.assume_init() };
+        let bytes = SmallSlice::zeroed(size.bytes_usize(), panic_on_fail)?;
         Ok(Allocation {
             bytes,
             relocations: Relocations::new(),

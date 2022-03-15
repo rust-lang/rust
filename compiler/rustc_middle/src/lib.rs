@@ -36,6 +36,8 @@
 #![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
 #![feature(map_first_last)]
+#![feature(maybe_uninit_slice)]
+#![feature(maybe_uninit_uninit_array)]
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]

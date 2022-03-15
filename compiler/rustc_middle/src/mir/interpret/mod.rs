@@ -93,6 +93,7 @@ mod allocation;
 mod error;
 mod pointer;
 mod queries;
+mod small_slice;
 mod value;
 
 use std::convert::TryFrom;
@@ -131,6 +132,7 @@ pub use self::allocation::{
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
+use self::small_slice::SmallSlice;
 
 /// Uniquely identifies one of the following:
 /// - A constant
