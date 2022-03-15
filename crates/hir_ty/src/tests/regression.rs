@@ -1431,3 +1431,26 @@ fn nalgebra_factorial() {
         "#,
     )
 }
+
+#[test]
+fn regression_11688_1() {
+    check_no_mismatches(
+        r#"
+        pub struct Buffer<T>(T);
+        type Writer = Buffer<u8>;
+        impl<T> Buffer<T> {
+            fn extend_from_array<const N: usize>(&mut self, xs: &[T; N]) {
+                loop {}
+            }
+        }
+        trait Encode<S> {
+            fn encode(self, w: &mut Writer, s: &mut S);
+        }
+        impl<S> Encode<S> for u8 {
+            fn encode(self, w: &mut Writer, _: &mut S) {
+                w.extend_from_array(&self.to_le_bytes());
+            }
+        }
+        "#,
+    );
+}

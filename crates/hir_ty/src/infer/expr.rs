@@ -1088,9 +1088,20 @@ impl<'a> InferenceContext<'a> {
                 }
             }
         };
-        let supplied_params = substs.len();
-        for _ in supplied_params..total_len {
-            substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner));
+        for (id, data) in def_generics.iter().skip(substs.len()) {
+            match data {
+                TypeOrConstParamData::TypeParamData(_) => {
+                    substs.push(GenericArgData::Ty(self.table.new_type_var()).intern(Interner))
+                }
+                TypeOrConstParamData::ConstParamData(_) => {
+                    substs.push(
+                        GenericArgData::Const(self.table.new_const_var(
+                            self.db.const_param_ty(ConstParamId::from_unchecked(id)),
+                        ))
+                        .intern(Interner),
+                    )
+                }
+            }
         }
         assert_eq!(substs.len(), total_len);
         Substitution::from_iter(Interner, substs)
