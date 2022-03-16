@@ -8205,6 +8205,81 @@ public:
         }
       }
 
+      if (funcName == "atan2") {
+        if (gutils->knownRecomputeHeuristic.find(orig) !=
+            gutils->knownRecomputeHeuristic.end()) {
+          if (!gutils->knownRecomputeHeuristic[orig]) {
+            gutils->cacheForReverse(BuilderZ, newCall,
+                                    getIndex(orig, CacheType::Self));
+          }
+        }
+        eraseIfUnused(*orig);
+        if (gutils->isConstantInstruction(orig))
+          return;
+
+        switch (Mode) {
+        case DerivativeMode::ForwardModeSplit:
+        case DerivativeMode::ForwardMode: {
+          IRBuilder<> Builder2(&call);
+          getForwardBuilder(Builder2);
+          Value *y = gutils->getNewFromOriginal(orig->getArgOperand(0));
+          Value *x = gutils->getNewFromOriginal(orig->getArgOperand(1));
+          Value *denom = Builder2.CreateFAdd(Builder2.CreateFMul(x, x),
+                                             Builder2.CreateFMul(y, y));
+
+          auto rule = [&](Value *dy, Value *dx) {
+            Value *der = nullptr;
+            if (dy)
+              der = Builder2.CreateFMul(dy, x);
+            if (dx) {
+              if (!der)
+                der = ConstantFP::get(x->getType(), 0);
+              der = Builder2.CreateFSub(der, Builder2.CreateFMul(dx, y));
+            }
+            return Builder2.CreateFDiv(der, denom);
+          };
+
+          Value *dif =
+              applyChainRule(call.getType(), Builder2, rule,
+                             gutils->isConstantValue(orig->getArgOperand(0))
+                                 ? nullptr
+                                 : diffe(orig->getArgOperand(0), Builder2),
+                             gutils->isConstantValue(orig->getArgOperand(1))
+                                 ? nullptr
+                                 : diffe(orig->getArgOperand(1), Builder2));
+          setDiffe(orig, dif, Builder2);
+          return;
+        }
+        case DerivativeMode::ReverseModeGradient:
+        case DerivativeMode::ReverseModeCombined: {
+          IRBuilder<> Builder2(call.getParent());
+          getReverseBuilder(Builder2);
+          Value *y = lookup(gutils->getNewFromOriginal(orig->getArgOperand(0)),
+                            Builder2);
+          Value *x = lookup(gutils->getNewFromOriginal(orig->getArgOperand(1)),
+                            Builder2);
+          Value *args[2] = {y, x};
+
+          Value *denom = Builder2.CreateFAdd(Builder2.CreateFMul(x, x),
+                                             Builder2.CreateFMul(y, y));
+          Value *dret = diffe(orig, Builder2);
+          for (int i = 0; i < 2; i++) {
+            if (!gutils->isConstantValue(orig->getArgOperand(i))) {
+              Value *num = Builder2.CreateFMul(dret, args[1 - i]);
+              if (i == 1)
+                num = Builder2.CreateFNeg(num);
+              Value *dif0 = Builder2.CreateFDiv(num, denom);
+              addToDiffe(orig->getArgOperand(i), dif0, Builder2, x->getType());
+            }
+          }
+          return;
+        }
+        case DerivativeMode::ReverseModePrimal: {
+          return;
+        }
+        }
+      }
+
       if (funcName == "cbrt") {
         if (gutils->knownRecomputeHeuristic.find(orig) !=
             gutils->knownRecomputeHeuristic.end()) {
