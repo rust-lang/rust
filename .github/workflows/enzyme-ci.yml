@@ -15,7 +15,6 @@ jobs:
         os: [ubuntu-20.04, ubuntu-18.04] #self-hosted]
   
         exclude:
-          # excludes node 4 on macOS
           - os: ubuntu-20.04
             llvm: 7
           - os: ubuntu-20.04
