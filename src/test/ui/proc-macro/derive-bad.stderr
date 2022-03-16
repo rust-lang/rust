@@ -5,6 +5,10 @@ LL | #[derive(A)]
    |          ^ expected `:`
    |
    = note: this error originates in the derive macro `A` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider using `enum` instead of `struct`
+   |
+LL | #[derive(enum)]
+   |          ~~~~
 
 error: proc-macro derive produced unparseable tokens
   --> $DIR/derive-bad.rs:6:10
