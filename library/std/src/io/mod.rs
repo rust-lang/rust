@@ -2110,7 +2110,8 @@ pub trait BufRead: Read {
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append
-    /// them to the provided buffer.
+    /// them to the provided buffer. You do not need to clear the buffer before
+    /// appending.
     ///
     /// This function will read bytes from the underlying stream until the
     /// newline delimiter (the `0xA` byte) or EOF is found. Once found, all bytes
