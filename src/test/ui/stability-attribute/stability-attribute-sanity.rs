@@ -49,10 +49,6 @@ mod missing_version {
 #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
 fn multiple1() { }
 
-#[unstable(feature = "b", issue = "none")]
-#[unstable(feature = "b", issue = "none")] //~ ERROR multiple stability levels [E0544]
-fn multiple2() { }
-
 #[stable(feature = "a", since = "b")]
 #[stable(feature = "a", since = "b")] //~ ERROR multiple stability levels [E0544]
 fn multiple3() { }
@@ -60,9 +56,7 @@ fn multiple3() { }
 #[stable(feature = "a", since = "b")] //~ ERROR invalid stability version found
 #[deprecated(since = "b", note = "text")]
 #[deprecated(since = "b", note = "text")] //~ ERROR multiple deprecated attributes
-#[rustc_const_unstable(feature = "c", issue = "none")]
-#[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
-pub const fn multiple4() { }
+pub fn multiple4() { }
 
 #[stable(feature = "a", since = "1.0.0")] //~ ERROR invalid deprecation version found
 //~^ ERROR feature `a` is declared stable since 1.0.0

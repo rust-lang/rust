@@ -317,6 +317,21 @@ where
     }
 }
 
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, Option<&'tcx T>> for Option<Lazy<T>>
+where
+    T: Decodable<DecodeContext<'a, 'tcx>>,
+    T: ArenaAllocatable<'tcx>,
+{
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        tcx: TyCtxt<'tcx>,
+        _err: impl FnOnce() -> !,
+    ) -> Option<&'tcx T> {
+        self.map(|l| tcx.arena.alloc(l.decode((cdata, tcx))) as &_)
+    }
+}
+
 impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, Option<T>> for Option<Lazy<T>>
 where
     T: Decodable<DecodeContext<'a, 'tcx>>,

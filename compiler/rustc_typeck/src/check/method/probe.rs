@@ -1127,7 +1127,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn pick_all_method(
         &mut self,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>> {
         let steps = self.steps.clone();
         steps
@@ -1187,7 +1187,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>> {
         if step.unsize {
             return None;
@@ -1216,7 +1216,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>> {
         let tcx = self.tcx;
 
@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         &mut self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>> {
         // Don't convert an unsized reference to ptr
         if step.unsize {
@@ -1309,7 +1309,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn pick_method(
         &mut self,
         self_ty: Ty<'tcx>,
-        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>> {
         if !self.tcx.sess.opts.debugging_opts.pick_stable_methods_before_any_unstable {
             return self.pick_method_with_unstable(self_ty);
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )>,
-        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
+        unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Vec<Symbol>)>>,
     ) -> Option<PickResult<'tcx>>
     where
         ProbesIter: Iterator<Item = &'b Candidate<'tcx>> + Clone,
@@ -1377,10 +1377,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         if let Some(uc) = unstable_candidates {
             applicable_candidates.retain(|&(p, _)| {
-                if let stability::EvalResult::Deny { feature, .. } =
+                if let stability::EvalResult::Deny { unstables, .. } =
                     self.tcx.eval_stability(p.item.def_id, None, self.span, None)
                 {
-                    uc.push((p.clone(), feature));
+                    uc.push((p.clone(), unstables.iter().map(|u| u.feature).collect()));
                     return false;
                 }
                 true
@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn emit_unstable_name_collision_hint(
         &self,
         stable_pick: &Pick<'_>,
-        unstable_candidates: &[(Candidate<'tcx>, Symbol)],
+        unstable_candidates: &[(Candidate<'tcx>, Vec<Symbol>)],
     ) {
         self.tcx.struct_span_lint_hir(
             lint::builtin::UNSTABLE_NAME_COLLISIONS,
@@ -1448,7 +1448,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     for (candidate, feature) in unstable_candidates {
                         diag.help(&format!(
                             "add `#![feature({})]` to the crate attributes to enable `{}`",
-                            feature,
+                            feature.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", "),
                             self.tcx.def_path_str(candidate.item.def_id),
                         ));
                     }

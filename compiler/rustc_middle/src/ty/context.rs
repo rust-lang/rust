@@ -1294,7 +1294,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
-    pub fn stability(self) -> &'tcx stability::Index {
+    pub fn stability(self) -> &'tcx stability::Index<'tcx> {
         self.stability_index(())
     }
 
@@ -2687,6 +2687,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
     }
 
+    pub fn mk_stability(self, stab: rustc_attr::Stability) -> &'tcx rustc_attr::Stability {
+        self.arena.alloc(stab)
+    }
+
+    pub fn mk_const_stability(
+        self,
+        stab: rustc_attr::ConstStability,
+    ) -> &'tcx rustc_attr::ConstStability {
+        self.arena.alloc(stab)
+    }
+
     pub fn mk_bound_variable_kinds<
         I: InternAs<[ty::BoundVariableKind], &'tcx List<ty::BoundVariableKind>>,
     >(
@@ -2791,19 +2802,37 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_const_fn(self, def_id: DefId) -> bool {
         if self.is_const_fn_raw(def_id) {
             match self.lookup_const_stability(def_id) {
-                Some(stability) if stability.level.is_unstable() => {
+                Some(rustc_attr::ConstStability {
+                    level: rustc_attr::Unstable { unstables, .. },
+                    ..
+                }) => {
                     // has a `rustc_const_unstable` attribute, check whether the user enabled the
                     // corresponding feature gate.
-                    self.features()
-                        .declared_lib_features
-                        .iter()
-                        .any(|&(sym, _)| sym == stability.feature)
+                    unstables.iter().all(|unstability| {
+                        self.features()
+                            .declared_lib_features
+                            .iter()
+                            .any(|&(sym, _)| sym == unstability.feature)
+                    })
                 }
                 // functions without const stability are either stable user written
                 // const fn or the user is using feature gates and we thus don't
                 // care what they do
                 _ => true,
             }
+        } else {
+            false
+        }
+    }
+
+    /// Returns true if the function is declared `rustc_const_unstable`, even if the current
+    /// feature flags allow it to be called.
+    pub fn is_unstable_const_fn(self, def_id: DefId) -> bool {
+        if self.is_const_fn_raw(def_id) {
+            matches!(
+                self.lookup_const_stability(def_id),
+                Some(rustc_attr::ConstStability { level: rustc_attr::Unstable { .. }, .. })
+            )
         } else {
             false
         }

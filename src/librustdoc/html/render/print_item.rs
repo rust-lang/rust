@@ -226,8 +226,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         {
             return (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2));
         }
-        let s1 = i1.stability(tcx).as_ref().map(|s| s.level);
-        let s2 = i2.stability(tcx).as_ref().map(|s| s.level);
+        let s1 = i1.stability(tcx).as_ref().map(|s| &s.level);
+        let s2 = i2.stability(tcx).as_ref().map(|s| &s.level);
         if let (Some(a), Some(b)) = (s1, s2) {
             match (a.is_stable(), b.is_stable()) {
                 (true, true) | (false, false) => {}
@@ -430,11 +430,9 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 
     // The "rustc_private" crates are permanently unstable so it makes no sense
     // to render "unstable" everywhere.
-    if item
-        .stability(tcx)
-        .as_ref()
-        .map(|s| s.level.is_unstable() && s.feature != sym::rustc_private)
-        == Some(true)
+    if let Some(rustc_attr::Stability { level: rustc_attr::Unstable { unstables, .. }, .. }) = item
+    .stability(tcx)
+    .as_ref() && !unstables.iter().any(|u| u.feature == sym::rustc_private)
     {
         tags += &tag_html("unstable", "", "Experimental");
     }

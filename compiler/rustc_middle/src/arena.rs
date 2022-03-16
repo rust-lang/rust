@@ -102,6 +102,9 @@ macro_rules! arena_types {
             [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind: rustc_middle::dep_graph::DepKindStruct,
+
+            [] stability: rustc_attr::Stability,
+            [] const_stability: rustc_attr::ConstStability,
         ]);
     )
 }

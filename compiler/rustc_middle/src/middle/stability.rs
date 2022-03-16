@@ -57,20 +57,20 @@ impl DeprecationEntry {
 
 /// A stability index, giving the stability level for items and methods.
 #[derive(HashStable, Debug)]
-pub struct Index {
+pub struct Index<'tcx> {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
+    pub stab_map: FxHashMap<LocalDefId, &'tcx Stability>,
+    pub const_stab_map: FxHashMap<LocalDefId, &'tcx ConstStability>,
     pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
 }
 
-impl Index {
-    pub fn local_stability(&self, def_id: LocalDefId) -> Option<Stability> {
+impl<'tcx> Index<'tcx> {
+    pub fn local_stability(&self, def_id: LocalDefId) -> Option<&'tcx Stability> {
         self.stab_map.get(&def_id).copied()
     }
 
-    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<ConstStability> {
+    pub fn local_const_stability(&self, def_id: LocalDefId) -> Option<&'tcx ConstStability> {
         self.const_stab_map.get(&def_id).copied()
     }
 
@@ -81,42 +81,51 @@ impl Index {
 
 pub fn report_unstable(
     sess: &Session,
-    feature: Symbol,
-    reason: Option<Symbol>,
-    issue: Option<NonZeroU32>,
-    suggestion: Option<(Span, String, String, Applicability)>,
+    unstables: &[attr::Unstability],
+    suggestion: Option<(Symbol, Span, String, String, Applicability)>,
     is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, &str),
+    mut soft_handler: impl FnMut(&'static Lint, Span, &str),
 ) {
-    let msg = match reason {
-        Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
-        None => format!("use of unstable library feature '{}'", &feature),
-    };
+    for attr::Unstability { feature, issue, reason, .. } in unstables {
+        let msg = match reason {
+            Some(r) => format!("use of unstable library feature '{}': {}", feature, r),
+            None => format!("use of unstable library feature '{}'", &feature),
+        };
 
-    let msp: MultiSpan = span.into();
-    let sm = &sess.parse_sess.source_map();
-    let span_key = msp.primary_span().and_then(|sp: Span| {
-        if !sp.is_dummy() {
-            let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.is_imported() { None } else { Some(span) }
-        } else {
-            None
-        }
-    });
-
-    let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
-    let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
-    if fresh {
-        if is_soft {
-            soft_handler(SOFT_UNSTABLE, span, &msg)
-        } else {
-            let mut err =
-                feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-            if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
-                err.span_suggestion(inner_types, msg, sugg, applicability);
+        let msp: MultiSpan = span.into();
+        let sm = &sess.parse_sess.source_map();
+        let span_key = msp.primary_span().and_then(|sp: Span| {
+            if !sp.is_dummy() {
+                let file = sm.lookup_char_pos(sp.lo()).file;
+                if file.is_imported() { None } else { Some(span) }
+            } else {
+                None
             }
-            err.emit();
+        });
+
+        let error_id = (DiagnosticMessageId::StabilityId(*issue), span_key, msg.clone());
+        let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
+        if fresh {
+            if is_soft {
+                soft_handler(SOFT_UNSTABLE, span, &msg)
+            } else {
+                let mut err = feature_err_issue(
+                    &sess.parse_sess,
+                    *feature,
+                    span,
+                    GateIssue::Library(*issue),
+                    &msg,
+                );
+                if let Some((suggestion_feature, inner_types, msg, sugg, applicability)) =
+                    &suggestion
+                {
+                    if feature == suggestion_feature {
+                        err.span_suggestion(*inner_types, &msg, sugg.to_string(), *applicability);
+                    }
+                }
+                err.emit();
+            }
         }
     }
 }
@@ -263,17 +272,15 @@ fn late_report_deprecation(
 }
 
 /// Result of `TyCtxt::eval_stability`.
-pub enum EvalResult {
+pub enum EvalResult<'tcx> {
     /// We can use the item because it is stable or we provided the
     /// corresponding feature gate.
     Allow,
     /// We cannot use the item because it is unstable and we did not provide the
     /// corresponding feature gate.
     Deny {
-        feature: Symbol,
-        reason: Option<Symbol>,
-        issue: Option<NonZeroU32>,
-        suggestion: Option<(Span, String, String, Applicability)>,
+        unstables: &'tcx [attr::Unstability],
+        suggestion: Option<(Symbol, Span, String, String, Applicability)>,
         is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
@@ -302,7 +309,7 @@ fn suggestion_for_allocator_api(
     def_id: DefId,
     span: Span,
     feature: Symbol,
-) -> Option<(Span, String, String, Applicability)> {
+) -> Option<(Symbol, Span, String, String, Applicability)> {
     if feature == sym::allocator_api {
         if let Some(trait_) = tcx.parent(def_id) {
             if tcx.is_diagnostic_item(sym::Vec, trait_) {
@@ -310,6 +317,7 @@ fn suggestion_for_allocator_api(
                 let inner_types = sm.span_extend_to_prev_char(span, '<', true);
                 if let Ok(snippet) = sm.span_to_snippet(inner_types) {
                     return Some((
+                        sym::allocator_api,
                         inner_types,
                         "consider wrapping the inner types in tuple".to_string(),
                         format!("({})", snippet),
@@ -338,7 +346,7 @@ impl<'tcx> TyCtxt<'tcx> {
         id: Option<HirId>,
         span: Span,
         method_span: Option<Span>,
-    ) -> EvalResult {
+    ) -> EvalResult<'tcx> {
         // Deprecated attributes apply in-crate and cross-crate.
         if let Some(id) = id {
             if let Some(depr_entry) = self.lookup_deprecation_entry(def_id) {
@@ -410,14 +418,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         match stability {
-            Some(Stability {
-                level: attr::Unstable { reason, issue, is_soft }, feature, ..
-            }) => {
-                if span.allows_unstable(feature) {
-                    debug!("stability: skipping span={:?} since it is internal", span);
-                    return EvalResult::Allow;
-                }
-                if self.features().active(feature) {
+            Some(Stability { level: attr::Unstable { unstables, is_soft }, .. }) => {
+                if unstables
+                    .iter()
+                    .all(|u| span.allows_unstable(u.feature) || self.features().active(u.feature))
+                {
                     return EvalResult::Allow;
                 }
 
@@ -430,14 +435,20 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
+                if unstables
+                    .iter()
+                    .all(|u| u.feature == sym::rustc_private && u.issue == NonZeroU32::new(27812))
+                {
                     if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }
                 }
 
-                let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny { feature, reason, issue, suggestion, is_soft }
+                let suggestion = unstables
+                    .iter()
+                    .find_map(|u| suggestion_for_allocator_api(self, def_id, span, u.feature));
+
+                EvalResult::Deny { unstables: unstables.as_slice(), suggestion, is_soft: *is_soft }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -488,16 +499,9 @@ impl<'tcx> TyCtxt<'tcx> {
         };
         match self.eval_stability(def_id, id, span, method_span) {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
-                self.sess,
-                feature,
-                reason,
-                issue,
-                suggestion,
-                is_soft,
-                span,
-                soft_handler,
-            ),
+            EvalResult::Deny { unstables, suggestion, is_soft } => {
+                report_unstable(self.sess, unstables, suggestion, is_soft, span, soft_handler)
+            }
             EvalResult::Unmarked => unmarked(span, def_id),
         }
     }

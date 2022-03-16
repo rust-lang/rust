@@ -1126,19 +1126,18 @@ impl<'a> Resolver<'a> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability {
-            if let StabilityLevel::Unstable { reason, issue, is_soft } = stability.level {
-                let feature = stability.feature;
-                if !self.active_features.contains(&feature) && !span.allows_unstable(feature) {
+            if let StabilityLevel::Unstable { unstables, is_soft } = &stability.level {
+                if !unstables.iter().all(|u| {
+                    span.allows_unstable(u.feature) || self.active_features.contains(&u.feature)
+                }) {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =
                         |lint, span, msg: &_| lint_buffer.buffer_lint(lint, node_id, span, msg);
                     stability::report_unstable(
                         self.session,
-                        feature,
-                        reason,
-                        issue,
+                        unstables.as_slice(),
                         None,
-                        is_soft,
+                        *is_soft,
                         span,
                         soft_handler,
                     );

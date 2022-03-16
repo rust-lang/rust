@@ -94,38 +94,65 @@ pub enum OptimizeAttr {
 ///
 /// - `#[stable]`
 /// - `#[unstable]`
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
 }
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
-#[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Encodable, Decodable, Clone, Debug, PartialEq, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub struct ConstStability {
     pub level: StabilityLevel,
-    pub feature: Symbol,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
 }
 
 /// The available stability levels.
-#[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
+#[derive(Encodable, Decodable, PartialEq, Clone, Debug, Eq, Hash)]
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
-    // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
-    Stable { since: Symbol },
+    Unstable { unstables: Vec<Unstability>, is_soft: bool },
+    Stable { feature: Symbol, since: Symbol, span: Span },
+}
+
+impl StabilityLevel {
+    pub fn spans(&self) -> Vec<Span> {
+        match self {
+            StabilityLevel::Stable { span, .. } => vec![*span],
+            StabilityLevel::Unstable { unstables, .. } => {
+                unstables.iter().map(|u| u.span).collect()
+            }
+        }
+    }
+}
+
+/// An instance of the `#[unstable]` attribute
+#[derive(Encodable, Decodable, PartialEq, Clone, Debug, Eq, Hash)]
+#[derive(HashStable_Generic)]
+pub struct Unstability {
+    pub feature: Symbol,
+    pub issue: Option<NonZeroU32>,
+    pub reason: Option<Symbol>,
+    pub span: Span,
 }
 
 impl StabilityLevel {
     pub fn is_unstable(&self) -> bool {
         matches!(self, StabilityLevel::Unstable { .. })
     }
+
     pub fn is_stable(&self) -> bool {
         matches!(self, StabilityLevel::Stable { .. })
+    }
+
+    pub fn has_unstable_feature(&self, sym: Symbol) -> bool {
+        if let StabilityLevel::Unstable { unstables, .. } = &self {
+            unstables.iter().any(|u| u.feature == sym)
+        } else {
+            false
+        }
     }
 }
 
@@ -135,7 +162,7 @@ pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>) {
+) -> (Option<Stability>, Option<ConstStability>) {
     find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
@@ -143,14 +170,14 @@ fn find_stability_generic<'a, I>(
     sess: &Session,
     attrs_iter: I,
     item_sp: Span,
-) -> (Option<(Stability, Span)>, Option<(ConstStability, Span)>)
+) -> (Option<Stability>, Option<ConstStability>)
 where
     I: Iterator<Item = &'a Attribute>,
 {
     use StabilityLevel::*;
 
-    let mut stab: Option<(Stability, Span)> = None;
-    let mut const_stab: Option<(ConstStability, Span)> = None;
+    let mut stab: Option<Stability> = None;
+    let mut const_stab: Option<ConstStability> = None;
     let mut promotable = false;
 
     let diagnostic = &sess.parse_sess.span_diagnostic;
@@ -198,22 +225,6 @@ where
             let meta_name = meta.name_or_empty();
             match meta_name {
                 sym::rustc_const_unstable | sym::unstable => {
-                    if meta_name == sym::unstable && stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    } else if meta_name == sym::rustc_const_unstable && const_stab.is_some() {
-                        handle_errors(
-                            &sess.parse_sess,
-                            attr.span,
-                            AttrError::MultipleStabilityLevels,
-                        );
-                        break;
-                    }
-
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
@@ -308,14 +319,70 @@ where
                                 );
                                 continue;
                             }
-                            let level = Unstable { reason, issue: issue_num, is_soft };
+                            let unstability =
+                                Unstability { feature, issue: issue_num, reason, span: attr.span };
                             if sym::unstable == meta_name {
-                                stab = Some((Stability { level, feature }, attr.span));
+                                match &mut stab {
+                                    stab @ None => {
+                                        *stab = Some(Stability {
+                                            level: StabilityLevel::Unstable {
+                                                unstables: vec![unstability],
+                                                is_soft,
+                                            },
+                                        })
+                                    }
+                                    // Merge multiple unstability attributes into one
+                                    Some(Stability {
+                                        level:
+                                            StabilityLevel::Unstable { unstables, is_soft: old_is_soft },
+                                    }) => {
+                                        unstables.push(unstability);
+                                        // FIXME(compiler-errors): Do we want this behavior: is_soft iff all are is_soft?
+                                        *old_is_soft &= is_soft;
+                                    }
+                                    _ => {
+                                        handle_errors(
+                                            &sess.parse_sess,
+                                            attr.span,
+                                            AttrError::MultipleStabilityLevels,
+                                        );
+                                    }
+                                }
                             } else {
-                                const_stab = Some((
-                                    ConstStability { level, feature, promotable: false },
-                                    attr.span,
-                                ));
+                                match &mut const_stab {
+                                    const_stab @ None => {
+                                        *const_stab = Some(ConstStability {
+                                            level: StabilityLevel::Unstable {
+                                                unstables: vec![unstability],
+                                                is_soft,
+                                            },
+                                            promotable: false,
+                                        })
+                                    }
+                                    Some(ConstStability {
+                                        level:
+                                            StabilityLevel::Unstable {
+                                                unstables: unstability,
+                                                is_soft: old_is_soft,
+                                            },
+                                        ..
+                                    }) => {
+                                        unstability.push(Unstability {
+                                            feature,
+                                            issue: issue_num,
+                                            reason,
+                                            span: attr.span,
+                                        });
+                                        *old_is_soft &= is_soft;
+                                    }
+                                    _ => {
+                                        handle_errors(
+                                            &sess.parse_sess,
+                                            attr.span,
+                                            AttrError::MultipleStabilityLevels,
+                                        );
+                                    }
+                                }
                             }
                         }
                         (None, _, _) => {
@@ -386,14 +453,11 @@ where
 
                     match (feature, since) {
                         (Some(feature), Some(since)) => {
-                            let level = Stable { since };
+                            let level = Stable { since, feature, span: attr.span };
                             if sym::stable == meta_name {
-                                stab = Some((Stability { level, feature }, attr.span));
+                                stab = Some(Stability { level });
                             } else {
-                                const_stab = Some((
-                                    ConstStability { level, feature, promotable: false },
-                                    attr.span,
-                                ));
+                                const_stab = Some(ConstStability { level, promotable: false });
                             }
                         }
                         (None, _) => {
@@ -413,7 +477,7 @@ where
 
     // Merge the const-unstable info into the stability info
     if promotable {
-        if let Some((ref mut stab, _)) = const_stab {
+        if let Some(stab) = &mut const_stab {
             stab.promotable = promotable;
         } else {
             struct_span_err!(

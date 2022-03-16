@@ -2,18 +2,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::symbol::Symbol;
 use rustc_target::spec::abi::Abi;
-
-/// Whether the `def_id` is an unstable const fn and what feature gate is necessary to enable it
-pub fn is_unstable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Symbol> {
-    if tcx.is_const_fn_raw(def_id) {
-        let const_stab = tcx.lookup_const_stability(def_id)?;
-        if const_stab.level.is_unstable() { Some(const_stab.feature) } else { None }
-    } else {
-        None
-    }
-}
 
 pub fn is_parent_const_impl_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);

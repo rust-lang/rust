@@ -10,3 +10,11 @@ pub struct Unstable {
     pub foo: u32,
     pub bar: u32,
 }
+
+#[unstable(feature = "test", issue = "1")]
+#[unstable(feature = "test2", issue = "2")]
+pub trait UnstableTrait {
+    // @has stability/trait.UnstableTrait.html \
+    //      '//div[@class="item-info"]//div[@class="stab unstable"]' \
+    //      'This is a nightly-only experimental API. (test, test2)'
+}

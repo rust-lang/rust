@@ -667,25 +667,35 @@ fn short_item_info(
 
     // Render unstable items. But don't render "rustc_private" crates (internal compiler crates).
     // Those crates are permanently unstable so it makes no sense to render "unstable" everywhere.
-    if let Some((StabilityLevel::Unstable { reason: _, issue, .. }, feature)) = item
-        .stability(cx.tcx())
-        .as_ref()
-        .filter(|stab| stab.feature != sym::rustc_private)
-        .map(|stab| (stab.level, stab.feature))
+    if let Some(rustc_attr::Stability {
+        level: StabilityLevel::Unstable { unstables, .. }, ..
+    }) = item.stability(cx.tcx())
     {
         let mut message =
             "<span class=\"emoji\">🔬</span> This is a nightly-only experimental API.".to_owned();
+        let unstables: Vec<_> =
+            unstables.iter().cloned().filter(|u| u.feature != sym::rustc_private).collect();
+        if !unstables.is_empty() {
+            message.push_str(" (");
 
-        let mut feature = format!("<code>{}</code>", Escape(feature.as_str()));
-        if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, issue) {
-            feature.push_str(&format!(
-                "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
-                url = url,
-                issue = issue
-            ));
+            for (i, u) in unstables.iter().enumerate() {
+                let mut feature = format!("<code>{}</code>", Escape(u.feature.as_str()));
+                if let (Some(url), Some(issue)) = (&cx.shared.issue_tracker_base_url, u.issue) {
+                    feature.push_str(&format!(
+                        "&nbsp;<a href=\"{url}{issue}\">#{issue}</a>",
+                        url = url,
+                        issue = issue
+                    ));
+                }
+
+                if i > 0 {
+                    message.push_str(", ");
+                }
+                message.push_str(feature.as_str());
+            }
+
+            message.push(')');
         }
-
-        message.push_str(&format!(" ({})", feature));
 
         extra_info.push(format!("<div class=\"stab unstable\">{}</div>", message));
     }
@@ -905,7 +915,7 @@ fn assoc_method(
 fn render_stability_since_raw(
     w: &mut Buffer,
     ver: Option<Symbol>,
-    const_stability: Option<ConstStability>,
+    const_stability: Option<&ConstStability>,
     containing_ver: Option<Symbol>,
     containing_const_ver: Option<Symbol>,
 ) -> bool {
@@ -920,16 +930,17 @@ fn render_stability_since_raw(
     }
 
     let const_title_and_stability = match const_stability {
-        Some(ConstStability { level: StabilityLevel::Stable { since }, .. })
-            if Some(since) != containing_const_ver =>
+        Some(ConstStability { level: StabilityLevel::Stable { since, .. }, .. })
+            if Some(*since) != containing_const_ver =>
         {
             Some((format!("const since {}", since), format!("const: {}", since)))
         }
-        Some(ConstStability { level: StabilityLevel::Unstable { issue, .. }, feature, .. }) => {
-            let unstable = if let Some(n) = issue {
+        Some(ConstStability { level: StabilityLevel::Unstable { unstables, .. }, .. }) => {
+            // FIXME(compiler-errors): Should we link to several issues here? How?
+            let unstable = if let Some(u) = unstables.first() && let Some(n) = u.issue {
                 format!(
                     r#"<a href="https://github.com/rust-lang/rust/issues/{}" title="Tracking issue for {}">unstable</a>"#,
-                    n, feature
+                    n, u.feature
                 )
             } else {
                 String::from("unstable")

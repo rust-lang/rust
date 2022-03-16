@@ -381,11 +381,11 @@ crate fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
 }
 
 impl Item {
-    crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<Stability> {
+    crate fn stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx Stability> {
         self.def_id.as_def_id().and_then(|did| tcx.lookup_stability(did))
     }
 
-    crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<ConstStability> {
+    crate fn const_stability<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Option<&'tcx ConstStability> {
         self.def_id.as_def_id().and_then(|did| tcx.lookup_const_stability(did))
     }
 

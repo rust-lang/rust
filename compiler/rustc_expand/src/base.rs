@@ -776,16 +776,20 @@ impl SyntaxExtension {
             })
             .unwrap_or_else(|| (None, helper_attrs));
         let (stability, const_stability) = attr::find_stability(&sess, attrs, span);
-        if let Some((_, sp)) = const_stability {
-            sess.parse_sess
+        if let Some(stab) = const_stability {
+            let spans = stab.level.spans();
+            let mut diag = sess
+                .parse_sess
                 .span_diagnostic
-                .struct_span_err(sp, "macros cannot have const stability attributes")
-                .span_label(sp, "invalid const stability attribute")
-                .span_label(
-                    sess.source_map().guess_head_span(span),
-                    "const stability attribute affects this macro",
-                )
-                .emit();
+                .struct_span_err(spans.clone(), "macros cannot have const stability attributes");
+            diag.span_label(
+                sess.source_map().guess_head_span(span),
+                "const stability attribute affects this macro",
+            );
+            for sp in spans {
+                diag.span_label(sp, "invalid const stability attribute");
+            }
+            diag.emit();
         }
 
         SyntaxExtension {
@@ -795,7 +799,7 @@ impl SyntaxExtension {
                 .then(|| allow_internal_unstable.into()),
             allow_internal_unsafe: sess.contains_name(attrs, sym::allow_internal_unsafe),
             local_inner_macros,
-            stability: stability.map(|(s, _)| s),
+            stability,
             deprecation: attr::find_deprecation(&sess, attrs).map(|(d, _)| d),
             helper_attrs,
             edition,

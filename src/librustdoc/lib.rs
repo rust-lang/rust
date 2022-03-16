@@ -10,6 +10,7 @@
 #![feature(control_flow_enum)]
 #![feature(box_syntax)]
 #![feature(drain_filter)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(nll)]
 #![feature(test)]
@@ -40,7 +41,6 @@ extern crate rustc_ast;
 extern crate rustc_ast_lowering;
 extern crate rustc_ast_pretty;
 extern crate rustc_attr;
-extern crate rustc_const_eval;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;

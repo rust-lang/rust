@@ -325,7 +325,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 ///
 /// Contains the name of the feature that would allow the use of this function.
 #[derive(Debug)]
-pub struct FnCallUnstable(pub DefId, pub Option<Symbol>);
+pub struct FnCallUnstable(pub DefId, pub Vec<Symbol>);
 
 impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
     fn build_error(
@@ -333,22 +333,20 @@ impl<'tcx> NonConstOp<'tcx> for FnCallUnstable {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let FnCallUnstable(def_id, feature) = *self;
+        let FnCallUnstable(def_id, features) = self;
 
         let mut err = ccx.tcx.sess.struct_span_err(
             span,
-            &format!("`{}` is not yet stable as a const fn", ccx.tcx.def_path_str(def_id)),
+            &format!("`{}` is not yet stable as a const fn", ccx.tcx.def_path_str(*def_id)),
         );
 
         if ccx.is_const_stable_const_fn() {
             err.help("const-stable functions can only call other const-stable functions");
-        } else if ccx.tcx.sess.is_nightly_build() {
-            if let Some(feature) = feature {
-                err.help(&format!(
-                    "add `#![feature({})]` to the crate attributes to enable",
-                    feature
-                ));
-            }
+        } else if ccx.tcx.sess.is_nightly_build() && !features.is_empty() {
+            err.help(&format!(
+                "add `#![feature({})]` to the crate attributes to enable",
+                features.iter().map(|s| s.to_string()).collect::<Vec<_>>().join(", ")
+            ));
         }
 
         err

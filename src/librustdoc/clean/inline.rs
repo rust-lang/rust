@@ -351,7 +351,7 @@ crate fn build_impl(
             }
 
             if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                if stab.level.has_unstable_feature(sym::rustc_private) {
                     return;
                 }
             }
@@ -380,7 +380,7 @@ crate fn build_impl(
             }
 
             if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.level.is_unstable() && stab.feature == sym::rustc_private {
+                if stab.level.has_unstable_feature(sym::rustc_private) {
                     return;
                 }
             }
