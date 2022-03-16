@@ -37,16 +37,11 @@ pub(crate) fn render_variant_pat(
     variant: hir::Variant,
     local_name: Option<Name>,
     path: Option<&hir::ModPath>,
-    omit_fields: bool,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
     let fields = variant.fields(ctx.db());
-    let (visible_fields, fields_omitted) = if omit_fields {
-        (Vec::new(), false)
-    } else {
-        visible_fields(ctx.completion, &fields, variant)?
-    };
+    let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
 
     let name = match path {
         Some(path) => path.to_string().into(),

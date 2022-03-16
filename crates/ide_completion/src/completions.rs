@@ -319,9 +319,7 @@ impl Completions {
             variant,
             local_name.clone(),
             None,
-            false,
         ));
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, local_name, None, true));
     }
 
     pub(crate) fn add_qualified_variant_pat(
@@ -331,8 +329,7 @@ impl Completions {
         path: hir::ModPath,
     ) {
         let path = Some(&path);
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, path, false));
-        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, path, true));
+        self.add_opt(render_variant_pat(RenderContext::new(ctx), variant, None, path));
     }
 
     pub(crate) fn add_struct_pat(

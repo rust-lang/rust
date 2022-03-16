@@ -124,7 +124,6 @@ fn foo() {
             st Unit
             ma makro!(…) macro_rules! makro
             bn TupleV    TupleV($1)$0
-            bn TupleV    TupleV()$0
             ev TupleV
             ct CONST
         "#]],
