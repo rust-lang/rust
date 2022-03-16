@@ -463,6 +463,8 @@ fn f(t: Ty) {
     }
 }
 "#,
-        expect![[""]],
+        expect![[r#"
+            ct ABC const ABC: Self
+        "#]],
     )
 }

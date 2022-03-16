@@ -143,10 +143,15 @@ fn pattern_path_completion(
                         .into_iter()
                         .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
                 }
-                res @ (hir::PathResolution::TypeParam(_) | hir::PathResolution::SelfType(_)) => {
+                res @ (hir::PathResolution::TypeParam(_)
+                | hir::PathResolution::SelfType(_)
+                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(_)))) => {
                     let ty = match res {
                         hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
                         hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
+                        hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(s))) => {
+                            s.ty(ctx.db)
+                        }
                         _ => return,
                     };
 
