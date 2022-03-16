@@ -90,9 +90,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Floating-point operations
+            "fabsf32" => {
+                let &[ref f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f32()?;
+                // Can be implemented in soft-floats.
+                this.write_scalar(Scalar::from_f32(f.abs()), dest)?;
+            }
+            "fabsf64" => {
+                let &[ref f] = check_arg_count(args)?;
+                let f = this.read_scalar(f)?.to_f64()?;
+                // Can be implemented in soft-floats.
+                this.write_scalar(Scalar::from_f64(f.abs()), dest)?;
+            }
             #[rustfmt::skip]
             | "sinf32"
-            | "fabsf32"
             | "cosf32"
             | "sqrtf32"
             | "expf32"
@@ -110,7 +121,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let f = f32::from_bits(this.read_scalar(f)?.to_u32()?);
                 let f = match intrinsic_name {
                     "sinf32" => f.sin(),
-                    "fabsf32" => f.abs(),
                     "cosf32" => f.cos(),
                     "sqrtf32" => f.sqrt(),
                     "expf32" => f.exp(),
@@ -129,7 +139,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             #[rustfmt::skip]
             | "sinf64"
-            | "fabsf64"
             | "cosf64"
             | "sqrtf64"
             | "expf64"
@@ -147,7 +156,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let f = f64::from_bits(this.read_scalar(f)?.to_u64()?);
                 let f = match intrinsic_name {
                     "sinf64" => f.sin(),
-                    "fabsf64" => f.abs(),
                     "cosf64" => f.cos(),
                     "sqrtf64" => f.sqrt(),
                     "expf64" => f.exp(),
