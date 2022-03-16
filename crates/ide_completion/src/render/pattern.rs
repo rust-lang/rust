@@ -1,13 +1,13 @@
 //! Renderer for patterns.
 
-use hir::{db::HirDatabase, HasAttrs, HasVisibility, Name, StructKind};
+use hir::{db::HirDatabase, HasAttrs, Name, StructKind};
 use ide_db::SnippetCap;
 use itertools::Itertools;
 use syntax::SmolStr;
 
 use crate::{
     context::{ParamKind, PatternContext},
-    render::RenderContext,
+    render::{variant::visible_fields, RenderContext},
     CompletionItem, CompletionItemKind,
 };
 
@@ -19,7 +19,7 @@ pub(crate) fn render_struct_pat(
     let _p = profile::span("render_struct_pat");
 
     let fields = strukt.fields(ctx.db());
-    let (visible_fields, fields_omitted) = visible_fields(&ctx, &fields, strukt)?;
+    let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, strukt)?;
 
     if visible_fields.is_empty() {
         // Matching a struct without matching its fields is pointless, unlike matching a Variant without its fields
@@ -36,14 +36,14 @@ pub(crate) fn render_variant_pat(
     ctx: RenderContext<'_>,
     variant: hir::Variant,
     local_name: Option<Name>,
-    path: Option<hir::ModPath>,
+    path: Option<&hir::ModPath>,
 ) -> Option<CompletionItem> {
     let _p = profile::span("render_variant_pat");
 
     let fields = variant.fields(ctx.db());
-    let (visible_fields, fields_omitted) = visible_fields(&ctx, &fields, variant)?;
+    let (visible_fields, fields_omitted) = visible_fields(ctx.completion, &fields, variant)?;
 
-    let name = match &path {
+    let name = match path {
         Some(path) => path.to_string().into(),
         None => local_name.unwrap_or_else(|| variant.name(ctx.db())).to_smol_str(),
     };
@@ -78,9 +78,7 @@ fn render_pat(
     fields_omitted: bool,
 ) -> Option<String> {
     let mut pat = match kind {
-        StructKind::Tuple if ctx.snippet_cap().is_some() => {
-            render_tuple_as_pat(fields, name, fields_omitted)
-        }
+        StructKind::Tuple => render_tuple_as_pat(ctx.snippet_cap(), fields, name, fields_omitted),
         StructKind::Record => {
             render_record_as_pat(ctx.db(), ctx.snippet_cap(), fields, name, fields_omitted)
         }
@@ -113,49 +111,53 @@ fn render_record_as_pat(
     fields_omitted: bool,
 ) -> String {
     let fields = fields.iter();
-    if snippet_cap.is_some() {
-        format!(
-            "{name} {{ {}{} }}",
-            fields
-                .enumerate()
-                .map(|(idx, field)| format!("{}${}", field.name(db), idx + 1))
-                .format(", "),
-            if fields_omitted { ", .." } else { "" },
-            name = name
-        )
-    } else {
-        format!(
-            "{name} {{ {}{} }}",
-            fields.map(|field| field.name(db)).format(", "),
-            if fields_omitted { ", .." } else { "" },
-            name = name
-        )
+    match snippet_cap {
+        Some(_) => {
+            format!(
+                "{name} {{ {}{} }}",
+                fields.enumerate().format_with(", ", |(idx, field), f| {
+                    f(&format_args!("{}${}", field.name(db), idx + 1))
+                }),
+                if fields_omitted { ", .." } else { "" },
+                name = name
+            )
+        }
+        None => {
+            format!(
+                "{name} {{ {}{} }}",
+                fields.map(|field| field.name(db)).format(", "),
+                if fields_omitted { ", .." } else { "" },
+                name = name
+            )
+        }
     }
 }
 
-fn render_tuple_as_pat(fields: &[hir::Field], name: &str, fields_omitted: bool) -> String {
-    format!(
-        "{name}({}{})",
-        fields.iter().enumerate().map(|(idx, _)| format!("${}", idx + 1)).format(", "),
-        if fields_omitted { ", .." } else { "" },
-        name = name
-    )
-}
-
-fn visible_fields(
-    ctx: &RenderContext<'_>,
+fn render_tuple_as_pat(
+    snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
-    item: impl HasAttrs,
-) -> Option<(Vec<hir::Field>, bool)> {
-    let module = ctx.completion.module?;
-    let n_fields = fields.len();
-    let fields = fields
-        .iter()
-        .filter(|field| field.is_visible_from(ctx.db(), module))
-        .copied()
-        .collect::<Vec<_>>();
-
-    let fields_omitted =
-        n_fields - fields.len() > 0 || item.attrs(ctx.db()).by_key("non_exhaustive").exists();
-    Some((fields, fields_omitted))
+    name: &str,
+    fields_omitted: bool,
+) -> String {
+    let fields = fields.iter();
+    match snippet_cap {
+        Some(_) => {
+            format!(
+                "{name}({}{})",
+                fields
+                    .enumerate()
+                    .format_with(", ", |(idx, _), f| { f(&format_args!("${}", idx + 1)) }),
+                if fields_omitted { ", .." } else { "" },
+                name = name
+            )
+        }
+        None => {
+            format!(
+                "{name}({}{})",
+                fields.enumerate().map(|(idx, _)| idx).format(", "),
+                if fields_omitted { ", .." } else { "" },
+                name = name
+            )
+        }
+    }
 }

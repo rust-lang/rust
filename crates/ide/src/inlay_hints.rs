@@ -69,24 +69,17 @@ pub(crate) fn inlay_hints(
 
     let mut hints = Vec::new();
 
-    if let Some(range_limit) = range_limit {
-        let range_limit = range_limit.range;
-        match file.covering_element(range_limit) {
+    let get_hints = |node| get_hints(&mut hints, &sema, config, node);
+    match range_limit {
+        Some(FileRange { range, .. }) => match file.covering_element(range) {
             NodeOrToken::Token(_) => return hints,
-            NodeOrToken::Node(n) => {
-                for node in n
-                    .descendants()
-                    .filter(|descendant| range_limit.contains_range(descendant.text_range()))
-                {
-                    get_hints(&mut hints, &sema, config, node);
-                }
-            }
-        }
-    } else {
-        for node in file.descendants() {
-            get_hints(&mut hints, &sema, config, node);
-        }
-    }
+            NodeOrToken::Node(n) => n
+                .descendants()
+                .filter(|descendant| range.contains_range(descendant.text_range()))
+                .for_each(get_hints),
+        },
+        None => file.descendants().for_each(get_hints),
+    };
 
     hints
 }

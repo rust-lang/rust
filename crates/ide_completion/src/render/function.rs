@@ -8,7 +8,7 @@ use syntax::SmolStr;
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
+    item::{Builder, CompletionItem, CompletionItemKind, CompletionRelevance},
     patterns::ImmediateLocation,
     render::{compute_exact_name_match, compute_ref_match, compute_type_match, RenderContext},
 };
@@ -20,23 +20,21 @@ enum FuncKind {
 
 pub(crate) fn render_fn(
     ctx: RenderContext<'_>,
-    import_to_add: Option<ImportEdit>,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> CompletionItem {
     let _p = profile::span("render_fn");
-    render(ctx, local_name, func, FuncKind::Function, import_to_add)
+    render(ctx, local_name, func, FuncKind::Function)
 }
 
 pub(crate) fn render_method(
     ctx: RenderContext<'_>,
-    import_to_add: Option<ImportEdit>,
     receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
     func: hir::Function,
 ) -> CompletionItem {
     let _p = profile::span("render_method");
-    render(ctx, local_name, func, FuncKind::Method(receiver), import_to_add)
+    render(ctx, local_name, func, FuncKind::Method(receiver))
 }
 
 fn render(
@@ -44,7 +42,6 @@ fn render(
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_kind: FuncKind,
-    import_to_add: Option<ImportEdit>,
 ) -> CompletionItem {
     let db = completion.db;
 
@@ -98,16 +95,17 @@ fn render(
         _ => (),
     }
 
-    if import_to_add.is_none() {
-        if let Some(actm) = func.as_assoc_item(db) {
-            if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
-                item.trait_name(trt.name(db).to_smol_str());
+    match ctx.import_to_add {
+        Some(import_to_add) => {
+            item.add_import(import_to_add);
+        }
+        None => {
+            if let Some(actm) = func.as_assoc_item(db) {
+                if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
+                    item.trait_name(trt.name(db).to_smol_str());
+                }
             }
         }
-    }
-
-    if let Some(import_to_add) = import_to_add {
-        item.add_import(import_to_add);
     }
     item.build()
 }
@@ -192,7 +190,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
         Some(PathCompletionCtx { kind: Some(PathKind::Expr), has_call_parens: true, .. }) => {
             return false
         }
-        Some(PathCompletionCtx { kind: Some(PathKind::Use), .. }) => {
+        Some(PathCompletionCtx { kind: Some(PathKind::Use | PathKind::Type), .. }) => {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }

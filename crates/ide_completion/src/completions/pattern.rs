@@ -54,8 +54,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     {
         if refutable || single_variant_enum(e) {
             super::enum_variants_with_paths(acc, ctx, e, |acc, ctx, variant, path| {
-                acc.add_qualified_variant_pat(ctx, variant, path.clone());
-                acc.add_qualified_enum_variant(ctx, variant, path);
+                acc.add_qualified_variant_pat(ctx, variant, path);
             });
         }
     }
@@ -63,7 +62,7 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
     ctx.process_all_names(&mut |name, res| {
-        let add_resolution = match res {
+        let add_simple_path = match res {
             hir::ScopeDef::ModuleDef(def) => match def {
                 hir::ModuleDef::Adt(hir::Adt::Struct(strukt)) => {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
@@ -76,8 +75,11 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                     true
                 }
                 hir::ModuleDef::Adt(hir::Adt::Enum(e)) => refutable || single_variant_enum(e),
-                hir::ModuleDef::Const(..) | hir::ModuleDef::Module(..) => refutable,
-                hir::ModuleDef::Macro(mac) => mac.is_fn_like(ctx.db),
+                hir::ModuleDef::Const(..) => refutable,
+                hir::ModuleDef::Module(..) => true,
+                hir::ModuleDef::Macro(mac) if mac.is_fn_like(ctx.db) => {
+                    return acc.add_macro(ctx, mac, name)
+                }
                 _ => false,
             },
             hir::ScopeDef::ImplSelfType(impl_) => match impl_.self_ty(ctx.db).as_adt() {
@@ -85,13 +87,19 @@ pub(crate) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
                     acc.add_struct_pat(ctx, strukt, Some(name.clone()));
                     true
                 }
-                Some(hir::Adt::Enum(_)) => refutable,
-                _ => true,
+                Some(hir::Adt::Enum(e)) => refutable || single_variant_enum(e),
+                Some(hir::Adt::Union(_)) => true,
+                _ => false,
             },
-            _ => false,
+            ScopeDef::GenericParam(hir::GenericParam::ConstParam(_)) => true,
+            ScopeDef::GenericParam(_)
+            | ScopeDef::AdtSelfType(_)
+            | ScopeDef::Local(_)
+            | ScopeDef::Label(_)
+            | ScopeDef::Unknown => false,
         };
-        if add_resolution {
-            acc.add_resolution(ctx, name, res);
+        if add_simple_path {
+            acc.add_resolution_simple(ctx, name, res);
         }
     });
 }

@@ -4,27 +4,21 @@ use hir::{Documentation, HirDisplay};
 use ide_db::SymbolKind;
 use syntax::SmolStr;
 
-use crate::{
-    context::PathKind,
-    item::{CompletionItem, ImportEdit},
-    render::RenderContext,
-};
+use crate::{context::PathKind, item::CompletionItem, render::RenderContext};
 
 pub(crate) fn render_macro(
     ctx: RenderContext<'_>,
-    import_to_add: Option<ImportEdit>,
     name: hir::Name,
     macro_: hir::Macro,
 ) -> CompletionItem {
     let _p = profile::span("render_macro");
-    render(ctx, name, macro_, import_to_add)
+    render(ctx, name, macro_)
 }
 
 fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     name: hir::Name,
     macro_: hir::Macro,
-    import_to_add: Option<ImportEdit>,
 ) -> CompletionItem {
     let source_range = if completion.is_immediately_after_macro_bang() {
         cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
@@ -52,12 +46,7 @@ fn render(
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());
 
-    if let Some(import_to_add) = import_to_add {
-        item.add_import(import_to_add);
-    }
-
     let name = &*name;
-
     match ctx.snippet_cap() {
         Some(cap) if needs_bang && !completion.path_is_call() => {
             let snippet = format!("{}!{}$0{}", name, bra, ket);
@@ -73,6 +62,9 @@ fn render(
             item.insert_text(name);
         }
     };
+    if let Some(import_to_add) = ctx.import_to_add {
+        item.add_import(import_to_add);
+    }
 
     item.build()
 }

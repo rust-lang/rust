@@ -166,7 +166,7 @@ fn main() {
             kw true
             kw false
             kw return
-            sn Foo {…}              Foo { foo1: u32, foo2: u32 }
+            st Foo {…}              Foo { foo1: u32, foo2: u32 }
             fd ..Default::default()
             fd foo1                 u32
             fd foo2                 u32

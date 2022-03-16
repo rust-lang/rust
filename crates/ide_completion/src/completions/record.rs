@@ -84,13 +84,16 @@ pub(crate) fn complete_record_literal(
     match ctx.expected_type.as_ref()?.as_adt()? {
         hir::Adt::Struct(strukt) if ctx.path_qual().is_none() => {
             let module = if let Some(module) = ctx.module { module } else { strukt.module(ctx.db) };
-            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(strukt));
+            let path = module
+                .find_use_path(ctx.db, hir::ModuleDef::from(strukt))
+                .filter(|it| it.len() > 1);
 
             acc.add_struct_literal(ctx, strukt, path, None);
         }
         hir::Adt::Union(un) if ctx.path_qual().is_none() => {
             let module = if let Some(module) = ctx.module { module } else { un.module(ctx.db) };
-            let path = module.find_use_path(ctx.db, hir::ModuleDef::from(un));
+            let path =
+                module.find_use_path(ctx.db, hir::ModuleDef::from(un)).filter(|it| it.len() > 1);
 
             acc.add_union_literal(ctx, un, path, None);
         }
@@ -132,7 +135,7 @@ fn baz() {
     #[test]
     fn literal_struct_completion_from_sub_modules() {
         check_edit(
-            "Struct {…}",
+            "submod::Struct {…}",
             r#"
 mod submod {
     pub struct Struct {
