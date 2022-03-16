@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#![allow()] /*This line is ignored by bash
+#![deny(unsafe_code)] /*This line is ignored by bash
 # This block is ignored by rustc
 set -e
 echo "[BUILD] y.rs" 1>&2
