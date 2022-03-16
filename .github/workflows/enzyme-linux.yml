@@ -3,7 +3,7 @@ name: Linux Enzyme CI
 on: [push]
 
 jobs:
-  build:
+  build-linux:
     name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     
@@ -38,9 +38,7 @@ jobs:
             sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
             sudo sed -i 's/llvm-omp-device-info//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
           fi
-    - uses: actions/checkout@v1
-      with:
-          fetch-depth: 1
+    - uses: actions/checkout@v2
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
@@ -55,3 +53,36 @@ jobs:
       run: cd enzyme/build && make check-activityanalysis -j`nproc`
     - name: make check-enzyme
       run: cd enzyme/build && make check-enzyme -j`nproc`
+  
+  build-macos:
+    name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} macOS
+    runs-on: macos-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        llvm: ["7", "8", "9", "11", "12", "13"] #, "14"]
+        build: ["Release", "Debug"] # "RelWithDebInfo"
+  
+    timeout-minutes: 30 
+    steps:
+    - name: add llvm 
+      run: |
+          brew install llvm@{{ matrix.llvm }} autoconf make cmake gcc libtool
+          sudo python3 -m pip install --upgrade pip setuptools
+          sudo python3 -m pip install lit
+    - uses: actions/checkout@v2
+    - name: mkdir
+      run: cd enzyme && rm -rf build && mkdir build
+    - name: cmake
+      run: |
+          cd enzyme/build 
+          cmake .. -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DLLVM_EXTERNAL_LIT=`which lit` -DLLVM_DIR=`brew --prefix llvm@${{ matrix.llvm }}`/lib/cmake/llvm
+    - name: make
+      run: cd enzyme/build && make -j 3
+    - name: make check-typeanalysis
+      run: cd enzyme/build && make check-typeanalysis -j 3
+    - name: make check-activityanalysis
+      run: cd enzyme/build && make check-activityanalysis -j 3
+    - name: make check-enzyme
+      run: cd enzyme/build && make check-enzyme -j 3
