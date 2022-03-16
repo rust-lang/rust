@@ -325,20 +325,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // SIMD operations
             #[rustfmt::skip]
             | "simd_neg"
-            | "simd_fabs" => {
+            | "simd_fabs"
+            | "simd_ceil"
+            | "simd_floor"
+            | "simd_round"
+            | "simd_trunc" => {
                 let &[ref op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
 
                 assert_eq!(dest_len, op_len);
 
+                #[derive(Copy, Clone)]
+                enum HostFloatOp {
+                    Ceil,
+                    Floor,
+                    Round,
+                    Trunc,
+                }
+                #[derive(Copy, Clone)]
                 enum Op {
                     MirOp(mir::UnOp),
                     Abs,
+                    HostOp(HostFloatOp),
                 }
                 let which = match intrinsic_name {
                     "simd_neg" => Op::MirOp(mir::UnOp::Neg),
                     "simd_fabs" => Op::Abs,
+                    "simd_ceil" => Op::HostOp(HostFloatOp::Ceil),
+                    "simd_floor" => Op::HostOp(HostFloatOp::Floor),
+                    "simd_round" => Op::HostOp(HostFloatOp::Round),
+                    "simd_trunc" => Op::HostOp(HostFloatOp::Trunc),
                     _ => unreachable!(),
                 };
 
@@ -350,13 +367,42 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Op::Abs => {
                             // Works for f32 and f64.
                             let ty::Float(float_ty) = op.layout.ty.kind() else {
-                                bug!("simd_fabs operand is not a float")
+                                bug!("{} operand is not a float", intrinsic_name)
                             };
                             let op = op.to_scalar()?;
                             match float_ty {
                                 FloatTy::F32 => Scalar::from_f32(op.to_f32()?.abs()),
                                 FloatTy::F64 => Scalar::from_f64(op.to_f64()?.abs()),
                             }
+                        }
+                        Op::HostOp(host_op) => {
+                            let ty::Float(float_ty) = op.layout.ty.kind() else {
+                                bug!("{} operand is not a float", intrinsic_name)
+                            };
+                            // FIXME using host floats
+                            match float_ty {
+                                FloatTy::F32 => {
+                                    let f = f32::from_bits(op.to_scalar()?.to_u32()?);
+                                    let res = match host_op {
+                                        HostFloatOp::Ceil => f.ceil(),
+                                        HostFloatOp::Floor => f.floor(),
+                                        HostFloatOp::Round => f.round(),
+                                        HostFloatOp::Trunc => f.trunc(),
+                                    };
+                                    Scalar::from_u32(res.to_bits())
+                                }
+                                FloatTy::F64 => {
+                                    let f = f64::from_bits(op.to_scalar()?.to_u64()?);
+                                    let res = match host_op {
+                                        HostFloatOp::Ceil => f.ceil(),
+                                        HostFloatOp::Floor => f.floor(),
+                                        HostFloatOp::Round => f.round(),
+                                        HostFloatOp::Trunc => f.trunc(),
+                                    };
+                                    Scalar::from_u64(res.to_bits())
+                                }
+                            }
+
                         }
                     };
                     this.write_scalar(val, &dest.into())?;
