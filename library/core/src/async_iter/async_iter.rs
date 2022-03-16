@@ -12,6 +12,7 @@ use crate::task::{Context, Poll};
 /// [impl]: index.html#implementing-async-iterator
 #[unstable(feature = "async_iterator", issue = "79024")]
 #[must_use = "async iterators do nothing unless polled"]
+#[doc(alias = "Stream")]
 pub trait AsyncIterator {
     /// The type of items yielded by the async iterator.
     type Item;
