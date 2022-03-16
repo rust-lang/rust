@@ -96,5 +96,12 @@ fn main() {
 
         let _: Ty2<u32, u32> = transmute(value::<((), Ty2<u32, u32>)>()); // Ok
         let _: ((), Ty2<u32, u32>) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: (usize, usize) = transmute(value::<&[u8]>()); // Ok
+        let _: &[u8] = transmute(value::<(usize, usize)>()); // Ok
+
+        trait Trait {}
+        let _: (isize, isize) = transmute(value::<&dyn Trait>()); // Ok
+        let _: &dyn Trait = transmute(value::<(isize, isize)>()); // Ok
     }
 }

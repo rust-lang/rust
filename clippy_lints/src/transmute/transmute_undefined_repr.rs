@@ -4,7 +4,7 @@ use clippy_utils::ty::is_c_void;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TypeAndMut};
+use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
 use rustc_span::Span;
 
 #[allow(clippy::too_many_lines)]
@@ -24,6 +24,7 @@ pub(super) fn check<'tcx>(
                 to_ty: to_sub_ty,
             } => match reduce_ty(cx, to_sub_ty) {
                 ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(to_sub_ty) => {
                     from_ty = unsized_ty;
                     to_ty = to_sub_ty;
@@ -49,6 +50,7 @@ pub(super) fn check<'tcx>(
                 from_ty: from_sub_ty,
             } => match reduce_ty(cx, from_sub_ty) {
                 ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(from_sub_ty) => {
                     from_ty = from_sub_ty;
                     to_ty = unsized_ty;
@@ -331,5 +333,16 @@ fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         } else {
             false
         }
+    }
+}
+
+fn is_size_pair(ty: Ty<'_>) -> bool {
+    if let ty::Tuple(tys) = *ty.kind()
+        && let [ty1, ty2] = &**tys
+    {
+        matches!(ty1.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+            && matches!(ty2.kind(), ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize))
+    } else {
+        false
     }
 }
