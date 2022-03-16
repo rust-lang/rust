@@ -106,5 +106,7 @@ fn main() {
 
         let _: MaybeUninit<Ty2<u32, u32>> = transmute(value::<Ty2<u32, u32>>()); // Ok
         let _: Ty2<u32, u32> = transmute(value::<MaybeUninit<Ty2<u32, u32>>>()); // Ok
+
+        let _: Ty<&[u32]> = transmute::<&[u32], _>(value::<&Vec<u32>>()); // Ok
     }
 }
