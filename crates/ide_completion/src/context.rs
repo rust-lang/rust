@@ -58,7 +58,7 @@ pub(super) enum PathKind {
 
 #[derive(Debug)]
 pub(crate) struct PathCompletionCtx {
-    /// If this is a call with () already there
+    /// If this is a call with () already there (or {} in case of record patterns)
     pub(super) has_call_parens: bool,
     /// Whether this path stars with a `::`.
     pub(super) is_absolute_path: bool,
@@ -890,6 +890,7 @@ impl<'a> CompletionContext<'a> {
                         Some(PathKind::Pat)
                     },
                     ast::RecordPat(it) => {
+                        path_ctx.has_call_parens = true;
                         pat_ctx = Some(pattern_context_for(original_file, it.into()));
                         Some(PathKind::Pat)
                     },

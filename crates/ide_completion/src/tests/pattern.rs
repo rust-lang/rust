@@ -378,3 +378,71 @@ fn foo() {
         "#]],
     )
 }
+
+#[test]
+fn completes_no_delims_if_existing() {
+    check_empty(
+        r#"
+struct Bar(u32);
+fn foo() {
+    match Bar(0) {
+        B$0(b) => {}
+    }
+}
+"#,
+        expect![[r#"
+            kw self::
+            kw super::
+            kw crate::
+        "#]],
+    );
+    check_empty(
+        r#"
+struct Foo { bar: u32 }
+fn foo() {
+    match Foo { bar: 0 } {
+        F$0 { bar } => {}
+    }
+}
+"#,
+        expect![[r#"
+            kw return
+            kw self
+            kw super
+            kw crate
+            st Foo
+            fn foo()  fn()
+            bt u32
+        "#]],
+    );
+    check_empty(
+        r#"
+enum Enum {
+    TupleVariant(u32)
+}
+fn foo() {
+    match Enum::TupleVariant(0) {
+        Enum::T$0(b) => {}
+    }
+}
+"#,
+        expect![[r#"
+            ev TupleVariant(…) TupleVariant(u32)
+        "#]],
+    );
+    check_empty(
+        r#"
+enum Enum {
+    RecordVariant { field: u32 }
+}
+fn foo() {
+    match (Enum::RecordVariant { field: 0 }) {
+        Enum::RecordV$0 { field } => {}
+    }
+}
+"#,
+        expect![[r#"
+            ev RecordVariant {…} RecordVariant { field: u32 }
+        "#]],
+    );
+}

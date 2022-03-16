@@ -9,7 +9,7 @@ use syntax::SmolStr;
 /// A rendered struct, union, or enum variant, split into fields for actual
 /// auto-completion (`literal`, using `field: ()`) and display in the
 /// completions menu (`detail`, using `field: type`).
-pub(crate) struct RenderedCompound {
+pub(crate) struct RenderedLiteral {
     pub(crate) literal: String,
     pub(crate) detail: String,
 }
@@ -21,7 +21,7 @@ pub(crate) fn render_record(
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     name: Option<&str>,
-) -> RenderedCompound {
+) -> RenderedLiteral {
     let completions = fields.iter().enumerate().format_with(", ", |(idx, field), f| {
         if snippet_cap.is_some() {
             f(&format_args!("{}: ${{{}:()}}", field.name(db), idx + 1))
@@ -34,7 +34,7 @@ pub(crate) fn render_record(
         f(&format_args!("{}: {}", field.name(db), field.ty(db).display(db)))
     });
 
-    RenderedCompound {
+    RenderedLiteral {
         literal: format!("{} {{ {} }}", name.unwrap_or(""), completions),
         detail: format!("{} {{ {} }}", name.unwrap_or(""), types),
     }
@@ -47,7 +47,7 @@ pub(crate) fn render_tuple(
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     name: Option<&str>,
-) -> RenderedCompound {
+) -> RenderedLiteral {
     let completions = fields.iter().enumerate().format_with(", ", |(idx, _), f| {
         if snippet_cap.is_some() {
             f(&format_args!("${{{}:()}}", idx + 1))
@@ -58,7 +58,7 @@ pub(crate) fn render_tuple(
 
     let types = fields.iter().format_with(", ", |field, f| f(&field.ty(db).display(db)));
 
-    RenderedCompound {
+    RenderedLiteral {
         literal: format!("{}({})", name.unwrap_or(""), completions),
         detail: format!("{}({})", name.unwrap_or(""), types),
     }

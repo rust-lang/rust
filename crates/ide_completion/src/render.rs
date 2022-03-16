@@ -8,7 +8,7 @@ pub(crate) mod const_;
 pub(crate) mod pattern;
 pub(crate) mod type_alias;
 pub(crate) mod struct_literal;
-pub(crate) mod compound;
+pub(crate) mod variant;
 pub(crate) mod union_literal;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};

@@ -1,11 +1,12 @@
 //! Renderer for `union` literals.
 
 use hir::{HirDisplay, Name, StructKind};
+use ide_db::SymbolKind;
 use itertools::Itertools;
 
 use crate::{
     render::{
-        compound::{format_literal_label, visible_fields},
+        variant::{format_literal_label, visible_fields},
         RenderContext,
     },
     CompletionItem, CompletionItemKind,
@@ -25,7 +26,7 @@ pub(crate) fn render_union_literal(
     };
 
     let mut item = CompletionItem::new(
-        CompletionItemKind::Snippet,
+        CompletionItemKind::SymbolKind(SymbolKind::Union),
         ctx.source_range(),
         format_literal_label(&name, StructKind::Record),
     );

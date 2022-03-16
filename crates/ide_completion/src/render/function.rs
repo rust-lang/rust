@@ -192,7 +192,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
         Some(PathCompletionCtx { kind: Some(PathKind::Expr), has_call_parens: true, .. }) => {
             return false
         }
-        Some(PathCompletionCtx { kind: Some(PathKind::Use), .. }) => {
+        Some(PathCompletionCtx { kind: Some(PathKind::Use | PathKind::Type), .. }) => {
             cov_mark::hit!(no_parens_in_use_item);
             return false;
         }

@@ -7,8 +7,9 @@ use syntax::SmolStr;
 use crate::{
     item::{CompletionItem, ImportEdit},
     render::{
-        compound::{format_literal_label, render_record, render_tuple, RenderedCompound},
-        compute_ref_match, compute_type_match, RenderContext,
+        compute_ref_match, compute_type_match,
+        variant::{format_literal_label, render_record, render_tuple, RenderedLiteral},
+        RenderContext,
     },
     CompletionRelevance,
 };
@@ -56,7 +57,7 @@ fn render(
             render_record(db, ctx.snippet_cap(), &variant.fields(db), Some(&qualified_name))
         }
         StructKind::Unit => {
-            RenderedCompound { literal: qualified_name.clone(), detail: qualified_name.clone() }
+            RenderedLiteral { literal: qualified_name.clone(), detail: qualified_name.clone() }
         }
     };
 

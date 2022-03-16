@@ -1,11 +1,12 @@
 //! Renderer for `struct` literal.
 
 use hir::{HasAttrs, Name, StructKind};
+use ide_db::SymbolKind;
 use syntax::SmolStr;
 
 use crate::{
-    render::compound::{
-        format_literal_label, render_record, render_tuple, visible_fields, RenderedCompound,
+    render::variant::{
+        format_literal_label, render_record, render_tuple, visible_fields, RenderedLiteral,
     },
     render::RenderContext,
     CompletionItem, CompletionItemKind,
@@ -37,12 +38,12 @@ pub(crate) fn render_struct_literal(
 fn build_completion(
     ctx: &RenderContext<'_>,
     name: SmolStr,
-    rendered: RenderedCompound,
+    rendered: RenderedLiteral,
     kind: StructKind,
     def: impl HasAttrs + Copy,
 ) -> CompletionItem {
     let mut item = CompletionItem::new(
-        CompletionItemKind::Snippet,
+        CompletionItemKind::SymbolKind(SymbolKind::Struct),
         ctx.source_range(),
         format_literal_label(&name, kind),
     );
@@ -64,7 +65,7 @@ fn render_literal(
     name: &str,
     kind: StructKind,
     fields: &[hir::Field],
-) -> Option<RenderedCompound> {
+) -> Option<RenderedLiteral> {
     let path_string;
 
     let qualified_name = if let Some(path) = path {
