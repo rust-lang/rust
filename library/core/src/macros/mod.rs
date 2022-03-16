@@ -34,7 +34,7 @@ macro_rules! panic {
 #[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_eq {
-    ($left:expr, $right:expr $(,)?) => ({
+    ($left:expr, $right:expr $(,)?) => {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -46,8 +46,8 @@ macro_rules! assert_eq {
                 }
             }
         }
-    });
-    ($left:expr, $right:expr, $($arg:tt)+) => ({
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if !(*left_val == *right_val) {
@@ -59,7 +59,7 @@ macro_rules! assert_eq {
                 }
             }
         }
-    });
+    };
 }
 
 /// Asserts that two expressions are not equal to each other (using [`PartialEq`]).
@@ -84,7 +84,7 @@ macro_rules! assert_eq {
 #[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! assert_ne {
-    ($left:expr, $right:expr $(,)?) => ({
+    ($left:expr, $right:expr $(,)?) => {
         match (&$left, &$right) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -96,8 +96,8 @@ macro_rules! assert_ne {
                 }
             }
         }
-    });
-    ($left:expr, $right:expr, $($arg:tt)+) => ({
+    };
+    ($left:expr, $right:expr, $($arg:tt)+) => {
         match (&($left), &($right)) {
             (left_val, right_val) => {
                 if *left_val == *right_val {
@@ -109,7 +109,7 @@ macro_rules! assert_ne {
                 }
             }
         }
-    });
+    };
 }
 
 /// Asserts that an expression matches any of the given patterns.
@@ -142,7 +142,7 @@ macro_rules! assert_ne {
 #[allow_internal_unstable(core_panic)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => ({
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -153,8 +153,8 @@ pub macro assert_matches {
                 );
             }
         }
-    }),
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => ({
+    },
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -165,7 +165,7 @@ pub macro assert_matches {
                 );
             }
         }
-    }),
+    },
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -214,7 +214,11 @@ pub macro assert_matches {
 #[rustc_diagnostic_item = "debug_assert_macro"]
 #[allow_internal_unstable(edition_panic)]
 macro_rules! debug_assert {
-    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert!($($arg)*); })
+    ($($arg:tt)*) => {
+        if $crate::cfg!(debug_assertions) {
+            $crate::assert!($($arg)*);
+        }
+    };
 }
 
 /// Asserts that two expressions are equal to each other.
@@ -240,7 +244,11 @@ macro_rules! debug_assert {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro")]
 macro_rules! debug_assert_eq {
-    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_eq!($($arg)*); })
+    ($($arg:tt)*) => {
+        if $crate::cfg!(debug_assertions) {
+            $crate::assert_eq!($($arg)*);
+        }
+    };
 }
 
 /// Asserts that two expressions are not equal to each other.
@@ -266,7 +274,11 @@ macro_rules! debug_assert_eq {
 #[stable(feature = "assert_ne", since = "1.13.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro")]
 macro_rules! debug_assert_ne {
-    ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
+    ($($arg:tt)*) => {
+        if $crate::cfg!(debug_assertions) {
+            $crate::assert_ne!($($arg)*);
+        }
+    };
 }
 
 /// Asserts that an expression matches any of the given patterns.
@@ -305,7 +317,9 @@ macro_rules! debug_assert_ne {
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
-    if $crate::cfg!(debug_assertions) { $crate::assert_matches::assert_matches!($($arg)*); }
+    if $crate::cfg!(debug_assertions) {
+        $crate::assert_matches::assert_matches!($($arg)*);
+    }
 }
 
 /// Returns whether the given expression matches any of the given patterns.
@@ -331,7 +345,7 @@ macro_rules! matches {
             $( $pattern )|+ $( if $guard )? => true,
             _ => false
         }
-    }
+    };
 }
 
 /// Unwraps a result or propagates its error.
@@ -482,7 +496,9 @@ macro_rules! r#try {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ($dst.write_fmt($crate::format_args!($($arg)*)))
+    ($dst:expr, $($arg:tt)*) => {
+        $dst.write_fmt($crate::format_args!($($arg)*))
+    };
 }
 
 /// Write formatted data into a buffer, with a newline appended.
@@ -534,12 +550,12 @@ macro_rules! write {
 #[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
-    ($dst:expr $(,)?) => (
+    ($dst:expr $(,)?) => {
         $crate::write!($dst, "\n")
-    );
-    ($dst:expr, $($arg:tt)*) => (
+    };
+    ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args_nl!($($arg)*))
-    );
+    };
 }
 
 /// Indicates unreachable code.
@@ -683,8 +699,12 @@ macro_rules! unreachable {
 #[cfg_attr(not(test), rustc_diagnostic_item = "unimplemented_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! unimplemented {
-    () => ($crate::panicking::panic("not implemented"));
-    ($($arg:tt)+) => ($crate::panic!("not implemented: {}", $crate::format_args!($($arg)+)));
+    () => {
+        $crate::panicking::panic("not implemented")
+    };
+    ($($arg:tt)+) => {
+        $crate::panic!("not implemented: {}", $crate::format_args!($($arg)+))
+    };
 }
 
 /// Indicates unfinished code.
@@ -746,8 +766,12 @@ macro_rules! unimplemented {
 #[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro")]
 #[allow_internal_unstable(core_panic)]
 macro_rules! todo {
-    () => ($crate::panicking::panic("not yet implemented"));
-    ($($arg:tt)+) => ($crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+)));
+    () => {
+        $crate::panicking::panic("not yet implemented")
+    };
+    ($($arg:tt)+) => {
+        $crate::panic!("not yet implemented: {}", $crate::format_args!($($arg)+))
+    };
 }
 
 /// Definitions of built-in macros.
