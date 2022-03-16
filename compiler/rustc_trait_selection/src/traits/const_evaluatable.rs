@@ -318,8 +318,11 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             thir: &'a thir::Thir<'tcx>,
         }
 
+        use crate::rustc_middle::thir::visit::Visitor;
+        use thir::visit;
+
         impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
-            fn expr_is_poly(&self, expr: &thir::Expr<'tcx>) -> bool {
+            fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
                 if expr.ty.has_param_types_or_consts() {
                     return true;
                 }
@@ -327,13 +330,16 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                 match expr.kind {
                     thir::ExprKind::NamedConst { substs, .. } => substs.has_param_types_or_consts(),
                     thir::ExprKind::ConstParam { .. } => true,
+                    thir::ExprKind::Repeat { value, count } => {
+                        self.visit_expr(&self.thir()[value]);
+                        count.has_param_types_or_consts()
+                    }
                     _ => false,
                 }
             }
         }
 
-        use thir::visit;
-        impl<'a, 'tcx: 'a> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
+        impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
             fn thir(&self) -> &'a thir::Thir<'tcx> {
                 &self.thir
             }
@@ -342,13 +348,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
                 self.is_poly |= self.expr_is_poly(expr);
                 if !self.is_poly {
-                    match expr.kind {
-                        thir::ExprKind::Repeat { value, count } => {
-                            self.visit_expr(&self.thir()[value]);
-                            self.is_poly |= count.has_param_types_or_consts();
-                        }
-                        _ => visit::walk_expr(self, expr),
-                    }
+                    visit::walk_expr(self, expr)
                 }
             }
 
