@@ -177,103 +177,24 @@ fn render_resolution_(
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
-    let db = ctx.db();
-    let ctx = ctx.import_to_add(import_to_add);
-    let kind = match resolution {
+    match resolution {
+        ScopeDef::ModuleDef(Macro(mac)) => {
+            let ctx = ctx.import_to_add(import_to_add);
+            return render_macro(ctx, local_name, mac);
+        }
         ScopeDef::ModuleDef(Function(func)) => {
+            let ctx = ctx.import_to_add(import_to_add);
             return render_fn(ctx, Some(local_name), func);
         }
         ScopeDef::ModuleDef(Variant(var)) if ctx.completion.pattern_ctx.is_none() => {
-            if let Some(item) = render_variant_lit(ctx.clone(), Some(local_name.clone()), var, None)
-            {
+            let ctx = ctx.clone().import_to_add(import_to_add.clone());
+            if let Some(item) = render_variant_lit(ctx, Some(local_name.clone()), var, None) {
                 return item;
             }
-            CompletionItemKind::SymbolKind(SymbolKind::Variant)
         }
-        ScopeDef::ModuleDef(Macro(mac)) => return render_macro(ctx, local_name, mac),
-        ScopeDef::Unknown => {
-            let mut item = CompletionItem::new(
-                CompletionItemKind::UnresolvedReference,
-                ctx.source_range(),
-                local_name.to_smol_str(),
-            );
-            if let Some(import_to_add) = ctx.import_to_add {
-                item.add_import(import_to_add);
-            }
-            return item.build();
-        }
-
-        ScopeDef::ModuleDef(Variant(_)) => CompletionItemKind::SymbolKind(SymbolKind::Variant),
-        ScopeDef::ModuleDef(Module(..)) => CompletionItemKind::SymbolKind(SymbolKind::Module),
-        ScopeDef::ModuleDef(Adt(adt)) => CompletionItemKind::SymbolKind(match adt {
-            hir::Adt::Struct(_) => SymbolKind::Struct,
-            hir::Adt::Union(_) => SymbolKind::Union,
-            hir::Adt::Enum(_) => SymbolKind::Enum,
-        }),
-        ScopeDef::ModuleDef(Const(..)) => CompletionItemKind::SymbolKind(SymbolKind::Const),
-        ScopeDef::ModuleDef(Static(..)) => CompletionItemKind::SymbolKind(SymbolKind::Static),
-        ScopeDef::ModuleDef(Trait(..)) => CompletionItemKind::SymbolKind(SymbolKind::Trait),
-        ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::SymbolKind(SymbolKind::TypeAlias),
-        ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
-        ScopeDef::GenericParam(param) => CompletionItemKind::SymbolKind(match param {
-            hir::GenericParam::TypeParam(_) => SymbolKind::TypeParam,
-            hir::GenericParam::ConstParam(_) => SymbolKind::ConstParam,
-            hir::GenericParam::LifetimeParam(_) => SymbolKind::LifetimeParam,
-        }),
-        ScopeDef::Local(..) => CompletionItemKind::SymbolKind(SymbolKind::Local),
-        ScopeDef::Label(..) => CompletionItemKind::SymbolKind(SymbolKind::Label),
-        ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => {
-            CompletionItemKind::SymbolKind(SymbolKind::SelfParam)
-        }
-    };
-
-    let local_name = local_name.to_smol_str();
-    let mut item = CompletionItem::new(kind, ctx.source_range(), local_name.clone());
-    if let ScopeDef::Local(local) = resolution {
-        let ty = local.ty(db);
-        if !ty.is_unknown() {
-            item.detail(ty.display(db).to_string());
-        }
-
-        item.set_relevance(CompletionRelevance {
-            type_match: compute_type_match(ctx.completion, &ty),
-            exact_name_match: compute_exact_name_match(ctx.completion, &local_name),
-            is_local: true,
-            ..CompletionRelevance::default()
-        });
-
-        if let Some(ref_match) = compute_ref_match(ctx.completion, &ty) {
-            item.ref_match(ref_match);
-        }
-    };
-
-    // Add `<>` for generic types
-    let type_path_no_ty_args = matches!(
-        ctx.completion.path_context,
-        Some(PathCompletionCtx { kind: Some(PathKind::Type), has_type_args: false, .. })
-    ) && ctx.completion.config.add_call_parenthesis;
-    if type_path_no_ty_args {
-        if let Some(cap) = ctx.snippet_cap() {
-            let has_non_default_type_params = match resolution {
-                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(db),
-                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(db),
-                _ => false,
-            };
-            if has_non_default_type_params {
-                cov_mark::hit!(inserts_angle_brackets_for_generics);
-                item.lookup_by(local_name.clone())
-                    .label(SmolStr::from_iter([&local_name, "<…>"]))
-                    .insert_snippet(cap, format!("{}<$0>", local_name));
-            }
-        }
+        _ => (),
     }
-    item.set_documentation(scope_def_docs(db, resolution))
-        .set_deprecated(scope_def_is_deprecated(&ctx, resolution));
-
-    if let Some(import_to_add) = ctx.import_to_add {
-        item.add_import(import_to_add);
-    }
-    item.build()
+    render_resolution_simple_(ctx, local_name, import_to_add, resolution)
 }
 
 fn render_resolution_simple_(
