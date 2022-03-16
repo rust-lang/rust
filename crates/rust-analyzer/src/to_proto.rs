@@ -432,8 +432,7 @@ pub(crate) fn inlay_hint(
         },
         kind: match inlay_hint.kind {
             InlayKind::ParameterHint => Some(lsp_ext::InlayHintKind::PARAMETER),
-            InlayKind::TypeHint => Some(lsp_ext::InlayHintKind::TYPE),
-            InlayKind::ChainingHint => None,
+            InlayKind::TypeHint | InlayKind::ChainingHint => Some(lsp_ext::InlayHintKind::TYPE),
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
