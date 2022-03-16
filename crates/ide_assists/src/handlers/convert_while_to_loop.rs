@@ -53,7 +53,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext) -> O
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
             let break_block =
-                make::block_expr(once(make::expr_stmt(make::expr_break(None)).into()), None)
+                make::block_expr(once(make::expr_stmt(make::expr_break(None, None)).into()), None)
                     .indent(while_indent_level);
             let block_expr = if is_pattern_cond(while_cond.clone()) {
                 let if_expr = make::expr_if(while_cond, while_body, Some(break_block.into()));
