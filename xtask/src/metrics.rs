@@ -51,10 +51,14 @@ impl flags::Metrics {
                 "git clone --depth 1 https://{metrics_token}@github.com/rust-analyzer/metrics.git"
             )
             .run()?;
-            let _d = sh.push_dir("metrics");
 
-            let mut file = fs::File::options().append(true).open("metrics.json")?;
-            writeln!(file, "{}", metrics.json())?;
+            {
+                let mut file =
+                    fs::File::options().append(true).open("target/metrics/metrics.json")?;
+                writeln!(file, "{}", metrics.json())?;
+            }
+
+            let _d = sh.push_dir("metrics");
             cmd!(sh, "git add .").run()?;
             cmd!(sh, "git -c user.name=Bot -c user.email=dummy@example.com commit --message 📈")
                 .run()?;
