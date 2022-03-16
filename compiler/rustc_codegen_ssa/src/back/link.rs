@@ -39,7 +39,7 @@ use std::borrow::Borrow;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::lazy::{OnceCell, Lazy};
+use std::lazy::{Lazy, OnceCell};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
