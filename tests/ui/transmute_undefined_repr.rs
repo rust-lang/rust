@@ -2,7 +2,7 @@
 #![allow(clippy::unit_arg, clippy::transmute_ptr_to_ref)]
 
 use core::ffi::c_void;
-use core::mem::{size_of, transmute};
+use core::mem::{size_of, transmute, MaybeUninit};
 
 fn value<T>() -> T {
     unimplemented!()
@@ -103,5 +103,8 @@ fn main() {
         trait Trait {}
         let _: (isize, isize) = transmute(value::<&dyn Trait>()); // Ok
         let _: &dyn Trait = transmute(value::<(isize, isize)>()); // Ok
+
+        let _: MaybeUninit<Ty2<u32, u32>> = transmute(value::<Ty2<u32, u32>>()); // Ok
+        let _: Ty2<u32, u32> = transmute(value::<MaybeUninit<Ty2<u32, u32>>>()); // Ok
     }
 }

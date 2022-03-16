@@ -312,6 +312,8 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             ty::Adt(def, _) if def.is_enum() && (def.variants().is_empty() || is_c_void(cx, ty)) => {
                 ReducedTy::TypeErasure
             },
+            // TODO: Check if the conversion to or from at least one of a union's fields is valid.
+            ty::Adt(def, _) if def.is_union() => ReducedTy::TypeErasure,
             ty::Foreign(_) => ReducedTy::TypeErasure,
             ty::Ref(_, ty, _) => ReducedTy::Ref(ty),
             ty::RawPtr(ty) => ReducedTy::Ref(ty.ty),
