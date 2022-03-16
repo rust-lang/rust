@@ -106,19 +106,39 @@ fn simd_ops_i32() {
     assert_eq!(a.min(b * i32x4::splat(4)), i32x4::from_array([4, 8, 10, -16]));
 
     assert_eq!(
-        i8x4::from_array([i8::MAX, -23, 23, i8::MIN]).saturating_add(i8x4::from_array([1, i8::MIN, i8::MAX, 28])),
+        i8x4::from_array([i8::MAX, -23, 23, i8::MIN]).saturating_add(i8x4::from_array([
+            1,
+            i8::MIN,
+            i8::MAX,
+            28
+        ])),
         i8x4::from_array([i8::MAX, i8::MIN, i8::MAX, -100])
     );
     assert_eq!(
-        i8x4::from_array([i8::MAX, -28, 27, 42]).saturating_sub(i8x4::from_array([1, i8::MAX, i8::MAX, -80])),
+        i8x4::from_array([i8::MAX, -28, 27, 42]).saturating_sub(i8x4::from_array([
+            1,
+            i8::MAX,
+            i8::MAX,
+            -80
+        ])),
         i8x4::from_array([126, i8::MIN, -100, 122])
     );
     assert_eq!(
-        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_add(u8x4::from_array([1, 1, u8::MAX, 200])),
+        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_add(u8x4::from_array([
+            1,
+            1,
+            u8::MAX,
+            200
+        ])),
         u8x4::from_array([u8::MAX, 1, u8::MAX, 242])
     );
     assert_eq!(
-        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_sub(u8x4::from_array([1, 1, u8::MAX, 200])),
+        u8x4::from_array([u8::MAX, 0, 23, 42]).saturating_sub(u8x4::from_array([
+            1,
+            1,
+            u8::MAX,
+            200
+        ])),
         u8x4::from_array([254, 0, 0, 0])
     );
 
@@ -259,6 +279,42 @@ fn simd_gather_scatter() {
     assert_eq!(vec, vec![124, 11, 12, 82, 14, 15, 16, 17, 18]);
 }
 
+fn simd_round() {
+    assert_eq!(
+        f32x4::from_array([0.9, 1.001, 2.0, -4.5]).ceil(),
+        f32x4::from_array([1.0, 2.0, 2.0, -4.0])
+    );
+    assert_eq!(
+        f32x4::from_array([0.9, 1.001, 2.0, -4.5]).floor(),
+        f32x4::from_array([0.0, 1.0, 2.0, -5.0])
+    );
+    assert_eq!(
+        f32x4::from_array([0.9, 1.001, 2.0, -4.5]).round(),
+        f32x4::from_array([1.0, 1.0, 2.0, -5.0])
+    );
+    assert_eq!(
+        f32x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),
+        f32x4::from_array([0.0, 1.0, 2.0, -4.0])
+    );
+
+    assert_eq!(
+        f64x4::from_array([0.9, 1.001, 2.0, -4.5]).ceil(),
+        f64x4::from_array([1.0, 2.0, 2.0, -4.0])
+    );
+    assert_eq!(
+        f64x4::from_array([0.9, 1.001, 2.0, -4.5]).floor(),
+        f64x4::from_array([0.0, 1.0, 2.0, -5.0])
+    );
+    assert_eq!(
+        f64x4::from_array([0.9, 1.001, 2.0, -4.5]).round(),
+        f64x4::from_array([1.0, 1.0, 2.0, -5.0])
+    );
+    assert_eq!(
+        f64x4::from_array([0.9, 1.001, 2.0, -4.5]).trunc(),
+        f64x4::from_array([0.0, 1.0, 2.0, -4.0])
+    );
+}
+
 fn simd_intrinsics() {
     extern "platform-intrinsic" {
         fn simd_eq<T, U>(x: T, y: T) -> U;
@@ -299,5 +355,6 @@ fn main() {
     simd_cast();
     simd_swizzle();
     simd_gather_scatter();
+    simd_round();
     simd_intrinsics();
 }
