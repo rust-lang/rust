@@ -126,7 +126,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "the precise format of `Fn`-family traits' type parameters is subject to change",
             );
             // Do not suggest the other syntax if we are in trait impl:
-            // the desugaring would contain an associated type constrait.
+            // the desugaring would contain an associated type constraint.
             if !is_impl {
                 let args = trait_segment
                     .args

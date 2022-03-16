@@ -226,7 +226,7 @@ fn compute_symbol_name<'tcx>(
 
         // If we're dealing with an instance of a function that's inlined from
         // another crate but we're marking it as globally shared to our
-        // compliation (aka we're not making an internal copy in each of our
+        // compilation (aka we're not making an internal copy in each of our
         // codegen units) then this symbol may become an exported (but hidden
         // visibility) symbol. This means that multiple crates may do the same
         // and we want to be sure to avoid any symbol conflicts here.

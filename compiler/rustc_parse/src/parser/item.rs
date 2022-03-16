@@ -1948,7 +1948,7 @@ impl<'a> Parser<'a> {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
-        // only if it wasn't preceeded by `default` as `default pub` is invalid.
+        // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
             &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {

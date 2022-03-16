@@ -323,7 +323,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
             .map(|param| match param.kind {
-                // This is being infered from the item's inputs, no need to set it.
+                // This is being inferred from the item's inputs, no need to set it.
                 ty::GenericParamDefKind::Type { .. } if is_used_in_input(param.def_id) => {
                     "_".to_string()
                 }

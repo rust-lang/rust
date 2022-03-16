@@ -2050,7 +2050,7 @@ crate struct Typedef {
     /// alias instead of the final type. This will always have the final type, regardless of whether
     /// `type_` came from HIR or from metadata.
     ///
-    /// If `item_type.is_none()`, `type_` is guarenteed to come from metadata (and therefore hold the
+    /// If `item_type.is_none()`, `type_` is guaranteed to come from metadata (and therefore hold the
     /// final type).
     crate item_type: Option<Type>,
 }

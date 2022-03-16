@@ -2002,7 +2002,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     if !matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(..)) {
                                         continue 'lifetimes;
                                     }
-                                    // We want to do this only if the liftime identifier is already defined
+                                    // We want to do this only if the lifetime identifier is already defined
                                     // in the async function that generated this. Otherwise it could be
                                     // an opaque type defined by the developer and we still want this
                                     // lint to fail compilation

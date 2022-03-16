@@ -1469,7 +1469,7 @@ fn check_fn_or_method<'fcx, 'tcx>(
                 },
             )
         }));
-    // Manually call `normalize_assocaited_types_in` on the other types
+    // Manually call `normalize_associated_types_in` on the other types
     // in `FnSig`. This ensures that if the types of these fields
     // ever change to include projections, we will start normalizing
     // them automatically.

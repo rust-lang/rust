@@ -212,7 +212,7 @@ fn add_one(x: i32) -> i32 {
 
 #[naked]
 pub extern "C" fn add_two(x: i32) {
-    // x + 2 preceeded by a landing pad/nop block
+    // x + 2 preceded by a landing pad/nop block
     unsafe {
         asm!(
             "
