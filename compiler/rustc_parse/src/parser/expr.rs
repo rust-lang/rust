@@ -223,7 +223,7 @@ impl<'a> Parser<'a> {
                     AssocOp::NotEqual => "!=",
                     _ => unreachable!(),
                 };
-                self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
+                self.struct_span_err(sp, &format!("invalid comparison operator `{sugg}=`"))
                     .span_suggestion_short(
                         sp,
                         &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
@@ -441,10 +441,10 @@ impl<'a> Parser<'a> {
 
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
     fn error_bad_logical_op(&self, bad: &str, good: &str, english: &str) {
-        self.struct_span_err(self.token.span, &format!("`{}` is not a logical operator", bad))
+        self.struct_span_err(self.token.span, &format!("`{bad}` is not a logical operator"))
             .span_suggestion_short(
                 self.token.span,
-                &format!("use `{}` to perform logical {}", good, english),
+                &format!("use `{good}` to perform logical {english}"),
                 good.to_string(),
                 Applicability::MachineApplicable,
             )
@@ -766,9 +766,9 @@ impl<'a> Parser<'a> {
                                 self.look_ahead(1, |t| t.span).to(span_after_type),
                                 "interpreted as generic arguments",
                             )
-                            .span_label(self.token.span, format!("not interpreted as {}", op_noun))
+                            .span_label(self.token.span, format!("not interpreted as {op_noun}"))
                             .multipart_suggestion(
-                                &format!("try {} the cast value", op_verb),
+                                &format!("try {op_verb} the cast value"),
                                 vec![
                                     (expr.span.shrink_to_lo(), "(".to_string()),
                                     (expr.span.shrink_to_hi(), ")".to_string()),
@@ -970,7 +970,7 @@ impl<'a> Parser<'a> {
     fn error_unexpected_after_dot(&self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
-        self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
+        self.struct_span_err(self.token.span, &format!("unexpected token: `{actual}`")).emit();
     }
 
     // We need an identifier or integer, but the next token is a float.
@@ -1151,7 +1151,7 @@ impl<'a> Parser<'a> {
                             mem::replace(err, replacement_err).cancel();
 
                             err.multipart_suggestion(
-                                &format!("if `{}` is a struct, use braces as delimiters", name),
+                                &format!("if `{name}` is a struct, use braces as delimiters"),
                                 vec![
                                     (open_paren, " { ".to_string()),
                                     (close_paren, " }".to_string()),
@@ -1159,7 +1159,7 @@ impl<'a> Parser<'a> {
                                 Applicability::MaybeIncorrect,
                             );
                             err.multipart_suggestion(
-                                &format!("if `{}` is a function, use the arguments directly", name),
+                                &format!("if `{name}` is a function, use the arguments directly"),
                                 fields
                                     .into_iter()
                                     .map(|field| (field.span.until(field.expr.span), String::new()))
@@ -1776,9 +1776,9 @@ impl<'a> Parser<'a> {
                         )
                         .emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for number literal", suf);
+                    let msg = format!("invalid suffix `{suf}` for number literal");
                     self.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .span_label(span, format!("invalid suffix `{suf}`"))
                         .help("the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)")
                         .emit();
                 }
@@ -1791,9 +1791,9 @@ impl<'a> Parser<'a> {
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);
                     self.struct_span_err(span, &msg).help("valid widths are 32 and 64").emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for float literal", suf);
+                    let msg = format!("invalid suffix `{suf}` for float literal");
                     self.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .span_label(span, format!("invalid suffix `{suf}`"))
                         .help("valid suffixes are `f32` and `f64`")
                         .emit();
                 }
@@ -1805,7 +1805,7 @@ impl<'a> Parser<'a> {
                     2 => "binary",
                     _ => unreachable!(),
                 };
-                self.struct_span_err(span, &format!("{} float literal is not supported", descr))
+                self.struct_span_err(span, &format!("{descr} float literal is not supported"))
                     .span_label(span, "not supported")
                     .emit();
             }
@@ -1825,7 +1825,7 @@ impl<'a> Parser<'a> {
                 let mut err = self
                     .sess
                     .span_diagnostic
-                    .struct_span_warn(sp, &format!("suffixes on {} are invalid", kind));
+                    .struct_span_warn(sp, &format!("suffixes on {kind} are invalid"));
                 err.note(&format!(
                     "`{}` is *temporarily* accepted on tuple index fields as it was \
                         incorrectly accepted on stable for a few releases",
@@ -1842,10 +1842,10 @@ impl<'a> Parser<'a> {
                 );
                 err
             } else {
-                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                self.struct_span_err(sp, &format!("suffixes on {kind} are invalid"))
                     .forget_guarantee()
             };
-            err.span_label(sp, format!("invalid suffix `{}`", suf));
+            err.span_label(sp, format!("invalid suffix `{suf}`"));
             err.emit();
         }
     }
@@ -2211,7 +2211,7 @@ impl<'a> Parser<'a> {
         let ctx = if is_ctx_else { "else" } else { "if" };
         self.struct_span_err(last, "outer attributes are not allowed on `if` and `else` branches")
             .span_label(branch_span, "the attributes are attached to this branch")
-            .span_label(ctx_span, format!("the branch belongs to this `{}`", ctx))
+            .span_label(ctx_span, format!("the branch belongs to this `{ctx}`"))
             .span_suggestion(
                 span,
                 "remove the attributes",
@@ -2391,7 +2391,7 @@ impl<'a> Parser<'a> {
             err.span_label(arrow_span, "while parsing the `match` arm starting here");
             if stmts.len() > 1 {
                 err.multipart_suggestion(
-                    &format!("surround the statement{} with a body", s),
+                    &format!("surround the statement{s} with a body"),
                     vec![
                         (span.shrink_to_lo(), "{ ".to_string()),
                         (span.shrink_to_hi(), " }".to_string()),

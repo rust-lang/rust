@@ -327,8 +327,8 @@ impl<'a> Parser<'a> {
                 expect.clone()
             };
             (
-                format!("expected one of {}, found {}", expect, actual),
-                (self.prev_token.span.shrink_to_hi(), format!("expected one of {}", short_expect)),
+                format!("expected one of {expect}, found {actual}"),
+                (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")),
             )
         } else if expected.is_empty() {
             (
@@ -337,8 +337,8 @@ impl<'a> Parser<'a> {
             )
         } else {
             (
-                format!("expected {}, found {}", expect, actual),
-                (self.prev_token.span.shrink_to_hi(), format!("expected {}", expect)),
+                format!("expected {expect}, found {actual}"),
+                (self.prev_token.span.shrink_to_hi(), format!("expected {expect}")),
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
@@ -421,7 +421,7 @@ impl<'a> Parser<'a> {
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-                err.note(&format!("the raw string started with {} `#`s", n_hashes));
+                err.note(&format!("the raw string started with {n_hashes} `#`s"));
                 true
             }
             _ => false,
@@ -1191,7 +1191,7 @@ impl<'a> Parser<'a> {
                     _ => None,
                 };
                 if let Some(name) = previous_item_kind_name {
-                    err.help(&format!("{} declarations are not followed by a semicolon", name));
+                    err.help(&format!("{name} declarations are not followed by a semicolon"));
                 }
             }
             err.emit();
@@ -1226,12 +1226,12 @@ impl<'a> Parser<'a> {
             "expected `{}`, found {}",
             token_str,
             match (&self.token.kind, self.subparser_name) {
-                (token::Eof, Some(origin)) => format!("end of {}", origin),
+                (token::Eof, Some(origin)) => format!("end of {origin}"),
                 _ => this_token_str,
             },
         );
         let mut err = self.struct_span_err(sp, &msg);
-        let label_exp = format!("expected `{}`", token_str);
+        let label_exp = format!("expected `{token_str}`");
         match self.recover_closing_delimiter(&[t.clone()], err) {
             Err(e) => err = e,
             Ok(recovered) => {
@@ -1368,7 +1368,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            err.span_suggestion(lo.shrink_to_lo(), &format!("{}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", prefix), "r#".to_string(), Applicability::MachineApplicable);
+            err.span_suggestion(lo.shrink_to_lo(), &format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#".to_string(), Applicability::MachineApplicable);
             err.emit();
             Ok(self.mk_expr_err(lo.to(hi)))
         } else {
@@ -1504,7 +1504,7 @@ impl<'a> Parser<'a> {
                 delim.retain(|c| c != '`');
                 err.span_suggestion_short(
                     self.prev_token.span.shrink_to_hi(),
-                    &format!("`{}` may belong here", delim),
+                    &format!("`{delim}` may belong here"),
                     delim,
                     Applicability::MaybeIncorrect,
                 );
@@ -1698,7 +1698,7 @@ impl<'a> Parser<'a> {
                                 (
                                     ident,
                                     "self: ".to_string(),
-                                    format!("{}: &{}TypeName", ident, mutab),
+                                    format!("{ident}: &{mutab}TypeName"),
                                     "_: ".to_string(),
                                     pat.span.shrink_to_lo(),
                                     pat.span,
@@ -1826,7 +1826,7 @@ impl<'a> Parser<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.prev_token.span);
-                (sp, format!("expected expression, found end of {}", origin))
+                (sp, format!("expected expression, found end of {origin}"))
             }
             _ => (
                 self.token.span,
@@ -1975,8 +1975,8 @@ impl<'a> Parser<'a> {
             (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
         {
             let (span, sugg) = match &generics.params[..] {
-                [] => (generics.span, format!("<{}>", snippet)),
-                [.., generic] => (generic.span().shrink_to_hi(), format!(", {}", snippet)),
+                [] => (generics.span, format!("<{snippet}>")),
+                [.., generic] => (generic.span().shrink_to_hi(), format!(", {snippet}")),
             };
             err.multipart_suggestion(
                 "`const` parameters must be declared for the `impl`",
