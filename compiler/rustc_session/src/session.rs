@@ -865,7 +865,7 @@ impl Session {
     }
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
-        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
+        self.opts.get_incremental().as_ref().map(|_| self.incr_comp_session_dir())
     }
 
     pub fn print_perf_stats(&self) {
@@ -937,7 +937,7 @@ impl Session {
         // If incremental compilation is turned on, we default to a high number
         // codegen units in order to reduce the "collateral damage" small
         // changes cause.
-        if self.opts.incremental.is_some() {
+        if self.opts.get_incremental().is_some() {
             return 256;
         }
 

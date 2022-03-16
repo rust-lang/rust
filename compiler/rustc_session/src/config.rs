@@ -809,7 +809,7 @@ impl Default for Options {
 impl Options {
     /// Returns `true` if there is a reason to build the dep graph.
     pub fn build_dep_graph(&self) -> bool {
-        self.incremental.is_some()
+        self.get_incremental().is_some()
             || self.debugging_opts.dump_dep_graph
             || self.debugging_opts.query_dep_graph
     }
