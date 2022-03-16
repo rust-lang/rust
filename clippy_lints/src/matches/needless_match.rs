@@ -5,7 +5,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{eq_expr_value, get_parent_expr, higher, is_else_clause, is_lang_ctor, peel_blocks_with_stmt};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath, UnOp};
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 
@@ -21,7 +21,7 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>])
             if !eq_expr_value(cx, ex, ret_expr) {
                 return;
             }
-        } else if !pat_same_as_expr(arm.pat, arm.body) {
+        } else if !pat_same_as_expr(arm.pat, peel_blocks_with_stmt(arm.body)) {
             return;
         }
     }
@@ -92,6 +92,9 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
 
         if matches!(if_else.kind, ExprKind::Block(..)) {
             let else_expr = peel_blocks_with_stmt(if_else);
+            if matches!(else_expr.kind, ExprKind::Block(..)) {
+                return false;
+            }
             let ret = strip_return(else_expr);
             let let_expr_ty = cx.typeck_results().expr_ty(if_let.let_expr);
             if is_type_diagnostic_item(cx, let_expr_ty, sym::Option) {
@@ -120,40 +123,25 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     let expr = strip_return(expr);
     match (&pat.kind, &expr.kind) {
         // Example: `Some(val) => Some(val)`
-        (
-            PatKind::TupleStruct(QPath::Resolved(_, path), [first_pat, ..], _),
-            ExprKind::Call(call_expr, [first_param, ..]),
-        ) => {
+        (PatKind::TupleStruct(QPath::Resolved(_, path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {
             if let ExprKind::Path(QPath::Resolved(_, call_path)) = call_expr.kind {
-                if has_identical_segments(path.segments, call_path.segments)
-                    && has_same_non_ref_symbol(first_pat, first_param)
-                {
-                    return true;
-                }
+                return has_identical_segments(path.segments, call_path.segments)
+                    && has_same_non_ref_symbols(tuple_params, call_params);
             }
         },
-        // Example: `val => val`, or `ref val => *val`
-        (PatKind::Binding(annot, _, pat_ident, _), _) => {
-            let new_expr = if let (
-                BindingAnnotation::Ref | BindingAnnotation::RefMut,
-                ExprKind::Unary(UnOp::Deref, operand_expr),
-            ) = (annot, &expr.kind)
-            {
-                operand_expr
-            } else {
-                expr
-            };
-
-            if let ExprKind::Path(QPath::Resolved(
+        // Example: `val => val`
+        (
+            PatKind::Binding(annot, _, pat_ident, _),
+            ExprKind::Path(QPath::Resolved(
                 _,
                 Path {
                     segments: [first_seg, ..],
                     ..
                 },
-            )) = new_expr.kind
-            {
-                return pat_ident.name == first_seg.ident.name;
-            }
+            )),
+        ) => {
+            return !matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut)
+                && pat_ident.name == first_seg.ident.name;
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
@@ -183,15 +171,16 @@ fn has_identical_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegme
     true
 }
 
-fn has_same_non_ref_symbol(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
-    if_chain! {
-        if let PatKind::Binding(annot, _, pat_ident, _) = pat.kind;
-        if !matches!(annot, BindingAnnotation::Ref | BindingAnnotation::RefMut);
-        if let ExprKind::Path(QPath::Resolved(_, Path {segments: [first_seg, ..], .. })) = expr.kind;
-        then {
-            return pat_ident.name == first_seg.ident.name;
+fn has_same_non_ref_symbols(pats: &[Pat<'_>], exprs: &[Expr<'_>]) -> bool {
+    if pats.len() != exprs.len() {
+        return false;
+    }
+
+    for i in 0..pats.len() {
+        if !pat_same_as_expr(&pats[i], &exprs[i]) {
+            return false;
         }
     }
 
-    false
+    true
 }
