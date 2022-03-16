@@ -74,9 +74,30 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            let ty_and_layout = tcx.layout_of(ParamEnv::reveal_all().and(t)).expect("layout error");
+            // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback encoding.
+            let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
+                match tcx.layout_of(ParamEnv::reveal_all().and(t)) {
+                    Ok(layout) => {
+                        if !wants_c_like_enum_debuginfo(layout) {
+                            Some(layout)
+                        } else {
+                            // This is a C-like enum so we don't want to use the fallback encoding
+                            // for the name.
+                            None
+                        }
+                    }
+                    Err(e) => {
+                        // Computing the layout can still fail here, e.g. if the target architecture
+                        // cannot represent the type. See https://github.com/rust-lang/rust/issues/94961.
+                        tcx.sess.fatal(&format!("{}", e));
+                    }
+                }
+            } else {
+                // We are not emitting cpp-like debuginfo or this isn't even an enum.
+                None
+            };
 
-            if def.is_enum() && cpp_like_debuginfo && !wants_c_like_enum_debuginfo(ty_and_layout) {
+            if let Some(ty_and_layout) = layout_for_cpp_like_fallback {
                 msvc_enum_fallback(
                     tcx,
                     ty_and_layout,
