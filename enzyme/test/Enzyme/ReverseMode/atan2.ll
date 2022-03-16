@@ -27,9 +27,9 @@ declare double @__enzyme_autodiff(...)
 
 ; CHECK: define internal { double, double } @diffetester(double %y, double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = fmul fast double %y, %y
-; CHECK-NEXT:   %1 = fmul fast double %x, %x
-; CHECK-NEXT:   %2 = fadd fast double %1, %0
+; CHECK-DAG:    %[[a0:.+]] = fmul fast double %y, %y
+; CHECK-DAG:    %[[a1:.+]] = fmul fast double %x, %x
+; CHECK-NEXT:   %2 = fadd fast double %[[a1]], %[[a0]]
 ; CHECK-NEXT:   %3 = fmul fast double %differeturn, %x
 ; CHECK-NEXT:   %4 = fdiv fast double %3, %2
 ; CHECK-NEXT:   %5 = fmul fast double %differeturn, %y
