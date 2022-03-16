@@ -352,11 +352,6 @@ Whether to show `Run` action. Only applies when
 --
 Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
 --
-[[rust-analyzer.inlayHints.chainingHints]]rust-analyzer.inlayHints.chainingHints (default: `true`)::
-+
---
-Whether to show inlay type hints for method chains.
---
 [[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `25`)::
 +
 --
@@ -372,6 +367,16 @@ site.
 +
 --
 Whether to show inlay type hints for variables.
+--
+[[rust-analyzer.inlayHints.chainingHints]]rust-analyzer.inlayHints.chainingHints (default: `true`)::
++
+--
+Whether to show inlay type hints for method chains.
+--
+[[rust-analyzer.inlayHints.closureReturnTypeHints]]rust-analyzer.inlayHints.closureReturnTypeHints (default: `false`)::
++
+--
+Whether to show inlay type hints for return types of closures with blocks.
 --
 [[rust-analyzer.inlayHints.hideNamedConstructorHints]]rust-analyzer.inlayHints.hideNamedConstructorHints (default: `false`)::
 +

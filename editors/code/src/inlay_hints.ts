@@ -14,7 +14,8 @@ export function activateInlayHints(ctx: Ctx) {
 
             const anyEnabled = ctx.config.inlayHints.typeHints
                 || ctx.config.inlayHints.parameterHints
-                || ctx.config.inlayHints.chainingHints;
+                || ctx.config.inlayHints.chainingHints
+                || ctx.config.inlayHints.closureReturnTypeHints;
             const enabled = ctx.config.inlayHints.enable && anyEnabled;
             if (!enabled) return;
 
