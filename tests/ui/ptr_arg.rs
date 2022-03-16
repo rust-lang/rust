@@ -194,3 +194,10 @@ fn two_vecs(a: &mut Vec<u32>, b: &mut Vec<u32>) {
     a.push(0);
     b.push(1);
 }
+
+// Issue #8495
+fn cow_conditional_to_mut(a: &mut Cow<str>) {
+    if a.is_empty() {
+        a.to_mut().push_str("foo");
+    }
+}
