@@ -150,7 +150,7 @@ pub fn report_error<'tcx, 'mir>(
                 UnsupportedInIsolation(_) =>
                     vec![
                         (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
-                        (None, format!("or pass `-Zmiri-isolation-error=warn to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
+                        (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                     ],
                 ExperimentalUb { url, .. } =>
                     vec![
