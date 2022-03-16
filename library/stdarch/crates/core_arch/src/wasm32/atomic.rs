@@ -31,7 +31,7 @@ extern "C" {
 ///   didn't block
 /// * 2 - the thread blocked, but the timeout expired.
 ///
-/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
+/// [instr]: https://webassembly.github.io/threads/core/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr(memory.atomic.wait32))]
 #[target_feature(enable = "atomics")]
@@ -61,7 +61,7 @@ pub unsafe fn memory_atomic_wait32(ptr: *mut i32, expression: i32, timeout_ns: i
 ///   didn't block
 /// * 2 - the thread blocked, but the timeout expired.
 ///
-/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
+/// [instr]: https://webassembly.github.io/threads/core/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr(memory.atomic.wait64))]
 #[target_feature(enable = "atomics")]
@@ -83,7 +83,7 @@ pub unsafe fn memory_atomic_wait64(ptr: *mut i64, expression: i64, timeout_ns: i
 ///
 /// Returns the number of waiters which were actually notified.
 ///
-/// [instr]: https://webassembly.github.io/threads/syntax/instructions.html#syntax-instr-atomic-memory
+/// [instr]: https://webassembly.github.io/threads/core/syntax/instructions.html#syntax-instr-atomic-memory
 #[inline]
 #[cfg_attr(test, assert_instr(memory.atomic.notify))]
 #[target_feature(enable = "atomics")]
