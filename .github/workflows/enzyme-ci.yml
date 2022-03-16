@@ -1,4 +1,4 @@
-name: Linux Enzyme CI
+name: Enzyme CI
 
 on: [push]
 
