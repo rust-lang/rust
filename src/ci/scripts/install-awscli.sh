@@ -20,6 +20,7 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 MIRROR="${MIRRORS_BASE}/2019-07-27-awscli.tar"
 DEPS_DIR="/tmp/awscli-deps"
+AWSCLI_SHA="537327eb34c2a495ed2c8b8a03aa926bf4ae61ce062476cdadb199d2c25d6103"
 
 pip="pip"
 pipflags=""
@@ -32,6 +33,8 @@ if isLinux; then
 fi
 
 mkdir -p "${DEPS_DIR}"
-curl "${MIRROR}" | tar xf - -C "${DEPS_DIR}"
+curl -O "${MIRROR}"
+echo "${AWSCLI_SHA}  2019-07-27-awscli.tar" | sha256sum --check
+tar xf 2019-07-27-awscli.tar -C "${DEPS_DIR}"
 "${pip}" install ${pipflags} --no-index "--find-links=${DEPS_DIR}" awscli
 rm -rf "${DEPS_DIR}"
