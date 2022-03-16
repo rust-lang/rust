@@ -39,7 +39,7 @@ use std::borrow::Borrow;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
-use std::lazy::OnceCell;
+use std::lazy::{OnceCell, Lazy};
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
@@ -691,8 +691,11 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     // Invoke the system linker
     info!("{:?}", &cmd);
     let retry_on_segfault = env::var("RUSTC_RETRY_LINKER_ON_SEGFAULT").is_ok();
-    let unknown_arg_regex =
-        Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap();
+    // Use a Lazy here as building a regex is relatively expensive and is not necessary in the happy
+    // case.
+    let unknown_arg_regex = Lazy::new(|| {
+        Regex::new(r"(unknown|unrecognized) (command line )?(option|argument)").unwrap()
+    });
     let mut prog;
     let mut i = 0;
     loop {
