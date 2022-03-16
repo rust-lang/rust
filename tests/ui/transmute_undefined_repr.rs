@@ -87,5 +87,14 @@ fn main() {
 
         let _: *const [u8] = transmute(value::<Box<[u8]>>()); // Ok
         let _: Box<[u8]> = transmute(value::<*mut [u8]>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<(Ty2<u32, u32>,)>()); // Ok
+        let _: (Ty2<u32, u32>,) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<(Ty2<u32, u32>, ())>()); // Ok
+        let _: (Ty2<u32, u32>, ()) = transmute(value::<Ty2<u32, u32>>()); // Ok
+
+        let _: Ty2<u32, u32> = transmute(value::<((), Ty2<u32, u32>)>()); // Ok
+        let _: ((), Ty2<u32, u32>) = transmute(value::<Ty2<u32, u32>>()); // Ok
     }
 }

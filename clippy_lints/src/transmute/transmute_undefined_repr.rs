@@ -282,10 +282,11 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
             },
             ty::Tuple(args) if args.is_empty() => ReducedTy::TypeErasure,
             ty::Tuple(args) => {
-                let Some(sized_ty) = args.iter().find(|&ty| !is_zero_sized_ty(cx, ty)) else {
+                let mut iter = args.iter();
+                let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::OrderedFields(ty);
                 };
-                if args.iter().all(|ty| is_zero_sized_ty(cx, ty)) {
+                if iter.all(|ty| is_zero_sized_ty(cx, ty)) {
                     ty = sized_ty;
                     continue;
                 }
