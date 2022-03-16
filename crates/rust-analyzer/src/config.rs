@@ -244,8 +244,6 @@ config_data! {
 
         /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool               = "true",
-        /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints: bool              = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
         inlayHints_maxLength: Option<usize>         = "25",
         /// Whether to show function parameter name inlay hints at the call
@@ -253,6 +251,10 @@ config_data! {
         inlayHints_parameterHints: bool             = "true",
         /// Whether to show inlay type hints for variables.
         inlayHints_typeHints: bool                  = "true",
+        /// Whether to show inlay type hints for method chains.
+        inlayHints_chainingHints: bool              = "true",
+        /// Whether to show inlay type hints for return types of closures with blocks.
+        inlayHints_closureReturnTypeHints: bool     = "false",
         /// Whether to hide inlay hints for constructors.
         inlayHints_hideNamedConstructorHints: bool  = "false",
 
@@ -852,6 +854,7 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints,
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
+            closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
             hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
             max_length: self.data.inlayHints_maxLength,
         }

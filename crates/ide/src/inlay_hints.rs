@@ -16,6 +16,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
+    pub closure_return_type_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
 }
@@ -24,6 +25,7 @@ pub struct InlayHintsConfig {
 pub enum InlayKind {
     TypeHint,
     ParameterHint,
+    ClosureReturnTypeHint,
     ChainingHint,
 }
 
@@ -67,48 +69,86 @@ pub(crate) fn inlay_hints(
     let file = sema.parse(file_id);
     let file = file.syntax();
 
-    let mut hints = Vec::new();
+    let mut acc = Vec::new();
 
-    let get_hints = |node| get_hints(&mut hints, &sema, config, node);
+    let hints = |node| hints(&mut acc, &sema, config, node);
     match range_limit {
         Some(FileRange { range, .. }) => match file.covering_element(range) {
-            NodeOrToken::Token(_) => return hints,
+            NodeOrToken::Token(_) => return acc,
             NodeOrToken::Node(n) => n
                 .descendants()
                 .filter(|descendant| range.contains_range(descendant.text_range()))
-                .for_each(get_hints),
+                .for_each(hints),
         },
-        None => file.descendants().for_each(get_hints),
+        None => file.descendants().for_each(hints),
     };
 
-    hints
+    acc
 }
 
-fn get_hints(
+fn hints(
     hints: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
     node: SyntaxNode,
 ) {
+    let krate = sema.scope(&node).module().map(|it| it.krate());
+    let famous_defs = FamousDefs(sema, krate);
     if let Some(expr) = ast::Expr::cast(node.clone()) {
-        get_chaining_hints(hints, sema, config, &expr);
+        chaining_hints(hints, sema, &famous_defs, config, &expr);
         match expr {
             ast::Expr::CallExpr(it) => {
-                get_param_name_hints(hints, sema, config, ast::Expr::from(it));
+                param_name_hints(hints, sema, config, ast::Expr::from(it));
             }
             ast::Expr::MethodCallExpr(it) => {
-                get_param_name_hints(hints, sema, config, ast::Expr::from(it));
+                param_name_hints(hints, sema, config, ast::Expr::from(it));
+            }
+            ast::Expr::ClosureExpr(it) => {
+                closure_ret_hints(hints, sema, &famous_defs, config, it);
             }
             _ => (),
         }
     } else if let Some(it) = ast::IdentPat::cast(node) {
-        get_bind_pat_hints(hints, sema, config, &it);
+        bind_pat_hints(hints, sema, config, &it);
     }
 }
 
-fn get_chaining_hints(
+fn closure_ret_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
+    famous_defs: &FamousDefs,
+    config: &InlayHintsConfig,
+    closure: ast::ClosureExpr,
+) -> Option<()> {
+    if !config.closure_return_type_hints {
+        return None;
+    }
+
+    let closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
+
+    let param_list = match closure.body() {
+        Some(ast::Expr::BlockExpr(_)) => closure.param_list()?,
+        _ => return None,
+    };
+    let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(closure))?.adjusted();
+    let callable = ty.as_callable(sema.db)?;
+    let ty = callable.return_type();
+    if ty.is_unit() {
+        return None;
+    }
+    acc.push(InlayHint {
+        range: param_list.syntax().text_range(),
+        kind: InlayKind::ClosureReturnTypeHint,
+        label: hint_iterator(sema, &famous_defs, config, &ty)
+            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+    });
+    Some(())
+}
+
+fn chaining_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    famous_defs: &FamousDefs,
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
@@ -122,8 +162,6 @@ fn get_chaining_hints(
 
     let descended = sema.descend_node_into_attributes(expr.clone()).pop();
     let desc_expr = descended.as_ref().unwrap_or(expr);
-    let krate = sema.scope(desc_expr.syntax()).module().map(|it| it.krate());
-    let famous_defs = FamousDefs(sema, krate);
 
     let mut tokens = expr
         .syntax()
@@ -167,7 +205,7 @@ fn get_chaining_hints(
     Some(())
 }
 
-fn get_param_name_hints(
+fn param_name_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
@@ -207,7 +245,7 @@ fn get_param_name_hints(
     Some(())
 }
 
-fn get_bind_pat_hints(
+fn bind_pat_hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<RootDatabase>,
     config: &InlayHintsConfig,
@@ -567,13 +605,21 @@ mod tests {
 
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
+    const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
+        render_colons: false,
+        type_hints: false,
+        parameter_hints: false,
+        chaining_hints: false,
+        hide_named_constructor_hints: false,
+        closure_return_type_hints: false,
+        max_length: None,
+    };
     const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
-        render_colons: true,
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
-        hide_named_constructor_hints: false,
-        max_length: None,
+        closure_return_type_hints: true,
+        ..DISABLED_CONFIG
     };
 
     #[track_caller]
@@ -584,46 +630,19 @@ mod tests {
     #[track_caller]
     fn check_params(ra_fixture: &str) {
         check_with_config(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: true,
-                type_hints: false,
-                chaining_hints: false,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
             ra_fixture,
         );
     }
 
     #[track_caller]
     fn check_types(ra_fixture: &str) {
-        check_with_config(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: true,
-                chaining_hints: false,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
-            ra_fixture,
-        );
+        check_with_config(InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 
     #[track_caller]
     fn check_chains(ra_fixture: &str) {
-        check_with_config(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
-            ra_fixture,
-        );
+        check_with_config(InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 
     #[track_caller]
@@ -646,14 +665,7 @@ mod tests {
     #[test]
     fn hints_disabled() {
         check_with_config(
-            InlayHintsConfig {
-                render_colons: true,
-                type_hints: false,
-                parameter_hints: false,
-                chaining_hints: false,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { render_colons: true, ..DISABLED_CONFIG },
             r#"
 fn foo(a: i32, b: i32) -> i32 { a + b }
 fn main() {
@@ -1102,14 +1114,7 @@ fn main() {
         let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis
             .inlay_hints(
-                &InlayHintsConfig {
-                    render_colons: true,
-                    parameter_hints: false,
-                    type_hints: true,
-                    chaining_hints: false,
-                    hide_named_constructor_hints: false,
-                    max_length: None,
-                },
+                &InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
                 file_id,
                 Some(FileRange {
                     file_id,
@@ -1418,7 +1423,7 @@ fn main() {
                 parameter_hints: true,
                 chaining_hints: true,
                 hide_named_constructor_hints: true,
-                max_length: None,
+                ..DISABLED_CONFIG
             },
             r#"
 //- minicore: try, option
@@ -1546,13 +1551,14 @@ fn fallible() -> ControlFlow<()> {
 fn main() {
     let mut start = 0;
           //^^^^^ i32
-    (0..2).for_each(|increment| { start += increment; });
+    (0..2).for_each(|increment      | { start += increment; });
                    //^^^^^^^^^ i32
 
     let multiply =
       //^^^^^^^^ |i32, i32| -> i32
       | a,     b| a * b
       //^ i32  ^ i32
+
     ;
 
     let _: i32 = multiply(1, 2);
@@ -1561,6 +1567,8 @@ fn main() {
 
     let return_42 = || 42;
       //^^^^^^^^^ || -> i32
+      || { 42 };
+    //^^ i32
 }"#,
         );
     }
@@ -1590,14 +1598,7 @@ fn main() {
     #[test]
     fn chaining_hints_ignore_comments() {
         check_expect(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { type_hints: false, chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -1648,14 +1649,7 @@ fn main() {
     #[test]
     fn struct_access_chaining_hints() {
         check_expect(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A { pub b: B }
 struct B { pub c: C }
@@ -1694,14 +1688,7 @@ fn main() {
     #[test]
     fn generic_chaining_hints() {
         check_expect(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 struct A<T>(T);
 struct B<T>(T);
@@ -1741,14 +1728,7 @@ fn main() {
     #[test]
     fn shorten_iterator_chaining_hints() {
         check_expect(
-            InlayHintsConfig {
-                render_colons: true,
-                parameter_hints: false,
-                type_hints: false,
-                chaining_hints: true,
-                hide_named_constructor_hints: false,
-                max_length: None,
-            },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
             r#"
 //- minicore: iterators
 use core::iter;

@@ -771,11 +771,6 @@
                     "default": true,
                     "type": "boolean"
                 },
-                "rust-analyzer.inlayHints.chainingHints": {
-                    "markdownDescription": "Whether to show inlay type hints for method chains.",
-                    "default": true,
-                    "type": "boolean"
-                },
                 "rust-analyzer.inlayHints.maxLength": {
                     "markdownDescription": "Maximum length for inlay hints. Set to null to have an unlimited length.",
                     "default": 25,
@@ -793,6 +788,16 @@
                 "rust-analyzer.inlayHints.typeHints": {
                     "markdownDescription": "Whether to show inlay type hints for variables.",
                     "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.inlayHints.chainingHints": {
+                    "markdownDescription": "Whether to show inlay type hints for method chains.",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.inlayHints.closureReturnTypeHints": {
+                    "markdownDescription": "Whether to show inlay type hints for return types of closures with blocks.",
+                    "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.inlayHints.hideNamedConstructorHints": {
