@@ -1,17 +1,17 @@
 error[E0277]: the trait bound `(): ~const Tr` is not satisfied
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:9:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()
    |            ^^^ the trait `~const Tr` is not implemented for `()`
    |
 note: the trait `Tr` is implemented for `()`, but that implementation is not `const`
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:9:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()
    |            ^^^
 
 error[E0015]: cannot call non-const fn `<() as Tr>::a` in constant functions
-  --> $DIR/default-method-body-is-const-same-trait-ck.rs:9:12
+  --> $DIR/default-method-body-is-const-same-trait-ck.rs:8:12
    |
 LL |         ().a()
    |            ^^^

@@ -84,10 +84,10 @@ pub fn rustc_allow_const_fn_unstable(
 // functions are subject to more stringent restrictions than "const-unstable" functions: They
 // cannot use unstable features and can only call other "const-stable" functions.
 pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    // A default body marked const is not const-stable because const
+    // A default body in a `#[const_trait]` is not const-stable because const
     // trait fns currently cannot be const-stable. We shouldn't
     // restrict default bodies to only call const-stable functions.
-    if tcx.has_attr(def_id, sym::default_method_body_is_const) {
+    if let Some(trait_id) = tcx.trait_of_item(def_id) && tcx.has_attr(trait_id, sym::const_trait) {
         return false;
     }
 

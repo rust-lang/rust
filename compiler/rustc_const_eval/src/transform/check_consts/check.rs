@@ -774,13 +774,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             }
                         }
                         _ if !tcx.is_const_fn_raw(callee) => {
-                            // At this point, it is only legal when the caller is marked with
-                            // #[default_method_body_is_const], and the callee is in the same
-                            // trait.
-                            let callee_trait = tcx.trait_of_item(callee);
-                            if callee_trait.is_some()
-                                && tcx.has_attr(caller.to_def_id(), sym::default_method_body_is_const)
-                                && callee_trait == tcx.trait_of_item(caller)
+                            // At this point, it is only legal when the caller is in a trait
+                            // marked with #[const_trait], and the callee is in the same trait.
+                            if let Some(callee_trait) = tcx.trait_of_item(callee)
+                                && tcx.has_attr(callee_trait, sym::const_trait)
+                                && Some(callee_trait) == tcx.trait_of_item(caller)
                                 // Can only call methods when it's `<Self as TheTrait>::f`.
                                 && tcx.types.self_param == substs.type_at(0)
                             {
@@ -875,7 +873,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 if !tcx.is_const_fn_raw(callee) {
                     if tcx.trait_of_item(callee).is_some() {
-                        if tcx.has_attr(callee, sym::default_method_body_is_const) {
+                        if let Some(callee_trait) = tcx.trait_of_item(callee) && tcx.has_attr(callee_trait, sym::const_trait) {
                             // To get to here we must have already found a const impl for the
                             // trait, but for it to still be non-const can be that the impl is
                             // using default method bodies.
