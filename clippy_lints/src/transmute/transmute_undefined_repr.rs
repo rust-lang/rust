@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
                 unsized_ty,
                 to_ty: to_sub_ty,
             } => match reduce_ty(cx, to_sub_ty) {
-                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::TypeErasure => break,
                 ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(to_sub_ty) => {
                     from_ty = unsized_ty;
@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(
                 unsized_ty,
                 from_ty: from_sub_ty,
             } => match reduce_ty(cx, from_sub_ty) {
-                ReducedTy::IntArray | ReducedTy::TypeErasure => break,
+                ReducedTy::TypeErasure => break,
                 ReducedTy::UnorderedFields(ty) if is_size_pair(ty) => break,
                 ReducedTy::Ref(from_sub_ty) => {
                     from_ty = from_sub_ty;
@@ -125,8 +125,7 @@ pub(super) fn check<'tcx>(
                 from_ty: from_sub_ty,
                 to_ty: to_sub_ty,
             } => match (reduce_ty(cx, from_sub_ty), reduce_ty(cx, to_sub_ty)) {
-                (ReducedTy::IntArray | ReducedTy::TypeErasure, _)
-                | (_, ReducedTy::IntArray | ReducedTy::TypeErasure) => return false,
+                (ReducedTy::TypeErasure, _) | (_, ReducedTy::TypeErasure) => return false,
                 (ReducedTy::UnorderedFields(from_ty), ReducedTy::UnorderedFields(to_ty)) if from_ty != to_ty => {
                     span_lint_and_then(
                         cx,
@@ -265,9 +264,6 @@ enum ReducedTy<'tcx> {
     UnorderedFields(Ty<'tcx>),
     /// The type is a reference to the contained type.
     Ref(Ty<'tcx>),
-    /// The type is an array of a primitive integer type. These can be used as storage for a value
-    /// of another type.
-    IntArray,
     /// Any other type.
     Other(Ty<'tcx>),
 }
@@ -277,7 +273,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
     loop {
         ty = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty).unwrap_or(ty);
         return match *ty.kind() {
-            ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => ReducedTy::IntArray,
+            ty::Array(sub_ty, _) if matches!(sub_ty.kind(), ty::Int(_) | ty::Uint(_)) => ReducedTy::TypeErasure,
             ty::Array(sub_ty, _) | ty::Slice(sub_ty) => {
                 ty = sub_ty;
                 continue;
