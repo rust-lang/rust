@@ -1,5 +1,7 @@
 # We document platform support for minimum glibc 2.17 and kernel 3.2.
-# CentOS 7 has kernel 3.10, but that's not as important as matching the glibc version.
+# CentOS 7 has headers for kernel 3.10, but that's fine as long as we don't
+# actually use newer APIs in rustc or std without a fallback. It's more
+# important that we match glibc for ELF symbol versioning.
 FROM centos:7
 
 WORKDIR /build
