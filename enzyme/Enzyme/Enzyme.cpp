@@ -29,6 +29,7 @@
 #include <llvm/Config/llvm-config.h>
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -1329,11 +1330,11 @@ public:
         Changed = true;
       }
 
-    std::map<CallInst *, DerivativeMode> toLower;
-    std::map<CallInst *, DerivativeMode> toVirtual;
-    std::map<CallInst *, DerivativeMode> toSize;
-    std::set<CallInst *> InactiveCalls;
-    std::set<CallInst *> IterCalls;
+    MapVector<CallInst *, DerivativeMode> toLower;
+    MapVector<CallInst *, DerivativeMode> toVirtual;
+    MapVector<CallInst *, DerivativeMode> toSize;
+    SetVector<CallInst *> InactiveCalls;
+    SetVector<CallInst *> IterCalls;
   retry:;
     for (BasicBlock &BB : F) {
       for (Instruction &I : BB) {
