@@ -290,7 +290,7 @@ fn ident_swap_sugg(
             // used instead, in these cases.
             *applicability = Applicability::MaybeIncorrect;
 
-            // We arbitraily choose one side to suggest changing,
+            // We arbitrarily choose one side to suggest changing,
             // since we don't have a better guess. If the user
             // ends up duplicating a clause, the `logic_bug` lint
             // should catch it.
@@ -374,19 +374,19 @@ fn strip_non_ident_wrappers(expr: &Expr) -> &Expr {
 }
 
 fn extract_related_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
-    append_opt_vecs(chained_binops(kind), if_statment_binops(kind))
+    append_opt_vecs(chained_binops(kind), if_statement_binops(kind))
 }
 
-fn if_statment_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
+fn if_statement_binops(kind: &ExprKind) -> Option<Vec<BinaryOp<'_>>> {
     match kind {
         ExprKind::If(ref condition, _, _) => chained_binops(&condition.kind),
-        ExprKind::Paren(ref e) => if_statment_binops(&e.kind),
+        ExprKind::Paren(ref e) => if_statement_binops(&e.kind),
         ExprKind::Block(ref block, _) => {
             let mut output = None;
             for stmt in &block.stmts {
                 match stmt.kind {
                     StmtKind::Expr(ref e) | StmtKind::Semi(ref e) => {
-                        output = append_opt_vecs(output, if_statment_binops(&e.kind));
+                        output = append_opt_vecs(output, if_statement_binops(&e.kind));
                     },
                     _ => {},
                 }

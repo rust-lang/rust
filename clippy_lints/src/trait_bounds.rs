@@ -46,7 +46,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// Duplicate bounds makes the code
-    /// less readable than specifing them only once.
+    /// less readable than specifying them only once.
     ///
     /// ### Example
     /// ```rust
