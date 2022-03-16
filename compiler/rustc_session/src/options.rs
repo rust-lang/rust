@@ -121,6 +121,10 @@ impl Options {
         self.cg.instrument_coverage.unwrap_or(InstrumentCoverage::Off)
             == InstrumentCoverage::ExceptUnusedFunctions
     }
+
+    pub fn get_incremental(&self) -> Option<PathBuf> {
+        self.incremental
+    }
 }
 
 top_level_options!(
