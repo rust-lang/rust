@@ -32,7 +32,7 @@ pub(crate) fn render_union_literal(
     );
 
     let fields = un.fields(ctx.db());
-    let (fields, fields_omitted) = visible_fields(&ctx, &fields, un)?;
+    let (fields, fields_omitted) = visible_fields(ctx.completion, &fields, un)?;
 
     if fields.is_empty() {
         return None;

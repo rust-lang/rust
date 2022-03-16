@@ -198,7 +198,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             })
             .filter_map(|import| {
                 render_resolution_with_import(
-                    RenderContext::new(ctx, false),
+                    RenderContext::new(ctx),
                     ImportEdit { import, scope: import_scope.clone() },
                 )
             }),

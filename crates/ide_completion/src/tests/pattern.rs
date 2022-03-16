@@ -124,6 +124,7 @@ fn foo() {
             st Unit
             ma makro!(…) macro_rules! makro
             bn TupleV    TupleV($1)$0
+            bn TupleV    TupleV()$0
             ev TupleV
             ct CONST
         "#]],
@@ -150,6 +151,7 @@ fn foo() {
             bn Tuple             Tuple($1)$0
             st Tuple
             ev Variant
+            md module
             en SingleVariantEnum
             st Unit
             ma makro!(…)         macro_rules! makro
@@ -171,6 +173,7 @@ fn foo(a$0) {
             st Record
             bn Tuple     Tuple($1): Tuple$0
             st Tuple
+            md module
             st Unit
             ma makro!(…) macro_rules! makro
         "#]],
@@ -187,6 +190,7 @@ fn foo(a$0: Tuple) {
             st Record
             bn Tuple     Tuple($1)$0
             st Tuple
+            md module
             st Unit
             ma makro!(…) macro_rules! makro
         "#]],
@@ -228,7 +232,6 @@ fn foo() {
         expect![[r#"
             kw ref
             kw mut
-            ev E::X  E::X
             en E
             ma m!(…) macro_rules! m
         "#]],
@@ -426,9 +429,7 @@ fn foo() {
     }
 }
 "#,
-        expect![[r#"
-            ev TupleVariant(…) TupleVariant(u32)
-        "#]],
+        expect![[r#""#]],
     );
     check_empty(
         r#"
@@ -441,8 +442,6 @@ fn foo() {
     }
 }
 "#,
-        expect![[r#"
-            ev RecordVariant {…} RecordVariant { field: u32 }
-        "#]],
+        expect![[r#""#]],
     );
 }
