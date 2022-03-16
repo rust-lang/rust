@@ -17,7 +17,7 @@ impl flags::Metrics {
     pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
         let mut metrics = Metrics::new(sh)?;
         if !self.dry_run {
-            sh.remove_path("./target/release")?;
+            let _ = sh.remove_path("./target/release");
         }
         if !Path::new("./target/rustc-perf").exists() {
             sh.create_dir("./target/rustc-perf")?;
