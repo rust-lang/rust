@@ -67,7 +67,7 @@ jobs:
     steps:
     - name: add llvm 
       run: |
-          brew install llvm@{{ matrix.llvm }} autoconf make cmake gcc libtool
+          brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
           sudo python3 -m pip install --upgrade pip setuptools
           sudo python3 -m pip install lit
     - uses: actions/checkout@v2
