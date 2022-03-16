@@ -1,0 +1,32 @@
+error: expected `:`, found `}`
+  --> $DIR/suggest-using-appropriate-keyword-for-struct-and-enum.rs:3:1
+   |
+LL |     Variant
+   |            - expected `:`
+LL | }
+   | ^ unexpected token
+   |
+help: consider using `enum` instead of `struct`
+   |
+LL | pub enum NotStruct {
+   |     ~~~~
+
+error: expected `:`, found `String`
+  --> $DIR/suggest-using-appropriate-keyword-for-struct-and-enum.rs:6:11
+   |
+LL |     field String
+   |           ^^^^^^ expected `:`
+
+error: the enum cannot have a struct field declaration
+  --> $DIR/suggest-using-appropriate-keyword-for-struct-and-enum.rs:10:5
+   |
+LL |     field: u8
+   |     ^^^^^^^^^
+   |
+help: consider using `struct` instead of `enum`
+   |
+LL | pub struct NotEnum {
+   |     ~~~~~~
+
+error: aborting due to 3 previous errors
+

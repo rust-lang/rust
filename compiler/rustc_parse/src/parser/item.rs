@@ -273,11 +273,13 @@ impl<'a> Parser<'a> {
             // TYPE ITEM
             self.parse_type_alias(def())?
         } else if self.eat_keyword(kw::Enum) {
+            let start_span = self.prev_token.span;
             // ENUM ITEM
-            self.parse_item_enum()?
+            self.parse_item_enum(start_span)?
         } else if self.eat_keyword(kw::Struct) {
+            let start_span = self.prev_token.span;
             // STRUCT ITEM
-            self.parse_item_struct()?
+            self.parse_item_struct(start_span)?
         } else if self.is_kw_followed_by_ident(kw::Union) {
             // UNION ITEM
             self.bump(); // `union`
@@ -1199,13 +1201,14 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an enum declaration.
-    fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_enum(&mut self, start_span: Span) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
 
-        let (variants, _) =
-            self.parse_delim_comma_seq(token::Brace, |p| p.parse_enum_variant()).map_err(|e| {
+        let (variants, _) = self
+            .parse_delim_comma_seq(token::Brace, |p| p.parse_enum_variant(start_span))
+            .map_err(|e| {
                 self.recover_stmt();
                 e
             })?;
@@ -1214,7 +1217,7 @@ impl<'a> Parser<'a> {
         Ok((id, ItemKind::Enum(enum_definition, generics)))
     }
 
-    fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
+    fn parse_enum_variant(&mut self, start_span: Span) -> PResult<'a, Option<Variant>> {
         let variant_attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(
             variant_attrs,
@@ -1226,11 +1229,36 @@ impl<'a> Parser<'a> {
                 if !this.recover_nested_adt_item(kw::Enum)? {
                     return Ok((None, TrailingToken::None));
                 }
+                let enum_field_start_span = this.token.span;
                 let ident = this.parse_field_ident("enum", vlo)?;
+                if this.token.kind == token::Colon {
+                    let snapshot = this.clone();
+                    this.bump();
+                    match this.parse_ty() {
+                        Ok(_) => {
+                            let mut err = this.struct_span_err(
+                                enum_field_start_span.to(this.prev_token.span),
+                                "the enum cannot have a struct field declaration",
+                            );
+                            err.span_suggestion_verbose(
+                                start_span,
+                                "consider using `struct` instead of `enum`",
+                                "struct".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            return Err(err);
+                        }
+                        Err(e) => {
+                            e.cancel();
+                            *this = snapshot;
+                        }
+                    };
+                }
 
                 let struct_def = if this.check(&token::OpenDelim(token::Brace)) {
                     // Parse a struct variant.
-                    let (fields, recovered) = this.parse_record_struct_body("struct", false)?;
+                    let (fields, recovered) =
+                        this.parse_record_struct_body("struct", false, None)?;
                     VariantData::Struct(fields, recovered)
                 } else if this.check(&token::OpenDelim(token::Paren)) {
                     VariantData::Tuple(this.parse_tuple_struct_body()?, DUMMY_NODE_ID)
@@ -1258,7 +1286,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `struct Foo { ... }`.
-    fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
+    fn parse_item_struct(&mut self, start_span: Span) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
 
         let mut generics = self.parse_generics()?;
@@ -1284,8 +1312,11 @@ impl<'a> Parser<'a> {
                 VariantData::Unit(DUMMY_NODE_ID)
             } else {
                 // If we see: `struct Foo<T> where T: Copy { ... }`
-                let (fields, recovered) =
-                    self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+                let (fields, recovered) = self.parse_record_struct_body(
+                    "struct",
+                    generics.where_clause.has_where_token,
+                    Some(start_span),
+                )?;
                 VariantData::Struct(fields, recovered)
             }
         // No `where` so: `struct Foo<T>;`
@@ -1293,8 +1324,11 @@ impl<'a> Parser<'a> {
             VariantData::Unit(DUMMY_NODE_ID)
         // Record-style struct definition
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("struct", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "struct",
+                generics.where_clause.has_where_token,
+                Some(start_span),
+            )?;
             VariantData::Struct(fields, recovered)
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(token::Paren) {
@@ -1323,12 +1357,18 @@ impl<'a> Parser<'a> {
 
         let vdata = if self.token.is_keyword(kw::Where) {
             generics.where_clause = self.parse_where_clause()?;
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                generics.where_clause.has_where_token,
+                None,
+            )?;
             VariantData::Struct(fields, recovered)
         } else if self.token == token::OpenDelim(token::Brace) {
-            let (fields, recovered) =
-                self.parse_record_struct_body("union", generics.where_clause.has_where_token)?;
+            let (fields, recovered) = self.parse_record_struct_body(
+                "union",
+                generics.where_clause.has_where_token,
+                None,
+            )?;
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
@@ -1345,12 +1385,13 @@ impl<'a> Parser<'a> {
         &mut self,
         adt_ty: &str,
         parsed_where: bool,
+        start_span: Option<Span>,
     ) -> PResult<'a, (Vec<FieldDef>, /* recovered */ bool)> {
         let mut fields = Vec::new();
         let mut recovered = false;
         if self.eat(&token::OpenDelim(token::Brace)) {
             while self.token != token::CloseDelim(token::Brace) {
-                let field = self.parse_field_def(adt_ty).map_err(|e| {
+                let field = self.parse_field_def(adt_ty, start_span).map_err(|e| {
                     self.consume_block(token::Brace, ConsumeClosingDelim::No);
                     recovered = true;
                     e
@@ -1413,12 +1454,15 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an element of a struct declaration.
-    fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
+    fn parse_field_def(&mut self, adt_ty: &str, start_span: Option<Span>) -> PResult<'a, FieldDef> {
         let attrs = self.parse_outer_attributes()?;
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            Ok((this.parse_single_struct_field(adt_ty, lo, vis, attrs)?, TrailingToken::None))
+            Ok((
+                this.parse_single_struct_field(adt_ty, lo, vis, attrs, start_span)?,
+                TrailingToken::None,
+            ))
         })
     }
 
@@ -1429,9 +1473,10 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
+        start_span: Option<Span>,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
-        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, attrs)?;
+        let a_var = self.parse_name_and_ty(adt_ty, lo, vis, attrs, start_span)?;
         if self.token == token::Comma {
             seen_comma = true;
         }
@@ -1555,9 +1600,32 @@ impl<'a> Parser<'a> {
         lo: Span,
         vis: Visibility,
         attrs: Vec<Attribute>,
+        start_span: Option<Span>,
     ) -> PResult<'a, FieldDef> {
+        let prev_token_kind = self.prev_token.kind.clone();
         let name = self.parse_field_ident(adt_ty, lo)?;
-        self.expect_field_ty_separator()?;
+        if let Err(mut error) = self.expect_field_ty_separator() {
+            if (matches!(vis.kind, VisibilityKind::Inherited)
+                && (prev_token_kind == token::Comma
+                    || prev_token_kind == token::OpenDelim(token::Brace)))
+                || !matches!(vis.kind, VisibilityKind::Inherited)
+            {
+                let snapshot = self.clone();
+                if let Err(err) = self.parse_ty() {
+                    if let Some(span) = start_span {
+                        error.span_suggestion_verbose(
+                            span,
+                            "consider using `enum` instead of `struct`",
+                            "enum".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    err.cancel();
+                    *self = snapshot;
+                }
+            }
+            return Err(error);
+        }
         let ty = self.parse_ty()?;
         if self.token.kind == token::Colon && self.look_ahead(1, |tok| tok.kind != token::Colon) {
             self.struct_span_err(self.token.span, "found single colon in a struct field type path")
