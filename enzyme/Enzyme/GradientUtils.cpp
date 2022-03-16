@@ -198,66 +198,28 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
     }
   }
 
-  if (this->mode == DerivativeMode::ReverseModeGradient)
+  if (this->mode == DerivativeMode::ReverseModeGradient ||
+      this->mode == DerivativeMode::ForwardModeSplit ||
+      this->mode == DerivativeMode::ReverseModeCombined)
     if (auto inst = dyn_cast<Instruction>(val)) {
-      if (unwrapMode == UnwrapMode::LegalFullUnwrap) {
-        // TODO this isOriginal is a bottleneck, the new mapping of
-        // knownRecompute should be precomputed and maintained to lookup instead
-        Instruction *orig = isOriginal(inst);
-        // If a given value has been chosen to be cached, do not compute the
-        // operands to unwrap it, instead simply emit a placeholder to be
-        // replaced by the cache load later. This placeholder should only be
-        // returned when the original value would be recomputed (e.g. this
-        // function would not return null). Since this case assumes everything
-        // can be recomputed, simply return the placeholder.
-        if (orig && knownRecomputeHeuristic.find(orig) !=
-                        knownRecomputeHeuristic.end()) {
-          if (!knownRecomputeHeuristic[orig]) {
-            assert(inst->getParent()->getParent() == newFunc);
-            auto placeholder = BuilderM.CreatePHI(
-                val->getType(), 0, val->getName() + "_krcLFUreplacement");
-            unwrappedLoads[placeholder] = inst;
-            SmallVector<Metadata *, 1> avail;
-            for (auto pair : available)
-              if (pair.second)
-                avail.push_back(MDNode::get(
-                    placeholder->getContext(),
-                    {ValueAsMetadata::get(const_cast<Value *>(pair.first)),
-                     ValueAsMetadata::get(pair.second)}));
-            placeholder->setMetadata(
-                "enzyme_available",
-                MDNode::get(placeholder->getContext(), avail));
-            if (!permitCache)
-              return placeholder;
-            return unwrap_cache[BuilderM.GetInsertBlock()][idx.first]
-                               [idx.second] = placeholder;
-          }
-        }
-      } else if (unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {
-        // TODO this isOriginal is a bottleneck, the new mapping of
-        // knownRecompute should be precomputed and maintained to lookup instead
-        Instruction *orig = isOriginal(inst);
-        // If a given value has been chosen to be cached, do not compute the
-        // operands to unwrap it, instead simply emit a placeholder to be
-        // replaced by the cache load later. This placeholder should only be
-        // returned when the original value would be recomputed (e.g. this
-        // function would not return null). See note below about the condition
-        // as applied to this case.
-        if (orig && knownRecomputeHeuristic.find(orig) !=
-                        knownRecomputeHeuristic.end()) {
-          if (!knownRecomputeHeuristic[orig]) {
-            // Note that this logic (original load must dominate or
-            // alternatively be in the reverse block) is only valid iff when
-            // applicable (here if in split mode), an uncacheable load cannot be
-            // hoisted outside of a loop to be used as a loop limit. This
-            // optimization is currently done in the combined mode (e.g. if a
-            // load isn't modified between a prior insertion point and the
-            // actual load, it is legal to recompute).
-            if (!isOriginalBlock(*BuilderM.GetInsertBlock()) ||
-                DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+      if (inst->getParent()->getParent() == newFunc) {
+        if (unwrapMode == UnwrapMode::LegalFullUnwrap) {
+          // TODO this isOriginal is a bottleneck, the new mapping of
+          // knownRecompute should be precomputed and maintained to lookup
+          // instead
+          Instruction *orig = isOriginal(inst);
+          // If a given value has been chosen to be cached, do not compute the
+          // operands to unwrap it, instead simply emit a placeholder to be
+          // replaced by the cache load later. This placeholder should only be
+          // returned when the original value would be recomputed (e.g. this
+          // function would not return null). Since this case assumes everything
+          // can be recomputed, simply return the placeholder.
+          if (orig && knownRecomputeHeuristic.find(orig) !=
+                          knownRecomputeHeuristic.end()) {
+            if (!knownRecomputeHeuristic[orig]) {
               assert(inst->getParent()->getParent() == newFunc);
               auto placeholder = BuilderM.CreatePHI(
-                  val->getType(), 0, val->getName() + "_krcAFUWLreplacement");
+                  val->getType(), 0, val->getName() + "_krcLFUreplacement");
               unwrappedLoads[placeholder] = inst;
               SmallVector<Metadata *, 1> avail;
               for (auto pair : available)
@@ -275,24 +237,85 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                  [idx.second] = placeholder;
             }
           }
-        }
-      } else if (unwrapMode != UnwrapMode::LegalFullUnwrapNoTapeReplace) {
-        // TODO this isOriginal is a bottleneck, the new mapping of
-        // knownRecompute should be precomputed and maintained to lookup instead
+        } else if (unwrapMode == UnwrapMode::AttemptFullUnwrapWithLookup) {
+          // TODO this isOriginal is a bottleneck, the new mapping of
+          // knownRecompute should be precomputed and maintained to lookup
+          // instead
+          Instruction *orig = isOriginal(inst);
+          // If a given value has been chosen to be cached, do not compute the
+          // operands to unwrap it, instead simply emit a placeholder to be
+          // replaced by the cache load later. This placeholder should only be
+          // returned when the original value would be recomputed (e.g. this
+          // function would not return null). See note below about the condition
+          // as applied to this case.
+          if (orig && knownRecomputeHeuristic.find(orig) !=
+                          knownRecomputeHeuristic.end()) {
+            if (!knownRecomputeHeuristic[orig]) {
+              if (mode == DerivativeMode::ReverseModeCombined) {
+                // Don't unnecessarily cache a value if the caching
+                // heuristic says we should preserve this precise (and not
+                // an lcssa wrapped) value
+                if (!isOriginalBlock(*BuilderM.GetInsertBlock())) {
+                  Value *nval = inst;
+                  if (scope)
+                    nval = fixLCSSA(inst, scope);
+                  if (nval == inst)
+                    goto endCheck;
+                }
+              } else {
+                // Note that this logic (original load must dominate or
+                // alternatively be in the reverse block) is only valid iff when
+                // applicable (here if in split mode), an uncacheable load
+                // cannot be hoisted outside of a loop to be used as a loop
+                // limit. This optimization is currently done in the combined
+                // mode (e.g. if a load isn't modified between a prior insertion
+                // point and the actual load, it is legal to recompute).
+                if (!isOriginalBlock(*BuilderM.GetInsertBlock()) ||
+                    DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+                  assert(inst->getParent()->getParent() == newFunc);
+                  auto placeholder = BuilderM.CreatePHI(
+                      val->getType(), 0,
+                      val->getName() + "_krcAFUWLreplacement");
+                  unwrappedLoads[placeholder] = inst;
+                  SmallVector<Metadata *, 1> avail;
+                  for (auto pair : available)
+                    if (pair.second)
+                      avail.push_back(
+                          MDNode::get(placeholder->getContext(),
+                                      {ValueAsMetadata::get(
+                                           const_cast<Value *>(pair.first)),
+                                       ValueAsMetadata::get(pair.second)}));
+                  placeholder->setMetadata(
+                      "enzyme_available",
+                      MDNode::get(placeholder->getContext(), avail));
+                  if (!permitCache)
+                    return placeholder;
+                  return unwrap_cache[BuilderM.GetInsertBlock()][idx.first]
+                                     [idx.second] = placeholder;
+                }
+              }
+            }
+          }
+        } else if (unwrapMode != UnwrapMode::LegalFullUnwrapNoTapeReplace &&
+                   mode != DerivativeMode::ReverseModeCombined) {
+          // TODO this isOriginal is a bottleneck, the new mapping of
+          // knownRecompute should be precomputed and maintained to lookup
+          // instead
 
-        // If a given value has been chosen to be cached, do not compute the
-        // operands to unwrap it if it is not legal to do so. This prevents the
-        // creation of unused versions of the instruction's operand, which may
-        // be assumed to never be used and thus cause an error when they are
-        // inadvertantly cached.
-        Value *orig = isOriginal(val);
-        if (orig && knownRecomputeHeuristic.find(orig) !=
-                        knownRecomputeHeuristic.end()) {
-          if (!knownRecomputeHeuristic[orig]) {
-            if (!legalRecompute(orig, available, &BuilderM))
-              return nullptr;
+          // If a given value has been chosen to be cached, do not compute the
+          // operands to unwrap it if it is not legal to do so. This prevents
+          // the creation of unused versions of the instruction's operand, which
+          // may be assumed to never be used and thus cause an error when they
+          // are inadvertantly cached.
+          Value *orig = isOriginal(val);
+          if (orig && knownRecomputeHeuristic.find(orig) !=
+                          knownRecomputeHeuristic.end()) {
+            if (!knownRecomputeHeuristic[orig]) {
+              if (!legalRecompute(orig, available, &BuilderM))
+                return nullptr;
 
-            assert(isa<LoadInst>(orig) == isa<LoadInst>(val));
+              assert(isa<LoadInst>(orig) == isa<LoadInst>(val));
+            }
           }
         }
       }
@@ -924,6 +947,10 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       for (auto PH : predecessors(parent)) {
         if (L->contains(PH))
           prevIteration.insert(PH);
+      }
+      if (prevIteration.size() && !legalRecompute(phi, available, &BuilderM)) {
+        assert(unwrapMode != UnwrapMode::LegalFullUnwrap);
+        goto endCheck;
       }
     }
     for (auto &val : phi->incoming_values()) {
