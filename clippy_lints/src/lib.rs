@@ -394,6 +394,7 @@ mod unwrap;
 mod unwrap_in_result;
 mod upper_case_acronyms;
 mod use_self;
+mod use_unwrap_or;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
@@ -866,6 +867,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             ignore_publish: cargo_ignore_publish,
         })
     });
+    store.register_late_pass(|| Box::new(use_unwrap_or::UseUnwrapOr));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

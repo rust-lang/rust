@@ -94,6 +94,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(unit_types::UNIT_ARG),
     LintId::of(unnecessary_sort_by::UNNECESSARY_SORT_BY),
     LintId::of(unwrap::UNNECESSARY_UNWRAP),
+    LintId::of(use_unwrap_or::USE_UNWRAP_OR),
     LintId::of(useless_conversion::USELESS_CONVERSION),
     LintId::of(zero_div_zero::ZERO_DIVIDED_BY_ZERO),
 ])
