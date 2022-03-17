@@ -1129,7 +1129,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         for param in &generics.params {
-            if let GenericParamKind::Lifetime { .. } = param.kind {
+            if let GenericParamKind::Lifetime = param.kind {
                 continue;
             }
 
