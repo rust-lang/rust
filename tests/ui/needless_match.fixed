@@ -60,8 +60,26 @@ fn result_match() {
     };
 }
 
-fn if_let_option() -> Option<i32> {
-    Some(1)
+fn if_let_option() {
+    let _ = Some(1);
+
+    fn do_something() {}
+
+    // Don't trigger
+    let _ = if let Some(a) = Some(1) {
+        Some(a)
+    } else {
+        do_something();
+        None
+    };
+
+    // Don't trigger
+    let _ = if let Some(a) = Some(1) {
+        do_something();
+        Some(a)
+    } else {
+        None
+    };
 }
 
 fn if_let_result() {
@@ -122,25 +140,45 @@ mod issue8542 {
             _ => ce,
         };
     }
+}
 
-    fn if_let_test() {
-        fn do_something() {}
+/// Lint triggered when type coercions happen.
+/// Do NOT trigger on any of these.
+mod issue8551 {
+    trait Trait {}
+    struct Struct;
+    impl Trait for Struct {}
 
-        // Don't trigger
-        let _ = if let Some(a) = Some(1) {
-            Some(a)
+    fn optmap(s: Option<&Struct>) -> Option<&dyn Trait> {
+        match s {
+            Some(s) => Some(s),
+            None => None,
+        }
+    }
+
+    fn lint_tests() {
+        let option: Option<&Struct> = None;
+        let _: Option<&dyn Trait> = match option {
+            Some(s) => Some(s),
+            None => None,
+        };
+
+        let _: Option<&dyn Trait> = if true {
+            match option {
+                Some(s) => Some(s),
+                None => None,
+            }
         } else {
-            do_something();
             None
         };
 
-        // Don't trigger
-        let _ = if let Some(a) = Some(1) {
-            do_something();
-            Some(a)
-        } else {
-            None
+        let result: Result<&Struct, i32> = Err(0);
+        let _: Result<&dyn Trait, i32> = match result {
+            Ok(s) => Ok(s),
+            Err(e) => Err(e),
         };
+
+        let _: Option<&dyn Trait> = if let Some(s) = option { Some(s) } else { None };
     }
 }
 

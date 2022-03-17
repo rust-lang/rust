@@ -1,37 +1,25 @@
 use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{eq_expr_value, get_parent_expr, higher, is_else_clause, is_lang_ctor, peel_blocks_with_stmt};
+use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::{
+    eq_expr_value, get_parent_expr_for_hir, get_parent_node, higher, is_else_clause, is_lang_ctor,
+    peel_blocks_with_stmt,
+};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, Pat, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, FnRetTy, Node, Pat, PatKind, Path, PathSegment, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
+use rustc_typeck::hir_ty_to_ty;
 
-pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    // This is for avoiding collision with `match_single_binding`.
-    if arms.len() < 2 {
-        return;
-    }
-
-    for arm in arms {
-        if let PatKind::Wild = arm.pat.kind {
-            let ret_expr = strip_return(arm.body);
-            if !eq_expr_value(cx, ex, ret_expr) {
-                return;
-            }
-        } else if !pat_same_as_expr(arm.pat, peel_blocks_with_stmt(arm.body)) {
-            return;
-        }
-    }
-
-    if let Some(match_expr) = get_parent_expr(cx, ex) {
+pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
+    if arms.len() > 1 && !is_coercion_casting(cx, ex, expr) && check_all_arms(cx, ex, arms) {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
             NEEDLESS_MATCH,
-            match_expr.span,
+            expr.span,
             "this match expression is unnecessary",
             "replace it with",
             snippet_with_applicability(cx, ex.span, "..", &mut applicability).to_string(),
@@ -60,11 +48,8 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>])
 /// }
 /// ```
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
-    if_chain! {
-        if let Some(ref if_let) = higher::IfLet::hir(cx, ex);
-        if !is_else_clause(cx.tcx, ex);
-        if check_if_let(cx, if_let);
-        then {
+    if let Some(ref if_let) = higher::IfLet::hir(cx, ex) {
+        if !is_else_clause(cx.tcx, ex) && !is_coercion_casting(cx, if_let.let_expr, ex) && check_if_let(cx, if_let) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -77,6 +62,19 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
             );
         }
     }
+}
+
+fn check_all_arms(cx: &LateContext<'_>, match_expr: &Expr<'_>, arms: &[Arm<'_>]) -> bool {
+    for arm in arms {
+        let arm_expr = peel_blocks_with_stmt(arm.body);
+        if let PatKind::Wild = arm.pat.kind {
+            return eq_expr_value(cx, match_expr, strip_return(arm_expr));
+        } else if !pat_same_as_expr(arm.pat, arm_expr) {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
@@ -101,12 +99,12 @@ fn check_if_let(cx: &LateContext<'_>, if_let: &higher::IfLet<'_>) -> bool {
                 if let ExprKind::Path(ref qpath) = ret.kind {
                     return is_lang_ctor(cx, qpath, OptionNone) || eq_expr_value(cx, if_let.let_expr, ret);
                 }
-            } else {
-                return eq_expr_value(cx, if_let.let_expr, ret);
+                return true;
             }
-            return true;
+            return eq_expr_value(cx, if_let.let_expr, ret);
         }
     }
+
     false
 }
 
@@ -119,14 +117,52 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
     }
 }
 
+/// Manually check for coercion casting by checking if the type of the match operand or let expr
+/// differs with the assigned local variable or the funtion return type.
+fn is_coercion_casting(cx: &LateContext<'_>, match_expr: &Expr<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(p_node) = get_parent_node(cx.tcx, expr.hir_id) {
+        match p_node {
+            // Compare match_expr ty with local in `let local = match match_expr {..}`
+            Node::Local(local) => {
+                let results = cx.typeck_results();
+                return !same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(match_expr));
+            },
+            // compare match_expr ty with RetTy in `fn foo() -> RetTy`
+            Node::Item(..) => {
+                if let Some(fn_decl) = p_node.fn_decl() {
+                    if let FnRetTy::Return(ret_ty) = fn_decl.output {
+                        return !same_type_and_consts(
+                            hir_ty_to_ty(cx.tcx, ret_ty),
+                            cx.typeck_results().expr_ty(match_expr),
+                        );
+                    }
+                }
+            },
+            // check the parent expr for this whole block `{ match match_expr {..} }`
+            Node::Block(block) => {
+                if let Some(block_parent_expr) = get_parent_expr_for_hir(cx, block.hir_id) {
+                    return is_coercion_casting(cx, match_expr, block_parent_expr);
+                }
+            },
+            // recursively call on `if xxx {..}` etc.
+            Node::Expr(p_expr) => {
+                return is_coercion_casting(cx, match_expr, p_expr);
+            },
+            _ => {},
+        }
+    }
+
+    false
+}
+
 fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     let expr = strip_return(expr);
     match (&pat.kind, &expr.kind) {
         // Example: `Some(val) => Some(val)`
         (PatKind::TupleStruct(QPath::Resolved(_, path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {
             if let ExprKind::Path(QPath::Resolved(_, call_path)) = call_expr.kind {
-                return has_identical_segments(path.segments, call_path.segments)
-                    && has_same_non_ref_symbols(tuple_params, call_params);
+                return same_segments(path.segments, call_path.segments)
+                    && same_non_ref_symbols(tuple_params, call_params);
             }
         },
         // Example: `val => val`
@@ -145,7 +181,7 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
-            return has_identical_segments(p_path.segments, e_path.segments);
+            return same_segments(p_path.segments, e_path.segments);
         },
         // Example: `5 => 5`
         (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
@@ -159,19 +195,21 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     false
 }
 
-fn has_identical_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegment<'_>]) -> bool {
+fn same_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegment<'_>]) -> bool {
     if left_segs.len() != right_segs.len() {
         return false;
     }
+
     for i in 0..left_segs.len() {
         if left_segs[i].ident.name != right_segs[i].ident.name {
             return false;
         }
     }
+
     true
 }
 
-fn has_same_non_ref_symbols(pats: &[Pat<'_>], exprs: &[Expr<'_>]) -> bool {
+fn same_non_ref_symbols(pats: &[Pat<'_>], exprs: &[Expr<'_>]) -> bool {
     if pats.len() != exprs.len() {
         return false;
     }
