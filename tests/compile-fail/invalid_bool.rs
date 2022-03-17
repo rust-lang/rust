@@ -5,5 +5,5 @@
 
 fn main() {
     let b = unsafe { std::mem::transmute::<u8, bool>(2) };
-    let _x = b == std::hint::black_box(true); //~ ERROR interpreting an invalid 8-bit value as a bool: 0x02
+    let _x = b == std::hint::black_box(true); //~ ERROR interpreting an invalid 8-bit value as a bool
 }

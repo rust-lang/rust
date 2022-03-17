@@ -2,6 +2,8 @@
 // (even when the default `Global` uses `System`).
 // error-pattern: which is Rust heap memory, using
 
+// normalize-stderr-test: "using [A-Za-z]+ heap deallocation operation" -> "using PLATFORM heap deallocation operation"
+
 #![feature(allocator_api, slice_ptr_get)]
 
 use std::alloc::{Allocator, Global, System, Layout};

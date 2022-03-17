@@ -1,0 +1,8 @@
+warning: thread support is experimental and incomplete: weak memory effects are not emulated.
+
+error: the main thread terminated without waiting for all remaining threads
+
+note: pass `-Zmiri-ignore-leaks` to disable this check
+
+error: aborting due to previous error; 1 warning emitted
+

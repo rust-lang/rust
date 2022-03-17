@@ -1,0 +1,14 @@
+error: unsupported operation: unknown `miri_resolve_frame` flags 1
+  --> $DIR/bad-backtrace-version.rs:7:9
+   |
+LL |         miri_resolve_frame(0 as *mut _, 1); //~ ERROR  unsupported operation: unknown `miri_resolve_frame` flags 1
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unknown `miri_resolve_frame` flags 1
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+           
+   = note: inside `main` at $DIR/bad-backtrace-version.rs:7:9
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

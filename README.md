@@ -328,7 +328,7 @@ to Miri failing to detect cases of undefined behavior in a program.
    using the tools in the repository https://github.com/rust-lang/measureme.
 * `-Zmiri-mute-stdout-stderr` silently ignores all writes to stdout and stderr,
   but reports to the program that it did actually write. This is useful when you
-  are not interested in the actual program's output, but only want to see miri's
+  are not interested in the actual program's output, but only want to see Miri's
   errors and warnings.
 * `-Zmiri-panic-on-unsupported` will makes some forms of unsupported functionality,
   such as FFI and unsupported syscalls, panic within the context of the emulated
@@ -412,6 +412,11 @@ Moreover, Miri recognizes some environment variables:
 * `MIRI_TEST_TARGET` (recognized by the test suite) indicates which target
   architecture to test against.  `miri` and `cargo miri` accept the `--target`
   flag for the same purpose.
+* `MIRI_BLESS` (recognized by the test suite) overwrite all `stderr` and `stdout` files
+  instead of checking whether the output matches.
+* `MIRI_SKIP_UI_CHECKS` (recognized by the test suite) don't check whether the
+  `stderr` or `stdout` files match the actual output. Useful for the rustc test suite
+  which has subtle differences that we don't care about.
 
 The following environment variables are *internal* and must not be used by
 anyone but Miri itself. They are used to communicate between different Miri
@@ -519,15 +524,15 @@ GitHub or use the [Miri stream on the Rust Zulip][zulip].
 
 This project began as part of an undergraduate research course in 2015 by
 @solson at the [University of Saskatchewan][usask].  There are [slides] and a
-[report] available from that project.  In 2016, @oli-obk joined to prepare miri
+[report] available from that project.  In 2016, @oli-obk joined to prepare Miri
 for eventually being used as const evaluator in the Rust compiler itself
 (basically, for `const` and `static` stuff), replacing the old evaluator that
 worked directly on the AST.  In 2017, @RalfJung did an internship with Mozilla
-and began developing miri towards a tool for detecting undefined behavior, and
-also using miri as a way to explore the consequences of various possible
-definitions for undefined behavior in Rust.  @oli-obk's move of the miri engine
+and began developing Miri towards a tool for detecting undefined behavior, and
+also using Miri as a way to explore the consequences of various possible
+definitions for undefined behavior in Rust.  @oli-obk's move of the Miri engine
 into the compiler finally came to completion in early 2018.  Meanwhile, later
-that year, @RalfJung did a second internship, developing miri further with
+that year, @RalfJung did a second internship, developing Miri further with
 support for checking basic type invariants and verifying that references are
 used according to their aliasing restrictions.
 

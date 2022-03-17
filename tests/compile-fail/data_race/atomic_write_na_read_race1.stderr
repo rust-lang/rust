@@ -1,0 +1,17 @@
+warning: thread support is experimental and incomplete: weak memory effects are not emulated.
+
+error: Undefined Behavior: Data race detected between Read on Thread(id = 2) and Atomic Store on Thread(id = 1) at ALLOC (current vector clock = VClock, conflicting timestamp = VClock)
+  --> $DIR/atomic_write_na_read_race1.rs:LL:CC
+   |
+LL |             *atomic_ref.get_mut()
+   |             ^^^^^^^^^^^^^^^^^^^^^ Data race detected between Read on Thread(id = 2) and Atomic Store on Thread(id = 1) at ALLOC (current vector clock = VClock, conflicting timestamp = VClock)
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside closure at $DIR/atomic_write_na_read_race1.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error; 1 warning emitted
+

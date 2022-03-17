@@ -1,3 +1,5 @@
+// stderr-per-bitwidth
+
 fn main() {
     extern "C" {
         // Use the wrong type(ie. not the pointer width) for the `size`

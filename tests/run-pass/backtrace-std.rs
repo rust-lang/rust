@@ -1,6 +1,3 @@
-// normalize-stderr-test "at .*/(rust[^/]*|checkout)/library/" -> "at RUSTLIB/"
-// normalize-stderr-test "RUSTLIB/([^:]*):\d+:\d+"-> "RUSTLIB/$1:LL:CC"
-// normalize-stderr-test "::<.*>" -> ""
 // compile-flags: -Zmiri-disable-isolation
 
 #![feature(backtrace)]

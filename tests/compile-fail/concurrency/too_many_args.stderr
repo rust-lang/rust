@@ -1,0 +1,16 @@
+warning: thread support is experimental and incomplete: weak memory effects are not emulated.
+
+error: Undefined Behavior: callee has more arguments than expected
+  --> $DIR/too_many_args.rs:LL:CC
+   |
+LL |     panic!()
+   |     ^^^^^^^^ callee has more arguments than expected
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside `thread_start` at rustc_src/src/panic.rs:LL:CC
+   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error; 1 warning emitted
+

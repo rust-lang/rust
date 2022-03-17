@@ -37,9 +37,10 @@ measureme = "9.1.2"
 libc = "0.2"
 
 [dev-dependencies]
-compiletest_rs = { version = "0.7", features = ["tmp"] }
-rustc_version = "0.4"
 colored = "2"
+ui_test = { path = "ui_test" }
+regex = "1.5.5"
+lazy_static = "1.4.0"
 
 [package.metadata.rust-analyzer]
 # This crate uses #[feature(rustc_private)].

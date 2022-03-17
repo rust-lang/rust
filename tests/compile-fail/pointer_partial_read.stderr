@@ -1,0 +1,14 @@
+error: unsupported operation: unable to turn pointer into raw bytes
+  --> $DIR/pointer_partial_read.rs:LL:CC
+   |
+LL |     let _val = unsafe { *z };
+   |                         ^^ unable to turn pointer into raw bytes
+   |
+   = help: this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support
+           
+   = note: inside `main` at $DIR/pointer_partial_read.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

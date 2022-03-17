@@ -1,82 +1,127 @@
+use colored::*;
+use regex::Regex;
 use std::env;
 use std::path::PathBuf;
-
-use colored::*;
-use compiletest_rs as compiletest;
+use ui_test::{Config, Mode, OutputConflictHandling};
 
 fn miri_path() -> PathBuf {
     PathBuf::from(option_env!("MIRI").unwrap_or(env!("CARGO_BIN_EXE_miri")))
 }
 
-fn run_tests(mode: &str, path: &str, target: &str) {
+fn run_tests(mode: Mode, path: &str, target: Option<String>) {
     let in_rustc_test_suite = option_env!("RUSTC_STAGE").is_some();
+
     // Add some flags we always want.
     let mut flags = Vec::new();
-    flags.push("--edition 2018".to_owned());
+    flags.push("--edition".to_owned());
+    flags.push("2018".to_owned());
     if in_rustc_test_suite {
         // Less aggressive warnings to make the rustc toolstate management less painful.
         // (We often get warnings when e.g. a feature gets stabilized or some lint gets added/improved.)
         flags.push("-Astable-features".to_owned());
     } else {
-        flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+        flags.push("-Dwarnings".to_owned());
+        flags.push("-Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     }
     if let Ok(sysroot) = env::var("MIRI_SYSROOT") {
-        flags.push(format!("--sysroot {}", sysroot));
+        flags.push("--sysroot".to_string());
+        flags.push(sysroot);
     }
     if let Ok(extra_flags) = env::var("MIRIFLAGS") {
-        flags.push(extra_flags);
+        for flag in extra_flags.split_whitespace() {
+            flags.push(flag.to_string());
+        }
+    }
+    flags.push("-Zui-testing".to_string());
+    if let Some(target) = &target {
+        flags.push("--target".to_string());
+        flags.push(target.clone());
     }
 
-    let flags = flags.join(" ");
-    eprintln!("   Compiler flags: {}", flags);
+    let skip_ui_checks = in_rustc_test_suite || env::var_os("MIRI_SKIP_UI_CHECKS").is_some();
 
-    // The rest of the configuration.
-    let mut config = compiletest::Config::default().tempdir();
-    config.mode = mode.parse().expect("Invalid mode");
-    config.rustc_path = miri_path();
-    if let Some(lib_path) = option_env!("RUSTC_LIB_PATH") {
-        config.run_lib_path = PathBuf::from(lib_path);
-        config.compile_lib_path = PathBuf::from(lib_path);
+    let output_conflict_handling = match (env::var_os("MIRI_BLESS").is_some(), skip_ui_checks) {
+        (false, false) => OutputConflictHandling::Error,
+        (true, false) => OutputConflictHandling::Bless,
+        (false, true) => OutputConflictHandling::Ignore,
+        (true, true) => panic!("cannot use MIRI_BLESS and MIRI_SKIP_UI_CHECKS at the same time"),
+    };
+
+    let config = Config {
+        args: flags,
+        target,
+        stderr_filters: STDERR.clone(),
+        stdout_filters: STDOUT.clone(),
+        root_dir: PathBuf::from(path),
+        mode,
+        program: miri_path(),
+        output_conflict_handling,
+    };
+    ui_test::run_tests(config)
+}
+
+macro_rules! regexes {
+    ($name:ident: $($regex:expr => $replacement:expr,)*) => {lazy_static::lazy_static! {
+        static ref $name: Vec<(Regex, &'static str)> = vec![
+            $((Regex::new($regex).unwrap(), $replacement),)*
+        ];
+    }};
+}
+
+regexes! {
+    STDOUT:
+    // Windows file paths
+    r"\\"                           => "/",
+}
+
+regexes! {
+    STDERR:
+    // erase line and column info
+    r"\.rs:[0-9]+:[0-9]+"            => ".rs:LL:CC",
+    // erase alloc ids
+    "alloc[0-9]+"                    => "ALLOC",
+    // erase Stacked Borrows tags
+    "<[0-9]+>"                       => "<TAG>",
+    // erase whitespace that differs between platforms
+    r" +at (.*\.rs)"                 => " at $1",
+    // erase generics in backtraces
+    "([0-9]+: .*)::<.*>"             => "$1",
+    // erase addresses in backtraces
+    "([0-9]+: ) +0x[0-9a-f]+ - (.*)" => "$1$2",
+    // erase long hexadecimals
+    r"0x[0-9a-fA-F]+[0-9a-fA-F]{2,2}" => "$$HEX",
+    // erase clocks
+    r"VClock\(\[[^\]]+\]\)"      => "VClock",
+    // erase specific alignments
+    "alignment [0-9]+"               => "alignment ALIGN",
+    // erase thread caller ids
+    r"\(call [0-9]+\)"              => "(call ID)",
+    // erase platform module paths
+    "sys::[a-z]+::"                  => "sys::PLATFORM::",
+    // Windows file paths
+    r"\\"                           => "/",
+    // erase platform file paths
+    "sys/[a-z]+/"                    => "sys/PLATFORM/",
+    // erase error annotations in tests
+    r"\s*//~.*"                      => "",
+}
+
+fn ui(mode: Mode, path: &str) {
+    let target = get_target();
+
+    eprint!("{}", format!("## Running ui tests in {path} against miri for ").green().bold());
+
+    if let Some(target) = &target {
+        eprintln!("{target}");
+    } else {
+        eprintln!("host");
     }
-    config.filters = env::args().nth(1).into_iter().collect();
-    config.host = get_host();
-    config.src_base = PathBuf::from(path);
-    config.target = target.to_owned();
-    config.target_rustcflags = Some(flags);
-    compiletest::run_tests(&config);
+
+    run_tests(mode, path, target);
 }
 
-fn compile_fail(path: &str, target: &str) {
-    eprintln!(
-        "{}",
-        format!("## Running compile-fail tests in {} against miri for target {}", path, target)
-            .green()
-            .bold()
-    );
-
-    run_tests("compile-fail", path, target);
-}
-
-fn miri_pass(path: &str, target: &str) {
-    eprintln!(
-        "{}",
-        format!("## Running run-pass tests in {} against miri for target {}", path, target)
-            .green()
-            .bold()
-    );
-
-    run_tests("ui", path, target);
-}
-
-fn get_host() -> String {
-    let version_meta =
-        rustc_version::VersionMeta::for_command(std::process::Command::new(miri_path()))
-            .expect("failed to parse rustc version info");
-    version_meta.host
-}
-
-fn get_target() -> String {
-    env::var("MIRI_TEST_TARGET").unwrap_or_else(|_| get_host())
+fn get_target() -> Option<String> {
+    env::var("MIRI_TEST_TARGET").ok()
 }
 
 fn main() {
@@ -84,10 +129,8 @@ fn main() {
     env::set_var("MIRI_ENV_VAR_TEST", "0");
     // Let the tests know where to store temp files (they might run for a different target, which can make this hard to find).
     env::set_var("MIRI_TEMP", env::temp_dir());
-    // Panic tests expect backtraces to be printed.
-    env::set_var("RUST_BACKTRACE", "1");
 
-    let target = get_target();
-    miri_pass("tests/run-pass", &target);
-    compile_fail("tests/compile-fail", &target);
+    ui(Mode::Pass, "tests/run-pass");
+    ui(Mode::Panic, "tests/run-fail");
+    ui(Mode::Fail, "tests/compile-fail");
 }

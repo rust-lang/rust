@@ -1,0 +1,17 @@
+error: Undefined Behavior: 0x4 is not a valid pointer
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+           
+   = note: inside `std::boxed::Box::<i32>::from_raw_in` at rustc_src/src/boxed.rs:LL:CC
+   = note: inside `std::boxed::Box::<i32>::from_raw` at rustc_src/src/boxed.rs:LL:CC
+note: inside `main` at $DIR/issue-miri-1050-2.rs:LL:CC
+  --> $DIR/issue-miri-1050-2.rs:LL:CC
+   |
+LL |     Box::from_raw(ptr.as_ptr());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

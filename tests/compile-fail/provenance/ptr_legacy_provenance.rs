@@ -1,4 +1,5 @@
 // compile-flags: -Zmiri-disable-stacked-borrows
+// normalize-stderr-test: "offset -[0-9]+" -> "offset -XX"
 #![feature(strict_provenance)]
 
 use std::ptr;
