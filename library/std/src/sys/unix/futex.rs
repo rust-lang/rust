@@ -12,7 +12,7 @@ use crate::sync::atomic::AtomicI32;
 use crate::time::Duration;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
+pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -> bool {
     let timespec = timeout.and_then(|d| {
         Some(libc::timespec {
             // Sleep forever if the timeout is longer than fits in a timespec.
@@ -21,15 +21,16 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
             tv_nsec: d.subsec_nanos() as _,
         })
     });
-    unsafe {
+    let r = unsafe {
         libc::syscall(
             libc::SYS_futex,
             futex as *const AtomicI32,
             libc::FUTEX_WAIT | libc::FUTEX_PRIVATE_FLAG,
             expected,
             timespec.as_ref().map_or(null(), |d| d as *const libc::timespec),
-        );
-    }
+        )
+    };
+    !(r < 0 && super::os::errno() == libc::ETIMEDOUT)
 }
 
 #[cfg(target_os = "emscripten")]
