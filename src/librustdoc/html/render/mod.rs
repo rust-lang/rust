@@ -2108,6 +2108,8 @@ fn sidebar_deref_methods(
             _ => None,
         })
     {
+        let tcx = cx.tcx();
+
         debug!("found target, real_target: {:?} {:?}", target, real_target);
         if let Some(did) = target.def_id(c) {
             if let Some(type_did) = impl_.inner_impl().for_.def_id(c) {
@@ -2118,7 +2120,7 @@ fn sidebar_deref_methods(
                 }
             }
         }
-        let deref_mut = v.iter().any(|i| i.trait_did() == cx.tcx().lang_items().deref_mut_trait());
+        let deref_mut = v.iter().any(|i| i.trait_did() == tcx.lang_items().deref_mut_trait());
         let inner_impl = target
             .def_id(c)
             .or_else(|| {
@@ -2131,9 +2133,7 @@ fn sidebar_deref_methods(
             let mut ret = impls
                 .iter()
                 .filter(|i| i.inner_impl().trait_.is_none())
-                .flat_map(|i| {
-                    get_methods(i.inner_impl(), true, &mut used_links, deref_mut, cx.tcx())
-                })
+                .flat_map(|i| get_methods(i.inner_impl(), true, &mut used_links, deref_mut, tcx))
                 .collect::<Vec<_>>();
             if !ret.is_empty() {
                 let map;
@@ -2161,7 +2161,7 @@ fn sidebar_deref_methods(
                     i.inner_impl()
                         .trait_
                         .as_ref()
-                        .map(|t| Some(t.def_id()) == cx.tcx().lang_items().deref_trait())
+                        .map(|t| Some(t.def_id()) == tcx.lang_items().deref_trait())
                         .unwrap_or(false)
                 }) {
                     sidebar_deref_methods(cx, out, target_deref_impl, target_impls, derefs);

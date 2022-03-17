@@ -240,8 +240,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
         compare_names(lhs.as_str(), rhs.as_str())
     }
 
+    let tcx = cx.tcx();
     if cx.shared.sort_modules_alphabetically {
-        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, cx.tcx()));
+        indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2, tcx));
     }
     // This call is to remove re-export duplicates in cases such as:
     //
@@ -323,19 +324,19 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
             clean::ImportItem(ref import) => {
                 let (stab, stab_tags) = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = cx.tcx().get_attrs(import_def_id);
+                    let ast_attrs = tcx.get_attrs(import_def_id);
                     let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs, None));
 
                     // Just need an item with the correct def_id and attrs
                     let import_item = clean::Item {
                         def_id: import_def_id.into(),
                         attrs: import_attrs,
-                        cfg: ast_attrs.cfg(cx.tcx(), &cx.cache().hidden_cfg),
+                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
                         ..myitem.clone()
                     };
 
-                    let stab = import_item.stability_class(cx.tcx());
-                    let stab_tags = Some(extra_info_tags(&import_item, item, cx.tcx()));
+                    let stab = import_item.stability_class(tcx);
+                    let stab_tags = Some(extra_info_tags(&import_item, item, tcx));
                     (stab, stab_tags)
                 } else {
                     (None, None)
@@ -373,7 +374,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     _ => "",
                 };
 
-                let stab = myitem.stability_class(cx.tcx());
+                let stab = myitem.stability_class(tcx);
                 let add = if stab.is_some() { " " } else { "" };
 
                 let doc_value = myitem.doc_value().unwrap_or_default();
@@ -387,7 +388,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                      </div>\
                      <div class=\"item-right docblock-short\">{docs}</div>",
                     name = myitem.name.unwrap(),
-                    stab_tags = extra_info_tags(myitem, item, cx.tcx()),
+                    stab_tags = extra_info_tags(myitem, item, tcx),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
                     add = add,
@@ -1248,9 +1249,10 @@ fn item_constant(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, c: &clean::
                 typ = c.type_.print(cx),
             );
 
-            let value = c.value(cx.tcx());
-            let is_literal = c.is_literal(cx.tcx());
-            let expr = c.expr(cx.tcx());
+            let tcx = cx.tcx();
+            let value = c.value(tcx);
+            let is_literal = c.is_literal(tcx);
+            let expr = c.expr(tcx);
             if value.is_some() || is_literal {
                 write!(w, " = {expr};", expr = Escape(&expr));
             } else {
