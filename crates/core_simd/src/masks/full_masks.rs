@@ -68,14 +68,26 @@ where
 
 // Used for bitmask bit order workaround
 pub(crate) trait ReverseBits {
-    fn reverse_bits(self) -> Self;
+    // Reverse the least significant `n` bits of `self`.
+    // (Remaining bits must be 0.)
+    fn reverse_bits(self, n: usize) -> Self;
 }
 
 macro_rules! impl_reverse_bits {
     { $($int:ty),* } => {
         $(
         impl ReverseBits for $int {
-            fn reverse_bits(self) -> Self { <$int>::reverse_bits(self) }
+            #[inline(always)]
+            fn reverse_bits(self, n: usize) -> Self {
+                let rev = <$int>::reverse_bits(self);
+                let bitsize = core::mem::size_of::<$int>() * 8;
+                if n < bitsize {
+                    // Shift things back to the right
+                    rev >> (bitsize - n)
+                } else {
+                    rev
+                }
+            }
         }
         )*
     }
@@ -137,7 +149,7 @@ where
 
         // LLVM assumes bit order should match endianness
         if cfg!(target_endian = "big") {
-            bitmask.reverse_bits()
+            bitmask.reverse_bits(LANES)
         } else {
             bitmask
         }
@@ -150,7 +162,7 @@ where
     {
         // LLVM assumes bit order should match endianness
         let bitmask = if cfg!(target_endian = "big") {
-            bitmask.reverse_bits()
+            bitmask.reverse_bits(LANES)
         } else {
             bitmask
         };
