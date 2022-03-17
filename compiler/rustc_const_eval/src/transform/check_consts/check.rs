@@ -927,7 +927,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                         // Calling an unstable function *always* requires that the corresponding gate
                         // be enabled, even if the function has `#[rustc_allow_const_fn_unstable(the_gate)]`.
-                        if !tcx.features().declared_lib_features.iter().any(|&(sym, _)| sym == feature)
+                        if !tcx
+                            .features()
+                            .declared_lib_features
+                            .iter()
+                            .any(|&(sym, _)| sym == feature)
                         {
                             bad_gates.push(feature);
                             continue;

@@ -114,18 +114,7 @@ pub struct ConstStability {
 #[derive(HashStable_Generic)]
 pub enum StabilityLevel {
     Unstable { unstables: Vec<Unstability>, is_soft: bool },
-    Stable { feature: Symbol, since: Symbol, span: Span },
-}
-
-impl StabilityLevel {
-    pub fn spans(&self) -> Vec<Span> {
-        match self {
-            StabilityLevel::Stable { span, .. } => vec![*span],
-            StabilityLevel::Unstable { unstables, .. } => {
-                unstables.iter().map(|u| u.span).collect()
-            }
-        }
-    }
+    Stable { feature: Symbol, since: Symbol },
 }
 
 /// An instance of the `#[unstable]` attribute
@@ -135,7 +124,6 @@ pub struct Unstability {
     pub feature: Symbol,
     pub issue: Option<NonZeroU32>,
     pub reason: Option<Symbol>,
-    pub span: Span,
 }
 
 impl StabilityLevel {
@@ -162,7 +150,7 @@ pub fn find_stability(
     sess: &Session,
     attrs: &[Attribute],
     item_sp: Span,
-) -> (Option<Stability>, Option<ConstStability>) {
+) -> (Option<(Stability, Vec<Span>)>, Option<(ConstStability, Vec<Span>)>) {
     find_stability_generic(sess, attrs.iter(), item_sp)
 }
 
@@ -170,14 +158,14 @@ fn find_stability_generic<'a, I>(
     sess: &Session,
     attrs_iter: I,
     item_sp: Span,
-) -> (Option<Stability>, Option<ConstStability>)
+) -> (Option<(Stability, Vec<Span>)>, Option<(ConstStability, Vec<Span>)>)
 where
     I: Iterator<Item = &'a Attribute>,
 {
     use StabilityLevel::*;
 
-    let mut stab: Option<Stability> = None;
-    let mut const_stab: Option<ConstStability> = None;
+    let mut stab: Option<(Stability, Vec<Span>)> = None;
+    let mut const_stab: Option<(ConstStability, Vec<Span>)> = None;
     let mut promotable = false;
 
     let diagnostic = &sess.parse_sess.span_diagnostic;
@@ -319,24 +307,33 @@ where
                                 );
                                 continue;
                             }
-                            let unstability =
-                                Unstability { feature, issue: issue_num, reason, span: attr.span };
+                            let unstability = Unstability { feature, issue: issue_num, reason };
                             if sym::unstable == meta_name {
                                 match &mut stab {
                                     stab @ None => {
-                                        *stab = Some(Stability {
-                                            level: StabilityLevel::Unstable {
-                                                unstables: vec![unstability],
-                                                is_soft,
+                                        *stab = Some((
+                                            Stability {
+                                                level: StabilityLevel::Unstable {
+                                                    unstables: vec![unstability],
+                                                    is_soft,
+                                                },
                                             },
-                                        })
+                                            vec![attr.span],
+                                        ))
                                     }
                                     // Merge multiple unstability attributes into one
-                                    Some(Stability {
-                                        level:
-                                            StabilityLevel::Unstable { unstables, is_soft: old_is_soft },
-                                    }) => {
+                                    Some((
+                                        Stability {
+                                            level:
+                                                StabilityLevel::Unstable {
+                                                    unstables,
+                                                    is_soft: old_is_soft,
+                                                },
+                                        },
+                                        spans,
+                                    )) => {
                                         unstables.push(unstability);
+                                        spans.push(attr.span);
                                         // FIXME(compiler-errors): Do we want this behavior: is_soft iff all are is_soft?
                                         *old_is_soft &= is_soft;
                                     }
@@ -351,28 +348,34 @@ where
                             } else {
                                 match &mut const_stab {
                                     const_stab @ None => {
-                                        *const_stab = Some(ConstStability {
-                                            level: StabilityLevel::Unstable {
-                                                unstables: vec![unstability],
-                                                is_soft,
+                                        *const_stab = Some((
+                                            ConstStability {
+                                                level: StabilityLevel::Unstable {
+                                                    unstables: vec![unstability],
+                                                    is_soft,
+                                                },
+                                                promotable: false,
                                             },
-                                            promotable: false,
-                                        })
+                                            vec![attr.span],
+                                        ))
                                     }
-                                    Some(ConstStability {
-                                        level:
-                                            StabilityLevel::Unstable {
-                                                unstables: unstability,
-                                                is_soft: old_is_soft,
-                                            },
-                                        ..
-                                    }) => {
+                                    Some((
+                                        ConstStability {
+                                            level:
+                                                StabilityLevel::Unstable {
+                                                    unstables: unstability,
+                                                    is_soft: old_is_soft,
+                                                },
+                                            ..
+                                        },
+                                        spans,
+                                    )) => {
                                         unstability.push(Unstability {
                                             feature,
                                             issue: issue_num,
                                             reason,
-                                            span: attr.span,
                                         });
+                                        spans.push(attr.span);
                                         *old_is_soft &= is_soft;
                                     }
                                     _ => {
@@ -453,11 +456,14 @@ where
 
                     match (feature, since) {
                         (Some(feature), Some(since)) => {
-                            let level = Stable { since, feature, span: attr.span };
+                            let level = Stable { since, feature };
                             if sym::stable == meta_name {
-                                stab = Some(Stability { level });
+                                stab = Some((Stability { level }, vec![attr.span]));
                             } else {
-                                const_stab = Some(ConstStability { level, promotable: false });
+                                const_stab = Some((
+                                    ConstStability { level, promotable: false },
+                                    vec![attr.span],
+                                ));
                             }
                         }
                         (None, _) => {
@@ -477,7 +483,7 @@ where
 
     // Merge the const-unstable info into the stability info
     if promotable {
-        if let Some(stab) = &mut const_stab {
+        if let Some((stab, _)) = &mut const_stab {
             stab.promotable = promotable;
         } else {
             struct_span_err!(
