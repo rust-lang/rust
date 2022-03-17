@@ -387,42 +387,42 @@ fn resolve_negative_obligation<'cx, 'tcx>(
 ) -> bool {
     let tcx = infcx.tcx;
 
-    if let Some(o) = o.flip_polarity(tcx) {
-        let mut fulfillment_cx = FulfillmentContext::new();
-        fulfillment_cx.register_predicate_obligation(infcx, o);
+    let Some(o) = o.flip_polarity(tcx) else {
+        return false;
+    };
 
-        let errors = fulfillment_cx.select_all_or_error(infcx);
+    let mut fulfillment_cx = FulfillmentContext::new();
+    fulfillment_cx.register_predicate_obligation(infcx, o);
 
-        if !errors.is_empty() {
-            return false;
-        }
+    let errors = fulfillment_cx.select_all_or_error(infcx);
 
-        let mut outlives_env = OutlivesEnvironment::new(param_env);
-        // FIXME -- add "assumed to be well formed" types into the `outlives_env`
-
-        // "Save" the accumulated implied bounds into the outlives environment
-        // (due to the FIXME above, there aren't any, but this step is still needed).
-        // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
-        // by the "dummy" causes elsewhere (body-id is only relevant when checking
-        // function bodies with closures).
-        outlives_env.save_implied_bounds(CRATE_HIR_ID);
-
-        infcx.process_registered_region_obligations(
-            outlives_env.region_bound_pairs_map(),
-            Some(tcx.lifetimes.re_root_empty),
-            param_env,
-        );
-
-        let errors = infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
-
-        if !errors.is_empty() {
-            return false;
-        }
-
-        return true;
+    if !errors.is_empty() {
+        return false;
     }
 
-    false
+    let mut outlives_env = OutlivesEnvironment::new(param_env);
+    // FIXME -- add "assumed to be well formed" types into the `outlives_env`
+
+    // "Save" the accumulated implied bounds into the outlives environment
+    // (due to the FIXME above, there aren't any, but this step is still needed).
+    // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
+    // by the "dummy" causes elsewhere (body-id is only relevant when checking
+    // function bodies with closures).
+    outlives_env.save_implied_bounds(CRATE_HIR_ID);
+
+    infcx.process_registered_region_obligations(
+        outlives_env.region_bound_pairs_map(),
+        Some(tcx.lifetimes.re_root_empty),
+        param_env,
+    );
+
+    let errors = infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+
+    if !errors.is_empty() {
+        return false;
+    }
+
+    true
 }
 
 pub fn trait_ref_is_knowable<'tcx>(
