@@ -14,7 +14,6 @@ pub mod android;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
@@ -24,8 +23,8 @@ pub mod io;
 pub mod kernel_copy;
 #[cfg(target_os = "l4re")]
 mod l4re;
+pub mod locks;
 pub mod memchr;
-pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
 pub mod net;
 #[cfg(target_os = "l4re")]
@@ -36,7 +35,6 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
-pub mod rwlock;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod thread;

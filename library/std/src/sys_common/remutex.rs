@@ -5,7 +5,7 @@ use crate::marker::PhantomPinned;
 use crate::ops::Deref;
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::pin::Pin;
-use crate::sys::mutex as sys;
+use crate::sys::locks as sys;
 
 /// A re-entrant mutual exclusion
 ///
