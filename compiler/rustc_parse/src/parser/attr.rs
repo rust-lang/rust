@@ -151,7 +151,7 @@ impl<'a> Parser<'a> {
         span: Span,
         attr_type: OuterAttributeType,
     ) -> Option<Span> {
-        let mut snapshot = self.clone();
+        let mut snapshot = self.create_snapshot_for_diagnostic();
         let lo = span.lo()
             + BytePos(match attr_type {
                 OuterAttributeType::Attribute => 1,
