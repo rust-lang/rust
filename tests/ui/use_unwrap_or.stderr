@@ -1,5 +1,5 @@
 error: .or(Some(…)).unwrap() found
-  --> $DIR/use_unwrap_or.rs:11:20
+  --> $DIR/use_unwrap_or.rs:13:20
    |
 LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
    = help: use `unwrap_or()` instead
 
 error: .or(Ok(…)).unwrap() found
-  --> $DIR/use_unwrap_or.rs:14:20
+  --> $DIR/use_unwrap_or.rs:16:20
    |
 LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

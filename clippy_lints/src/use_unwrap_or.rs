@@ -1,11 +1,10 @@
-use if_chain::if_chain;
-use rustc_hir::*;
-use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{Span, sym};
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_type_diagnostic_item;
-
+use if_chain::if_chain;
+use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -39,7 +38,6 @@ declare_lint_pass!(UseUnwrapOr => [USE_UNWRAP_OR]);
 
 impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-
         // look for x.or().unwrap()
         if_chain! {
             if let ExprKind::MethodCall(path, args, unwrap_span) = expr.kind;
@@ -52,13 +50,13 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
                 let title;
                 let arg = &caller_args[1]; // the argument or(xyz) is called with
 
-                if is_type_diagnostic_item(&cx, ty, sym::Option) {
+                if is_type_diagnostic_item(cx, ty, sym::Option) {
                     title = ".or(Some(…)).unwrap() found";
                     if !is(arg, "Some") {
                         return;
                     }
 
-                } else if is_type_diagnostic_item(&cx, ty, sym::Result) {
+                } else if is_type_diagnostic_item(cx, ty, sym::Result) {
                     title = ".or(Ok(…)).unwrap() found";
                     if !is(arg, "Ok") {
                         return;
@@ -90,16 +88,14 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
 fn is<'a>(expr: &Expr<'a>, name: &str) -> bool {
     if_chain! {
         if let ExprKind::Call(some_expr, _some_args) = expr.kind;
-        if let ExprKind::Path(path) = &some_expr.kind;
-        if let QPath::Resolved(_, path) = path;
+        if let ExprKind::Path(QPath::Resolved(_, path)) = &some_expr.kind;
         if let Some(path_segment) = path.segments.first();
         if path_segment.ident.name.as_str() == name;
         then {
-            return true;
+            true
         }
         else {
-            return false;
+            false
         }
     }
 }
-

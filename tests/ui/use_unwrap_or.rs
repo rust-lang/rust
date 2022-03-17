@@ -2,8 +2,10 @@
 
 struct SomeStruct {}
 impl SomeStruct {
-    fn or(self, _: Option<Self>) -> Self { self }
-    fn unwrap(&self){}
+    fn or(self, _: Option<Self>) -> Self {
+        self
+    }
+    fn unwrap(&self) {}
 }
 
 fn main() {
