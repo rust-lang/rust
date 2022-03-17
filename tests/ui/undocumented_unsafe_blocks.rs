@@ -1,6 +1,7 @@
 // aux-build:proc_macro_unsafe.rs
 
 #![warn(clippy::undocumented_unsafe_blocks)]
+#![allow(clippy::let_unit_value)]
 
 extern crate proc_macro_unsafe;
 

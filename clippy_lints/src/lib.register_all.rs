@@ -308,6 +308,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(uninit_vec::UNINIT_VEC),
     LintId::of(unit_hash::UNIT_HASH),
     LintId::of(unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD),
+    LintId::of(unit_types::LET_UNIT_VALUE),
     LintId::of(unit_types::UNIT_ARG),
     LintId::of(unit_types::UNIT_CMP),
     LintId::of(unnamed_address::FN_ADDRESS_COMPARISONS),

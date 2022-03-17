@@ -2,12 +2,15 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::default_numeric_fallback)]
-#![allow(unused)]
-#![allow(clippy::never_loop)]
-#![allow(clippy::no_effect)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::branches_sharing_code)]
-#![allow(clippy::match_single_binding)]
+#![allow(
+    unused,
+    clippy::never_loop,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::branches_sharing_code,
+    clippy::match_single_binding,
+    clippy::let_unit_value
+)]
 
 #[macro_use]
 extern crate macro_rules;
