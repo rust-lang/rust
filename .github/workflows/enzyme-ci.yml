@@ -60,7 +60,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        llvm: ["7", "8", "9", "11", "12", "13"] #, "14"]
+        llvm: ["8", "9", "11", "12", "13"] #, "14"]
         build: ["Release", "Debug"] # "RelWithDebInfo"
   
     timeout-minutes: 30 
