@@ -18,7 +18,7 @@ use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -353,6 +353,7 @@ fn negative_impl<'cx, 'tcx>(
     })
 }
 
+#[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -361,14 +362,18 @@ fn negative_impl_exists<'cx, 'tcx>(
 ) -> bool {
     let infcx = &selcx.infcx().fork();
     let tcx = infcx.tcx;
-    o.flip_polarity(tcx)
-        .map(|o| {
+
+    let super_obligations = util::elaborate_predicates(tcx, iter::once(o.predicate));
+
+    for o in iter::once(o.clone()).chain(super_obligations) {
+        if let Some(o) = o.flip_polarity(tcx) {
             let mut fulfillment_cx = FulfillmentContext::new();
             fulfillment_cx.register_predicate_obligation(infcx, o);
 
             let errors = fulfillment_cx.select_all_or_error(infcx);
+
             if !errors.is_empty() {
-                return false;
+                continue;
             }
 
             let mut outlives_env = OutlivesEnvironment::new(param_env);
@@ -389,13 +394,16 @@ fn negative_impl_exists<'cx, 'tcx>(
 
             let errors =
                 infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+
             if !errors.is_empty() {
-                return false;
+                continue;
             }
 
-            true
-        })
-        .unwrap_or(false)
+            return true;
+        }
+    }
+
+    false
 }
 
 pub fn trait_ref_is_knowable<'tcx>(
