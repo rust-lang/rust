@@ -930,6 +930,8 @@ fn add_one(x: i32) -> i32 {
 
 Format generated files. A file is considered generated
 if any of the first five lines contain a `@generated` comment marker.
+By default, generated files are reformatted, i. e. `@generated` marker is ignored.
+This option is currently ignored for stdin (`@generated` in stdin is ignored.)
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -2204,7 +2206,7 @@ Don't reformat out of line modules
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
-- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3386))
+- **Stable**: No (tracking issue: [#3389](https://github.com/rust-lang/rustfmt/issues/3389))
 
 ## `single_line_if_else_max_width`
 
