@@ -1742,7 +1742,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                         descr,
                         self.tcx.crate_name(def_id.krate)
                     ))
-                    .emit()
+                    .emit();
                 },
             );
         }
@@ -1786,7 +1786,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     lint::builtin::PRIVATE_IN_PUBLIC,
                     hir_id,
                     span,
-                    |lint| lint.build(&format!("{} (error {})", make_msg(), err_code)).emit(),
+                    |lint| {
+                        lint.build(&format!("{} (error {})", make_msg(), err_code)).emit();
+                    },
                 );
             }
         }

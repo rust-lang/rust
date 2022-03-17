@@ -1330,7 +1330,7 @@ pub fn parse_macro_name_and_helper_attrs(
     let attributes_attr = list.get(1);
     let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
         if !attr.has_name(sym::attributes) {
-            diag.span_err(attr.span(), "second argument must be `attributes`")
+            diag.span_err(attr.span(), "second argument must be `attributes`");
         }
         attr.meta_item_list()
             .unwrap_or_else(|| {

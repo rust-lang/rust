@@ -91,7 +91,10 @@ pub trait OnDiskCache<'tcx>: rustc_data_structures::sync::Sync {
 /// except through the error-reporting functions on a [`tcx`][TyCtxt].
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, PartialOrd, Ord)]
 #[derive(TyEncodable, TyDecodable, HashStable)]
-pub struct DelaySpanBugEmitted(());
+pub struct DelaySpanBugEmitted {
+    pub reported: ErrorGuaranteed,
+    _priv: (),
+}
 
 type InternedSet<'tcx, T> = ShardedHashMap<InternedInSet<'tcx, T>, ()>;
 
@@ -1236,8 +1239,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ensure it gets used.
     #[track_caller]
     pub fn ty_error_with_message<S: Into<MultiSpan>>(self, span: S, msg: &str) -> Ty<'tcx> {
-        self.sess.delay_span_bug(span, msg);
-        self.mk_ty(Error(DelaySpanBugEmitted(())))
+        let reported = self.sess.delay_span_bug(span, msg);
+        self.mk_ty(Error(DelaySpanBugEmitted { reported, _priv: () }))
     }
 
     /// Like [TyCtxt::ty_error] but for constants.
@@ -1258,8 +1261,11 @@ impl<'tcx> TyCtxt<'tcx> {
         span: S,
         msg: &str,
     ) -> Const<'tcx> {
-        self.sess.delay_span_bug(span, msg);
-        self.mk_const(ty::ConstS { val: ty::ConstKind::Error(DelaySpanBugEmitted(())), ty })
+        let reported = self.sess.delay_span_bug(span, msg);
+        self.mk_const(ty::ConstS {
+            val: ty::ConstKind::Error(DelaySpanBugEmitted { reported, _priv: () }),
+            ty,
+        })
     }
 
     pub fn consider_optimizing<T: Fn() -> String>(self, msg: T) -> bool {
@@ -2733,7 +2739,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         hir_id: HirId,
         span: impl Into<MultiSpan>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), decorate);
@@ -2743,7 +2749,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         lint: &'static Lint,
         id: HirId,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         struct_lint_level(self.sess, lint, level, src, None, decorate);

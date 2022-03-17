@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::HashingControls;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -453,7 +452,7 @@ impl<'tcx> AdtDef<'tcx> {
             }
             Err(err) => {
                 let msg = match err {
-                    ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
+                    ErrorHandled::Reported(_) | ErrorHandled::Linted => {
                         "enum discriminant evaluation failed"
                     }
                     ErrorHandled::TooGeneric => "enum discriminant depends on generics",

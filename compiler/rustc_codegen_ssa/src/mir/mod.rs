@@ -1,5 +1,4 @@
 use crate::traits::*;
-use rustc_errors::ErrorGuaranteed;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
@@ -191,7 +190,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             all_consts_ok = false;
             match err {
                 // errored or at least linted
-                ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {}
+                ErrorHandled::Reported(_) | ErrorHandled::Linted => {}
                 ErrorHandled::TooGeneric => {
                     span_bug!(const_.span, "codgen encountered polymorphic constant: {:?}", err)
                 }

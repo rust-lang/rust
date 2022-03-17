@@ -102,7 +102,7 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             let method = &call.ident.name;
             let message =
                 format!("call to `.{}()` on a reference in this situation does nothing", &method,);
-            lint.build(&message).span_label(span, "unnecessary method call").note(&note).emit()
+            lint.build(&message).span_label(span, "unnecessary method call").note(&note).emit();
         });
     }
 }

@@ -51,6 +51,7 @@
 //! ```
 use crate::mir;
 use crate::ty::{self, flags::FlagComputation, Binder, Ty, TyCtxt, TypeFlags};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -150,6 +151,13 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
     fn references_error(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_ERROR)
+    }
+    fn error_reported(&self) -> Option<ErrorGuaranteed> {
+        if self.references_error() {
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        } else {
+            None
+        }
     }
     fn has_param_types_or_consts(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_PARAM | TypeFlags::HAS_CT_PARAM)

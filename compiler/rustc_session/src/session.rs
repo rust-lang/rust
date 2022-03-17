@@ -262,7 +262,7 @@ impl Session {
             }
             diag.emit();
             // If we should err, make sure we did.
-            if must_err && !self.has_errors() {
+            if must_err && !self.has_errors().is_some() {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
@@ -404,13 +404,13 @@ impl Session {
             self.span_err(sp, msg);
         }
     }
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().span_err(sp, msg)
     }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_err_with_code(sp, &msg, code)
     }
-    pub fn err(&self, msg: &str) {
+    pub fn err(&self, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
@@ -420,7 +420,7 @@ impl Session {
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
     }
-    pub fn has_errors(&self) -> bool {
+    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().has_errors()
     }
     pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
@@ -430,9 +430,9 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
-        if self.diagnostic().has_errors_or_lint_errors() {
-            self.diagnostic().emit_stashed_diagnostics();
-            Err(ErrorGuaranteed)
+        if let Some(reported) = self.diagnostic().has_errors_or_lint_errors() {
+            let _ = self.diagnostic().emit_stashed_diagnostics();
+            Err(reported)
         } else {
             Ok(())
         }
@@ -444,7 +444,11 @@ impl Session {
     {
         let old_count = self.err_count();
         let result = f();
-        if self.err_count() == old_count { Ok(result) } else { Err(ErrorGuaranteed) }
+        if self.err_count() == old_count {
+            Ok(result)
+        } else {
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
@@ -457,7 +461,7 @@ impl Session {
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().delay_span_bug(sp, msg)
     }
 
@@ -1387,12 +1391,18 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     let unsupported_sanitizers = sess.opts.debugging_opts.sanitizer - supported_sanitizers;
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
-        1 => sess
-            .err(&format!("{} sanitizer is not supported for this target", unsupported_sanitizers)),
-        _ => sess.err(&format!(
-            "{} sanitizers are not supported for this target",
-            unsupported_sanitizers
-        )),
+        1 => {
+            sess.err(&format!(
+                "{} sanitizer is not supported for this target",
+                unsupported_sanitizers
+            ));
+        }
+        _ => {
+            sess.err(&format!(
+                "{} sanitizers are not supported for this target",
+                unsupported_sanitizers
+            ));
+        }
     }
     // Cannot mix and match sanitizers.
     let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
@@ -1446,7 +1456,7 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
+pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1457,7 +1467,8 @@ pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-    handler.struct_fatal(msg).emit();
+    let reported = handler.struct_fatal(msg).emit();
+    reported
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {

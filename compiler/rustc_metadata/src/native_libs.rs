@@ -145,41 +145,49 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                             ("bundle", NativeLibKind::Static { bundle, .. }) => {
                                 *bundle = Some(value);
                             }
-                            ("bundle", _) => sess.span_err(
-                                span,
-                                "bundle linking modifier is only compatible with \
+                            ("bundle", _) => {
+                                sess.span_err(
+                                    span,
+                                    "bundle linking modifier is only compatible with \
                                 `static` linking kind",
-                            ),
+                                );
+                            }
 
                             ("verbatim", _) => lib.verbatim = Some(value),
 
                             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
                                 *whole_archive = Some(value);
                             }
-                            ("whole-archive", _) => sess.span_err(
-                                span,
-                                "whole-archive linking modifier is only compatible with \
+                            ("whole-archive", _) => {
+                                sess.span_err(
+                                    span,
+                                    "whole-archive linking modifier is only compatible with \
                                 `static` linking kind",
-                            ),
+                                );
+                            }
 
                             ("as-needed", NativeLibKind::Dylib { as_needed })
                             | ("as-needed", NativeLibKind::Framework { as_needed }) => {
                                 *as_needed = Some(value);
                             }
-                            ("as-needed", _) => sess.span_err(
-                                span,
-                                "as-needed linking modifier is only compatible with \
+                            ("as-needed", _) => {
+                                sess.span_err(
+                                    span,
+                                    "as-needed linking modifier is only compatible with \
                                 `dylib` and `framework` linking kinds",
-                            ),
+                                );
+                            }
 
-                            _ => sess.span_err(
-                                span,
-                                &format!(
-                                    "unrecognized linking modifier `{}`, expected one \
+                            _ => {
+                                sess.span_err(
+                                    span,
+                                    &format!(
+                                        "unrecognized linking modifier `{}`, expected one \
                                     of: bundle, verbatim, whole-archive, as-needed",
-                                    modifier
-                                ),
-                            ),
+                                        modifier
+                                    ),
+                                );
+                            }
                         }
                     }
                 } else {
@@ -247,7 +255,9 @@ impl Collector<'_> {
                 Some(span) => {
                     struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit();
                 }
-                None => self.tcx.sess.err(msg),
+                None => {
+                    self.tcx.sess.err(msg);
+                }
             }
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {

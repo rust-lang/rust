@@ -952,7 +952,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 sess.diagnostic().delay_span_bug(
                                     span,
                                     "unexpected delimiter in key-value attribute's value",
-                                )
+                                );
                             }
                             unwrap_single_token(sess, tokens, span)
                         }

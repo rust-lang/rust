@@ -128,7 +128,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
-                handler.emit_diagnostic(&db.inner.diagnostic);
+                let guar = handler.emit_diagnostic(&db.inner.diagnostic);
 
                 // Only allow a guarantee if the `level` wasn't switched to a
                 // non-error - the field isn't `pub`, but the whole `Diagnostic`
@@ -139,7 +139,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
                      from `DiagnosticBuilder<ErrorGuaranteed>`",
                     db.inner.diagnostic.level,
                 );
-                ErrorGuaranteed
+                guar.unwrap()
             }
             // `.emit()` was previously called, disallowed from repeating it,
             // but can take advantage of the previous `.emit()`'s guarantee
@@ -154,7 +154,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
                      became non-error ({:?}), after original `.emit()`",
                     db.inner.diagnostic.level,
                 );
-                ErrorGuaranteed
+                ErrorGuaranteed::unchecked_claim_error_was_emitted()
             }
         }
     }

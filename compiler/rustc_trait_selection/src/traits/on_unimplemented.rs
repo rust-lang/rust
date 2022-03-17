@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Clone, Debug)]
 pub struct OnUnimplementedFormatString(Symbol);
@@ -47,8 +47,7 @@ fn parse_error(
     if let Some(note) = note {
         diag.note(note);
     }
-    diag.emit();
-    ErrorGuaranteed
+    diag.emit()
 }
 
 impl<'tcx> OnUnimplementedDirective {
@@ -59,7 +58,7 @@ impl<'tcx> OnUnimplementedDirective {
         span: Span,
         is_root: bool,
     ) -> Result<Self, ErrorGuaranteed> {
-        let mut errored = false;
+        let mut errored = None;
         let mut item_iter = items.iter();
 
         let parse_value = |value_str| {
@@ -91,8 +90,8 @@ impl<'tcx> OnUnimplementedDirective {
                     )
                 })?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |item| {
-                if let Some(symbol) = item.value_str() && parse_value(symbol).is_err() {
-                    errored = true;
+                if let Some(symbol) = item.value_str() && let Err(guar) = parse_value(symbol) {
+                    errored = Some(guar);
                 }
                 true
             });
@@ -134,13 +133,10 @@ impl<'tcx> OnUnimplementedDirective {
                 && note.is_none()
             {
                 if let Some(items) = item.meta_item_list() {
-                    if let Ok(subcommand) =
-                        Self::parse(tcx, item_def_id, &items, item.span(), false)
-                    {
-                        subcommands.push(subcommand);
-                    } else {
-                        errored = true;
-                    }
+                    match Self::parse(tcx, item_def_id, &items, item.span(), false) {
+                        Ok(subcommand) => subcommands.push(subcommand),
+                        Err(reported) => errored = Some(reported),
+                    };
                     continue;
                 }
             } else if item.has_name(sym::append_const_msg) && append_const_msg.is_none() {
@@ -163,8 +159,8 @@ impl<'tcx> OnUnimplementedDirective {
             );
         }
 
-        if errored {
-            Err(ErrorGuaranteed)
+        if let Some(reported) = errored {
+            Err(reported)
         } else {
             Ok(OnUnimplementedDirective {
                 condition,
@@ -203,7 +199,9 @@ impl<'tcx> OnUnimplementedDirective {
                 append_const_msg: None,
             }))
         } else {
-            return Err(ErrorGuaranteed);
+            let reported =
+                tcx.sess.delay_span_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
+            return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);
         result
@@ -327,7 +325,7 @@ impl<'tcx> OnUnimplementedFormatString {
                         match generics.params.iter().find(|param| param.name == s) {
                             Some(_) => (),
                             None => {
-                                struct_span_err!(
+                                let reported = struct_span_err!(
                                     tcx.sess,
                                     span,
                                     E0230,
@@ -340,20 +338,20 @@ impl<'tcx> OnUnimplementedFormatString {
                                     }
                                 )
                                 .emit();
-                                result = Err(ErrorGuaranteed);
+                                result = Err(reported);
                             }
                         }
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(_) | Position::ArgumentImplicitlyIs(_) => {
-                        struct_span_err!(
+                        let reported = struct_span_err!(
                             tcx.sess,
                             span,
                             E0231,
                             "only named substitution parameters are allowed"
                         )
                         .emit();
-                        result = Err(ErrorGuaranteed);
+                        result = Err(reported);
                     }
                 },
             }

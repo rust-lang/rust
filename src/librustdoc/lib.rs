@@ -179,7 +179,7 @@ pub fn main() {
 
     let exit_code = rustc_driver::catch_with_exit_code(|| match get_args() {
         Some(args) => main_args(&args),
-        _ => Err(ErrorGuaranteed),
+        _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
     });
     process::exit(exit_code);
 }
@@ -692,7 +692,13 @@ fn main_args(at_args: &[String]) -> MainResult {
     // codes from `from_matches` here.
     let options = match config::Options::from_matches(&matches) {
         Ok(opts) => opts,
-        Err(code) => return if code == 0 { Ok(()) } else { Err(ErrorGuaranteed) },
+        Err(code) => {
+            return if code == 0 {
+                Ok(())
+            } else {
+                Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+            };
+        }
     };
     rustc_interface::util::run_in_thread_pool_with_globals(
         options.edition,
@@ -705,8 +711,8 @@ fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainRes
     match res {
         Ok(()) => Ok(()),
         Err(err) => {
-            diag.struct_err(&err).emit();
-            Err(ErrorGuaranteed)
+            let reported = diag.struct_err(&err).emit();
+            Err(reported)
         }
     }
 }
@@ -790,7 +796,7 @@ fn main_options(options: config::Options) -> MainResult {
                 (resolver.clone(), resolver_caches)
             };
 
-            if sess.diagnostic().has_errors_or_lint_errors() {
+            if sess.diagnostic().has_errors_or_lint_errors().is_some() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

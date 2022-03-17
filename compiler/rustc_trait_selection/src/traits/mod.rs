@@ -231,8 +231,8 @@ fn do_normalize_predicates<'tcx>(
             match fully_normalize(&infcx, fulfill_cx, cause, elaborated_env, predicates) {
                 Ok(predicates) => predicates,
                 Err(errors) => {
-                    infcx.report_fulfillment_errors(&errors, None, false);
-                    return Err(ErrorGuaranteed);
+                    let reported = infcx.report_fulfillment_errors(&errors, None, false);
+                    return Err(reported);
                 }
             };
 
@@ -258,13 +258,15 @@ fn do_normalize_predicates<'tcx>(
                 // represents a legitimate failure due to some kind of
                 // unconstrained variable, and it seems better not to ICE,
                 // all things considered.
-                tcx.sess.span_err(span, &fixup_err.to_string());
-                return Err(ErrorGuaranteed);
+                let reported = tcx.sess.span_err(span, &fixup_err.to_string());
+                return Err(reported);
             }
         };
         if predicates.needs_infer() {
-            tcx.sess.delay_span_bug(span, "encountered inference variables after `fully_resolve`");
-            Err(ErrorGuaranteed)
+            let reported = tcx
+                .sess
+                .delay_span_bug(span, "encountered inference variables after `fully_resolve`");
+            Err(reported)
         } else {
             Ok(predicates)
         }

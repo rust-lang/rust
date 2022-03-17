@@ -412,7 +412,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         lint::builtin::TYVAR_BEHIND_RAW_POINTER,
                         scope_expr_id,
                         span,
-                        |lint| lint.build("type annotations needed").emit(),
+                        |lint| {
+                            lint.build("type annotations needed").emit();
+                        },
                     );
                 }
             } else {

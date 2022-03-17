@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, ErrorGuaranteed, StashKey};
+use rustc_errors::{Applicability, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -366,7 +366,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     owner, def_id,
                                 ),
                             );
-                            if let Some(ErrorGuaranteed) =
+                            if let Some(_) =
                                 tcx.typeck(owner).tainted_by_errors
                             {
                                 // Some error in the

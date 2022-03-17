@@ -80,7 +80,7 @@ impl<'a, 'tcx> DocVisitor for BareUrlsLinter<'a, 'tcx> {
                             format!("<{}>", url),
                             Applicability::MachineApplicable,
                         )
-                        .emit()
+                        .emit();
                 });
             };
 

@@ -100,7 +100,7 @@ pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
             match sp {
                 Some(sp) => sess.span_err(sp, s),
                 None => sess.err(s),
-            }
+            };
             err_count += 1;
         };
         if s.is_empty() {

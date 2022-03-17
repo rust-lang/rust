@@ -81,7 +81,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if self.is_tainted_by_errors() {
             // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            wbcx.typeck_results.tainted_by_errors = Some(ErrorGuaranteed);
+            wbcx.typeck_results.tainted_by_errors =
+                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
         }
 
         debug!("writeback: typeck results for {:?} are {:#?}", item_def_id, wbcx.typeck_results);
@@ -662,7 +663,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // users of the typeck results don't produce extra errors, or worse, ICEs.
         if resolver.replaced_with_error {
             // FIXME(eddyb) keep track of `ErrorGuaranteed` from where the error was emitted.
-            self.typeck_results.tainted_by_errors = Some(ErrorGuaranteed);
+            self.typeck_results.tainted_by_errors =
+                Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
         }
 
         x
@@ -707,7 +709,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_type_error(&self, t: Ty<'tcx>) {
-        if !self.tcx.sess.has_errors() {
+        if !self.tcx.sess.has_errors().is_some() {
             self.infcx
                 .emit_inference_failure_err(
                     Some(self.body.id()),
@@ -721,7 +723,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_const_error(&self, c: ty::Const<'tcx>) {
-        if !self.tcx.sess.has_errors() {
+        if self.tcx.sess.has_errors().is_none() {
             self.infcx
                 .emit_inference_failure_err(
                     Some(self.body.id()),

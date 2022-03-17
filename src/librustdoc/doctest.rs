@@ -149,7 +149,7 @@ crate fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
-                if compiler.session().diagnostic().has_errors_or_lint_errors() {
+                if compiler.session().diagnostic().has_errors_or_lint_errors().is_some() {
                     FatalError.raise();
                 }
 

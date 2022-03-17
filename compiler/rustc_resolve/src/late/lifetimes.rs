@@ -3143,10 +3143,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             for bound in lifetime_i.bounds {
                 match bound {
                     hir::GenericBound::Outlives(ref lt) => match lt.name {
-                        hir::LifetimeName::Underscore => self.tcx.sess.delay_span_bug(
-                            lt.span,
-                            "use of `'_` in illegal place, but not caught by lowering",
-                        ),
+                        hir::LifetimeName::Underscore => {
+                            self.tcx.sess.delay_span_bug(
+                                lt.span,
+                                "use of `'_` in illegal place, but not caught by lowering",
+                            );
+                        }
                         hir::LifetimeName::Static => {
                             self.insert_lifetime(lt, Region::Static);
                             self.tcx
@@ -3172,7 +3174,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 lt.span,
                                 "lowering generated `ImplicitObjectLifetimeDefault` \
                                  outside of an object type",
-                            )
+                            );
                         }
                         hir::LifetimeName::Error => {
                             // No need to do anything, error already reported.

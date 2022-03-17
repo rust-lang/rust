@@ -252,11 +252,12 @@ impl<'a> PostExpansionVisitor<'a> {
                     "wasm ABI is experimental and subject to change"
                 );
             }
-            abi => self
-                .sess
-                .parse_sess
-                .span_diagnostic
-                .delay_span_bug(span, &format!("unrecognized ABI not caught in lowering: {}", abi)),
+            abi => {
+                self.sess.parse_sess.span_diagnostic.delay_span_bug(
+                    span,
+                    &format!("unrecognized ABI not caught in lowering: {}", abi),
+                );
+            }
         }
     }
 
