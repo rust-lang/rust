@@ -17,7 +17,7 @@ use crate::traits::{
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
@@ -361,46 +361,62 @@ fn negative_impl_exists<'cx, 'tcx>(
     o: &PredicateObligation<'tcx>,
 ) -> bool {
     let infcx = &selcx.infcx().fork();
-    let tcx = infcx.tcx;
 
-    let super_obligations = util::elaborate_predicates(tcx, iter::once(o.predicate));
+    if resolve_negative_obligation(infcx, param_env, region_context, o) {
+        return true;
+    }
 
-    for o in iter::once(o.clone()).chain(super_obligations) {
-        if let Some(o) = o.flip_polarity(tcx) {
-            let mut fulfillment_cx = FulfillmentContext::new();
-            fulfillment_cx.register_predicate_obligation(infcx, o);
-
-            let errors = fulfillment_cx.select_all_or_error(infcx);
-
-            if !errors.is_empty() {
-                continue;
-            }
-
-            let mut outlives_env = OutlivesEnvironment::new(param_env);
-            // FIXME -- add "assumed to be well formed" types into the `outlives_env`
-
-            // "Save" the accumulated implied bounds into the outlives environment
-            // (due to the FIXME above, there aren't any, but this step is still needed).
-            // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
-            // by the "dummy" causes elsewhere (body-id is only relevant when checking
-            // function bodies with closures).
-            outlives_env.save_implied_bounds(CRATE_HIR_ID);
-
-            infcx.process_registered_region_obligations(
-                outlives_env.region_bound_pairs_map(),
-                Some(tcx.lifetimes.re_root_empty),
-                param_env,
-            );
-
-            let errors =
-                infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
-
-            if !errors.is_empty() {
-                continue;
-            }
-
+    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx, param_env, region_context, &o) {
             return true;
         }
+    }
+
+    false
+}
+
+#[instrument(level = "debug", skip(infcx))]
+fn resolve_negative_obligation<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    region_context: DefId,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
+    let tcx = infcx.tcx;
+
+    if let Some(o) = o.flip_polarity(tcx) {
+        let mut fulfillment_cx = FulfillmentContext::new();
+        fulfillment_cx.register_predicate_obligation(infcx, o);
+
+        let errors = fulfillment_cx.select_all_or_error(infcx);
+
+        if !errors.is_empty() {
+            return false;
+        }
+
+        let mut outlives_env = OutlivesEnvironment::new(param_env);
+        // FIXME -- add "assumed to be well formed" types into the `outlives_env`
+
+        // "Save" the accumulated implied bounds into the outlives environment
+        // (due to the FIXME above, there aren't any, but this step is still needed).
+        // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
+        // by the "dummy" causes elsewhere (body-id is only relevant when checking
+        // function bodies with closures).
+        outlives_env.save_implied_bounds(CRATE_HIR_ID);
+
+        infcx.process_registered_region_obligations(
+            outlives_env.region_bound_pairs_map(),
+            Some(tcx.lifetimes.re_root_empty),
+            param_env,
+        );
+
+        let errors = infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+
+        if !errors.is_empty() {
+            return false;
+        }
+
+        return true;
     }
 
     false
