@@ -353,6 +353,7 @@ fn negative_impl<'cx, 'tcx>(
     })
 }
 
+/// Try to prove that a negative impl exist for the given obligation and their super predicates.
 #[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
@@ -366,6 +367,7 @@ fn negative_impl_exists<'cx, 'tcx>(
         return true;
     }
 
+    // Try to prove a negative obligation exist for super predicates
     // FIXME we should implement an `assemble_neg_candidates` fn
     for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
         if resolve_negative_obligation(infcx, param_env, region_context, &o) {
