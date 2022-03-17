@@ -379,6 +379,13 @@ impl<'a> InferenceTable<'a> {
         self.pending_obligations = snapshot.pending_obligations;
     }
 
+    pub(crate) fn run_in_snapshot<T>(&mut self, f: impl FnOnce(&mut InferenceTable) -> T) -> T {
+        let snapshot = self.snapshot();
+        let result = f(self);
+        self.rollback_to(snapshot);
+        result
+    }
+
     /// Checks an obligation without registering it. Useful mostly to check
     /// whether a trait *might* be implemented before deciding to 'lock in' the
     /// choice (during e.g. method resolution or deref).

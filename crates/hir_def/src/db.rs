@@ -175,8 +175,12 @@ pub trait DefDatabase: InternDatabase + AstDatabase + Upcast<dyn AstDatabase> {
     #[salsa::invoke(visibility::field_visibilities_query)]
     fn field_visibilities(&self, var: VariantId) -> Arc<ArenaMap<LocalFieldId, Visibility>>;
 
+    // FIXME: unify function_visibility and const_visibility?
     #[salsa::invoke(visibility::function_visibility_query)]
     fn function_visibility(&self, def: FunctionId) -> Visibility;
+
+    #[salsa::invoke(visibility::const_visibility_query)]
+    fn const_visibility(&self, def: ConstId) -> Visibility;
 
     #[salsa::transparent]
     fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;

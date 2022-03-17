@@ -985,55 +985,77 @@ fn is_valid_candidate(
                     return false;
                 }
             }
-            let snap = table.snapshot();
-            let subst = TyBuilder::subst_for_def(db, m).fill_with_inference_vars(table).build();
-            let expected_self_ty = match m.lookup(db.upcast()).container {
-                ItemContainerId::TraitId(_) => {
-                    subst.at(Interner, 0).assert_ty_ref(Interner).clone()
-                }
-                ItemContainerId::ImplId(impl_id) => {
-                    subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
-                }
-                // We should only get called for associated items (impl/trait)
-                ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => unreachable!(),
-            };
-            if !table.unify(&expected_self_ty, &self_ty) {
-                // FIXME handle rollbacks better
-                table.rollback_to(snap);
-                return false;
-            }
-            if let Some(receiver_ty) = receiver_ty {
-                if !data.has_self_param() {
-                    table.rollback_to(snap);
+            table.run_in_snapshot(|table| {
+                let subst = TyBuilder::subst_for_def(db, m).fill_with_inference_vars(table).build();
+                let expected_self_ty = match m.lookup(db.upcast()).container {
+                    ItemContainerId::TraitId(_) => {
+                        subst.at(Interner, 0).assert_ty_ref(Interner).clone()
+                    }
+                    ItemContainerId::ImplId(impl_id) => {
+                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner)
+                    }
+                    // We should only get called for associated items (impl/trait)
+                    ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => {
+                        unreachable!()
+                    }
+                };
+                if !table.unify(&expected_self_ty, &self_ty) {
                     return false;
                 }
+                if let Some(receiver_ty) = receiver_ty {
+                    if !data.has_self_param() {
+                        return false;
+                    }
 
-                let sig = db.callable_item_signature(m.into());
-                let expected_receiver =
-                    sig.map(|s| s.params()[0].clone()).substitute(Interner, &subst);
-                let receiver_matches = table.unify(&receiver_ty, &expected_receiver);
-                table.rollback_to(snap);
+                    let sig = db.callable_item_signature(m.into());
+                    let expected_receiver =
+                        sig.map(|s| s.params()[0].clone()).substitute(Interner, &subst);
+                    let receiver_matches = table.unify(&receiver_ty, &expected_receiver);
 
-                if !receiver_matches {
-                    return false;
+                    if !receiver_matches {
+                        return false;
+                    }
                 }
-            } else {
-                table.rollback_to(snap);
-            }
-            if let Some(from_module) = visible_from_module {
-                if !db.function_visibility(m).is_visible_from(db.upcast(), from_module) {
-                    cov_mark::hit!(autoderef_candidate_not_visible);
-                    return false;
+                if let Some(from_module) = visible_from_module {
+                    if !db.function_visibility(m).is_visible_from(db.upcast(), from_module) {
+                        cov_mark::hit!(autoderef_candidate_not_visible);
+                        return false;
+                    }
                 }
-            }
 
-            true
+                true
+            })
         }
         AssocItemId::ConstId(c) => {
             let data = db.const_data(c);
-            // TODO check unify self ty
-            // TODO check visibility
-            name.map_or(true, |name| data.name.as_ref() == Some(name)) && receiver_ty.is_none()
+            if receiver_ty.is_some() {
+                return false;
+            }
+            if let Some(name) = name {
+                if data.name.as_ref() != Some(name) {
+                    return false;
+                }
+            }
+            if let Some(from_module) = visible_from_module {
+                if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
+                    cov_mark::hit!(const_candidate_not_visible);
+                    return false;
+                }
+            }
+            if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
+                let self_ty_matches = table.run_in_snapshot(|table| {
+                    let subst =
+                        TyBuilder::subst_for_def(db, c).fill_with_inference_vars(table).build();
+                    let expected_self_ty =
+                        subst.apply(db.impl_self_ty(impl_id).skip_binders().clone(), Interner);
+                    table.unify(&expected_self_ty, &self_ty)
+                });
+                if !self_ty_matches {
+                    cov_mark::hit!(const_candidate_self_type_mismatch);
+                    return false;
+                }
+            }
+            true
         }
         _ => false,
     }

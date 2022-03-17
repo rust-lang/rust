@@ -11,7 +11,7 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, PathKind},
     resolver::HasResolver,
-    FunctionId, HasModule, LocalFieldId, ModuleId, VariantId,
+    ConstId, FunctionId, HasModule, LocalFieldId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.
@@ -233,4 +233,10 @@ pub(crate) fn field_visibilities_query(
 pub(crate) fn function_visibility_query(db: &dyn DefDatabase, def: FunctionId) -> Visibility {
     let resolver = def.resolver(db);
     db.function_data(def).visibility.resolve(db, &resolver)
+}
+
+/// Resolve visibility of a const.
+pub(crate) fn const_visibility_query(db: &dyn DefDatabase, def: ConstId) -> Visibility {
+    let resolver = def.resolver(db);
+    db.const_data(def).visibility.resolve(db, &resolver)
 }

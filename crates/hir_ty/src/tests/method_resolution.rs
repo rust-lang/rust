@@ -954,6 +954,33 @@ fn main() {
 }
 
 #[test]
+fn method_resolution_overloaded_const() {
+    cov_mark::check!(const_candidate_self_type_mismatch);
+    check_types(
+        r#"
+struct Wrapper<T>(T);
+struct Foo<T>(T);
+struct Bar<T>(T);
+
+impl<T> Wrapper<Foo<T>> {
+    pub const VALUE: Foo<T>;
+}
+
+impl<T> Wrapper<Bar<T>> {
+    pub const VALUE: Bar<T>;
+}
+
+fn main() {
+    let a = Wrapper::<Foo<f32>>::VALUE;
+    let b = Wrapper::<Bar<f32>>::VALUE;
+    (a, b);
+  //^^^^^^ (Foo<f32>, Bar<f32>)
+}
+"#,
+    );
+}
+
+#[test]
 fn method_resolution_encountering_fn_type() {
     check_types(
         r#"
@@ -1251,6 +1278,37 @@ mod b {
         let x = super::a::Bar::new().mango();
              // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type: char
     }
+}
+"#,
+    )
+}
+
+#[test]
+fn trait_vs_private_inherent_const() {
+    cov_mark::check!(const_candidate_not_visible);
+    check(
+        r#"
+mod a {
+    pub struct Foo;
+    impl Foo {
+        const VALUE: u32 = 2;
+    }
+    pub trait Trait {
+        const VALUE: usize;
+    }
+    impl Trait for Foo {
+        const VALUE: usize = 3;
+    }
+
+    fn foo() {
+        let x = Foo::VALUE;
+            //  ^^^^^^^^^^ type: u32
+    }
+}
+use a::Trait;
+fn foo() {
+    let x = a::Foo::VALUE;
+         // ^^^^^^^^^^^^^ type: usize
 }
 "#,
     )
