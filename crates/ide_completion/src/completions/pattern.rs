@@ -137,29 +137,29 @@ fn pattern_path_completion(
                         }
                     }
                 }
-                hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
-                    cov_mark::hit!(enum_plain_qualified_use_tree);
-                    e.variants(ctx.db)
-                        .into_iter()
-                        .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
-                }
                 res @ (hir::PathResolution::TypeParam(_)
                 | hir::PathResolution::SelfType(_)
-                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(_)))) => {
+                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(_)))
+                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(_)))
+                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(_)))) => {
                     let ty = match res {
                         hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
                         hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
                         hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(s))) => {
                             s.ty(ctx.db)
                         }
+                        hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e))) => {
+                            cov_mark::hit!(enum_plain_qualified_use_tree);
+                            e.variants(ctx.db)
+                                .into_iter()
+                                .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
+                            e.ty(ctx.db)
+                        }
+                        hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(u))) => {
+                            u.ty(ctx.db)
+                        }
                         _ => return,
                     };
-
-                    if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
-                        e.variants(ctx.db)
-                            .into_iter()
-                            .for_each(|variant| acc.add_enum_variant(ctx, variant, None));
-                    }
 
                     let traits_in_scope = ctx.scope.visible_traits();
                     let mut seen = FxHashSet::default();
