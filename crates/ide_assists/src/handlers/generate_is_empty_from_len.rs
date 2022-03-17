@@ -17,6 +17,7 @@ use crate::{
 // struct MyStruct { data: Vec<String> }
 //
 // impl MyStruct {
+//     #[must_use]
 //     p$0ub fn len(&self) -> usize {
 //         self.data.len()
 //     }
@@ -27,10 +28,12 @@ use crate::{
 // struct MyStruct { data: Vec<String> }
 //
 // impl MyStruct {
+//     #[must_use]
 //     pub fn len(&self) -> usize {
 //         self.data.len()
 //     }
 //
+//     #[must_use]
 //     pub fn is_empty(&self) -> bool {
 //         self.len() == 0
 //     }
@@ -72,6 +75,7 @@ pub(crate) fn generate_is_empty_from_len(acc: &mut Assists, ctx: &AssistContext)
         |builder| {
             let code = r#"
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }"#
@@ -129,6 +133,7 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self, _i: bool) -> usize {
         self.data.len()
     }
@@ -146,10 +151,12 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -167,6 +174,7 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self) -> u32 {
         self.data.len()
     }
@@ -183,6 +191,7 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self) -> usize {
         self.data.len()
     }
@@ -192,10 +201,12 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -212,10 +223,12 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     pub fn new() -> Self {
         Self { data: 0 }
     }
 
+    #[must_use]
     p$0ub fn len(&self) -> usize {
         self.data.len()
     }
@@ -229,14 +242,17 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     pub fn new() -> Self {
         Self { data: 0 }
     }
 
+    #[must_use]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -257,12 +273,14 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self) -> usize {
         self.data.len()
     }
 }
 
 impl MyStruct {
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }

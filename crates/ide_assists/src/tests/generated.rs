@@ -1097,6 +1097,7 @@ fn doctest_generate_is_empty_from_len() {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     p$0ub fn len(&self) -> usize {
         self.data.len()
     }
@@ -1106,10 +1107,12 @@ impl MyStruct {
 struct MyStruct { data: Vec<String> }
 
 impl MyStruct {
+    #[must_use]
     pub fn len(&self) -> usize {
         self.data.len()
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
