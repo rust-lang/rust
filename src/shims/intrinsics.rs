@@ -685,7 +685,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .unwrap();
                 for i in 0..dest_len {
                     let mask =
-                        mask & (1 << simd_bitmask_index(i, bitmask_len, this.data_layout().endian));
+                        mask & (1 << simd_bitmask_index(i, dest_len, this.data_layout().endian));
                     let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
                     let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
                     let dest = this.mplace_index(&dest, i)?;
@@ -695,8 +695,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 for i in dest_len..bitmask_len {
                     // If the mask is "padded", ensure that padding is all-zero.
-                    let mask =
-                        mask & (1 << simd_bitmask_index(i, bitmask_len, this.data_layout().endian));
+                    let mask = mask & (1 << i);
                     if mask != 0 {
                         throw_ub_format!(
                             "a SIMD bitmask less than 8 bits long must be filled with 0s for the remaining bits"
@@ -841,7 +840,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 for i in 0..op_len {
                     let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
                     if simd_element_to_bool(op)? {
-                        res |= 1 << simd_bitmask_index(i, bitmask_len, this.data_layout().endian);
+                        res |= 1 << simd_bitmask_index(i, op_len, this.data_layout().endian);
                     }
                 }
                 this.write_int(res, dest)?;
@@ -1382,10 +1381,10 @@ fn simd_element_to_bool<'tcx>(elem: ImmTy<'tcx, Tag>) -> InterpResult<'tcx, bool
     })
 }
 
-fn simd_bitmask_index(idx: u64, bitmask_len: u64, endianess: Endian) -> u64 {
-    assert!(idx < bitmask_len);
+fn simd_bitmask_index(idx: u64, vec_len: u64, endianess: Endian) -> u64 {
+    assert!(idx < vec_len);
     match endianess {
         Endian::Little => idx,
-        Endian::Big => bitmask_len - 1 - idx, // reverse order of bits
+        Endian::Big => vec_len - 1 - idx, // reverse order of bits
     }
 }
