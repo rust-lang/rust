@@ -691,11 +691,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         a: ty::Unevaluated<'tcx, ()>,
         b: ty::Unevaluated<'tcx, ()>,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
         debug!("canonical consts: {:?}", &canonical.value);
 
-        self.tcx.try_unify_abstract_consts(canonical.value)
+        self.tcx.try_unify_abstract_consts(param_env.and(canonical.value))
     }
 
     pub fn is_in_snapshot(&self) -> bool {
