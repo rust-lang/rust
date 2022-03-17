@@ -53,9 +53,28 @@ index 887d27fd6dca4..2c2239f2b83d1 100644
 
      let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
 
+diff --git a/src/tools/compiletest/src/runtest.rs b/src/tools/compiletest/src/runtest.rs
+index 8431aa7b818..a3ff7e68ce5 100644
+--- a/src/tools/compiletest/src/runtest.rs
++++ b/src/tools/compiletest/src/runtest.rs
+@@ -3489,11 +3489,7 @@ fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> S
+             .join("library");
+         normalize_path(&src_dir, "$(echo '$SRC_DIR')");
+
+-        if let Some(virtual_rust_source_base_dir) =
+-            option_env!("CFG_VIRTUAL_RUST_SOURCE_BASE_DIR").map(PathBuf::from)
+-        {
+-            normalize_path(&virtual_rust_source_base_dir.join("library"), "$(echo '$SRC_DIR')");
+-        }
++        normalize_path(&Path::new("$(cd ../build_sysroot/sysroot_src/library; pwd)"), "$(echo '$SRC_DIR')");
+
+         // Paths into the build directory
+         let test_build_dir = &self.config.build_base;
 EOF
 
 cat > config.toml <<EOF
+changelog-seen = 2
+
 [llvm]
 ninja = false
 

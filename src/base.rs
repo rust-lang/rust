@@ -4,6 +4,7 @@ use rustc_ast::InlineAsmOptions;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 
 use indexmap::IndexSet;
 
@@ -258,7 +259,9 @@ fn codegen_fn_content(fx: &mut FunctionCx<'_, '_, '_>) {
 
         if fx.clif_comments.enabled() {
             let mut terminator_head = "\n".to_string();
-            bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+            with_no_trimmed_paths!({
+                bb_data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
+            });
             let inst = fx.bcx.func.layout.last_inst(block).unwrap();
             fx.add_comment(inst, terminator_head);
         }

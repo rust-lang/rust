@@ -72,15 +72,7 @@ rm -r src/test/run-make/emit-named-files # requires full --emit support
 
 rm -r src/test/run-pass-valgrind/unsized-locals
 
-rm src/test/ui/json-bom-plus-crlf-multifile.rs # differing warning
-rm src/test/ui/json-bom-plus-crlf.rs # same
 rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # same
-rm src/test/ui/match/issue-82392.rs # differing error
-rm src/test/ui/consts/min_const_fn/address_of_const.rs # same
-rm src/test/ui/consts/issue-miri-1910.rs # same
-rm src/test/ui/generic-associated-types/bugs/issue-80626.rs # same
-rm src/test/ui/generic-associated-types/bugs/issue-89008.rs # same
-rm src/test/ui/chalkify/bugs/async.rs # same
 rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition

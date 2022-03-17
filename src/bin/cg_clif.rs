@@ -13,7 +13,7 @@ use std::panic;
 
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_interface::interface;
-use rustc_session::config::ErrorOutputType;
+use rustc_session::config::{ErrorOutputType, TrimmedDefPaths};
 use rustc_session::early_error;
 use rustc_target::spec::PanicStrategy;
 
@@ -55,6 +55,8 @@ impl rustc_driver::Callbacks for CraneliftPassesCallbacks {
         config.opts.maybe_sysroot = Some(config.opts.maybe_sysroot.clone().unwrap_or_else(|| {
             std::env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_owned()
         }));
+
+        config.opts.trimmed_def_paths = TrimmedDefPaths::GoodPath;
     }
 }
 
