@@ -329,7 +329,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             | "simd_ceil"
             | "simd_floor"
             | "simd_round"
-            | "simd_trunc" => {
+            | "simd_trunc"
+            | "simd_fsqrt" => {
                 let &[ref op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
@@ -342,6 +343,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Floor,
                     Round,
                     Trunc,
+                    Sqrt,
                 }
                 #[derive(Copy, Clone)]
                 enum Op {
@@ -356,6 +358,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "simd_floor" => Op::HostOp(HostFloatOp::Floor),
                     "simd_round" => Op::HostOp(HostFloatOp::Round),
                     "simd_trunc" => Op::HostOp(HostFloatOp::Trunc),
+                    "simd_fsqrt" => Op::HostOp(HostFloatOp::Sqrt),
                     _ => unreachable!(),
                 };
 
@@ -388,6 +391,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                         HostFloatOp::Floor => f.floor(),
                                         HostFloatOp::Round => f.round(),
                                         HostFloatOp::Trunc => f.trunc(),
+                                        HostFloatOp::Sqrt => f.sqrt(),
                                     };
                                     Scalar::from_u32(res.to_bits())
                                 }
@@ -398,6 +402,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                         HostFloatOp::Floor => f.floor(),
                                         HostFloatOp::Round => f.round(),
                                         HostFloatOp::Trunc => f.trunc(),
+                                        HostFloatOp::Sqrt => f.sqrt(),
                                     };
                                     Scalar::from_u64(res.to_bits())
                                 }
@@ -504,6 +509,36 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Op::SaturatingOp(mir_op) => {
                             this.saturating_arith(mir_op, &left, &right)?
                         }
+                    };
+                    this.write_scalar(val, &dest.into())?;
+                }
+            }
+            "simd_fma" => {
+                let &[ref a, ref b, ref c] = check_arg_count(args)?;
+                let (a, a_len) = this.operand_to_simd(a)?;
+                let (b, b_len) = this.operand_to_simd(b)?;
+                let (c, c_len) = this.operand_to_simd(c)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, a_len);
+                assert_eq!(dest_len, b_len);
+                assert_eq!(dest_len, c_len);
+
+                for i in 0..dest_len {
+                    let a = this.read_immediate(&this.mplace_index(&a, i)?.into())?.to_scalar()?;
+                    let b = this.read_immediate(&this.mplace_index(&b, i)?.into())?.to_scalar()?;
+                    let c = this.read_immediate(&this.mplace_index(&c, i)?.into())?.to_scalar()?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    // Works for f32 and f64.
+                    let ty::Float(float_ty) = dest.layout.ty.kind() else {
+                        bug!("{} operand is not a float", intrinsic_name)
+                    };
+                    let val = match float_ty {
+                        FloatTy::F32 =>
+                            Scalar::from_f32(a.to_f32()?.mul_add(b.to_f32()?, c.to_f32()?).value),
+                        FloatTy::F64 =>
+                            Scalar::from_f64(a.to_f64()?.mul_add(b.to_f64()?, c.to_f64()?).value),
                     };
                     this.write_scalar(val, &dest.into())?;
                 }
