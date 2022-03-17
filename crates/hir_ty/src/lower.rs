@@ -712,7 +712,7 @@ impl<'a> TyLoweringContext<'a> {
                 .filter(|arg| !matches!(arg, GenericArg::Lifetime(_)))
                 .skip(skip)
                 .take(expected_num)
-                .zip(def_generics.iter_id().skip(skip))
+                .zip(def_generics.iter_id().skip(parent_params + skip))
             {
                 if let Some(x) = generic_arg_to_chalk(
                     self.db,
