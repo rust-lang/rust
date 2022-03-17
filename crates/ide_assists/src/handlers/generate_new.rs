@@ -23,6 +23,7 @@ use crate::{
 // }
 //
 // impl<T: Clone> Ctx<T> {
+//     #[must_use]
 //     fn $0new(data: T) -> Self { Self { data } }
 // }
 // ```
@@ -54,7 +55,13 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext) -> Option<()>
             .format(", ");
         let fields = field_list.fields().filter_map(|f| f.name()).format(", ");
 
-        format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
+        format_to!(
+            buf,
+            "    #[must_use]\n    {}fn new({}) -> Self {{ Self {{ {} }} }}",
+            vis,
+            params,
+            fields
+        );
 
         let start_offset = impl_def
             .and_then(|impl_def| find_impl_block_start(impl_def, &mut buf))
@@ -90,6 +97,7 @@ struct Foo {$0}
 struct Foo {}
 
 impl Foo {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -103,6 +111,7 @@ struct Foo<T: Clone> {$0}
 struct Foo<T: Clone> {}
 
 impl<T: Clone> Foo<T> {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -116,6 +125,7 @@ struct Foo<'a, T: Foo<'a>> {$0}
 struct Foo<'a, T: Foo<'a>> {}
 
 impl<'a, T: Foo<'a>> Foo<'a, T> {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -129,6 +139,7 @@ struct Foo { baz: String $0}
 struct Foo { baz: String }
 
 impl Foo {
+    #[must_use]
     fn $0new(baz: String) -> Self { Self { baz } }
 }
 "#,
@@ -142,6 +153,7 @@ struct Foo { baz: String, qux: Vec<i32> $0}
 struct Foo { baz: String, qux: Vec<i32> }
 
 impl Foo {
+    #[must_use]
     fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
 }
 "#,
@@ -159,6 +171,7 @@ struct Foo { pub baz: String, pub qux: Vec<i32> $0}
 struct Foo { pub baz: String, pub qux: Vec<i32> }
 
 impl Foo {
+    #[must_use]
     fn $0new(baz: String, qux: Vec<i32>) -> Self { Self { baz, qux } }
 }
 "#,
@@ -178,6 +191,7 @@ impl Foo {}
 struct Foo {}
 
 impl Foo {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -195,6 +209,7 @@ impl Foo {
 struct Foo {}
 
 impl Foo {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 
     fn qux(&self) {}
@@ -218,6 +233,7 @@ impl Foo {
 struct Foo {}
 
 impl Foo {
+    #[must_use]
     fn $0new() -> Self { Self {  } }
 
     fn qux(&self) {}
@@ -240,6 +256,7 @@ pub struct Foo {$0}
 pub struct Foo {}
 
 impl Foo {
+    #[must_use]
     pub fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -253,6 +270,7 @@ pub(crate) struct Foo {$0}
 pub(crate) struct Foo {}
 
 impl Foo {
+    #[must_use]
     pub(crate) fn $0new() -> Self { Self {  } }
 }
 "#,
@@ -348,6 +366,7 @@ pub struct Source<T> {
 }
 
 impl<T> Source<T> {
+    #[must_use]
     pub fn $0new(file_id: HirFileId, ast: T) -> Self { Self { file_id, ast } }
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
