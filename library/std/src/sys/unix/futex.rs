@@ -66,6 +66,18 @@ pub fn futex_wake(futex: &AtomicI32) {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn futex_wake_all(futex: &AtomicI32) {
+    unsafe {
+        libc::syscall(
+            libc::SYS_futex,
+            futex as *const AtomicI32,
+            libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
+            i32::MAX,
+        );
+    }
+}
+
 #[cfg(target_os = "emscripten")]
 pub fn futex_wake(futex: &AtomicI32) {
     extern "C" {
