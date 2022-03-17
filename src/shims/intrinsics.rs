@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::iter;
 
 use log::trace;
@@ -5,10 +6,10 @@ use log::trace;
 use rustc_apfloat::{Float, Round};
 use rustc_middle::ty::layout::{HasParamEnv, IntegerExt, LayoutOf};
 use rustc_middle::{mir, mir::BinOp, ty, ty::FloatTy};
-use rustc_target::abi::{Align, Integer};
+use rustc_target::abi::{Align, Endian, HasDataLayout, Integer, Size};
 
 use crate::*;
-use helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool};
+use helpers::check_arg_count;
 
 pub enum AtomicOp {
     MirOp(mir::BinOp, bool),
@@ -663,6 +664,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.write_immediate(*val, &dest.into())?;
                 }
             }
+            "simd_select_bitmask" => {
+                let &[ref mask, ref yes, ref no] = check_arg_count(args)?;
+                let (yes, yes_len) = this.operand_to_simd(yes)?;
+                let (no, no_len) = this.operand_to_simd(no)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert!(mask.layout.ty.is_integral());
+                assert_eq!(dest_len.max(8), mask.layout.size.bits());
+                assert!(dest_len <= 64);
+                assert_eq!(dest_len, yes_len);
+                assert_eq!(dest_len, no_len);
+
+                let mask: u64 = this
+                    .read_scalar(mask)?
+                    .check_init()?
+                    .to_bits(mask.layout.size)?
+                    .try_into()
+                    .unwrap();
+                for i in 0..dest_len {
+                    let mask =
+                        mask & (1 << simd_bitmask_index(i, dest_len, this.data_layout().endian));
+                    let yes = this.read_immediate(&this.mplace_index(&yes, i)?.into())?;
+                    let no = this.read_immediate(&this.mplace_index(&no, i)?.into())?;
+                    let dest = this.mplace_index(&dest, i)?;
+
+                    let val = if mask != 0 { yes } else { no };
+                    this.write_immediate(*val, &dest.into())?;
+                }
+            }
             #[rustfmt::skip]
             "simd_cast" | "simd_as" => {
                 let &[ref op] = check_arg_count(args)?;
@@ -786,6 +816,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         this.write_immediate(*value, &place.into())?;
                     }
                 }
+            }
+            "simd_bitmask" => {
+                let &[ref op] = check_arg_count(args)?;
+                let (op, op_len) = this.operand_to_simd(op)?;
+
+                assert!(dest.layout.ty.is_integral());
+                assert_eq!(op_len.max(8), dest.layout.size.bits());
+                assert!(op_len <= 64);
+
+                let mut res = 0u64;
+                for i in 0..op_len {
+                    let op = this.read_immediate(&this.mplace_index(&op, i)?.into())?;
+                    if simd_element_to_bool(op)? {
+                        res |= 1 << simd_bitmask_index(i, op_len, this.data_layout().endian);
+                    }
+                }
+                this.write_int(res, dest)?;
             }
 
             // Atomic operations
@@ -1306,4 +1353,27 @@ fn fmin_op<'tcx>(
         FloatTy::F32 => Scalar::from_f32(left.to_f32()?.min(right.to_f32()?)),
         FloatTy::F64 => Scalar::from_f64(left.to_f64()?.min(right.to_f64()?)),
     })
+}
+
+fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Tag> {
+    // SIMD uses all-1 as pattern for "true"
+    let val = if b { -1 } else { 0 };
+    Scalar::from_int(val, size)
+}
+
+fn simd_element_to_bool<'tcx>(elem: ImmTy<'tcx, Tag>) -> InterpResult<'tcx, bool> {
+    let val = elem.to_scalar()?.to_int(elem.layout.size)?;
+    Ok(match val {
+        0 => false,
+        -1 => true,
+        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
+    })
+}
+
+fn simd_bitmask_index(idx: u64, len: u64, endianess: Endian) -> u64 {
+    assert!(idx < len);
+    match endianess {
+        Endian::Little => idx,
+        Endian::Big => len.max(8) - 1 - idx, // reverse order of bits
+    }
 }
