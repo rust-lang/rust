@@ -15,18 +15,25 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
+    /// # let fallback = "fallback";
     /// // Result
+    /// # type Error = &'static str;
+    /// # let result: Result<&str, Error> = Err("error");
     /// let port = result.or::<Error>(Ok(fallback)).unwrap();
     ///
     /// // Option
+    /// # let option: Option<&str> = None;
     /// let value = option.or(Some(fallback)).unwrap();
     /// ```
     /// Use instead:
     /// ```rust
+    /// # let fallback = "fallback";
     /// // Result
+    /// # let result: Result<&str, &str> = Err("error");
     /// let port = result.unwrap_or(fallback);
     ///
     /// // Option
+    /// # let option: Option<&str> = None;
     /// let value = option.unwrap_or(fallback);
     /// ```
     #[clippy::version = "1.61.0"]
