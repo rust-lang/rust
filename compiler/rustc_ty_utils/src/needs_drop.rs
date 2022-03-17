@@ -181,12 +181,12 @@ enum DtorType {
     /// "significant" / "insignificant".
     Insignificant,
 
-    /// Type has a `Drop` implentation.
+    /// Type has a `Drop` implantation.
     Significant,
 }
 
 // This is a helper function for `adt_drop_tys` and `adt_significant_drop_tys`.
-// Depending on the implentation of `adt_has_dtor`, it is used to check if the
+// Depending on the implantation of `adt_has_dtor`, it is used to check if the
 // ADT has a destructor or if the ADT only has a significant destructor. For
 // understanding significant destructor look at `adt_significant_drop_tys`.
 fn drop_tys_helper<'tcx>(
@@ -295,7 +295,7 @@ fn adt_drop_tys<'tcx>(
         .map(|components| tcx.intern_type_list(&components))
 }
 // If `def_id` refers to a generic ADT, the queries above and below act as if they had been handed
-// a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitue the generic parameters
+// a `tcx.make_ty(def, identity_substs)` and as such it is legal to substitute the generic parameters
 // of the ADT into the outputted `ty`s.
 fn adt_significant_drop_tys(
     tcx: TyCtxt<'_>,

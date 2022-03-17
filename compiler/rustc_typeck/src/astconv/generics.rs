@@ -429,7 +429,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let param_counts = gen_params.own_counts();
 
         // Subtracting from param count to ensure type params synthesized from `impl Trait`
-        // cannot be explictly specified even with `explicit_generic_args_with_impl_trait`
+        // cannot be explicitly specified even with `explicit_generic_args_with_impl_trait`
         // feature enabled.
         let synth_type_param_count = if tcx.features().explicit_generic_args_with_impl_trait {
             gen_params

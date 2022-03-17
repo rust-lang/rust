@@ -538,7 +538,7 @@ fn prepare_vtable_segments<'tcx, T>(
 
     // the main traversal loop:
     // basically we want to cut the inheritance directed graph into a few non-overlapping slices of nodes
-    // that each node is emited after all its descendents have been emitted.
+    // that each node is emitted after all its descendents have been emitted.
     // so we convert the directed graph into a tree by skipping all previously visted nodes using a visited set.
     // this is done on the fly.
     // Each loop run emits a slice - it starts by find a "childless" unvisited node, backtracking upwards, and it
@@ -553,10 +553,10 @@ fn prepare_vtable_segments<'tcx, T>(
     // Starting point 0 stack [D]
     // Loop run #0: Stack after diving in is [D B A], A is "childless"
     // after this point, all newly visited nodes won't have a vtable that equals to a prefix of this one.
-    // Loop run #0: Emiting the slice [B A] (in reverse order), B has a next-sibling node, so this slice stops here.
+    // Loop run #0: Emitting the slice [B A] (in reverse order), B has a next-sibling node, so this slice stops here.
     // Loop run #0: Stack after exiting out is [D C], C is the next starting point.
     // Loop run #1: Stack after diving in is [D C], C is "childless", since its child A is skipped(already emitted).
-    // Loop run #1: Emiting the slice [D C] (in reverse order). No one has a next-sibling node.
+    // Loop run #1: Emitting the slice [D C] (in reverse order). No one has a next-sibling node.
     // Loop run #1: Stack after exiting out is []. Now the function exits.
 
     loop {

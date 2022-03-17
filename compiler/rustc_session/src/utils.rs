@@ -29,14 +29,14 @@ pub enum NativeLibKind {
     /// Dynamic library (e.g. `libfoo.so` on Linux)
     /// or an import library corresponding to a dynamic library (e.g. `foo.lib` on Windows/MSVC).
     Dylib {
-        /// Whether the dynamic library will be linked only if it satifies some undefined symbols
+        /// Whether the dynamic library will be linked only if it satisfies some undefined symbols
         as_needed: Option<bool>,
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
     RawDylib,
     /// A macOS-specific kind of dynamic libraries.
     Framework {
-        /// Whether the framework will be linked only if it satifies some undefined symbols
+        /// Whether the framework will be linked only if it satisfies some undefined symbols
         as_needed: Option<bool>,
     },
     /// The library kind wasn't specified, `Dylib` is currently used as a default.

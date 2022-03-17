@@ -3695,7 +3695,7 @@ declare_lint! {
     /// ### Explanation
     ///
     /// A duplicated attribute may erroneously originate from a copy-paste and the effect of it
-    /// being duplicated may not be obvious or desireable.
+    /// being duplicated may not be obvious or desirable.
     ///
     /// For instance, doubling the `#[test]` attributes registers the test to be run twice with no
     /// change to its environment.

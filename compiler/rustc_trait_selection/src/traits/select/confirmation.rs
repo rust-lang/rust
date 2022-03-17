@@ -719,7 +719,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // TraitA+Kx+'a -> TraitB+Ky+'b (trait upcasting coercion).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
-                // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
+                // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let principal_a = data_a.principal().unwrap();
                 source_trait_ref = principal_a.with_self_ty(tcx, source);
                 upcast_trait_ref = util::supertraits(tcx, source_trait_ref).nth(idx).unwrap();
@@ -823,7 +823,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
             (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
-                // We already checked the compatiblity of auto traits within `assemble_candidates_for_unsizing`.
+                // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
                     .principal()
                     .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
@@ -1084,7 +1084,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::Foreign(_) => {}
 
                 // These types are built-in, so we can fast-track by registering
-                // nested predicates for their constituient type(s)
+                // nested predicates for their constituent type(s)
                 ty::Array(ty, _) | ty::Slice(ty) => {
                     stack.push(ty);
                 }

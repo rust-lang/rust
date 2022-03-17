@@ -13,7 +13,7 @@ crate trait FormatRenderer<'tcx>: Sized {
     /// Gives a description of the renderer. Used for performance profiling.
     fn descr() -> &'static str;
 
-    /// Whether to call `item` recursivly for modules
+    /// Whether to call `item` recursively for modules
     ///
     /// This is true for html, and false for json. See #80664
     const RUN_ON_MODULE: bool;

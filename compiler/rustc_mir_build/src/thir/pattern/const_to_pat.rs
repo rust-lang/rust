@@ -527,7 +527,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
                 PatKind::Constant { value: cv }
             }
-            // FIXME: these can have very suprising behaviour where optimization levels or other
+            // FIXME: these can have very surprising behaviour where optimization levels or other
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
             ty::FnPtr(..) | ty::RawPtr(..) => {

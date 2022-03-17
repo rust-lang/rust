@@ -132,7 +132,7 @@ fn check_cfgs(
             continue;
         }
 
-        let preceeded_by_doc_comment = {
+        let preceded_by_doc_comment = {
             let pre_contents = &contents[..idx];
             let pre_newline = pre_contents.rfind('\n');
             let pre_doc_comment = pre_contents.rfind("///");
@@ -143,7 +143,7 @@ fn check_cfgs(
             }
         };
 
-        if preceeded_by_doc_comment {
+        if preceded_by_doc_comment {
             continue;
         }
 
