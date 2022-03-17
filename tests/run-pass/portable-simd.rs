@@ -187,6 +187,21 @@ fn simd_mask() {
     let intmask = Mask::from_int(i32x4::from_array([0, -1, 0, 0]));
     assert_eq!(intmask, Mask::from_array([false, true, false, false]));
     assert_eq!(intmask.to_array(), [false, true, false, false]);
+
+    let values = [
+        true, false, false, true, false, false, true, false, true, true, false, false, false, true,
+        false, true,
+    ];
+    let mask = Mask::<i64, 16>::from_array(values);
+    let bitmask = mask.to_bitmask();
+    assert_eq!(bitmask, 0b1010001101001001);
+    assert_eq!(Mask::<i64, 16>::from_bitmask(bitmask), mask);
+
+    let values = [false, false, false, true];
+    let mask = Mask::<i64, 4>::from_array(values);
+    let bitmask = mask.to_bitmask();
+    // FIXME fails until https://github.com/rust-lang/portable-simd/pull/267 lands: assert_eq!(bitmask, 0b1000);
+    assert_eq!(Mask::<i64, 4>::from_bitmask(bitmask), mask);
 }
 
 fn simd_cast() {

@@ -775,18 +775,3 @@ pub fn isolation_abort_error(name: &str) -> InterpResult<'static> {
         name,
     )))
 }
-
-pub fn bool_to_simd_element(b: bool, size: Size) -> Scalar<Tag> {
-    // SIMD uses all-1 as pattern for "true"
-    let val = if b { -1 } else { 0 };
-    Scalar::from_int(val, size)
-}
-
-pub fn simd_element_to_bool<'tcx>(elem: ImmTy<'tcx, Tag>) -> InterpResult<'tcx, bool> {
-    let val = elem.to_scalar()?.to_int(elem.layout.size)?;
-    Ok(match val {
-        0 => false,
-        -1 => true,
-        _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
-    })
-}
