@@ -46,7 +46,6 @@ rm src/test/ui/issues/issue-28950.rs # depends on stack size optimizations
 rm src/test/ui/codegen/init-large-type.rs # same
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm src/test/ui/issues/issue-33992.rs # unsupported linkages
-rm src/test/ui/issues/issue-51947.rs # same
 rm src/test/incremental/hashes/function_interfaces.rs # same
 rm src/test/incremental/hashes/statics.rs # same
 rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
@@ -63,7 +62,6 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 rm src/test/incremental/hashes/inline_asm.rs # inline asm
 rm src/test/incremental/issue-72386.rs # same
 rm src/test/incremental/lto.rs # requires lto
-rm src/test/incremental/dirty_clean.rs # TODO
 
 rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
 rm -r src/test/run-make/unstable-flag-required # same
@@ -72,12 +70,10 @@ rm -r src/test/run-make/emit-named-files # requires full --emit support
 
 rm -r src/test/run-pass-valgrind/unsized-locals
 
-rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # same
-rm src/test/ui/type-alias-impl-trait/cross_crate_ice*.rs # requires removed aux dep
+rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
 
 rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oom definition
 rm src/test/ui/cfg/cfg-panic.rs
-rm -r src/test/ui/hygiene/
 
 rm src/test/ui/mir/ssa-analysis-regression-50041.rs # uses old definition of Box
 
@@ -89,8 +85,6 @@ rm src/test/codegen-units/polymorphization/unused_type_parameters.rs # same
 rm -r src/test/run-make/fmt-write-bloat/ # tests an optimization
 rm src/test/ui/abi/mir/mir_codegen_calls_variadic.rs # requires float varargs
 rm src/test/ui/abi/variadic-ffi.rs # requires callee side vararg support
-
-rm src/test/ui/command/command-current-dir.rs # can't find libstd.so
 
 rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 
