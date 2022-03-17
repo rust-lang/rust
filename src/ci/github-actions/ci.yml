@@ -354,9 +354,6 @@ jobs:
           - name: dist-powerpc-linux
             <<: *job-linux-xl
 
-          - name: dist-powerpc64-linux
-            <<: *job-linux-xl
-
           - name: dist-powerpc64le-linux
             <<: *job-linux-xl
 
@@ -691,8 +688,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
+          - name: dist-powerpc64-linux
             <<: *job-linux-xl
 
   master:

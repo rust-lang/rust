@@ -207,9 +207,6 @@ jobs:
           - name: dist-powerpc-linux
             os: ubuntu-20.04-xl
             env: {}
-          - name: dist-powerpc64-linux
-            os: ubuntu-20.04-xl
-            env: {}
           - name: dist-powerpc64le-linux
             os: ubuntu-20.04-xl
             env: {}
@@ -558,7 +555,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: dist-powerpc64-linux
             os: ubuntu-20.04-xl
             env: {}
     timeout-minutes: 600
