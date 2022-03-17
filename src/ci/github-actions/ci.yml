@@ -276,25 +276,25 @@ defaults:
     shell: bash
 
 jobs:
-  pr:
-    <<: *base-ci-job
-    name: PR
-    env:
-      <<: [*shared-ci-variables, *public-variables]
-    if: github.event_name == 'pull_request'
-    strategy:
-      matrix:
-        include:
-          - name: mingw-check
-            <<: *job-linux-xl
+  # pr:
+  #   <<: *base-ci-job
+  #   name: PR
+  #   env:
+  #     <<: [*shared-ci-variables, *public-variables]
+  #   if: github.event_name == 'pull_request'
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: mingw-check
+  #           <<: *job-linux-xl
 
-          - name: x86_64-gnu-llvm-12
-            <<: *job-linux-xl
+  #         - name: x86_64-gnu-llvm-12
+  #           <<: *job-linux-xl
 
-          - name: x86_64-gnu-tools
-            env:
-              CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            <<: *job-linux-xl
+  #         - name: x86_64-gnu-tools
+  #           env:
+  #             CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
+  #           <<: *job-linux-xl
 
   auto:
     <<: *base-ci-job
@@ -691,8 +691,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
+          - name: dist-powerpc64-linux
             <<: *job-linux-xl
 
   master:
