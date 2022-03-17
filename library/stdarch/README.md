@@ -15,4 +15,4 @@ This repository contains two main crates:
   standard library run-time CPU feature detection.
 
 The `std::simd` component now lives in the
-[`packed_simd`](https://github.com/rust-lang-nursery/packed_simd) crate.
+[`packed_simd_2`](https://github.com/rust-lang/packed_simd) crate.

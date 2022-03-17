@@ -12,7 +12,7 @@ repository = "https://github.com/rust-lang/stdarch"
 readme = "README.md"
 keywords = ["std", "run-time", "feature", "detection"]
 categories = ["hardware-support"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [badges]
