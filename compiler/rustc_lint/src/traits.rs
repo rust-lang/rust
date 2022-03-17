@@ -1,6 +1,8 @@
 use crate::LateContext;
 use crate::LateLintPass;
 use crate::LintContext;
+use hir::GenericBound;
+use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::fluent;
 use rustc_hir as hir;
 use rustc_span::symbol::sym;
@@ -128,6 +130,47 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
                         .emit();
                 });
+            }
+        }
+    }
+}
+
+declare_lint! {
+    pub DUP_TRAIT_BOUNDS,
+    Deny,
+    "duplicate trait bounds"
+}
+
+declare_lint_pass!(
+    DuplicateTraitBounds => [DUP_TRAIT_BOUNDS]
+);
+
+impl<'tcx> LateLintPass<'tcx> for DuplicateTraitBounds {
+    fn check_item(&mut self, cx: &LateContext<'_>, item: &'tcx hir::Item<'tcx>) {
+        let bounds: &[hir::GenericBound<'_>] = match &item.kind {
+            hir::ItemKind::Trait(_, _, _, bounds, _) => bounds,
+            hir::ItemKind::TraitAlias(_, bounds) => bounds,
+            _ => return,
+        };
+
+        let mut set = FxHashSet::default();
+        for bound in bounds.into_iter() {
+            match bound {
+                GenericBound::Trait(polytraitref, _) => {
+                    let Some(did) = polytraitref.trait_ref.trait_def_id() else { continue; };
+                    // If inserting the trait bound into the set returns `false`,
+                    // there is a duplicate.
+                    if !set.insert(did) {
+                        let span = polytraitref.span;
+                        cx.struct_span_lint(DUP_TRAIT_BOUNDS, span, |lint| {
+                            let msg = format!("Duplicate trait bound");
+                            lint.build(&msg)
+                                .span_help(span, "Remove this duplicate trait bound")
+                                .emit();
+                        });
+                    };
+                }
+                _ => continue,
             }
         }
     }

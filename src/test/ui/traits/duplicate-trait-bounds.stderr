@@ -1,0 +1,15 @@
+error: Duplicate trait bound
+  --> $DIR/duplicate-trait-bounds.rs:8:56
+   |
+LL |     DirectedGraph + WithStartNode + WithPredecessors + WithStartNode + WithSuccessors + WithNumNodes
+   |                                                        ^^^^^^^^^^^^^
+   |
+   = note: `#[deny(dup_trait_bounds)]` on by default
+help: Remove this duplicate trait bound
+  --> $DIR/duplicate-trait-bounds.rs:8:56
+   |
+LL |     DirectedGraph + WithStartNode + WithPredecessors + WithStartNode + WithSuccessors + WithNumNodes
+   |                                                        ^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

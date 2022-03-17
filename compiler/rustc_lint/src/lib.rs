@@ -209,6 +209,7 @@ macro_rules! late_lint_mod_passes {
                 UnstableFeatures: UnstableFeatures,
                 ArrayIntoIter: ArrayIntoIter::default(),
                 DropTraitConstraints: DropTraitConstraints,
+                DuplicateTraitBounds: DuplicateTraitBounds,
                 TemporaryCStringAsPtr: TemporaryCStringAsPtr,
                 NonPanicFmt: NonPanicFmt,
                 NoopMethodCall: NoopMethodCall,
