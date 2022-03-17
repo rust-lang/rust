@@ -2729,22 +2729,22 @@ public:
           if (auto CI = dyn_cast<CastInst>(val)) {
             if (auto PT = dyn_cast<PointerType>(CI->getSrcTy())) {
               auto ET = PT->getPointerElementType();
+              while (1) {
+                if (auto ST = dyn_cast<StructType>(ET)) {
+                  if (ST->getNumElements()) {
+                    ET = ST->getElementType(0);
+                    continue;
+                  }
+                }
+                if (auto AT = dyn_cast<ArrayType>(ET)) {
+                  ET = AT->getElementType();
+                  continue;
+                }
+                break;
+              }
               if (ET->isFPOrFPVectorTy()) {
                 vd = TypeTree(ConcreteType(ET->getScalarType())).Only(0);
                 goto known;
-              }
-              if (ET->isIntOrIntVectorTy()) {
-                vd = TypeTree(BaseType::Integer).Only(0);
-                goto known;
-              }
-              if (ET->isPointerTy()) {
-                vd = TypeTree(BaseType::Pointer).Only(0);
-                goto known;
-              }
-              while (auto ST = dyn_cast<StructType>(ET)) {
-                if (!ST->getNumElements())
-                  break;
-                ET = ST->getElementType(0);
               }
               if (ET->isPointerTy()) {
                 vd = TypeTree(BaseType::Pointer).Only(0);

@@ -203,7 +203,8 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       this->mode == DerivativeMode::ReverseModeCombined)
     if (auto inst = dyn_cast<Instruction>(val)) {
       if (inst->getParent()->getParent() == newFunc) {
-        if (unwrapMode == UnwrapMode::LegalFullUnwrap) {
+        if (unwrapMode == UnwrapMode::LegalFullUnwrap &&
+            this->mode != DerivativeMode::ReverseModeCombined) {
           // TODO this isOriginal is a bottleneck, the new mapping of
           // knownRecompute should be precomputed and maintained to lookup
           // instead
