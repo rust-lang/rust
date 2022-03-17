@@ -19,6 +19,7 @@ pub fn main() {
         bar();
         baz();
         inner();
+        implicit_fp();
     }
 }
 
@@ -26,10 +27,12 @@ pub fn main() {
 //~^ ERROR must all be either enabled or disabled together
 unsafe fn foo() {}
 
-
 #[target_feature(enable = "paca,pacg")]
 unsafe fn bar() {}
 
 #[target_feature(enable = "paca")]
 #[target_feature(enable = "pacg")]
 unsafe fn baz() {}
+
+#[target_feature(enable = "neon")]
+unsafe fn implicit_fp() {}

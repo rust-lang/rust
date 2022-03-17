@@ -217,8 +217,15 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
 // ensure only valid combinations are allowed.
 pub fn check_tied_features(
     sess: &Session,
-    features: &FxHashMap<&str, bool>,
+    features: &mut FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
+    // neon implies fp, so we don't need to error in this case.
+    if sess.target.arch == "aarch64" && !features.contains_key("fp") {
+        if let Some(neon) = features.get("neon").copied() {
+            features.insert("fp", neon);
+        }
+    }
+
     for tied in tied_target_features(sess) {
         // Tied features must be set to the same value, or not set at all
         let mut tied_iter = tied.iter();
@@ -487,8 +494,8 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
 
     if diagnostics {
         // FIXME(nagisa): figure out how to not allocate a full hashset here.
-        let featmap = feats.iter().map(|&(flag, feat)| (feat, flag == '+')).collect();
-        if let Some(f) = check_tied_features(sess, &featmap) {
+        let mut featmap = feats.iter().map(|&(flag, feat)| (feat, flag == '+')).collect();
+        if let Some(f) = check_tied_features(sess, &mut featmap) {
             sess.err(&format!(
                 "target features {} must all be enabled or disabled together",
                 f.join(", ")

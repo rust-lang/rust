@@ -1,4 +1,4 @@
-// revisions: one two three
+// revisions: one two three four five
 // compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 // needs-llvm-components: aarch64
 //
@@ -11,6 +11,8 @@
 // [three] compile-flags: -C target-feature=+paca,+pacg,-paca
 // [four] build-pass
 // [four] compile-flags: -C target-feature=-paca,+pacg -C target-feature=+paca
+// [five] build-pass
+// [five] compile-flags: -C target-feature=+neon
 #![feature(no_core, lang_items)]
 #![no_core]
 

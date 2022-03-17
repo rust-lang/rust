@@ -325,7 +325,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
 
     if let Some(f) = llvm_util::check_tied_features(
         cx.tcx.sess,
-        &function_features.iter().map(|f| (*f, true)).collect(),
+        &mut function_features.iter().map(|f| (*f, true)).collect(),
     ) {
         let span = cx
             .tcx
