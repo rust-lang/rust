@@ -1,7 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::{path_to_local, search_same, SpanlessEq, SpanlessHash};
+use core::cmp::Ordering;
 use core::iter;
+use core::slice;
 use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -36,7 +38,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
             normalized_pats[i + 1..]
                 .iter()
                 .enumerate()
-                .find_map(|(j, other)| pat.can_also_match(other).then(|| i + 1 + j))
+                .find_map(|(j, other)| pat.has_overlapping_values(other).then(|| i + 1 + j))
                 .unwrap_or(normalized_pats.len())
         })
         .collect();
@@ -52,7 +54,9 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                 .rev()
                 .zip(forwards_blocking_idxs[..i].iter().copied().rev())
                 .skip_while(|&(_, forward_block)| forward_block > i)
-                .find_map(|((j, other), forward_block)| (forward_block == i || pat.can_also_match(other)).then(|| j))
+                .find_map(|((j, other), forward_block)| {
+                    (forward_block == i || pat.has_overlapping_values(other)).then(|| j)
+                })
                 .unwrap_or(0)
         })
         .collect();
@@ -159,6 +163,10 @@ enum NormalizedPat<'a> {
     LitInt(u128),
     LitBool(bool),
     Range(PatRange),
+    /// A slice pattern. If the second value is `None`, then this matches an exact size. Otherwise
+    /// the first value contains everything before the `..` wildcard pattern, and the second value
+    /// contains everything afterwards. Note that either side, or both sides, may contain zero
+    /// patterns.
     Slice(&'a [Self], Option<&'a [Self]>),
 }
 
@@ -178,23 +186,43 @@ impl PatRange {
     }
 
     fn overlaps(&self, other: &Self) -> bool {
-        !(self.is_empty() || other.is_empty())
-            && match self.bounds {
-                RangeEnd::Included => self.end >= other.start,
-                RangeEnd::Excluded => self.end > other.start,
-            }
-            && match other.bounds {
-                RangeEnd::Included => self.start <= other.end,
-                RangeEnd::Excluded => self.start < other.end,
-            }
+        // Note: Empty ranges are impossible, so this is correct even though it would return true if an
+        // empty exclusive range were to reside within an inclusive range.
+        (match self.bounds {
+            RangeEnd::Included => self.end >= other.start,
+            RangeEnd::Excluded => self.end > other.start,
+        } && match other.bounds {
+            RangeEnd::Included => self.start <= other.end,
+            RangeEnd::Excluded => self.start < other.end,
+        })
     }
+}
 
-    fn is_empty(&self) -> bool {
-        match self.bounds {
-            RangeEnd::Included => false,
-            RangeEnd::Excluded => self.start == self.end,
+/// Iterates over the pairs of fields with matching names.
+fn iter_matching_struct_fields<'a>(
+    left: &'a [(Symbol, NormalizedPat<'a>)],
+    right: &'a [(Symbol, NormalizedPat<'a>)],
+) -> impl Iterator<Item = (&'a NormalizedPat<'a>, &'a NormalizedPat<'a>)> + 'a {
+    struct Iter<'a>(
+        slice::Iter<'a, (Symbol, NormalizedPat<'a>)>,
+        slice::Iter<'a, (Symbol, NormalizedPat<'a>)>,
+    );
+    impl<'a> Iterator for Iter<'a> {
+        type Item = (&'a NormalizedPat<'a>, &'a NormalizedPat<'a>);
+        fn next(&mut self) -> Option<Self::Item> {
+            // Note: all the fields in each slice are sorted by symbol value.
+            let mut left = self.0.next()?;
+            let mut right = self.1.next()?;
+            loop {
+                match left.0.cmp(&right.0) {
+                    Ordering::Equal => return Some((&left.1, &right.1)),
+                    Ordering::Less => left = self.0.next()?,
+                    Ordering::Greater => right = self.1.next()?,
+                }
+            }
         }
     }
+    Iter(left.iter(), right.iter())
 }
 
 #[allow(clippy::similar_names)]
@@ -259,6 +287,7 @@ impl<'a> NormalizedPat<'a> {
                 Self::Tuple(None, pats)
             },
             PatKind::Lit(e) => match &e.kind {
+                // TODO: Handle negative integers. They're currently treated as a wild match.
                 ExprKind::Lit(lit) => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
                     LitKind::ByteStr(ref bytes) => Self::LitBytes(&**bytes),
@@ -271,6 +300,7 @@ impl<'a> NormalizedPat<'a> {
                 _ => Self::Wild,
             },
             PatKind::Range(start, end, bounds) => {
+                // TODO: Handle negative integers. They're currently treated as a wild match.
                 let start = match start {
                     None => 0,
                     Some(e) => match &e.kind {
@@ -306,42 +336,17 @@ impl<'a> NormalizedPat<'a> {
 
     /// Checks if two patterns overlap in the values they can match assuming they are for the same
     /// type.
-    fn can_also_match(&self, other: &Self) -> bool {
+    fn has_overlapping_values(&self, other: &Self) -> bool {
         match (*self, *other) {
             (Self::Wild, _) | (_, Self::Wild) => true,
             (Self::Or(pats), ref other) | (ref other, Self::Or(pats)) => {
-                pats.iter().any(|pat| pat.can_also_match(other))
+                pats.iter().any(|pat| pat.has_overlapping_values(other))
             },
             (Self::Struct(lpath, lfields), Self::Struct(rpath, rfields)) => {
                 if lpath != rpath {
                     return false;
                 }
-                let mut rfields = rfields.iter();
-                let mut rfield = match rfields.next() {
-                    Some(x) => x,
-                    None => return true,
-                };
-                'outer: for lfield in lfields {
-                    loop {
-                        if lfield.0 < rfield.0 {
-                            continue 'outer;
-                        } else if lfield.0 > rfield.0 {
-                            rfield = match rfields.next() {
-                                Some(x) => x,
-                                None => return true,
-                            };
-                        } else if !lfield.1.can_also_match(&rfield.1) {
-                            return false;
-                        } else {
-                            rfield = match rfields.next() {
-                                Some(x) => x,
-                                None => return true,
-                            };
-                            continue 'outer;
-                        }
-                    }
-                }
-                true
+                iter_matching_struct_fields(lfields, rfields).all(|(lpat, rpat)| lpat.has_overlapping_values(rpat))
             },
             (Self::Tuple(lpath, lpats), Self::Tuple(rpath, rpats)) => {
                 if lpath != rpath {
@@ -350,7 +355,7 @@ impl<'a> NormalizedPat<'a> {
                 lpats
                     .iter()
                     .zip(rpats.iter())
-                    .all(|(lpat, rpat)| lpat.can_also_match(rpat))
+                    .all(|(lpat, rpat)| lpat.has_overlapping_values(rpat))
             },
             (Self::Path(x), Self::Path(y)) => x == y,
             (Self::LitStr(x), Self::LitStr(y)) => x == y,
@@ -360,10 +365,12 @@ impl<'a> NormalizedPat<'a> {
             (Self::Range(ref x), Self::Range(ref y)) => x.overlaps(y),
             (Self::Range(ref range), Self::LitInt(x)) | (Self::LitInt(x), Self::Range(ref range)) => range.contains(x),
             (Self::Slice(lpats, None), Self::Slice(rpats, None)) => {
-                lpats.len() == rpats.len() && lpats.iter().zip(rpats.iter()).all(|(x, y)| x.can_also_match(y))
+                lpats.len() == rpats.len() && lpats.iter().zip(rpats.iter()).all(|(x, y)| x.has_overlapping_values(y))
             },
             (Self::Slice(pats, None), Self::Slice(front, Some(back)))
             | (Self::Slice(front, Some(back)), Self::Slice(pats, None)) => {
+                // Here `pats` is an exact size match. If the combined lengths of `front` and `back` are greater
+                // then the minium length required will be greater than the length of `pats`.
                 if pats.len() < front.len() + back.len() {
                     return false;
                 }
@@ -371,15 +378,25 @@ impl<'a> NormalizedPat<'a> {
                     .iter()
                     .zip(front.iter())
                     .chain(pats[pats.len() - back.len()..].iter().zip(back.iter()))
-                    .all(|(x, y)| x.can_also_match(y))
+                    .all(|(x, y)| x.has_overlapping_values(y))
             },
             (Self::Slice(lfront, Some(lback)), Self::Slice(rfront, Some(rback))) => lfront
                 .iter()
                 .zip(rfront.iter())
                 .chain(lback.iter().rev().zip(rback.iter().rev()))
-                .all(|(x, y)| x.can_also_match(y)),
+                .all(|(x, y)| x.has_overlapping_values(y)),
 
-            // Todo: Lit* with Path, Range with Path, LitBytes with Slice, Slice with Slice
+            // Enums can mix unit variants with tuple/struct variants. These can never overlap.
+            (Self::Path(_), Self::Tuple(..) | Self::Struct(..))
+            | (Self::Tuple(..) | Self::Struct(..), Self::Path(_)) => false,
+
+            // Tuples can be matched like a struct.
+            (Self::Tuple(x, _), Self::Struct(y, _)) | (Self::Struct(x, _), Self::Tuple(y, _)) => {
+                // TODO: check fields here.
+                x == y
+            },
+
+            // TODO: Lit* with Path, Range with Path, LitBytes with Slice
             _ => true,
         }
     }

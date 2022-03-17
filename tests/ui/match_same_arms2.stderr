@@ -40,33 +40,33 @@ LL |         42 => foo(),
    |         ^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:39:9
-   |
-LL |         Some(_) => 24,
-   |         -------^^^^^^
-   |         |
-   |         help: try merging the arm patterns: `Some(_) | None`
-   |
-   = help: or try changing either arm body
-note: other arm here
   --> $DIR/match_same_arms2.rs:40:9
    |
 LL |         None => 24, //~ ERROR match arms have same body
-   |         ^^^^^^^^^^
-
-error: this match arm has an identical body to another arm
-  --> $DIR/match_same_arms2.rs:61:9
-   |
-LL |         (Some(a), None) => bar(a),
-   |         ---------------^^^^^^^^^^
+   |         ----^^^^^^
    |         |
-   |         help: try merging the arm patterns: `(Some(a), None) | (None, Some(a))`
+   |         help: try merging the arm patterns: `None | Some(_)`
    |
    = help: or try changing either arm body
 note: other arm here
+  --> $DIR/match_same_arms2.rs:39:9
+   |
+LL |         Some(_) => 24,
+   |         ^^^^^^^^^^^^^
+
+error: this match arm has an identical body to another arm
   --> $DIR/match_same_arms2.rs:62:9
    |
 LL |         (None, Some(a)) => bar(a), //~ ERROR match arms have same body
+   |         ---------------^^^^^^^^^^
+   |         |
+   |         help: try merging the arm patterns: `(None, Some(a)) | (Some(a), None)`
+   |
+   = help: or try changing either arm body
+note: other arm here
+  --> $DIR/match_same_arms2.rs:61:9
+   |
+LL |         (Some(a), None) => bar(a),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this match arm has an identical body to another arm
@@ -177,5 +177,20 @@ note: other arm here
 LL |         Foo::X(0) => 1,
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: this match arm has an identical body to another arm
+  --> $DIR/match_same_arms2.rs:227:9
+   |
+LL |         Some(Bar { y: 0, x: 5, .. }) => 1,
+   |         ----------------------------^^^^^
+   |         |
+   |         help: try merging the arm patterns: `Some(Bar { y: 0, x: 5, .. }) | Some(Bar { x: 0, y: 5, .. })`
+   |
+   = help: or try changing either arm body
+note: other arm here
+  --> $DIR/match_same_arms2.rs:224:9
+   |
+LL |         Some(Bar { x: 0, y: 5, .. }) => 1,
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
 

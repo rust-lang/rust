@@ -204,4 +204,27 @@ fn main() {
         Foo::Z(_) => 1,
         _ => 0,
     };
+
+    // Don't lint.
+    let _ = match 0 {
+        -2 => 1,
+        -5..=50 => 2,
+        -150..=88 => 1,
+        _ => 3,
+    };
+
+    struct Bar {
+        x: u32,
+        y: u32,
+        z: u32,
+    }
+
+    // Lint.
+    let _ = match None {
+        Some(Bar { x: 0, y: 5, .. }) => 1,
+        Some(Bar { y: 10, z: 0, .. }) => 2,
+        None => 50,
+        Some(Bar { y: 0, x: 5, .. }) => 1,
+        _ => 200,
+    };
 }
