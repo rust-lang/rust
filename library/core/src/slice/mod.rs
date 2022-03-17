@@ -2011,7 +2011,7 @@ impl<T> [T] {
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
     /// for group in v.splitn(2, |num| *num % 3 == 0) {
-    ///     println!("{group:?}");
+    ///     println!("{:?}", group);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2066,7 +2066,7 @@ impl<T> [T] {
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
     /// for group in v.rsplitn(2, |num| *num % 3 == 0) {
-    ///     println!("{group:?}");
+    ///     println!("{:?}", group);
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

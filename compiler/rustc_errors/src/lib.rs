@@ -1093,12 +1093,12 @@ impl HandlerInner {
         let warnings = match self.deduplicated_warn_count {
             0 => String::new(),
             1 => "1 warning emitted".to_string(),
-            count => format!("{count} warnings emitted"),
+            count => format!("{} warnings emitted", count),
         };
         let errors = match self.deduplicated_err_count {
             0 => String::new(),
             1 => "aborting due to previous error".to_string(),
-            count => format!("aborting due to {count} previous errors"),
+            count => format!("aborting due to {} previous errors", count),
         };
         if self.treat_err_as_bug() {
             return;

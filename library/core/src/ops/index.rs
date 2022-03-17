@@ -106,7 +106,7 @@ pub trait Index<Idx: ?Sized> {
 ///     type Output = Weight;
 ///
 ///     fn index(&self, index: Side) -> &Self::Output {
-///         println!("Accessing {index:?}-side of balance immutably");
+///         println!("Accessing {:?}-side of balance immutably", index);
 ///         match index {
 ///             Side::Left => &self.left,
 ///             Side::Right => &self.right,
@@ -116,7 +116,7 @@ pub trait Index<Idx: ?Sized> {
 ///
 /// impl IndexMut<Side> for Balance {
 ///     fn index_mut(&mut self, index: Side) -> &mut Self::Output {
-///         println!("Accessing {index:?}-side of balance mutably");
+///         println!("Accessing {:?}-side of balance mutably", index);
 ///         match index {
 ///             Side::Left => &mut self.left,
 ///             Side::Right => &mut self.right,

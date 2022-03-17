@@ -48,7 +48,7 @@
 //! ```
 //! let numbers = &[0, 1, 2];
 //! for n in numbers {
-//!     println!("{n} is a number!");
+//!     println!("{} is a number!", n);
 //! }
 //! ```
 //!

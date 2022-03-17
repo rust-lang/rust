@@ -830,7 +830,7 @@ pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
 #[inline(never)]
 pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
-    panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");
+    panic!("index {} and/or {} in `{:?}` do not lie on character boundary", begin, end, s);
 }
 
 /// Iterator for the code points of a WTF-8 string.
