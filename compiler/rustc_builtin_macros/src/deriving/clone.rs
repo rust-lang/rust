@@ -73,8 +73,13 @@ pub fn expand_deriving_clone(
         _ => cx.span_bug(span, "`#[derive(Clone)]` on trait item or impl item"),
     }
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = if cx.sess.opts.optimize != rustc_session::config::OptLevel::SizeMin {
+        let inline = cx.meta_word(span, sym::inline);
+        vec![cx.attribute(inline)]
+    } else {
+        vec![]
+    };
+
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
