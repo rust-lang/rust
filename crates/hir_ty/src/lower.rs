@@ -9,6 +9,8 @@ use std::cell::{Cell, RefCell};
 use std::{iter, sync::Arc};
 
 use base_db::CrateId;
+use chalk_ir::fold::Fold;
+use chalk_ir::interner::HasInterner;
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, Safety};
 use hir_def::generics::TypeOrConstParamData;
 use hir_def::intern::Interned;
@@ -36,7 +38,6 @@ use stdx::{impl_from, never};
 use syntax::{ast, SmolStr};
 
 use crate::consteval::{path_to_const, unknown_const_as_generic, unknown_const_usize, usize_const};
-use crate::method_resolution::fallback_bound_vars;
 use crate::utils::Generics;
 use crate::{all_super_traits, make_binders, Const, GenericArgData, ParamKind};
 use crate::{
@@ -1700,4 +1701,29 @@ pub(crate) fn const_or_path_to_chalk(
                 .unwrap_or_else(|| unknown_const_usize())
         }
     }
+}
+
+/// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
+/// num_vars_to_keep) by `TyKind::Unknown`.
+fn fallback_bound_vars<T: Fold<Interner> + HasInterner<Interner = Interner>>(
+    s: T,
+    num_vars_to_keep: usize,
+) -> T::Result {
+    crate::fold_free_vars(
+        s,
+        |bound, binders| {
+            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
+                TyKind::Error.intern(Interner)
+            } else {
+                bound.shifted_in_from(binders).to_ty(Interner)
+            }
+        },
+        |ty, bound, binders| {
+            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
+                consteval::unknown_const(ty.clone())
+            } else {
+                bound.shifted_in_from(binders).to_const(Interner, ty)
+            }
+        },
+    )
 }

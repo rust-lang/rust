@@ -15,10 +15,10 @@ use hir_def::{
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, primitive, to_assoc_type_id,
-    to_chalk_trait_id, utils::generics, Binders, CallableSig, ConstData, ConstValue, GenericArg,
-    GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind,
-    ValueTyDefId,
+    consteval::unknown_const_as_generic, db::HirDatabase, infer::unify::InferenceTable, primitive,
+    to_assoc_type_id, to_chalk_trait_id, utils::generics, Binders, CallableSig, ConstData,
+    ConstValue, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution, TraitRef, Ty,
+    TyDefId, TyExt, TyKind, ValueTyDefId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,6 +109,15 @@ impl<D> TyBuilder<D> {
         this.vec.extend(filler.casted(Interner));
         assert_eq!(this.remaining(), 0);
         this
+    }
+
+    pub(crate) fn fill_with_inference_vars(self, table: &mut InferenceTable) -> Self {
+        self.fill(|x| match x {
+            ParamKind::Type => GenericArgData::Ty(table.new_type_var()).intern(Interner),
+            ParamKind::Const(ty) => {
+                GenericArgData::Const(table.new_const_var(ty.clone())).intern(Interner)
+            }
+        })
     }
 
     pub fn fill(mut self, filler: impl FnMut(&ParamKind) -> GenericArg) -> Self {

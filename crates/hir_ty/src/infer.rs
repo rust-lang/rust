@@ -35,10 +35,9 @@ use rustc_hash::FxHashMap;
 use stdx::impl_from;
 
 use crate::{
-    builder::ParamKind, db::HirDatabase, fold_tys_and_consts, infer::coerce::CoerceMany,
-    lower::ImplTraitLoweringMode, to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal,
-    GenericArg, GenericArgData, Goal, InEnvironment, Interner, ProjectionTy, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    db::HirDatabase, fold_tys_and_consts, infer::coerce::CoerceMany, lower::ImplTraitLoweringMode,
+    to_assoc_type_id, AliasEq, AliasTy, Const, DomainGoal, GenericArg, Goal, InEnvironment,
+    Interner, ProjectionTy, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 // This lint has a false positive here. See the link below for details.
@@ -46,7 +45,6 @@ use crate::{
 // https://github.com/rust-lang/rust/issues/57411
 #[allow(unreachable_pub)]
 pub use unify::could_unify;
-pub(crate) use unify::unify;
 
 pub(crate) mod unify;
 mod path;
@@ -657,15 +655,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::TypeAliasId(it) => {
                 let ty = TyBuilder::def_ty(self.db, it.into())
-                    .fill(|x| match x {
-                        ParamKind::Type => {
-                            GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
-                        }
-                        ParamKind::Const(ty) => {
-                            GenericArgData::Const(self.table.new_const_var(ty.clone()))
-                                .intern(Interner)
-                        }
-                    })
+                    .fill_with_inference_vars(&mut self.table)
                     .build();
                 self.resolve_variant_on_alias(ty, unresolved, path)
             }

@@ -1541,9 +1541,7 @@ impl SelfParam {
 
 impl HasVisibility for Function {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let function_data = db.function_data(self.id);
-        let visibility = &function_data.visibility;
-        visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        db.function_visibility(self.id)
     }
 }
 
@@ -1594,9 +1592,7 @@ impl Const {
 
 impl HasVisibility for Const {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
-        let function_data = db.const_data(self.id);
-        let visibility = &function_data.visibility;
-        visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+        db.const_visibility(self.id)
     }
 }
 
