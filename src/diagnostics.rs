@@ -17,6 +17,7 @@ pub enum TerminationInfo {
     UnsupportedInIsolation(String),
     ExperimentalUb {
         msg: String,
+        help: Option<String>,
         url: String,
     },
     Deadlock,
@@ -133,6 +134,8 @@ pub fn report_error<'tcx, 'mir>(
 ) -> Option<i64> {
     use InterpError::*;
 
+    let mut msg = vec![];
+
     let (title, helps) = match &e.kind() {
         MachineStop(info) => {
             let info = info.downcast_ref::<TerminationInfo>().expect("invalid MachineStop payload");
@@ -152,11 +155,13 @@ pub fn report_error<'tcx, 'mir>(
                         (None, format!("pass the flag `-Zmiri-disable-isolation` to disable isolation;")),
                         (None, format!("or pass `-Zmiri-isolation-error=warn` to configure Miri to return an error code from isolated operations (if supported for that operation) and continue with a warning")),
                     ],
-                ExperimentalUb { url, .. } =>
+                ExperimentalUb { url, help, .. } => {
+                    msg.extend(help.clone());
                     vec![
                         (None, format!("this indicates a potential bug in the program: it performed an invalid operation, but the rules it violated are still experimental")),
-                        (None, format!("see {} for further information", url)),
-                    ],
+                        (None, format!("see {} for further information", url))
+                    ]
+                }
                 MultipleSymbolDefinitions { first, first_crate, second, second_crate, .. } =>
                     vec![
                         (Some(*first), format!("it's first defined here, in crate `{}`", first_crate)),
@@ -211,11 +216,11 @@ pub fn report_error<'tcx, 'mir>(
     let stacktrace = ecx.generate_stacktrace();
     let (stacktrace, was_pruned) = prune_stacktrace(ecx, stacktrace);
     e.print_backtrace();
-    let msg = e.to_string();
+    msg.insert(0, e.to_string());
     report_msg(
         *ecx.tcx,
         DiagLevel::Error,
-        &if let Some(title) = title { format!("{}: {}", title, msg) } else { msg.clone() },
+        &if let Some(title) = title { format!("{}: {}", title, msg[0]) } else { msg[0].clone() },
         msg,
         helps,
         &stacktrace,
@@ -256,11 +261,14 @@ pub fn report_error<'tcx, 'mir>(
 
 /// Report an error or note (depending on the `error` argument) with the given stacktrace.
 /// Also emits a full stacktrace of the interpreter stack.
+/// We want to present a multi-line span message for some errors. Diagnostics do not support this
+/// directly, so we pass the lines as a `Vec<String>` and display each line after the first with an
+/// additional `span_label` or `note` call.
 fn report_msg<'tcx>(
     tcx: TyCtxt<'tcx>,
     diag_level: DiagLevel,
     title: &str,
-    span_msg: String,
+    span_msg: Vec<String>,
     mut helps: Vec<(Option<SpanData>, String)>,
     stacktrace: &[FrameInfo<'tcx>],
 ) {
@@ -273,12 +281,17 @@ fn report_msg<'tcx>(
 
     // Show main message.
     if span != DUMMY_SP {
-        err.span_label(span, span_msg);
+        for line in span_msg {
+            err.span_label(span, line);
+        }
     } else {
         // Make sure we show the message even when it is a dummy span.
-        err.note(&span_msg);
+        for line in span_msg {
+            err.note(&line);
+        }
         err.note("(no span available)");
     }
+
     // Show help messages.
     if !helps.is_empty() {
         // Add visual separator before backtrace.
@@ -413,7 +426,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     _ => ("tracking was triggered", DiagLevel::Note),
                 };
 
-                report_msg(*this.tcx, diag_level, title, msg, vec![], &stacktrace);
+                report_msg(*this.tcx, diag_level, title, vec![msg], vec![], &stacktrace);
             }
         });
     }

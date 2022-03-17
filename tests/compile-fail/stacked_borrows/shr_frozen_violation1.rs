@@ -9,5 +9,5 @@ fn main() {
 }
 
 fn unknown_code(x: &i32) {
-    unsafe { *(x as *const i32 as *mut i32) = 7; } //~ ERROR borrow stack
+    unsafe { *(x as *const i32 as *mut i32) = 7; } //~ ERROR only grants SharedReadOnly permission
 }
