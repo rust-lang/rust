@@ -47,12 +47,12 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // look for x.or().unwrap()
         if_chain! {
-            if let ExprKind::MethodCall(path, [unwrap_self], unwrap_span) = expr.kind;
+            if let ExprKind::MethodCall(path, [unwrap_self], unwrap_span) = &expr.kind;
             if path.ident.name == sym::unwrap;
-            if let ExprKind::MethodCall(caller_path, [or_self, or_arg], or_span) = unwrap_self.kind;
+            if let ExprKind::MethodCall(caller_path, [or_self, or_arg], or_span) = &unwrap_self.kind;
             if caller_path.ident.name == sym::or;
             then {
-                let ty = cx.typeck_results().expr_ty(&or_self); // get type of x (we later check if it's Option or Result)
+                let ty = cx.typeck_results().expr_ty(or_self); // get type of x (we later check if it's Option or Result)
                 let title;
 
                 if is_type_diagnostic_item(cx, ty, sym::Option) {
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
                 span_lint_and_help(
                     cx,
                     USE_UNWRAP_OR,
-                    or_span.to(unwrap_span),
+                    or_span.to(*unwrap_span),
                     title,
                     None,
                     "use `unwrap_or()` instead"
