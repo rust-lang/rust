@@ -2689,7 +2689,6 @@ fn from_target_feature(
                 Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
                 Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
                 Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
-                Some(sym::adx_target_feature) => rust_features.adx_target_feature,
                 Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
                 Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
                 Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
