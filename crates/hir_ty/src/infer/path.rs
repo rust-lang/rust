@@ -104,9 +104,7 @@ impl<'a> InferenceContext<'a> {
                     ParamKind::Type => {
                         GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
                     }
-                    ParamKind::Const(_) => {
-                        GenericArgData::Const(consteval::usize_const(None)).intern(Interner)
-                    }
+                    ParamKind::Const(ty) => consteval::unknown_const_as_generic(ty.clone()),
                 })
             })
             .build();
@@ -249,15 +247,7 @@ impl<'a> InferenceContext<'a> {
                 let substs = match container {
                     ItemContainerId::ImplId(impl_id) => {
                         let impl_substs = TyBuilder::subst_for_def(self.db, impl_id)
-                            .fill(|x| match x {
-                                ParamKind::Type => {
-                                    GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
-                                }
-                                ParamKind::Const(ty) => {
-                                    GenericArgData::Const(self.table.new_const_var(ty.clone()))
-                                        .intern(Interner)
-                                }
-                            })
+                            .fill_with_inference_vars(&mut self.table)
                             .build();
                         let impl_self_ty =
                             self.db.impl_self_ty(impl_id).substitute(Interner, &impl_substs);
@@ -268,15 +258,7 @@ impl<'a> InferenceContext<'a> {
                         // we're picking this method
                         let trait_ref = TyBuilder::trait_ref(self.db, trait_)
                             .push(ty.clone())
-                            .fill(|x| match x {
-                                ParamKind::Type => {
-                                    GenericArgData::Ty(self.table.new_type_var()).intern(Interner)
-                                }
-                                ParamKind::Const(ty) => {
-                                    GenericArgData::Const(self.table.new_const_var(ty.clone()))
-                                        .intern(Interner)
-                                }
-                            })
+                            .fill_with_inference_vars(&mut self.table)
                             .build();
                         self.push_obligation(trait_ref.clone().cast(Interner));
                         Some(trait_ref.substitution)
