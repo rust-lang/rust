@@ -25,9 +25,11 @@ curl -L https://github.com/Kitware/CMake/releases/download/v$CMAKE/cmake-$CMAKE.
 
 mkdir cmake-build
 cd cmake-build
-hide_output ../cmake-$CMAKE/configure
-hide_output make -j$(nproc)
-hide_output make install
+ls -al /tmp/build.log || true
+who am i
+../cmake-$CMAKE/configure
+make -j$(nproc)
+make install
 
 cd ..
 rm -rf cmake-build
