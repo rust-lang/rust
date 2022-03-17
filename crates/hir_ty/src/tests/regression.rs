@@ -1454,3 +1454,26 @@ fn regression_11688_1() {
         "#,
     );
 }
+
+#[test]
+fn regression_11688_2() {
+    check_types(
+        r#"
+        union MaybeUninit<T> {
+            uninit: (),
+            value: T,
+        }
+
+        impl<T> MaybeUninit<T> {
+            fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+                loop {}
+            }
+        }
+
+        fn main() {
+            let x = MaybeUninit::<i32>::uninit_array::<1>();
+              //^ [MaybeUninit<i32>; 1]
+        }
+        "#,
+    );
+}
