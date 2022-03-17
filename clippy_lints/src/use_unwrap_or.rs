@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, Span};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -47,25 +47,22 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // look for x.or().unwrap()
         if_chain! {
-            if let ExprKind::MethodCall(path, args, unwrap_span) = expr.kind;
+            if let ExprKind::MethodCall(path, [unwrap_self], unwrap_span) = expr.kind;
             if path.ident.name == sym::unwrap;
-            if let Some(caller) = args.first();
-            if let ExprKind::MethodCall(caller_path, caller_args, or_span) = caller.kind;
+            if let ExprKind::MethodCall(caller_path, [or_self, or_arg], or_span) = unwrap_self.kind;
             if caller_path.ident.name == sym::or;
             then {
-                let ty = cx.typeck_results().expr_ty(&caller_args[0]); // get type of x (we later check if it's Option or Result)
+                let ty = cx.typeck_results().expr_ty(&or_self); // get type of x (we later check if it's Option or Result)
                 let title;
-                let arg = &caller_args[1]; // the argument or(xyz) is called with
 
                 if is_type_diagnostic_item(cx, ty, sym::Option) {
                     title = ".or(Some(…)).unwrap() found";
-                    if !is(arg, "Some") {
+                    if !is(or_arg, "Some") {
                         return;
                     }
-
                 } else if is_type_diagnostic_item(cx, ty, sym::Result) {
                     title = ".or(Ok(…)).unwrap() found";
-                    if !is(arg, "Ok") {
+                    if !is(or_arg, "Ok") {
                         return;
                     }
                 } else {
@@ -74,13 +71,10 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
                     return;
                 }
 
-                // span = or_span + unwrap_span
-                let span = Span::new(or_span.lo(), unwrap_span.hi(), or_span.ctxt(), or_span.parent());
-
                 span_lint_and_help(
                     cx,
                     USE_UNWRAP_OR,
-                    span,
+                    or_span.to(unwrap_span),
                     title,
                     None,
                     "use `unwrap_or()` instead"
