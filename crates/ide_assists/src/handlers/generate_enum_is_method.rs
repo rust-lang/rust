@@ -30,6 +30,7 @@ use crate::{
 //     /// Returns `true` if the version is [`Minor`].
 //     ///
 //     /// [`Minor`]: Version::Minor
+//     #[must_use]
 //     fn is_minor(&self) -> bool {
 //         matches!(self, Self::Minor)
 //     }
@@ -63,6 +64,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
                 "    /// Returns `true` if the {} is [`{variant}`].
     ///
     /// [`{variant}`]: {}::{variant}
+    #[must_use]
     {}fn {}(&self) -> bool {{
         matches!(self, Self::{variant}{})
     }}",
@@ -105,6 +107,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -151,6 +154,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor(..))
     }
@@ -178,6 +182,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor { .. })
     }
@@ -197,6 +202,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Undefined`].
     ///
     /// [`Undefined`]: Variant::Undefined
+    #[must_use]
     fn is_undefined(&self) -> bool {
         matches!(self, Self::Undefined)
     }
@@ -224,6 +230,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     pub(crate) fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -246,6 +253,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -260,6 +268,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Minor`].
     ///
     /// [`Minor`]: Variant::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
@@ -267,6 +276,7 @@ impl Variant {
     /// Returns `true` if the variant is [`Major`].
     ///
     /// [`Major`]: Variant::Major
+    #[must_use]
     fn is_major(&self) -> bool {
         matches!(self, Self::Major)
     }
@@ -294,6 +304,7 @@ impl GeneratorState {
     /// Returns `true` if the generator state is [`Complete`].
     ///
     /// [`Complete`]: GeneratorState::Complete
+    #[must_use]
     fn is_complete(&self) -> bool {
         matches!(self, Self::Complete)
     }

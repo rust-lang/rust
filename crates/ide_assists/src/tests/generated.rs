@@ -922,6 +922,7 @@ impl Version {
     /// Returns `true` if the version is [`Minor`].
     ///
     /// [`Minor`]: Version::Minor
+    #[must_use]
     fn is_minor(&self) -> bool {
         matches!(self, Self::Minor)
     }
