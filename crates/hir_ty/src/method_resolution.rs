@@ -6,7 +6,7 @@ use std::{iter, ops::ControlFlow, sync::Arc};
 
 use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
-use chalk_ir::{cast::Cast, fold::Fold, interner::HasInterner, Mutability, UniverseIndex};
+use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
     item_scope::ItemScope, lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId,
     ConstId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
@@ -18,7 +18,6 @@ use stdx::never;
 
 use crate::{
     autoderef::{self, AutoderefKind},
-    consteval,
     db::HirDatabase,
     from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
@@ -1059,31 +1058,6 @@ fn is_valid_candidate(
         }
         _ => false,
     }
-}
-
-/// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
-/// num_vars_to_keep) by `TyKind::Unknown`.
-pub(crate) fn fallback_bound_vars<T: Fold<Interner> + HasInterner<Interner = Interner>>(
-    s: T,
-    num_vars_to_keep: usize,
-) -> T::Result {
-    crate::fold_free_vars(
-        s,
-        |bound, binders| {
-            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-                TyKind::Error.intern(Interner)
-            } else {
-                bound.shifted_in_from(binders).to_ty(Interner)
-            }
-        },
-        |ty, bound, binders| {
-            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-                consteval::usize_const(None)
-            } else {
-                bound.shifted_in_from(binders).to_const(Interner, ty)
-            }
-        },
-    )
 }
 
 pub fn implements_trait(
