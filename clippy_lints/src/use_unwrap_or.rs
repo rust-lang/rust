@@ -41,10 +41,10 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
         // look for x.or().unwrap()
         if_chain! {
             if let ExprKind::MethodCall(path, args, unwrap_span) = expr.kind;
-            if path.ident.name.as_str() == "unwrap";
+            if path.ident.name == sym::unwrap;
             if let Some(caller) = args.first();
             if let ExprKind::MethodCall(caller_path, caller_args, or_span) = caller.kind;
-            if caller_path.ident.name.as_str() == "or";
+            if caller_path.ident.name == sym::or;
             then {
                 let ty = cx.typeck_results().expr_ty(&caller_args[0]); // get type of x (we later check if it's Option or Result)
                 let title;
