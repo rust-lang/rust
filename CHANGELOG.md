@@ -3069,6 +3069,7 @@ Released 2018-09-13
 [`bytes_nth`]: https://rust-lang.github.io/rust-clippy/master/index.html#bytes_nth
 [`cargo_common_metadata`]: https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata
 [`case_sensitive_file_extension_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#case_sensitive_file_extension_comparisons
+[`cast_enum_constructor`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_enum_constructor
 [`cast_enum_truncation`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_enum_truncation
 [`cast_lossless`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_lossless
 [`cast_possible_truncation`]: https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
