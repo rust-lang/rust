@@ -19,7 +19,7 @@ declare_clippy_lint! {
     /// // Result
     /// # type Error = &'static str;
     /// # let result: Result<&str, Error> = Err("error");
-    /// let port = result.or::<Error>(Ok(fallback)).unwrap();
+    /// let value = result.or::<Error>(Ok(fallback)).unwrap();
     ///
     /// // Option
     /// # let option: Option<&str> = None;
@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// # let fallback = "fallback";
     /// // Result
     /// # let result: Result<&str, &str> = Err("error");
-    /// let port = result.unwrap_or(fallback);
+    /// let value = result.unwrap_or(fallback);
     ///
     /// // Option
     /// # let option: Option<&str> = None;
