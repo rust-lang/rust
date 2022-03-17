@@ -39,6 +39,7 @@ use crate::{
 //
 // impl Person {
 //     /// Get a reference to the person's name.
+//     #[must_use]
 //     fn $0name(&self) -> &str {
 //         self.name.as_ref()
 //     }
@@ -65,6 +66,7 @@ pub(crate) fn generate_getter(acc: &mut Assists, ctx: &AssistContext) -> Option<
 //
 // impl Person {
 //     /// Get a mutable reference to the person's name.
+//     #[must_use]
 //     fn $0name_mut(&mut self) -> &mut String {
 //         &mut self.name
 //     }
@@ -143,6 +145,7 @@ pub(crate) fn generate_getter_impl(
             format_to!(
                 buf,
                 "    /// Get {}the {}'s {}.
+    #[must_use]
     {}fn {}(&{}self) -> {} {{
         {}
     }}",
@@ -195,6 +198,7 @@ struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
+    #[must_use]
     fn $0data(&self) -> &Data {
         &self.data
     }
@@ -216,6 +220,7 @@ struct Context {
 
 impl Context {
     /// Get a mutable reference to the context's data.
+    #[must_use]
     fn $0data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
@@ -249,6 +254,7 @@ struct Context {
 }
 
 impl Context {
+    #[must_use]
     fn data_mut(&mut self) -> &mut Data {
         &mut self.data
     }
@@ -273,6 +279,7 @@ pub(crate) struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
+    #[must_use]
     pub(crate) fn $0data(&self) -> &Data {
         &self.data
     }
@@ -293,6 +300,7 @@ struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
+    #[must_use]
     fn data(&self) -> &Data {
         &self.data
     }
@@ -306,11 +314,13 @@ struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
+    #[must_use]
     fn data(&self) -> &Data {
         &self.data
     }
 
     /// Get a reference to the context's count.
+    #[must_use]
     fn $0count(&self) -> &usize {
         &self.count
     }
@@ -337,6 +347,7 @@ struct S { foo: String }
 
 impl S {
     /// Get a reference to the s's foo.
+    #[must_use]
     fn $0foo(&self) -> &String {
         &self.foo
     }
@@ -361,6 +372,7 @@ struct S { foo: bool }
 
 impl S {
     /// Get the s's foo.
+    #[must_use]
     fn $0foo(&self) -> bool {
         self.foo
     }
@@ -394,6 +406,7 @@ struct S { foo: String }
 
 impl S {
     /// Get a reference to the s's foo.
+    #[must_use]
     fn $0foo(&self) -> &str {
         self.foo.as_ref()
     }
@@ -431,6 +444,7 @@ struct S { foo: Box<Sweets> }
 
 impl S {
     /// Get a reference to the s's foo.
+    #[must_use]
     fn $0foo(&self) -> &Sweets {
         self.foo.as_ref()
     }
@@ -464,6 +478,7 @@ struct S { foo: Vec<()> }
 
 impl S {
     /// Get a reference to the s's foo.
+    #[must_use]
     fn $0foo(&self) -> &[()] {
         self.foo.as_ref()
     }
@@ -487,6 +502,7 @@ struct S { foo: Option<Failure> }
 
 impl S {
     /// Get a reference to the s's foo.
+    #[must_use]
     fn $0foo(&self) -> Option<&Failure> {
         self.foo.as_ref()
     }
@@ -510,6 +526,7 @@ struct Context {
 
 impl Context {
     /// Get a reference to the context's data.
+    #[must_use]
     fn $0data(&self) -> Result<&bool, &i32> {
         self.data.as_ref()
     }
