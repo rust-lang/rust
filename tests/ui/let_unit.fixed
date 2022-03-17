@@ -61,3 +61,30 @@ fn multiline_sugg() {
 
 #[derive(Copy, Clone)]
 pub struct ContainsUnit(()); // should be fine
+
+fn _returns_generic() {
+    fn f<T>() -> T {
+        unimplemented!()
+    }
+    fn f2<T, U>(_: T) -> U {
+        unimplemented!()
+    }
+    fn f3<T>(x: T) -> T {
+        x
+    }
+    fn f4<T>(mut x: Vec<T>) -> T {
+        x.pop().unwrap()
+    }
+
+    let _: () = f(); // Ok
+    let _: () = f(); // Lint.
+
+    let _: () = f2(0i32); // Ok
+    let _: () = f2(0i32); // Lint.
+
+    f3(()); // Lint
+    f3(()); // Lint
+
+    f4(vec![()]); // Lint
+    f4(vec![()]); // Lint
+}
