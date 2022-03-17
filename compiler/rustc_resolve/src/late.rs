@@ -394,6 +394,9 @@ struct DiagnosticMetadata<'ast> {
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
 
+    /// When processing a impl self type and encountering a `Self`, suggest not using it.
+    currently_processing_impl_self_ty: bool,
+
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
     current_trait_object: Option<&'ast [ast::GenericBound]>,
@@ -1318,7 +1321,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             visit::walk_trait_ref(this, trait_ref);
                         }
                         // Resolve the self type.
+                        let prev = replace(
+                            &mut this.diagnostic_metadata.currently_processing_impl_self_ty,
+                            true,
+                        );
                         this.visit_ty(self_type);
+                        this.diagnostic_metadata.currently_processing_impl_self_ty = prev;
                         // Resolve the generic parameters.
                         this.visit_generics(generics);
                         // Resolve the items within the impl.
@@ -2038,6 +2046,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
                 if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
                 {
+                    if self.diagnostic_metadata.currently_processing_impl_self_ty {
+                        if let Res::SelfTy { .. } = partial_res.base_res() {
+                            if path.len() == 1 && path[0].ident.name == kw::SelfUpper {
+                                self.r.session.span_err(
+                                    span,
+                                    "`Self` is only available in impls, traits, and type definitions",
+                                );
+                            }
+                        }
+                    }
                     partial_res
                 } else {
                     report_errors(self, Some(partial_res.base_res()))

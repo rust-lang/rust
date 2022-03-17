@@ -4,5 +4,6 @@ pub trait ToNbt<T> {
 
 impl dyn ToNbt<Self> {}
 //~^ ERROR cycle detected
+//~| ERROR `Self` is only available in impls, traits, and type definitions
 
 fn main() {}

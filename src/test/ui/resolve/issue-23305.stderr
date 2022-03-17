@@ -1,3 +1,9 @@
+error: `Self` is only available in impls, traits, and type definitions
+  --> $DIR/issue-23305.rs:5:16
+   |
+LL | impl dyn ToNbt<Self> {}
+   |                ^^^^
+
 error[E0391]: cycle detected when computing type of `<impl at $DIR/issue-23305.rs:5:1: 5:24>`
   --> $DIR/issue-23305.rs:5:16
    |
@@ -11,6 +17,6 @@ note: cycle used when collecting item types in top-level module
 LL | pub trait ToNbt<T> {
    | ^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0391`.
