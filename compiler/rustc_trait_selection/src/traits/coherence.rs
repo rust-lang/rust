@@ -300,55 +300,79 @@ fn negative_impl<'cx, 'tcx>(
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
     let tcx = selcx.infcx().tcx;
 
-    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-    let impl1_env = tcx.param_env(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
-
     // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
-        // Normalize the trait reference. The WF rules ought to ensure
-        // that this always succeeds.
-        let impl1_trait_ref = match traits::fully_normalize(
-            &infcx,
-            FulfillmentContext::new(),
-            ObligationCause::dummy(),
-            impl1_env,
-            impl1_trait_ref,
-        ) {
-            Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(err) => {
-                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
-            }
-        };
+        // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+        let impl1_env = tcx.param_env(impl1_def_id);
 
-        // Attempt to prove that impl2 applies, given all of the above.
-        let selcx = &mut SelectionContext::new(&infcx);
-        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-        let (impl2_trait_ref, obligations) =
-            impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+        if let Some(impl1_trait_ref) = tcx.impl_trait_ref(impl1_def_id) {
+            // Normalize the trait reference. The WF rules ought to ensure
+            // that this always succeeds.
+            let impl1_trait_ref = match traits::fully_normalize(
+                &infcx,
+                FulfillmentContext::new(),
+                ObligationCause::dummy(),
+                impl1_env,
+                impl1_trait_ref,
+            ) {
+                Ok(impl1_trait_ref) => impl1_trait_ref,
+                Err(err) => {
+                    bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+                }
+            };
 
-        // do the impls unify? If not, not disjoint.
-        let Ok(InferOk { obligations: more_obligations, .. }) = infcx
+            // Attempt to prove that impl2 applies, given all of the above.
+            let selcx = &mut SelectionContext::new(&infcx);
+            let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+            let (impl2_trait_ref, obligations) =
+                impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+
+            // do the impls unify? If not, not disjoint.
+            let Ok(InferOk { obligations: more_obligations, .. }) = infcx
             .at(&ObligationCause::dummy(), impl1_env)
-            .eq(impl1_trait_ref, impl2_trait_ref)
-        else {
-            debug!(
-                "explicit_disjoint: {:?} does not unify with {:?}",
-                impl1_trait_ref, impl2_trait_ref
-            );
-            return false;
-        };
+            .eq(impl1_trait_ref, impl2_trait_ref) else {
+                debug!(
+                    "explicit_disjoint: {:?} does not unify with {:?}",
+                    impl1_trait_ref, impl2_trait_ref
+                );
+                return false;
+            };
 
-        let opt_failing_obligation = obligations
-            .into_iter()
-            .chain(more_obligations)
-            .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
+            let opt_failing_obligation = obligations
+                .into_iter()
+                .chain(more_obligations)
+                .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
 
-        if let Some(failing_obligation) = opt_failing_obligation {
-            debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-            true
+            if let Some(failing_obligation) = opt_failing_obligation {
+                debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+                true
+            } else {
+                false
+            }
         } else {
-            false
+            let ty1 = tcx.type_of(impl1_def_id);
+            let ty2 = tcx.type_of(impl2_def_id);
+
+            let Ok(InferOk { obligations, .. }) = infcx
+            .at(&ObligationCause::dummy(), impl1_env)
+            .eq(ty1, ty2) else {
+                debug!(
+                    "explicit_disjoint: {:?} does not unify with {:?}",
+                    ty1, ty2
+                );
+                return false;
+            };
+
+            let opt_failing_obligation = obligations
+                .into_iter()
+                .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
+
+            if let Some(failing_obligation) = opt_failing_obligation {
+                debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+                true
+            } else {
+                false
+            }
         }
     })
 }
