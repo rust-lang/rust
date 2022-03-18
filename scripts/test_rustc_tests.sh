@@ -15,7 +15,7 @@ for test in $(rg --files-with-matches "asm!|catch_unwind|should_panic|lto|// nee
   rm $test
 done
 
-for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" src/test/ui); do
+for test in $(rg -i --files-with-matches "//(\[\w+\])?~[^\|]*\s*ERR|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" src/test/ui); do
   rm $test
 done
 
@@ -94,6 +94,8 @@ rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
 
 rm src/test/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
+
+rm src/test/ui/unsafe/union.rs # has UB caught by cg_clif. see rust-lang/rust#95075
 
 echo "[TEST] rustc test suite"
 RUST_TEST_NOCAPTURE=1 COMPILETEST_FORCE_STAGE0=1 ./x.py test --stage 0 src/test/{codegen-units,run-make,run-pass-valgrind,ui,incremental}
