@@ -131,7 +131,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         mut self,
         krate: &'ast ast::Crate,
     ) -> Result<FileModMap<'ast>, ModuleResolutionError> {
-        let root_filename = self.parse_sess.span_to_filename(krate.span);
+        let root_filename = self.parse_sess.span_to_filename(krate.spans.inner_span);
         self.directory.path = match root_filename {
             FileName::Real(ref p) => p.parent().unwrap_or(Path::new("")).to_path_buf(),
             _ => PathBuf::new(),
@@ -142,7 +142,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.visit_mod_from_ast(&krate.items)?;
         }
 
-        let snippet_provider = self.parse_sess.snippet_provider(krate.span);
+        let snippet_provider = self.parse_sess.snippet_provider(krate.spans.inner_span);
 
         self.file_map.insert(
             root_filename,
@@ -446,7 +446,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 }
             }
             Err(mod_err) if !mods_outside_ast.is_empty() => {
-                if let ModError::ParserError(mut e) = mod_err {
+                if let ModError::ParserError(e) = mod_err {
                     e.cancel();
                 }
                 Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
