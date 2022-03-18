@@ -593,11 +593,9 @@ impl TtParser {
                         }
                     }
 
-                    seq @ (TokenTree::Delimited(..)
-                    | TokenTree::Token(Token { kind: DocComment(..), .. })) => {
-                        // To descend into a delimited submatcher or a doc comment, we push the
-                        // current matcher onto a stack and push a new item containing the
-                        // submatcher onto `cur_items`.
+                    seq @ TokenTree::Delimited(..) => {
+                        // To descend into a delimited submatcher, we push the current matcher onto
+                        // a stack and push a new item containing the submatcher onto `cur_items`.
                         //
                         // At the beginning of the loop, if we reach the end of the delimited
                         // submatcher, we pop the stack to backtrack out of the descent.
@@ -609,6 +607,9 @@ impl TtParser {
                     }
 
                     TokenTree::Token(t) => {
+                        // Doc comments cannot appear in a matcher.
+                        debug_assert!(!matches!(t, Token { kind: DocComment(..), .. }));
+
                         // If the token matches, we can just advance the parser. Otherwise, this
                         // match hash failed, there is nothing to do, and hopefully another item in
                         // `cur_items` will match.
