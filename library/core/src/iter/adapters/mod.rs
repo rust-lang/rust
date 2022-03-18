@@ -1,6 +1,7 @@
 use crate::iter::{InPlaceIterable, Iterator};
 use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
+mod by_ref_sized;
 mod chain;
 mod cloned;
 mod copied;
@@ -30,6 +31,8 @@ pub use self::{
     flatten::FlatMap, fuse::Fuse, inspect::Inspect, map::Map, peekable::Peekable, rev::Rev,
     scan::Scan, skip::Skip, skip_while::SkipWhile, take::Take, take_while::TakeWhile, zip::Zip,
 };
+
+pub(crate) use self::by_ref_sized::ByRefSized;
 
 #[stable(feature = "iter_cloned", since = "1.1.0")]
 pub use self::cloned::Cloned;

@@ -836,9 +836,9 @@ impl Step for RustdocJSNotStd {
     }
 }
 
-fn check_if_browser_ui_test_is_installed_global(npm: &Path, global: bool) -> bool {
+fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String> {
     let mut command = Command::new(&npm);
-    command.arg("list").arg("--depth=0");
+    command.arg("list").arg("--parseable").arg("--long").arg("--depth=0");
     if global {
         command.arg("--global");
     }
@@ -846,12 +846,29 @@ fn check_if_browser_ui_test_is_installed_global(npm: &Path, global: bool) -> boo
         .output()
         .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
         .unwrap_or(String::new());
-    lines.contains(&" browser-ui-test@")
+    lines.lines().find_map(|l| l.split(":browser-ui-test@").skip(1).next()).map(|v| v.to_owned())
 }
 
-fn check_if_browser_ui_test_is_installed(npm: &Path) -> bool {
-    check_if_browser_ui_test_is_installed_global(npm, false)
-        || check_if_browser_ui_test_is_installed_global(npm, true)
+fn get_browser_ui_test_version(npm: &Path) -> Option<String> {
+    get_browser_ui_test_version_inner(npm, false)
+        .or_else(|| get_browser_ui_test_version_inner(npm, true))
+}
+
+fn compare_browser_ui_test_version(installed_version: &str, src: &Path) {
+    match fs::read_to_string(
+        src.join("src/ci/docker/host-x86_64/x86_64-gnu-tools/browser-ui-test.version"),
+    ) {
+        Ok(v) => {
+            if v.trim() != installed_version {
+                eprintln!(
+                    "⚠️ Installed version of browser-ui-test (`{}`) is different than the \
+                     one used in the CI (`{}`)",
+                    installed_version, v
+                );
+            }
+        }
+        Err(e) => eprintln!("Couldn't find the CI browser-ui-test version: {:?}", e),
+    }
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -874,7 +891,7 @@ impl Step for RustdocGUI {
                     .config
                     .npm
                     .as_ref()
-                    .map(|p| check_if_browser_ui_test_is_installed(p))
+                    .map(|p| get_browser_ui_test_version(p).is_some())
                     .unwrap_or(false)
         }))
     }
@@ -892,16 +909,23 @@ impl Step for RustdocGUI {
 
         // The goal here is to check if the necessary packages are installed, and if not, we
         // panic.
-        if !check_if_browser_ui_test_is_installed(&npm) {
-            eprintln!(
-                "error: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
-                 dependency is missing",
-            );
-            eprintln!(
-                "If you want to install the `{0}` dependency, run `npm install {0}`",
-                "browser-ui-test",
-            );
-            panic!("Cannot run rustdoc-gui tests");
+        match get_browser_ui_test_version(&npm) {
+            Some(version) => {
+                // We also check the version currently used in CI and emit a warning if it's not the
+                // same one.
+                compare_browser_ui_test_version(&version, &builder.build.src);
+            }
+            None => {
+                eprintln!(
+                    "error: rustdoc-gui test suite cannot be run because npm `browser-ui-test` \
+                     dependency is missing",
+                );
+                eprintln!(
+                    "If you want to install the `{0}` dependency, run `npm install {0}`",
+                    "browser-ui-test",
+                );
+                panic!("Cannot run rustdoc-gui tests");
+            }
         }
 
         let out_dir = builder.test_out(self.target).join("rustdoc-gui");

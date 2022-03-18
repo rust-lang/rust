@@ -80,10 +80,12 @@
 //! * [`Box<U>`]
 //! * `&U`
 //! * `&mut U`
-//! * `fn`, `extern "C" fn`
+//! * `fn`, `extern "C" fn`[^extern_fn]
 //! * [`num::NonZero*`]
 //! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
+//!
+//! [^extern_fn]: this remains true for any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num

@@ -67,6 +67,23 @@ fn test_unterminated_no_pound() {
 }
 
 #[test]
+fn test_too_many_hashes() {
+    let max_count = u16::MAX;
+    let mut hashes: String = "#".repeat(max_count.into());
+
+    // Valid number of hashes (65535 = 2^16 - 1), but invalid string.
+    check_raw_str(&hashes, max_count, Some(RawStrError::InvalidStarter { bad_char: '\u{0}' }));
+
+    // One more hash sign (65536 = 2^16) becomes too many.
+    hashes.push('#');
+    check_raw_str(
+        &hashes,
+        0,
+        Some(RawStrError::TooManyDelimiters { found: usize::from(max_count) + 1 }),
+    );
+}
+
+#[test]
 fn test_valid_shebang() {
     // https://github.com/rust-lang/rust/issues/70528
     let input = "#!/usr/bin/rustrun\nlet x = 5;";

@@ -551,6 +551,30 @@ fn test_collect_into() {
     assert!(a == b);
 }
 
+#[test]
+fn iter_try_collect_uses_try_fold_not_next() {
+    // This makes sure it picks up optimizations, and doesn't use the `&mut I` impl.
+    struct PanicOnNext<I>(I);
+    impl<I: Iterator> Iterator for PanicOnNext<I> {
+        type Item = I::Item;
+        fn next(&mut self) -> Option<Self::Item> {
+            panic!("Iterator::next should not be called!")
+        }
+        fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+        where
+            Self: Sized,
+            F: FnMut(B, Self::Item) -> R,
+            R: std::ops::Try<Output = B>,
+        {
+            self.0.try_fold(init, f)
+        }
+    }
+
+    let it = (0..10).map(Some);
+    let _ = PanicOnNext(it).try_collect::<Vec<_>>();
+    // validation is just that it didn't panic.
+}
+
 // just tests by whether or not this compiles
 fn _empty_impl_all_auto_traits<T>() {
     use std::panic::{RefUnwindSafe, UnwindSafe};
