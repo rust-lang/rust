@@ -379,7 +379,7 @@ fn obligations_satisfiable<'cx, 'tcx, T: Debug + ToTrace<'tcx>>(
     }
 }
 
-/// Try to prove that a negative impl exist for the given obligation and their super predicates.
+/// Try to prove that a negative impl exist for the given obligation and its super predicates.
 #[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
@@ -393,7 +393,7 @@ fn negative_impl_exists<'cx, 'tcx>(
         return true;
     }
 
-    // Try to prove a negative obligation exist for super predicates
+    // Try to prove a negative obligation exists for super predicates
     for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
         if resolve_negative_obligation(infcx, param_env, region_context, &o) {
             return true;
