@@ -1,7 +1,8 @@
-use gccjit::{FunctionType, ToRValue};
+use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::OomStrategy;
 use rustc_span::symbol::sym;
 
 use crate::GccContext;
@@ -113,4 +114,10 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
     let _ret = context.new_call(None, callee, &args);
     //llvm::LLVMSetTailCall(ret, True);
     block.end_with_void_return(None);
+
+    let name = OomStrategy::SYMBOL.to_string();
+    let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    let value = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let value = context.new_rvalue_from_int(i8, value as i32);
+    global.global_set_initializer_rvalue(value);
 }
