@@ -2842,9 +2842,9 @@ impl PpMode {
 crate mod dep_tracking {
     use super::{
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
-        InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OptLevel, OutputType,
-        OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath, SymbolManglingVersion,
-        TrimmedDefPaths,
+        InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
+        OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SwitchWithOptPath,
+        SymbolManglingVersion, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2940,6 +2940,7 @@ crate mod dep_tracking {
         RealFileName,
         LocationDetail,
         BranchProtection,
+        OomStrategy,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3026,6 +3027,27 @@ crate mod dep_tracking {
             Hash::hash(&key.len(), hasher);
             Hash::hash(key, hasher);
             sub_hash.hash(hasher, error_format, for_crate_hash);
+        }
+    }
+}
+
+/// Default behavior to use in out-of-memory situations.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+pub enum OomStrategy {
+    /// Generate a panic that can be caught by `catch_unwind`.
+    Panic,
+
+    /// Abort the process immediately.
+    Abort,
+}
+
+impl OomStrategy {
+    pub const SYMBOL: &'static str = "__rust_alloc_error_handler_should_panic";
+
+    pub fn should_panic(self) -> u8 {
+        match self {
+            OomStrategy::Panic => 1,
+            OomStrategy::Abort => 0,
         }
     }
 }

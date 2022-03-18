@@ -375,6 +375,7 @@ mod desc {
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
+    pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `leak`, `memory`, `memtag`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
@@ -615,6 +616,15 @@ mod parse {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
+            _ => return false,
+        }
+        true
+    }
+
+    crate fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
+        match v {
+            Some("panic") => *slot = OomStrategy::Panic,
+            Some("abort") => *slot = OomStrategy::Abort,
             _ => return false,
         }
         true
@@ -1329,6 +1339,8 @@ options! {
         "prevent automatic injection of the profiler_builtins crate"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
+        "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
