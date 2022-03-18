@@ -1958,18 +1958,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::GeneratorWitness(binder) => {
-                let tys = self.tcx().erase_late_bound_regions(binder);
-                let mut iter = tys.iter();
+                let witness_tys = binder.skip_binder();
+                let mut iter = witness_tys.iter();
                 loop {
-                    let ty = match iter.next() {
-                        Some(ty) => ty,
-                        Option::None => {
-                            break Where(obligation.predicate.rebind(tys.to_vec()))
+                    match iter.next() {
+                        Some(witness_ty) => {
+                            let resolved = self.infcx.shallow_resolve(witness_ty);
+                            if matches!(resolved.kind(), ty::Infer(ty::TyVar(_))) {
+                                break Ambiguous;
+                            }
                         },
-                    };
-                    let resolved = self.infcx.shallow_resolve(ty);
-                    if matches!(resolved.kind(), ty::Infer(ty::TyVar(_))) {
-                        break Ambiguous;
+                        Option::None => {
+                            // (*) binder moved here
+                            let all_vars = self.tcx().mk_bound_variable_kinds(
+                                obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter())
+                            );
+                            break Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars));
+                        },
                     }
                 }
             }
