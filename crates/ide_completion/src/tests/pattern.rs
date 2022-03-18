@@ -471,7 +471,7 @@ fn f(t: Ty) {
 
     check_empty(
         r#"
-enum MyEnum;
+enum MyEnum {}
 
 impl MyEnum {
     pub const A: i32 = 123;
