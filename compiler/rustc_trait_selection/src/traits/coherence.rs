@@ -17,6 +17,7 @@ use crate::traits::{
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
+use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -26,6 +27,7 @@ use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
+use std::fmt::Debug;
 use std::iter;
 
 /// Whether we do the orphan check relative to this crate or
@@ -327,54 +329,54 @@ fn negative_impl<'cx, 'tcx>(
             let (impl2_trait_ref, obligations) =
                 impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
 
-            // do the impls unify? If not, not disjoint.
-            let Ok(InferOk { obligations: more_obligations, .. }) = infcx
-            .at(&ObligationCause::dummy(), impl1_env)
-            .eq(impl1_trait_ref, impl2_trait_ref) else {
-                debug!(
-                    "explicit_disjoint: {:?} does not unify with {:?}",
-                    impl1_trait_ref, impl2_trait_ref
-                );
-                return false;
-            };
-
-            let opt_failing_obligation = obligations
-                .into_iter()
-                .chain(more_obligations)
-                .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
-
-            if let Some(failing_obligation) = opt_failing_obligation {
-                debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-                true
-            } else {
-                false
-            }
+            !obligations_satisfiable(
+                &infcx,
+                impl1_env,
+                impl1_def_id,
+                impl1_trait_ref,
+                impl2_trait_ref,
+                obligations,
+            )
         } else {
             let ty1 = tcx.type_of(impl1_def_id);
             let ty2 = tcx.type_of(impl2_def_id);
 
-            let Ok(InferOk { obligations, .. }) = infcx
-            .at(&ObligationCause::dummy(), impl1_env)
-            .eq(ty1, ty2) else {
-                debug!(
-                    "explicit_disjoint: {:?} does not unify with {:?}",
-                    ty1, ty2
-                );
-                return false;
-            };
-
-            let opt_failing_obligation = obligations
-                .into_iter()
-                .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
-
-            if let Some(failing_obligation) = opt_failing_obligation {
-                debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-                true
-            } else {
-                false
-            }
+            !obligations_satisfiable(&infcx, impl1_env, impl1_def_id, ty1, ty2, iter::empty())
         }
     })
+}
+
+fn obligations_satisfiable<'cx, 'tcx, T: Debug + ToTrace<'tcx>>(
+    infcx: &InferCtxt<'cx, 'tcx>,
+    impl1_env: ty::ParamEnv<'tcx>,
+    impl1_def_id: DefId,
+    impl1: T,
+    impl2: T,
+    obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
+) -> bool {
+    // do the impls unify? If not, not disjoint.
+    let Ok(InferOk { obligations: more_obligations, .. }) = infcx
+        .at(&ObligationCause::dummy(), impl1_env)
+        .eq(impl1, impl2) else {
+            debug!(
+                "explicit_disjoint: {:?} does not unify with {:?}",
+                impl1, impl2
+            );
+            return true;
+        };
+
+    let selcx = &mut SelectionContext::new(&infcx);
+    let opt_failing_obligation = obligations
+        .into_iter()
+        .chain(more_obligations)
+        .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
+
+    if let Some(failing_obligation) = opt_failing_obligation {
+        debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+        false
+    } else {
+        true
+    }
 }
 
 /// Try to prove that a negative impl exist for the given obligation and their super predicates.
