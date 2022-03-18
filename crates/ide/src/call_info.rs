@@ -2,7 +2,10 @@
 
 use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics};
-use ide_db::{active_parameter::callable_for_token, base_db::FilePosition};
+use ide_db::{
+    active_parameter::{callable_for_token, generics_for_token},
+    base_db::FilePosition,
+};
 use stdx::format_to;
 use syntax::{algo, AstNode, Direction, TextRange, TextSize};
 
@@ -27,8 +30,16 @@ impl CallInfo {
         &self.parameters
     }
 
-    fn push_param(&mut self, param: &str) {
-        if !self.signature.ends_with('(') {
+    fn push_call_param(&mut self, param: &str) {
+        self.push_param('(', param);
+    }
+
+    fn push_generic_param(&mut self, param: &str) {
+        self.push_param('<', param);
+    }
+
+    fn push_param(&mut self, opening_delim: char, param: &str) {
+        if !self.signature.ends_with(opening_delim) {
             self.signature.push_str(", ");
         }
         let start = TextSize::of(&self.signature);
@@ -51,8 +62,22 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros_single(token);
 
-    let (callable, active_parameter) = callable_for_token(&sema, token)?;
+    if let Some((callable, active_parameter)) = callable_for_token(&sema, token.clone()) {
+        return Some(call_info_for_callable(db, callable, active_parameter));
+    }
 
+    if let Some((generic_def, active_parameter)) = generics_for_token(&sema, token.clone()) {
+        return call_info_for_generics(db, generic_def, active_parameter);
+    }
+
+    None
+}
+
+fn call_info_for_callable(
+    db: &RootDatabase,
+    callable: hir::Callable,
+    active_parameter: Option<usize>,
+) -> CallInfo {
     let mut res =
         CallInfo { doc: None, signature: String::new(), parameters: vec![], active_parameter };
 
@@ -92,7 +117,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
                 }
             }
             format_to!(buf, "{}", ty.display(db));
-            res.push_param(&buf);
+            res.push_call_param(&buf);
         }
     }
     res.signature.push(')');
@@ -106,6 +131,75 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
+    res
+}
+
+fn call_info_for_generics(
+    db: &RootDatabase,
+    mut generics_def: hir::GenericDef,
+    active_parameter: usize,
+) -> Option<CallInfo> {
+    let mut res = CallInfo {
+        doc: None,
+        signature: String::new(),
+        parameters: vec![],
+        active_parameter: Some(active_parameter),
+    };
+
+    match generics_def {
+        hir::GenericDef::Function(it) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "fn {}", it.name(db));
+        }
+        hir::GenericDef::Adt(hir::Adt::Enum(it)) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "enum {}", it.name(db));
+        }
+        hir::GenericDef::Adt(hir::Adt::Struct(it)) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "struct {}", it.name(db));
+        }
+        hir::GenericDef::Adt(hir::Adt::Union(it)) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "union {}", it.name(db));
+        }
+        hir::GenericDef::Trait(it) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "trait {}", it.name(db));
+        }
+        hir::GenericDef::TypeAlias(it) => {
+            res.doc = it.docs(db).map(|it| it.into());
+            format_to!(res.signature, "type {}", it.name(db));
+        }
+        hir::GenericDef::Variant(it) => {
+            // In paths, generics of an enum can be specified *after* one of its variants.
+            // eg. `None::<u8>`
+            // We'll use the signature of the enum, but include the docs of the variant.
+            res.doc = it.docs(db).map(|it| it.into());
+            let it = it.parent_enum(db);
+            format_to!(res.signature, "enum {}", it.name(db));
+            generics_def = it.into();
+        }
+        // These don't have generic args that can be specified
+        hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
+    }
+
+    res.signature.push('<');
+    let params = generics_def.params(db);
+    let mut buf = String::new();
+    for param in params {
+        if let hir::GenericParam::TypeParam(ty) = param {
+            if ty.is_implicit(db) {
+                continue;
+            }
+        }
+
+        buf.clear();
+        format_to!(buf, "{}", param.display(db));
+        res.push_generic_param(&buf);
+    }
+    res.signature.push('>');
+
     Some(res)
 }
 
@@ -128,7 +222,14 @@ mod tests {
     }
 
     fn check(ra_fixture: &str, expect: Expect) {
-        let (db, position) = position(ra_fixture);
+        // Implicitly add `Sized` to avoid noisy `T: ?Sized` in the results.
+        let fixture = format!(
+            r#"
+#[lang = "sized"] trait Sized {{}}
+{ra_fixture}
+            "#
+        );
+        let (db, position) = position(&fixture);
         let call_info = crate::call_info::call_info(&db, position);
         let actual = match call_info {
             Some(call_info) => {
@@ -675,5 +776,139 @@ fn main() {
             (<foo: u32>, bar: u32)
         "#]],
         )
+    }
+
+    #[test]
+    fn test_generics_simple() {
+        check(
+            r#"
+/// Option docs.
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+fn f() {
+    let opt: Option<$0
+}
+        "#,
+            expect![[r#"
+                Option docs.
+                ------
+                enum Option<T>
+                (<T>)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_generics_on_variant() {
+        check(
+            r#"
+/// Option docs.
+enum Option<T> {
+    /// Some docs.
+    Some(T),
+    /// None docs.
+    None,
+}
+
+use Option::*;
+
+fn f() {
+    None::<$0
+}
+        "#,
+            expect![[r#"
+                None docs.
+                ------
+                enum Option<T>
+                (<T>)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_lots_of_generics() {
+        check(
+            r#"
+trait Tr<T> {}
+
+struct S<T>(T);
+
+impl<T> S<T> {
+    fn f<G, H>(g: G, h: impl Tr<G>) where G: Tr<()> {}
+}
+
+fn f() {
+    S::<u8>::f::<(), $0
+}
+        "#,
+            expect![[r#"
+                fn f<G: Tr<()>, H>
+                (G: Tr<()>, <H>)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_generics_in_trait_ufcs() {
+        check(
+            r#"
+trait Tr {
+    fn f<T: Tr, U>() {}
+}
+
+struct S;
+
+impl Tr for S {}
+
+fn f() {
+    <S as Tr>::f::<$0
+}
+        "#,
+            expect![[r#"
+                fn f<T: Tr, U>
+                (<T: Tr>, U)
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_generics_in_method_call() {
+        check(
+            r#"
+struct S;
+
+impl S {
+    fn f<T>(&self) {}
+}
+
+fn f() {
+    S.f::<$0
+}
+        "#,
+            expect![[r#"
+            fn f<T>
+            (<T>)
+        "#]],
+        );
+    }
+
+    #[test]
+    fn test_generic_kinds() {
+        check(
+            r#"
+fn callee<'a, const A: (), T, const C: u8>() {}
+
+fn f() {
+    callee::<'static, $0
+}
+        "#,
+            expect![[r#"
+            fn callee<'a, const A: (), T, const C: u8>
+            ('a, <const A: ()>, T, const C: u8)
+        "#]],
+        );
     }
 }
