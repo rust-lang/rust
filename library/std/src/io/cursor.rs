@@ -542,7 +542,7 @@ where
     }
 }
 
-#[stable(feature = "cursor_array", since = "1.60.0")]
+#[stable(feature = "cursor_array", since = "1.61.0")]
 impl<const N: usize> Write for Cursor<[u8; N]> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
