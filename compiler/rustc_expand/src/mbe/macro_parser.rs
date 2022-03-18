@@ -652,7 +652,7 @@ fn parse_tt_inner<'root, 'tt>(
                 }
 
                 // These cannot appear in a matcher.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) => unreachable!(),
+                TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
             }
         }
     }
