@@ -11,6 +11,22 @@ diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
 index 8402833..84592e0 100644
 --- a/library/core/tests/slice.rs
 +++ b/library/core/tests/slice.rs
+@@ -1809,6 +1809,7 @@ fn sort_unstable() {
+     assert!(v == [0xDEADBEEF]);
+ }
+ 
++/*
+ #[test]
+ #[cfg(not(target_arch = "wasm32"))]
+ #[cfg_attr(miri, ignore)] // Miri is too slow
+@@ -1914,6 +1915,7 @@ fn select_nth_unstable() {
+     v.select_nth_unstable(0);
+     assert!(v == [0xDEADBEEF]);
+ }
++*/
+ 
+ #[test]
+ #[should_panic(expected = "index 0 greater than length of slice")]
 @@ -2462,6 +2462,7 @@ take_tests! {
  #[cfg(not(miri))] // unused in Miri
  const EMPTY_MAX: &'static [()] = &[(); usize::MAX];
