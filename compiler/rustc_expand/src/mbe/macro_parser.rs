@@ -524,6 +524,7 @@ fn parse_tt_inner<'root, 'tt>(
             // then we could be at the end of a sequence or at the beginning of the next
             // repetition.
             if let Some(repetition) = &item.repetition {
+                debug_assert!(idx <= len + 1);
                 debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
 
                 // At this point, regardless of whether there is a separator, we should add all
@@ -569,6 +570,7 @@ fn parse_tt_inner<'root, 'tt>(
             } else {
                 // If we are not in a repetition, then being at the end of a matcher means that we
                 // have reached the potential end of the input.
+                debug_assert_eq!(idx, len);
                 eof_items = match eof_items {
                     EofItems::None => EofItems::One(item),
                     EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
