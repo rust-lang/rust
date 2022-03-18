@@ -1,5 +1,4 @@
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 // gdb-command:run
@@ -9,9 +8,10 @@
 // gdbg-command:whatis 'basic_types_globals_metadata::I'
 // gdbr-command:whatis basic_types_globals_metadata::I
 // gdb-check:type = isize
-// gdbg-command:whatis 'basic_types_globals_metadata::C'
-// gdbr-command:whatis basic_types_globals_metadata::C
-// gdb-check:type = char
+
+// Note we don't check the 'char' type here, as gdb only got support
+// for DW_ATE_UTF in 11.2.  This is handled by a different test.
+
 // gdbg-command:whatis 'basic_types_globals_metadata::I8'
 // gdbr-command:whatis basic_types_globals_metadata::I8
 // gdb-check:type = i8

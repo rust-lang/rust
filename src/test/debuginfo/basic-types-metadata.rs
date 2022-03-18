@@ -1,5 +1,4 @@
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 // gdb-command:run
@@ -9,8 +8,10 @@
 // gdb-check:type = bool
 // gdb-command:whatis i
 // gdb-check:type = isize
-// gdb-command:whatis c
-// gdb-check:type = char
+
+// Note we don't check the 'char' type here, as gdb only got support
+// for DW_ATE_UTF in 11.2.  This is handled by a different test.
+
 // gdb-command:whatis i8
 // gdb-check:type = i8
 // gdb-command:whatis i16
@@ -34,31 +35,19 @@
 // gdb-command:whatis f64
 // gdb-check:type = f64
 // gdb-command:whatis fnptr
-// gdb-check:type = [...] (*)([...])
+// gdb-check:type = [...] ([...])
 // gdb-command:info functions _yyy
 // gdbg-check:[...]![...]_yyy([...]);
-// gdbr-check:static fn basic_types_metadata::_yyy() -> !;
+// gdbr-check:static fn basic_types_metadata::_yyy()[...]
+
+// Just check that something is emitted, this changed already once and
+// it's not extremely informative.
 // gdb-command:ptype closure_0
-// gdbr-check: type = struct closure
-// gdbg-check: type = struct closure {
-// gdbg-check:     <no data fields>
-// gdbg-check: }
+// gdb-check: type = [...]closure[...]
 // gdb-command:ptype closure_1
-// gdbg-check: type = struct closure {
-// gdbg-check:     bool *__0;
-// gdbg-check: }
-// gdbr-check: type = struct closure (
-// gdbr-check:     bool *,
-// gdbr-check: )
+// gdb-check: type = [...]closure[...]
 // gdb-command:ptype closure_2
-// gdbg-check: type = struct closure {
-// gdbg-check:     bool *__0;
-// gdbg-check:     isize *__1;
-// gdbg-check: }
-// gdbr-check: type = struct closure (
-// gdbr-check:     bool *,
-// gdbr-check:     isize *,
-// gdbr-check: )
+// gdb-check: type = [...]closure[...]
 
 //
 // gdb-command:continue
