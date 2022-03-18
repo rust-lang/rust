@@ -4,6 +4,7 @@
 #![cfg_attr(not(feature = "no-asm"), feature(global_asm))]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
+#![feature(core_ffi_c)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(linkage)]
