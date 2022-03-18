@@ -134,7 +134,7 @@ fn lifetime_hints(
     let param_list = func.param_list()?;
     let generic_param_list = func.generic_param_list();
     let ret_type = func.ret_type();
-    let self_param = param_list.self_param();
+    let self_param = param_list.self_param().filter(|it| it.amp_token().is_some());
 
     // FIXME: don't use already used lifetimenames
 
@@ -1473,41 +1473,6 @@ fn main() {
     }
 
     #[test]
-    fn incomplete_for_no_hint() {
-        check_types(
-            r#"
-fn main() {
-    let data = &[1i32, 2, 3];
-      //^^^^ &[i32; 3]
-    for i
-}"#,
-        );
-        check(
-            r#"
-pub struct Vec<T> {}
-
-impl<T> Vec<T> {
-    pub fn new() -> Self { Vec {} }
-    pub fn push(&mut self, t: T) {}
-}
-
-impl<T> IntoIterator for Vec<T> {
-    type Item=T;
-}
-
-fn main() {
-    let mut data = Vec::new();
-          //^^^^ Vec<&str>
-    data.push("foo");
-    for i in
-
-    println!("Unit expr");
-}
-"#,
-        );
-    }
-
-    #[test]
     fn complete_for_hint() {
         check_types(
             r#"
@@ -2010,7 +1975,7 @@ fn main() {
     }
 
     #[test]
-    fn hints_sssin_attr_call() {
+    fn hints_lifetimes() {
         check(
             r#"
 fn empty() {}
