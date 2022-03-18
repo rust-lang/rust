@@ -12,7 +12,6 @@ crate mod utils;
 
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -26,8 +25,6 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, ExpnKind};
-use rustc_target::spec::abi::Abi;
-use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 use rustc_typeck::hir_ty_to_ty;
 
 use std::assert_matches::assert_matches;
@@ -813,13 +810,6 @@ fn clean_fn_or_proc_macro(
         }
         None => {
             let mut func = clean_function(cx, sig, generics, body_id);
-            let def_id = item.def_id.to_def_id();
-            func.header.constness =
-                if cx.tcx.is_const_fn(def_id) && is_unstable_const_fn(cx.tcx, def_id).is_none() {
-                    hir::Constness::Const
-                } else {
-                    hir::Constness::NotConst
-                };
             clean_fn_decl_legacy_const_generics(&mut func, attrs);
             FunctionItem(func)
         }
@@ -869,7 +859,7 @@ fn clean_function(
         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
         (generics, decl)
     });
-    Function { decl, generics, header: sig.header }
+    Function { decl, generics }
 }
 
 fn clean_args_from_types_and_names(
@@ -998,12 +988,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                     AssocConstItem(ty.clean(cx), default)
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Provided(body)) => {
-                    let mut m = clean_function(cx, sig, &self.generics, body);
-                    if m.header.constness == hir::Constness::Const
-                        && is_unstable_const_fn(cx.tcx, local_did).is_some()
-                    {
-                        m.header.constness = hir::Constness::NotConst;
-                    }
+                    let m = clean_function(cx, sig, &self.generics, body);
                     MethodItem(m, None)
                 }
                 hir::TraitItemKind::Fn(ref sig, hir::TraitFn::Required(names)) => {
@@ -1014,13 +999,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
                         let decl = clean_fn_decl_with_args(cx, sig.decl, args);
                         (generics, decl)
                     });
-                    let mut t = Function { header: sig.header, decl, generics };
-                    if t.header.constness == hir::Constness::Const
-                        && is_unstable_const_fn(cx.tcx, local_did).is_some()
-                    {
-                        t.header.constness = hir::Constness::NotConst;
-                    }
-                    TyMethodItem(t)
+                    TyMethodItem(Function { decl, generics })
                 }
                 hir::TraitItemKind::Type(bounds, ref default) => {
                     let generics = enter_impl_trait(cx, |cx| self.generics.clean(cx));
@@ -1047,12 +1026,7 @@ impl Clean<Item> for hir::ImplItem<'_> {
                     AssocConstItem(ty.clean(cx), default)
                 }
                 hir::ImplItemKind::Fn(ref sig, body) => {
-                    let mut m = clean_function(cx, sig, &self.generics, body);
-                    if m.header.constness == hir::Constness::Const
-                        && is_unstable_const_fn(cx.tcx, local_did).is_some()
-                    {
-                        m.header.constness = hir::Constness::NotConst;
-                    }
+                    let m = clean_function(cx, sig, &self.generics, body);
                     let defaultness = cx.tcx.associated_item(self.def_id).defaultness;
                     MethodItem(m, Some(defaultness))
                 }
@@ -1127,40 +1101,13 @@ impl Clean<Item> for ty::AssocItem {
                     ty::TraitContainer(_) => self.defaultness.has_value(),
                 };
                 if provided {
-                    let constness = if tcx.is_const_fn_raw(self.def_id) {
-                        hir::Constness::Const
-                    } else {
-                        hir::Constness::NotConst
-                    };
-                    let asyncness = tcx.asyncness(self.def_id);
                     let defaultness = match self.container {
                         ty::ImplContainer(_) => Some(self.defaultness),
                         ty::TraitContainer(_) => None,
                     };
-                    MethodItem(
-                        Function {
-                            generics,
-                            decl,
-                            header: hir::FnHeader {
-                                unsafety: sig.unsafety(),
-                                abi: sig.abi(),
-                                constness,
-                                asyncness,
-                            },
-                        },
-                        defaultness,
-                    )
+                    MethodItem(Function { generics, decl }, defaultness)
                 } else {
-                    TyMethodItem(Function {
-                        generics,
-                        decl,
-                        header: hir::FnHeader {
-                            unsafety: sig.unsafety(),
-                            abi: sig.abi(),
-                            constness: hir::Constness::NotConst,
-                            asyncness: hir::IsAsync::NotAsync,
-                        },
-                    })
+                    TyMethodItem(Function { generics, decl })
                 }
             }
             ty::AssocKind::Type => {
@@ -2192,7 +2139,6 @@ fn clean_maybe_renamed_foreign_item(
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             hir::ForeignItemKind::Fn(decl, names, ref generics) => {
-                let abi = cx.tcx.hir().get_foreign_abi(item.hir_id());
                 let (generics, decl) = enter_impl_trait(cx, |cx| {
                     // NOTE: generics must be cleaned before args
                     let generics = generics.clean(cx);
@@ -2200,20 +2146,7 @@ fn clean_maybe_renamed_foreign_item(
                     let decl = clean_fn_decl_with_args(cx, decl, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Function {
-                    decl,
-                    generics,
-                    header: hir::FnHeader {
-                        unsafety: if abi == Abi::RustIntrinsic {
-                            intrinsic_operation_unsafety(item.ident.name)
-                        } else {
-                            hir::Unsafety::Unsafe
-                        },
-                        abi,
-                        constness: hir::Constness::NotConst,
-                        asyncness: hir::IsAsync::NotAsync,
-                    },
-                })
+                ForeignFunctionItem(Function { decl, generics })
             }
             hir::ForeignItemKind::Static(ref ty, mutability) => {
                 ForeignStaticItem(Static { type_: ty.clean(cx), mutability, expr: None })
