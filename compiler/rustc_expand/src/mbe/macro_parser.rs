@@ -516,7 +516,8 @@ fn parse_tt_inner<'root, 'tt>(
     bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
     token: &Token,
 ) -> Option<NamedParseResult> {
-    // Matcher positions that would be valid if the macro invocation was over now
+    // Matcher positions that would be valid if the macro invocation was over now. Only modified if
+    // `token == Eof`.
     let mut eof_items = EofItems::None;
 
     // Pop items from `cur_items` until it is empty.
@@ -592,9 +593,11 @@ fn parse_tt_inner<'root, 'tt>(
                 // If we are not in a repetition, then being at the end of a matcher means that we
                 // have reached the potential end of the input.
                 debug_assert_eq!(idx, len);
-                eof_items = match eof_items {
-                    EofItems::None => EofItems::One(item),
-                    EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
+                if *token == token::Eof {
+                    eof_items = match eof_items {
+                        EofItems::None => EofItems::One(item),
+                        EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
+                    }
                 }
             }
         } else {
