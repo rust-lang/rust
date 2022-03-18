@@ -490,7 +490,7 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 }
 
 /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
-/// produce more items in `next_items`, `eof_items`, and `bb_items`.
+/// produce more items in `next_items` and `bb_items`.
 ///
 /// For more info about the how this happens, see the module-level doc comments and the inline
 /// comments of this function.
@@ -520,11 +520,10 @@ fn parse_tt_inner<'root, 'tt>(
     // `token == Eof`.
     let mut eof_items = EofItems::None;
 
-    // Pop items from `cur_items` until it is empty.
     while let Some(mut item) = cur_items.pop() {
         // When unzipped trees end, remove them. This corresponds to backtracking out of a
-        // delimited submatcher into which we already descended. In backtracking out again, we need
-        // to advance the "dot" past the delimiters in the outer matcher.
+        // delimited submatcher into which we already descended. When backtracking out again, we
+        // need to advance the "dot" past the delimiters in the outer matcher.
         while item.idx >= item.top_elts.len() {
             match item.stack.pop() {
                 Some(MatcherTtFrame { elts, idx }) => {
@@ -541,19 +540,12 @@ fn parse_tt_inner<'root, 'tt>(
         let len = item.top_elts.len();
 
         if idx < len {
-            // We are in the middle of a matcher. Look at what token in the matcher we are trying
-            // to match the current token (`token`) against. Depending on that, we may generate new
-            // items.
+            // We are in the middle of a matcher. Compare the matcher's current tt against `token`.
             match item.top_elts.get_tt(idx) {
-                // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
-                    // Examine the case where there are 0 matches of this sequence. We are
-                    // implicitly disallowing OneOrMore from having 0 matches here. Thus, that will
-                    // result in a "no rules expected token" error by virtue of this matcher not
-                    // working.
-                    if seq.kleene.op == mbe::KleeneOp::ZeroOrMore
-                        || seq.kleene.op == mbe::KleeneOp::ZeroOrOne
-                    {
+                    let op = seq.kleene.op;
+                    if op == mbe::KleeneOp::ZeroOrMore || op == mbe::KleeneOp::ZeroOrOne {
+                        // Allow for the possibility of zero matches of this sequence.
                         let mut new_item = item.clone();
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
@@ -563,20 +555,19 @@ fn parse_tt_inner<'root, 'tt>(
                         cur_items.push(new_item);
                     }
 
+                    // Allow for the possibility of one or more matches of this sequence.
                     cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos::repetition(
                         item, sp, seq,
                     ))));
                 }
 
-                // We need to match a metavar (but the identifier is invalid)... this is an error
                 TokenTree::MetaVarDecl(span, _, None) => {
+                    // E.g. `$e` instead of `$e:expr`.
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                         return Some(Error(span, "missing fragment specifier".to_string()));
                     }
                 }
 
-                // We need to match a metavar with a valid ident... call out to the black-box
-                // parser by adding an item to `bb_items`.
                 TokenTree::MetaVarDecl(_, _, Some(kind)) => {
                     // Built-in nonterminals never start with these tokens, so we can eliminate
                     // them from consideration.
@@ -588,14 +579,14 @@ fn parse_tt_inner<'root, 'tt>(
                     }
                 }
 
-                // We need to descend into a delimited submatcher or a doc comment. To do this, we
-                // push the current matcher onto a stack and push a new item containing the
-                // submatcher onto `cur_items`.
-                //
-                // At the beginning of the loop, if we reach the end of the delimited submatcher,
-                // we pop the stack to backtrack out of the descent.
                 seq @ (TokenTree::Delimited(..)
                 | TokenTree::Token(Token { kind: DocComment(..), .. })) => {
+                    // To descend into a delimited submatcher or a doc comment, we push the current
+                    // matcher onto a stack and push a new item containing the submatcher onto
+                    // `cur_items`.
+                    //
+                    // At the beginning of the loop, if we reach the end of the delimited
+                    // submatcher, we pop the stack to backtrack out of the descent.
                     let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
                     let idx = item.idx;
                     item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
@@ -603,18 +594,17 @@ fn parse_tt_inner<'root, 'tt>(
                     cur_items.push(item);
                 }
 
-                // We just matched a normal token. We can just advance the parser.
-                TokenTree::Token(t) if token_name_eq(&t, token) => {
-                    item.idx += 1;
-                    next_items.push(item);
+                TokenTree::Token(t) => {
+                    // If the token matches, we can just advance the parser. Otherwise, this match
+                    // hash failed, there is nothing to do, and hopefully another item in
+                    // `cur_items` will match.
+                    if token_name_eq(&t, token) {
+                        item.idx += 1;
+                        next_items.push(item);
+                    }
                 }
 
-                // There was another token that was not `token`... This means we can't add any
-                // rules. NOTE that this is not necessarily an error unless _all_ items in
-                // `cur_items` end up doing this. There may still be some other matchers that do
-                // end up working out.
-                TokenTree::Token(..) => {}
-
+                // These cannot appear in a matcher.
                 TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
             }
         } else if let Some(repetition) = &item.repetition {
@@ -622,35 +612,24 @@ fn parse_tt_inner<'root, 'tt>(
             debug_assert!(idx <= len + 1);
             debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
 
-            // At this point, regardless of whether there is a separator, we should add all
-            // matches from the complete repetition of the sequence to the shared, top-level
-            // `matches` list (actually, `up.matches`, which could itself not be the top-level,
-            // but anyway...). Moreover, we add another item to `cur_items` in which the "dot"
-            // is at the end of the `up` matcher. This ensures that the "dot" in the `up`
-            // matcher is also advanced sufficiently.
-            //
-            // NOTE: removing the condition `idx == len` allows trailing separators.
             if idx == len {
-                // Get the `up` matcher
+                // Add all matches from the sequence to `up`, and move the "dot" past the
+                // repetition in `up`. This allows for the case where the sequence matching is
+                // finished.
                 let mut new_pos = repetition.up.clone();
-
-                // Add matches from this repetition to the `matches` of `up`
                 for idx in item.match_lo..item.match_hi {
                     let sub = item.matches[idx].clone();
                     new_pos.push_match(idx, MatchedSeq(sub));
                 }
-
-                // Move the "dot" past the repetition in `up`
                 new_pos.match_cur = item.match_hi;
                 new_pos.idx += 1;
                 cur_items.push(new_pos);
             }
 
-            // Check if we need a separator.
             if idx == len && repetition.sep.is_some() {
-                // We have a separator, and it is the current token. We can advance past the
-                // separator token.
                 if repetition.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
+                    // The matcher has a separator, and it matches the current token. We can
+                    // advance past the separator token.
                     item.idx += 1;
                     next_items.push(item);
                 }
@@ -674,8 +653,8 @@ fn parse_tt_inner<'root, 'tt>(
         }
     }
 
-    // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
-    // either the parse is ambiguous (which should never happen) or there is a syntax error.
+    // If we reached the end of input, check that there is EXACTLY ONE possible matcher. Otherwise,
+    // either the parse is ambiguous (which is an error) or there is a syntax error.
     if *token == token::Eof {
         Some(match eof_items {
             EofItems::One(mut eof_item) => {
@@ -712,20 +691,19 @@ pub(super) fn parse_tt(
     // `next_items`. After some post-processing, the contents of `next_items` replenish `cur_items`
     // and we start over again.
     //
-    // This MatcherPos instance is allocated on the stack. All others -- and
-    // there are frequently *no* others! -- are allocated on the heap.
+    // This MatcherPos instance is allocated on the stack. All others -- and there are frequently
+    // *no* others! -- are allocated on the heap.
     let mut initial = MatcherPos::new(ms);
     let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
 
     loop {
         let mut next_items = SmallVec::new();
 
-        // Matcher positions black-box parsed by parser.rs (`parser`)
+        // Matcher positions black-box parsed by `Parser`.
         let mut bb_items = SmallVec::new();
 
         // Process `cur_items` until either we have finished the input or we need to get some
-        // parsing from the black-box parser done. The result is that `next_items` will contain a
-        // bunch of possible next matcher positions in `next_items`.
+        // parsing from the black-box parser done.
         if let Some(result) = parse_tt_inner(
             parser.sess,
             ms,
@@ -740,10 +718,7 @@ pub(super) fn parse_tt(
         // `parse_tt_inner` handled all cur_items, so it's empty.
         assert!(cur_items.is_empty());
 
-        // We need to do some post processing after the `parse_tt_inner`.
-        //
         // Error messages here could be improved with links to original rules.
-
         match (next_items.len(), bb_items.len()) {
             (0, 0) => {
                 // There are no possible next positions AND we aren't waiting for the black-box
@@ -787,8 +762,7 @@ pub(super) fn parse_tt(
             }
 
             (_, _) => {
-                // We need to call the black-box parser to get some nonterminal, but something is
-                // wrong.
+                // Too many possibilities!
                 return bb_items_ambiguity_error(
                     macro_name,
                     next_items,
