@@ -2075,7 +2075,7 @@ impl GenericDef {
                 id: LifetimeParamId { parent: self.into(), local_id },
             })
             .map(GenericParam::LifetimeParam);
-        ty_params.chain(lt_params).collect()
+        lt_params.chain(ty_params).collect()
     }
 
     pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
@@ -2334,6 +2334,18 @@ impl TypeParam {
 
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         self.id.parent().module(db.upcast()).into()
+    }
+
+    /// Is this type parameter implicitly introduced (eg. `Self` in a trait or an `impl Trait`
+    /// argument)?
+    pub fn is_implicit(self, db: &dyn HirDatabase) -> bool {
+        let params = db.generic_params(self.id.parent());
+        let data = &params.type_or_consts[self.id.local_id()];
+        match data.type_param().unwrap().provenance {
+            hir_def::generics::TypeParamProvenance::TypeParamList => false,
+            hir_def::generics::TypeParamProvenance::TraitSelf
+            | hir_def::generics::TypeParamProvenance::ArgumentImplTrait => true,
+        }
     }
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {

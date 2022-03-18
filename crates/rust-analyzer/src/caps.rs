@@ -34,7 +34,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
-            trigger_characters: Some(vec!["(".to_string(), ",".to_string()]),
+            trigger_characters: Some(vec!["(".to_string(), ",".to_string(), "<".to_string()]),
             retrigger_characters: None,
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
