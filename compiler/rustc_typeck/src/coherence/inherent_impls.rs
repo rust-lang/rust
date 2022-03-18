@@ -7,7 +7,7 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use rustc_errors::{pluralize, struct_span_err};
+use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -151,24 +151,33 @@ impl<'tcx> InherentCollect<'tcx> {
         const ADD_ATTR: &str =
             "alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items";
         if !self.tcx.hir().rustc_coherence_is_core() {
-            for item in items {
-                if !self.tcx.has_attr(item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
-                {
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0390,
-                        "cannot define inherent `impl` for primitive types",
-                    );
-
-                    if self.tcx.features().rustc_attrs {
-                        err.help(INTO_CORE).span_help(item.span, ADD_ATTR);
-                    } else {
-                        err.help("consider using a trait instead");
+            if self.tcx.features().rustc_attrs {
+                for item in items {
+                    if !self
+                        .tcx
+                        .has_attr(item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
+                    {
+                        struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0390,
+                            "cannot define inherent `impl` for primitive types outside of `core`",
+                        )
+                        .help(INTO_CORE)
+                        .span_help(item.span, ADD_ATTR)
+                        .emit();
+                        return;
                     }
-                    err.emit();
-                    return;
                 }
+            } else {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    E0390,
+                    "cannot define inherent `impl` for primitive types",
+                )
+                .help("consider using an extension trait instead")
+                .emit();
             }
         }
 

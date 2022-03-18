@@ -4,7 +4,7 @@ error[E0390]: cannot define inherent `impl` for primitive types
 LL | impl *mut Foo {}
    |      ^^^^^^^^
    |
-   = help: consider using a trait instead
+   = help: consider using an extension trait instead
 
 error: aborting due to previous error
 

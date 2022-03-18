@@ -282,11 +282,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // found when exploring `all_traits`, but we also need them to be acurate on
                     // our suggestions (#47759).
                     let found_assoc = |ty: Ty<'tcx>| {
-                        simplify_type(tcx, ty, TreatParams::AsPlaceholders).and_then(|simp| {
-                            tcx.incoherent_impls(simp)
-                            .iter()
-                            .find_map(|&id| self.associated_value(id, item_name))
-                        }).is_some()
+                        simplify_type(tcx, ty, TreatParams::AsPlaceholders)
+                            .and_then(|simp| {
+                                tcx.incoherent_impls(simp)
+                                    .iter()
+                                    .find_map(|&id| self.associated_value(id, item_name))
+                            })
+                            .is_some()
                     };
                     let found_candidate = candidates.next().is_some()
                         || found_assoc(tcx.types.i8)

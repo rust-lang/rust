@@ -4,7 +4,7 @@ error[E0390]: cannot define inherent `impl` for primitive types
 LL | impl u8 {
    |      ^^
    |
-   = help: consider using a trait instead
+   = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
   --> $DIR/kinds-of-primitive-impl.rs:6:6
@@ -12,7 +12,7 @@ error[E0390]: cannot define inherent `impl` for primitive types
 LL | impl str {
    |      ^^^
    |
-   = help: consider using a trait instead
+   = help: consider using an extension trait instead
 
 error[E0390]: cannot define inherent `impl` for primitive types
   --> $DIR/kinds-of-primitive-impl.rs:12:6
@@ -20,7 +20,7 @@ error[E0390]: cannot define inherent `impl` for primitive types
 LL | impl char {
    |      ^^^^
    |
-   = help: consider using a trait instead
+   = help: consider using an extension trait instead
 
 error: aborting due to 3 previous errors
 
