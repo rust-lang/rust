@@ -540,67 +540,7 @@ fn parse_tt_inner<'root, 'tt>(
         let idx = item.idx;
         let len = item.top_elts.len();
 
-        // If `idx >= len`, then we are at or past the end of the matcher of `item`.
-        if idx >= len {
-            // We are repeating iff there is a parent. If the matcher is inside of a repetition,
-            // then we could be at the end of a sequence or at the beginning of the next
-            // repetition.
-            if let Some(repetition) = &item.repetition {
-                debug_assert!(idx <= len + 1);
-                debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
-
-                // At this point, regardless of whether there is a separator, we should add all
-                // matches from the complete repetition of the sequence to the shared, top-level
-                // `matches` list (actually, `up.matches`, which could itself not be the top-level,
-                // but anyway...). Moreover, we add another item to `cur_items` in which the "dot"
-                // is at the end of the `up` matcher. This ensures that the "dot" in the `up`
-                // matcher is also advanced sufficiently.
-                //
-                // NOTE: removing the condition `idx == len` allows trailing separators.
-                if idx == len {
-                    // Get the `up` matcher
-                    let mut new_pos = repetition.up.clone();
-
-                    // Add matches from this repetition to the `matches` of `up`
-                    for idx in item.match_lo..item.match_hi {
-                        let sub = item.matches[idx].clone();
-                        new_pos.push_match(idx, MatchedSeq(sub));
-                    }
-
-                    // Move the "dot" past the repetition in `up`
-                    new_pos.match_cur = item.match_hi;
-                    new_pos.idx += 1;
-                    cur_items.push(new_pos);
-                }
-
-                // Check if we need a separator.
-                if idx == len && repetition.sep.is_some() {
-                    // We have a separator, and it is the current token. We can advance past the
-                    // separator token.
-                    if repetition.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
-                        item.idx += 1;
-                        next_items.push(item);
-                    }
-                } else if repetition.seq_op != mbe::KleeneOp::ZeroOrOne {
-                    // We don't need a separator. Move the "dot" back to the beginning of the
-                    // matcher and try to match again UNLESS we are only allowed to have _one_
-                    // repetition.
-                    item.match_cur = item.match_lo;
-                    item.idx = 0;
-                    cur_items.push(item);
-                }
-            } else {
-                // If we are not in a repetition, then being at the end of a matcher means that we
-                // have reached the potential end of the input.
-                debug_assert_eq!(idx, len);
-                if *token == token::Eof {
-                    eof_items = match eof_items {
-                        EofItems::None => EofItems::One(item),
-                        EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
-                    }
-                }
-            }
-        } else {
+        if idx < len {
             // We are in the middle of a matcher. Look at what token in the matcher we are trying
             // to match the current token (`token`) against. Depending on that, we may generate new
             // items.
@@ -676,6 +616,60 @@ fn parse_tt_inner<'root, 'tt>(
                 TokenTree::Token(..) => {}
 
                 TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
+            }
+        } else if let Some(repetition) = &item.repetition {
+            // We are past the end of a repetition.
+            debug_assert!(idx <= len + 1);
+            debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
+
+            // At this point, regardless of whether there is a separator, we should add all
+            // matches from the complete repetition of the sequence to the shared, top-level
+            // `matches` list (actually, `up.matches`, which could itself not be the top-level,
+            // but anyway...). Moreover, we add another item to `cur_items` in which the "dot"
+            // is at the end of the `up` matcher. This ensures that the "dot" in the `up`
+            // matcher is also advanced sufficiently.
+            //
+            // NOTE: removing the condition `idx == len` allows trailing separators.
+            if idx == len {
+                // Get the `up` matcher
+                let mut new_pos = repetition.up.clone();
+
+                // Add matches from this repetition to the `matches` of `up`
+                for idx in item.match_lo..item.match_hi {
+                    let sub = item.matches[idx].clone();
+                    new_pos.push_match(idx, MatchedSeq(sub));
+                }
+
+                // Move the "dot" past the repetition in `up`
+                new_pos.match_cur = item.match_hi;
+                new_pos.idx += 1;
+                cur_items.push(new_pos);
+            }
+
+            // Check if we need a separator.
+            if idx == len && repetition.sep.is_some() {
+                // We have a separator, and it is the current token. We can advance past the
+                // separator token.
+                if repetition.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
+                    item.idx += 1;
+                    next_items.push(item);
+                }
+            } else if repetition.seq_op != mbe::KleeneOp::ZeroOrOne {
+                // We don't need a separator. Move the "dot" back to the beginning of the
+                // matcher and try to match again UNLESS we are only allowed to have _one_
+                // repetition.
+                item.match_cur = item.match_lo;
+                item.idx = 0;
+                cur_items.push(item);
+            }
+        } else {
+            // We are past the end of the matcher, and not in a repetition. Look for end of input.
+            debug_assert_eq!(idx, len);
+            if *token == token::Eof {
+                eof_items = match eof_items {
+                    EofItems::None => EofItems::One(item),
+                    EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
+                }
             }
         }
     }
