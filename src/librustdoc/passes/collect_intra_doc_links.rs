@@ -467,7 +467,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
     ) -> Option<(Res, ItemFragment)> {
         let tcx = self.cx.tcx;
 
-        prim_ty.impls(tcx).into_iter().find_map(|&impl_| {
+        prim_ty.impls(tcx).find_map(|impl_| {
             tcx.associated_items(impl_)
                 .find_by_name_and_namespace(tcx, Ident::with_dummy_span(item_name), ns, impl_)
                 .map(|item| {

@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
+use std::iter;
 use std::lazy::SyncOnceCell as OnceCell;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -22,6 +23,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE}
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{BodyId, Mutability};
 use rustc_index::vec::IndexVec;
+use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
@@ -1625,6 +1627,7 @@ crate enum PrimitiveType {
     Never,
 }
 
+type SimplifiedTypes = FxHashMap<PrimitiveType, ArrayVec<SimplifiedType, 2>>;
 impl PrimitiveType {
     crate fn from_hir(prim: hir::PrimTy) -> PrimitiveType {
         use ast::{FloatTy, IntTy, UintTy};
@@ -1680,66 +1683,66 @@ impl PrimitiveType {
         }
     }
 
-    crate fn impls(&self, tcx: TyCtxt<'_>) -> &'static ArrayVec<DefId, 4> {
-        Self::all_impls(tcx).get(self).expect("missing impl for primitive type")
-    }
+    crate fn simplified_types() -> &'static SimplifiedTypes {
+        use ty::fast_reject::SimplifiedTypeGen::*;
+        use ty::{FloatTy, IntTy, UintTy};
+        use PrimitiveType::*;
+        static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();
 
-    crate fn all_impls(tcx: TyCtxt<'_>) -> &'static FxHashMap<PrimitiveType, ArrayVec<DefId, 4>> {
-        static CELL: OnceCell<FxHashMap<PrimitiveType, ArrayVec<DefId, 4>>> = OnceCell::new();
-
+        let single = |x| iter::once(x).collect();
         CELL.get_or_init(move || {
-            use self::PrimitiveType::*;
-
-            let single = |a: Option<DefId>| a.into_iter().collect();
-            let both = |a: Option<DefId>, b: Option<DefId>| -> ArrayVec<_, 4> {
-                a.into_iter().chain(b).collect()
-            };
-
-            let lang_items = tcx.lang_items();
             map! {
-                Isize => single(lang_items.isize_impl()),
-                I8 => single(lang_items.i8_impl()),
-                I16 => single(lang_items.i16_impl()),
-                I32 => single(lang_items.i32_impl()),
-                I64 => single(lang_items.i64_impl()),
-                I128 => single(lang_items.i128_impl()),
-                Usize => single(lang_items.usize_impl()),
-                U8 => single(lang_items.u8_impl()),
-                U16 => single(lang_items.u16_impl()),
-                U32 => single(lang_items.u32_impl()),
-                U64 => single(lang_items.u64_impl()),
-                U128 => single(lang_items.u128_impl()),
-                F32 => both(lang_items.f32_impl(), lang_items.f32_runtime_impl()),
-                F64 => both(lang_items.f64_impl(), lang_items.f64_runtime_impl()),
-                Char => single(lang_items.char_impl()),
-                Bool => single(lang_items.bool_impl()),
-                Str => both(lang_items.str_impl(), lang_items.str_alloc_impl()),
-                Slice => {
-                    lang_items
-                        .slice_impl()
-                        .into_iter()
-                        .chain(lang_items.slice_u8_impl())
-                        .chain(lang_items.slice_alloc_impl())
-                        .chain(lang_items.slice_u8_alloc_impl())
-                        .collect()
-                },
-                Array => single(lang_items.array_impl()),
-                Tuple => ArrayVec::new(),
-                Unit => ArrayVec::new(),
-                RawPointer => {
-                    lang_items
-                        .const_ptr_impl()
-                        .into_iter()
-                        .chain(lang_items.mut_ptr_impl())
-                        .chain(lang_items.const_slice_ptr_impl())
-                        .chain(lang_items.mut_slice_ptr_impl())
-                        .collect()
-                },
-                Reference => ArrayVec::new(),
+                Isize => single(IntSimplifiedType(IntTy::Isize)),
+                I8 => single(IntSimplifiedType(IntTy::I8)),
+                I16 => single(IntSimplifiedType(IntTy::I16)),
+                I32 => single(IntSimplifiedType(IntTy::I32)),
+                I64 => single(IntSimplifiedType(IntTy::I64)),
+                I128 => single(IntSimplifiedType(IntTy::I128)),
+                Usize => single(UintSimplifiedType(UintTy::Usize)),
+                U8 => single(UintSimplifiedType(UintTy::U8)),
+                U16 => single(UintSimplifiedType(UintTy::U16)),
+                U32 => single(UintSimplifiedType(UintTy::U32)),
+                U64 => single(UintSimplifiedType(UintTy::U64)),
+                U128 => single(UintSimplifiedType(UintTy::U128)),
+                F32 => single(FloatSimplifiedType(FloatTy::F32)),
+                F64 => single(FloatSimplifiedType(FloatTy::F64)),
+                Str => single(StrSimplifiedType),
+                Bool => single(BoolSimplifiedType),
+                Char => single(CharSimplifiedType),
+                Array => single(ArraySimplifiedType),
+                Slice => single(SliceSimplifiedType),
+                // FIXME: If we ever add an inherent impl for tuples
+                // with different lengths, they won't show in rustdoc.
+                //
+                // Either manually update this arrayvec at this point
+                // or start with a more complex refactoring.
+                Tuple => [TupleSimplifiedType(2), TupleSimplifiedType(3)].into(),
+                Unit => single(TupleSimplifiedType(0)),
+                RawPointer => [PtrSimplifiedType(Mutability::Not), PtrSimplifiedType(Mutability::Mut)].into(),
+                Reference => [RefSimplifiedType(Mutability::Not), RefSimplifiedType(Mutability::Mut)].into(),
+                // FIXME: This will be wrong if we ever add inherent impls
+                // for function pointers.
                 Fn => ArrayVec::new(),
-                Never => ArrayVec::new(),
+                Never => single(NeverSimplifiedType),
             }
         })
+    }
+
+    crate fn impls<'tcx>(&self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = DefId> + 'tcx {
+        Self::simplified_types()
+            .get(self)
+            .into_iter()
+            .flatten()
+            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .copied()
+    }
+
+    crate fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> + '_ {
+        Self::simplified_types()
+            .values()
+            .flatten()
+            .flat_map(move |&simp| tcx.incoherent_impls(simp))
+            .copied()
     }
 
     crate fn as_sym(&self) -> Symbol {

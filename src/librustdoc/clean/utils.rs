@@ -184,7 +184,7 @@ crate fn build_deref_target_impls(cx: &mut DocContext<'_>, items: &[Item], ret: 
 
         if let Some(prim) = target.primitive_type() {
             let _prof_timer = cx.tcx.sess.prof.generic_activity("build_primitive_inherent_impls");
-            for &did in prim.impls(tcx).iter().filter(|did| !did.is_local()) {
+            for did in prim.impls(tcx).filter(|did| !did.is_local()) {
                 inline::build_impl(cx, None, did, None, ret);
             }
         } else if let Type::Path { path } = target {
