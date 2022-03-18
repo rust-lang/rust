@@ -66,6 +66,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(no_effect::NO_EFFECT),
     LintId::of(no_effect::UNNECESSARY_OPERATION),
     LintId::of(only_used_in_recursion::ONLY_USED_IN_RECURSION),
+    LintId::of(or_then_unwrap::OR_THEN_UNWRAP),
     LintId::of(overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL),
     LintId::of(partialeq_ne_impl::PARTIALEQ_NE_IMPL),
     LintId::of(precedence::PRECEDENCE),
@@ -94,7 +95,6 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(unit_types::UNIT_ARG),
     LintId::of(unnecessary_sort_by::UNNECESSARY_SORT_BY),
     LintId::of(unwrap::UNNECESSARY_UNWRAP),
-    LintId::of(or_then_unwrap::OR_THEN_UNWRAP),
     LintId::of(useless_conversion::USELESS_CONVERSION),
     LintId::of(zero_div_zero::ZERO_DIVIDED_BY_ZERO),
 ])
