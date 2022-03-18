@@ -245,7 +245,7 @@ fn generic_extension<'cx>(
     // this situation.)
     let parser = parser_from_cx(sess, arg.clone());
 
-    let tt_parser = TtParser::new(name);
+    let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -447,7 +447,7 @@ pub fn compile_declarative_macro(
     ];
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let tt_parser = TtParser::new(def.ident);
+    let mut tt_parser = TtParser::new(def.ident);
     let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {

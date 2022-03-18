@@ -428,17 +428,26 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
-pub struct TtParser {
+// Note: the item vectors could be created and dropped within `parse_tt`, but to avoid excess
+// allocations we have a single vector fo each kind that is cleared and reused repeatedly.
+pub struct TtParser<'tt> {
     macro_name: Ident,
 
+    /// The set of current items to be processed. This should be empty by the end of a successful
+    /// execution of `parse_tt_inner`.
     cur_items: Vec<Box<MatcherPos<'tt>>>,
+
+    /// The set of newly generated items. These are used to replenish `cur_items` in the function
+    /// `parse_tt`.
     next_items: Vec<Box<MatcherPos<'tt>>>,
+
+    /// The set of items that are waiting for the black-box parser.
     bb_items: Vec<Box<MatcherPos<'tt>>>,
 }
 
-impl TtParser {
+impl<'tt> TtParser<'tt> {
     pub(super) fn new(macro_name: Ident) -> Self {
-        Self { macro_name }
+        Self { macro_name, cur_items: vec![], next_items: vec![], bb_items: vec![] }
     }
 
     /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
@@ -447,33 +456,21 @@ impl TtParser {
     /// For more info about the how this happens, see the module-level doc comments and the inline
     /// comments of this function.
     ///
-    /// # Parameters
-    ///
-    /// - `cur_items`: the set of current items to be processed. This should be empty by the end of
-    ///   a successful execution of this function.
-    /// - `next_items`: the set of newly generated items. These are used to replenish `cur_items` in
-    ///   the function `parse`.
-    /// - `bb_items`: the set of items that are waiting for the black-box parser.
-    /// - `token`: the current token of the parser.
-    ///
     /// # Returns
     ///
     /// `Some(result)` if everything is finished, `None` otherwise. Note that matches are kept
     /// track of through the items generated.
-    fn parse_tt_inner<'tt>(
-        &self,
+    fn parse_tt_inner(
+        &mut self,
         sess: &ParseSess,
         ms: &[TokenTree],
-        cur_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
-        next_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
-        bb_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
         token: &Token,
     ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
         let mut eof_items = EofItems::None;
 
-        while let Some(mut item) = cur_items.pop() {
+        while let Some(mut item) = self.cur_items.pop() {
             // When unzipped trees end, remove them. This corresponds to backtracking out of a
             // delimited submatcher into which we already descended. When backtracking out again, we
             // need to advance the "dot" past the delimiters in the outer matcher.
@@ -506,11 +503,11 @@ impl TtParser {
                             for idx in item.match_cur..item.match_cur + seq.num_captures {
                                 new_item.push_match(idx, MatchedSeq(Lrc::new(smallvec![])));
                             }
-                            cur_items.push(new_item);
+                            self.cur_items.push(new_item);
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
-                        cur_items.push(box MatcherPos::repetition(item, sp, seq));
+                        self.cur_items.push(box MatcherPos::repetition(item, sp, seq));
                     }
 
                     TokenTree::MetaVarDecl(span, _, None) => {
@@ -527,7 +524,7 @@ impl TtParser {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
                         if Parser::nonterminal_may_begin_with(kind, token) {
-                            bb_items.push(item);
+                            self.bb_items.push(item);
                         }
                     }
 
@@ -541,7 +538,7 @@ impl TtParser {
                         let idx = item.idx;
                         item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
                         item.idx = 0;
-                        cur_items.push(item);
+                        self.cur_items.push(item);
                     }
 
                     TokenTree::Token(t) => {
@@ -553,7 +550,7 @@ impl TtParser {
                         // `cur_items` will match.
                         if token_name_eq(&t, token) {
                             item.idx += 1;
-                            next_items.push(item);
+                            self.next_items.push(item);
                         }
                     }
 
@@ -576,7 +573,7 @@ impl TtParser {
                     }
                     new_pos.match_cur = item.match_hi;
                     new_pos.idx += 1;
-                    cur_items.push(new_pos);
+                    self.cur_items.push(new_pos);
                 }
 
                 if idx == len && repetition.sep.is_some() {
@@ -584,7 +581,7 @@ impl TtParser {
                         // The matcher has a separator, and it matches the current token. We can
                         // advance past the separator token.
                         item.idx += 1;
-                        next_items.push(item);
+                        self.next_items.push(item);
                     }
                 } else if repetition.seq_op != mbe::KleeneOp::ZeroOrOne {
                     // We don't need a separator. Move the "dot" back to the beginning of the
@@ -592,7 +589,7 @@ impl TtParser {
                     // repetition.
                     item.match_cur = item.match_lo;
                     item.idx = 0;
-                    cur_items.push(item);
+                    self.cur_items.push(item);
                 }
             } else {
                 // We are past the end of the matcher, and not in a repetition. Look for end of
@@ -635,41 +632,33 @@ impl TtParser {
     /// Use the given slice of token trees (`ms`) as a matcher. Match the token stream from the
     /// given `parser` against it and return the match.
     pub(super) fn parse_tt(
-        &self,
+        &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
-        ms: &[TokenTree],
+        ms: &'tt [TokenTree],
     ) -> NamedParseResult {
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `ms`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
         // possible next positions into `next_items`. After some post-processing, the contents of
         // `next_items` replenish `cur_items` and we start over again.
-        let mut cur_items = smallvec![box MatcherPos::new(ms)];
+        self.cur_items.clear();
+        self.cur_items.push(box MatcherPos::new(ms));
 
         loop {
-            let mut next_items = SmallVec::new();
-
-            // Matcher positions black-box parsed by `Parser`.
-            let mut bb_items = SmallVec::new();
+            self.next_items.clear();
+            self.bb_items.clear();
 
             // Process `cur_items` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            if let Some(result) = self.parse_tt_inner(
-                parser.sess,
-                ms,
-                &mut cur_items,
-                &mut next_items,
-                &mut bb_items,
-                &parser.token,
-            ) {
+            if let Some(result) = self.parse_tt_inner(parser.sess, ms, &parser.token) {
                 return result;
             }
 
             // `parse_tt_inner` handled all cur_items, so it's empty.
-            assert!(cur_items.is_empty());
+            assert!(self.cur_items.is_empty());
 
             // Error messages here could be improved with links to original rules.
-            match (next_items.len(), bb_items.len()) {
+            match (self.next_items.len(), self.bb_items.len()) {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
@@ -682,13 +671,13 @@ impl TtParser {
                 (_, 0) => {
                     // Dump all possible `next_items` into `cur_items` for the next iteration. Then
                     // process the next token.
-                    cur_items.extend(next_items.drain(..));
+                    self.cur_items.extend(self.next_items.drain(..));
                     parser.to_mut().bump();
                 }
 
                 (0, 1) => {
                     // We need to call the black-box parser to get some nonterminal.
-                    let mut item = bb_items.pop().unwrap();
+                    let mut item = self.bb_items.pop().unwrap();
                     if let TokenTree::MetaVarDecl(span, _, Some(kind)) =
                         item.top_elts.get_tt(item.idx)
                     {
@@ -714,26 +703,22 @@ impl TtParser {
                     } else {
                         unreachable!()
                     }
-                    cur_items.push(item);
+                    self.cur_items.push(item);
                 }
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.ambiguity_error(next_items, bb_items, parser.token.span);
+                    return self.ambiguity_error(parser.token.span);
                 }
             }
 
-            assert!(!cur_items.is_empty());
+            assert!(!self.cur_items.is_empty());
         }
     }
 
-    fn ambiguity_error<'tt>(
-        &self,
-        next_items: SmallVec<[Box<MatcherPos<'tt>>; 1]>,
-        bb_items: SmallVec<[Box<MatcherPos<'tt>>; 1]>,
-        token_span: rustc_span::Span,
-    ) -> NamedParseResult {
-        let nts = bb_items
+    fn ambiguity_error(&self, token_span: rustc_span::Span) -> NamedParseResult {
+        let nts = self
+            .bb_items
             .iter()
             .map(|item| match item.top_elts.get_tt(item.idx) {
                 TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
@@ -749,7 +734,7 @@ impl TtParser {
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
-                match next_items.len() {
+                match self.next_items.len() {
                     0 => format!("built-in NTs {}.", nts),
                     1 => format!("built-in NTs {} or 1 other option.", nts),
                     n => format!("built-in NTs {} or {} other options.", nts, n),
