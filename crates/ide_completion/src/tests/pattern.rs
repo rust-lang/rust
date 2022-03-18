@@ -493,7 +493,6 @@ fn f(e: MyEnum) {
 
     check_empty(
         r#"
-#[repr(C)]
 union U {
     i: i32,
     f: f32,
@@ -515,5 +514,23 @@ fn f(u: U) {
             ct C pub const C: i32
             ct D pub const D: i32
         "#]],
-    )
+    );
+
+    check_empty(
+        r#"
+#[lang = "u32"]
+impl u32 {
+    pub const MIN: Self = 0;
+}
+
+fn f(v: u32) {
+    match v {
+        u32::$0
+    }
+}
+        "#,
+        expect![[r#"
+            ct MIN pub const MIN: Self
+        "#]],
+    );
 }

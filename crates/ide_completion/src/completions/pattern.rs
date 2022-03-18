@@ -141,7 +141,8 @@ fn pattern_path_completion(
                 | hir::PathResolution::SelfType(_)
                 | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Struct(_)))
                 | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(_)))
-                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(_)))) => {
+                | hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(_)))
+                | hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))) => {
                     let ty = match res {
                         hir::PathResolution::TypeParam(param) => param.ty(ctx.db),
                         hir::PathResolution::SelfType(impl_def) => impl_def.self_ty(ctx.db),
@@ -157,6 +158,13 @@ fn pattern_path_completion(
                         }
                         hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(u))) => {
                             u.ty(ctx.db)
+                        }
+                        hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => {
+                            let module = match ctx.module {
+                                Some(m) => m,
+                                None => return,
+                            };
+                            ty.ty(ctx.db, module)
                         }
                         _ => return,
                     };
