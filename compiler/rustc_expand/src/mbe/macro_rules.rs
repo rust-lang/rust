@@ -245,7 +245,7 @@ fn generic_extension<'cx>(
     // this situation.)
     let parser = parser_from_cx(sess, arg.clone());
 
-    let tt_parser = TtParser;
+    let tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
         // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -259,7 +259,7 @@ fn generic_extension<'cx>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs_tt, name) {
+        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs_tt) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
@@ -352,11 +352,9 @@ fn generic_extension<'cx>(
                 mbe::TokenTree::Delimited(_, ref delim) => &delim.tts,
                 _ => continue,
             };
-            if let Success(_) = tt_parser.parse_tt(
-                &mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())),
-                lhs_tt,
-                name,
-            ) {
+            if let Success(_) =
+                tt_parser.parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt)
+            {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
@@ -449,27 +447,26 @@ pub fn compile_declarative_macro(
     ];
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let tt_parser = TtParser;
-    let argument_map =
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram, def.ident) {
-            Success(m) => m,
-            Failure(token, msg) => {
-                let s = parse_failure_msg(&token);
-                let sp = token.span.substitute_dummy(def.span);
-                sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
-                return mk_syn_ext(Box::new(macro_rules_dummy_expander));
-            }
-            Error(sp, msg) => {
-                sess.parse_sess
-                    .span_diagnostic
-                    .struct_span_err(sp.substitute_dummy(def.span), &msg)
-                    .emit();
-                return mk_syn_ext(Box::new(macro_rules_dummy_expander));
-            }
-            ErrorReported => {
-                return mk_syn_ext(Box::new(macro_rules_dummy_expander));
-            }
-        };
+    let tt_parser = TtParser::new(def.ident);
+    let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
+        Success(m) => m,
+        Failure(token, msg) => {
+            let s = parse_failure_msg(&token);
+            let sp = token.span.substitute_dummy(def.span);
+            sess.parse_sess.span_diagnostic.struct_span_err(sp, &s).span_label(sp, msg).emit();
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+        }
+        Error(sp, msg) => {
+            sess.parse_sess
+                .span_diagnostic
+                .struct_span_err(sp.substitute_dummy(def.span), &msg)
+                .emit();
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+        }
+        ErrorReported => {
+            return mk_syn_ext(Box::new(macro_rules_dummy_expander));
+        }
+    };
 
     let mut valid = true;
 

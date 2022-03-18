@@ -492,9 +492,15 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
-pub struct TtParser;
+pub struct TtParser {
+    macro_name: Ident,
+}
 
 impl TtParser {
+    pub(super) fn new(macro_name: Ident) -> Self {
+        Self { macro_name }
+    }
+
     /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
     /// produce more items in `next_items` and `bb_items`.
     ///
@@ -693,7 +699,6 @@ impl TtParser {
         &self,
         parser: &mut Cow<'_, Parser<'_>>,
         ms: &[TokenTree],
-        macro_name: Ident,
     ) -> NamedParseResult {
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `ms`.
@@ -779,12 +784,7 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.ambiguity_error(
-                        macro_name,
-                        next_items,
-                        bb_items,
-                        parser.token.span,
-                    );
+                    return self.ambiguity_error(next_items, bb_items, parser.token.span);
                 }
             }
 
@@ -794,7 +794,6 @@ impl TtParser {
 
     fn ambiguity_error<'root, 'tt>(
         &self,
-        macro_name: Ident,
         next_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
         bb_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
         token_span: rustc_span::Span,
@@ -813,7 +812,8 @@ impl TtParser {
         Error(
             token_span,
             format!(
-                "local ambiguity when calling macro `{macro_name}`: multiple parsing options: {}",
+                "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+                self.macro_name,
                 match next_items.len() {
                     0 => format!("built-in NTs {}.", nts),
                     1 => format!("built-in NTs {} or 1 other option.", nts),
