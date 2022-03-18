@@ -1033,11 +1033,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the language items in the given crate.
-    fn get_lang_items(self) -> impl Iterator<Item = (DefId, usize)> + 'a {
-        self.root
-            .lang_items
-            .decode(self)
-            .map(move |(def_index, index)| (self.local_def_id(def_index), index))
+    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
+        tcx.arena.alloc_from_iter(
+            self.root
+                .lang_items
+                .decode(self)
+                .map(move |(def_index, index)| (self.local_def_id(def_index), index)),
+        )
     }
 
     /// Iterates over the diagnostic items in the given crate.
@@ -1341,6 +1343,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
             })
         })
+    }
+
+    fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {
+        self.cdata
+            .incoherent_impls
+            .values()
+            .flat_map(move |impls| impls.decode(self).map(move |idx| self.local_def_id(idx)))
     }
 
     fn get_incoherent_impls(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {

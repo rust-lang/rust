@@ -1,6 +1,7 @@
 #![deny(rustdoc::broken_intra_doc_links)]
-#![feature(no_core, lang_items, rustdoc_internals)]
+#![feature(no_core, lang_items, rustc_attrs, rustdoc_internals)]
 #![no_core]
+#![rustc_coherence_is_core]
 #![crate_type = "rlib"]
 
 // @has prim_methods_local/index.html
@@ -12,7 +13,6 @@
 #[doc(primitive = "char")]
 mod char {}
 
-#[lang = "char"]
 impl char {
     pub fn len_utf8(self) -> usize {
         42
