@@ -255,6 +255,8 @@ config_data! {
         inlayHints_chainingHints: bool              = "true",
         /// Whether to show inlay type hints for return types of closures with blocks.
         inlayHints_closureReturnTypeHints: bool     = "false",
+        /// Whether to show inlay type hints for elided lifetimes in function signatures.
+        inlayHints_lifetimeElisionHints: bool       = "false",
         /// Whether to hide inlay hints for constructors.
         inlayHints_hideNamedConstructorHints: bool  = "false",
 
@@ -855,6 +857,7 @@ impl Config {
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
             closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
+            lifetime_elision_hints: self.data.inlayHints_lifetimeElisionHints,
             hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
             max_length: self.data.inlayHints_maxLength,
         }

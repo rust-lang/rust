@@ -4,7 +4,7 @@ use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
+    ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
     match_ast, Direction, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
@@ -17,6 +17,7 @@ pub struct InlayHintsConfig {
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub closure_return_type_hints: bool,
+    pub lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
 }
@@ -27,6 +28,8 @@ pub enum InlayKind {
     ParameterHint,
     ClosureReturnTypeHint,
     ChainingHint,
+    GenericParamListHint,
+    LifetimeHint,
 }
 
 #[derive(Debug)]
@@ -41,11 +44,15 @@ pub struct InlayHint {
 // rust-analyzer shows additional information inline with the source code.
 // Editors usually render this using read-only virtual text snippets interspersed with code.
 //
-// rust-analyzer shows hints for
+// rust-analyzer by default shows hints for
 //
 // * types of local variables
 // * names of function arguments
 // * types of chained expressions
+//
+// Optionally, one can enable additional hints for
+//
+// * return types of closure expressions with blocks
 //
 // **Note:** VS Code does not have native support for inlay hints https://github.com/microsoft/vscode/issues/16221[yet] and the hints are implemented using decorations.
 // This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
@@ -108,9 +115,170 @@ fn hints(
             }
             _ => (),
         }
-    } else if let Some(it) = ast::IdentPat::cast(node) {
+    } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
         bind_pat_hints(hints, sema, config, &it);
+    } else if let Some(it) = ast::Fn::cast(node) {
+        lifetime_hints(hints, config, it);
     }
+}
+
+fn lifetime_hints(
+    acc: &mut Vec<InlayHint>,
+    config: &InlayHintsConfig,
+    func: ast::Fn,
+) -> Option<()> {
+    if !config.lifetime_elision_hints {
+        return None;
+    }
+    let param_list = func.param_list()?;
+    let generic_param_list = func.generic_param_list();
+    let ret_type = func.ret_type();
+    let self_param = param_list.self_param();
+
+    let mut allocated_lifetimes = vec![];
+    let mut gen_name = {
+        let mut iter = 'a'..;
+        let allocated_lifetimes = &mut allocated_lifetimes;
+        move || {
+            if let Some(it) = iter.next() {
+                allocated_lifetimes.push(SmolStr::from_iter(['\'', it]))
+            }
+        }
+    };
+
+    let potential_lt_refs: Vec<_> = param_list
+        .params()
+        .filter_map(|it| {
+            let ty = it.ty()?;
+            // FIXME: look into the nested types here and check path types
+            match ty {
+                ast::Type::RefType(r) => Some(r),
+                _ => None,
+            }
+        })
+        .collect();
+
+    enum LifetimeKind {
+        Elided,
+        Named(SmolStr),
+        Static,
+    }
+
+    let fetch_lt_text = |lt: Option<ast::Lifetime>| match lt {
+        Some(lt) => match lt.text().as_str() {
+            "'_" => LifetimeKind::Elided,
+            "'static" => LifetimeKind::Static,
+            name => LifetimeKind::Named(name.into()),
+        },
+        None => LifetimeKind::Elided,
+    };
+    let is_elided = |lt: Option<ast::Lifetime>| match lt {
+        Some(lt) => matches!(lt.text().as_str(), "'_"),
+        None => true,
+    };
+
+    // allocate names
+    if let Some(self_param) = &self_param {
+        if is_elided(self_param.lifetime()) {
+            gen_name();
+        }
+    }
+    potential_lt_refs.iter().for_each(|it| {
+        // FIXME: look into the nested types here and check path types
+        if is_elided(it.lifetime()) {
+            gen_name();
+        }
+    });
+
+    // fetch output lifetime if elision rule applies
+
+    let output = if let Some(self_param) = &self_param {
+        match fetch_lt_text(self_param.lifetime()) {
+            LifetimeKind::Elided => allocated_lifetimes.get(0).cloned(),
+            LifetimeKind::Named(name) => Some(name),
+            LifetimeKind::Static => None,
+        }
+    } else {
+        match potential_lt_refs.as_slice() {
+            [r] => match fetch_lt_text(r.lifetime()) {
+                LifetimeKind::Elided => allocated_lifetimes.get(0).cloned(),
+                LifetimeKind::Named(name) => Some(name),
+                LifetimeKind::Static => None,
+            },
+            [..] => None,
+        }
+    };
+
+    // apply hints
+
+    // apply output if required
+    match (&output, ret_type) {
+        (Some(output_lt), Some(r)) => {
+            if let Some(ast::Type::RefType(t)) = r.ty() {
+                if t.lifetime().is_none() {
+                    let amp = t.amp_token()?;
+                    acc.push(InlayHint {
+                        range: amp.text_range(),
+                        kind: InlayKind::LifetimeHint,
+                        label: output_lt.clone(),
+                    });
+                }
+            }
+        }
+        _ => (),
+    }
+
+    let mut idx = if let Some(self_param) = &self_param {
+        if is_elided(self_param.lifetime()) {
+            if let Some(amp) = self_param.amp_token() {
+                let lt = allocated_lifetimes[0].clone();
+                acc.push(InlayHint {
+                    range: amp.text_range(),
+                    kind: InlayKind::LifetimeHint,
+                    label: lt,
+                });
+            }
+            1
+        } else {
+            0
+        }
+    } else {
+        0
+    };
+
+    for p in potential_lt_refs.iter() {
+        if is_elided(p.lifetime()) {
+            let t = p.amp_token()?;
+            let lt = allocated_lifetimes[idx].clone();
+            acc.push(InlayHint { range: t.text_range(), kind: InlayKind::LifetimeHint, label: lt });
+            idx += 1;
+        }
+    }
+
+    // generate generic param list things
+    match (generic_param_list, allocated_lifetimes.as_slice()) {
+        (_, []) => (),
+        (Some(gpl), allocated_lifetimes) => {
+            let angle_tok = gpl.l_angle_token()?;
+            let is_empty = gpl.generic_params().next().is_none();
+            acc.push(InlayHint {
+                range: angle_tok.text_range(),
+                kind: InlayKind::GenericParamListHint,
+                label: format!(
+                    "{}{}",
+                    allocated_lifetimes.iter().format(", "),
+                    if is_empty { "" } else { ", " }
+                )
+                .into(),
+            });
+        }
+        (None, allocated_lifetimes) => acc.push(InlayHint {
+            range: func.name()?.syntax().text_range(),
+            kind: InlayKind::GenericParamListHint,
+            label: format!("<{}>", allocated_lifetimes.iter().format(", "),).into(),
+        }),
+    }
+    Some(())
 }
 
 fn closure_ret_hints(
@@ -600,6 +768,7 @@ fn get_callable(
 mod tests {
     use expect_test::{expect, Expect};
     use ide_db::base_db::FileRange;
+    use itertools::Itertools;
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
@@ -610,6 +779,7 @@ mod tests {
         type_hints: false,
         parameter_hints: false,
         chaining_hints: false,
+        lifetime_elision_hints: false,
         hide_named_constructor_hints: false,
         closure_return_type_hints: false,
         max_length: None,
@@ -619,6 +789,7 @@ mod tests {
         parameter_hints: true,
         chaining_hints: true,
         closure_return_type_hints: true,
+        lifetime_elision_hints: true,
         ..DISABLED_CONFIG
     };
 
@@ -648,10 +819,15 @@ mod tests {
     #[track_caller]
     fn check_with_config(config: InlayHintsConfig, ra_fixture: &str) {
         let (analysis, file_id) = fixture::file(ra_fixture);
-        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+        let mut expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        let actual =
-            inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
+        let actual = inlay_hints
+            .into_iter()
+            .map(|it| (it.range, it.label.to_string()))
+            .sorted_by_key(|(range, _)| range.start())
+            .collect::<Vec<_>>();
+        expected.sort_by_key(|(range, _)| range.start());
+
         assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
     }
 
@@ -1823,6 +1999,44 @@ fn main() {
                     },
                 ]
             "#]],
+        );
+    }
+
+    #[test]
+    fn hints_sssin_attr_call() {
+        check(
+            r#"
+fn empty() {}
+
+fn no_gpl(a: &()) {}
+ //^^^^^^<'a>
+          // ^'a
+fn empty_gpl<>(a: &()) {}
+      //    ^'a   ^'a
+fn partial<'b>(a: &(), b: &'b ()) {}
+//        ^'a, $  ^'a
+fn partial<'b>(a: &'b (), b: &()) {}
+//        ^'a, $             ^'a
+
+fn single_ret(a: &()) -> &() {}
+// ^^^^^^^^^^<'a>
+              // ^'a     ^'a
+fn full_mul(a: &(), b: &()) {}
+// ^^^^^^^^<'a, 'b>
+            // ^'a     ^'b
+
+fn foo<'c>(a: &'c ()) -> &() {}
+                      // ^'c
+
+impl () {
+    fn foo(&self) -> &() {}
+    // ^^^<'a>
+        // ^'a       ^'a
+    fn foo(&self, a: &()) -> &() {}
+    // ^^^<'a, 'b>
+        // ^'a       ^'b     ^'a$
+}
+"#,
         );
     }
 }
