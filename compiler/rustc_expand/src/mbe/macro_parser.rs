@@ -779,7 +779,7 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.bb_items_ambiguity_error(
+                    return self.ambiguity_error(
                         macro_name,
                         next_items,
                         bb_items,
@@ -792,7 +792,7 @@ impl TtParser {
         }
     }
 
-    fn bb_items_ambiguity_error<'root, 'tt>(
+    fn ambiguity_error<'root, 'tt>(
         &self,
         macro_name: Ident,
         next_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
