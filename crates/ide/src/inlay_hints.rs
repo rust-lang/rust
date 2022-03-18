@@ -17,6 +17,7 @@ pub struct InlayHintsConfig {
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub closure_return_type_hints: bool,
+    // FIXME: ternary option here, on off non-noisy
     pub lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
@@ -135,15 +136,12 @@ fn lifetime_hints(
     let ret_type = func.ret_type();
     let self_param = param_list.self_param();
 
+    // FIXME: don't use already used lifetimenames
+
     let mut allocated_lifetimes = vec![];
     let mut gen_name = {
-        let mut iter = 'a'..;
-        let allocated_lifetimes = &mut allocated_lifetimes;
-        move || {
-            if let Some(it) = iter.next() {
-                allocated_lifetimes.push(SmolStr::from_iter(['\'', it]))
-            }
-        }
+        let mut gen = ('a'..).map(|it| SmolStr::from_iter(['\'', it]));
+        move || gen.next().unwrap_or_else(SmolStr::default)
     };
 
     let potential_lt_refs: Vec<_> = param_list
@@ -152,7 +150,13 @@ fn lifetime_hints(
             let ty = it.ty()?;
             // FIXME: look into the nested types here and check path types
             match ty {
-                ast::Type::RefType(r) => Some(r),
+                ast::Type::RefType(r) => Some((
+                    it.pat().and_then(|it| match it {
+                        ast::Pat::IdentPat(p) => p.name(),
+                        _ => None,
+                    }),
+                    r,
+                )),
                 _ => None,
             }
         })
@@ -180,13 +184,16 @@ fn lifetime_hints(
     // allocate names
     if let Some(self_param) = &self_param {
         if is_elided(self_param.lifetime()) {
-            gen_name();
+            allocated_lifetimes.push(SmolStr::new_inline("'self"));
         }
     }
-    potential_lt_refs.iter().for_each(|it| {
+    potential_lt_refs.iter().for_each(|(name, it)| {
         // FIXME: look into the nested types here and check path types
         if is_elided(it.lifetime()) {
-            gen_name();
+            allocated_lifetimes.push(
+                name.as_ref()
+                    .map_or_else(|| gen_name(), |it| SmolStr::from_iter(["'", it.text().as_str()])),
+            );
         }
     });
 
@@ -200,7 +207,7 @@ fn lifetime_hints(
         }
     } else {
         match potential_lt_refs.as_slice() {
-            [r] => match fetch_lt_text(r.lifetime()) {
+            [(_, r)] => match fetch_lt_text(r.lifetime()) {
                 LifetimeKind::Elided => allocated_lifetimes.get(0).cloned(),
                 LifetimeKind::Named(name) => Some(name),
                 LifetimeKind::Static => None,
@@ -246,7 +253,7 @@ fn lifetime_hints(
         0
     };
 
-    for p in potential_lt_refs.iter() {
+    for (_, p) in potential_lt_refs.iter() {
         if is_elided(p.lifetime()) {
             let t = p.amp_token()?;
             let lt = allocated_lifetimes[idx].clone();
@@ -2015,8 +2022,8 @@ fn empty_gpl<>(a: &()) {}
       //    ^'a   ^'a
 fn partial<'b>(a: &(), b: &'b ()) {}
 //        ^'a, $  ^'a
-fn partial<'b>(a: &'b (), b: &()) {}
-//        ^'a, $             ^'a
+fn partial<'a>(a: &'a (), b: &()) {}
+//        ^'b, $             ^'b
 
 fn single_ret(a: &()) -> &() {}
 // ^^^^^^^^^^<'a>
@@ -2030,11 +2037,11 @@ fn foo<'c>(a: &'c ()) -> &() {}
 
 impl () {
     fn foo(&self) -> &() {}
-    // ^^^<'a>
-        // ^'a       ^'a
+    // ^^^<'self>
+        // ^'self    ^'self
     fn foo(&self, a: &()) -> &() {}
-    // ^^^<'a, 'b>
-        // ^'a       ^'b     ^'a$
+    // ^^^<'self, 'a>
+        // ^'self    ^'a     ^'self$
 }
 "#,
         );
