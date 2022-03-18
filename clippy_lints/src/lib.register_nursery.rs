@@ -31,7 +31,6 @@ store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
     LintId::of(trait_bounds::TRAIT_DUPLICATION_IN_BOUNDS),
     LintId::of(trait_bounds::TYPE_REPETITION_IN_BOUNDS),
     LintId::of(transmute::TRANSMUTE_UNDEFINED_REPR),
-    LintId::of(transmute::USELESS_TRANSMUTE),
     LintId::of(unused_rounding::UNUSED_ROUNDING),
     LintId::of(use_self::USE_SELF),
 ])
