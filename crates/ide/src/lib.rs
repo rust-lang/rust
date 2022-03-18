@@ -24,7 +24,7 @@ mod navigation_target;
 
 mod annotations;
 mod call_hierarchy;
-mod call_info;
+mod signature_help;
 mod doc_links;
 mod highlight_related;
 mod expand_macro;
@@ -75,7 +75,6 @@ use crate::navigation_target::{ToNav, TryToNav};
 pub use crate::{
     annotations::{Annotation, AnnotationConfig, AnnotationKind},
     call_hierarchy::CallItem,
-    call_info::CallInfo,
     expand_macro::ExpandedMacro,
     file_structure::{StructureNode, StructureNodeKind},
     folding_ranges::{Fold, FoldKind},
@@ -91,6 +90,7 @@ pub use crate::{
     references::ReferenceSearchResult,
     rename::RenameError,
     runnables::{Runnable, RunnableKind, TestId},
+    signature_help::SignatureHelp,
     static_index::{StaticIndex, StaticIndexedFile, TokenId, TokenStaticData},
     syntax_highlighting::{
         tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
@@ -450,9 +450,9 @@ impl Analysis {
         self.with_db(|db| doc_links::external_docs(db, &position))
     }
 
-    /// Computes parameter information for the given call expression.
-    pub fn call_info(&self, position: FilePosition) -> Cancellable<Option<CallInfo>> {
-        self.with_db(|db| call_info::call_info(db, position))
+    /// Computes parameter information at the given position.
+    pub fn signature_help(&self, position: FilePosition) -> Cancellable<Option<SignatureHelp>> {
+        self.with_db(|db| signature_help::signature_help(db, position))
     }
 
     /// Computes call hierarchy candidates for the given file position.

@@ -895,13 +895,12 @@ pub(crate) fn handle_signature_help(
 ) -> Result<Option<lsp_types::SignatureHelp>> {
     let _p = profile::span("handle_signature_help");
     let position = from_proto::file_position(&snap, params.text_document_position_params)?;
-    let call_info = match snap.analysis.call_info(position)? {
+    let help = match snap.analysis.signature_help(position)? {
         Some(it) => it,
         None => return Ok(None),
     };
     let concise = !snap.config.call_info_full();
-    let res =
-        to_proto::signature_help(call_info, concise, snap.config.signature_help_label_offsets());
+    let res = to_proto::signature_help(help, concise, snap.config.signature_help_label_offsets());
     Ok(Some(res))
 }
 
