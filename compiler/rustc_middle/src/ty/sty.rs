@@ -1889,10 +1889,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_slice(self) -> bool {
-        match self.kind() {
-            RawPtr(TypeAndMut { ty, .. }) | Ref(_, ty, _) => matches!(ty.kind(), Slice(_) | Str),
-            _ => false,
-        }
+        matches!(self.kind(), Slice(_))
     }
 
     #[inline]

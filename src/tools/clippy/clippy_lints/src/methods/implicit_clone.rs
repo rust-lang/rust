@@ -49,10 +49,11 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: &str, method_def_id: hir
         "to_owned" => is_diag_trait_item(cx, method_def_id, sym::ToOwned),
         "to_path_buf" => is_diag_item_method(cx, method_def_id, sym::Path),
         "to_vec" => {
-            cx.tcx
-                .impl_of_method(method_def_id)
-                .map(|impl_did| Some(impl_did) == cx.tcx.lang_items().slice_alloc_impl())
-                == Some(true)
+            cx.tcx.impl_of_method(method_def_id)
+                .filter(|&impl_did| {
+                    cx.tcx.type_of(impl_did).is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none()
+                })
+                .is_some()
         },
         _ => false,
     }
