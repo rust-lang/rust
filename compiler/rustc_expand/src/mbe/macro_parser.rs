@@ -74,7 +74,7 @@ crate use NamedMatch::*;
 crate use ParseResult::*;
 use TokenTreeOrTokenTreeSlice::*;
 
-use crate::mbe::{self, TokenTree};
+use crate::mbe::{self, DelimSpan, SequenceRepetition, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_parse::parser::Parser;
@@ -203,6 +203,17 @@ struct MatcherPos<'root, 'tt> {
 rustc_data_structures::static_assert_size!(MatcherPos<'_, '_>, 240);
 
 impl<'root, 'tt> MatcherPos<'root, 'tt> {
+    /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
+    fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
+        if len == 0 {
+            vec![]
+        } else {
+            let empty_matches = Lrc::new(SmallVec::new());
+            vec![empty_matches; len]
+        }
+        .into_boxed_slice()
+    }
+
     /// Generates the top-level matcher position in which the "dot" is before the first token of
     /// the matcher `ms`.
     fn new(ms: &'tt [TokenTree]) -> Self {
@@ -217,7 +228,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
             // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in
             // `top_elts`. `match_lo` for `top_elts` is 0 and `match_hi` is `match_idx_hi`.
             // `match_cur` is 0 since we haven't actually matched anything yet.
-            matches: create_matches(match_idx_hi),
+            matches: Self::create_matches(match_idx_hi),
             match_lo: 0,
             match_cur: 0,
             match_hi: match_idx_hi,
@@ -227,6 +238,27 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
 
             // Haven't descended into any sequences, so this is `None`.
             repetition: None,
+        }
+    }
+
+    fn repetition(
+        up: MatcherPosHandle<'root, 'tt>,
+        sp: DelimSpan,
+        seq: Lrc<SequenceRepetition>,
+    ) -> Self {
+        MatcherPos {
+            stack: smallvec![],
+            idx: 0,
+            matches: Self::create_matches(up.matches.len()),
+            match_lo: up.match_cur,
+            match_cur: up.match_cur,
+            match_hi: up.match_cur + seq.num_captures,
+            repetition: Some(MatcherPosRepetition {
+                up,
+                sep: seq.separator.clone(),
+                seq_op: seq.kleene.op,
+            }),
+            top_elts: Tt(TokenTree::Sequence(sp, seq)),
         }
     }
 
@@ -331,17 +363,6 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
                 TokenTree::Token(..) => 0,
             }
     })
-}
-
-/// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
-fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
-    if len == 0 {
-        vec![]
-    } else {
-        let empty_matches = Lrc::new(SmallVec::new());
-        vec![empty_matches; len]
-    }
-    .into_boxed_slice()
 }
 
 /// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
@@ -599,21 +620,9 @@ fn parse_tt_inner<'root, 'tt>(
                         cur_items.push(new_item);
                     }
 
-                    let matches = create_matches(item.matches.len());
-                    cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos {
-                        stack: smallvec![],
-                        idx: 0,
-                        matches,
-                        match_lo: item.match_cur,
-                        match_cur: item.match_cur,
-                        match_hi: item.match_cur + seq.num_captures,
-                        repetition: Some(MatcherPosRepetition {
-                            up: item,
-                            sep: seq.separator.clone(),
-                            seq_op: seq.kleene.op,
-                        }),
-                        top_elts: Tt(TokenTree::Sequence(sp, seq)),
-                    })));
+                    cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos::repetition(
+                        item, sp, seq,
+                    ))));
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
