@@ -2,18 +2,15 @@ error: .or(Some(…)).unwrap() found
   --> $DIR/or_then_unwrap.rs:22:20
    |
 LL |     let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or(...)`
    |
    = note: `-D clippy::or-then-unwrap` implied by `-D warnings`
-   = help: use `unwrap_or()` instead
 
 error: .or(Ok(…)).unwrap() found
   --> $DIR/or_then_unwrap.rs:25:20
    |
 LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: use `unwrap_or()` instead
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or(...)`
 
 error: aborting due to 2 previous errors
 
