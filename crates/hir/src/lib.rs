@@ -570,6 +570,12 @@ impl Module {
             .collect()
     }
 
+    pub fn legacy_macros(self, db: &dyn HirDatabase) -> Vec<Macro> {
+        let def_map = self.id.def_map(db.upcast());
+        let scope = &def_map[self.id.local_id].scope;
+        scope.legacy_macros().map(|(_, it)| MacroId::from(it).into()).collect()
+    }
+
     pub fn impl_defs(self, db: &dyn HirDatabase) -> Vec<Impl> {
         let def_map = self.id.def_map(db.upcast());
         def_map[self.id.local_id].scope.impls().map(Impl::from).collect()
@@ -1783,6 +1789,10 @@ impl Macro {
             MacroId::MacroRulesId(id) => db.macro_rules_data(id).name.clone(),
             MacroId::ProcMacroId(id) => db.proc_macro_data(id).name.clone(),
         }
+    }
+
+    pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
+        matches!(self.id, MacroId::MacroRulesId(id) if db.macro_rules_data(id).macro_export)
     }
 
     pub fn kind(&self, db: &dyn HirDatabase) -> MacroKind {

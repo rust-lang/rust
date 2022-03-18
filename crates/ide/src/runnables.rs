@@ -157,7 +157,13 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
             _ => None,
         };
-        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
+        add_opt(
+            runnable
+                .or_else(|| module_def_doctest(sema.db, def))
+                // #[macro_export] mbe macros are declared in the root, while their definition may reside in a different module
+                .filter(|it| it.nav.file_id == file_id),
+            Some(def),
+        );
         if let Definition::SelfType(impl_) = def {
             impl_.items(db).into_iter().for_each(|assoc| {
                 let runnable = match assoc {
@@ -2066,6 +2072,70 @@ impl<T, U> Foo<T, U> {
                         kind: DocTest {
                             test_id: Path(
                                 "\"Foo<T, U>::t\"",
+                            ),
+                        },
+                        cfg: None,
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn doc_test_macro_export_mbe() {
+        check(
+            r#"
+//- /lib.rs
+$0
+mod foo;
+
+//- /foo.rs
+/// ```
+/// fn foo() {
+/// }
+/// ```
+#[macro_export]
+macro_rules! foo {
+    () => {
+
+    };
+}
+"#,
+            &[],
+            expect![[r#"
+                []
+            "#]],
+        );
+        check(
+            r#"
+//- /lib.rs
+$0
+/// ```
+/// fn foo() {
+/// }
+/// ```
+#[macro_export]
+macro_rules! foo {
+    () => {
+
+    };
+}
+"#,
+            &[DocTest],
+            expect![[r#"
+                [
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 1..94,
+                            name: "foo",
+                        },
+                        kind: DocTest {
+                            test_id: Path(
+                                "foo",
                             ),
                         },
                         cfg: None,

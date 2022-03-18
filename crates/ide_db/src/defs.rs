@@ -447,7 +447,7 @@ impl NameRefClass {
 
 impl_from!(
     Field, Module, Function, Adt, Variant, Const, Static, Trait, TypeAlias, BuiltinType, Local,
-    GenericParam, Label
+    GenericParam, Label, Macro
     for Definition
 );
 

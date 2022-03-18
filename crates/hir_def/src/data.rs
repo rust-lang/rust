@@ -315,6 +315,7 @@ impl Macro2Data {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MacroRulesData {
     pub name: Name,
+    pub macro_export: bool,
 }
 
 impl MacroRulesData {
@@ -326,7 +327,12 @@ impl MacroRulesData {
         let item_tree = loc.id.item_tree(db);
         let makro = &item_tree[loc.id.value];
 
-        Arc::new(MacroRulesData { name: makro.name.clone() })
+        let macro_export = item_tree
+            .attrs(db, loc.container.krate(), ModItem::from(loc.id.value).into())
+            .by_key("macro_export")
+            .exists();
+
+        Arc::new(MacroRulesData { name: makro.name.clone(), macro_export })
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
