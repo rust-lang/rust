@@ -333,7 +333,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// let result = 2.cmp(&1);
 /// assert_eq!(Ordering::Greater, result);
 /// ```
-#[derive(Clone, Copy, PartialEq, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -860,9 +860,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 pub macro Ord($item:item) {
     /* compiler built-in */
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Eq for Ordering {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ordering {
