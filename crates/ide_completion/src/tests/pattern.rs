@@ -306,6 +306,7 @@ fn func() {
             ev TupleV(…)   TupleV(u32)
             ev RecordV {…} RecordV { field: u32 }
             ev UnitV       UnitV
+            ct ASSOC_CONST const ASSOC_CONST: ()
         "#]],
     );
 }
@@ -443,4 +444,76 @@ fn foo() {
 "#,
         expect![[r#""#]],
     );
+}
+
+#[test]
+fn completes_associated_const() {
+    check_empty(
+        r#"
+#[derive(PartialEq, Eq)]
+struct Ty(u8);
+
+impl Ty {
+    const ABC: Self = Self(0);
+}
+
+fn f(t: Ty) {
+    match t {
+        Ty::$0 => {}
+        _ => {}
+    }
+}
+"#,
+        expect![[r#"
+            ct ABC const ABC: Self
+        "#]],
+    );
+
+    check_empty(
+        r#"
+enum MyEnum {}
+
+impl MyEnum {
+    pub const A: i32 = 123;
+    pub const B: i32 = 456;
+}
+
+fn f(e: MyEnum) {
+    match e {
+        MyEnum::$0 => {}
+        _ => {}
+    }
+}
+"#,
+        expect![[r#"
+            ct A pub const A: i32
+            ct B pub const B: i32
+        "#]],
+    );
+
+    check_empty(
+        r#"
+#[repr(C)]
+union U {
+    i: i32,
+    f: f32,
+}
+
+impl U {
+    pub const C: i32 = 123;
+    pub const D: i32 = 456;
+}
+
+fn f(u: U) {
+    match u {
+        U::$0 => {}
+        _ => {}
+    }
+}
+"#,
+        expect![[r#"
+            ct C pub const C: i32
+            ct D pub const D: i32
+        "#]],
+    )
 }
