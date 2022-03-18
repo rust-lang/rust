@@ -93,12 +93,12 @@ use std::ops::{Deref, DerefMut};
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
 
-/// Either a sequence of token trees or a single one. This is used as the representation of the
-/// sequence of tokens that make up a matcher.
+/// Either a slice of token trees or a single one. This is used as the representation of the
+/// token trees that make up a matcher.
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeSlice<'tt> {
     Tt(TokenTree),
-    TtSeq(&'tt [TokenTree]),
+    TtSlice(&'tt [TokenTree]),
 }
 
 impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
@@ -106,7 +106,7 @@ impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
     /// will not recursively descend into subtrees).
     fn len(&self) -> usize {
         match *self {
-            TtSeq(ref v) => v.len(),
+            TtSlice(ref v) => v.len(),
             Tt(ref tt) => tt.len(),
         }
     }
@@ -114,7 +114,7 @@ impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
     /// The `index`-th token tree of `self`.
     fn get_tt(&self, index: usize) -> TokenTree {
         match *self {
-            TtSeq(ref v) => v[index].clone(),
+            TtSlice(ref v) => v[index].clone(),
             Tt(ref tt) => tt.get_tt(index),
         }
     }
@@ -154,7 +154,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 /// lifetime. By separating `'tt` from `'root`, we can show that.
 #[derive(Clone)]
 struct MatcherPos<'root, 'tt> {
-    /// The token or sequence of tokens that make up the matcher. `elts` is short for "elements".
+    /// The token or slice of tokens that make up the matcher. `elts` is short for "elements".
     top_elts: TokenTreeOrTokenTreeSlice<'tt>,
 
     /// The position of the "dot" in this matcher
@@ -220,7 +220,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
         let match_idx_hi = count_names(ms);
         MatcherPos {
             // Start with the top level matcher given to us.
-            top_elts: TtSeq(ms),
+            top_elts: TtSlice(ms),
 
             // The "dot" is before the first token of the matcher.
             idx: 0,
@@ -419,7 +419,7 @@ crate enum NamedMatch {
     MatchedNonterminal(Lrc<Nonterminal>),
 }
 
-/// Takes a sequence of token trees `ms` representing a matcher which successfully matched input
+/// Takes a slice of token trees `ms` representing a matcher which successfully matched input
 /// and an iterator of items that matched input and produces a `NamedParseResult`.
 fn nameize<I: Iterator<Item = NamedMatch>>(
     sess: &ParseSess,
@@ -678,8 +678,8 @@ fn parse_tt_inner<'root, 'tt>(
     }
 }
 
-/// Use the given sequence of token trees (`ms`) as a matcher. Match the token
-/// stream from the given `parser` against it and return the match.
+/// Use the given slice of token trees (`ms`) as a matcher. Match the token stream from the given
+/// `parser` against it and return the match.
 pub(super) fn parse_tt(
     parser: &mut Cow<'_, Parser<'_>>,
     ms: &[TokenTree],
