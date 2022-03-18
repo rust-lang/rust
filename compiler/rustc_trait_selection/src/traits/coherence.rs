@@ -17,8 +17,8 @@ use crate::traits::{
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::traits::TraitEngine;
+use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
@@ -353,6 +353,8 @@ fn negative_impl<'cx, 'tcx>(
     })
 }
 
+/// Try to prove that a negative impl exist for the given obligation and their super predicates.
+#[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -360,42 +362,66 @@ fn negative_impl_exists<'cx, 'tcx>(
     o: &PredicateObligation<'tcx>,
 ) -> bool {
     let infcx = &selcx.infcx().fork();
+
+    if resolve_negative_obligation(infcx, param_env, region_context, o) {
+        return true;
+    }
+
+    // Try to prove a negative obligation exist for super predicates
+    for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
+        if resolve_negative_obligation(infcx, param_env, region_context, &o) {
+            return true;
+        }
+    }
+
+    false
+}
+
+#[instrument(level = "debug", skip(infcx))]
+fn resolve_negative_obligation<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    region_context: DefId,
+    o: &PredicateObligation<'tcx>,
+) -> bool {
     let tcx = infcx.tcx;
-    o.flip_polarity(tcx)
-        .map(|o| {
-            let mut fulfillment_cx = FulfillmentContext::new();
-            fulfillment_cx.register_predicate_obligation(infcx, o);
 
-            let errors = fulfillment_cx.select_all_or_error(infcx);
-            if !errors.is_empty() {
-                return false;
-            }
+    let Some(o) = o.flip_polarity(tcx) else {
+        return false;
+    };
 
-            let mut outlives_env = OutlivesEnvironment::new(param_env);
-            // FIXME -- add "assumed to be well formed" types into the `outlives_env`
+    let mut fulfillment_cx = FulfillmentContext::new();
+    fulfillment_cx.register_predicate_obligation(infcx, o);
 
-            // "Save" the accumulated implied bounds into the outlives environment
-            // (due to the FIXME above, there aren't any, but this step is still needed).
-            // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
-            // by the "dummy" causes elsewhere (body-id is only relevant when checking
-            // function bodies with closures).
-            outlives_env.save_implied_bounds(CRATE_HIR_ID);
+    let errors = fulfillment_cx.select_all_or_error(infcx);
 
-            infcx.process_registered_region_obligations(
-                outlives_env.region_bound_pairs_map(),
-                Some(tcx.lifetimes.re_root_empty),
-                param_env,
-            );
+    if !errors.is_empty() {
+        return false;
+    }
 
-            let errors =
-                infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
-            if !errors.is_empty() {
-                return false;
-            }
+    let mut outlives_env = OutlivesEnvironment::new(param_env);
+    // FIXME -- add "assumed to be well formed" types into the `outlives_env`
 
-            true
-        })
-        .unwrap_or(false)
+    // "Save" the accumulated implied bounds into the outlives environment
+    // (due to the FIXME above, there aren't any, but this step is still needed).
+    // The "body id" is given as `CRATE_HIR_ID`, which is the same body-id used
+    // by the "dummy" causes elsewhere (body-id is only relevant when checking
+    // function bodies with closures).
+    outlives_env.save_implied_bounds(CRATE_HIR_ID);
+
+    infcx.process_registered_region_obligations(
+        outlives_env.region_bound_pairs_map(),
+        Some(tcx.lifetimes.re_root_empty),
+        param_env,
+    );
+
+    let errors = infcx.resolve_regions(region_context, &outlives_env, RegionckMode::default());
+
+    if !errors.is_empty() {
+        return false;
+    }
+
+    true
 }
 
 pub fn trait_ref_is_knowable<'tcx>(
