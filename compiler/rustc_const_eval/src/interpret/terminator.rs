@@ -476,22 +476,47 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let mut args = args.to_vec();
-                // We have to implement all "object safe receivers".  Currently we
-                // support built-in pointers `(&, &mut, Box)` as well as unsized-self.  We do
-                // not yet support custom self types.
-                // Also see `compiler/rustc_codegen_llvm/src/abi.rs` and `compiler/rustc_codegen_ssa/src/mir/block.rs`.
-                let receiver_place = match args[0].layout.ty.builtin_deref(true) {
-                    Some(_) => {
-                        // Built-in pointer.
-                        self.deref_operand(&args[0])?
-                    }
-                    None => {
-                        // Unsized self.
-                        args[0].assert_mem_place()
+                // We have to implement all "object safe receivers". So we have to go search for a
+                // pointer or `dyn Trait` type, but it could be wrapped in newtypes. So recursively
+                // unwrap those newtypes until we are there.
+                let mut receiver = args[0];
+                let receiver_place = loop {
+                    match receiver.layout.ty.kind() {
+                        ty::Ref(..) | ty::RawPtr(..) => break self.deref_operand(&receiver)?,
+                        ty::Dynamic(..) => break receiver.assert_mem_place(),
+                        _ => {
+                            // Not there yet, search for the only non-ZST field.
+                            let mut non_zst_field = None;
+                            for i in 0..receiver.layout.fields.count() {
+                                let field = self.operand_field(&receiver, i)?;
+                                if !field.layout.is_zst() {
+                                    assert!(
+                                        non_zst_field.is_none(),
+                                        "multiple non-ZST fields in dyn receiver type {}",
+                                        receiver.layout.ty
+                                    );
+                                    non_zst_field = Some(field);
+                                }
+                            }
+                            receiver = non_zst_field.unwrap_or_else(|| {
+                                panic!(
+                                    "no non-ZST fields in dyn receiver type {}",
+                                    receiver.layout.ty
+                                )
+                            });
+                        }
                     }
                 };
-                // Find and consult vtable
-                let vtable = self.scalar_to_ptr(receiver_place.vtable());
+                // Find and consult vtable. The type now could be something like RcBox<dyn Trait>,
+                // i.e., it is still not necessarily `ty::Dynamic` (so we cannot use
+                // `place.vtable()`), but it should have a `dyn Trait` tail.
+                assert!(matches!(
+                    self.tcx
+                        .struct_tail_erasing_lifetimes(receiver_place.layout.ty, self.param_env)
+                        .kind(),
+                    ty::Dynamic(..)
+                ));
+                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta());
                 let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
@@ -505,7 +530,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Scalar::from_maybe_pointer(receiver_place.ptr, self).into(),
                     this_receiver_ptr,
                 ));
-                trace!("Patched self operand to {:#?}", args[0]);
+                trace!("Patched receiver operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(
                     fn_val,
