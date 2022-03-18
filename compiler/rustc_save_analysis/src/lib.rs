@@ -282,7 +282,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
 
                 let sm = self.tcx.sess.source_map();
-                let filename = sm.span_to_filename(m.inner);
+                let filename = sm.span_to_filename(m.spans.inner_span);
 
                 filter!(self.span_utils, item.ident.span);
 
