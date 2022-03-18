@@ -37,13 +37,13 @@ declare_clippy_lint! {
     /// let value = option.unwrap_or(fallback);
     /// ```
     #[clippy::version = "1.61.0"]
-    pub USE_UNWRAP_OR,
+    pub OR_THEN_UNWRAP,
     complexity,
     "checks for `.or(…).unwrap()` calls to Options and Results."
 }
-declare_lint_pass!(UseUnwrapOr => [USE_UNWRAP_OR]);
+declare_lint_pass!(OrThenUnwrap => [OR_THEN_UNWRAP]);
 
-impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
+impl<'tcx> LateLintPass<'tcx> for OrThenUnwrap {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         // look for x.or().unwrap()
         if_chain! {
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UseUnwrapOr {
 
                 span_lint_and_help(
                     cx,
-                    USE_UNWRAP_OR,
+                    OR_THEN_UNWRAP,
                     or_span.to(*unwrap_span),
                     title,
                     None,

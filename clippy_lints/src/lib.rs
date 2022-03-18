@@ -322,6 +322,7 @@ mod only_used_in_recursion;
 mod open_options;
 mod option_env_unwrap;
 mod option_if_let_else;
+mod or_then_unwrap;
 mod overflow_check_conditional;
 mod panic_in_result_fn;
 mod panic_unimplemented;
@@ -394,7 +395,6 @@ mod unwrap;
 mod unwrap_in_result;
 mod upper_case_acronyms;
 mod use_self;
-mod use_unwrap_or;
 mod useless_conversion;
 mod vec;
 mod vec_init_then_push;
@@ -867,7 +867,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             ignore_publish: cargo_ignore_publish,
         })
     });
-    store.register_late_pass(|| Box::new(use_unwrap_or::UseUnwrapOr));
+    store.register_late_pass(|| Box::new(or_then_unwrap::OrThenUnwrap));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

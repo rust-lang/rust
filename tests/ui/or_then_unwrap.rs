@@ -1,4 +1,4 @@
-#![warn(clippy::use_unwrap_or)]
+#![warn(clippy::or_then_unwrap)]
 #![allow(clippy::map_identity)]
 
 struct SomeStruct {}
