@@ -89,7 +89,6 @@ use rustc_span::symbol::Ident;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
-use std::ops::{Deref, DerefMut};
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
 
@@ -136,24 +135,8 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 
 /// Represents a single "position" (aka "matcher position", aka "item"), as
 /// described in the module documentation.
-///
-/// Here:
-///
-/// - `'root` represents the lifetime of the stack slot that holds the root
-///   `MatcherPos`. As described in `MatcherPosHandle`, the root `MatcherPos`
-///   structure is stored on the stack, but subsequent instances are put into
-///   the heap.
-/// - `'tt` represents the lifetime of the token trees that this matcher
-///   position refers to.
-///
-/// It is important to distinguish these two lifetimes because we have a
-/// `SmallVec<TokenTreeOrTokenTreeSlice<'tt>>` below, and the destructor of
-/// that is considered to possibly access the data from its elements (it lacks
-/// a `#[may_dangle]` attribute). As a result, the compiler needs to know that
-/// all the elements in that `SmallVec` strictly outlive the root stack slot
-/// lifetime. By separating `'tt` from `'root`, we can show that.
 #[derive(Clone)]
-struct MatcherPos<'root, 'tt> {
+struct MatcherPos<'tt> {
     /// The token or slice of tokens that make up the matcher. `elts` is short for "elements".
     top_elts: TokenTreeOrTokenTreeSlice<'tt>,
 
@@ -185,7 +168,7 @@ struct MatcherPos<'root, 'tt> {
     match_hi: usize,
 
     /// This field is only used if we are matching a repetition.
-    repetition: Option<MatcherPosRepetition<'root, 'tt>>,
+    repetition: Option<MatcherPosRepetition<'tt>>,
 
     /// Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
     /// a delimited token tree (e.g., something wrapped in `(` `)`) or to get the contents of a doc
@@ -200,9 +183,9 @@ struct MatcherPos<'root, 'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_, '_>, 240);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 232);
 
-impl<'root, 'tt> MatcherPos<'root, 'tt> {
+impl<'tt> MatcherPos<'tt> {
     /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
     fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
         if len == 0 {
@@ -241,11 +224,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
         }
     }
 
-    fn repetition(
-        up: MatcherPosHandle<'root, 'tt>,
-        sp: DelimSpan,
-        seq: Lrc<SequenceRepetition>,
-    ) -> Self {
+    fn repetition(up: Box<MatcherPos<'tt>>, sp: DelimSpan, seq: Lrc<SequenceRepetition>) -> Self {
         MatcherPos {
             stack: smallvec![],
             idx: 0,
@@ -270,7 +249,7 @@ impl<'root, 'tt> MatcherPos<'root, 'tt> {
 }
 
 #[derive(Clone)]
-struct MatcherPosRepetition<'root, 'tt> {
+struct MatcherPosRepetition<'tt> {
     /// The KleeneOp of this sequence.
     seq_op: mbe::KleeneOp,
 
@@ -279,55 +258,12 @@ struct MatcherPosRepetition<'root, 'tt> {
 
     /// The "parent" matcher position. That is, the matcher position just before we enter the
     /// sequence.
-    up: MatcherPosHandle<'root, 'tt>,
+    up: Box<MatcherPos<'tt>>,
 }
 
-// Lots of MatcherPos instances are created at runtime. Allocating them on the
-// heap is slow. Furthermore, using SmallVec<MatcherPos> to allocate them all
-// on the stack is also slow, because MatcherPos is quite a large type and
-// instances get moved around a lot between vectors, which requires lots of
-// slow memcpy calls.
-//
-// Therefore, the initial MatcherPos is always allocated on the stack,
-// subsequent ones (of which there aren't that many) are allocated on the heap,
-// and this type is used to encapsulate both cases.
-enum MatcherPosHandle<'root, 'tt> {
-    Ref(&'root mut MatcherPos<'root, 'tt>),
-    Box(Box<MatcherPos<'root, 'tt>>),
-}
-
-impl<'root, 'tt> Clone for MatcherPosHandle<'root, 'tt> {
-    // This always produces a new Box.
-    fn clone(&self) -> Self {
-        MatcherPosHandle::Box(match *self {
-            MatcherPosHandle::Ref(ref r) => Box::new((**r).clone()),
-            MatcherPosHandle::Box(ref b) => b.clone(),
-        })
-    }
-}
-
-impl<'root, 'tt> Deref for MatcherPosHandle<'root, 'tt> {
-    type Target = MatcherPos<'root, 'tt>;
-    fn deref(&self) -> &Self::Target {
-        match *self {
-            MatcherPosHandle::Ref(ref r) => r,
-            MatcherPosHandle::Box(ref b) => b,
-        }
-    }
-}
-
-impl<'root, 'tt> DerefMut for MatcherPosHandle<'root, 'tt> {
-    fn deref_mut(&mut self) -> &mut MatcherPos<'root, 'tt> {
-        match *self {
-            MatcherPosHandle::Ref(ref mut r) => r,
-            MatcherPosHandle::Box(ref mut b) => b,
-        }
-    }
-}
-
-enum EofItems<'root, 'tt> {
+enum EofItems<'tt> {
     None,
-    One(MatcherPosHandle<'root, 'tt>),
+    One(Box<MatcherPos<'tt>>),
     Multiple,
 }
 
@@ -494,6 +430,10 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 
 pub struct TtParser {
     macro_name: Ident,
+
+    cur_items: Vec<Box<MatcherPos<'tt>>>,
+    next_items: Vec<Box<MatcherPos<'tt>>>,
+    bb_items: Vec<Box<MatcherPos<'tt>>>,
 }
 
 impl TtParser {
@@ -520,13 +460,13 @@ impl TtParser {
     ///
     /// `Some(result)` if everything is finished, `None` otherwise. Note that matches are kept
     /// track of through the items generated.
-    fn parse_tt_inner<'root, 'tt>(
+    fn parse_tt_inner<'tt>(
         &self,
         sess: &ParseSess,
         ms: &[TokenTree],
-        cur_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-        next_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-        bb_items: &mut SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+        cur_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
+        next_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
+        bb_items: &mut SmallVec<[Box<MatcherPos<'tt>>; 1]>,
         token: &Token,
     ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
@@ -570,9 +510,7 @@ impl TtParser {
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
-                        cur_items.push(MatcherPosHandle::Box(Box::new(MatcherPos::repetition(
-                            item, sp, seq,
-                        ))));
+                        cur_items.push(box MatcherPos::repetition(item, sp, seq));
                     }
 
                     TokenTree::MetaVarDecl(span, _, None) => {
@@ -706,11 +644,7 @@ impl TtParser {
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
         // possible next positions into `next_items`. After some post-processing, the contents of
         // `next_items` replenish `cur_items` and we start over again.
-        //
-        // This MatcherPos instance is allocated on the stack. All others -- and there are
-        // frequently *no* others! -- are allocated on the heap.
-        let mut initial = MatcherPos::new(ms);
-        let mut cur_items = smallvec![MatcherPosHandle::Ref(&mut initial)];
+        let mut cur_items = smallvec![box MatcherPos::new(ms)];
 
         loop {
             let mut next_items = SmallVec::new();
@@ -793,10 +727,10 @@ impl TtParser {
         }
     }
 
-    fn ambiguity_error<'root, 'tt>(
+    fn ambiguity_error<'tt>(
         &self,
-        next_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
-        bb_items: SmallVec<[MatcherPosHandle<'root, 'tt>; 1]>,
+        next_items: SmallVec<[Box<MatcherPos<'tt>>; 1]>,
+        bb_items: SmallVec<[Box<MatcherPos<'tt>>; 1]>,
         token_span: rustc_span::Span,
     ) -> NamedParseResult {
         let nts = bb_items
