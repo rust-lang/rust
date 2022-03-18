@@ -21,10 +21,10 @@ impl SomeOtherStruct {
 
 fn main() {
     let option: Option<&str> = None;
-    let _ = option.or(Some("fallback")).unwrap(); // should trigger lint
+    let _ = option.unwrap_or("fallback"); // should trigger lint
 
     let result: Result<&str, &str> = Err("Error");
-    let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
+    let _ = result.unwrap_or("fallback"); // should trigger lint
 
     // Not Option/Result
     let instance = SomeStruct {};

@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
@@ -17,15 +18,20 @@ pub(super) fn check<'tcx>(
 ) {
     let ty = cx.typeck_results().expr_ty(recv); // get type of x (we later check if it's Option or Result)
     let title;
+    let or_arg_content: Span;
 
     if is_type_diagnostic_item(cx, ty, sym::Option) {
         title = ".or(Some(…)).unwrap() found";
-        if !is(or_arg, "Some") {
+        if let Some(content) = get_content_if_is(or_arg, "Some") {
+            or_arg_content = content;
+        } else {
             return;
         }
     } else if is_type_diagnostic_item(cx, ty, sym::Result) {
         title = ".or(Ok(…)).unwrap() found";
-        if !is(or_arg, "Ok") {
+        if let Some(content) = get_content_if_is(or_arg, "Ok") {
+            or_arg_content = content;
+        } else {
             return;
         }
     } else {
@@ -41,30 +47,36 @@ pub(super) fn check<'tcx>(
         unwrap_expr.span
     };
 
+    let mut applicability = Applicability::MachineApplicable;
+    let suggestion = format!(
+        "unwrap_or({})",
+        snippet_with_applicability(cx, or_arg_content, "..", &mut applicability)
+    );
+
     span_lint_and_sugg(
         cx,
         OR_THEN_UNWRAP,
         or_span.to(unwrap_span),
         title,
         "try this",
-        "unwrap_or(...)".into(),
-        Applicability::HasPlaceholders,
+        suggestion,
+        applicability,
     );
 }
 
-/// is expr a Call to name?
+/// is expr a Call to name? if so, return what it's wrapping
 /// name might be "Some", "Ok", "Err", etc.
-fn is<'a>(expr: &Expr<'a>, name: &str) -> bool {
+fn get_content_if_is<'a>(expr: &Expr<'a>, name: &str) -> Option<Span> {
     if_chain! {
-        if let ExprKind::Call(some_expr, _some_args) = expr.kind;
+        if let ExprKind::Call(some_expr, [arg]) = expr.kind;
         if let ExprKind::Path(QPath::Resolved(_, path)) = &some_expr.kind;
         if let Some(path_segment) = path.segments.first();
         if path_segment.ident.name.as_str() == name;
         then {
-            true
+            Some(arg.span)
         }
         else {
-            false
+            None
         }
     }
 }
