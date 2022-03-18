@@ -77,9 +77,9 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, lang_items, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
     ExprKind, FnDecl, ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
-    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, Target,
+    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
     TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -479,12 +479,10 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             _ => None,
         }
     }
-    fn find_primitive(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
-        if let Some(&(index, Target::Impl)) = lang_items::ITEM_REFS.get(&Symbol::intern(name)) {
-            tcx.lang_items().items()[index]
-        } else {
-            None
-        }
+    fn find_primitive(_tcx: TyCtxt<'_>, _name: &str) -> Option<DefId> {
+        // FIXME: Deal with this without relying on lang items or by only
+        // looking at a single impl.
+        None
     }
     fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
         tcx.crates(())
