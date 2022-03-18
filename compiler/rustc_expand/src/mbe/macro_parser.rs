@@ -651,11 +651,8 @@ fn parse_tt_inner<'root, 'tt>(
                     next_items.push(item);
                 }
 
-                // There was another token that was not `token`... This means we can't add any
-                // rules. NOTE that this is not necessarily an error unless _all_ items in
-                // `cur_items` end up doing this. There may still be some other matchers that do
-                // end up working out.
-                TokenTree::Token(..) | TokenTree::MetaVar(..) => {}
+                // These cannot appear in a matcher.
+                TokenTree::Token(..) | TokenTree::MetaVar(..) => unreachable!(),
             }
         }
     }
