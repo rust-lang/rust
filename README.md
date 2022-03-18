@@ -375,9 +375,12 @@ binaries, and as such worth documenting:
   directory after loading all the source files, but before commencing
   interpretation. This is useful if the interpreted program wants a different
   working directory at run-time than at build-time.
+* `MIRI_LOCAL_CRATES` is set by `cargo-miri` to tell the Miri driver which
+  crates should be given special treatment in diagnostics, in addition to the
+  crate currently being compiled.
 * `MIRI_VERBOSE` when set to any value tells the various `cargo-miri` phases to
   perform verbose logging.
-  
+
 [testing-miri]: CONTRIBUTING.md#testing-the-miri-driver
 
 ## Miri `extern` functions
