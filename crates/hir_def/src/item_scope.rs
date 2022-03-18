@@ -63,6 +63,7 @@ pub struct ItemScope {
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, MacroRulesId>,
+    /// The derive macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
