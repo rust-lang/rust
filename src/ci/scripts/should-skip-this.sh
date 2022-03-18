@@ -26,6 +26,7 @@ if [[ -n "${CI_ONLY_WHEN_SUBMODULES_CHANGED-}" ]]; then
              src/test/rustdoc-gui \
              src/librustdoc \
              src/ci/docker/host-x86_64/x86_64-gnu-tools/Dockerfile \
+             src/ci/docker/host-x86_64/x86_64-gnu-tools/browser-ui-test.version \
              src/tools/rustdoc-gui); then
         # There was a change in either rustdoc or in its GUI tests.
         echo "Rustdoc was updated"
