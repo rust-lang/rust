@@ -235,7 +235,7 @@ impl ParseSess {
     }
 
     pub(super) fn has_errors(&self) -> bool {
-        self.parse_sess.span_diagnostic.has_errors()
+        self.parse_sess.span_diagnostic.has_errors().is_some()
     }
 
     pub(super) fn reset_errors(&self) {

@@ -29,7 +29,7 @@ use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Diagnostic, ErrorGuaranteed};
+use rustc_errors::Diagnostic;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
@@ -553,7 +553,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
                             'compute_res: {
-                                // If we've previously marked this projection as 'complete', thne
+                                // If we've previously marked this projection as 'complete', then
                                 // use the final cached result (either `EvaluatedToOk` or
                                 // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
                                 // sub-obligations.
@@ -674,8 +674,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorGuaranteed)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorGuaranteed))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::Reported(_)), _)
+                        | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.tcx()),

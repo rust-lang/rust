@@ -359,7 +359,7 @@ fn verify_candidate_branch<'tcx>(
     if branch.statements.len() != 1 {
         return false;
     }
-    // ...assign the descriminant of `place` in that statement
+    // ...assign the discriminant of `place` in that statement
     let StatementKind::Assign(boxed) = &branch.statements[0].kind else {
         return false
     };

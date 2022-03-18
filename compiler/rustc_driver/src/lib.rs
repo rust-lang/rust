@@ -235,7 +235,7 @@ fn run_compiler(
     };
 
     match make_input(config.opts.error_format, &matches.free) {
-        Err(ErrorGuaranteed) => return Err(ErrorGuaranteed),
+        Err(reported) => return Err(reported),
         Ok(Some((input, input_file_path))) => {
             config.input = input;
             config.input_path = input_file_path;
@@ -465,11 +465,11 @@ fn make_input(
             if io::stdin().read_to_string(&mut src).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                early_error_no_abort(
+                let reported = early_error_no_abort(
                     error_format,
                     "couldn't read from stdin, as it did not contain valid UTF-8",
                 );
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
                 let line = env::var("UNSTABLE_RUSTDOC_TEST_LINE").expect(
@@ -1128,7 +1128,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorGuaranteed> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<rustc_errors::FatalErrorMarker>() {
-            ErrorGuaranteed
+            ErrorGuaranteed::unchecked_claim_error_was_emitted()
         } else {
             panic::resume_unwind(value);
         }

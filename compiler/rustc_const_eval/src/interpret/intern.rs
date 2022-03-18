@@ -406,8 +406,11 @@ pub fn intern_const_alloc_recursive<
         } else if ecx.memory.dead_alloc_map.contains_key(&alloc_id) {
             // Codegen does not like dangling pointers, and generally `tcx` assumes that
             // all allocations referenced anywhere actually exist. So, make sure we error here.
-            ecx.tcx.sess.span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
-            return Err(ErrorGuaranteed);
+            let reported = ecx
+                .tcx
+                .sess
+                .span_err(ecx.tcx.span, "encountered dangling pointer in final constant");
+            return Err(reported);
         } else if ecx.tcx.get_global_alloc(alloc_id).is_none() {
             // We have hit an `AllocId` that is neither in local or global memory and isn't
             // marked as dangling by local memory.  That should be impossible.

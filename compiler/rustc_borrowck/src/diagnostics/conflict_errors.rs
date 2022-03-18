@@ -12,9 +12,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{
-    self, suggest_constraining_type_param, suggest_constraining_type_params, PredicateKind, Ty,
-};
+use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span};
@@ -285,86 +283,63 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     Some(ref name) => format!("`{}`", name),
                     None => "value".to_owned(),
                 };
-                if let ty::Param(param_ty) = ty.kind() {
-                    let tcx = self.infcx.tcx;
-                    let generics = tcx.generics_of(self.mir_def_id());
-                    let param = generics.type_param(&param_ty, tcx);
-                    if let Some(generics) = tcx
-                        .typeck_root_def_id(self.mir_def_id().to_def_id())
-                        .as_local()
-                        .and_then(|def_id| tcx.hir().get_generics(def_id))
-                    {
-                        suggest_constraining_type_param(
-                            tcx,
-                            generics,
-                            &mut err,
-                            param.name.as_str(),
-                            "Copy",
-                            None,
+
+                // Try to find predicates on *generic params* that would allow copying `ty`
+                let tcx = self.infcx.tcx;
+                let generics = tcx.generics_of(self.mir_def_id());
+                if let Some(hir_generics) = tcx
+                    .typeck_root_def_id(self.mir_def_id().to_def_id())
+                    .as_local()
+                    .and_then(|def_id| tcx.hir().get_generics(def_id))
+                {
+                    let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
+                        let mut fulfill_cx =
+                            <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
+
+                        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+                        let cause = ObligationCause::new(
+                            span,
+                            self.mir_hir_id(),
+                            rustc_infer::traits::ObligationCauseCode::MiscObligation,
                         );
-                    }
-                } else {
-                    // Try to find predicates on *generic params* that would allow copying `ty`
+                        fulfill_cx.register_bound(
+                            &infcx,
+                            self.param_env,
+                            // Erase any region vids from the type, which may not be resolved
+                            infcx.tcx.erase_regions(ty),
+                            copy_did,
+                            cause,
+                        );
+                        // Select all, including ambiguous predicates
+                        let errors = fulfill_cx.select_all_or_error(&infcx);
 
-                    let tcx = self.infcx.tcx;
-                    let generics = tcx.generics_of(self.mir_def_id());
-                    if let Some(hir_generics) = tcx
-                        .typeck_root_def_id(self.mir_def_id().to_def_id())
-                        .as_local()
-                        .and_then(|def_id| tcx.hir().get_generics(def_id))
-                    {
-                        let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
-                            let mut fulfill_cx =
-                                <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
-                            let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
-                            let cause = ObligationCause::new(
-                                span,
-                                self.mir_hir_id(),
-                                rustc_infer::traits::ObligationCauseCode::MiscObligation,
-                            );
-                            fulfill_cx.register_bound(
-                                &infcx,
-                                self.param_env,
-                                // Erase any region vids from the type, which may not be resolved
-                                infcx.tcx.erase_regions(ty),
-                                copy_did,
-                                cause,
-                            );
-                            // Select all, including ambiguous predicates
-                            let errors = fulfill_cx.select_all_or_error(&infcx);
-
-                            // Only emit suggestion if all required predicates are on generic
-                            errors
-                                .into_iter()
-                                .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                                    PredicateKind::Trait(predicate) => {
-                                        match predicate.self_ty().kind() {
-                                            ty::Param(param_ty) => Ok((
-                                                generics.type_param(param_ty, tcx),
-                                                predicate
-                                                    .trait_ref
-                                                    .print_only_trait_path()
-                                                    .to_string(),
-                                            )),
-                                            _ => Err(()),
-                                        }
+                        // Only emit suggestion if all required predicates are on generic
+                        errors
+                            .into_iter()
+                            .map(|err| match err.obligation.predicate.kind().skip_binder() {
+                                PredicateKind::Trait(predicate) => {
+                                    match predicate.self_ty().kind() {
+                                        ty::Param(param_ty) => Ok((
+                                            generics.type_param(param_ty, tcx),
+                                            predicate.trait_ref.print_only_trait_path().to_string(),
+                                        )),
+                                        _ => Err(()),
                                     }
-                                    _ => Err(()),
-                                })
-                                .collect()
-                        });
+                                }
+                                _ => Err(()),
+                            })
+                            .collect()
+                    });
 
-                        if let Ok(predicates) = predicates {
-                            suggest_constraining_type_params(
-                                tcx,
-                                hir_generics,
-                                &mut err,
-                                predicates.iter().map(|(param, constraint)| {
-                                    (param.name.as_str(), &**constraint, None)
-                                }),
-                            );
-                        }
+                    if let Ok(predicates) = predicates {
+                        suggest_constraining_type_params(
+                            tcx,
+                            hir_generics,
+                            &mut err,
+                            predicates.iter().map(|(param, constraint)| {
+                                (param.name.as_str(), &**constraint, None)
+                            }),
+                        );
                     }
                 }
 

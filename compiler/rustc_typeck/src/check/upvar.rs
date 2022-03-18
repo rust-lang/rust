@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // represents the case of the path being completely captured by the variable.
         //
         // eg. If `a.b` is captured and we are processing `a.b`, then we can't have the closure also
-        //     capture `a.b.c`, because that voilates min capture.
+        //     capture `a.b.c`, because that violates min capture.
         let is_completely_captured = captured_by_move_projs.iter().any(|projs| projs.is_empty());
 
         assert!(!is_completely_captured || (captured_by_move_projs.len() == 1));
@@ -1411,7 +1411,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::RawPtr(..) => unreachable!(),
 
             ty::Adt(def, substs) => {
-                // Multi-varaint enums are captured in entirety,
+                // Multi-variant enums are captured in entirety,
                 // which would've been handled in the case of single empty slice in `captured_by_move_projs`.
                 assert_eq!(def.variants().len(), 1);
 
@@ -2208,8 +2208,8 @@ fn determine_place_ancestry_relation<'tcx>(
     }
 }
 
-/// Reduces the precision of the captured place when the precision doesn't yeild any benefit from
-/// borrow checking prespective, allowing us to save us on the size of the capture.
+/// Reduces the precision of the captured place when the precision doesn't yield any benefit from
+/// borrow checking perspective, allowing us to save us on the size of the capture.
 ///
 ///
 /// Fields that are read through a shared reference will always be read via a shared ref or a copy,

@@ -3,7 +3,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::obligation_forest::ProcessResult;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, Outcome};
 use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
-use rustc_errors::ErrorGuaranteed;
 use rustc_infer::traits::ProjectionCacheKey;
 use rustc_infer::traits::{SelectionError, TraitEngine, TraitEngineExt as _, TraitObligation};
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -630,14 +629,12 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                                 ),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorGuaranteed)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorGuaranteed))) => {
-                            ProcessResult::Error(CodeSelectionError(
-                                SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(
-                                    ErrorGuaranteed,
-                                )),
-                            ))
-                        }
+                        (Err(ErrorHandled::Reported(reported)), _)
+                        | (_, Err(ErrorHandled::Reported(reported))) => ProcessResult::Error(
+                            CodeSelectionError(SelectionError::NotConstEvaluatable(
+                                NotConstEvaluatable::Error(reported),
+                            )),
+                        ),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.selcx.tcx()),

@@ -362,7 +362,7 @@ fn optimization_applies<'tcx>(
         return false;
     } else if last_assigned_to != opt_info.local_tmp_s1 {
         trace!(
-            "NO: end of assignemnt chain does not match written enum temp: {:?} != {:?}",
+            "NO: end of assignment chain does not match written enum temp: {:?} != {:?}",
             last_assigned_to,
             opt_info.local_tmp_s1
         );

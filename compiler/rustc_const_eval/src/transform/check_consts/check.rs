@@ -259,7 +259,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.tcx.sess.diagnostic().emit_diagnostic(&error);
             }
         } else {
-            assert!(self.tcx.sess.has_errors());
+            assert!(self.tcx.sess.has_errors().is_some());
         }
     }
 
@@ -327,8 +327,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = Some(ErrorGuaranteed);
-                err.emit();
+                let reported = err.emit();
+                self.error_emitted = Some(reported);
             }
 
             ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),

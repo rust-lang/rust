@@ -51,6 +51,8 @@ declare_features! (
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),
+    /// Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, adx_target_feature, "1.61.0", Some(44839), None),
     /// Allows the definition of associated constants in `trait` or `impl` blocks.
     (accepted, associated_consts, "1.20.0", Some(29646), None),
     /// Allows using associated `type`s in `trait`s.

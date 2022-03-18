@@ -537,7 +537,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorGuaranteed) }
+    if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

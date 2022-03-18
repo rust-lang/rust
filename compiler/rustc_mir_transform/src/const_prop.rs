@@ -538,7 +538,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             self.tcx.struct_span_lint_hir(lint, lint_root, source_info.span, |lint| {
                 let mut err = lint.build(message);
                 err.span_label(source_info.span, format!("{:?}", panic));
-                err.emit()
+                err.emit();
             });
         }
     }

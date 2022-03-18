@@ -1005,7 +1005,7 @@ impl<'a> Builder<'a> {
             // the rustc_llvm cache. That will always work, even though it
             // may mean that on the next non-check build we'll need to rebuild
             // rustc_llvm. But if LLVM is stale, that'll be a tiny amount
-            // of work comparitively, and we'd likely need to rebuild it anyway,
+            // of work comparatively, and we'd likely need to rebuild it anyway,
             // so that's okay.
             if crate::native::prebuilt_llvm_config(self, target).is_err() {
                 cargo.env("RUST_CHECK", "1");

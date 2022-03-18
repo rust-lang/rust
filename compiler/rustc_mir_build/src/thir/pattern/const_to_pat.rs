@@ -194,7 +194,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| lint.build(&msg).emit(),
+                        |lint| {
+                            lint.build(&msg).emit();
+                        },
                     );
                 } else {
                     debug!(
@@ -272,7 +274,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                         id,
                         span,
-                        |lint| lint.build("floating-point types cannot be used in patterns").emit(),
+                        |lint| {
+                            lint.build("floating-point types cannot be used in patterns").emit();
+                        },
                     );
                 }
                 PatKind::Constant { value: cv }
@@ -284,7 +288,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, msg)
+                    tcx.sess.delay_span_bug(span, msg);
                 }
                 PatKind::Wild
             }
@@ -301,7 +305,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(self.span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(self.span, &msg)
+                    tcx.sess.delay_span_bug(self.span, &msg);
                 }
                 PatKind::Wild
             }
@@ -331,7 +335,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 cv.ty(),
                                 cv.ty(),
                             );
-                            lint.build(&msg).emit()
+                            lint.build(&msg).emit();
                         },
                     );
                 }
@@ -356,7 +360,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, &msg)
+                    tcx.sess.delay_span_bug(span, &msg);
                 }
                 PatKind::Wild
             }
@@ -393,7 +397,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                     if self.include_lint_checks {
                         tcx.sess.span_err(span, &msg);
                     } else {
-                        tcx.sess.delay_span_bug(span, &msg)
+                        tcx.sess.delay_span_bug(span, &msg);
                     }
                     PatKind::Wild
                 }
@@ -471,7 +475,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 self.span,
-                                |lint| lint.build(&msg).emit(),
+                                |lint| {lint.build(&msg).emit();},
                             );
                         }
                         PatKind::Constant { value: cv }
@@ -482,7 +486,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                             if self.include_lint_checks {
                                 tcx.sess.span_err(span, &msg);
                             } else {
-                                tcx.sess.delay_span_bug(span, &msg)
+                                tcx.sess.delay_span_bug(span, &msg);
                             }
                         }
                         PatKind::Wild
@@ -523,7 +527,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
                 PatKind::Constant { value: cv }
             }
-            // FIXME: these can have very suprising behaviour where optimization levels or other
+            // FIXME: these can have very surprising behaviour where optimization levels or other
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
             ty::FnPtr(..) | ty::RawPtr(..) => {
@@ -539,7 +543,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::POINTER_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| lint.build(&msg).emit(),
+                        |lint| {
+                            lint.build(&msg).emit();
+                        },
                     );
                 }
                 PatKind::Constant { value: cv }
@@ -550,7 +556,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, &msg)
+                    tcx.sess.delay_span_bug(span, &msg);
                 }
                 PatKind::Wild
             }
@@ -575,7 +581,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
                 id,
                 span,
-                |lint| lint.build(&msg).emit(),
+                |lint| {
+                    lint.build(&msg).emit();
+                },
             );
         }
 

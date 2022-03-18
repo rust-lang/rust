@@ -212,10 +212,10 @@ impl<'a> Parser<'a> {
             if let Err(mut e) = self.expect_semi() {
                 match tree.kind {
                     UseTreeKind::Glob => {
-                        e.note("the wildcard token must be last on the path").emit();
+                        e.note("the wildcard token must be last on the path");
                     }
                     UseTreeKind::Nested(..) => {
-                        e.note("glob-like brace syntax must be last on the path").emit();
+                        e.note("glob-like brace syntax must be last on the path");
                     }
                     _ => (),
                 }
@@ -999,10 +999,32 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         unsafety: Unsafe,
     ) -> PResult<'a, ItemInfo> {
+        let sp_start = self.prev_token.span;
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
-        let module = ast::ForeignMod { unsafety, abi, items };
-        Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+        match self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No)) {
+            Ok(items) => {
+                let module = ast::ForeignMod { unsafety, abi, items };
+                Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+            }
+            Err(mut err) => {
+                let current_qual_sp = self.prev_token.span;
+                let current_qual_sp = current_qual_sp.to(sp_start);
+                if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
+                    if err.message() == "expected `{`, found keyword `unsafe`" {
+                        let invalid_qual_sp = self.token.uninterpolated_span();
+                        let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
+
+                        err.span_suggestion(
+                                current_qual_sp.to(invalid_qual_sp),
+                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
+                                format!("{} {}", invalid_qual, current_qual),
+                                Applicability::MachineApplicable,
+                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                    }
+                }
+                Err(err)
+            }
+        }
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
@@ -1485,7 +1507,7 @@ impl<'a> Parser<'a> {
                     // Make sure an error was emitted (either by recovering an angle bracket,
                     // or by finding an identifier as the next token), since we're
                     // going to continue parsing
-                    assert!(self.sess.span_diagnostic.has_errors());
+                    assert!(self.sess.span_diagnostic.has_errors().is_some());
                 } else {
                     return Err(err);
                 }
@@ -1948,7 +1970,7 @@ impl<'a> Parser<'a> {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
-        // only if it wasn't preceeded by `default` as `default pub` is invalid.
+        // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
             &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {

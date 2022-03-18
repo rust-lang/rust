@@ -1396,7 +1396,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
-                        .map_err(|ErrorGuaranteed| ())?;
+                        .map_err(|ErrorGuaranteed { .. }| ())?;
 
                 if node_item.is_final() {
                     // Non-specializable items are always projectable.

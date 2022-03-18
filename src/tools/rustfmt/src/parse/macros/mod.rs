@@ -28,7 +28,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             let mut cloned_parser = (*parser).clone();
             match $parser(&mut cloned_parser) {
                 Ok(x) => {
-                    if parser.sess.span_diagnostic.has_errors() {
+                    if parser.sess.span_diagnostic.has_errors().is_some() {
                         parser.sess.span_diagnostic.reset_err_count();
                     } else {
                         // Parsing succeeded.

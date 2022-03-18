@@ -6,7 +6,7 @@ use hir::{
     intravisit::{self, Visitor},
     Body, Expr, ExprKind, Guard, HirId, LoopIdError,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::{fx::FxHashMap, stable_set::FxHashSet};
 use rustc_hir as hir;
 use rustc_index::vec::IndexVec;
 use rustc_middle::{
@@ -27,14 +27,14 @@ pub(super) fn build_control_flow_graph<'tcx>(
     consumed_borrowed_places: ConsumedAndBorrowedPlaces,
     body: &'tcx Body<'tcx>,
     num_exprs: usize,
-) -> DropRangesBuilder {
+) -> (DropRangesBuilder, FxHashSet<HirId>) {
     let mut drop_range_visitor =
         DropRangeVisitor::new(hir, tcx, typeck_results, consumed_borrowed_places, num_exprs);
     intravisit::walk_body(&mut drop_range_visitor, body);
 
     drop_range_visitor.drop_ranges.process_deferred_edges();
 
-    drop_range_visitor.drop_ranges
+    (drop_range_visitor.drop_ranges, drop_range_visitor.places.borrowed_temporaries)
 }
 
 /// This struct is used to gather the information for `DropRanges` to determine the regions of the

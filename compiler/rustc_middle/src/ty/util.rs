@@ -486,7 +486,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Given the `DefId`, returns the `DefId` of the innermost item that
-    /// has its own type-checking context or "inference enviornment".
+    /// has its own type-checking context or "inference environment".
     ///
     /// For example, a closure has its own `DefId`, but it is type-checked
     /// with the containing item. Similarly, an inline const block has its

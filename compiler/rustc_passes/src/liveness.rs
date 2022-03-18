@@ -1588,7 +1588,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 shorthands,
                                 Applicability::MachineApplicable,
                             );
-                            err.emit()
+                            err.emit();
                         },
                     );
                 } else {
@@ -1611,7 +1611,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                                 non_shorthands,
                                 Applicability::MachineApplicable,
                             );
-                            err.emit()
+                            err.emit();
                         },
                     );
                 }

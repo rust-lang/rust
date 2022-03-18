@@ -373,7 +373,7 @@ pub fn configure_and_expand(
         if recursion_limit_hit {
             // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
             // with a large AST
-            Err(ErrorGuaranteed)
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
             Ok(krate)
         }
@@ -413,7 +413,7 @@ pub fn configure_and_expand(
         );
 
         msg.warn("The generated documentation may be incorrect");
-        msg.emit()
+        msg.emit();
     } else {
         krate = sess.time("maybe_create_a_macro_crate", || {
             let is_test_crate = sess.opts.test;
@@ -742,29 +742,30 @@ pub fn prepare_outputs(
     if let Some(ref input_path) = compiler.input_path {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.err(&format!(
+                let reported = sess.err(&format!(
                     "the input file \"{}\" would be overwritten by the generated \
                         executable",
                     input_path.display()
                 ));
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.err(&format!(
+                let reported = sess.err(&format!(
                     "the generated executable for the input file \"{}\" conflicts with the \
                         existing directory \"{}\"",
                     input_path.display(),
                     dir_path.display()
                 ));
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
         }
     }
 
     if let Some(ref dir) = compiler.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            sess.err("failed to find or create the directory specified by `--temps-dir`");
-            return Err(ErrorGuaranteed);
+            let reported =
+                sess.err("failed to find or create the directory specified by `--temps-dir`");
+            return Err(reported);
         }
     }
 
@@ -776,8 +777,9 @@ pub fn prepare_outputs(
     if !only_dep_info {
         if let Some(ref dir) = compiler.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.err("failed to find or create the directory specified by `--out-dir`");
-                return Err(ErrorGuaranteed);
+                let reported =
+                    sess.err("failed to find or create the directory specified by `--out-dir`");
+                return Err(reported);
             }
         }
     }
@@ -987,8 +989,8 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // lot of annoying errors in the ui tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if sess.has_errors() {
-        return Err(ErrorGuaranteed);
+    if let Some(reported) = sess.has_errors() {
+        return Err(reported);
     }
 
     sess.time("misc_checking_3", || {

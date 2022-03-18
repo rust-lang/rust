@@ -575,7 +575,7 @@ where
 pub(crate) fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
     let trimmed_pre_snippet = pre_snippet.trim();
     // Both start and end are checked to support keeping a block comment inline with
-    // the item, even if there are preceeding line comments, while still supporting
+    // the item, even if there are preceding line comments, while still supporting
     // a snippet that starts with a block comment but also contains one or more
     // trailing single line comments.
     // https://github.com/rust-lang/rustfmt/issues/3025

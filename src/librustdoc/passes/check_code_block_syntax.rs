@@ -91,7 +91,7 @@ impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
 
         // lambda that will use the lint to start a new diagnostic and add
         // a suggestion to it when needed.
-        let diag_builder = |lint: LintDiagnosticBuilder<'_>| {
+        let diag_builder = |lint: LintDiagnosticBuilder<'_, ()>| {
             let explanation = if is_ignore {
                 "`ignore` code blocks require valid Rust code for syntax highlighting; \
                     mark blocks that do not contain Rust code as text"

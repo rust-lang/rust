@@ -2002,7 +2002,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                     if !matches!(opaque.origin, hir::OpaqueTyOrigin::AsyncFn(..)) {
                                         continue 'lifetimes;
                                     }
-                                    // We want to do this only if the liftime identifier is already defined
+                                    // We want to do this only if the lifetime identifier is already defined
                                     // in the async function that generated this. Otherwise it could be
                                     // an opaque type defined by the developer and we still want this
                                     // lint to fail compilation
@@ -3143,10 +3143,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             for bound in lifetime_i.bounds {
                 match bound {
                     hir::GenericBound::Outlives(ref lt) => match lt.name {
-                        hir::LifetimeName::Underscore => self.tcx.sess.delay_span_bug(
-                            lt.span,
-                            "use of `'_` in illegal place, but not caught by lowering",
-                        ),
+                        hir::LifetimeName::Underscore => {
+                            self.tcx.sess.delay_span_bug(
+                                lt.span,
+                                "use of `'_` in illegal place, but not caught by lowering",
+                            );
+                        }
                         hir::LifetimeName::Static => {
                             self.insert_lifetime(lt, Region::Static);
                             self.tcx
@@ -3172,7 +3174,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                                 lt.span,
                                 "lowering generated `ImplicitObjectLifetimeDefault` \
                                  outside of an object type",
-                            )
+                            );
                         }
                         hir::LifetimeName::Error => {
                             // No need to do anything, error already reported.

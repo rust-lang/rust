@@ -2821,7 +2821,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
     let mut it = ordered_locations.into_iter().peekable();
 
     // An example may fail to write if its source can't be read for some reason, so this method
-    // continues iterating until a write suceeds
+    // continues iterating until a write succeeds
     let write_and_skip_failure = |w: &mut Buffer, it: &mut Peekable<_>| {
         while let Some(example) = it.next() {
             if write_example(&mut *w, example) {

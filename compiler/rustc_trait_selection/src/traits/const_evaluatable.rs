@@ -18,7 +18,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, DelaySpanBugEmitted, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
@@ -177,8 +177,9 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             false => NotConstEvaluatable::MentionsParam,
         }),
         Err(ErrorHandled::Linted) => {
-            infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
-            Err(NotConstEvaluatable::Error(ErrorGuaranteed))
+            let reported =
+                infcx.tcx.sess.delay_span_bug(span, "constant in type had error reported as lint");
+            Err(NotConstEvaluatable::Error(reported))
         }
         Err(ErrorHandled::Reported(e)) => Err(NotConstEvaluatable::Error(e)),
         Ok(_) => Ok(()),
@@ -244,7 +245,7 @@ impl<'tcx> AbstractConst<'tcx> {
     ) -> Result<Option<AbstractConst<'tcx>>, ErrorGuaranteed> {
         match ct.val() {
             ty::ConstKind::Unevaluated(uv) => AbstractConst::new(tcx, uv.shrink()),
-            ty::ConstKind::Error(_) => Err(ErrorGuaranteed),
+            ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => Err(reported),
             _ => Ok(None),
         }
     }
@@ -280,17 +281,19 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     }
 
     fn error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
-        self.tcx
+        let reported = self
+            .tcx
             .sess
             .struct_span_err(self.root_span(), "overly complex generic constant")
             .span_label(span, msg)
             .help("consider moving this anonymous constant into a `const` function")
             .emit();
 
-        Err(ErrorGuaranteed)
+        Err(reported)
     }
     fn maybe_supported_error(&mut self, span: Span, msg: &str) -> Result<!, ErrorGuaranteed> {
-        self.tcx
+        let reported = self
+            .tcx
             .sess
             .struct_span_err(self.root_span(), "overly complex generic constant")
             .span_label(span, msg)
@@ -298,7 +301,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             .note("this operation may be supported in the future")
             .emit();
 
-        Err(ErrorGuaranteed)
+        Err(reported)
     }
 
     fn new(
@@ -553,11 +556,7 @@ pub(super) fn thir_abstract_const<'tcx>(
             _ => return Ok(None),
         }
 
-        let body = tcx.thir_body(def);
-        if body.0.borrow().exprs.is_empty() {
-            // type error in constant, there is no thir
-            return Err(ErrorGuaranteed);
-        }
+        let body = tcx.thir_body(def)?;
 
         AbstractConstBuilder::new(tcx, (&*body.0.borrow(), body.1))?
             .map(AbstractConstBuilder::build)
@@ -580,7 +579,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
 
         Ok(false)
     })()
-    .unwrap_or_else(|ErrorGuaranteed| true)
+    .unwrap_or_else(|_: ErrorGuaranteed| true)
     // FIXME(generic_const_exprs): We should instead have this
     // method return the resulting `ty::Const` and return `ConstKind::Error`
     // on `ErrorGuaranteed`.

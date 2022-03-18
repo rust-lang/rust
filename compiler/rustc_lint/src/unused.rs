@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         if !(type_permits_lack_of_use || fn_warned || op_warned) {
             cx.struct_span_lint(UNUSED_RESULTS, s.span, |lint| {
-                lint.build(&format!("unused result of type `{}`", ty)).emit()
+                lint.build(&format!("unused result of type `{}`", ty)).emit();
             });
         }
 
@@ -368,9 +368,9 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                         } else {
                             lint.span_help(s.span, "use `drop` to clarify the intent");
                         }
-                        lint.emit()
+                        lint.emit();
                     } else {
-                        lint.build("path statement with no effect").emit()
+                        lint.build("path statement with no effect").emit();
                     }
                 });
             }
@@ -1111,7 +1111,7 @@ impl UnusedImportBraces {
             };
 
             cx.struct_span_lint(UNUSED_IMPORT_BRACES, item.span, |lint| {
-                lint.build(&format!("braces around {} is unnecessary", node_name)).emit()
+                lint.build(&format!("braces around {} is unnecessary", node_name)).emit();
             });
         }
     }
@@ -1170,7 +1170,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedAllocation {
                             "unnecessary allocation, use `&mut` instead"
                         }
                     };
-                    lint.build(msg).emit()
+                    lint.build(msg).emit();
                 });
             }
         }

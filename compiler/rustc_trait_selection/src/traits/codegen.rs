@@ -51,7 +51,7 @@ pub fn codegen_fulfill_obligation<'tcx>(
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
-                infcx.tcx.sess.delay_span_bug(
+                let reported = infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
                         "encountered ambiguity selecting `{:?}` during codegen, presuming due to \
@@ -59,21 +59,21 @@ pub fn codegen_fulfill_obligation<'tcx>(
                         trait_ref
                     ),
                 );
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
             Err(Unimplemented) => {
                 // This can trigger when we probe for the source of a `'static` lifetime requirement
                 // on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
                 // This can also trigger when we have a global bound that is not actually satisfied,
                 // but was included during typeck due to the trivial_bounds feature.
-                infcx.tcx.sess.delay_span_bug(
+                let guar = infcx.tcx.sess.delay_span_bug(
                     rustc_span::DUMMY_SP,
                     &format!(
                         "Encountered error `Unimplemented` selecting `{:?}` during codegen",
                         trait_ref
                     ),
                 );
-                return Err(ErrorGuaranteed);
+                return Err(guar);
             }
             Err(e) => {
                 bug!("Encountered error `{:?}` selecting `{:?}` during codegen", e, trait_ref)

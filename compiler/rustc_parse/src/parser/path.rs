@@ -624,9 +624,18 @@ impl<'a> Parser<'a> {
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
             // Parse type argument.
+            let is_const_fn = self.look_ahead(1, |t| t.kind == token::OpenDelim(token::Paren));
+            let mut snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_ty() {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
+                    if is_const_fn {
+                        if let Ok(expr) = (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None)
+                        {
+                            self.restore_snapshot(snapshot);
+                            return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                        }
+                    }
                     // Try to recover from possible `const` arg without braces.
                     return self.recover_const_arg(start, err).map(Some);
                 }
@@ -636,7 +645,7 @@ impl<'a> Parser<'a> {
         } else {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
-            let snapshot = self.clone();
+            let snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
@@ -645,7 +654,7 @@ impl<'a> Parser<'a> {
                     )));
                 }
                 Err(err) => {
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                     err.cancel();
                     return Ok(None);
                 }

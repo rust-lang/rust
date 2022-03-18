@@ -225,12 +225,12 @@ pub fn prepare_session_directory(
     let crate_dir = match crate_dir.canonicalize() {
         Ok(v) => v,
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "incremental compilation: error canonicalizing path `{}`: {}",
                 crate_dir.display(),
                 err
             ));
-            return Err(ErrorGuaranteed);
+            return Err(reported);
         }
     };
 
@@ -489,14 +489,14 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGua
             Ok(())
         }
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "Could not create incremental compilation {} \
                                directory `{}`: {}",
                 dir_tag,
                 path.display(),
                 err
             ));
-            Err(ErrorGuaranteed)
+            Err(reported)
         }
     }
 }
@@ -545,8 +545,7 @@ fn lock_directory(
                     );
                 }
             }
-            err.emit();
-            Err(ErrorGuaranteed)
+            Err(err.emit())
         }
     }
 }

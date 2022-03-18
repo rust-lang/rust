@@ -534,10 +534,10 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, &format!("unknown macro transparency: `{}`", value))
+            diag.span_err(span, &format!("unknown macro transparency: `{}`", value));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes")
+            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
         }
         None => {}
     }
@@ -617,7 +617,9 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
 fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     match *rhs {
         mbe::TokenTree::Delimited(..) => return true,
-        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited"),
+        _ => {
+            sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited");
+        }
     }
     false
 }

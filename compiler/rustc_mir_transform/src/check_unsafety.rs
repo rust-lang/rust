@@ -156,7 +156,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
         // temporary holding the static pointer to avoid duplicate errors
         // <https://github.com/rust-lang/rust/pull/78068#issuecomment-731753506>.
         if decl.internal && place.projection.first() == Some(&ProjectionElem::Deref) {
-            // If the projection root is an artifical local that we introduced when
+            // If the projection root is an artificial local that we introduced when
             // desugaring `static`, give a more specific error message
             // (avoid the general "raw pointer" clause below, that would only be confusing).
             if let Some(box LocalInfo::StaticRef { def_id, .. }) = decl.local_info {

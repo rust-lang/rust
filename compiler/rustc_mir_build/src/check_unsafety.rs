@@ -405,7 +405,9 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 } else {
                     ty::WithOptConstParam::unknown(closure_id)
                 };
-                let (closure_thir, expr) = self.tcx.thir_body(closure_def);
+                let (closure_thir, expr) = self.tcx.thir_body(closure_def).unwrap_or_else(|_| {
+                    (self.tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0))
+                });
                 let closure_thir = &closure_thir.borrow();
                 let hir_context = self.tcx.hir().local_def_id_to_hir_id(closure_id);
                 let mut closure_visitor =
@@ -606,7 +608,10 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    let (thir, expr) = tcx.thir_body(def);
+    let (thir, expr) = match tcx.thir_body(def) {
+        Ok(body) => body,
+        Err(_) => return,
+    };
     let thir = &thir.borrow();
     // If `thir` is empty, a type error occurred, skip this body.
     if thir.exprs.is_empty() {

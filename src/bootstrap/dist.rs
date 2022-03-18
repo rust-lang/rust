@@ -2082,7 +2082,7 @@ impl Step for RustDev {
     }
 }
 
-/// Tarball containing a prebuilt version of the build-manifest tool, intented to be used by the
+/// Tarball containing a prebuilt version of the build-manifest tool, intended to be used by the
 /// release process to avoid cloning the monorepo and building stuff.
 ///
 /// Should not be considered stable by end users.

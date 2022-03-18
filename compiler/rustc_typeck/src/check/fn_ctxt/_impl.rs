@@ -315,16 +315,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
-                    _ => self.tcx.sess.delay_span_bug(
-                        expr.span,
-                        &format!(
-                            "while adjusting {:?}, can't compose {:?} and {:?}",
-                            expr,
-                            entry.get(),
-                            adj
-                        ),
-                    ),
-                };
+                    _ => {
+                        self.tcx.sess.delay_span_bug(
+                            expr.span,
+                            &format!(
+                                "while adjusting {:?}, can't compose {:?} and {:?}",
+                                expr,
+                                entry.get(),
+                                adj
+                            ),
+                        );
+                    }
+                }
                 *entry.get_mut() = adj;
             }
         }
@@ -903,7 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .or_else(|error| {
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
-                    _ => Err(ErrorGuaranteed),
+                    _ => Err(ErrorGuaranteed::unchecked_claim_error_was_emitted()),
                 };
 
                 // If we have a path like `MyTrait::missing_method`, then don't register

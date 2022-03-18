@@ -91,7 +91,7 @@ fn print_backtrace(backtrace: &Backtrace) {
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         match err {
-            ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted => {
+            ErrorHandled::Reported(ErrorGuaranteed { .. }) | ErrorHandled::Linted => {
                 err_inval!(ReferencedConstant)
             }
             ErrorHandled::TooGeneric => err_inval!(TooGeneric),
@@ -160,7 +160,7 @@ impl fmt::Display for InvalidProgramInfo<'_> {
         match self {
             TooGeneric => write!(f, "encountered overly generic constant"),
             ReferencedConstant => write!(f, "referenced constant has errors"),
-            AlreadyReported(ErrorGuaranteed) => {
+            AlreadyReported(ErrorGuaranteed { .. }) => {
                 write!(f, "encountered constants with type errors, stopping evaluation")
             }
             Layout(ref err) => write!(f, "{}", err),

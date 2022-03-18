@@ -223,7 +223,7 @@ top_level_options!(
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: bool [UNTRACKED],
 
-        /// `true` if we're emitting a JSON job containg a future-incompat report for lints
+        /// `true` if we're emitting a JSON job containing a future-incompat report for lints
         json_future_incompat: bool [TRACKED],
 
         pretty: Option<PpMode> [UNTRACKED],

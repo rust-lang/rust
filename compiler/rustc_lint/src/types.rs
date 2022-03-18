@@ -441,7 +441,7 @@ fn lint_uint_literal<'tcx>(
                     min,
                     max,
                 ))
-                .emit()
+                .emit();
         });
     }
 }
@@ -502,7 +502,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) && !check_limits(cx, binop, &l, &r) {
                     cx.struct_span_lint(UNUSED_COMPARISONS, e.span, |lint| {
-                        lint.build("comparison is useless due to type limits").emit()
+                        lint.build("comparison is useless due to type limits").emit();
                     });
                 }
             }
@@ -1382,7 +1382,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                                           larger ({} bytes) than the next largest",
                             largest
                         ))
-                        .emit()
+                        .emit();
                     },
                 );
             }

@@ -189,7 +189,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx.sess.delay_span_bug(
                     origin.span(),
                     &format!("no region-bound-pairs for {:?}", body_id),
-                )
+                );
             }
         }
     }

@@ -825,11 +825,13 @@ impl<'a> CrateLoader<'a> {
         for (_, data) in self.cstore.iter_crate_data() {
             if data.has_global_allocator() {
                 match global_allocator {
-                    Some(other_crate) => self.sess.err(&format!(
+                    Some(other_crate) => {
+                        self.sess.err(&format!(
                         "the `#[global_allocator]` in {} conflicts with global allocator in: {}",
                         other_crate,
                         data.name()
-                    )),
+                    ));
+                    }
                     None => global_allocator = Some(data.name()),
                 }
             }
@@ -864,7 +866,7 @@ impl<'a> CrateLoader<'a> {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
-        if self.sess.has_errors() {
+        if self.sess.has_errors().is_some() {
             return;
         }
 

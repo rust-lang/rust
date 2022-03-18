@@ -224,7 +224,7 @@ pub fn is_array(ty: Ty<'_>) -> bool {
 /// This builds the graph of side effect.
 /// The edge `a -> b` means if `a` has side effect, `b` will have side effect.
 ///
-/// There are some exmaple in following code:
+/// There are some example in following code:
 /// ```rust, ignore
 /// let b = 1;
 /// let a = b; // a -> b

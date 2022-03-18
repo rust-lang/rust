@@ -1997,7 +1997,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     Vec::new(),
                     &[],
                 );
-                db.emit()
+                db.emit();
             },
         );
     }

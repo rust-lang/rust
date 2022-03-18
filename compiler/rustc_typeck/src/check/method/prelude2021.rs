@@ -379,7 +379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Creates a string version of the `expr` that includes explicit adjustments.
-    /// Returns the string and also a bool indicating whther this is a *precise*
+    /// Returns the string and also a bool indicating whether this is a *precise*
     /// suggestion.
     fn adjust_expr(
         &self,
