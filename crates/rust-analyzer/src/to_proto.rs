@@ -6,11 +6,11 @@ use std::{
 };
 
 use ide::{
-    Annotation, AnnotationKind, Assist, AssistKind, CallInfo, Cancellable, CompletionItem,
+    Annotation, AnnotationKind, Assist, AssistKind, Cancellable, CompletionItem,
     CompletionItemKind, CompletionRelevance, Documentation, FileId, FileRange, FileSystemEdit,
     Fold, FoldKind, Highlight, HlMod, HlOperator, HlPunct, HlRange, HlTag, Indel, InlayHint,
     InlayKind, Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity,
-    SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    SignatureHelp, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
 };
 use itertools::Itertools;
 use serde_json::to_value;
@@ -336,7 +336,7 @@ fn completion_item(
 }
 
 pub(crate) fn signature_help(
-    call_info: CallInfo,
+    call_info: SignatureHelp,
     concise: bool,
     label_offsets: bool,
 ) -> lsp_types::SignatureHelp {

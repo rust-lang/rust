@@ -1,4 +1,5 @@
-//! This module provides primitives for tracking the information about a call site.
+//! This module provides primitives for showing type and function parameter information when editing
+//! a call or use-site.
 
 use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics};
@@ -11,17 +12,19 @@ use syntax::{algo, AstNode, Direction, TextRange, TextSize};
 
 use crate::RootDatabase;
 
-/// Contains information about a call site. Specifically the
-/// `FunctionSignature`and current parameter.
+/// Contains information about an item signature as seen from a use site.
+///
+/// This includes the "active parameter", which is the parameter whose value is currently being
+/// edited.
 #[derive(Debug)]
-pub struct CallInfo {
+pub struct SignatureHelp {
     pub doc: Option<String>,
     pub signature: String,
     pub active_parameter: Option<usize>,
     parameters: Vec<TextRange>,
 }
 
-impl CallInfo {
+impl SignatureHelp {
     pub fn parameter_labels(&self) -> impl Iterator<Item = &str> + '_ {
         self.parameters.iter().map(move |&it| &self.signature[it])
     }
@@ -49,8 +52,8 @@ impl CallInfo {
     }
 }
 
-/// Computes parameter information for the given call expression.
-pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
+/// Computes parameter information for the given position.
+pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Option<SignatureHelp> {
     let sema = Semantics::new(db);
     let file = sema.parse(position.file_id);
     let file = file.syntax();
@@ -63,23 +66,23 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let token = sema.descend_into_macros_single(token);
 
     if let Some((callable, active_parameter)) = callable_for_token(&sema, token.clone()) {
-        return Some(call_info_for_callable(db, callable, active_parameter));
+        return Some(signature_help_for_callable(db, callable, active_parameter));
     }
 
     if let Some((generic_def, active_parameter)) = generics_for_token(&sema, token.clone()) {
-        return call_info_for_generics(db, generic_def, active_parameter);
+        return signature_help_for_generics(db, generic_def, active_parameter);
     }
 
     None
 }
 
-fn call_info_for_callable(
+fn signature_help_for_callable(
     db: &RootDatabase,
     callable: hir::Callable,
     active_parameter: Option<usize>,
-) -> CallInfo {
+) -> SignatureHelp {
     let mut res =
-        CallInfo { doc: None, signature: String::new(), parameters: vec![], active_parameter };
+        SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };
 
     match callable.kind() {
         hir::CallableKind::Function(func) => {
@@ -134,12 +137,12 @@ fn call_info_for_callable(
     res
 }
 
-fn call_info_for_generics(
+fn signature_help_for_generics(
     db: &RootDatabase,
     mut generics_def: hir::GenericDef,
     active_parameter: usize,
-) -> Option<CallInfo> {
-    let mut res = CallInfo {
+) -> Option<SignatureHelp> {
+    let mut res = SignatureHelp {
         doc: None,
         signature: String::new(),
         parameters: vec![],
@@ -230,7 +233,7 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let call_info = crate::call_info::call_info(&db, position);
+        let call_info = crate::signature_help::signature_help(&db, position);
         let actual = match call_info {
             Some(call_info) => {
                 let docs = match &call_info.doc {
