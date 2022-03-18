@@ -748,6 +748,13 @@ pub struct TraitPredicate<'tcx> {
 
     pub constness: BoundConstness,
 
+    /// If polarity is Positive: we are proving that the trait is implemented.
+    ///
+    /// If polarity is Negative: we are proving that a negative impl of this trait
+    /// exists. (Note that coherence also checks whether negative impls of supertraits
+    /// exist via a series of predicates.)
+    ///
+    /// If polarity is Reserved: that's a bug.
     pub polarity: ImplPolarity,
 }
 
