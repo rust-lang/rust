@@ -212,6 +212,13 @@ pub fn add_cursor(text: &str, offset: TextSize) -> String {
 /// // ^^^ first line
 /// //   | second line
 ///
+/// Trailing whitespace is sometimes desired but usually stripped by the editor
+/// if at the end of a line, or incorrectly sized if followed by another
+/// annotation. In those cases the annotation can be explicitly ended with the
+/// `$` character.
+///
+/// // ^^^ trailing-ws-wanted  $
+///
 /// Annotations point to the last line that actually was long enough for the
 /// range, not counting annotations themselves. So overlapping annotations are
 /// possible:
@@ -229,9 +236,10 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
     let mut prev_line_annotations: Vec<(TextSize, usize)> = Vec::new();
     for line in text.split_inclusive('\n') {
         let mut this_line_annotations = Vec::new();
-        let line_length = if let Some(idx) = line.find("//") {
-            let annotation_offset = TextSize::of(&line[..idx + "//".len()]);
-            for annotation in extract_line_annotations(&line[idx + "//".len()..]) {
+        let line_length = if let Some((prefix, suffix)) = line.split_once("//") {
+            let ss_len = TextSize::of("//");
+            let annotation_offset = TextSize::of(prefix) + ss_len;
+            for annotation in extract_line_annotations(suffix.trim_end_matches('\n')) {
                 match annotation {
                     LineAnnotation::Annotation { mut range, content, file } => {
                         range += annotation_offset;
@@ -257,7 +265,7 @@ pub fn extract_annotations(text: &str) -> Vec<(TextRange, String)> {
                     }
                 }
             }
-            idx.try_into().unwrap()
+            annotation_offset
         } else {
             TextSize::of(line)
         };
@@ -294,8 +302,21 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
             len = 1;
         }
         let range = TextRange::at(offset, len.try_into().unwrap());
-        let next = line[len..].find(marker).map_or(line.len(), |it| it + len);
-        let mut content = &line[len..][..next - len];
+        let line_no_caret = &line[len..];
+        let end_marker = line_no_caret.find(|c| c == '$');
+        let next = line_no_caret.find(marker).map_or(line.len(), |it| it + len);
+
+        let mut content = match end_marker {
+            Some(end_marker)
+                if end_marker < next
+                    && line_no_caret[end_marker..]
+                        .strip_prefix(|c: char| c.is_whitespace() || c == '^')
+                        .is_some() =>
+            {
+                &line_no_caret[..end_marker]
+            }
+            _ => line_no_caret[..next - len].trim_end(),
+        };
 
         let mut file = false;
         if !continuation && content.starts_with("file") {
@@ -303,7 +324,7 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
             content = &content["file".len()..];
         }
 
-        let content = content.trim().to_string();
+        let content = content.trim_start().to_string();
 
         let annotation = if continuation {
             LineAnnotation::Continuation { offset: range.end(), content }
