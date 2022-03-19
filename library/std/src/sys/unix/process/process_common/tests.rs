@@ -67,3 +67,58 @@ fn test_process_mask() {
         t!(cat.wait());
     }
 }
+
+#[test]
+#[cfg_attr(
+    any(
+        // See test_process_mask
+        target_os = "macos",
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+    ),
+    ignore
+)]
+fn test_process_group_posix_spawn() {
+    unsafe {
+        // Spawn a cat subprocess that's just going to hang since there is no I/O.
+        let mut cmd = Command::new(OsStr::new("cat"));
+        cmd.pgroup(0);
+        cmd.stdin(Stdio::MakePipe);
+        cmd.stdout(Stdio::MakePipe);
+        let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
+
+        // Check that we can kill its process group, which means there *is* one.
+        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+
+        t!(cat.wait());
+    }
+}
+
+#[test]
+#[cfg_attr(
+    any(
+        // See test_process_mask
+        target_os = "macos",
+        target_arch = "arm",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+    ),
+    ignore
+)]
+fn test_process_group_no_posix_spawn() {
+    unsafe {
+        // Same as above, create hang-y cat. This time, force using the non-posix_spawnp path.
+        let mut cmd = Command::new(OsStr::new("cat"));
+        cmd.pgroup(0);
+        cmd.pre_exec(Box::new(|| Ok(()))); // pre_exec forces fork + exec
+        cmd.stdin(Stdio::MakePipe);
+        cmd.stdout(Stdio::MakePipe);
+        let (mut cat, _pipes) = t!(cmd.spawn(Stdio::Null, true));
+
+        // Check that we can kill its process group, which means there *is* one.
+        t!(cvt(libc::kill(-(cat.id() as libc::pid_t), libc::SIGINT)));
+
+        t!(cat.wait());
+    }
+}
