@@ -12,5 +12,11 @@ error: .or(Ok(…)).unwrap() found
 LL |     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or("fallback")`
 
-error: aborting due to 2 previous errors
+error: .or(Some(…)).unwrap() found
+  --> $DIR/or_then_unwrap.rs:31:31
+   |
+LL |     let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or("fallback")`
+
+error: aborting due to 3 previous errors
 

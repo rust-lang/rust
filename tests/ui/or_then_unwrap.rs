@@ -26,6 +26,10 @@ fn main() {
     let result: Result<&str, &str> = Err("Error");
     let _ = result.or::<&str>(Ok("fallback")).unwrap(); // should trigger lint
 
+    // as part of a method chain
+    let option: Option<&str> = None;
+    let _ = option.map(|v| v).or(Some("fallback")).unwrap().to_string().chars(); // should trigger lint
+
     // Not Option/Result
     let instance = SomeStruct {};
     let _ = instance.or(Some(SomeStruct {})).unwrap(); // should not trigger lint
