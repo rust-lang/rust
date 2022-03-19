@@ -409,6 +409,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_reduce_add_ordered | simd_reduce_add_unordered, (c v, v acc) {
+            // FIXME there must be no acc param for integer vectors
             if !v.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
                 return;
@@ -424,6 +425,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_reduce_mul_ordered | simd_reduce_mul_unordered, (c v, v acc) {
+            // FIXME there must be no acc param for integer vectors
             if !v.layout().ty.is_simd() {
                 report_simd_type_validation_error(fx, intrinsic, span, v.layout().ty);
                 return;

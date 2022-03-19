@@ -10,7 +10,7 @@ pushd rust
 
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
-rm -r src/test/ui/{extern/,unsized-locals/,lto/,simd*,linkage*} || true
+rm -r src/test/ui/{extern/,unsized-locals/,lto/,linkage*} || true
 for test in $(rg --files-with-matches "asm!|lto|// needs-asm-support|// needs-unwind" src/test/{ui,incremental}); do
   rm $test
 done
@@ -43,6 +43,16 @@ rm src/test/ui/generator/size-moved-locals.rs # same
 # vendor intrinsics
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
+rm src/test/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
+rm src/test/ui/simd/intrinsic/generic-bitmask-pass.rs # simd_bitmask unimplemented
+rm src/test/ui/simd/intrinsic/generic-as.rs # simd_as unimplemented
+rm src/test/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs # simd_saturating_add unimplemented
+rm src/test/ui/simd/intrinsic/float-math-pass.rs # simd_fcos unimplemented
+rm src/test/ui/simd/intrinsic/generic-gather-pass.rs # simd_gather unimplemented
+rm src/test/ui/simd/intrinsic/generic-select-pass.rs # simd_select_bitmask unimplemented
+rm src/test/ui/simd/issue-85915-simd-ptrs.rs # simd_gather unimplemented
+rm src/test/ui/simd/issue-89193.rs # simd_gather unimplemented
+rm src/test/ui/simd/simd-bitmask.rs # simd_bitmask unimplemented
 
 # exotic linkages
 rm src/test/ui/issues/issue-33992.rs # unsupported linkages
@@ -76,6 +86,7 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 # giving different but possibly correct results
 # =============================================
 rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
+rm src/test/ui/simd/intrinsic/float-minmax-pass.rs # same
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
 rm src/test/ui/consts/issue-33537.rs # same
@@ -98,6 +109,8 @@ rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
 rm src/test/ui/mir/ssa-analysis-regression-50041.rs # produces ICE
+
+rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
 # bugs in the test suite
 # ======================
