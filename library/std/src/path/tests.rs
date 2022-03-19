@@ -1739,11 +1739,11 @@ fn test_windows_absolute() {
     let relative = r"a\b";
     let mut expected = crate::env::current_dir().unwrap();
     expected.push(relative);
-    assert_eq!(absolute(relative).unwrap(), expected);
+    assert_eq!(absolute(relative).unwrap().as_os_str(), expected.as_os_str());
 
     macro_rules! unchanged(
         ($path:expr) => {
-            assert_eq!(absolute($path).unwrap(), Path::new($path));
+            assert_eq!(absolute($path).unwrap().as_os_str(), Path::new($path).as_os_str());
         }
     );
 
@@ -1759,11 +1759,11 @@ fn test_windows_absolute() {
     // Verbatim paths are always unchanged, no matter what.
     unchanged!(r"\\?\path.\to/file..");
 
-    assert_eq!(absolute(r"C:\path..\to.\file.").unwrap(), Path::new(r"C:\path..\to\file"));
-    assert_eq!(absolute(r"C:\path\to\COM1").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\COM1.txt").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\COM1  .txt").unwrap(), Path::new(r"\\.\COM1"));
-    assert_eq!(absolute(r"C:\path\to\cOnOuT$").unwrap(), Path::new(r"\\.\cOnOuT$"));
+    assert_eq!(
+        absolute(r"C:\path..\to.\file.").unwrap().as_os_str(),
+        Path::new(r"C:\path..\to\file").as_os_str()
+    );
+    assert_eq!(absolute(r"COM1").unwrap().as_os_str(), Path::new(r"\\.\COM1").as_os_str());
 }
 
 #[bench]
