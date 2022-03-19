@@ -443,12 +443,22 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+pub trait Allocator {
+}
+
+pub struct Global;
+
+impl Allocator for Global {}
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T);
+pub struct Box<
+    T: ?Sized,
+    A: Allocator = Global,
+>(*mut T, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
-impl<T: ?Sized> Drop for Box<T> {
+impl<T: ?Sized, A: Allocator> Drop for Box<T, A> {
     fn drop(&mut self) {
         // drop is currently performed by compiler.
     }
@@ -468,7 +478,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: *mut T, alloc: A) {
     libc::free(ptr as *mut u8);
 }
 
