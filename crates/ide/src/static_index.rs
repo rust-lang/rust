@@ -12,10 +12,13 @@ use ide_db::{
 use rustc_hash::FxHashSet;
 use syntax::{AstNode, SyntaxKind::*, SyntaxToken, TextRange, T};
 
-use crate::moniker::{crate_for_file, def_to_moniker, MonikerResult};
 use crate::{
     hover::hover_for_definition, Analysis, Fold, HoverConfig, HoverDocFormat, HoverResult,
     InlayHint, InlayHintsConfig, TryToNav,
+};
+use crate::{
+    moniker::{crate_for_file, def_to_moniker, MonikerResult},
+    LifetimeElisionHints,
 };
 
 /// A static representation of fully analyzed source code.
@@ -110,7 +113,7 @@ impl StaticIndex<'_> {
                     parameter_hints: true,
                     chaining_hints: true,
                     closure_return_type_hints: true,
-                    lifetime_elision_hints: false,
+                    lifetime_elision_hints: LifetimeElisionHints::Never,
                     hide_named_constructor_hints: false,
                     param_names_for_lifetime_elision_hints: false,
                     max_length: Some(25),

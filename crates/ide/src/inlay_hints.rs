@@ -4,7 +4,7 @@ use ide_db::{
     base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, RootDatabase,
 };
 use itertools::Itertools;
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
@@ -20,11 +20,17 @@ pub struct InlayHintsConfig {
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub closure_return_type_hints: bool,
-    // FIXME: ternary option here, on off non-noisy
-    pub lifetime_elision_hints: bool,
+    pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LifetimeElisionHints {
+    Always,
+    SkipTrivial,
+    Never,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -58,6 +64,7 @@ pub struct InlayHint {
 // Optionally, one can enable additional hints for
 //
 // * return types of closure expressions with blocks
+// * elided lifetimes
 //
 // **Note:** VS Code does not have native support for inlay hints https://github.com/microsoft/vscode/issues/16221[yet] and the hints are implemented using decorations.
 // This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
@@ -132,7 +139,7 @@ fn lifetime_hints(
     config: &InlayHintsConfig,
     func: ast::Fn,
 ) -> Option<()> {
-    if !config.lifetime_elision_hints {
+    if config.lifetime_elision_hints == LifetimeElisionHints::Never {
         return None;
     }
     let param_list = func.param_list()?;
@@ -140,16 +147,16 @@ fn lifetime_hints(
     let ret_type = func.ret_type();
     let self_param = param_list.self_param().filter(|it| it.amp_token().is_some());
 
-    let used_names: FxHashSet<SmolStr> = generic_param_list
+    let mut used_names: FxHashMap<SmolStr, usize> = generic_param_list
         .iter()
-        .filter(|_| !config.param_names_for_lifetime_elision_hints)
+        .filter(|_| config.param_names_for_lifetime_elision_hints)
         .flat_map(|gpl| gpl.lifetime_params())
         .filter_map(|param| param.lifetime())
-        .map(|lt| SmolStr::from(lt.text().as_str()))
+        .filter_map(|lt| Some((SmolStr::from(lt.text().as_str().get(1..)?), 0)))
         .collect();
 
     let mut allocated_lifetimes = vec![];
-    let mut gen_name = {
+    let mut gen_idx_name = {
         let mut gen = (0u8..).map(|idx| match idx {
             idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
             idx => format!("'{idx}").into(),
@@ -158,19 +165,27 @@ fn lifetime_hints(
     };
 
     let mut potential_lt_refs: Vec<_> = vec![];
-    param_list.params().filter_map(|it| Some((it.pat(), it.ty()?))).for_each(|(pat, ty)| {
-        // FIXME: check path types
-        walk_ty(&ty, &mut |ty| match ty {
-            ast::Type::RefType(r) => potential_lt_refs.push((
-                pat.as_ref().and_then(|it| match it {
-                    ast::Pat::IdentPat(p) => p.name(),
-                    _ => None,
-                }),
-                r,
-            )),
-            _ => (),
+    param_list
+        .params()
+        .filter_map(|it| {
+            Some((
+                config.param_names_for_lifetime_elision_hints.then(|| it.pat()).flatten(),
+                it.ty()?,
+            ))
         })
-    });
+        .for_each(|(pat, ty)| {
+            // FIXME: check path types
+            walk_ty(&ty, &mut |ty| match ty {
+                ast::Type::RefType(r) => potential_lt_refs.push((
+                    pat.as_ref().and_then(|it| match it {
+                        ast::Pat::IdentPat(p) => p.name(),
+                        _ => None,
+                    }),
+                    r,
+                )),
+                _ => (),
+            })
+        });
 
     enum LifetimeKind {
         Elided,
@@ -195,25 +210,28 @@ fn lifetime_hints(
     if let Some(self_param) = &self_param {
         if is_elided(self_param.lifetime()) {
             allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
+                // self can't be used as a lifetime, so no need to check for collisions
                 "'self".into()
             } else {
-                gen_name()
+                gen_idx_name()
             });
         }
     }
     potential_lt_refs.iter().for_each(|(name, it)| {
         if is_elided(it.lifetime()) {
-            allocated_lifetimes.push(
-                name.as_ref()
-                    .filter(|it| {
-                        config.param_names_for_lifetime_elision_hints
-                            && !used_names.contains(it.text().as_str())
-                    })
-                    .map_or_else(
-                        || gen_name(),
-                        |it| SmolStr::from_iter(["\'", it.text().as_str()]),
-                    ),
-            );
+            let name = match name {
+                Some(it) => {
+                    if let Some(c) = used_names.get_mut(it.text().as_str()) {
+                        *c += 1;
+                        SmolStr::from(format!("'{text}{c}", text = it.text().as_str()))
+                    } else {
+                        used_names.insert(it.text().as_str().into(), 0);
+                        SmolStr::from_iter(["\'", it.text().as_str()])
+                    }
+                }
+                _ => gen_idx_name(),
+            };
+            allocated_lifetimes.push(name);
         }
     });
 
@@ -236,8 +254,21 @@ fn lifetime_hints(
         }
     };
 
-    // apply hints
+    if allocated_lifetimes.is_empty() && output.is_none() {
+        return None;
+    }
 
+    let skip_due_trivial_single = config.lifetime_elision_hints
+        == LifetimeElisionHints::SkipTrivial
+        && (allocated_lifetimes.len() == 1)
+        && generic_param_list.as_ref().map_or(true, |it| it.lifetime_params().next().is_none());
+
+    if skip_due_trivial_single {
+        cov_mark::hit!(lifetime_hints_single);
+        return None;
+    }
+
+    // apply hints
     // apply output if required
     match (&output, ret_type) {
         (Some(output_lt), Some(r)) => {
@@ -800,14 +831,14 @@ mod tests {
     use syntax::{TextRange, TextSize};
     use test_utils::extract_annotations;
 
-    use crate::{fixture, inlay_hints::InlayHintsConfig};
+    use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
     const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
         chaining_hints: false,
-        lifetime_elision_hints: false,
+        lifetime_elision_hints: LifetimeElisionHints::Never,
         hide_named_constructor_hints: false,
         closure_return_type_hints: false,
         param_names_for_lifetime_elision_hints: false,
@@ -818,7 +849,7 @@ mod tests {
         parameter_hints: true,
         chaining_hints: true,
         closure_return_type_hints: true,
-        lifetime_elision_hints: true,
+        lifetime_elision_hints: LifetimeElisionHints::Always,
         ..DISABLED_CONFIG
     };
 
@@ -2033,6 +2064,47 @@ impl () {
     fn foo(&self) -> &() {}
     // ^^^<'0>
         // ^'0       ^'0
+    fn foo(&self, a: &()) -> &() {}
+    // ^^^<'0, '1>
+        // ^'0       ^'1     ^'0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_named() {
+        check_with_config(
+            InlayHintsConfig { param_names_for_lifetime_elision_hints: true, ..TEST_CONFIG },
+            r#"
+fn nested_in<'named>(named: &        &X<      &()>) {}
+//          ^'named1, 'named2, 'named3, $
+                          //^'named1 ^'named2 ^'named3
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_skingle_skip() {
+        cov_mark::check!(lifetime_hints_single);
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::SkipTrivial,
+                ..TEST_CONFIG
+            },
+            r#"
+fn single(a: &()) -> &() {}
+
+fn double(a: &(), b: &()) {}
+// ^^^^^^<'0, '1>
+          // ^'0     ^'1
+fn partial<'a>(a: &'a (), b: &()) {}
+        //^'0, $             ^'0
+fn partial2<'a>(a: &'a ()) -> &() {}
+                            //^'a
+
+impl () {
+    fn foo(&self) -> &() {}
     fn foo(&self, a: &()) -> &() {}
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0

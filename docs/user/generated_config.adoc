@@ -378,6 +378,16 @@ Whether to show inlay type hints for method chains.
 --
 Whether to show inlay type hints for return types of closures with blocks.
 --
+[[rust-analyzer.inlayHints.lifetimeElisionHints]]rust-analyzer.inlayHints.lifetimeElisionHints (default: `"never"`)::
++
+--
+Whether to show inlay type hints for elided lifetimes in function signatures.
+--
+[[rust-analyzer.inlayHints.paramNamesForLifetimeElisionHints]]rust-analyzer.inlayHints.paramNamesForLifetimeElisionHints (default: `false`)::
++
+--
+Whether to show prefer using parameter names as the name for elided lifetime hints.
+--
 [[rust-analyzer.inlayHints.hideNamedConstructorHints]]rust-analyzer.inlayHints.hideNamedConstructorHints (default: `false`)::
 +
 --

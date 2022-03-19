@@ -800,6 +800,26 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.lifetimeElisionHints": {
+                    "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
+                    "default": "never",
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "skip_trivial"
+                    ],
+                    "enumDescriptions": [
+                        "Always show lifetime elision hints.",
+                        "Never show lifetime elision hints.",
+                        "Always show lifetime elision hints but skip them for trivial single input to output mapping."
+                    ]
+                },
+                "rust-analyzer.inlayHints.paramNamesForLifetimeElisionHints": {
+                    "markdownDescription": "Whether to show prefer using parameter names as the name for elided lifetime hints.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.hideNamedConstructorHints": {
                     "markdownDescription": "Whether to hide inlay hints for constructors.",
                     "default": false,
