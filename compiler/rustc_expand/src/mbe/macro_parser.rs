@@ -72,9 +72,8 @@
 
 crate use NamedMatch::*;
 crate use ParseResult::*;
-use TokenTreeOrTokenTreeSlice::*;
 
-use crate::mbe::{self, DelimSpan, SequenceRepetition, TokenTree};
+use crate::mbe::{self, SequenceRepetition, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
 use rustc_parse::parser::Parser;
@@ -90,35 +89,6 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 
-// To avoid costly uniqueness checks, we require that `MatchSeq` always has a nonempty body.
-
-/// Either a slice of token trees or a single one. This is used as the representation of the
-/// token trees that make up a matcher.
-#[derive(Clone)]
-enum TokenTreeOrTokenTreeSlice<'tt> {
-    Tt(TokenTree),
-    TtSlice(&'tt [TokenTree]),
-}
-
-impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
-    /// Returns the number of constituent top-level token trees of `self` (top-level in that it
-    /// will not recursively descend into subtrees).
-    fn len(&self) -> usize {
-        match *self {
-            TtSlice(ref v) => v.len(),
-            Tt(ref tt) => tt.len(),
-        }
-    }
-
-    /// The `index`-th token tree of `self`.
-    fn get_tt(&self, index: usize) -> TokenTree {
-        match *self {
-            TtSlice(ref v) => v[index].clone(),
-            Tt(ref tt) => tt.get_tt(index),
-        }
-    }
-}
-
 /// An unzipping of `TokenTree`s... see the `stack` field of `MatcherPos`.
 ///
 /// This is used by `parse_tt_inner` to keep track of delimited submatchers that we have
@@ -126,7 +96,7 @@ impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
 #[derive(Clone)]
 struct MatcherTtFrame<'tt> {
     /// The "parent" matcher that we are descending into.
-    elts: TokenTreeOrTokenTreeSlice<'tt>,
+    elts: &'tt [TokenTree],
     /// The position of the "dot" in `elts` at the time we descended.
     idx: usize,
 }
@@ -138,7 +108,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 #[derive(Clone)]
 struct MatcherPos<'tt> {
     /// The token or slice of tokens that make up the matcher. `elts` is short for "elements".
-    top_elts: TokenTreeOrTokenTreeSlice<'tt>,
+    top_elts: &'tt [TokenTree],
 
     /// The position of the "dot" in this matcher
     idx: usize,
@@ -183,7 +153,7 @@ struct MatcherPos<'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 232);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 136);
 
 impl<'tt> MatcherPos<'tt> {
     /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
@@ -203,7 +173,7 @@ impl<'tt> MatcherPos<'tt> {
         let match_idx_hi = count_names(ms);
         MatcherPos {
             // Start with the top level matcher given to us.
-            top_elts: TtSlice(ms),
+            top_elts: ms,
 
             // The "dot" is before the first token of the matcher.
             idx: 0,
@@ -224,9 +194,9 @@ impl<'tt> MatcherPos<'tt> {
         }
     }
 
-    fn repetition(up: Box<MatcherPos<'tt>>, sp: DelimSpan, seq: Lrc<SequenceRepetition>) -> Self {
+    fn repetition(up: Box<MatcherPos<'tt>>, seq: &'tt SequenceRepetition) -> Self {
         MatcherPos {
-            stack: smallvec![],
+            top_elts: &seq.tts,
             idx: 0,
             matches: Self::create_matches(up.matches.len()),
             match_lo: up.match_cur,
@@ -237,7 +207,7 @@ impl<'tt> MatcherPos<'tt> {
                 sep: seq.separator.clone(),
                 seq_op: seq.kleene.op,
             }),
-            top_elts: Tt(TokenTree::Sequence(sp, seq)),
+            stack: smallvec![],
         }
     }
 
@@ -288,8 +258,8 @@ crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, N
 pub(super) fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count
-            + match *elt {
-                TokenTree::Delimited(_, ref delim) => count_names(&delim.tts),
+            + match elt {
+                TokenTree::Delimited(_, delim) => count_names(delim.inner_tts()),
                 TokenTree::MetaVar(..) => 0,
                 TokenTree::MetaVarDecl(..) => 1,
                 // Panicking here would abort execution because `parse_tree` makes use of this
@@ -298,7 +268,7 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
                 // `0` is still returned to inform that no meta-variable was found. `Meta-variables
                 // != Meta-variable expressions`
                 TokenTree::MetaVarExpr(..) => 0,
-                TokenTree::Sequence(_, ref seq) => seq.num_captures,
+                TokenTree::Sequence(_, seq) => seq.num_captures,
                 TokenTree::Token(..) => 0,
             }
     })
@@ -382,7 +352,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
-                for next_m in &delim.tts {
+                for next_m in delim.inner_tts() {
                     n_rec(sess, next_m, res.by_ref(), ret_val)?;
                 }
             }
@@ -446,8 +416,8 @@ pub struct TtParser<'tt> {
 }
 
 impl<'tt> TtParser<'tt> {
-    pub(super) fn new(macro_name: Ident) -> Self {
-        Self { macro_name, cur_items: vec![], next_items: vec![], bb_items: vec![] }
+    pub(super) fn new(macro_name: Ident) -> TtParser<'tt> {
+        TtParser { macro_name, cur_items: vec![], next_items: vec![], bb_items: vec![] }
     }
 
     /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
@@ -492,8 +462,8 @@ impl<'tt> TtParser<'tt> {
             if idx < len {
                 // We are in the middle of a matcher. Compare the matcher's current tt against
                 // `token`.
-                match item.top_elts.get_tt(idx) {
-                    TokenTree::Sequence(sp, seq) => {
+                match &item.top_elts[idx] {
+                    TokenTree::Sequence(_sp, seq) => {
                         let op = seq.kleene.op;
                         if op == mbe::KleeneOp::ZeroOrMore || op == mbe::KleeneOp::ZeroOrOne {
                             // Allow for the possibility of zero matches of this sequence.
@@ -507,17 +477,17 @@ impl<'tt> TtParser<'tt> {
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
-                        self.cur_items.push(box MatcherPos::repetition(item, sp, seq));
+                        self.cur_items.push(box MatcherPos::repetition(item, &seq));
                     }
 
-                    TokenTree::MetaVarDecl(span, _, None) => {
+                    &TokenTree::MetaVarDecl(span, _, None) => {
                         // E.g. `$e` instead of `$e:expr`.
                         if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
                             return Some(Error(span, "missing fragment specifier".to_string()));
                         }
                     }
 
-                    TokenTree::MetaVarDecl(_, _, Some(kind)) => {
+                    &TokenTree::MetaVarDecl(_, _, Some(kind)) => {
                         // Built-in nonterminals never start with these tokens, so we can eliminate
                         // them from consideration.
                         //
@@ -528,13 +498,14 @@ impl<'tt> TtParser<'tt> {
                         }
                     }
 
-                    seq @ TokenTree::Delimited(..) => {
+                    TokenTree::Delimited(_, delimited) => {
                         // To descend into a delimited submatcher, we push the current matcher onto
                         // a stack and push a new item containing the submatcher onto `cur_items`.
                         //
                         // At the beginning of the loop, if we reach the end of the delimited
-                        // submatcher, we pop the stack to backtrack out of the descent.
-                        let lower_elts = mem::replace(&mut item.top_elts, Tt(seq));
+                        // submatcher, we pop the stack to backtrack out of the descent. Note that
+                        // we use `all_tts` to include the open and close delimiter tokens.
+                        let lower_elts = mem::replace(&mut item.top_elts, &delimited.all_tts);
                         let idx = item.idx;
                         item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
                         item.idx = 0;
@@ -560,7 +531,6 @@ impl<'tt> TtParser<'tt> {
             } else if let Some(repetition) = &item.repetition {
                 // We are past the end of a repetition.
                 debug_assert!(idx <= len + 1);
-                debug_assert!(matches!(item.top_elts, Tt(TokenTree::Sequence(..))));
 
                 if idx == len {
                     // Add all matches from the sequence to `up`, and move the "dot" past the
@@ -678,9 +648,7 @@ impl<'tt> TtParser<'tt> {
                 (0, 1) => {
                     // We need to call the black-box parser to get some nonterminal.
                     let mut item = self.bb_items.pop().unwrap();
-                    if let TokenTree::MetaVarDecl(span, _, Some(kind)) =
-                        item.top_elts.get_tt(item.idx)
-                    {
+                    if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts[item.idx] {
                         let match_cur = item.match_cur;
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
@@ -720,7 +688,7 @@ impl<'tt> TtParser<'tt> {
         let nts = self
             .bb_items
             .iter()
-            .map(|item| match item.top_elts.get_tt(item.idx) {
+            .map(|item| match item.top_elts[item.idx] {
                 TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
                     format!("{} ('{}')", kind, bind)
                 }

@@ -17,23 +17,48 @@ use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-/// Contains the sub-token-trees of a "delimited" token tree, such as the contents of `(`. Note
-/// that the delimiter itself might be `NoDelim`.
+/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiter itself
+/// might be `NoDelim`.
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: token::DelimToken,
-    tts: Vec<TokenTree>,
+    /// Note: This contains the opening and closing delimiters tokens (e.g. `(` and `)`). Note that
+    /// these could be `NoDelim`. These token kinds must match `delim`, and the methods below
+    /// debug_assert this.
+    all_tts: Vec<TokenTree>,
 }
 
 impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    fn open_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::OpenDelim(self.delim), span.open)
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter. Panics if
+    /// the delimiter is `NoDelim`.
+    fn open_tt(&self) -> &TokenTree {
+        let tt = self.all_tts.first().unwrap();
+        debug_assert!(matches!(
+            tt,
+            &TokenTree::Token(token::Token { kind: token::OpenDelim(d), .. }) if d == self.delim
+        ));
+        tt
     }
 
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    fn close_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::CloseDelim(self.delim), span.close)
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter. Panics if
+    /// the delimeter is `NoDelim`.
+    fn close_tt(&self) -> &TokenTree {
+        let tt = self.all_tts.last().unwrap();
+        debug_assert!(matches!(
+            tt,
+            &TokenTree::Token(token::Token { kind: token::CloseDelim(d), .. }) if d == self.delim
+        ));
+        tt
+    }
+
+    /// Returns the tts excluding the outer delimiters.
+    ///
+    /// FIXME: #67062 has details about why this is sub-optimal.
+    fn inner_tts(&self) -> &[TokenTree] {
+        // These functions are called for the assertions within them.
+        let _open_tt = self.open_tt();
+        let _close_tt = self.close_tt();
+        &self.all_tts[1..self.all_tts.len() - 1]
     }
 }
 
@@ -73,35 +98,24 @@ enum KleeneOp {
     ZeroOrOne,
 }
 
-/// Similar to `tokenstream::TokenTree`, except that `$i`, `$i:ident`, `$(...)`,
-/// and `${...}` are "first-class" token trees. Useful for parsing macros.
+/// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
+/// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
 #[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
+    /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
     Delimited(DelimSpan, Lrc<Delimited>),
-    /// A kleene-style repetition sequence
+    /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// e.g., `$var`
+    /// e.g., `$var`.
     MetaVar(Span, Ident),
-    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
+    /// e.g., `$var:expr`. Only appears on the LHS.
     MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
-    /// A meta-variable expression inside `${...}`
+    /// A meta-variable expression inside `${...}`.
     MetaVarExpr(DelimSpan, MetaVarExpr),
 }
 
 impl TokenTree {
-    /// Return the number of tokens in the tree.
-    fn len(&self) -> usize {
-        match *self {
-            TokenTree::Delimited(_, ref delimed) => match delimed.delim {
-                token::NoDelim => delimed.tts.len(),
-                _ => delimed.tts.len() + 2,
-            },
-            TokenTree::Sequence(_, ref seq) => seq.tts.len(),
-            _ => 0,
-        }
-    }
-
     /// Returns `true` if the given token tree is delimited.
     fn is_delimited(&self) -> bool {
         matches!(*self, TokenTree::Delimited(..))
@@ -112,26 +126,6 @@ impl TokenTree {
         match self {
             TokenTree::Token(Token { kind: actual_kind, .. }) => actual_kind == expected_kind,
             _ => false,
-        }
-    }
-
-    /// Gets the `index`-th sub-token-tree. This only makes sense for delimited trees and sequences.
-    fn get_tt(&self, index: usize) -> TokenTree {
-        match (self, index) {
-            (&TokenTree::Delimited(_, ref delimed), _) if delimed.delim == token::NoDelim => {
-                delimed.tts[index].clone()
-            }
-            (&TokenTree::Delimited(span, ref delimed), _) => {
-                if index == 0 {
-                    return delimed.open_tt(span);
-                }
-                if index == delimed.tts.len() + 1 {
-                    return delimed.close_tt(span);
-                }
-                delimed.tts[index - 1].clone()
-            }
-            (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
-            _ => panic!("Cannot expand a token tree"),
         }
     }
 
