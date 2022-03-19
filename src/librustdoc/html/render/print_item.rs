@@ -377,8 +377,10 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let add = if stab.is_some() { " " } else { "" };
 
                 let visibility_emoji = match myitem.visibility {
-                    clean::Visibility::Restricted(_) => "<span title=\"Restricted Visibility\">🔒</span> ",
-                    _ => ""
+                    clean::Visibility::Restricted(_) => {
+                        "<span title=\"Restricted Visibility\">🔒</span> "
+                    }
+                    _ => "",
                 };
 
                 let doc_value = myitem.doc_value().unwrap_or_default();
