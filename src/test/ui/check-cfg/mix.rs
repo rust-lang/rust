@@ -45,6 +45,28 @@ fn test_cfg_macro() {
     //~^ WARNING unexpected `cfg` condition name
     cfg!(any(feature = "bad", windows));
     //~^ WARNING unexpected `cfg` condition value
+    cfg!(any(windows, xxx));
+    //~^ WARNING unexpected `cfg` condition name
+    cfg!(all(unix, xxx));
+    //~^ WARNING unexpected `cfg` condition name
+    cfg!(all(aa, bb));
+    //~^ WARNING unexpected `cfg` condition name
+    //~| WARNING unexpected `cfg` condition name
+    cfg!(any(aa, bb));
+    //~^ WARNING unexpected `cfg` condition name
+    //~| WARNING unexpected `cfg` condition name
+    cfg!(any(unix, feature = "zebra"));
+    //~^ WARNING unexpected `cfg` condition value
+    cfg!(any(xxx, feature = "zebra"));
+    //~^ WARNING unexpected `cfg` condition name
+    //~| WARNING unexpected `cfg` condition value
+    cfg!(any(xxx, unix, xxx));
+    //~^ WARNING unexpected `cfg` condition name
+    //~| WARNING unexpected `cfg` condition name
+    cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
+    //~^ WARNING unexpected `cfg` condition value
+    //~| WARNING unexpected `cfg` condition value
+    //~| WARNING unexpected `cfg` condition value
 }
 
 fn main() {}

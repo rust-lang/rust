@@ -2112,9 +2112,10 @@ impl<T> Weak<T> {
     /// assert!(empty.upgrade().is_none());
     /// ```
     #[stable(feature = "downgraded_weak", since = "1.10.0")]
+    #[rustc_const_unstable(feature = "const_weak_new", issue = "95091", reason = "recently added")]
     #[must_use]
-    pub fn new() -> Weak<T> {
-        Weak { ptr: NonNull::new(usize::MAX as *mut RcBox<T>).expect("MAX is not 0") }
+    pub const fn new() -> Weak<T> {
+        Weak { ptr: unsafe { NonNull::new_unchecked(usize::MAX as *mut RcBox<T>) } }
     }
 }
 
