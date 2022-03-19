@@ -7,6 +7,10 @@ LL |     let z = x.0;
    |             ^^^ value used here after move
    |
    = note: move occurs because `x.0` has type `Box<i32>`, which does not implement the `Copy` trait
+help: consider cloning `x.0`
+   |
+LL |     let y = x.0.clone();
+   |                ++++++++
 
 error[E0382]: use of moved value: `x.0`
   --> $DIR/move-out-of-tuple-field.rs:12:13
@@ -17,6 +21,10 @@ LL |     let z = x.0;
    |             ^^^ value used here after move
    |
    = note: move occurs because `x.0` has type `Box<isize>`, which does not implement the `Copy` trait
+help: consider cloning `x.0`
+   |
+LL |     let y = x.0.clone();
+   |                ++++++++
 
 error: aborting due to 2 previous errors
 

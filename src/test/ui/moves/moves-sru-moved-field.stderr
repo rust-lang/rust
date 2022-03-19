@@ -7,6 +7,10 @@ LL |     let _c = Foo {noncopyable: h, ..f};
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `f.moved` has type `Box<isize>`, which does not implement the `Copy` trait
+help: consider cloning `f.moved`
+   |
+LL |     let _b = Foo {noncopyable: g, ..f}.clone();
+   |                                       ++++++++
 
 error: aborting due to previous error
 

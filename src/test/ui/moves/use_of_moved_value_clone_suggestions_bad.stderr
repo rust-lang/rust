@@ -1,0 +1,50 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions_bad.rs:9:5
+   |
+LL | fn struct_field_shortcut_move<T: Clone>(t: T) {
+   |                                         - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |     S { t };
+   |         - value moved here
+LL |     t;
+   |     ^ value used here after move
+   |
+help: consider cloning `t`
+   |
+LL |     S { t.clone() };
+   |          ++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions_bad.rs:16:5
+   |
+LL | fn closure_clone_will_not_help<T: Clone>(t: T) {
+   |                                          - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |     (move || {
+   |      ------- value moved into closure here
+LL |         t;
+   |         - variable moved due to use in closure
+LL |     })();
+LL |     t;
+   |     ^ value used here after move
+   |
+help: consider cloning `t`
+   |
+LL |         t.clone();
+   |          ++++++++
+
+error[E0382]: use of moved value: `s.t`
+  --> $DIR/use_of_moved_value_clone_suggestions_bad.rs:24:5
+   |
+LL |     S { ..s };
+   |     --------- value moved here
+LL |     S { ..s };
+   |     ^^^^^^^^^ value used here after move
+   |
+   = note: move occurs because `s.t` has type `T`, which does not implement the `Copy` trait
+help: consider cloning `s.t`
+   |
+LL |     S { ..s }.clone();
+   |              ++++++++
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

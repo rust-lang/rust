@@ -6,6 +6,11 @@ LL |     let x: Box<_> = Box::new(1);
 ...
 LL |         (_, 2) if take(x) => (),
    |                        ^ value used here after move
+   |
+help: consider cloning `x`
+   |
+LL |         (_, 2) if take(x.clone()) => (),
+   |                         ++++++++
 
 error: aborting due to previous error
 

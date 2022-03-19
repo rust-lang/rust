@@ -8,6 +8,11 @@ LL |         (1, _) if take(x) => (),
    |                        - value moved here
 LL |         (_, 2) if take(x) => (),
    |                        ^ value used here after move
+   |
+help: consider cloning `x`
+   |
+LL |         (1, _) if take(x.clone()) => (),
+   |                         ++++++++
 
 error: aborting due to previous error
 

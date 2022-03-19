@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_no_suggestions.rs:6:9
+   |
+LL | fn move_non_clone_non_copy<T>(t: (T, No)) {
+   |                               - move occurs because `t` has type `(T, No)`, which does not implement the `Copy` trait
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

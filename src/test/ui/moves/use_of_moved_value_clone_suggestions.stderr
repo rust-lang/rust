@@ -1,13 +1,71 @@
 error[E0382]: use of moved value: `t`
-  --> $DIR/use_of_moved_value_clone_suggestions.rs:3:9
+  --> $DIR/use_of_moved_value_clone_suggestions.rs:7:9
    |
-LL | fn duplicate_rc<T>(t: std::rc::Rc<T>) -> (std::rc::Rc<T>, std::rc::Rc<T>) {
-   |                    - move occurs because `t` has type `Rc<T>`, which does not implement the `Copy` trait
-LL |     (t, t)
+LL | fn move_rc<T>(t: std::rc::Rc<T>) {
+   |               - move occurs because `t` has type `Rc<T>`, which does not implement the `Copy` trait
+LL |     [t, t];
    |      -  ^ value used here after move
    |      |
    |      value moved here
+   |
+help: consider cloning `t`
+   |
+LL |     [t.clone(), t];
+   |       ++++++++
 
-error: aborting due to previous error
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions.rs:14:9
+   |
+LL | fn move_clone_already<T: Clone>(t: T) {
+   |                                 - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider cloning `t`
+   |
+LL |     [t.clone(), t];
+   |       ++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions.rs:19:9
+   |
+LL | fn move_clone_only<T>(t: (T, String)) {
+   |                       - move occurs because `t` has type `(T, String)`, which does not implement the `Copy` trait
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn move_clone_only<T: Clone>(t: (T, String)) {
+   |                     +++++++
+help: ...and cloning `t`
+   |
+LL |     [t.clone(), t];
+   |       ++++++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_clone_suggestions.rs:26:18
+   |
+LL | fn move_in_a_loop<T: Clone>(t: T) {
+   |                             - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+...
+LL |             drop(t);
+   |                  ^ value moved here, in previous iteration of loop
+LL |         } else {
+LL |             drop(t);
+   |                  - value moved here, in previous iteration of loop
+   |
+help: consider cloning `t`
+   |
+LL ~             drop(t.clone());
+LL |         } else {
+LL ~             drop(t.clone());
+   |
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

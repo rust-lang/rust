@@ -5,6 +5,11 @@ LL |     let b = Box::new(true);
    |         - move occurs because `b` has type `Box<bool>`, which does not implement the `Copy` trait
 LL |     test!({b});
    |            ^ value used here after move
+   |
+help: consider cloning `b`
+   |
+LL |     test!({b.clone()});
+   |             ++++++++
 
 error: aborting due to previous error
 
