@@ -86,7 +86,11 @@ impl Display for Target {
                 Target::Statement => "statement",
                 Target::Arm => "match arm",
                 Target::AssocConst => "associated const",
-                Target::Method(_) => "method",
+                Target::Method(kind) => match kind {
+                    MethodKind::Inherent => "inherent method",
+                    MethodKind::Trait { body: false } => "required trait method",
+                    MethodKind::Trait { body: true } => "provided trait method",
+                },
                 Target::AssocTy => "associated type",
                 Target::ForeignFn => "foreign function",
                 Target::ForeignStatic => "foreign static item",
