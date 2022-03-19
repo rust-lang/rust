@@ -80,6 +80,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8) {
                 target_os = "macos",
                 target_os = "ios",
                 target_os = "redox",
+                target_os = "l4re",
             )))] {
                 use crate::sys::os::errno;
                 let pfds: &mut [_] = &mut [
