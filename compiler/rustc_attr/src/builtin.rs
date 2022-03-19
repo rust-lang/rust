@@ -758,8 +758,7 @@ where
                                     if sess.is_nightly_build() {
                                         diag.help("add `#![feature(deprecated_suggestion)]` to the crate root");
                                     }
-                                    // FIXME(jhpratt) change this to an actual tracking issue
-                                    diag.note("see #XXX for more details").emit();
+                                    diag.note("see #94785 for more details").emit();
                                 }
 
                                 if !get(mi, &mut suggestion) {
@@ -772,10 +771,10 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if attr.has_name(sym::deprecated) {
-                                            &["since", "note"]
-                                        } else {
+                                        if sess.features_untracked().deprecated_suggestion {
                                             &["since", "note", "suggestion"]
+                                        } else {
+                                            &["since", "note"]
                                         },
                                     ),
                                 );
