@@ -12,7 +12,8 @@ use std::{ffi::OsString, iter, path::PathBuf};
 use flycheck::FlycheckConfig;
 use ide::{
     AssistConfig, CompletionConfig, DiagnosticsConfig, ExprFillDefaultMode, HighlightRelatedConfig,
-    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, Snippet, SnippetScope,
+    HoverConfig, HoverDocFormat, InlayHintsConfig, JoinLinesConfig, LifetimeElisionHints, Snippet,
+    SnippetScope,
 };
 use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
@@ -243,20 +244,24 @@ config_data! {
         hoverActions_run: bool             = "true",
 
         /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
-        inlayHints_renderColons: bool               = "true",
+        inlayHints_renderColons: bool                      = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
-        inlayHints_maxLength: Option<usize>         = "25",
+        inlayHints_maxLength: Option<usize>                = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
-        inlayHints_parameterHints: bool             = "true",
+        inlayHints_parameterHints: bool                     = "true",
         /// Whether to show inlay type hints for variables.
-        inlayHints_typeHints: bool                  = "true",
+        inlayHints_typeHints: bool                          = "true",
         /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints: bool              = "true",
+        inlayHints_chainingHints: bool                      = "true",
         /// Whether to show inlay type hints for return types of closures with blocks.
-        inlayHints_closureReturnTypeHints: bool     = "false",
+        inlayHints_closureReturnTypeHints: bool             = "false",
+        /// Whether to show inlay type hints for elided lifetimes in function signatures.
+        inlayHints_lifetimeElisionHints: LifetimeElisionDef = "\"never\"",
+        /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
+        inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
         /// Whether to hide inlay hints for constructors.
-        inlayHints_hideNamedConstructorHints: bool  = "false",
+        inlayHints_hideNamedConstructorHints: bool          = "false",
 
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",
@@ -855,7 +860,15 @@ impl Config {
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
             closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
+            lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints {
+                LifetimeElisionDef::Always => LifetimeElisionHints::Always,
+                LifetimeElisionDef::Never => LifetimeElisionHints::Never,
+                LifetimeElisionDef::SkipTrivial => LifetimeElisionHints::SkipTrivial,
+            },
             hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
+            param_names_for_lifetime_elision_hints: self
+                .data
+                .inlayHints_lifetimeElisionHints_useParameterNames,
             max_length: self.data.inlayHints_maxLength,
         }
     }
@@ -1127,6 +1140,16 @@ enum ImportGranularityDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum LifetimeElisionDef {
+    #[serde(alias = "true")]
+    Always,
+    #[serde(alias = "false")]
+    Never,
+    SkipTrivial,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum ImportPrefixDef {
     Plain,
     #[serde(alias = "self")]
@@ -1377,7 +1400,16 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "minimum": 0,
             "maximum": 255
         },
-        _ => panic!("{}: {}", ty, default),
+        "LifetimeElisionDef" => set! {
+            "type": "string",
+            "enum": ["always", "never", "skip_trivial"],
+            "enumDescriptions": [
+                "Always show lifetime elision hints.",
+                "Never show lifetime elision hints.",
+                "Only show lifetime elision hints if a return type is involved."
+            ],
+        },
+        _ => panic!("missing entry for {}: {}", ty, default),
     }
 
     map.into()

@@ -306,15 +306,15 @@ fn extract_line_annotations(mut line: &str) -> Vec<LineAnnotation> {
         let end_marker = line_no_caret.find(|c| c == '$');
         let next = line_no_caret.find(marker).map_or(line.len(), |it| it + len);
 
-        let mut content = match end_marker {
-            Some(end_marker)
-                if end_marker < next
-                    && line_no_caret[end_marker..]
+        let cond = |end_marker| {
+            end_marker < next
+                && (line_no_caret[end_marker + 1..].is_empty()
+                    || line_no_caret[end_marker + 1..]
                         .strip_prefix(|c: char| c.is_whitespace() || c == '^')
-                        .is_some() =>
-            {
-                &line_no_caret[..end_marker]
-            }
+                        .is_some())
+        };
+        let mut content = match end_marker {
+            Some(end_marker) if cond(end_marker) => &line_no_caret[..end_marker],
             _ => line_no_caret[..next - len].trim_end(),
         };
 

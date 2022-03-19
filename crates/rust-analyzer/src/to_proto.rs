@@ -427,27 +427,34 @@ pub(crate) fn inlay_hint(
         }),
         position: match inlay_hint.kind {
             InlayKind::ParameterHint => position(line_index, inlay_hint.range.start()),
-            InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
-                position(line_index, inlay_hint.range.end())
-            }
+            InlayKind::ClosureReturnTypeHint
+            | InlayKind::TypeHint
+            | InlayKind::ChainingHint
+            | InlayKind::GenericParamListHint
+            | InlayKind::LifetimeHint => position(line_index, inlay_hint.range.end()),
         },
         kind: match inlay_hint.kind {
             InlayKind::ParameterHint => Some(lsp_ext::InlayHintKind::PARAMETER),
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_ext::InlayHintKind::TYPE)
             }
+            InlayKind::GenericParamListHint | InlayKind::LifetimeHint => None,
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ParameterHint | InlayKind::ClosureReturnTypeHint => false,
             InlayKind::ChainingHint => true,
+            InlayKind::GenericParamListHint => false,
+            InlayKind::LifetimeHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::TypeHint | InlayKind::ChainingHint | InlayKind::ClosureReturnTypeHint => {
                 false
             }
             InlayKind::ParameterHint => true,
+            InlayKind::LifetimeHint => true,
+            InlayKind::GenericParamListHint => false,
         }),
     }
 }
