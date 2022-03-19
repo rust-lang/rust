@@ -114,3 +114,15 @@ fn test_parse_prefix_verbatim_device() {
     assert_eq!(prefix, parse_prefix(r"/\?\C:\windows\system32\notepad.exe"));
     assert_eq!(prefix, parse_prefix(r"\\?/C:\windows\system32\notepad.exe"));
 }
+
+// See #93586 for more infomation.
+#[test]
+fn test_windows_prefix_components() {
+    use crate::path::Path;
+
+    let path = Path::new("C:");
+    let mut components = path.components();
+    let drive = components.next().expect("drive is expected here");
+    assert_eq!(drive.as_os_str(), OsStr::new("C:"));
+    assert_eq!(components.as_path(), Path::new(""));
+}
