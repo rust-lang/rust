@@ -175,12 +175,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let mut is_loop_move = false;
             let mut in_pattern = false;
 
+            let mut to_clone_spans = Vec::new();
+
             for move_site in &move_site_vec {
                 let move_out = self.move_data.moves[(*move_site).moi];
                 let moved_place = &self.move_data.move_paths[move_out.path].place;
 
                 let move_spans = self.move_spans(moved_place.as_ref(), move_out.source);
                 let move_span = move_spans.args_or_use();
+                to_clone_spans.push(move_spans.var_or_use_path_span());
 
                 let move_msg = if move_spans.for_closure() { " into closure" } else { "" };
 
@@ -293,18 +296,62 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .and_then(|def_id| tcx.hir().get_generics(def_id))
                 {
                     let copy_did = tcx.lang_items().copy_trait().unwrap();
-                    let predicates =
+                    let copy_predicates =
                         self.try_find_missing_generic_bounds(ty, copy_did, generics, span);
 
-                    if let Ok(predicates) = predicates {
-                        suggest_constraining_type_params(
-                            tcx,
-                            hir_generics,
-                            &mut err,
-                            predicates.iter().map(|(param, constraint)| {
-                                (param.name.as_str(), &**constraint, None)
-                            }),
-                        );
+                    let clone_did = tcx.lang_items().clone_trait().unwrap();
+                    let clone_predicates =
+                        self.try_find_missing_generic_bounds(ty, clone_did, generics, span);
+
+                    match (copy_predicates, clone_predicates) {
+                        // The type is already `Clone`, suggest cloning all values
+                        (_, Ok(clone_predicates)) if clone_predicates.is_empty() => {
+                            err.multipart_suggestion_verbose(
+                                &format!("consider cloning {}", note_msg),
+                                to_clone_spans
+                                    .into_iter()
+                                    .map(|move_span| {
+                                        (move_span.shrink_to_hi(), ".clone()".to_owned())
+                                    })
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        // The type can *not* be `Copy`, but can be `Clone`, suggest adding bounds to make the type `Clone` and then cloning all values
+                        (Err(_), Ok(clone_predicates)) => {
+                            suggest_constraining_type_params(
+                                tcx,
+                                hir_generics,
+                                &mut err,
+                                clone_predicates.iter().map(|(param, constraint)| {
+                                    (param.name.as_str(), &**constraint, None)
+                                }),
+                            );
+
+                            err.multipart_suggestion_verbose(
+                                &format!("...and cloning {}", note_msg),
+                                to_clone_spans
+                                    .into_iter()
+                                    .map(|move_span| {
+                                        (move_span.shrink_to_hi(), ".clone()".to_owned())
+                                    })
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        // The type can be `Copy`, suggest adding bound to make it `Copy`
+                        (Ok(copy_predicates), _) => {
+                            suggest_constraining_type_params(
+                                tcx,
+                                hir_generics,
+                                &mut err,
+                                copy_predicates.iter().map(|(param, constraint)| {
+                                    (param.name.as_str(), &**constraint, None)
+                                }),
+                            );
+                        }
+                        // The type can never be `Clone` or `Copy`, there is nothing to suggest :(
+                        (Err(_), Err(_)) => {}
                     }
                 }
 
