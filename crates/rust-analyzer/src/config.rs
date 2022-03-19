@@ -243,22 +243,24 @@ config_data! {
         hoverActions_run: bool             = "true",
 
         /// Whether to render trailing colons for parameter hints, and trailing colons for parameter hints.
-        inlayHints_renderColons: bool               = "true",
+        inlayHints_renderColons: bool                      = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
-        inlayHints_maxLength: Option<usize>         = "25",
+        inlayHints_maxLength: Option<usize>                = "25",
         /// Whether to show function parameter name inlay hints at the call
         /// site.
-        inlayHints_parameterHints: bool             = "true",
+        inlayHints_parameterHints: bool                    = "true",
         /// Whether to show inlay type hints for variables.
-        inlayHints_typeHints: bool                  = "true",
+        inlayHints_typeHints: bool                         = "true",
         /// Whether to show inlay type hints for method chains.
-        inlayHints_chainingHints: bool              = "true",
+        inlayHints_chainingHints: bool                     = "true",
         /// Whether to show inlay type hints for return types of closures with blocks.
-        inlayHints_closureReturnTypeHints: bool     = "false",
+        inlayHints_closureReturnTypeHints: bool            = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
-        inlayHints_lifetimeElisionHints: bool       = "false",
+        inlayHints_lifetimeElisionHints: bool              = "false",
+        /// Whether to show prefer using parameter names as the name for elided lifetime hints.
+        inlayHints_paramNamesForLifetimeElisionHints: bool = "false",
         /// Whether to hide inlay hints for constructors.
-        inlayHints_hideNamedConstructorHints: bool  = "false",
+        inlayHints_hideNamedConstructorHints: bool         = "false",
 
         /// Join lines inserts else between consecutive ifs.
         joinLines_joinElseIf: bool = "true",
@@ -859,6 +861,9 @@ impl Config {
             closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
             lifetime_elision_hints: self.data.inlayHints_lifetimeElisionHints,
             hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
+            param_names_for_lifetime_elision_hints: self
+                .data
+                .inlayHints_paramNamesForLifetimeElisionHints,
             max_length: self.data.inlayHints_maxLength,
         }
     }

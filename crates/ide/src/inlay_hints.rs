@@ -1,7 +1,10 @@
 use either::Either;
 use hir::{known, Callable, HasVisibility, HirDisplay, Semantics, TypeInfo};
-use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
+use ide_db::{
+    base_db::FileRange, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, RootDatabase,
+};
 use itertools::Itertools;
+use rustc_hash::FxHashSet;
 use stdx::to_lower_snake_case;
 use syntax::{
     ast::{self, AstNode, HasArgList, HasGenericParams, HasName, UnaryOp},
@@ -19,6 +22,7 @@ pub struct InlayHintsConfig {
     pub closure_return_type_hints: bool,
     // FIXME: ternary option here, on off non-noisy
     pub lifetime_elision_hints: bool,
+    pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub max_length: Option<usize>,
 }
@@ -136,31 +140,37 @@ fn lifetime_hints(
     let ret_type = func.ret_type();
     let self_param = param_list.self_param().filter(|it| it.amp_token().is_some());
 
-    // FIXME: don't use already used lifetimenames
+    let used_names: FxHashSet<SmolStr> = generic_param_list
+        .iter()
+        .filter(|_| !config.param_names_for_lifetime_elision_hints)
+        .flat_map(|gpl| gpl.lifetime_params())
+        .filter_map(|param| param.lifetime())
+        .map(|lt| SmolStr::from(lt.text().as_str()))
+        .collect();
 
     let mut allocated_lifetimes = vec![];
     let mut gen_name = {
-        let mut gen = ('a'..).map(|it| SmolStr::from_iter(['\'', it]));
-        move || gen.next().unwrap_or_else(SmolStr::default)
+        let mut gen = (0u8..).map(|idx| match idx {
+            idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
+            idx => format!("'{idx}").into(),
+        });
+        move || gen.next().unwrap_or_default()
     };
 
-    let potential_lt_refs: Vec<_> = param_list
-        .params()
-        .filter_map(|it| {
-            let ty = it.ty()?;
-            // FIXME: look into the nested types here and check path types
-            match ty {
-                ast::Type::RefType(r) => Some((
-                    it.pat().and_then(|it| match it {
-                        ast::Pat::IdentPat(p) => p.name(),
-                        _ => None,
-                    }),
-                    r,
-                )),
-                _ => None,
-            }
+    let mut potential_lt_refs: Vec<_> = vec![];
+    param_list.params().filter_map(|it| Some((it.pat(), it.ty()?))).for_each(|(pat, ty)| {
+        // FIXME: check path types
+        walk_ty(&ty, &mut |ty| match ty {
+            ast::Type::RefType(r) => potential_lt_refs.push((
+                pat.as_ref().and_then(|it| match it {
+                    ast::Pat::IdentPat(p) => p.name(),
+                    _ => None,
+                }),
+                r,
+            )),
+            _ => (),
         })
-        .collect();
+    });
 
     enum LifetimeKind {
         Elided,
@@ -184,15 +194,25 @@ fn lifetime_hints(
     // allocate names
     if let Some(self_param) = &self_param {
         if is_elided(self_param.lifetime()) {
-            allocated_lifetimes.push(SmolStr::new_inline("'self"));
+            allocated_lifetimes.push(if config.param_names_for_lifetime_elision_hints {
+                "'self".into()
+            } else {
+                gen_name()
+            });
         }
     }
     potential_lt_refs.iter().for_each(|(name, it)| {
-        // FIXME: look into the nested types here and check path types
         if is_elided(it.lifetime()) {
             allocated_lifetimes.push(
                 name.as_ref()
-                    .map_or_else(|| gen_name(), |it| SmolStr::from_iter(["'", it.text().as_str()])),
+                    .filter(|it| {
+                        config.param_names_for_lifetime_elision_hints
+                            && !used_names.contains(it.text().as_str())
+                    })
+                    .map_or_else(
+                        || gen_name(),
+                        |it| SmolStr::from_iter(["\'", it.text().as_str()]),
+                    ),
             );
         }
     });
@@ -221,22 +241,26 @@ fn lifetime_hints(
     // apply output if required
     match (&output, ret_type) {
         (Some(output_lt), Some(r)) => {
-            if let Some(ast::Type::RefType(t)) = r.ty() {
-                if t.lifetime().is_none() {
-                    let amp = t.amp_token()?;
-                    acc.push(InlayHint {
-                        range: amp.text_range(),
-                        kind: InlayKind::LifetimeHint,
-                        label: output_lt.clone(),
-                    });
-                }
+            if let Some(ty) = r.ty() {
+                walk_ty(&ty, &mut |ty| match ty {
+                    ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                        if let Some(amp) = ty.amp_token() {
+                            acc.push(InlayHint {
+                                range: amp.text_range(),
+                                kind: InlayKind::LifetimeHint,
+                                label: output_lt.clone(),
+                            });
+                        }
+                    }
+                    _ => (),
+                })
             }
         }
         _ => (),
     }
 
-    let mut idx = if let Some(self_param) = &self_param {
-        if is_elided(self_param.lifetime()) {
+    let mut idx = match &self_param {
+        Some(self_param) if is_elided(self_param.lifetime()) => {
             if let Some(amp) = self_param.amp_token() {
                 let lt = allocated_lifetimes[0].clone();
                 acc.push(InlayHint {
@@ -246,11 +270,8 @@ fn lifetime_hints(
                 });
             }
             1
-        } else {
-            0
         }
-    } else {
-        0
+        _ => 0,
     };
 
     for (_, p) in potential_lt_refs.iter() {
@@ -789,6 +810,7 @@ mod tests {
         lifetime_elision_hints: false,
         hide_named_constructor_hints: false,
         closure_return_type_hints: false,
+        param_names_for_lifetime_elision_hints: false,
         max_length: None,
     };
     const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
@@ -1981,32 +2003,39 @@ fn main() {
 fn empty() {}
 
 fn no_gpl(a: &()) {}
- //^^^^^^<'a>
-          // ^'a
+ //^^^^^^<'0>
+          // ^'0
 fn empty_gpl<>(a: &()) {}
-      //    ^'a   ^'a
+      //    ^'0   ^'0
 fn partial<'b>(a: &(), b: &'b ()) {}
-//        ^'a, $  ^'a
+//        ^'0, $  ^'0
 fn partial<'a>(a: &'a (), b: &()) {}
-//        ^'b, $             ^'b
+//        ^'0, $             ^'0
 
 fn single_ret(a: &()) -> &() {}
-// ^^^^^^^^^^<'a>
-              // ^'a     ^'a
+// ^^^^^^^^^^<'0>
+              // ^'0     ^'0
 fn full_mul(a: &(), b: &()) {}
-// ^^^^^^^^<'a, 'b>
-            // ^'a     ^'b
+// ^^^^^^^^<'0, '1>
+            // ^'0     ^'1
 
 fn foo<'c>(a: &'c ()) -> &() {}
                       // ^'c
 
+fn nested_in(a: &   &X< &()>) {}
+// ^^^^^^^^^<'0, '1, '2>
+              //^'0 ^'1 ^'2
+fn nested_out(a: &()) -> &   &X< &()>{}
+// ^^^^^^^^^^<'0>
+               //^'0     ^'0 ^'0 ^'0
+
 impl () {
     fn foo(&self) -> &() {}
-    // ^^^<'self>
-        // ^'self    ^'self
+    // ^^^<'0>
+        // ^'0       ^'0
     fn foo(&self, a: &()) -> &() {}
-    // ^^^<'self, 'a>
-        // ^'self    ^'a     ^'self$
+    // ^^^<'0, '1>
+        // ^'0       ^'1     ^'0
 }
 "#,
         );
