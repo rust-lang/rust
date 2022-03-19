@@ -27,7 +27,10 @@ use crate::sys::weak::weak;
 use libc::RTP_ID as pid_t;
 
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, gid_t, pid_t, uid_t};
+use libc::{c_int, pid_t};
+
+#[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
+use libc::{gid_t, uid_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
