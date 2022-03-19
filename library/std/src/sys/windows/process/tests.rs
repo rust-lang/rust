@@ -186,8 +186,15 @@ fn windows_exe_resolver() {
     let temp = tmpdir();
     let mut exe_path = temp.path().to_owned();
     exe_path.push("exists.exe");
-    symlink("<DOES NOT EXIST>".as_ref(), &exe_path).unwrap();
 
     // A broken symlink should still be resolved.
-    assert!(resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok());
+    // Skip this check if not in CI and creating symlinks isn't possible.
+    let is_ci = env::var("CI").is_ok();
+    let result = symlink("<DOES NOT EXIST>".as_ref(), &exe_path);
+    if is_ci || result.is_ok() {
+        result.unwrap();
+        assert!(
+            resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok()
+        );
+    }
 }
