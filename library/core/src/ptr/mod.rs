@@ -1451,9 +1451,11 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// Note, however, that the `expr` in `addr_of!(expr)` is still subject to all
-/// the usual rules. In particular, `addr_of!(*ptr::null())` is Undefined
-/// Behavior because it dereferences a null pointer.
+/// Note, however, that the `expr` in `addr_of!(expr)` is still subject to other rules:
+/// * A [dangling] pointer cannot be dereferenced. In particular, `addr_of!(*ptr::null_mut())`
+///   is undefined behavior because it dereferences a null pointer.
+/// * An [unaligned] pointer cannot be dereferenced. For example, `addr_of!((*an_unaligned_ptr).field)`
+///   is undefined behavior.
 ///
 /// # Example
 ///
@@ -1475,6 +1477,9 @@ fnptr_impls_args! { A, B, C, D, E, F, G, H, I, J, K, L }
 /// See [`addr_of_mut`] for how to create a pointer to unininitialized data.
 /// Doing that with `addr_of` would not make much sense since one could only
 /// read the data, and that would be Undefined Behavior.
+///
+/// [dangling]: ../../reference/behavior-considered-undefined.html#dangling-pointers
+/// [unaligned]: ../../reference/type-layout.html
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
@@ -1491,9 +1496,11 @@ pub macro addr_of($place:expr) {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to all
-/// the usual rules. In particular, `addr_of_mut!(*ptr::null_mut())` is Undefined
-/// Behavior because it dereferences a null pointer.
+/// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to other rules:
+/// * A [dangling] pointer cannot be dereferenced. In particular, `addr_of_mut!(*ptr::null_mut())`
+///   is undefined behavior because it dereferences a null pointer.
+/// * An [unaligned] pointer cannot be dereferenced. For example, `addr_of_mut!((*an_unaligned_ptr).field)`
+///   is undefined behavior.
 ///
 /// # Examples
 ///
@@ -1531,6 +1538,9 @@ pub macro addr_of($place:expr) {
 /// unsafe { f1_ptr.write(true); }
 /// let init = unsafe { uninit.assume_init() };
 /// ```
+///
+/// [dangling]: ../../reference/behavior-considered-undefined.html#dangling-pointers
+/// [unaligned]: ../../reference/type-layout.html
 #[stable(feature = "raw_ref_macros", since = "1.51.0")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(raw_ref_op)]
