@@ -812,11 +812,11 @@
                     "enumDescriptions": [
                         "Always show lifetime elision hints.",
                         "Never show lifetime elision hints.",
-                        "Always show lifetime elision hints but skip them for trivial single input to output mapping."
+                        "Only show lifetime elision hints if a return type is involved."
                     ]
                 },
-                "rust-analyzer.inlayHints.paramNamesForLifetimeElisionHints": {
-                    "markdownDescription": "Whether to show prefer using parameter names as the name for elided lifetime hints.",
+                "rust-analyzer.inlayHints.lifetimeElisionHints.useParameterNames": {
+                    "markdownDescription": "Whether to prefer using parameter names as the name for elided lifetime hints if possible.",
                     "default": false,
                     "type": "boolean"
                 },

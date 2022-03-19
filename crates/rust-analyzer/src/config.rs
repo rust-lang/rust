@@ -258,8 +258,8 @@ config_data! {
         inlayHints_closureReturnTypeHints: bool             = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints: LifetimeElisionDef = "\"never\"",
-        /// Whether to show prefer using parameter names as the name for elided lifetime hints.
-        inlayHints_paramNamesForLifetimeElisionHints: bool  = "false",
+        /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
+        inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
         /// Whether to hide inlay hints for constructors.
         inlayHints_hideNamedConstructorHints: bool          = "false",
 
@@ -868,7 +868,7 @@ impl Config {
             hide_named_constructor_hints: self.data.inlayHints_hideNamedConstructorHints,
             param_names_for_lifetime_elision_hints: self
                 .data
-                .inlayHints_paramNamesForLifetimeElisionHints,
+                .inlayHints_lifetimeElisionHints_useParameterNames,
             max_length: self.data.inlayHints_maxLength,
         }
     }
@@ -1406,7 +1406,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Always show lifetime elision hints.",
                 "Never show lifetime elision hints.",
-                "Always show lifetime elision hints but skip them for trivial single input to output mapping."
+                "Only show lifetime elision hints if a return type is involved."
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

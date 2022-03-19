@@ -258,36 +258,29 @@ fn lifetime_hints(
         return None;
     }
 
-    let skip_due_trivial_single = config.lifetime_elision_hints
-        == LifetimeElisionHints::SkipTrivial
-        && (allocated_lifetimes.len() == 1)
-        && generic_param_list.as_ref().map_or(true, |it| it.lifetime_params().next().is_none());
-
-    if skip_due_trivial_single {
-        cov_mark::hit!(lifetime_hints_single);
-        return None;
-    }
-
     // apply hints
     // apply output if required
-    match (&output, ret_type) {
-        (Some(output_lt), Some(r)) => {
-            if let Some(ty) = r.ty() {
-                walk_ty(&ty, &mut |ty| match ty {
-                    ast::Type::RefType(ty) if ty.lifetime().is_none() => {
-                        if let Some(amp) = ty.amp_token() {
-                            acc.push(InlayHint {
-                                range: amp.text_range(),
-                                kind: InlayKind::LifetimeHint,
-                                label: output_lt.clone(),
-                            });
-                        }
+    let mut is_trivial = true;
+    if let (Some(output_lt), Some(r)) = (&output, ret_type) {
+        if let Some(ty) = r.ty() {
+            walk_ty(&ty, &mut |ty| match ty {
+                ast::Type::RefType(ty) if ty.lifetime().is_none() => {
+                    if let Some(amp) = ty.amp_token() {
+                        is_trivial = false;
+                        acc.push(InlayHint {
+                            range: amp.text_range(),
+                            kind: InlayKind::LifetimeHint,
+                            label: output_lt.clone(),
+                        });
                     }
-                    _ => (),
-                })
-            }
+                }
+                _ => (),
+            })
         }
-        _ => (),
+    }
+
+    if config.lifetime_elision_hints == LifetimeElisionHints::SkipTrivial && is_trivial {
+        return None;
     }
 
     let mut idx = match &self_param {
@@ -2061,6 +2054,9 @@ fn nested_out(a: &()) -> &   &X< &()>{}
                //^'0     ^'0 ^'0 ^'0
 
 impl () {
+    fn foo(&self) {}
+    // ^^^<'0>
+        // ^'0
     fn foo(&self) -> &() {}
     // ^^^<'0>
         // ^'0       ^'0
@@ -2085,26 +2081,36 @@ fn nested_in<'named>(named: &        &X<      &()>) {}
     }
 
     #[test]
-    fn hints_lifetimes_skingle_skip() {
-        cov_mark::check!(lifetime_hints_single);
+    fn hints_lifetimes_trivial_skip() {
         check_with_config(
             InlayHintsConfig {
                 lifetime_elision_hints: LifetimeElisionHints::SkipTrivial,
                 ..TEST_CONFIG
             },
             r#"
-fn single(a: &()) -> &() {}
-
-fn double(a: &(), b: &()) {}
-// ^^^^^^<'0, '1>
-          // ^'0     ^'1
+fn no_gpl(a: &()) {}
+fn empty_gpl<>(a: &()) {}
+fn partial<'b>(a: &(), b: &'b ()) {}
 fn partial<'a>(a: &'a (), b: &()) {}
-        //^'0, $             ^'0
-fn partial2<'a>(a: &'a ()) -> &() {}
-                            //^'a
+
+fn single_ret(a: &()) -> &() {}
+// ^^^^^^^^^^<'0>
+              // ^'0     ^'0
+fn full_mul(a: &(), b: &()) {}
+
+fn foo<'c>(a: &'c ()) -> &() {}
+                      // ^'c
+
+fn nested_in(a: &   &X< &()>) {}
+fn nested_out(a: &()) -> &   &X< &()>{}
+// ^^^^^^^^^^<'0>
+               //^'0     ^'0 ^'0 ^'0
 
 impl () {
+    fn foo(&self) {}
     fn foo(&self) -> &() {}
+    // ^^^<'0>
+        // ^'0       ^'0
     fn foo(&self, a: &()) -> &() {}
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0
