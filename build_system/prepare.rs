@@ -81,14 +81,6 @@ fn prepare_sysroot() {
     init_git_repo(&sysroot_src);
 
     apply_patches("sysroot", &sysroot_src);
-
-    clone_repo_shallow_github(
-        "build_sysroot/compiler-builtins",
-        "rust-lang",
-        "compiler-builtins",
-        "0.1.70",
-    );
-    apply_patches("compiler-builtins", Path::new("build_sysroot/compiler-builtins"));
 }
 
 #[allow(dead_code)]

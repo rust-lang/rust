@@ -12,18 +12,6 @@ git checkout -- .
 git checkout "$(rustc -V | cut -d' ' -f3 | tr -d '(')"
 
 git apply - <<EOF
-diff --git a/Cargo.toml b/Cargo.toml
-index 5bd1147cad5..10d68a2ff14 100644
---- a/Cargo.toml
-+++ b/Cargo.toml
-@@ -111,5 +111,7 @@ rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
- rustc-std-workspace-alloc = { path = 'library/rustc-std-workspace-alloc' }
- rustc-std-workspace-std = { path = 'library/rustc-std-workspace-std' }
-
-+compiler_builtins = { path = "../build_sysroot/compiler-builtins" }
-+
- [patch."https://github.com/rust-lang/rust-clippy"]
- clippy_lints = { path = "src/tools/clippy/clippy_lints" }
 diff --git a/library/alloc/Cargo.toml b/library/alloc/Cargo.toml
 index d95b5b7f17f..00b6f0e3635 100644
 --- a/library/alloc/Cargo.toml

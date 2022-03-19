@@ -749,6 +749,18 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ if intrinsic.as_str().starts_with("atomic_load"), (v ptr) {
             let ty = substs.type_at(0);
             match ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    // FIXME implement 128bit atomics
+                    if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
+                        // special case for compiler-builtins to avoid having to patch it
+                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        let ret_block = fx.get_block(destination.unwrap().1);
+                        fx.bcx.ins().jump(ret_block, &[]);
+                        return;
+                    } else {
+                        fx.tcx.sess.span_fatal(span, "128bit atomics not yet supported");
+                    }
+                }
                 ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, span, ty);
@@ -765,6 +777,18 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ if intrinsic.as_str().starts_with("atomic_store"), (v ptr, c val) {
             let ty = substs.type_at(0);
             match ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    // FIXME implement 128bit atomics
+                    if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
+                        // special case for compiler-builtins to avoid having to patch it
+                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        let ret_block = fx.get_block(destination.unwrap().1);
+                        fx.bcx.ins().jump(ret_block, &[]);
+                        return;
+                    } else {
+                        fx.tcx.sess.span_fatal(span, "128bit atomics not yet supported");
+                    }
+                }
                 ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, span, ty);
@@ -1115,10 +1139,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
     }
 
-    if let Some((_, dest)) = destination {
-        let ret_block = fx.get_block(dest);
-        fx.bcx.ins().jump(ret_block, &[]);
-    } else {
-        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
-    }
+    let ret_block = fx.get_block(destination.unwrap().1);
+    fx.bcx.ins().jump(ret_block, &[]);
 }
