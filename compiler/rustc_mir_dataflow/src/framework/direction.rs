@@ -248,6 +248,7 @@ impl Direction for Backward {
                     );
                     propagate(pred, &tmp);
                 }
+
                 mir::TerminatorKind::InlineAsm {
                     destination: Some(dest), ref operands, ..
                 } if dest == bb => {
@@ -264,6 +265,25 @@ impl Direction for Backward {
                     let mut tmp = exit_state.clone();
                     analysis.apply_yield_resume_effect(&mut tmp, resume, resume_arg);
                     propagate(pred, &tmp);
+                }
+
+                mir::TerminatorKind::SwitchInt { ref targets, ref discr, switch_ty: _ } => {
+                    let mut applier = BackwardSwitchIntEdgeEffectsApplier {
+                        pred,
+                        exit_state,
+                        targets,
+                        bb,
+                        propagate: &mut propagate,
+                        effects_applied: false,
+                    };
+
+                    analysis.apply_switch_int_edge_effects(pred, discr, &mut applier);
+
+                    let BackwardSwitchIntEdgeEffectsApplier { effects_applied, .. } = applier;
+
+                    if !effects_applied {
+                        propagate(pred, exit_state)
+                    }
                 }
 
                 // Ignore dead unwinds.
@@ -283,6 +303,33 @@ impl Direction for Backward {
                 _ => propagate(pred, exit_state),
             }
         }
+    }
+}
+
+struct BackwardSwitchIntEdgeEffectsApplier<'a, D, F> {
+    pred: BasicBlock,
+    exit_state: &'a mut D,
+    targets: &'a SwitchTargets,
+    bb: BasicBlock,
+    propagate: &'a mut F,
+
+    effects_applied: bool,
+}
+
+impl<D, F> super::SwitchIntEdgeEffects<D> for BackwardSwitchIntEdgeEffectsApplier<'_, D, F>
+where
+    D: Clone,
+    F: FnMut(BasicBlock, &D),
+{
+    fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
+        assert!(!self.effects_applied);
+
+        let value =
+            self.targets.iter().find_map(|(value, target)| (target == self.bb).then_some(value));
+        apply_edge_effect(self.exit_state, SwitchIntTarget { value, target: self.bb });
+        (self.propagate)(self.pred, self.exit_state);
+
+        self.effects_applied = true;
     }
 }
 
@@ -528,7 +575,7 @@ impl Direction for Forward {
             }
 
             SwitchInt { ref targets, ref discr, switch_ty: _ } => {
-                let mut applier = SwitchIntEdgeEffectApplier {
+                let mut applier = ForwardSwitchIntEdgeEffectsApplier {
                     exit_state,
                     targets,
                     propagate,
@@ -537,8 +584,11 @@ impl Direction for Forward {
 
                 analysis.apply_switch_int_edge_effects(bb, discr, &mut applier);
 
-                let SwitchIntEdgeEffectApplier {
-                    exit_state, mut propagate, effects_applied, ..
+                let ForwardSwitchIntEdgeEffectsApplier {
+                    exit_state,
+                    mut propagate,
+                    effects_applied,
+                    ..
                 } = applier;
 
                 if !effects_applied {
@@ -551,7 +601,7 @@ impl Direction for Forward {
     }
 }
 
-struct SwitchIntEdgeEffectApplier<'a, D, F> {
+struct ForwardSwitchIntEdgeEffectsApplier<'a, D, F> {
     exit_state: &'a mut D,
     targets: &'a SwitchTargets,
     propagate: F,
@@ -559,7 +609,7 @@ struct SwitchIntEdgeEffectApplier<'a, D, F> {
     effects_applied: bool,
 }
 
-impl<D, F> super::SwitchIntEdgeEffects<D> for SwitchIntEdgeEffectApplier<'_, D, F>
+impl<D, F> super::SwitchIntEdgeEffects<D> for ForwardSwitchIntEdgeEffectsApplier<'_, D, F>
 where
     D: Clone,
     F: FnMut(BasicBlock, &D),
