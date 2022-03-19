@@ -44,6 +44,7 @@ rm src/test/ui/numbers-arithmetic/issue-8460.rs
 rm src/test/ui/runtime/rt-explody-panic-payloads.rs
 rm src/test/incremental/change_crate_dep_kind.rs
 rm src/test/ui/threads-sendsync/unwind-resource.rs
+rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abort instead of exit(101)
 
 # requires compiling with -Cpanic=unwind
 rm src/test/ui/cfg/cfg-panic.rs
@@ -99,6 +100,9 @@ rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
 rm src/test/ui/consts/issue-33537.rs # same
 
+# doesn't work due to the way the rustc test suite is invoked.
+# should work when using ./x.py test the way it is intended
+# ============================================================
 rm -r src/test/run-make/emit-shared-files # requires the rustdoc executable in build/bin/
 rm -r src/test/run-make/unstable-flag-required # same
 rm -r src/test/run-make/rustdoc-* # same
@@ -110,7 +114,6 @@ rm src/test/ui/allocator/no_std-alloc-error-handler-default.rs # missing rust_oo
 rm -r src/test/ui/polymorphization/ # polymorphization not yet supported
 rm src/test/codegen-units/polymorphization/unused_type_parameters.rs # same
 
-rm src/test/incremental/issue-80691-bad-eval-cache.rs # wrong exit code
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
 rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
