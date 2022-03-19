@@ -202,11 +202,17 @@ fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
 ///
 /// [`io::stdin`]: stdin
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
 ///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// # Examples
 ///
@@ -230,11 +236,17 @@ pub struct Stdin {
 /// This handle implements both the [`Read`] and [`BufRead`] traits, and
 /// is constructed via the [`Stdin::lock`] method.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
 ///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// # Examples
 ///
@@ -263,10 +275,17 @@ pub struct StdinLock<'a> {
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdin::lock`] method.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to read bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// # Examples
 ///
@@ -490,10 +509,17 @@ impl fmt::Debug for StdinLock<'_> {
 ///
 /// Created by the [`io::stdout`] method.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// [`lock`]: Stdout::lock
 /// [`io::stdout`]: stdout
@@ -510,10 +536,17 @@ pub struct Stdout {
 /// This handle implements the [`Write`] trait, and is constructed via
 /// the [`Stdout::lock`] method. See its documentation for more.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 #[must_use = "if unused stdout will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
@@ -528,10 +561,17 @@ static STDOUT: SyncOnceCell<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = Sy
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdout::lock`] method.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// # Examples
 ///
@@ -710,10 +750,17 @@ impl fmt::Debug for StdoutLock<'_> {
 ///
 /// [`io::stderr`]: stderr
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
     inner: Pin<&'static ReentrantMutex<RefCell<StderrRaw>>>,
@@ -724,10 +771,17 @@ pub struct Stderr {
 /// This handle implements the [`Write`] trait and is constructed via
 /// the [`Stderr::lock`] method. See its documentation for more.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 #[must_use = "if unused stderr will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
@@ -738,10 +792,17 @@ pub struct StderrLock<'a> {
 ///
 /// This handle is not buffered.
 ///
-/// ### Note: Windows Portability Consideration
+/// ### Note: Windows Portability Considerations
+///
 /// When operating in a console, the Windows implementation of this stream does not support
 /// non-UTF-8 byte sequences. Attempting to write bytes that are not valid UTF-8 will return
 /// an error.
+///
+/// In a process with a detached console, such as one using
+/// `#![windows_subsystem = "windows"]`, or in a child process spawned from such a process,
+/// the contained handle will be null. In such cases, the standard library's `Read` and
+/// `Write` will do nothing and silently succeed. All other I/O operations, via the
+/// standard library or via raw Windows API calls, will fail.
 ///
 /// # Examples
 ///
