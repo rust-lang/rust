@@ -94,3 +94,23 @@ fn verbatim() {
     // A path that contains null is not a valid path.
     assert!(maybe_verbatim(Path::new("\0")).is_err());
 }
+
+fn parse_prefix(path: &str) -> Option<Prefix<'_>> {
+    super::parse_prefix(OsStr::new(path))
+}
+
+#[test]
+fn test_parse_prefix_verbatim() {
+    let prefix = Some(Prefix::VerbatimDisk(b'C'));
+    assert_eq!(prefix, parse_prefix(r"\\?\C:/windows/system32/notepad.exe"));
+    assert_eq!(prefix, parse_prefix(r"\\?\C:\windows\system32\notepad.exe"));
+}
+
+#[test]
+fn test_parse_prefix_verbatim_device() {
+    let prefix = Some(Prefix::UNC(OsStr::new("?"), OsStr::new("C:")));
+    assert_eq!(prefix, parse_prefix(r"//?/C:/windows/system32/notepad.exe"));
+    assert_eq!(prefix, parse_prefix(r"//?/C:\windows\system32\notepad.exe"));
+    assert_eq!(prefix, parse_prefix(r"/\?\C:\windows\system32\notepad.exe"));
+    assert_eq!(prefix, parse_prefix(r"\\?/C:\windows\system32\notepad.exe"));
+}

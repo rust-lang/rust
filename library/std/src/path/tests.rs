@@ -971,15 +971,15 @@ pub fn test_decompositions_windows() {
     file_prefix: None
     );
 
-    t!("\\\\?\\C:/foo",
-    iter: ["\\\\?\\C:/foo"],
+    t!("\\\\?\\C:/foo/bar",
+    iter: ["\\\\?\\C:", "\\", "foo/bar"],
     has_root: true,
     is_absolute: true,
-    parent: None,
-    file_name: None,
-    file_stem: None,
+    parent: Some("\\\\?\\C:/"),
+    file_name: Some("foo/bar"),
+    file_stem: Some("foo/bar"),
     extension: None,
-    file_prefix: None
+    file_prefix: Some("foo/bar")
     );
 
     t!("\\\\.\\foo\\bar",

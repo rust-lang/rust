@@ -240,6 +240,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(intra_doc_pointers)]
 #![feature(lang_items)]
+#![feature(let_chains)]
 #![feature(linkage)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]

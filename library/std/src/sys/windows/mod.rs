@@ -190,6 +190,10 @@ where
 {
     // Start off with a stack buf but then spill over to the heap if we end up
     // needing more space.
+    //
+    // This initial size also works around `GetFullPathNameW` returning
+    // incorrect size hints for some short paths:
+    // https://github.com/dylni/normpath/issues/5
     let mut stack_buf = [0u16; 512];
     let mut heap_buf = Vec::new();
     unsafe {
