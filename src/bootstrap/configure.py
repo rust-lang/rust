@@ -174,11 +174,11 @@ v("set", None, "set arbitrary key/value pairs in TOML configuration")
 
 
 def p(msg):
-    print("configure: " + msg)
+    print("configure: {}".format(msg))
 
 
 def err(msg):
-    print("configure: error: " + msg)
+    print("configure: error: {}".format(msg))
     sys.exit(1)
 
 
@@ -239,9 +239,9 @@ while i < len(sys.argv):
                 need_value_args.append(arg)
                 continue
         else:
-            if arg[2:] == "enable-" + option.name:
+            if arg[2:] == "enable-{}".format(option.name):
                 value = True
-            elif arg[2:] == "disable-" + option.name:
+            elif arg[2:] == "disable-{}".format(option.name):
                 value = False
             else:
                 continue
@@ -263,7 +263,7 @@ option_checking = ("option-checking" not in known_args
                    or known_args["option-checking"][-1][1])
 if option_checking:
     if len(unknown_args) > 0:
-        err("Option '" + unknown_args[0] + "' is not recognized")
+        err("Option '{}' is not recognized".format(unknown_args[0]))
     if len(need_value_args) > 0:
         err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
 
@@ -429,13 +429,13 @@ def to_toml(value):
         else:
             return "false"
     elif isinstance(value, list):
-        return "[" + ", ".join(map(to_toml, value)) + "]"
+        return "[{}]".format(", ".join(map(to_toml, value)))
     elif isinstance(value, str):
         # Don't put quotes around numeric values
         if is_number(value):
             return value
         else:
-            return "'" + value + "'"
+            return "'{}'".format(value)
     else:
         raise RuntimeError("no toml")
 
@@ -445,7 +445,7 @@ def configure_section(lines, config):
         value = config[key]
         found = False
         for i, line in enumerate(lines):
-            if not line.startswith("#" + key + " = "):
+            if not line.startswith("#{} = ".format(key)):
                 continue
             found = True
             lines[i] = "{} = {}".format(key, to_toml(value))
