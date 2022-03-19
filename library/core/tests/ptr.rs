@@ -289,16 +289,18 @@ fn test_const_nonnull_new() {
 }
 
 #[test]
-#[allow(warnings)]
-// Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
-// ABI, or even point to an actual executable code, because the function itself is never invoked.
-#[no_mangle]
+#[cfg(any(unix, windows))] // printf may not be available on other platforms
+#[allow(deprecated)] // For SipHasher
 pub fn test_variadic_fnptr() {
+    use core::ffi;
     use core::hash::{Hash, SipHasher};
     extern "C" {
-        fn test_variadic_fnptr(_: u64, ...) -> f64;
+        // This needs to use the correct function signature even though it isn't called as some
+        // codegen backends make it UB to declare a function with multiple conflicting signatures
+        // (like LLVM) while others straight up return an error (like Cranelift).
+        fn printf(_: *const ffi::c_char, ...) -> ffi::c_int;
     }
-    let p: unsafe extern "C" fn(u64, ...) -> f64 = test_variadic_fnptr;
+    let p: unsafe extern "C" fn(*const ffi::c_char, ...) -> ffi::c_int = printf;
     let q = p.clone();
     assert_eq!(p, q);
     assert!(!(p < q));
