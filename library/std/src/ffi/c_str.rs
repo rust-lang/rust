@@ -328,6 +328,27 @@ impl FromVecWithNulError {
     }
 }
 
+/// An error indicating that no nul byte was present.
+///
+/// A slice used to create a [`CStr`] must contain a nul byte somewhere
+/// within the slice.
+///
+/// This error is created by the [`CStr::from_bytes_until_nul`] method.
+///
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+pub struct FromBytesUntilNulError(());
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl Error for FromBytesUntilNulError {}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl fmt::Display for FromBytesUntilNulError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "data provided does not contain a nul")
+    }
+}
+
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a [`String`].
 ///
 /// `CString` is just a wrapper over a buffer of bytes with a nul terminator;
@@ -1241,9 +1262,57 @@ impl CStr {
 
     /// Creates a C string wrapper from a byte slice.
     ///
+    /// This method will create a `CStr` from any byte slice that contains at
+    /// least one nul byte. The caller does not need to know or specify where
+    /// the nul byte is located.
+    ///
+    /// If the first byte is a nul character, this method will return an
+    /// empty `CStr`. If multiple nul characters are present, the `CStr` will
+    /// end at the first one.
+    ///
+    /// If the slice only has a single nul byte at the end, this method is
+    /// equivalent to [`CStr::from_bytes_with_nul`].
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(cstr_from_bytes_until_nul)]
+    ///
+    /// use std::ffi::CStr;
+    ///
+    /// let mut buffer = [0u8; 16];
+    /// unsafe {
+    ///     // Here we might call an unsafe C function that writes a string
+    ///     // into the buffer.
+    ///     let buf_ptr = buffer.as_mut_ptr();
+    ///     buf_ptr.write_bytes(b'A', 8);
+    /// }
+    /// // Attempt to extract a C nul-terminated string from the buffer.
+    /// let c_str = CStr::from_bytes_until_nul(&buffer[..]).unwrap();
+    /// assert_eq!(c_str.to_str().unwrap(), "AAAAAAAA");
+    /// ```
+    ///
+    #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub fn from_bytes_until_nul(bytes: &[u8]) -> Result<&CStr, FromBytesUntilNulError> {
+        let nul_pos = memchr::memchr(0, bytes);
+        match nul_pos {
+            Some(nul_pos) => {
+                // SAFETY: We know there is a nul byte at nul_pos, so this slice
+                // (ending at the nul byte) is a well-formed C string.
+                let subslice = &bytes[..nul_pos + 1];
+                Ok(unsafe { CStr::from_bytes_with_nul_unchecked(subslice) })
+            }
+            None => Err(FromBytesUntilNulError(())),
+        }
+    }
+
+    /// Creates a C string wrapper from a byte slice.
+    ///
     /// This function will cast the provided `bytes` to a `CStr`
     /// wrapper after ensuring that the byte slice is nul-terminated
     /// and does not contain any interior nul bytes.
+    ///
+    /// If the nul byte may not be at the end,
+    /// [`CStr::from_bytes_until_nul`] can be used instead.
     ///
     /// # Examples
     ///
