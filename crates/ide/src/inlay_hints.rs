@@ -344,12 +344,12 @@ fn closure_ret_hints(
         return None;
     }
 
-    let closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
-
     let param_list = match closure.body() {
         Some(ast::Expr::BlockExpr(_)) => closure.param_list()?,
         _ => return None,
     };
+
+    let closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
     let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(closure))?.adjusted();
     let callable = ty.as_callable(sema.db)?;
     let ty = callable.return_type();
