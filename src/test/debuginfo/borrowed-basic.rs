@@ -1,6 +1,3 @@
-// Gdb doesn't know about UTF-32 character encoding and will print a rust char as only
-// its numerical value.
-
 // compile-flags:-g
 // min-lldb-version: 310
 
@@ -13,7 +10,7 @@
 // gdb-command:print *int_ref
 // gdb-check:$2 = -1
 
-// gdb-command:print *char_ref
+// gdb-command:print/d *char_ref
 // gdb-check:$3 = 97
 
 // gdb-command:print *i8_ref
