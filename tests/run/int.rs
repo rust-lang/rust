@@ -71,6 +71,8 @@ fn main(argc: isize, _argv: *const *const u8) -> isize {
     assert_eq!(var3 << (argc + 62) as u128, 96618259944854013731572476686437974016);
     assert_eq!(var3 << (argc + 63) as u128, 193236519889708027463144953372875948032);
 
+    assert_eq!((2220326408_u32 + argc as u32) >> (32 - 6), 33);
+
     assert_eq!(var >> (argc as u128 - 1), var);
     assert_eq!(var >> argc as u128, 67108928);
     assert_eq!(var >> (argc + 32) as u128, 0);

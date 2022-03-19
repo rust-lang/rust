@@ -68,14 +68,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let a_native = self.is_native_int_type(a_type);
         let b_native = self.is_native_int_type(b_type);
         if a_native && b_native {
-            // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by an unsigned number.
+            // FIXME(antoyo): remove the casts when libgccjit can shift an unsigned number by a signed number.
             // TODO(antoyo): cast to unsigned to do a logical shift if that does not work.
-            if a_type.is_unsigned(self) && b_type.is_signed(self) {
-                let a = self.context.new_cast(None, a, b_type);
-                let result = a >> b;
-                self.context.new_cast(None, result, a_type)
-            }
-            else if a_type.is_signed(self) && b_type.is_unsigned(self) {
+            if a_type.is_signed(self) != b_type.is_signed(self) {
                 let b = self.context.new_cast(None, b, a_type);
                 a >> b
             }
