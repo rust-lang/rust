@@ -356,10 +356,18 @@ where
 /// and in the other direction,
 /// `<Result<Infallible, E> as Residual<T>>::TryType = Result<T, E>`.
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
-pub trait Residual<O> {
+pub trait Residual<O>: Sized {
     /// The "return" type of this meta-function.
     #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
     type TryType: Try<Output = O, Residual = Self>;
+
+    /// Here for convenience in the `?` desugaring.
+    /// Probably should not be stabilized, as it should never be overridden.
+    #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+    #[cfg_attr(not(bootstrap), lang = "into_try_type")]
+    fn into_try_type(self) -> Self::TryType {
+        FromResidual::from_residual(self)
+    }
 }
 
 #[unstable(feature = "pub_crate_should_not_need_unstable_attr", issue = "none")]

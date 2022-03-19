@@ -806,6 +806,7 @@ symbols! {
         intel,
         into_future,
         into_iter,
+        into_try_type,
         intra_doc_pointers,
         intrinsics,
         irrefutable_let_patterns,
