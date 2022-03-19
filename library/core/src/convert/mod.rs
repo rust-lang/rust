@@ -487,6 +487,7 @@ impl<T: ?Sized, U: ?Sized> const AsRef<U> for &T
 where
     T: ~const AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -499,6 +500,7 @@ impl<T: ?Sized, U: ?Sized> const AsRef<U> for &mut T
 where
     T: ~const AsRef<U>,
 {
+    #[inline]
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
     }
@@ -519,6 +521,7 @@ impl<T: ?Sized, U: ?Sized> const AsMut<U> for &mut T
 where
     T: ~const AsMut<U>,
 {
+    #[inline]
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
     }
