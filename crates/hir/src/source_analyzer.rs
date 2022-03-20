@@ -21,9 +21,11 @@ use hir_def::{
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
     type_ref::Mutability,
-    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, ModuleDefId, VariantId,
+    AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, Lookup, ModuleDefId, VariantId,
 };
-use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
+use hir_expand::{
+    builtin_fn_macro::BuiltinFnLikeExpander, hygiene::Hygiene, name::AsName, HirFileId, InFile,
+};
 use hir_ty::{
     diagnostics::{
         record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
@@ -490,6 +492,22 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> bool {
+        // check for asm/global_asm
+        if let Some(mac) = self.resolve_macro_call(db, macro_call) {
+            let ex = match mac.id {
+                hir_def::MacroId::Macro2Id(it) => it.lookup(db.upcast()).expander,
+                hir_def::MacroId::MacroRulesId(it) => it.lookup(db.upcast()).expander,
+                _ => hir_def::MacroExpander::Declarative,
+            };
+            match ex {
+                hir_def::MacroExpander::BuiltIn(e)
+                    if e == BuiltinFnLikeExpander::Asm || e == BuiltinFnLikeExpander::GlobalAsm =>
+                {
+                    return true
+                }
+                _ => (),
+            }
+        }
         if let (Some((def, body, sm)), Some(infer)) = (&self.def, &self.infer) {
             if let Some(expr_ids) = sm.macro_expansion_expr(macro_call) {
                 let mut is_unsafe = false;

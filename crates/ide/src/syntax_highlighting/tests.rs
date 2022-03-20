@@ -347,7 +347,7 @@ mod __ {
 }
 
 macro_rules! void {
-    ($($tt:tt)) => {}
+    ($($tt:tt)*) => {}
 }
 void!(Self);
 struct __ where Self:;
