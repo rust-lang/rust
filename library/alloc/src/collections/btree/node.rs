@@ -213,7 +213,7 @@ unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Owned, K, V, Type> 
 unsafe impl<K: Send, V: Send, Type> Send for NodeRef<marker::Dying, K, V, Type> {}
 
 impl<K, V> NodeRef<marker::Owned, K, V, marker::Leaf> {
-    fn new_leaf() -> Self {
+    pub fn new_leaf() -> Self {
         Self::from_new_leaf(LeafNode::new())
     }
 
@@ -619,15 +619,16 @@ impl<K, V, Type> NodeRef<marker::Owned, K, V, Type> {
 }
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Mut<'a>, K, V, marker::Leaf> {
-    /// Adds a key-value pair to the end of the node.
-    pub fn push(&mut self, key: K, val: V) {
+    /// Adds a key-value pair to the end of the node, and returns
+    /// the mutable reference of the inserted value.
+    pub fn push(&mut self, key: K, val: V) -> &mut V {
         let len = self.len_mut();
         let idx = usize::from(*len);
         assert!(idx < CAPACITY);
         *len += 1;
         unsafe {
             self.key_area_mut(idx).write(key);
-            self.val_area_mut(idx).write(val);
+            self.val_area_mut(idx).write(val)
         }
     }
 }
