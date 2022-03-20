@@ -67,7 +67,7 @@ impl<'a> InferenceContext<'a> {
         let ty = self.infer_expr_inner(expr, expected);
         if let Some(target) = expected.only_has_type(&mut self.table) {
             match self.coerce(Some(expr), &ty, &target) {
-                Ok(res) => res.value,
+                Ok(res) => res,
                 Err(_) => {
                     self.result
                         .type_mismatches
