@@ -3399,6 +3399,7 @@ impl<const LEN: usize> Foo<LEN$0> {}
     );
 }
 
+// FIXME: move these tests to consteval module
 #[test]
 fn hover_const_eval() {
     check(
@@ -3575,6 +3576,90 @@ const FOO$0: &str = "bar";
             ---
 
             This is a doc
+        "#]],
+    );
+    check(
+        r#"
+const F1: i32 = 1;
+const F$03: i32 = 3 * F2;
+const F2: i32 = 2 * F1;
+"#,
+        expect![[r#"
+            *F3*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const F3: i32 = 6
+            ```
+        "#]],
+    );
+    check(
+        r#"
+const F1: i32 = 1 * F3;
+const F2: i32 = 2 * F1;
+const F$03: i32 = 3 * F2;
+"#,
+        expect![[r#"
+            *F3*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const F3: i32 = 3 * F2
+            ```
+        "#]],
+    );
+    check(
+        r#"
+struct U5;
+impl U5 {
+    const VAL: usize = 5;
+}
+const X$0X: usize = U5::VAL;
+"#,
+        expect![[r#"
+            *XX*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const XX: usize = 5
+            ```
+        "#]],
+    );
+}
+
+// FIXME: this should evaluate to zero
+#[test]
+fn hover_const_eval_broken() {
+    check(
+        r#"
+struct U0;
+trait ToConst {
+    const VAL: usize;
+}
+impl ToConst for U0 {
+    const VAL: usize = 0;
+}
+const X$0X: usize = U0::VAL;
+"#,
+        expect![[r#"
+            *XX*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const XX: usize = U0::VAL
+            ```
         "#]],
     );
 }

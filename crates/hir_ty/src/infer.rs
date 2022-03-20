@@ -358,12 +358,12 @@ impl Index<PatId> for InferenceResult {
 #[derive(Clone, Debug)]
 pub(crate) struct InferenceContext<'a> {
     pub(crate) db: &'a dyn HirDatabase,
-    owner: DefWithBodyId,
+    pub(crate) owner: DefWithBodyId,
     pub(crate) body: Arc<Body>,
     pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
-    result: InferenceResult,
+    pub(crate) result: InferenceResult,
     /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
     ///
