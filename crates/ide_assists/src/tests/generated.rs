@@ -1247,6 +1247,27 @@ fn main() {
 }
 
 #[test]
+fn doctest_inline_type_alias() {
+    check_doc_test(
+        "inline_type_alias",
+        r#####"
+type A<T = u32> = Vec<T>;
+
+fn main() {
+    let a: $0A;
+}
+"#####,
+        r#####"
+type A<T = u32> = Vec<T>;
+
+fn main() {
+    let a: Vec<u32>;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_introduce_named_generic() {
     check_doc_test(
         "introduce_named_generic",
