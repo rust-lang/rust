@@ -39,13 +39,6 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    let unwrap_span = if let ExprKind::MethodCall(_, _, span) = unwrap_expr.kind {
-        span
-    } else {
-        // unreachable. but fallback to ident's span ("()" are missing)
-        unwrap_expr.span
-    };
-
     let mut applicability = Applicability::MachineApplicable;
     let suggestion = format!(
         "unwrap_or({})",
@@ -55,7 +48,7 @@ pub(super) fn check<'tcx>(
     span_lint_and_sugg(
         cx,
         OR_THEN_UNWRAP,
-        or_span.to(unwrap_span),
+        unwrap_expr.span.with_lo(or_span.lo()),
         title,
         "try this",
         suggestion,
