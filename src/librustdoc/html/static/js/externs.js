@@ -67,7 +67,6 @@ var ResultsTable;
 
 /**
  * @typedef {{
- * crate: "std"
  *     desc: string,
  *     displayPath: string,
  *     fullPath: string,

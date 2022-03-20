@@ -1,29 +1,6 @@
-const QUERY = ['<P>', 'A<B<C<D>,  E>', 'p<> u8'];
+const QUERY = ['A<B<C<D>,  E>', 'p<> u8'];
 
 const PARSED = [
-    {
-        elems: [{
-            name: "",
-            fullPath: [""],
-            pathWithoutLast: [],
-            pathLast: "",
-            generics: [
-                {
-                    name: "p",
-                    fullPath: ["p"],
-                    pathWithoutLast: [],
-                    pathLast: "p",
-                    generics: [],
-                },
-            ],
-        }],
-        foundElems: 1,
-        original: "<P>",
-        returned: [],
-        typeFilter: -1,
-        userQuery: "<p>",
-        error: null,
-    },
     {
         elems: [],
         foundElems: 0,

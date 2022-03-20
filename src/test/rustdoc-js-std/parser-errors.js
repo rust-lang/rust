@@ -1,4 +1,6 @@
 const QUERY = [
+    '<P>',
+    '-> <P>',
     '<"P">',
     '"P" "P"',
     'P "P"',
@@ -16,9 +18,29 @@ const QUERY = [
     "a b:",
     "a (b:",
     "{:",
+    "a-bb",
+    "a>bb",
 ];
 
 const PARSED = [
+    {
+        elems: [],
+        foundElems: 0,
+        original: "<P>",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "<p>",
+        error: "Found generics without a path",
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "-> <P>",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "-> <p>",
+        error: "Found generics without a path",
+    },
     {
         elems: [],
         foundElems: 0,
@@ -171,5 +193,23 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "{:",
         error: "Unknown type filter `{`",
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a-bb",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a-bb",
+        error: "Unexpected `-` (did you mean `->`?)",
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a>bb",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a>bb",
+        error: "Unexpected `>` (did you mean `->`?)",
     },
 ];

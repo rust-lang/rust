@@ -193,6 +193,7 @@ window.initSearch = function(rawSearchIndex) {
      * Returns `true` if the current parser position is starting with "::".
      *
      * @param {ParserState} parserState
+     *
      * @return {boolean}
      */
     function isPathStart(parserState) {
@@ -203,6 +204,7 @@ window.initSearch = function(rawSearchIndex) {
      * Returns `true` if the current parser position is starting with "->".
      *
      * @param {ParserState} parserState
+     *
      * @return {boolean}
      */
     function isReturnArrow(parserState) {
@@ -212,11 +214,12 @@ window.initSearch = function(rawSearchIndex) {
     /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
-     * @param {Array<QueryElement>} elems    - This is where the new {QueryElement} will be added.
      * @param {string} name                  - Name of the query element.
      * @param {Array<QueryElement>} generics - List of generics of this query element.
+     *
+     * @return {QueryElement}                - The newly created `QueryElement`.
      */
-    function createQueryElement(query, parserState, elems, name, generics) {
+    function createQueryElement(query, parserState, name, generics) {
         if (name === '*' || (name.length === 0 && generics.length === 0)) {
             return;
         }
@@ -238,18 +241,18 @@ window.initSearch = function(rawSearchIndex) {
                 }
             }
         }
-        // In case we only have something like `<p>`, there is no name but it remains valid.
-        if (pathSegments.length === 0) {
-            pathSegments = [""];
+        // In case we only have something like `<p>`, there is no name.
+        if (pathSegments.length === 0 || (pathSegments.length === 1 && pathSegments[0] === "")) {
+            throw new Error("Found generics without a path");
         }
-        elems.push({
+        parserState.totalElems += 1;
+        return {
             name: name,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
             pathLast: pathSegments[pathSegments.length - 1],
             generics: generics,
-        });
-        parserState.totalElems += 1;
+        };
     }
 
     /**
@@ -300,12 +303,14 @@ window.initSearch = function(rawSearchIndex) {
         if (start >= end && generics.length === 0) {
             return;
         }
-        createQueryElement(
-            query,
-            parserState,
-            elems,
-            parserState.userQuery.slice(start, end),
-            generics);
+        elems.push(
+            createQueryElement(
+                query,
+                parserState,
+                parserState.userQuery.slice(start, end),
+                generics
+            )
+        );
     }
 
     /**
@@ -372,8 +377,11 @@ window.initSearch = function(rawSearchIndex) {
                 if (c === "," || c === " ") {
                     parserState.pos += 1;
                     continue;
-                } else if (c === "-" && isReturnArrow(parserState)) {
-                    break;
+                } else if (c === "-" || c === ">") {
+                    if (isReturnArrow(parserState)) {
+                        break;
+                    }
+                    throw new Error(`Unexpected \`${c}\` (did you mean \`->\`?)`);
                 }
             } else if (c === ":" &&
                 parserState.typeFilter === null &&
@@ -424,6 +432,7 @@ window.initSearch = function(rawSearchIndex) {
      * Takes the user search input and returns an empty `ParsedQuery`.
      *
      * @param {string} userQuery
+     *
      * @return {ParsedQuery}
      */
     function newParsedQuery(userQuery) {
@@ -445,6 +454,7 @@ window.initSearch = function(rawSearchIndex) {
      *
      * @param {string} search            - The current search being performed.
      * @param {string|null} filterCrates - The current filtering crate (if any).
+     *
      * @return {string}
      */
     function buildUrl(search, filterCrates) {
@@ -478,17 +488,20 @@ window.initSearch = function(rawSearchIndex) {
      *
      * The supported syntax by this parser is as follow:
      *
-     * ident = *(ALPHA / DIGIT)
+     * ident = *(ALPHA / DIGIT / "_")
      * path = ident *(DOUBLE-COLON ident)
      * arg = path [generics]
      * arg-without-generic = path
-     * nonempty-arg-list = arg *WS *(COMMA *WS arg)
-     * nonempty-arg-list-without-generics = arg-without-generic *WS *(COMMA *WS arg-without-generic)
-     * generics = OPEN-ANGLE-BRACKET *WS nonempty-arg-list-without-generics *WS CLOSE-ANGLE-BRACKET
+     * type-sep = COMMA/WS *(COMMA/WS)
+     * nonempty-arg-list = arg *(type-sep arg) *(COMMA/WS)
+     * nonempty-arg-list-without-generics = arg-without-generic *(type-sep arg-without-generic)
+     *                                      *(COMMA/WS)
+     * generics = OPEN-ANGLE-BRACKET *WS [ nonempty-arg-list-without-generics ] *WS
+     *            CLOSE-ANGLE-BRACKET
      * return-args = RETURN-ARROW *WS nonempty-arg-list
      *
      * exact-search = [type-filter *WS COLON] *WS QUOTE ident QUOTE *WS [generics]
-     * type-search = [type-filter *WS COLON] *WS path *WS generics
+     * type-search = [type-filter *WS COLON] *WS path *WS nonempty-arg-list
      *
      * query = *WS (exact-search / type-search / return-args) *WS
      *
@@ -533,6 +546,7 @@ window.initSearch = function(rawSearchIndex) {
      * WS = %x09 / " "
      *
      * @param  {string} val     - The user query
+     *
      * @return {ParsedQuery}    - The parsed query
      */
     function parseQuery(userQuery) {
@@ -567,7 +581,7 @@ window.initSearch = function(rawSearchIndex) {
         query.foundElems = query.elems.length + query.returned.length;
         if (query.foundElems === 0 && parserState.length !== 0) {
             // In this case, we'll simply keep whatever was entered by the user...
-            createQueryElement(query, parserState, query.elems, userQuery, []);
+            query.elems.push(createQueryElement(query, parserState, userQuery, []));
             query.foundElems += 1;
         }
         return query;
@@ -580,6 +594,7 @@ window.initSearch = function(rawSearchIndex) {
      * @param {Array<Result>} results_returned
      * @param {Array<Result>} results_in_args
      * @param {ParsedQuery} parsedQuery
+     *
      * @return {ResultsTable}
      */
     function createQueryResults(results_in_args, results_returned, results_others, parsedQuery) {
@@ -597,6 +612,7 @@ window.initSearch = function(rawSearchIndex) {
      * @param  {ParsedQuery} parsedQuery - The parsed user query
      * @param  {Object} searchWords      - The list of search words to query against
      * @param  {Object} [filterCrates]   - Crate to search in if defined
+     *
      * @return {ResultsTable}
      */
     function execQuery(parsedQuery, searchWords, filterCrates) {
@@ -634,12 +650,7 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         function sortResults(results, isType) {
-            var nameSplit = null;
-            if (parsedQuery.elems.length === 1) {
-                var hasPath = typeof parsedQuery.elems[0].path === "undefined";
-                nameSplit = hasPath ? null : parsedQuery.elems[0].path;
-            }
-            var query = parsedQuery.userQuery;
+            var userQuery = parsedQuery.userQuery;
             var ar = [];
             for (var entry in results) {
                 if (hasOwnPropertyRustdoc(results, entry)) {
@@ -659,8 +670,8 @@ window.initSearch = function(rawSearchIndex) {
                 var a, b;
 
                 // sort by exact match with regard to the last word (mismatch goes later)
-                a = (aaa.word !== query);
-                b = (bbb.word !== query);
+                a = (aaa.word !== userQuery);
+                b = (bbb.word !== userQuery);
                 if (a !== b) { return a - b; }
 
                 // Sort by non levenshtein results and then levenshtein results by the distance
@@ -722,6 +733,12 @@ window.initSearch = function(rawSearchIndex) {
                 return 0;
             });
 
+            var nameSplit = null;
+            if (parsedQuery.elems.length === 1) {
+                var hasPath = typeof parsedQuery.elems[0].path === "undefined";
+                nameSplit = hasPath ? null : parsedQuery.elems[0].path;
+            }
+
             for (var i = 0, len = results.length; i < len; ++i) {
                 result = results[i];
 
@@ -763,7 +780,7 @@ window.initSearch = function(rawSearchIndex) {
             // match as well.
             var elem_name;
             if (elem.generics.length > 0 && row[GENERICS_DATA].length >= elem.generics.length) {
-                var elems = {};
+                var elems = Object.create(null);
                 for (var x = 0, length = row[GENERICS_DATA].length; x < length; ++x) {
                     elem_name = row[GENERICS_DATA][x][NAME];
                     if (elem_name === "") {
@@ -935,6 +952,8 @@ window.initSearch = function(rawSearchIndex) {
         }
 
         /**
+         * This function checks if the object (`row`) returns the given type (`elem`).
+         *
          * @param {Row} row
          * @param {QueryElement} elem   - The element from the parsed query.
          * @param {integer} typeFilter
@@ -1103,7 +1122,7 @@ window.initSearch = function(rawSearchIndex) {
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `lev` is the main metric used to sort the search results.
          *
-         * @param {Object} results
+         * @param {Results} results
          * @param {string} fullId
          * @param {integer} id
          * @param {integer} index
@@ -1130,10 +1149,21 @@ window.initSearch = function(rawSearchIndex) {
          * This function is called in case the query is only one element (with or without generics).
          *
          * @param {Row} row
-         * @param {integer} pos           - Position in the `searchIndex`.
-         * @param {QueryElement} elem     - The element from the parsed query.
+         * @param {integer} pos              - Position in the `searchIndex`.
+         * @param {QueryElement} elem        - The element from the parsed query.
+         * @param {Results} results_others   - Unqualified results (not in arguments nor in
+         *                                     returned values).
+         * @param {Results} results_in_args  - Matching arguments results.
+         * @param {Results} results_returned - Matching returned arguments results.
          */
-        function handleSingleArg(row, pos, elem) {
+        function handleSingleArg(
+            row,
+            pos,
+            elem,
+            results_others,
+            results_in_args,
+            results_returned
+        ) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
@@ -1261,7 +1291,14 @@ window.initSearch = function(rawSearchIndex) {
                     for (i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
                         // It means we want to check for this element everywhere (in names, args and
                         // returned).
-                        handleSingleArg(searchIndex[i], i, elem);
+                        handleSingleArg(
+                            searchIndex[i],
+                            i,
+                            elem,
+                            results_others,
+                            results_in_args,
+                            results_returned
+                        );
                     }
                 } else if (parsedQuery.returned.length === 1) {
                     // We received one returned argument to check, so looking into returned values.
@@ -1315,6 +1352,7 @@ window.initSearch = function(rawSearchIndex) {
      * @param  {string} path   - The path of the result
      * @param  {string} keys   - The keys to be used (["file", "open"])
      * @param  {Object} parent - The parent of the result
+     *
      * @return {boolean}       - Whether the result is valid or not
      */
     function validateResult(name, path, keys, parent) {

@@ -1,15 +1,15 @@
-const QUERY = ['-> <P>', '-> P'];
+const QUERY = ['-> F<P>', '-> P'];
 
 const PARSED = [
     {
         elems: [],
         foundElems: 1,
-        original: "-> <P>",
+        original: "-> F<P>",
         returned: [{
-            name: "",
-            fullPath: [""],
+            name: "f",
+            fullPath: ["f"],
             pathWithoutLast: [],
-            pathLast: "",
+            pathLast: "f",
             generics: [
                 {
                     name: "p",
@@ -21,7 +21,7 @@ const PARSED = [
             ],
         }],
         typeFilter: -1,
-        userQuery: "-> <p>",
+        userQuery: "-> f<p>",
         error: null,
     },
     {
