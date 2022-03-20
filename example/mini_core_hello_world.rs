@@ -7,10 +7,6 @@ extern crate mini_core;
 use mini_core::*;
 use mini_core::libc::*;
 
-unsafe extern "C" fn my_puts(s: *const i8) {
-    puts(s);
-}
-
 macro_rules! assert {
     ($e:expr) => {
         if !$e {
@@ -105,12 +101,6 @@ fn start<T: Termination + 'static>(
 static mut NUM: u8 = 6 * 7;
 static NUM_REF: &'static u8 = unsafe { &NUM };
 
-struct Unique<T: ?Sized> {
-    pointer: *const T,
-    _marker: PhantomData<T>,
-}
-
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<Unique<U>> for Unique<T> where T: Unsize<U> {}
 
 unsafe fn zeroed<T>() -> T {
     let mut uninit = MaybeUninit { uninit: () };

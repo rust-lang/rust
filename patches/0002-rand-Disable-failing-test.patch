@@ -4,27 +4,18 @@ Date: Sat, 15 Aug 2020 20:04:38 +0200
 Subject: [PATCH] [rand] Disable failing test
 
 ---
- src/distributions/uniform.rs | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ src/distributions/uniform.rs | 1 +
+ 1 file changed, 1 insertion(+), 0 deletions(-)
 
 diff --git a/src/distributions/uniform.rs b/src/distributions/uniform.rs
 index 480b859..c80bb6f 100644
 --- a/src/distributions/uniform.rs
 +++ b/src/distributions/uniform.rs
-@@ -1085,7 +1085,7 @@ mod tests {
-             _ => panic!("`UniformDurationMode` was not serialized/deserialized correctly")
-         }
-     }
--    
-+
-     #[test]
-     #[cfg(feature = "serde1")]
-     fn test_uniform_serialization() {
 @@ -1314,6 +1314,7 @@ mod tests {
          not(target_arch = "wasm32"),
          not(target_arch = "asmjs")
      ))]
-+    #[ignore] // FIXME
++    #[ignore] // Requires unwinding
      fn test_float_assertions() {
          use super::SampleUniform;
          use std::panic::catch_unwind;
