@@ -188,6 +188,14 @@ impl OsString {
     ///
     /// See main `OsString` documentation information about encoding.
     ///
+    /// # Notes
+    ///
+    /// `capacity` represents the length of the units in the given `OsString`,
+    /// which is different from the size of "Rust string form" like `String` or
+    /// `str`. Also, they could be different on different platforms.
+    ///
+    /// Refer to [`OsString`] for more details.
+    ///
     /// # Examples
     ///
     /// ```
@@ -271,6 +279,14 @@ impl OsString {
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
+    ///
+    /// # Notes
+    ///
+    /// `additional` represents the length of the units in the given `OsString`,
+    /// which is different from the size of "Rust string form" like `String` or
+    /// `str`. Also, they could be different on different platforms.
+    ///
+    /// Refer to [`OsString`] for more details.
     ///
     /// # Errors
     ///
