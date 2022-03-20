@@ -2900,7 +2900,7 @@ impl Type {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
-    pub fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
+    fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
         let environment = self.env.clone();
@@ -3238,7 +3238,12 @@ impl Type {
 
     pub fn could_unify_with(&self, db: &dyn HirDatabase, other: &Type) -> bool {
         let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), other.ty.clone()));
-        could_unify(db, self.env.clone(), &tys)
+        hir_ty::could_unify(db, self.env.clone(), &tys)
+    }
+
+    pub fn could_coerce_to(&self, db: &dyn HirDatabase, to: &Type) -> bool {
+        let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), to.ty.clone()));
+        hir_ty::could_coerce(db, self.env.clone(), &tys)
     }
 }
 

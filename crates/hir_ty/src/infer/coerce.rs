@@ -5,9 +5,9 @@
 //! See <https://doc.rust-lang.org/nomicon/coercions.html> and
 //! `librustc_typeck/check/coercion.rs`.
 
-use std::iter;
+use std::{iter, sync::Arc};
 
-use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind, BoundVar};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 use stdx::always;
 use syntax::SmolStr;
@@ -19,7 +19,7 @@ use crate::{
         PointerCast, TypeError, TypeMismatch,
     },
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
-    Solution, Substitution, Ty, TyBuilder, TyExt, TyKind,
+    Solution, Substitution, Ty, TyBuilder, TyExt, TyKind, db::HirDatabase, TraitEnvironment, GenericArgData,
 };
 
 use super::unify::InferenceTable;
@@ -118,6 +118,45 @@ impl CoerceMany {
     pub(super) fn complete(self) -> Ty {
         self.expected_ty
     }
+}
+
+pub fn could_coerce(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> bool {
+    coerce(db, env, tys).is_ok()
+}
+
+pub(crate) fn coerce(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> Result<(Vec<Adjustment>, Ty), TypeError> {
+    let mut table = InferenceTable::new(db, env);
+    let vars = table.fresh_subst(tys.binders.as_slice(Interner));
+    let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
+    let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
+    let (adjustments, ty) = table.coerce(&ty1_with_vars, &ty2_with_vars)?;
+    // default any type vars that weren't unified back to their original bound vars
+    // (kind of hacky)
+    let find_var = |iv| {
+        vars.iter(Interner).position(|v| match v.interned() {
+            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
+            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+            chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
+        } == Some(iv))
+    };
+    let fallback = |iv, kind, default, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
+        chalk_ir::VariableKind::Lifetime => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)),
+    };
+    // FIXME also map the types in the adjustments
+    Ok((adjustments, table.resolve_with_fallback(ty, &fallback)))
 }
 
 impl<'a> InferenceContext<'a> {

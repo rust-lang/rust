@@ -45,6 +45,7 @@ use crate::{
 // https://github.com/rust-lang/rust/issues/57411
 #[allow(unreachable_pub)]
 pub use unify::could_unify;
+pub use coerce::could_coerce;
 
 pub(crate) mod unify;
 mod path;
