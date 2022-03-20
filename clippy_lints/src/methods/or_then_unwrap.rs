@@ -1,9 +1,8 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
-use if_chain::if_chain;
+use clippy_utils::{diagnostics::span_lint_and_sugg, is_lang_ctor};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, QPath};
+use rustc_hir::{lang_items::LangItem, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Span};
 
@@ -22,14 +21,14 @@ pub(super) fn check<'tcx>(
 
     if is_type_diagnostic_item(cx, ty, sym::Option) {
         title = "found `.or(Some(…)).unwrap()`";
-        if let Some(content) = get_content_if_is(or_arg, "Some") {
+        if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::OptionSome) {
             or_arg_content = content;
         } else {
             return;
         }
     } else if is_type_diagnostic_item(cx, ty, sym::Result) {
         title = "found `.or(Ok(…)).unwrap()`";
-        if let Some(content) = get_content_if_is(or_arg, "Ok") {
+        if let Some(content) = get_content_if_ctor_matches(cx, or_arg, LangItem::ResultOk) {
             or_arg_content = content;
         } else {
             return;
@@ -64,19 +63,13 @@ pub(super) fn check<'tcx>(
     );
 }
 
-/// is expr a Call to name? if so, return what it's wrapping
-/// name might be "Some", "Ok", "Err", etc.
-fn get_content_if_is<'a>(expr: &Expr<'a>, name: &str) -> Option<Span> {
-    if_chain! {
-        if let ExprKind::Call(some_expr, [arg]) = expr.kind;
-        if let ExprKind::Path(QPath::Resolved(_, path)) = &some_expr.kind;
-        if let Some(path_segment) = path.segments.first();
-        if path_segment.ident.name.as_str() == name;
-        then {
-            Some(arg.span)
-        }
-        else {
-            None
-        }
+fn get_content_if_ctor_matches(cx: &LateContext<'_>, expr: &Expr<'_>, item: LangItem) -> Option<Span> {
+    if let ExprKind::Call(some_expr, [arg]) = expr.kind
+        && let ExprKind::Path(qpath) = &some_expr.kind
+        && is_lang_ctor(cx, qpath, item)
+    {
+        Some(arg.span)
+    } else {
+        None
     }
 }
