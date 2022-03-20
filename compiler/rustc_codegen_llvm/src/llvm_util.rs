@@ -237,12 +237,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             .filter_map(|&(feature, gate)| {
                 if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
             })
+            .flat_map(|feature| to_llvm_features(sess, feature))
             .filter(|feature| {
-                for llvm_feature in to_llvm_features(sess, feature) {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
-                        return true;
-                    }
+                let cstr = SmallCStr::new(feature);
+                if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                    return true;
                 }
                 false
             })
