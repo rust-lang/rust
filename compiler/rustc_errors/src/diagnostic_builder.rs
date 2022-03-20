@@ -396,7 +396,13 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     ) -> &mut Self);
 
     forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
+    forward!(pub fn note_once(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_note(
+        &mut self,
+        sp: impl Into<MultiSpan>,
+        msg: &str,
+    ) -> &mut Self);
+    forward!(pub fn span_note_once(
         &mut self,
         sp: impl Into<MultiSpan>,
         msg: &str,

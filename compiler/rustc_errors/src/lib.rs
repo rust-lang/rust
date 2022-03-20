@@ -4,6 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
 #![feature(backtrace)]
 #![feature(if_let_guard)]
 #![feature(let_else)]
@@ -1070,7 +1071,23 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            self.emitter.emit_diagnostic(diagnostic);
+            debug!(?diagnostic);
+            debug!(?self.emitted_diagnostics);
+            let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                debug!(?sub);
+                if sub.level != Level::OnceNote {
+                    return false;
+                }
+                let mut hasher = StableHasher::new();
+                sub.hash(&mut hasher);
+                let diagnostic_hash = hasher.finish();
+                debug!(?diagnostic_hash);
+                !self.emitted_diagnostics.insert(diagnostic_hash)
+            };
+
+            diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+
+            self.emitter.emit_diagnostic(&diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if diagnostic.level == Warning {
@@ -1350,6 +1367,8 @@ pub enum Level {
     },
     Warning,
     Note,
+    /// A note that is only emitted once.
+    OnceNote,
     Help,
     FailureNote,
     Allow,
@@ -1372,7 +1391,7 @@ impl Level {
             Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
-            Note => {
+            Note | OnceNote => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
             Help => {
@@ -1389,7 +1408,7 @@ impl Level {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error { .. } => "error",
             Warning => "warning",
-            Note => "note",
+            Note | OnceNote => "note",
             Help => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
