@@ -1231,7 +1231,7 @@ impl<'a> Parser<'a> {
                 }
                 let enum_field_start_span = this.token.span;
                 let ident = this.parse_field_ident("enum", vlo)?;
-                if this.token.kind == token::Colon {
+                if this.token.kind == token::Colon && !start_span.in_derive_expansion() {
                     let snapshot = this.clone();
                     this.bump();
                     match this.parse_ty() {
@@ -1612,7 +1612,7 @@ impl<'a> Parser<'a> {
             {
                 let snapshot = self.clone();
                 if let Err(err) = self.parse_ty() {
-                    if let Some(span) = start_span {
+                    if let Some(span) = start_span && !span.in_derive_expansion() {
                         error.span_suggestion_verbose(
                             span,
                             "consider using `enum` instead of `struct`",
