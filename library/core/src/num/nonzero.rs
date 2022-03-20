@@ -13,6 +13,7 @@ use crate::{intrinsics, sealed::Sealed};
 /// # Safety
 ///
 /// Implementors of this trait must not have a memory representation for zero.
+#[unstable(feature = "nonzero_trait", issue = "none")]
 pub unsafe trait NonZero: Sealed {
     /// The primitive scalar type.
     ///
@@ -66,8 +67,10 @@ macro_rules! nonzero_integers {
             #[rustc_nonnull_optimization_guaranteed]
             pub struct $Ty($Int);
 
+            #[unstable(feature = "sealed", issue = "none")]
             impl Sealed for $Ty {}
 
+            #[unstable(feature = "nonzero_trait", issue = "none")]
             unsafe impl NonZero for $Ty {
                 type Scalar = $Int;
             }
