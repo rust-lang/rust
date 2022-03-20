@@ -398,23 +398,28 @@ extern "Rust" {
     /// `ptr` has to point to the beginning of an allocated block.
     fn miri_static_root(ptr: *const u8);
 
+    // Miri-provided extern function to get the amount of frames in the current backtrace.
+    // The `flags` argument must be `0`.
+    fn miri_backtrace_size(flags: u64) -> usize;
+
     /// Miri-provided extern function to obtain a backtrace of the current call stack.
-    /// This returns a boxed slice of pointers - each pointer is an opaque value
-    /// that is only useful when passed to `miri_resolve_frame`
-    /// The `flags` argument must be `0`.
-    fn miri_get_backtrace(flags: u64) -> Box<[*mut ()]>;
+    /// This writes a slice of pointers into `buf` - each pointer is an opaque value
+    /// that is only useful when passed to `miri_resolve_frame`.
+    /// `buf` must have `miri_backtrace_size(0) * pointer_size` bytes of space.
+    /// The `flags` argument must be `1`.
+    fn miri_get_backtrace(flags: u64, buf: *mut *mut ());
 
     /// Miri-provided extern function to resolve a frame pointer obtained
-    /// from `miri_get_backtrace`. The `flags` argument must be `0`,
+    /// from `miri_get_backtrace`. The `flags` argument must be `1`,
     /// and `MiriFrame` should be declared as follows:
     ///
     /// ```rust
     /// #[repr(C)]
     /// struct MiriFrame {
-    ///     // The name of the function being executed, encoded in UTF-8
-    ///     name: Box<[u8]>,
-    ///     // The filename of the function being executed, encoded in UTF-8
-    ///     filename: Box<[u8]>,
+    ///     // The size of the name of the function being executed, encoded in UTF-8
+    ///     name_len: usize,
+    ///     // The size of filename of the function being executed, encoded in UTF-8
+    ///     filename_len: usize,
     ///     // The line number currently being executed in `filename`, starting from '1'.
     ///     lineno: u32,
     ///     // The column number currently being executed in `filename`, starting from '1'.
@@ -429,6 +434,11 @@ extern "Rust" {
     /// The fields must be declared in exactly the same order as they appear in `MiriFrame` above.
     /// This function can be called on any thread (not just the one which obtained `frame`).
     fn miri_resolve_frame(frame: *mut (), flags: u64) -> MiriFrame;
+
+    /// Miri-provided extern function to get the name and filename of the frame provided by `miri_resolve_frame`.
+    /// `name_buf` and `filename_buf` should be allocated with the `name_len` and `filename_len` fields of `MiriFrame`.
+    /// The flags argument must be `0`.
+    fn miri_resolve_frame_names(ptr: *mut (), flags: u64, name_buf: *mut u8, filename_buf: *mut u8);
 
     /// Miri-provided extern function to begin unwinding with the given payload.
     ///
