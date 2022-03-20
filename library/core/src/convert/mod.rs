@@ -154,7 +154,7 @@ pub const fn identity<T>(x: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsRef")]
 pub trait AsRef<T: ?Sized> {
-    /// Performs the conversion.
+    /// Converts this type into a shared reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ref(&self) -> &T;
 }
@@ -196,7 +196,7 @@ pub trait AsRef<T: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "AsMut")]
 pub trait AsMut<T: ?Sized> {
-    /// Performs the conversion.
+    /// Converts this type into a mutable reference of the (usually inferred) input type.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
 }
@@ -272,7 +272,7 @@ pub trait AsMut<T: ?Sized> {
 #[rustc_diagnostic_item = "Into"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
-    /// Performs the conversion.
+    /// Converts this type into the (usually inferred) input type.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
@@ -367,7 +367,7 @@ pub trait Into<T>: Sized {
     note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
 ))]
 pub trait From<T>: Sized {
-    /// Performs the conversion.
+    /// Converts to this type from the input type.
     #[lang = "from"]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
