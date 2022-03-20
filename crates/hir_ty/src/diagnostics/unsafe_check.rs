@@ -37,6 +37,7 @@ pub struct UnsafeExpr {
     pub inside_unsafe_block: bool,
 }
 
+// FIXME: Move this out, its not a diagnostic only thing anymore, and handle unsafe pattern accesses as well
 pub fn unsafe_expressions(
     db: &dyn HirDatabase,
     infer: &InferenceResult,

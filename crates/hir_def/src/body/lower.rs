@@ -508,11 +508,8 @@ impl ExprCollector<'_> {
             }
             ast::Expr::MacroCall(e) => {
                 let macro_ptr = AstPtr::new(&e);
-                let mut id = None;
-                self.collect_macro_call(e, macro_ptr.clone(), true, |this, expansion| {
-                    if let Some(it) = expansion {
-                        id.get_or_insert(this.collect_expr(it));
-                    }
+                let id = self.collect_macro_call(e, macro_ptr.clone(), true, |this, expansion| {
+                    expansion.map(|it| this.collect_expr(it))
                 });
                 match id {
                     Some(id) => {
@@ -537,13 +534,17 @@ impl ExprCollector<'_> {
         })
     }
 
-    fn collect_macro_call<F: FnOnce(&mut Self, Option<T>), T: ast::AstNode>(
+    fn collect_macro_call<F, T, U>(
         &mut self,
         mcall: ast::MacroCall,
         syntax_ptr: AstPtr<ast::MacroCall>,
         record_diagnostics: bool,
         collector: F,
-    ) {
+    ) -> U
+    where
+        F: FnOnce(&mut Self, Option<T>) -> U,
+        T: ast::AstNode,
+    {
         // File containing the macro call. Expansion errors will be attached here.
         let outer_file = self.expander.current_file_id;
 
@@ -559,8 +560,7 @@ impl ExprCollector<'_> {
                         path,
                     });
                 }
-                collector(self, None);
-                return;
+                return collector(self, None);
             }
         };
 
@@ -634,7 +634,6 @@ impl ExprCollector<'_> {
                     let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
 
                     let prev_stmt = self.statements_in_scope.len();
-                    let mut tail = None;
                     self.collect_macro_call(m, macro_ptr.clone(), false, |this, expansion| {
                         match expansion {
                             Some(expansion) => {
@@ -643,7 +642,6 @@ impl ExprCollector<'_> {
                                 statements.statements().for_each(|stmt| this.collect_stmt(stmt));
                                 if let Some(expr) = statements.expr() {
                                     let expr = this.collect_expr(expr);
-                                    tail = Some(expr);
                                     this.statements_in_scope
                                         .push(Statement::Expr { expr, has_semi });
                                 }
@@ -654,6 +652,7 @@ impl ExprCollector<'_> {
                             }
                         }
                     });
+
                     let mut macro_exprs = smallvec![];
                     for stmt in &self.statements_in_scope[prev_stmt..] {
                         match *stmt {
@@ -664,7 +663,6 @@ impl ExprCollector<'_> {
                             Statement::Expr { expr, .. } => macro_exprs.push(expr),
                         }
                     }
-                    macro_exprs.extend(tail);
                     if !macro_exprs.is_empty() {
                         self.source_map
                             .macro_call_to_exprs
@@ -894,15 +892,11 @@ impl ExprCollector<'_> {
             ast::Pat::MacroPat(mac) => match mac.macro_call() {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
-                    let mut pat = None;
-                    self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
-                        pat = Some(this.collect_pat_opt_(expanded_pat));
-                    });
-
-                    match pat {
-                        Some(pat) => return pat,
-                        None => Pat::Missing,
-                    }
+                    let pat =
+                        self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
+                            this.collect_pat_opt_(expanded_pat)
+                        });
+                    return pat;
                 }
                 None => Pat::Missing,
             },
