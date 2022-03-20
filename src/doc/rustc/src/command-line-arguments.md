@@ -118,7 +118,7 @@ The valid emit kinds are:
 - `llvm-ir` — Generates a file containing [LLVM IR]. The default output
   filename is `CRATE_NAME.ll`.
 - `metadata` — Generates a file containing metadata about the crate. The
-  default output filename is `CRATE_NAME.rmeta`.
+  default output filename is `libCRATE_NAME.rmeta`.
 - `mir` — Generates a file containing rustc's mid-level intermediate
   representation. The default output filename is `CRATE_NAME.mir`.
 - `obj` — Generates a native object file. The default output filename is
