@@ -1,46 +1,32 @@
 //! Codegen of intrinsics. This includes `extern "rust-intrinsic"`, `extern "platform-intrinsic"`
 //! and LLVM intrinsics that have symbol names starting with `llvm.`.
 
-mod cpuid;
-mod llvm;
-mod simd;
-
-pub(crate) use cpuid::codegen_cpuid_call;
-pub(crate) use llvm::codegen_llvm_intrinsic_call;
-
-use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_span::symbol::{kw, sym, Symbol};
-
-use crate::prelude::*;
-use cranelift_codegen::ir::AtomicRmwOp;
-
-macro intrinsic_pat {
+macro_rules! intrinsic_pat {
     (_) => {
         _
-    },
+    };
     ($name:ident) => {
         sym::$name
-    },
+    };
     (kw.$name:ident) => {
         kw::$name
-    },
+    };
     ($name:literal) => {
         $name
-    },
+    };
 }
 
-macro intrinsic_arg {
-    (o $fx:expr, $arg:ident) => {},
+macro_rules! intrinsic_arg {
+    (o $fx:expr, $arg:ident) => {};
     (c $fx:expr, $arg:ident) => {
         let $arg = codegen_operand($fx, $arg);
-    },
+    };
     (v $fx:expr, $arg:ident) => {
         let $arg = codegen_operand($fx, $arg).load_scalar($fx);
-    }
+    };
 }
 
-macro intrinsic_match {
+macro_rules! intrinsic_match {
     ($fx:expr, $intrinsic:expr, $args:expr,
     _ => $unknown:block;
     $(
@@ -61,6 +47,20 @@ macro intrinsic_match {
         }
     }
 }
+
+mod cpuid;
+mod llvm;
+mod simd;
+
+pub(crate) use cpuid::codegen_cpuid_call;
+pub(crate) use llvm::codegen_llvm_intrinsic_call;
+
+use rustc_middle::ty::print::with_no_trimmed_paths;
+use rustc_middle::ty::subst::SubstsRef;
+use rustc_span::symbol::{kw, sym, Symbol};
+
+use crate::prelude::*;
+use cranelift_codegen::ir::AtomicRmwOp;
 
 fn report_atomic_type_validation_error<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -229,7 +229,7 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             // Insert non returning intrinsics here
             match intrinsic {
                 sym::abort => {
-                    trap_abort(fx, "Called intrinsic::abort.");
+                    fx.bcx.ins().trap(TrapCode::User(0));
                 }
                 sym::transmute => {
                     crate::base::codegen_panic(fx, "Transmuting to uninhabited type.", span);
@@ -749,6 +749,18 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ if intrinsic.as_str().starts_with("atomic_load"), (v ptr) {
             let ty = substs.type_at(0);
             match ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    // FIXME implement 128bit atomics
+                    if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
+                        // special case for compiler-builtins to avoid having to patch it
+                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        let ret_block = fx.get_block(destination.unwrap().1);
+                        fx.bcx.ins().jump(ret_block, &[]);
+                        return;
+                    } else {
+                        fx.tcx.sess.span_fatal(span, "128bit atomics not yet supported");
+                    }
+                }
                 ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, span, ty);
@@ -765,6 +777,18 @@ fn codegen_regular_intrinsic_call<'tcx>(
         _ if intrinsic.as_str().starts_with("atomic_store"), (v ptr, c val) {
             let ty = substs.type_at(0);
             match ty.kind() {
+                ty::Uint(UintTy::U128) | ty::Int(IntTy::I128) => {
+                    // FIXME implement 128bit atomics
+                    if fx.tcx.is_compiler_builtins(LOCAL_CRATE) {
+                        // special case for compiler-builtins to avoid having to patch it
+                        crate::trap::trap_unimplemented(fx, "128bit atomics not yet supported");
+                        let ret_block = fx.get_block(destination.unwrap().1);
+                        fx.bcx.ins().jump(ret_block, &[]);
+                        return;
+                    } else {
+                        fx.tcx.sess.span_fatal(span, "128bit atomics not yet supported");
+                    }
+                }
                 ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, span, ty);
@@ -1115,10 +1139,6 @@ fn codegen_regular_intrinsic_call<'tcx>(
         };
     }
 
-    if let Some((_, dest)) = destination {
-        let ret_block = fx.get_block(dest);
-        fx.bcx.ins().jump(ret_block, &[]);
-    } else {
-        trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
-    }
+    let ret_block = fx.get_block(destination.unwrap().1);
+    fx.bcx.ins().jump(ret_block, &[]);
 }

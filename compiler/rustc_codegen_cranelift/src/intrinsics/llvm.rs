@@ -126,12 +126,9 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
         };
     }
 
-    if let Some((_, dest)) = destination {
-        let ret_block = fx.get_block(dest);
-        fx.bcx.ins().jump(ret_block, &[]);
-    } else {
-        trap_unreachable(fx, "[corruption] Diverging intrinsic returned.");
-    }
+    let dest = destination.expect("all llvm intrinsics used by stdlib should return").1;
+    let ret_block = fx.get_block(dest);
+    fx.bcx.ins().jump(ret_block, &[]);
 }
 
 // llvm.x86.avx2.vperm2i128
