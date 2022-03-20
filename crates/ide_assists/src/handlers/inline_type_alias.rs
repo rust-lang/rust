@@ -45,6 +45,11 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let alias = get_type_alias(&ctx, &alias_instance)?;
     let concrete_type = alias.ty()?;
 
+    enum Replacement {
+        Generic { lifetime_map: LifetimeMap, const_and_type_map: ConstAndTypeMap },
+        Plain,
+    }
+
     let replacement = if let Some(alias_generics) = alias.generic_param_list() {
         if alias_generics.generic_params().next().is_none() {
             cov_mark::hit!(no_generics_params);
@@ -54,13 +59,12 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
         let instance_args =
             alias_instance.syntax().descendants().find_map(ast::GenericArgList::cast);
 
-        create_replacement(
-            &LifetimeMap::new(&instance_args, &alias_generics)?,
-            &ConstAndTypeMap::new(&instance_args, &alias_generics)?,
-            &concrete_type,
-        )
+        Replacement::Generic {
+            lifetime_map: LifetimeMap::new(&instance_args, &alias_generics)?,
+            const_and_type_map: ConstAndTypeMap::new(&instance_args, &alias_generics)?,
+        }
     } else {
-        concrete_type.to_string()
+        Replacement::Plain
     };
 
     let target = alias_instance.syntax().text_range();
@@ -70,7 +74,14 @@ pub(crate) fn inline_type_alias(acc: &mut Assists, ctx: &AssistContext) -> Optio
         "Inline type alias",
         target,
         |builder| {
-            builder.replace(target, replacement);
+            let replacement_text = match replacement {
+                Replacement::Generic { lifetime_map, const_and_type_map } => {
+                    create_replacement(&lifetime_map, &const_and_type_map, &concrete_type)
+                }
+                Replacement::Plain => concrete_type.to_string(),
+            };
+
+            builder.replace(target, replacement_text);
         },
     )
 }
