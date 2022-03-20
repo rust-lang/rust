@@ -13,7 +13,7 @@ use crate::{intrinsics, sealed::Sealed};
 /// # Safety
 ///
 /// Implementors of this trait must not have a memory representation for zero.
-#[unstable(feature = "nonzero_trait", issue = "none")]
+#[unstable(feature = "nonzero_trait", issue = "95157")]
 pub unsafe trait NonZero: Sealed {
     /// The primitive scalar type.
     ///
@@ -70,7 +70,7 @@ macro_rules! nonzero_integers {
             #[unstable(feature = "sealed", issue = "none")]
             impl Sealed for $Ty {}
 
-            #[unstable(feature = "nonzero_trait", issue = "none")]
+            #[unstable(feature = "nonzero_trait", issue = "95157")]
             unsafe impl NonZero for $Ty {
                 type Scalar = $Int;
             }
