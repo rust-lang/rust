@@ -114,6 +114,7 @@ impl StaticIndex<'_> {
                     chaining_hints: true,
                     closure_return_type_hints: true,
                     lifetime_elision_hints: LifetimeElisionHints::Never,
+                    reborrow_hints: false,
                     hide_named_constructor_hints: false,
                     param_names_for_lifetime_elision_hints: false,
                     max_length: Some(25),

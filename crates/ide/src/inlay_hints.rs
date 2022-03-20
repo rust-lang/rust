@@ -19,6 +19,7 @@ pub struct InlayHintsConfig {
     pub type_hints: bool,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
+    pub reborrow_hints: bool,
     pub closure_return_type_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
@@ -35,6 +36,7 @@ pub enum LifetimeElisionHints {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum InlayKind {
+    ImplicitReborrow,
     TypeHint,
     ParameterHint,
     ClosureReturnTypeHint,
@@ -65,10 +67,7 @@ pub struct InlayHint {
 //
 // * return types of closure expressions with blocks
 // * elided lifetimes
-//
-// **Note:** VS Code does not have native support for inlay hints https://github.com/microsoft/vscode/issues/16221[yet] and the hints are implemented using decorations.
-// This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
-// https://github.com/rust-analyzer/rust-analyzer/issues/1623[1], https://github.com/rust-analyzer/rust-analyzer/issues/3453[2].
+// * compiler inserted reborrows
 //
 // |===
 // | Editor  | Action Name
@@ -116,17 +115,16 @@ fn hints(
     if let Some(expr) = ast::Expr::cast(node.clone()) {
         chaining_hints(hints, sema, &famous_defs, config, &expr);
         match expr {
-            ast::Expr::CallExpr(it) => {
-                param_name_hints(hints, sema, config, ast::Expr::from(it));
-            }
+            ast::Expr::CallExpr(it) => param_name_hints(hints, sema, config, ast::Expr::from(it)),
             ast::Expr::MethodCallExpr(it) => {
-                param_name_hints(hints, sema, config, ast::Expr::from(it));
+                param_name_hints(hints, sema, config, ast::Expr::from(it))
             }
-            ast::Expr::ClosureExpr(it) => {
-                closure_ret_hints(hints, sema, &famous_defs, config, it);
-            }
-            _ => (),
-        }
+            ast::Expr::ClosureExpr(it) => closure_ret_hints(hints, sema, &famous_defs, config, it),
+            // We could show reborrows for all expressions, but usually that is just noise to the user
+            // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
+            ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
+            _ => None,
+        };
     } else if let Some(it) = ast::IdentPat::cast(node.clone()) {
         bind_pat_hints(hints, sema, config, &it);
     } else if let Some(it) = ast::Fn::cast(node) {
@@ -361,6 +359,28 @@ fn closure_ret_hints(
         kind: InlayKind::ClosureReturnTypeHint,
         label: hint_iterator(sema, &famous_defs, config, &ty)
             .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string().into()),
+    });
+    Some(())
+}
+
+fn reborrow_hints(
+    acc: &mut Vec<InlayHint>,
+    sema: &Semantics<RootDatabase>,
+    config: &InlayHintsConfig,
+    expr: &ast::Expr,
+) -> Option<()> {
+    if !config.reborrow_hints {
+        return None;
+    }
+
+    let mutability = sema.is_implicit_reborrow(expr)?;
+    acc.push(InlayHint {
+        range: expr.syntax().text_range(),
+        kind: InlayKind::ImplicitReborrow,
+        label: match mutability {
+            hir::Mutability::Shared => SmolStr::new_inline("&*"),
+            hir::Mutability::Mut => SmolStr::new_inline("&mut *"),
+        },
     });
     Some(())
 }
@@ -834,6 +854,7 @@ mod tests {
         lifetime_elision_hints: LifetimeElisionHints::Never,
         hide_named_constructor_hints: false,
         closure_return_type_hints: false,
+        reborrow_hints: false,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,
     };
@@ -841,6 +862,7 @@ mod tests {
         type_hints: true,
         parameter_hints: true,
         chaining_hints: true,
+        reborrow_hints: true,
         closure_return_type_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
         ..DISABLED_CONFIG
@@ -2114,6 +2136,41 @@ impl () {
     fn foo(&self, a: &()) -> &() {}
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_implicit_reborrow() {
+        check_with_config(
+            InlayHintsConfig { reborrow_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn __() {
+    let unique = &mut ();
+    let r_mov = unique;
+    let foo: &mut _ = unique;
+                    //^^^^^^ &mut *
+    ref_mut_id(unique);
+             //^^^^^^ &mut *
+    let shared = ref_id(unique);
+                      //^^^^^^ &*
+    let mov = shared;
+    let r_mov: &_ = shared;
+    ref_id(shared);
+
+    identity(unique);
+    identity(shared);
+}
+fn identity<T>(t: T) -> T {
+    t
+}
+fn ref_mut_id(x: &mut ()) -> &mut () {
+    x
+  //^ &mut *
+}
+fn ref_id(x: &()) -> &() {
+    x
 }
 "#,
         );

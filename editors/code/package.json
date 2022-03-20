@@ -795,6 +795,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.reborrowHints": {
+                    "markdownDescription": "Whether to show inlay type hints for compiler inserted reborrows.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",
