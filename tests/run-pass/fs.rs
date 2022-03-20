@@ -395,6 +395,12 @@ fn test_directory() {
     remove_dir(&dir_path).unwrap();
     // Reading the metadata of a non-existent directory should fail with a "not found" error.
     assert_eq!(ErrorKind::NotFound, check_metadata(&[], &dir_path).unwrap_err().kind());
+
+    // To test remove_dir_all, re-create the directory with a file and a directory in it.
+    create_dir(&dir_path).unwrap();
+    drop(File::create(&path_1).unwrap());
+    create_dir(&path_2).unwrap();
+    remove_dir_all(&dir_path).unwrap();
 }
 
 fn test_dup_stdout_stderr() {
