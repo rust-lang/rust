@@ -43,19 +43,8 @@ pub enum BodyValidationDiagnostic {
         expected: usize,
         found: usize,
     },
-    RemoveThisSemicolon {
-        expr: ExprId,
-    },
-    MissingOkOrSomeInTailExpr {
-        expr: ExprId,
-        required: String,
-    },
     MissingMatchArms {
         match_expr: ExprId,
-    },
-    AddReferenceHere {
-        arg_expr: ExprId,
-        mutability: Mutability,
     },
 }
 
@@ -116,30 +105,6 @@ impl ExprValidator {
                 });
             }
         }
-        let body_expr = &body[body.body_expr];
-        if let Expr::Block { statements, tail, .. } = body_expr {
-            if let Some(t) = tail {
-                self.validate_results_in_tail_expr(body.body_expr, *t, db);
-            } else if let Some(Statement::Expr { expr: id, .. }) = statements.last() {
-                self.validate_missing_tail_expr(body.body_expr, *id);
-            }
-        }
-
-        let infer = &self.infer;
-        let diagnostics = &mut self.diagnostics;
-
-        infer
-            .expr_type_mismatches()
-            .filter_map(|(expr, mismatch)| {
-                let (expr_without_ref, mutability) =
-                    check_missing_refs(infer, expr, &mismatch.expected)?;
-
-                Some((expr_without_ref, mutability))
-            })
-            .for_each(|(arg_expr, mutability)| {
-                diagnostics
-                    .push(BodyValidationDiagnostic::AddReferenceHere { arg_expr, mutability });
-            });
     }
 
     fn validate_call(
@@ -329,66 +294,6 @@ impl ExprValidator {
             *have_errors = true;
         }
         pattern
-    }
-
-    fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {
-        // the mismatch will be on the whole block currently
-        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
-            Some(m) => m,
-            None => return,
-        };
-
-        let core_result_path = path![core::result::Result];
-        let core_option_path = path![core::option::Option];
-
-        let resolver = self.owner.resolver(db.upcast());
-        let core_result_enum = match resolver.resolve_known_enum(db.upcast(), &core_result_path) {
-            Some(it) => it,
-            _ => return,
-        };
-        let core_option_enum = match resolver.resolve_known_enum(db.upcast(), &core_option_path) {
-            Some(it) => it,
-            _ => return,
-        };
-
-        let (params, required) = match mismatch.expected.kind(Interner) {
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
-                if *enum_id == core_result_enum =>
-            {
-                (parameters, "Ok".to_string())
-            }
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
-                if *enum_id == core_option_enum =>
-            {
-                (parameters, "Some".to_string())
-            }
-            _ => return,
-        };
-
-        if params.len(Interner) > 0 && params.at(Interner, 0).ty(Interner) == Some(&mismatch.actual)
-        {
-            self.diagnostics
-                .push(BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr: id, required });
-        }
-    }
-
-    fn validate_missing_tail_expr(&mut self, body_id: ExprId, possible_tail_id: ExprId) {
-        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
-            Some(m) => m,
-            None => return,
-        };
-
-        let possible_tail_ty = match self.infer.type_of_expr.get(possible_tail_id) {
-            Some(ty) => ty,
-            None => return,
-        };
-
-        if !mismatch.actual.is_unit() || mismatch.expected != *possible_tail_ty {
-            return;
-        }
-
-        self.diagnostics
-            .push(BodyValidationDiagnostic::RemoveThisSemicolon { expr: possible_tail_id });
     }
 }
 
