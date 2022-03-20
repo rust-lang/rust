@@ -542,7 +542,7 @@ impl Emitter for SilentEmitter {
             if let Some(ref note) = self.fatal_note {
                 d.note(note);
             }
-            self.fatal_handler.emit_diagnostic(&d);
+            self.fatal_handler.emit_diagnostic(&mut d);
         }
     }
 }
