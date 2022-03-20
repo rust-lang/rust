@@ -1004,6 +1004,26 @@ impl Adt {
         Type::from_def(db, id.module(db.upcast()).krate(), id)
     }
 
+    /// Turns this ADT into a type with the given type parameters. This isn't
+    /// the greatest API, FIXME find a better one.
+    pub fn ty_with_args(self, db: &dyn HirDatabase, args: &[Type]) -> Type {
+        let id = AdtId::from(self);
+        let mut it = args.iter().map(|t| t.ty.clone());
+        let ty = TyBuilder::def_ty(db, id.into())
+            .fill(|x| {
+                let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                match x {
+                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Const(ty) => {
+                        unknown_const_as_generic(ty.clone())
+                    }
+                }
+            })
+            .build();
+        let krate = id.module(db.upcast()).krate();
+        Type::new(db, krate, id, ty)
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
             Adt::Struct(s) => s.module(db),
@@ -1017,6 +1037,14 @@ impl Adt {
             Adt::Struct(s) => s.name(db),
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
+        }
+    }
+
+    pub fn as_enum(&self) -> Option<Enum> {
+        if let Self::Enum(v) = self {
+            Some(*v)
+        } else {
+            None
         }
     }
 }

@@ -1,5 +1,8 @@
-use hir::{db::AstDatabase, HirDisplay, Type};
-use ide_db::source_change::SourceChange;
+use hir::{db::AstDatabase, HirDisplay, Type, TypeInfo};
+use ide_db::{
+    famous_defs::FamousDefs, source_change::SourceChange,
+    syntax_helpers::node_ext::for_each_tail_expr,
+};
 use syntax::{AstNode, TextRange};
 use text_edit::TextEdit;
 
@@ -30,6 +33,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
     let mut fixes = Vec::new();
 
     add_reference(ctx, d, &mut fixes);
+    add_missing_ok_or_some(ctx, d, &mut fixes);
 
     if fixes.is_empty() {
         None
@@ -38,7 +42,11 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
     }
 }
 
-fn add_reference(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch, acc: &mut Vec<Assist>) -> Option<()> {
+fn add_reference(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::TypeMismatch,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
     let expr_node = d.expr.value.to_node(&root);
 
@@ -59,9 +67,52 @@ fn add_reference(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch, acc: &mut 
     Some(())
 }
 
+fn add_missing_ok_or_some(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::TypeMismatch,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let tail_expr = d.expr.value.to_node(&root);
+    let tail_expr_range = tail_expr.syntax().text_range();
+    let scope = ctx.sema.scope(tail_expr.syntax());
+
+    let expected_adt = d.expected.as_adt()?;
+    let expected_enum = expected_adt.as_enum()?;
+
+    let famous_defs = FamousDefs(&ctx.sema, scope.krate());
+    let core_result = famous_defs.core_result_Result();
+    let core_option = famous_defs.core_option_Option();
+
+    if Some(expected_enum) != core_result && Some(expected_enum) != core_option {
+        return None;
+    }
+
+    let variant_name = if Some(expected_enum) == core_result { "Ok" } else { "Some" };
+
+    let wrapped_actual_ty = expected_adt.ty_with_args(ctx.sema.db, &[d.actual.clone()]);
+
+    if !d.expected.could_unify_with(ctx.sema.db, &wrapped_actual_ty) {
+        return None;
+    }
+
+    let mut builder = TextEdit::builder();
+    for_each_tail_expr(&tail_expr, &mut |expr| {
+        if ctx.sema.type_of_expr(expr).map(TypeInfo::adjusted).as_ref() != Some(&d.expected) {
+            builder.insert(expr.syntax().text_range().start(), format!("{}(", variant_name));
+            builder.insert(expr.syntax().text_range().end(), ")".to_string());
+        }
+    });
+    let source_change =
+        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), builder.finish());
+    let name = format!("Wrap in {}", variant_name);
+    acc.push(fix("wrap_tail_expr", &name, source_change, tail_expr_range));
+    Some(())
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
 
     #[test]
     fn missing_reference() {
@@ -215,6 +266,175 @@ fn main() {
     let test: &mut i32 = &mut 123;
 }
             "#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_option() {
+        check_fix(
+            r#"
+//- minicore: option, result
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        return None;
+    }
+    x / y$0
+}
+"#,
+            r#"
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        return None;
+    }
+    Some(x / y)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_option_tails() {
+        check_fix(
+            r#"
+//- minicore: option, result
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        0
+    } else if true {
+        100
+    } else {
+        None
+    }$0
+}
+"#,
+            r#"
+fn div(x: i32, y: i32) -> Option<i32> {
+    if y == 0 {
+        Some(0)
+    } else if true {
+        Some(100)
+    } else {
+        None
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type() {
+        check_fix(
+            r#"
+//- minicore: option, result
+fn div(x: i32, y: i32) -> Result<i32, ()> {
+    if y == 0 {
+        return Err(());
+    }
+    x / y$0
+}
+"#,
+            r#"
+fn div(x: i32, y: i32) -> Result<i32, ()> {
+    if y == 0 {
+        return Err(());
+    }
+    Ok(x / y)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_handles_generic_functions() {
+        check_fix(
+            r#"
+//- minicore: option, result
+fn div<T>(x: T) -> Result<T, i32> {
+    if x == 0 {
+        return Err(7);
+    }
+    $0x
+}
+"#,
+            r#"
+fn div<T>(x: T) -> Result<T, i32> {
+    if x == 0 {
+        return Err(7);
+    }
+    Ok(x)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_handles_type_aliases() {
+        check_fix(
+            r#"
+//- minicore: option, result
+type MyResult<T> = Result<T, ()>;
+
+fn div(x: i32, y: i32) -> MyResult<i32> {
+    if y == 0 {
+        return Err(());
+    }
+    x $0/ y
+}
+"#,
+            r#"
+type MyResult<T> = Result<T, ()>;
+
+fn div(x: i32, y: i32) -> MyResult<i32> {
+    if y == 0 {
+        return Err(());
+    }
+    Ok(x / y)
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_in_const_and_static() {
+        check_fix(
+            r#"
+//- minicore: option, result
+static A: Option<()> = {($0)};
+            "#,
+            r#"
+static A: Option<()> = {Some(())};
+            "#,
+        );
+        check_fix(
+            r#"
+//- minicore: option, result
+const _: Option<()> = {($0)};
+            "#,
+            r#"
+const _: Option<()> = {Some(())};
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable_when_expr_type_does_not_match_ok_type() {
+        check_no_fix(
+            r#"
+//- minicore: option, result
+fn foo() -> Result<(), i32> { 0$0 }
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_return_type_not_applicable_when_return_type_is_not_result_or_option() {
+        check_no_fix(
+            r#"
+//- minicore: option, result
+enum SomeOtherEnum { Ok(i32), Err(String) }
+
+fn foo() -> SomeOtherEnum { 0$0 }
+"#,
         );
     }
 }
