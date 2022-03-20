@@ -147,7 +147,15 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
         let owned_handle = handle_or_null.0;
-        if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle.is_null() {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(())
+        } else {
+            Ok(owned_handle)
+        }
     }
 }
 
@@ -197,7 +205,15 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
         let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle == c::INVALID_HANDLE_VALUE { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle == c::INVALID_HANDLE_VALUE {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(())
+        } else {
+            Ok(owned_handle)
+        }
     }
 }
 
