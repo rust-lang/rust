@@ -1486,7 +1486,7 @@ impl<'a> Parser<'a> {
                             // `check_trailing_angle_brackets` already emitted a nicer error
                             // NOTE(eddyb) this was `.cancel()`, but `err`
                             // gets returned, so we can't fully defuse it.
-                            err.downgrade_to_delayed_bug();
+                            err.delay_as_bug();
                         }
                     }
                 }
