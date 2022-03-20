@@ -67,10 +67,7 @@ pub struct InlayHint {
 //
 // * return types of closure expressions with blocks
 // * elided lifetimes
-//
-// **Note:** VS Code does not have native support for inlay hints https://github.com/microsoft/vscode/issues/16221[yet] and the hints are implemented using decorations.
-// This approach has limitations, the caret movement and bracket highlighting near the edges of the hint may be weird:
-// https://github.com/rust-analyzer/rust-analyzer/issues/1623[1], https://github.com/rust-analyzer/rust-analyzer/issues/3453[2].
+// * compiler inserted reborrows
 //
 // |===
 // | Editor  | Action Name
