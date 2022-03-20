@@ -1,9 +1,14 @@
 use hir::{db::AstDatabase, HirDisplay, Type, TypeInfo};
 use ide_db::{
-    famous_defs::FamousDefs, source_change::SourceChange,
+    base_db::{FileLoader, FileRange},
+    famous_defs::FamousDefs,
+    source_change::SourceChange,
     syntax_helpers::node_ext::for_each_tail_expr,
 };
-use syntax::{AstNode, TextRange};
+use syntax::{
+    ast::{BlockExpr, ExprStmt},
+    AstNode, TextRange, TextSize,
+};
 use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
@@ -34,6 +39,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
 
     add_reference(ctx, d, &mut fixes);
     add_missing_ok_or_some(ctx, d, &mut fixes);
+    remove_semicolon(ctx, d, &mut fixes);
 
     if fixes.is_empty() {
         None
@@ -107,6 +113,33 @@ fn add_missing_ok_or_some(
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), builder.finish());
     let name = format!("Wrap in {}", variant_name);
     acc.push(fix("wrap_tail_expr", &name, source_change, tail_expr_range));
+    Some(())
+}
+
+fn remove_semicolon(
+    ctx: &DiagnosticsContext<'_>,
+    d: &hir::TypeMismatch,
+    acc: &mut Vec<Assist>,
+) -> Option<()> {
+    let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
+    let expr = d.expr.value.to_node(&root);
+    if !d.actual.is_unit() {
+        return None;
+    }
+    let block = BlockExpr::cast(expr.syntax().clone())?;
+    let expr_before_semi =
+        block.statements().last().and_then(|s| ExprStmt::cast(s.syntax().clone()))?;
+    let type_before_semi = ctx.sema.type_of_expr(&expr_before_semi.expr()?)?.original();
+    if !type_before_semi.could_coerce_to(ctx.sema.db, &d.expected) {
+        return None;
+    }
+    let semicolon_range = expr_before_semi.semicolon_token()?.text_range();
+
+    let edit = TextEdit::delete(semicolon_range);
+    let source_change =
+        SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
+
+    acc.push(fix("remove_semicolon", "Remove this semicolon", source_change, semicolon_range));
     Some(())
 }
 
@@ -436,5 +469,10 @@ enum SomeOtherEnum { Ok(i32), Err(String) }
 fn foo() -> SomeOtherEnum { 0$0 }
 "#,
         );
+    }
+
+    #[test]
+    fn remove_semicolon() {
+        check_fix(r#"fn f() -> i32 { 92$0; }"#, r#"fn f() -> i32 { 92 }"#);
     }
 }
