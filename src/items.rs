@@ -1273,7 +1273,13 @@ pub(crate) fn format_struct_struct(
     result.push_str(&header_str);
 
     let header_hi = struct_parts.ident.span.hi();
-    let body_lo = context.snippet_provider.span_after(span, "{");
+    let body_lo = if let Some(generics) = struct_parts.generics {
+        // Adjust the span to start at the end of the generic arguments before searching for the '{'
+        let span = span.with_lo(generics.span.hi());
+        context.snippet_provider.span_after(span, "{")
+    } else {
+        context.snippet_provider.span_after(span, "{")
+    };
 
     let generics_str = match struct_parts.generics {
         Some(g) => format_generics(
