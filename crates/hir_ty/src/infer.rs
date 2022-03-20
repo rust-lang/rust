@@ -43,9 +43,9 @@ use crate::{
 // This lint has a false positive here. See the link below for details.
 //
 // https://github.com/rust-lang/rust/issues/57411
+pub use coerce::could_coerce;
 #[allow(unreachable_pub)]
 pub use unify::could_unify;
-pub use coerce::could_coerce;
 
 pub(crate) mod unify;
 mod path;

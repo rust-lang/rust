@@ -3,8 +3,8 @@
 use std::{fmt, mem, sync::Arc};
 
 use chalk_ir::{
-    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, FloatTy, IntTy, NoSolution,
-    TyVariableKind, UniverseIndex, CanonicalVarKind,
+    cast::Cast, fold::Fold, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy, IntTy,
+    NoSolution, TyVariableKind, UniverseIndex,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use ena::unify::UnifyKey;
@@ -299,14 +299,12 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback_inner(&mut Vec::new(), t, &fallback)
     }
 
-    pub(crate) fn fresh_subst(
-        &mut self,
-        binders: &[CanonicalVarKind<Interner>],
-    ) -> Substitution {
+    pub(crate) fn fresh_subst(&mut self, binders: &[CanonicalVarKind<Interner>]) -> Substitution {
         Substitution::from_iter(
             Interner,
             binders.iter().map(|kind| {
-                let param_infer_var = kind.map_ref(|&ui| self.var_unification_table.new_variable(ui));
+                let param_infer_var =
+                    kind.map_ref(|&ui| self.var_unification_table.new_variable(ui));
                 param_infer_var.to_generic_arg(Interner)
             }),
         )

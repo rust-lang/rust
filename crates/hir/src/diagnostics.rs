@@ -5,7 +5,7 @@
 //! be expressed in terms of hir types themselves.
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_def::{path::ModPath, type_ref::Mutability};
+use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 

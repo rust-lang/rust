@@ -7,19 +7,20 @@
 
 use std::{iter, sync::Arc};
 
-use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind, BoundVar};
+use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 use stdx::always;
 use syntax::SmolStr;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
+    db::HirDatabase,
     infer::{
-        Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, OverloadedDeref,
-        PointerCast, TypeError, TypeMismatch,
+        Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
+        TypeError, TypeMismatch,
     },
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
-    Solution, Substitution, Ty, TyBuilder, TyExt, TyKind, db::HirDatabase, TraitEnvironment, GenericArgData,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::unify::InferenceTable;

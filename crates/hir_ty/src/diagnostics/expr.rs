@@ -4,10 +4,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    expr::Statement, path::path, resolver::HasResolver, type_ref::Mutability, AssocItemId,
-    DefWithBodyId, HasModule,
-};
+use hir_def::{path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule};
 use hir_expand::name;
 use itertools::Either;
 use rustc_hash::FxHashSet;
@@ -20,7 +17,7 @@ use crate::{
         deconstruct_pat::DeconstructedPat,
         usefulness::{compute_match_usefulness, MatchCheckCtx},
     },
-    AdtId, InferenceResult, Interner, Ty, TyExt, TyKind,
+    InferenceResult, Interner, TyExt,
 };
 
 pub(crate) use hir_def::{
@@ -427,31 +424,4 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
     let mut has_type_mismatches = false;
     walk(pat, body, infer, &mut has_type_mismatches);
     !has_type_mismatches
-}
-
-fn check_missing_refs(
-    infer: &InferenceResult,
-    arg: ExprId,
-    param: &Ty,
-) -> Option<(ExprId, Mutability)> {
-    let arg_ty = infer.type_of_expr.get(arg)?;
-
-    let reference_one = arg_ty.as_reference();
-    let reference_two = param.as_reference();
-
-    match (reference_one, reference_two) {
-        (None, Some((referenced_ty, _, mutability))) if referenced_ty == arg_ty => {
-            Some((arg, Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut))))
-        }
-        (None, Some((referenced_ty, _, mutability))) => match referenced_ty.kind(Interner) {
-            TyKind::Slice(subst) if matches!(arg_ty.kind(Interner), TyKind::Array(arr_subst, _) if arr_subst == subst) => {
-                Some((
-                    arg,
-                    Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut)),
-                ))
-            }
-            _ => None,
-        },
-        _ => None,
-    }
 }

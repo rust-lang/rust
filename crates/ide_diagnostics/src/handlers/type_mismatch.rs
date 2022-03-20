@@ -1,13 +1,11 @@
 use hir::{db::AstDatabase, HirDisplay, Type, TypeInfo};
 use ide_db::{
-    base_db::{FileLoader, FileRange},
-    famous_defs::FamousDefs,
-    source_change::SourceChange,
+    famous_defs::FamousDefs, source_change::SourceChange,
     syntax_helpers::node_ext::for_each_tail_expr,
 };
 use syntax::{
     ast::{BlockExpr, ExprStmt},
-    AstNode, TextRange, TextSize,
+    AstNode,
 };
 use text_edit::TextEdit;
 

@@ -58,7 +58,6 @@ use hir_ty::{
     consteval::{
         eval_const, unknown_const_as_generic, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt,
     },
-    could_unify,
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
@@ -1014,9 +1013,7 @@ impl Adt {
                 let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
                 match x {
                     ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
-                    ParamKind::Const(ty) => {
-                        unknown_const_as_generic(ty.clone())
-                    }
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
                 }
             })
             .build();
@@ -1329,7 +1326,6 @@ impl DefWithBody {
                         Err(SyntheticSyntax) => (),
                     }
                 }
-                _ => {} // TODO fixme
             }
         }
 
@@ -2644,11 +2640,14 @@ impl Type {
     }
 
     pub fn reference(inner: &Type, m: Mutability) -> Type {
-        inner.derived(TyKind::Ref(
-            if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-            hir_ty::static_lifetime(),
-            inner.ty.clone(),
-        ).intern(Interner))
+        inner.derived(
+            TyKind::Ref(
+                if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
+                hir_ty::static_lifetime(),
+                inner.ty.clone(),
+            )
+            .intern(Interner),
+        )
     }
 
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
