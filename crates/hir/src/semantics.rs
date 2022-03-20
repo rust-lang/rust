@@ -358,6 +358,10 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_macro_call(macro_call)
     }
 
+    pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
+        self.imp.is_unsafe_macro_call(macro_call)
+    }
+
     pub fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<Macro> {
         self.imp.resolve_attr_macro_call(item)
     }
@@ -959,6 +963,12 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(macro_call.syntax());
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
         sa.resolve_macro_call(self.db, macro_call)
+    }
+
+    fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
+        let sa = self.analyze(macro_call.syntax());
+        let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
+        sa.is_unsafe_macro_call(self.db, macro_call)
     }
 
     fn resolve_attr_macro_call(&self, item: &ast::Item) -> Option<Macro> {

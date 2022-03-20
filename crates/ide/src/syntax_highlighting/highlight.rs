@@ -248,6 +248,16 @@ fn highlight_name_ref(
                         }
                     }
                 }
+                Definition::Macro(_) => {
+                    if let Some(macro_call) =
+                        ide_db::syntax_helpers::node_ext::full_path_of_name_ref(&name_ref)
+                            .and_then(|it| it.syntax().parent().and_then(ast::MacroCall::cast))
+                    {
+                        if sema.is_unsafe_macro_call(&macro_call) {
+                            h |= HlMod::Unsafe;
+                        }
+                    }
+                }
                 _ => (),
             }
 
