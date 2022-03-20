@@ -21,14 +21,14 @@ pub(super) fn check<'tcx>(
     let or_arg_content: Span;
 
     if is_type_diagnostic_item(cx, ty, sym::Option) {
-        title = ".or(Some(…)).unwrap() found";
+        title = "found `.or(Some(…)).unwrap()`";
         if let Some(content) = get_content_if_is(or_arg, "Some") {
             or_arg_content = content;
         } else {
             return;
         }
     } else if is_type_diagnostic_item(cx, ty, sym::Result) {
-        title = ".or(Ok(…)).unwrap() found";
+        title = "found `.or(Ok(…)).unwrap()`";
         if let Some(content) = get_content_if_is(or_arg, "Ok") {
             or_arg_content = content;
         } else {
