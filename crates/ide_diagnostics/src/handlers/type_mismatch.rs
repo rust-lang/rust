@@ -1,37 +1,62 @@
-use hir::db::AstDatabase;
+use hir::{db::AstDatabase, HirDisplay, Type};
 use ide_db::source_change::SourceChange;
-use syntax::AstNode;
+use syntax::{AstNode, TextRange};
 use text_edit::TextEdit;
 
 use crate::{fix, Assist, Diagnostic, DiagnosticsContext};
 
-// Diagnostic: add-reference-here
+// Diagnostic: type-mismatch
 //
-// This diagnostic is triggered when there's a missing referencing of expression.
-pub(crate) fn add_reference_here(
-    ctx: &DiagnosticsContext<'_>,
-    d: &hir::AddReferenceHere,
-) -> Diagnostic {
-    Diagnostic::new(
-        "add-reference-here",
-        "add reference here",
+// This diagnostic is triggered when the type of an expression does not match
+// the expected type.
+pub(crate) fn type_mismatch(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Diagnostic {
+    let mut diag = Diagnostic::new(
+        "type-mismatch",
+        format!(
+            "expected {}, found {}",
+            d.expected.display(ctx.sema.db),
+            d.actual.display(ctx.sema.db)
+        ),
         ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range,
     )
-    .with_fixes(fixes(ctx, d))
+    .with_fixes(fixes(ctx, d));
+    if diag.fixes.is_none() {
+        diag.experimental = true;
+    }
+    diag
 }
 
-fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::AddReferenceHere) -> Option<Vec<Assist>> {
+fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assist>> {
+    let mut fixes = Vec::new();
+
+    add_reference(ctx, d, &mut fixes);
+
+    if fixes.is_empty() {
+        None
+    } else {
+        Some(fixes)
+    }
+}
+
+fn add_reference(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch, acc: &mut Vec<Assist>) -> Option<()> {
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
-    let arg_expr = d.expr.value.to_node(&root);
+    let expr_node = d.expr.value.to_node(&root);
 
-    let arg_with_ref = format!("&{}{}", d.mutability.as_keyword_for_ref(), arg_expr.syntax());
+    let range = ctx.sema.diagnostics_display_range(d.expr.clone().map(|it| it.into())).range;
 
-    let arg_range = arg_expr.syntax().text_range();
-    let edit = TextEdit::replace(arg_range, arg_with_ref);
+    let (_, mutability) = d.expected.as_reference()?;
+    let actual_with_ref = Type::reference(&d.actual, mutability);
+    if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
+        return None;
+    }
+
+    let ampersands = format!("&{}", mutability.as_keyword_for_ref());
+
+    let edit = TextEdit::insert(expr_node.syntax().text_range().start(), ampersands);
     let source_change =
         SourceChange::from_text_edit(d.expr.file_id.original_file(ctx.sema.db), edit);
-
-    Some(vec![fix("add_reference_here", "Add reference here", source_change, arg_range)])
+    acc.push(fix("add_reference_here", "Add reference here", source_change, range));
+    Some(())
 }
 
 #[cfg(test)]
@@ -44,7 +69,7 @@ mod tests {
             r#"
 fn main() {
     test(123);
-       //^^^ 💡 error: add reference here
+       //^^^ 💡 error: expected &i32, found i32
 }
 fn test(arg: &i32) {}
 "#,
@@ -91,6 +116,7 @@ fn test(arg: &mut i32) {}
     fn test_add_reference_to_array() {
         check_fix(
             r#"
+//- minicore: coerce_unsized
 fn main() {
     test($0[1, 2, 3]);
 }
@@ -101,6 +127,37 @@ fn main() {
     test(&[1, 2, 3]);
 }
 fn test(arg: &[i32]) {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn test_add_reference_with_autoderef() {
+        check_fix(
+            r#"
+//- minicore: coerce_unsized, deref
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+}
+
+fn main() {
+    test($0Foo);
+}
+fn test(arg: &Bar) {}
+            "#,
+            r#"
+struct Foo;
+struct Bar;
+impl core::ops::Deref for Foo {
+    type Target = Bar;
+}
+
+fn main() {
+    test(&Foo);
+}
+fn test(arg: &Bar) {}
             "#,
         );
     }

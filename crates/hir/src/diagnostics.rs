@@ -28,7 +28,6 @@ macro_rules! diagnostics {
 }
 
 diagnostics![
-    AddReferenceHere,
     BreakOutsideOfLoop,
     InactiveCode,
     IncorrectCase,
@@ -38,11 +37,10 @@ diagnostics![
     MismatchedArgCount,
     MissingFields,
     MissingMatchArms,
-    MissingOkOrSomeInTailExpr,
     MissingUnsafe,
     NoSuchField,
-    RemoveThisSemicolon,
     ReplaceFilterMapNextWithFindMap,
+    TypeMismatch,
     UnimplementedBuiltinMacro,
     UnresolvedExternCrate,
     UnresolvedImport,
@@ -148,28 +146,16 @@ pub struct MismatchedArgCount {
 }
 
 #[derive(Debug)]
-pub struct RemoveThisSemicolon {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-}
-
-#[derive(Debug)]
-pub struct MissingOkOrSomeInTailExpr {
-    pub expr: InFile<AstPtr<ast::Expr>>,
-    // `Some` or `Ok` depending on whether the return type is Result or Option
-    pub required: String,
-    pub expected: Type,
-}
-
-#[derive(Debug)]
 pub struct MissingMatchArms {
     pub file: HirFileId,
     pub match_expr: AstPtr<ast::Expr>,
 }
 
 #[derive(Debug)]
-pub struct AddReferenceHere {
+pub struct TypeMismatch {
     pub expr: InFile<AstPtr<ast::Expr>>,
-    pub mutability: Mutability,
+    pub expected: Type,
+    pub actual: Type,
 }
 
 pub use hir_ty::diagnostics::IncorrectCase;
