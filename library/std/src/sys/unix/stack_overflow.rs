@@ -67,7 +67,7 @@ mod imp {
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
-        (*info).si_addr as usize
+        (*info).si_addr() as usize
     }
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages
