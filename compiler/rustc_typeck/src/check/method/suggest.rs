@@ -599,7 +599,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     // Make sure that, if any traits other than the found ones were involved,
                     // we don't don't report an unimplemented trait.
-                    // We don't want to say that `iter::Cloned` is not an interator, just
+                    // We don't want to say that `iter::Cloned` is not an iterator, just
                     // because of some non-Clone item being iterated over.
                     for (predicate, _parent_pred, _cause) in &unsatisfied_predicates {
                         match predicate.kind().skip_binder() {
