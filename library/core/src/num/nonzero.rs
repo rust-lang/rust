@@ -6,7 +6,32 @@ use crate::str::FromStr;
 
 use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
-use crate::intrinsics;
+use crate::{intrinsics, sealed::Sealed};
+
+/// A number that is known not to equal zero.
+///
+/// # Safety
+///
+/// Implementors of this trait must not have a memory representation for zero.
+pub unsafe trait NonZero: Sealed {
+    /// The primitive scalar type.
+    ///
+    /// # Examples
+    ///
+    /// ## Type Aliases
+    ///
+    /// When referring to an integer type through an alias, this can be used to
+    /// state its primitive type.
+    ///
+    /// ```
+    /// use std::num::{NonZero, NonZeroU32};
+    ///
+    /// type NonZeroInt = NonZeroU32;
+    ///
+    /// let n: <NonZeroInt as NonZero>::Scalar = 1;
+    /// ```
+    type Scalar;
+}
 
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
@@ -40,6 +65,12 @@ macro_rules! nonzero_integers {
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
             pub struct $Ty($Int);
+
+            impl Sealed for $Ty {}
+
+            unsafe impl NonZero for $Ty {
+                type Scalar = $Int;
+            }
 
             impl $Ty {
                 /// Creates a non-zero without checking whether the value is non-zero.

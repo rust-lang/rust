@@ -422,3 +422,11 @@ pub mod simd {
 }
 
 include!("primitive_docs.rs");
+
+mod sealed {
+    /// This trait being unreachable from outside the crate
+    /// prevents outside implementations of our extension traits.
+    /// This allows adding more trait methods in the future.
+    #[unstable(feature = "sealed", issue = "none")]
+    pub trait Sealed {}
+}
