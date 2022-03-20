@@ -172,6 +172,12 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
+#[derive(Debug)]
+pub enum ImplSubject<'tcx> {
+    Trait(TraitRef<'tcx>),
+    Inherent(Ty<'tcx>),
+}
+
 #[derive(
     Copy,
     Clone,

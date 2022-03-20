@@ -24,7 +24,7 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
 use std::fmt::Debug;
@@ -307,46 +307,47 @@ fn negative_impl<'cx, 'tcx>(
         // create a parameter environment corresponding to a (placeholder) instantiation of impl1
         let impl1_env = tcx.param_env(impl1_def_id);
 
-        if let Some(impl1_trait_ref) = tcx.impl_trait_ref(impl1_def_id) {
-            // Normalize the trait reference. The WF rules ought to ensure
-            // that this always succeeds.
-            let impl1_trait_ref = match traits::fully_normalize(
-                &infcx,
-                FulfillmentContext::new(),
-                ObligationCause::dummy(),
-                impl1_env,
-                impl1_trait_ref,
-            ) {
-                Ok(impl1_trait_ref) => impl1_trait_ref,
-                Err(err) => {
-                    bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
-                }
-            };
+        match tcx.impl_header(impl1_def_id) {
+            ImplSubject::Trait(impl1_trait_ref) => {
+                // Normalize the trait reference. The WF rules ought to ensure
+                // that this always succeeds.
+                let impl1_trait_ref = match traits::fully_normalize(
+                    &infcx,
+                    FulfillmentContext::new(),
+                    ObligationCause::dummy(),
+                    impl1_env,
+                    impl1_trait_ref,
+                ) {
+                    Ok(impl1_trait_ref) => impl1_trait_ref,
+                    Err(err) => {
+                        bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+                    }
+                };
 
-            // Attempt to prove that impl2 applies, given all of the above.
-            let selcx = &mut SelectionContext::new(&infcx);
-            let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-            let (impl2_trait_ref, obligations) =
-                impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+                // Attempt to prove that impl2 applies, given all of the above.
+                let selcx = &mut SelectionContext::new(&infcx);
+                let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+                let (impl2_trait_ref, obligations) =
+                    impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
 
-            !obligations_satisfiable(
-                &infcx,
-                impl1_env,
-                impl1_def_id,
-                impl1_trait_ref,
-                impl2_trait_ref,
-                obligations,
-            )
-        } else {
-            let ty1 = tcx.type_of(impl1_def_id);
-            let ty2 = tcx.type_of(impl2_def_id);
-
-            !obligations_satisfiable(&infcx, impl1_env, impl1_def_id, ty1, ty2, iter::empty())
+                !equate(
+                    &infcx,
+                    impl1_env,
+                    impl1_def_id,
+                    impl1_trait_ref,
+                    impl2_trait_ref,
+                    obligations,
+                )
+            }
+            ImplSubject::Inherent(ty1) => {
+                let ty2 = tcx.type_of(impl2_def_id);
+                !equate(&infcx, impl1_env, impl1_def_id, ty1, ty2, iter::empty())
+            }
         }
     })
 }
 
-fn obligations_satisfiable<'cx, 'tcx, T: Debug + ToTrace<'tcx>>(
+fn equate<'cx, 'tcx, T: Debug + ToTrace<'tcx>>(
     infcx: &InferCtxt<'cx, 'tcx>,
     impl1_env: ty::ParamEnv<'tcx>,
     impl1_def_id: DefId,
