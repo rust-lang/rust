@@ -1,5 +1,5 @@
-#![feature(rustc_private, decl_macro)]
-#![cfg_attr(feature = "jit", feature(never_type, vec_into_raw_parts, once_cell))]
+#![feature(rustc_private)]
+// Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
@@ -105,7 +105,6 @@ mod prelude {
     pub(crate) use crate::common::*;
     pub(crate) use crate::debuginfo::{DebugContext, UnwindContext};
     pub(crate) use crate::pointer::Pointer;
-    pub(crate) use crate::trap::*;
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
 }
 
@@ -196,7 +195,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),
             CodegenMode::Jit | CodegenMode::JitLazy => {
                 #[cfg(feature = "jit")]
-                let _: ! = driver::jit::run_jit(tcx, config);
+                driver::jit::run_jit(tcx, config);
 
                 #[cfg(not(feature = "jit"))]
                 tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
@@ -301,7 +300,10 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Box<dyn isa::Tar
         }
     };
 
-    isa_builder.finish(flags)
+    match isa_builder.finish(flags) {
+        Ok(target_isa) => target_isa,
+        Err(err) => sess.fatal(&format!("failed to build TargetIsa: {}", err)),
+    }
 }
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift

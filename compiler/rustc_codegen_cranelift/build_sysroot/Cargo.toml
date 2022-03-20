@@ -14,7 +14,6 @@ compiler_builtins = { version = "0.1.39", default-features = false, features = [
 rustc-std-workspace-core = { path = "./sysroot_src/library/rustc-std-workspace-core" }
 rustc-std-workspace-alloc = { path = "./sysroot_src/library/rustc-std-workspace-alloc" }
 rustc-std-workspace-std = { path = "./sysroot_src/library/rustc-std-workspace-std" }
-compiler_builtins = { path = "./compiler-builtins" }
 
 [profile.dev]
 lto = "off"
@@ -23,3 +22,14 @@ lto = "off"
 debug = true
 incremental = true
 lto = "off"
+
+# Mandatory for correctly compiling compiler-builtins
+[profile.dev.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
+
+[profile.release.package.compiler_builtins]
+debug-assertions = false
+overflow-checks = false
+codegen-units = 10000
