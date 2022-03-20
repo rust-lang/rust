@@ -8,6 +8,7 @@ use base_db::{FileId, FileRange};
 use hir_def::{
     body, macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
+    type_ref::Mutability,
     AsMacroCall, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
@@ -311,6 +312,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         self.imp.resolve_type(ty)
+    }
+
+    // FIXME: Figure out a nice interface to inspect adjustments
+    pub fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {
+        self.imp.is_implicit_reborrow(expr)
     }
 
     pub fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {
@@ -898,6 +904,10 @@ impl<'db> SemanticsImpl<'db> {
         let ty = hir_ty::TyLoweringContext::new(self.db, &scope.resolver)
             .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Type::new_with_resolver(self.db, &scope.resolver, ty)
+    }
+
+    fn is_implicit_reborrow(&self, expr: &ast::Expr) -> Option<Mutability> {
+        self.analyze(expr.syntax()).is_implicit_reborrow(self.db, expr)
     }
 
     fn type_of_expr(&self, expr: &ast::Expr) -> Option<TypeInfo> {

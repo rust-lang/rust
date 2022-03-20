@@ -426,7 +426,11 @@ pub(crate) fn inlay_hint(
             _ => inlay_hint.label.to_string(),
         }),
         position: match inlay_hint.kind {
-            InlayKind::ParameterHint => position(line_index, inlay_hint.range.start()),
+            // before annotated thing
+            InlayKind::ParameterHint | InlayKind::ImplicitReborrow => {
+                position(line_index, inlay_hint.range.start())
+            }
+            // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
             | InlayKind::ChainingHint
@@ -438,7 +442,9 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_ext::InlayHintKind::TYPE)
             }
-            InlayKind::GenericParamListHint | InlayKind::LifetimeHint => None,
+            InlayKind::GenericParamListHint
+            | InlayKind::LifetimeHint
+            | InlayKind::ImplicitReborrow => None,
         },
         tooltip: None,
         padding_left: Some(match inlay_hint.kind {
@@ -447,6 +453,7 @@ pub(crate) fn inlay_hint(
             InlayKind::ChainingHint => true,
             InlayKind::GenericParamListHint => false,
             InlayKind::LifetimeHint => false,
+            InlayKind::ImplicitReborrow => false,
         }),
         padding_right: Some(match inlay_hint.kind {
             InlayKind::TypeHint | InlayKind::ChainingHint | InlayKind::ClosureReturnTypeHint => {
@@ -455,6 +462,7 @@ pub(crate) fn inlay_hint(
             InlayKind::ParameterHint => true,
             InlayKind::LifetimeHint => true,
             InlayKind::GenericParamListHint => false,
+            InlayKind::ImplicitReborrow => false,
         }),
     }
 }

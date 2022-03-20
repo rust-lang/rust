@@ -20,12 +20,14 @@ use hir_def::{
     macro_id_to_def_id,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
+    type_ref::Mutability,
     AsMacroCall, DefWithBodyId, FieldId, FunctionId, LocalFieldId, ModuleDefId, VariantId,
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
     diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
-    InferenceResult, Interner, Substitution, TyExt, TyLoweringContext,
+    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, TyExt,
+    TyLoweringContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -137,6 +139,23 @@ impl SourceAnalyzer {
             _ => InFile::new(macro_file, ast::Expr::cast(expanded)?),
         };
         Some(res)
+    }
+
+    pub(crate) fn is_implicit_reborrow(
+        &self,
+        db: &dyn HirDatabase,
+        expr: &ast::Expr,
+    ) -> Option<Mutability> {
+        let expr_id = self.expr_id(db, expr)?;
+        let infer = self.infer.as_ref()?;
+        let adjustments = infer.expr_adjustments.get(&expr_id)?;
+        adjustments.windows(2).find_map(|slice| match slice {
+            &[Adjustment {kind: Adjust::Deref(None), ..}, Adjustment {kind: Adjust::Borrow(AutoBorrow::Ref(m)), ..}] => Some(match m {
+                hir_ty::Mutability::Mut => Mutability::Mut,
+                hir_ty::Mutability::Not => Mutability::Shared,
+            }),
+            _ => None,
+        })
     }
 
     pub(crate) fn type_of_expr(

@@ -50,7 +50,9 @@ use crate::{db::HirDatabase, utils::generics};
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
-pub use infer::{could_unify, InferenceDiagnostic, InferenceResult};
+pub use infer::{
+    could_unify, Adjust, Adjustment, AutoBorrow, InferenceDiagnostic, InferenceResult,
+};
 pub use interner::Interner;
 pub use lower::{
     associated_type_shorthand_candidates, callable_item_sig, CallableDefId, ImplTraitLoweringMode,

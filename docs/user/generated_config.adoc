@@ -378,6 +378,11 @@ Whether to show inlay type hints for method chains.
 --
 Whether to show inlay type hints for return types of closures with blocks.
 --
+[[rust-analyzer.inlayHints.reborrowHints]]rust-analyzer.inlayHints.reborrowHints (default: `false`)::
++
+--
+Whether to show inlay type hints for compiler inserted reborrows.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints]]rust-analyzer.inlayHints.lifetimeElisionHints (default: `"never"`)::
 +
 --
