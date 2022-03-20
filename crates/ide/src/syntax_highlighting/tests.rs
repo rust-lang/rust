@@ -483,6 +483,16 @@ fn main() {
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
+macro_rules! id {
+    ($($tt:tt)*) => {
+        $($tt)*
+    };
+}
+macro_rules! unsafe_deref {
+    () => {
+        *(&() as *const ())
+    };
+}
 static mut MUT_GLOBAL: Struct = Struct { field: 0 };
 static GLOBAL: Struct = Struct { field: 0 };
 unsafe fn unsafe_fn() {}
@@ -519,7 +529,15 @@ impl DoTheAutoref for u16 {
 fn main() {
     let x = &5 as *const _ as *const usize;
     let u = Union { b: 0 };
+
+    id! {
+        unsafe { unsafe_deref!() }
+    };
+
     unsafe {
+        unsafe_deref!();
+        id! { unsafe_deref!() };
+
         // unsafe fn and method calls
         unsafe_fn();
         let b = u.b;

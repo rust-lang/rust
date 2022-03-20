@@ -25,7 +25,10 @@ use hir_def::{
 };
 use hir_expand::{hygiene::Hygiene, name::AsName, HirFileId, InFile};
 use hir_ty::{
-    diagnostics::{record_literal_missing_fields, record_pattern_missing_fields},
+    diagnostics::{
+        record_literal_missing_fields, record_pattern_missing_fields, unsafe_expressions,
+        UnsafeExpr,
+    },
     Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, TyExt,
     TyLoweringContext,
 };
@@ -46,8 +49,7 @@ use base_db::CrateId;
 pub(crate) struct SourceAnalyzer {
     pub(crate) file_id: HirFileId,
     pub(crate) resolver: Resolver,
-    body: Option<Arc<Body>>,
-    body_source_map: Option<Arc<BodySourceMap>>,
+    def: Option<(DefWithBodyId, Arc<Body>, Arc<BodySourceMap>)>,
     infer: Option<Arc<InferenceResult>>,
 }
 
@@ -67,8 +69,7 @@ impl SourceAnalyzer {
         let resolver = resolver_for_scope(db.upcast(), def, scope);
         SourceAnalyzer {
             resolver,
-            body: Some(body),
-            body_source_map: Some(source_map),
+            def: Some((def, body, source_map)),
             infer: Some(db.infer(def)),
             file_id,
         }
@@ -87,26 +88,21 @@ impl SourceAnalyzer {
             Some(offset) => scope_for_offset(db, &scopes, &source_map, node.with_value(offset)),
         };
         let resolver = resolver_for_scope(db.upcast(), def, scope);
-        SourceAnalyzer {
-            resolver,
-            body: Some(body),
-            body_source_map: Some(source_map),
-            infer: None,
-            file_id,
-        }
+        SourceAnalyzer { resolver, def: Some((def, body, source_map)), infer: None, file_id }
     }
 
     pub(crate) fn new_for_resolver(
         resolver: Resolver,
         node: InFile<&SyntaxNode>,
     ) -> SourceAnalyzer {
-        SourceAnalyzer {
-            resolver,
-            body: None,
-            body_source_map: None,
-            infer: None,
-            file_id: node.file_id,
-        }
+        SourceAnalyzer { resolver, def: None, infer: None, file_id: node.file_id }
+    }
+
+    fn body_source_map(&self) -> Option<&BodySourceMap> {
+        self.def.as_ref().map(|(.., source_map)| &**source_map)
+    }
+    fn body(&self) -> Option<&Body> {
+        self.def.as_ref().map(|(_, body, _)| &**body)
     }
 
     fn expr_id(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<ExprId> {
@@ -116,14 +112,14 @@ impl SourceAnalyzer {
             }
             _ => InFile::new(self.file_id, expr.clone()),
         };
-        let sm = self.body_source_map.as_ref()?;
+        let sm = self.body_source_map()?;
         sm.node_expr(src.as_ref())
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
         // FIXME: macros, see `expr_id`
         let src = InFile { file_id: self.file_id, value: pat };
-        self.body_source_map.as_ref()?.node_pat(src)
+        self.body_source_map()?.node_pat(src)
     }
 
     fn expand_expr(
@@ -131,7 +127,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         expr: InFile<ast::MacroCall>,
     ) -> Option<InFile<ast::Expr>> {
-        let macro_file = self.body_source_map.as_ref()?.node_macro_file(expr.as_ref())?;
+        let macro_file = self.body_source_map()?.node_macro_file(expr.as_ref())?;
         let expanded = db.parse_or_expand(macro_file)?;
 
         let res = match ast::MacroCall::cast(expanded.clone()) {
@@ -196,7 +192,7 @@ impl SourceAnalyzer {
         param: &ast::SelfParam,
     ) -> Option<Type> {
         let src = InFile { file_id: self.file_id, value: param };
-        let pat_id = self.body_source_map.as_ref()?.node_self_param(src)?;
+        let pat_id = self.body_source_map()?.node_self_param(src)?;
         let ty = self.infer.as_ref()?[pat_id].clone();
         Type::new_with_resolver(db, &self.resolver, ty)
     }
@@ -226,7 +222,7 @@ impl SourceAnalyzer {
     ) -> Option<(Field, Option<Local>, Type)> {
         let record_expr = ast::RecordExpr::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let expr = ast::Expr::from(record_expr);
-        let expr_id = self.body_source_map.as_ref()?.node_expr(InFile::new(self.file_id, &expr))?;
+        let expr_id = self.body_source_map()?.node_expr(InFile::new(self.file_id, &expr))?;
 
         let local_name = field.field_name()?.as_name();
         let local = if field.name_ref().is_some() {
@@ -279,7 +275,7 @@ impl SourceAnalyzer {
         pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        let body = self.body.as_ref()?;
+        let body = self.body()?;
         let path = match &body[pat_id] {
             Pat::Path(path) => path,
             _ => return None,
@@ -415,7 +411,7 @@ impl SourceAnalyzer {
         literal: &ast::RecordExpr,
     ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
-        let body = self.body.as_ref()?;
+        let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
         let expr_id = self.expr_id(db, &literal.clone().into())?;
@@ -433,7 +429,7 @@ impl SourceAnalyzer {
         pattern: &ast::RecordPat,
     ) -> Option<Vec<(Field, Type)>> {
         let krate = self.resolver.krate()?;
-        let body = self.body.as_ref()?;
+        let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
         let pat_id = self.pat_id(&pattern.clone().into())?;
@@ -487,6 +483,34 @@ impl SourceAnalyzer {
         let infer = self.infer.as_ref()?;
         let expr_id = self.expr_id(db, &record_lit.into())?;
         infer.variant_resolution_for_expr(expr_id)
+    }
+
+    pub(crate) fn is_unsafe_macro_call(
+        &self,
+        db: &dyn HirDatabase,
+        macro_call: InFile<&ast::MacroCall>,
+    ) -> bool {
+        if let (Some((def, body, sm)), Some(infer)) = (&self.def, &self.infer) {
+            if let Some(expr_ids) = sm.macro_expansion_expr(macro_call) {
+                let mut is_unsafe = false;
+                for &expr_id in expr_ids {
+                    unsafe_expressions(
+                        db,
+                        infer,
+                        *def,
+                        body,
+                        expr_id,
+                        &mut |UnsafeExpr { inside_unsafe_block, .. }| {
+                            is_unsafe |= !inside_unsafe_block
+                        },
+                    );
+                    if is_unsafe {
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 }
 

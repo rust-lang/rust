@@ -19,6 +19,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .operator.unsafe    { color: #BC8383; }
 .mutable.unsafe     { color: #BC8383; text-decoration: underline; }
 .keyword.unsafe     { color: #BC8383; font-weight: bold; }
+.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -41,7 +42,17 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 
 .unresolved_reference { color: #FC5555; text-decoration: wavy underline; }
 </style>
-<pre><code><span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+<pre><code><span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">id</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="colon">:</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+        <span class="punctuation">$</span><span class="parenthesis">(</span><span class="punctuation">$</span>tt<span class="parenthesis">)</span><span class="punctuation">*</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+<span class="keyword">macro_rules</span><span class="punctuation">!</span> <span class="macro declaration">unsafe_deref</span> <span class="brace">{</span>
+    <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span><span class="angle">&gt;</span> <span class="brace">{</span>
+        <span class="punctuation">*</span><span class="parenthesis">(</span><span class="operator">&</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="keyword">as</span> <span class="punctuation">*</span><span class="keyword">const</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="parenthesis">)</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+<span class="brace">}</span>
+<span class="keyword">static</span> <span class="keyword">mut</span> <span class="static declaration mutable unsafe">MUT_GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
 <span class="keyword">static</span> <span class="static declaration">GLOBAL</span><span class="colon">:</span> <span class="struct">Struct</span> <span class="operator">=</span> <span class="struct">Struct</span> <span class="brace">{</span> <span class="field">field</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
 <span class="keyword unsafe">unsafe</span> <span class="keyword">fn</span> <span class="function declaration unsafe">unsafe_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span><span class="brace">}</span>
 
@@ -77,7 +88,15 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">x</span> <span class="operator">=</span> <span class="operator">&</span><span class="numeric_literal">5</span> <span class="keyword">as</span> <span class="keyword">*</span><span class="keyword">const</span> <span class="punctuation">_</span> <span class="keyword">as</span> <span class="keyword">*</span><span class="keyword">const</span> <span class="builtin_type">usize</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">u</span> <span class="operator">=</span> <span class="union">Union</span> <span class="brace">{</span> <span class="field">b</span><span class="colon">:</span> <span class="numeric_literal">0</span> <span class="brace">}</span><span class="semicolon">;</span>
+
+    <span class="macro">id</span><span class="macro_bang">!</span> <span class="brace">{</span>
+        <span class="keyword unsafe">unsafe</span> <span class="brace">{</span> <span class="macro unsafe">unsafe_deref</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">}</span>
+    <span class="brace">}</span><span class="semicolon">;</span>
+
     <span class="keyword unsafe">unsafe</span> <span class="brace">{</span>
+        <span class="macro unsafe">unsafe_deref</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
+        <span class="macro unsafe">id</span><span class="macro_bang">!</span> <span class="brace">{</span> <span class="macro unsafe">unsafe_deref</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">}</span><span class="semicolon">;</span>
+
         <span class="comment">// unsafe fn and method calls</span>
         <span class="function unsafe">unsafe_fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
         <span class="keyword">let</span> <span class="variable declaration">b</span> <span class="operator">=</span> <span class="variable">u</span><span class="operator">.</span><span class="field unsafe">b</span><span class="semicolon">;</span>

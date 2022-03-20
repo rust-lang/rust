@@ -19,6 +19,7 @@ use la_arena::{Arena, ArenaMap};
 use limit::Limit;
 use profile::Count;
 use rustc_hash::FxHashMap;
+use smallvec::SmallVec;
 use syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 
 use crate::{
@@ -293,6 +294,10 @@ pub struct BodySourceMap {
     field_map: FxHashMap<InFile<AstPtr<ast::RecordExprField>>, ExprId>,
     field_map_back: FxHashMap<ExprId, InFile<AstPtr<ast::RecordExprField>>>,
 
+    /// Maps a macro call to its lowered expressions, a single one if it expands to an expression,
+    /// or multiple if it expands to MacroStmts.
+    macro_call_to_exprs: FxHashMap<InFile<AstPtr<ast::MacroCall>>, SmallVec<[ExprId; 1]>>,
+
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
     /// Diagnostics accumulated during body lowering. These contain `AstPtr`s and so are stored in
@@ -459,6 +464,11 @@ impl BodySourceMap {
     pub fn node_field(&self, node: InFile<&ast::RecordExprField>) -> Option<ExprId> {
         let src = node.map(AstPtr::new);
         self.field_map.get(&src).cloned()
+    }
+
+    pub fn macro_expansion_expr(&self, node: InFile<&ast::MacroCall>) -> Option<&[ExprId]> {
+        let src = node.map(AstPtr::new);
+        self.macro_call_to_exprs.get(&src).map(|it| &**it)
     }
 
     /// Get a reference to the body source map's diagnostics.
