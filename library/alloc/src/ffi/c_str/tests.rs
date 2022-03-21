@@ -143,6 +143,45 @@ fn cstr_from_bytes_until_nul() {
 }
 
 #[test]
+fn cstring_from_vec_until_nul() {
+    // Test an empty vec. This should fail because it
+    // does not contain a nul byte.
+    let v = vec![];
+    assert_eq!(CString::from_vec_until_nul(v), Err(FromVecUntilNulError { bytes: vec![] }));
+
+    // Test a non-empty vec ("hello"), that does not contain a nul byte.
+    let v = Vec::from(&b"hello"[..]);
+    assert_eq!(CString::from_vec_until_nul(v.clone()), Err(FromVecUntilNulError { bytes: v }));
+
+    // Test an empty nul-terminated string
+    let v = vec![0u8];
+    let r = CString::from_vec_until_nul(v).unwrap();
+    assert_eq!(r.into_bytes(), b"");
+
+    // Test a vec with the nul byte in the middle (and some excess capacity)
+    let mut v = Vec::<u8>::with_capacity(20);
+    v.extend_from_slice(b"hello\0world!");
+    let r = CString::from_vec_until_nul(v).unwrap();
+    assert_eq!(r.into_bytes(), b"hello");
+
+    // Test a vec with the nul byte at the end (and some excess capacity)
+    let mut v = Vec::<u8>::with_capacity(20);
+    v.extend_from_slice(b"hello\0");
+    let r = CString::from_vec_until_nul(v).unwrap();
+    assert_eq!(r.into_bytes(), b"hello");
+
+    // Test a vec with two nul bytes at the end
+    let v = Vec::from(&b"hello\0\0"[..]);
+    let r = CString::from_vec_until_nul(v).unwrap();
+    assert_eq!(r.into_bytes(), b"hello");
+
+    // Test a vec containing lots of nul bytes
+    let v = vec![0u8, 0, 0, 0];
+    let r = CString::from_vec_until_nul(v).unwrap();
+    assert_eq!(r.into_bytes(), b"");
+}
+
+#[test]
 fn into_boxed() {
     let orig: &[u8] = b"Hello, world!\0";
     let cstr = CStr::from_bytes_with_nul(orig).unwrap();

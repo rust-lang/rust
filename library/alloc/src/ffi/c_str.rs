@@ -214,6 +214,36 @@ impl FromVecWithNulError {
     }
 }
 
+/// An error indicating that a nul byte was not found.
+///
+/// The vector passed to [`CString::from_vec_until_nul`] must have at
+/// least one nul byte present.
+///
+#[derive(Clone, PartialEq, Eq, Debug)]
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+pub struct FromVecUntilNulError {
+    bytes: Vec<u8>,
+}
+
+#[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+impl FromVecUntilNulError {
+    /// Returns a `u8` slice containing the bytes that were attempted to convert
+    /// to a [`CString`].
+    #[must_use]
+    #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+
+    /// Returns ownership of the bytes that were attempted to convert
+    /// to a [`CString`].
+    #[must_use = "`self` will be dropped if the result is not used"]
+    #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
+    }
+}
+
 /// An error indicating invalid UTF-8 when converting a [`CString`] into a [`String`].
 ///
 /// `CString` is just a wrapper over a buffer of bytes with a nul terminator;
@@ -688,6 +718,50 @@ impl CString {
                 error_kind: FromBytesWithNulErrorKind::NotNulTerminated,
                 bytes: v,
             }),
+        }
+    }
+
+    /// Attempts to convert a <code>[Vec]<[u8]></code> to a [`CString`].
+    ///
+    /// The input [`Vec`] must contain at least one nul byte.
+    ///
+    /// If the nul byte is not at the end of the input `Vec`, then the `Vec`
+    /// will be truncated so that there is only one nul byte, and that byte
+    /// is at the end.
+    ///
+    /// # Errors
+    ///
+    /// If no nul byte is present, an error will be returned.
+    ///
+    /// # Examples
+    /// ```
+    /// #![feature(cstr_from_bytes_until_nul)]
+    ///
+    /// use std::ffi::CString;
+    ///
+    /// let mut buffer = vec![0u8; 16];
+    /// unsafe {
+    ///     // Here we might call an unsafe C function that writes a string
+    ///     // into the buffer.
+    ///     let buf_ptr = buffer.as_mut_ptr();
+    ///     buf_ptr.write_bytes(b'A', 8);
+    /// }
+    /// // Attempt to extract a C nul-terminated string from the buffer.
+    /// let c_str = CString::from_vec_until_nul(buffer).unwrap();
+    /// assert_eq!(c_str.into_string().unwrap(), "AAAAAAAA");
+    /// ```
+    ///
+    #[unstable(feature = "cstr_from_bytes_until_nul", issue = "95027")]
+    pub fn from_vec_until_nul(mut v: Vec<u8>) -> Result<Self, FromVecUntilNulError> {
+        let nul_pos = memchr::memchr(0, &v);
+        match nul_pos {
+            Some(nul_pos) => {
+                v.truncate(nul_pos + 1);
+                // SAFETY: We know there is a nul byte at nul_pos, so this slice
+                // (ending at the nul byte) is a well-formed C string.
+                Ok(unsafe { Self::_from_vec_with_nul_unchecked(v) })
+            }
+            None => Err(FromVecUntilNulError { bytes: v }),
         }
     }
 }
