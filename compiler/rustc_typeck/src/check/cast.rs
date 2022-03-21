@@ -807,11 +807,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             // ptr -> *
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
-            (Ptr(m_expr), Int(_)) => self.check_ptr_addr_cast(fcx, m_expr), // ptr-addr-cast
-            (FnPtr, Int(_)) => Ok(CastKind::FnPtrAddrCast),
 
-            // * -> ptr
-            (Int(_), Ptr(mt)) => self.check_addr_ptr_cast(fcx, mt), // addr-ptr-cast
+            // ptr-addr-cast
+            (Ptr(m_expr), Int(_)) => {
+                self.fuzzy_provenance_ptr2int_lint(fcx, t_from);
+                self.check_ptr_addr_cast(fcx, m_expr)
+            }
+            (FnPtr, Int(_)) => {
+                self.fuzzy_provenance_ptr2int_lint(fcx, t_from);
+                Ok(CastKind::FnPtrAddrCast)
+            }
+            // addr-ptr-cast
+            (Int(_), Ptr(mt)) => {
+                self.fuzzy_provenance_int2ptr_lint(fcx);
+                self.check_addr_ptr_cast(fcx, mt)
+            }
+            // fn-ptr-cast
             (FnPtr, Ptr(mt)) => self.check_fptr_ptr_cast(fcx, mt),
 
             // prim -> prim
@@ -934,6 +945,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         fcx: &FnCtxt<'a, 'tcx>,
         m_cast: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
+        self.fuzzy_provenance_int2ptr_lint(fcx);
         // ptr-addr cast. pointer must be thin.
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),
@@ -972,6 +984,50 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 );
             }
         }
+    }
+
+    fn fuzzy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_from: CastTy<'tcx>) {
+        fcx.tcx.struct_span_lint_hir(
+            lint::builtin::FUZZY_PROVENANCE_CASTS,
+            self.expr.hir_id,
+            self.span,
+            |err| {
+                let mut err = err.build(&format!(
+                    "strict provenance disallows casting pointer `{}` to integer `{}`",
+                    self.expr_ty, self.cast_ty
+                ));
+
+                if let CastTy::FnPtr = t_from {
+                    err.help(
+                        "use `(... as *const u8).addr()` to obtain \
+                         the address of a function pointer",
+                    );
+                } else {
+                    err.help("use `.addr()` to obtain the address of a pointer");
+                }
+
+                err.emit();
+            },
+        );
+    }
+
+    fn fuzzy_provenance_int2ptr_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+        fcx.tcx.struct_span_lint_hir(
+            lint::builtin::FUZZY_PROVENANCE_CASTS,
+            self.expr.hir_id,
+            self.span,
+            |err| {
+                err.build(&format!(
+                    "strict provenance disallows casting integer `{}` to pointer `{}`",
+                    self.expr_ty, self.cast_ty
+                ))
+                .help(
+                    "use `.with_addr(...)` to adjust a valid pointer \
+                     in the same allocation, to this address",
+                )
+                .emit();
+            },
+        );
     }
 }
 
