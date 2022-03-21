@@ -1391,6 +1391,23 @@ impl Build {
         paths
     }
 
+    pub fn rename(&self, src: &Path, dst: &Path) {
+        if self.config.dry_run {
+            return;
+        }
+        self.verbose_than(1, &format!("Move {:?} to {:?}", src, dst));
+        if src == dst {
+            return;
+        }
+        if let Err(e) = fs::rename(src, dst) {
+            if e.raw_os_error() == Some(libc::EXDEV) {
+                self.copy(src, dst);
+                return;
+            }
+            panic!("failed to rename `{}` to `{}`: {}", src.display(), dst.display(), e);
+        }
+    }
+
     /// Copies a file from `src` to `dst`
     pub fn copy(&self, src: &Path, dst: &Path) {
         if self.config.dry_run {

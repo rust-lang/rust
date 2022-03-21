@@ -12,7 +12,6 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::check;
 use crate::compile;
 use crate::config::{SplitDebuginfo, TargetSelection};
 use crate::dist;
@@ -25,6 +24,7 @@ use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
+use crate::{check, Config};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -958,6 +958,11 @@ impl<'a> Builder<'a> {
             }
         }
         None
+    }
+
+    /// Convenience wrapper to allow `builder.llvm_link_shared()` instead of `builder.config.llvm_link_shared(&builder)`.
+    pub(crate) fn llvm_link_shared(&self) -> bool {
+        Config::llvm_link_shared(self)
     }
 
     /// Prepares an invocation of `cargo` to be run.
