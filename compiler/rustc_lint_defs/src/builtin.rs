@@ -2649,6 +2649,41 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
+    /// and a pointer.
+    ///
+    /// ### Example
+    ///
+    /// fn main() {
+    ///     let my_ref = &0;
+    ///     let my_addr = my_ref as usize;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Casting a pointer to an integer or an integer to a pointer is a lossy operation,
+    /// because beyond just an *address* a pointer may be associated with a particular
+    /// *provenance* and *segment*. This information is required by both the compiler
+    /// and the hardware to correctly execute your code. If you need to do this kind
+    /// of operation, use ptr::addr and ptr::with_addr.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error
+    /// in the future. See [issue #9999999] for more details.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    /// [issue #9999999]: https://github.com/rust-lang/rust/issues/9999999
+    pub FUZZY_PROVENANCE_CASTS,
+    Warn,
+    "A lossy pointer-integer integer cast is used",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #9999999 <https://github.com/rust-lang/rust/issues/9999999>",
+    };
+}
+
+declare_lint! {
     /// The `const_evaluatable_unchecked` lint detects a generic constant used
     /// in a type.
     ///
@@ -3101,6 +3136,7 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
+        FUZZY_PROVENANCE_CASTS,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         MUST_NOT_SUSPEND,
