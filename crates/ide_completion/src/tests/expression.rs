@@ -552,3 +552,24 @@ fn func() {
         "#]],
     );
 }
+
+#[test]
+fn with_parens() {
+    check_empty(
+        r#"
+enum Enum {
+    Variant()
+}
+impl Enum {
+    fn variant() -> Self { Enum::Variant() }
+}
+fn func() {
+    Enum::$0()
+}
+"#,
+        expect![[r#"
+            ev Variant(…) Variant
+            fn variant    fn() -> Enum
+        "#]],
+    );
+}
