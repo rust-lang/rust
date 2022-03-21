@@ -4,7 +4,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
-use rustc_middle::ty::{self, EarlyBinder, Ty, TyCtxt, GeneratorSubsts};
+use rustc_middle::ty::{self, EarlyBinder, GeneratorSubsts, Ty, TyCtxt};
 use rustc_target::abi::VariantIdx;
 
 use rustc_index::vec::{Idx, IndexVec};
@@ -486,20 +486,12 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             self.make_clone_call(dest_field, src_field, ity, next_block, unwind);
             self.block(
                 vec![],
-                TerminatorKind::Drop {
-                    place: dest_field,
-                    target: unwind,
-                    unwind: None,
-                },
+                TerminatorKind::Drop { place: dest_field, target: unwind, unwind: None },
                 true,
             );
             unwind = next_unwind;
         }
-        self.block(
-            vec![],
-            TerminatorKind::Goto { target },
-            false,
-        );
+        self.block(vec![], TerminatorKind::Goto { target }, false);
         unwind
     }
 
@@ -507,11 +499,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     where
         I: IntoIterator<Item = Ty<'tcx>>,
     {
-        self.block(
-            vec![],
-            TerminatorKind::Goto { target: self.block_index_offset(3) },
-            false,
-        );
+        self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
         let unwind = self.block(vec![], TerminatorKind::Resume, true);
         let target = self.block(vec![], TerminatorKind::Return, false);
 
@@ -525,11 +513,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         gen_def_id: DefId,
         substs: GeneratorSubsts<'tcx>,
     ) {
-        self.block(
-            vec![],
-            TerminatorKind::Goto { target: self.block_index_offset(3) },
-            false,
-        );
+        self.block(vec![], TerminatorKind::Goto { target: self.block_index_offset(3) }, false);
         let unwind = self.block(vec![], TerminatorKind::Resume, true);
         // This will get overwritten with a switch once we know the target blocks
         let switch = self.block(vec![], TerminatorKind::Unreachable, false);
@@ -566,7 +550,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                     switch_ty: discr_ty,
                     targets: SwitchTargets::new(cases.into_iter(), unreachable),
                 };
-            },
+            }
             BasicBlockData { terminator: None, .. } => unreachable!(),
         }
     }

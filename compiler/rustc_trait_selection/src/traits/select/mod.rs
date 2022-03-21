@@ -1939,11 +1939,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Generator(_, substs, hir::Movability::Movable) => {
                 if self.tcx().features().generator_clone {
-                    let resolved_upvars = self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
-                    let resolved_witness = self.infcx.shallow_resolve(substs.as_generator().witness());
+                    let resolved_upvars =
+                        self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
+                    let resolved_witness =
+                        self.infcx.shallow_resolve(substs.as_generator().witness());
                     if {
-                        matches!(resolved_upvars.kind(), ty::Infer(ty::TyVar(_))) ||
-                        matches!(resolved_witness.kind(), ty::Infer(ty::TyVar(_)))
+                        matches!(resolved_upvars.kind(), ty::Infer(ty::TyVar(_)))
+                            || matches!(resolved_witness.kind(), ty::Infer(ty::TyVar(_)))
                     } {
                         // Not yet resolved.
                         Ambiguous
@@ -1967,14 +1969,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             if matches!(resolved.kind(), ty::Infer(ty::TyVar(_))) {
                                 break Ambiguous;
                             }
-                        },
+                        }
                         Option::None => {
                             // (*) binder moved here
                             let all_vars = self.tcx().mk_bound_variable_kinds(
-                                obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter())
+                                obligation
+                                    .predicate
+                                    .bound_vars()
+                                    .iter()
+                                    .chain(binder.bound_vars().iter()),
                             );
-                            break Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars));
-                        },
+                            break Where(ty::Binder::bind_with_vars(
+                                witness_tys.to_vec(),
+                                all_vars,
+                            ));
+                        }
                     }
                 }
             }
