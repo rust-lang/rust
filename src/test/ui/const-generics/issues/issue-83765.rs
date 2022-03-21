@@ -3,6 +3,7 @@
 
 trait TensorDimension {
     const DIM : usize;
+    //~^ ERROR cycle detected when resolving instance `<LazyUpdim<T, {T::DIM}, DIM>
     const ISSCALAR : bool = Self::DIM == 0;
     fn is_scalar(&self) -> bool {Self::ISSCALAR}
 }
@@ -42,22 +43,16 @@ impl<'a,T : Broadcastable,const DIM : usize> TensorDimension for LazyUpdim<'a,T,
 
 impl<'a,T : Broadcastable,const DIM : usize> TensorSize for LazyUpdim<'a,T,{T::DIM},DIM> {
     fn size(&self) -> [usize;DIM] {self.size}
-    //~^ ERROR method not compatible with trait
 }
 
 impl<'a,T : Broadcastable,const DIM : usize>  Broadcastable for LazyUpdim<'a,T,{T::DIM},DIM>
 {
     type Element = T::Element;
     fn bget(&self,index:[usize;DIM]) -> Option<Self::Element> {
-      //~^ ERROR method not compatible with trait
         assert!(DIM >= T::DIM);
         if !self.inbounds(index) {return None}
-        //~^ ERROR unconstrained generic constant
-        //~| ERROR mismatched types
         let size = self.size();
-        //~^ ERROR unconstrained generic constant
         let newindex : [usize;T::DIM] = Default::default();
-        //~^ ERROR the trait bound `[usize; _]: Default` is not satisfied
         self.reference.bget(newindex)
     }
 }
@@ -76,9 +71,6 @@ impl<'a,R, T : Broadcastable, F :  Fn(T::Element) -> R  ,
       const DIM: usize> TensorSize for BMap<'a,R,T,F,DIM> {
 
     fn size(&self) -> [usize;DIM] {self.reference.size()}
-    //~^ ERROR unconstrained generic constant
-    //~| ERROR mismatched types
-    //~| ERROR method not compatible with trait
 }
 
 impl<'a,R, T : Broadcastable, F :  Fn(T::Element) -> R  ,
@@ -86,10 +78,7 @@ impl<'a,R, T : Broadcastable, F :  Fn(T::Element) -> R  ,
 
     type Element = R;
     fn bget(&self,index:[usize;DIM]) -> Option<Self::Element> {
-      //~^ ERROR method not compatible with trait
         self.reference.bget(index).map(&self.closure)
-        //~^ ERROR unconstrained generic constant
-        //~| ERROR mismatched types
     }
 }
 
