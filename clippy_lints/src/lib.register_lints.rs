@@ -320,6 +320,7 @@ store.register_lints(&[
     methods::OPTION_FILTER_MAP,
     methods::OPTION_MAP_OR_NONE,
     methods::OR_FUN_CALL,
+    methods::OR_THEN_UNWRAP,
     methods::RESULT_MAP_OR_INTO_OPTION,
     methods::SEARCH_IS_SOME,
     methods::SHOULD_IMPLEMENT_TRAIT,
