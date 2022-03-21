@@ -1,5 +1,6 @@
 // run-pass
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 // ignore-wasm32-bare compiled with panic=abort by default
 
 // Check that values are not leaked when a dtor panics (#14875)

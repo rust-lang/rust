@@ -13,10 +13,11 @@ impl Drop for A {
 }
 
 #[no_mangle]
-pub fn a(a: Box<i32>) {
+pub fn a(b: Box<i32>) {
     // CHECK-LABEL: define{{.*}}void @a
     // CHECK: call void @__rust_dealloc
-    // CHECK-NEXT: call void @foo
-    let _a = A;
-    drop(a);
+    // CHECK-NOT: call void @foo
+    let a = A;
+    drop(b);
+    std::mem::forget(a);
 }

@@ -1,5 +1,6 @@
 // run-fail
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 // error-pattern:panic 1
 // error-pattern:drop 2
 // ignore-emscripten no processes

@@ -24,7 +24,7 @@
           StorageDead(_3);                 // scope 0 at $DIR/cycle.rs:6:7: 6:8
           StorageDead(_2);                 // scope 0 at $DIR/cycle.rs:6:8: 6:9
           _0 = const ();                   // scope 0 at $DIR/cycle.rs:5:20: 7:2
-          drop(_1) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/cycle.rs:7:1: 7:2
+          drop(_1) -> bb2;                 // scope 0 at $DIR/cycle.rs:7:1: 7:2
       }
   
       bb2: {

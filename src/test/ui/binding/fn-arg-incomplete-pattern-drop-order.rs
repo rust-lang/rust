@@ -1,5 +1,6 @@
 // run-pass
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 // Check that partially moved from function parameters are dropped after the
 // named bindings that move from them.
 

@@ -1,7 +1,7 @@
 // check that we don't emit unneeded `resume` cleanup blocks for every
 // destructor.
 
-// CHECK-NOT: Unwind
+// CHECK-NOT: _Unwind_Resume
 
 #![feature(test)]
 #![crate_type="rlib"]

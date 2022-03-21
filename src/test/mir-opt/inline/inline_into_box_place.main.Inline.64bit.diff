@@ -50,19 +50,18 @@
           _1 = move _5;                    // scope 0 at $DIR/inline-into-box-place.rs:8:29: 8:43
           StorageDead(_5);                 // scope 0 at $DIR/inline-into-box-place.rs:8:42: 8:43
           _0 = const ();                   // scope 0 at $DIR/inline-into-box-place.rs:7:11: 9:2
--         drop(_1) -> [return: bb3, unwind: bb4]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
-+         drop(_1) -> [return: bb2, unwind: bb3]; // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
+-         drop(_1) -> bb3;                 // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
++         drop(_1) -> bb2;                 // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
       }
   
 -     bb3: {
 +     bb2: {
           StorageDead(_1);                 // scope 0 at $DIR/inline-into-box-place.rs:9:1: 9:2
           return;                          // scope 0 at $DIR/inline-into-box-place.rs:9:2: 9:2
-      }
-  
+-     }
+- 
 -     bb4 (cleanup): {
-+     bb3 (cleanup): {
-          resume;                          // scope 0 at $DIR/inline-into-box-place.rs:7:1: 9:2
+-         resume;                          // scope 0 at $DIR/inline-into-box-place.rs:7:1: 9:2
 -     }
 - 
 -     bb5 (cleanup): {

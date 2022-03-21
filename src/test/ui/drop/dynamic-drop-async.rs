@@ -5,6 +5,7 @@
 
 // run-pass
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 // edition:2018
 // ignore-wasm32-bare compiled with panic=abort by default
 

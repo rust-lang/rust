@@ -1,5 +1,6 @@
 // run-pass
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 // ignore-emscripten no threads support
 
 // Make sure the destructor is run for unit-like structs.

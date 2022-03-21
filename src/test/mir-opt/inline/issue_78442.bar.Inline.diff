@@ -38,7 +38,7 @@
 -         StorageDead(_4);                 // scope 0 at $DIR/issue-78442.rs:11:17: 11:18
 -         StorageDead(_2);                 // scope 0 at $DIR/issue-78442.rs:11:17: 11:18
 -         _0 = const ();                   // scope 0 at $DIR/issue-78442.rs:10:3: 12:2
--         drop(_1) -> [return: bb3, unwind: bb5]; // scope 0 at $DIR/issue-78442.rs:12:1: 12:2
+-         drop(_1) -> bb3;                 // scope 0 at $DIR/issue-78442.rs:12:1: 12:2
 +         return;                          // scope 0 at $DIR/issue-78442.rs:12:2: 12:2
       }
   
@@ -61,7 +61,7 @@
 +         StorageDead(_4);                 // scope 0 at $DIR/issue-78442.rs:11:17: 11:18
 +         StorageDead(_2);                 // scope 0 at $DIR/issue-78442.rs:11:17: 11:18
 +         _0 = const ();                   // scope 0 at $DIR/issue-78442.rs:10:3: 12:2
-+         drop(_1) -> [return: bb2, unwind: bb4]; // scope 0 at $DIR/issue-78442.rs:12:1: 12:2
++         drop(_1) -> bb2;                 // scope 0 at $DIR/issue-78442.rs:12:1: 12:2
       }
   }
   

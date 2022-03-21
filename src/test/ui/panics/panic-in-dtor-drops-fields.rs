@@ -1,5 +1,6 @@
 // run-pass
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 #![allow(dead_code)]
 #![allow(non_upper_case_globals)]
 

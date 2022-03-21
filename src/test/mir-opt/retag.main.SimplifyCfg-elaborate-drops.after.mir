@@ -82,7 +82,7 @@ fn main() -> () {
         StorageDead(_6);                 // scope 1 at $DIR/retag.rs:32:35: 32:36
         StorageDead(_4);                 // scope 1 at $DIR/retag.rs:32:35: 32:36
         StorageDead(_7);                 // scope 1 at $DIR/retag.rs:32:36: 32:37
-        drop(_5) -> [return: bb2, unwind: bb9]; // scope 1 at $DIR/retag.rs:32:36: 32:37
+        drop(_5) -> bb2;                 // scope 1 at $DIR/retag.rs:32:36: 32:37
     }
 
     bb2: {
@@ -167,7 +167,7 @@ fn main() -> () {
         StorageDead(_22);                // scope 7 at $DIR/retag.rs:47:23: 47:24
         StorageDead(_20);                // scope 7 at $DIR/retag.rs:47:23: 47:24
         StorageDead(_23);                // scope 7 at $DIR/retag.rs:47:24: 47:25
-        drop(_21) -> [return: bb5, unwind: bb9]; // scope 7 at $DIR/retag.rs:47:24: 47:25
+        drop(_21) -> bb5;                // scope 7 at $DIR/retag.rs:47:24: 47:25
     }
 
     bb5: {

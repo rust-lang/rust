@@ -4,6 +4,7 @@
 #![allow(unused_variables)]
 // ignore-emscripten no threads support
 // needs-unwind
+// compile-flags: -Z panic-in-drop=unwind -Z allow-incompatible-panic-in-drop
 
 use std::thread;
 use std::sync::mpsc::{channel, Sender};
