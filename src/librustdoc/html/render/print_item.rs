@@ -388,8 +388,8 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
-                            {visibility_emoji}\
                             <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                            &nbsp;{visibility_emoji}&nbsp;\
                             {unsafety_flag}\
                             {stab_tags}\
                      </div>\
