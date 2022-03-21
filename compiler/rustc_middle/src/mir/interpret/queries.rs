@@ -1,6 +1,7 @@
 use super::{ErrorHandled, EvalToConstValueResult, GlobalId};
 
 use crate::mir;
+use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::InternalSubsts;
 use crate::ty::{self, TyCtxt};
 use rustc_hir::def_id::DefId;
@@ -38,6 +39,13 @@ impl<'tcx> TyCtxt<'tcx> {
         ct: ty::Unevaluated<'tcx>,
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
+        // Cannot resolve `Unevaluated` constants that contain inference
+        // variables. We reject those here since `resolve_opt_const_arg`
+        // would fail otherwise
+        if ct.substs.has_infer_types_or_consts() {
+            return Err(ErrorHandled::TooGeneric);
+        }
+
         match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {
             Ok(Some(instance)) => {
                 let cid = GlobalId { instance, promoted: ct.promoted };
