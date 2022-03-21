@@ -151,7 +151,7 @@ use core::ptr;
 
 use crate::collections::TryReserveError;
 use crate::slice;
-use crate::vec::{self, AsIntoIter, Vec};
+use crate::vec::{self, AsVecIntoIter, Vec};
 
 use super::SpecExtend;
 
@@ -1418,7 +1418,7 @@ unsafe impl<T> SourceIter for IntoIter<T> {
 #[doc(hidden)]
 unsafe impl<I> InPlaceIterable for IntoIter<I> {}
 
-unsafe impl<I> AsIntoIter for IntoIter<I> {
+unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;
 
     fn as_into_iter(&mut self) -> &mut vec::IntoIter<Self::Item> {

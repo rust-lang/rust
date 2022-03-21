@@ -1,5 +1,5 @@
 #[cfg(not(no_global_oom_handling))]
-use super::AsIntoIter;
+use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
 use core::fmt;
@@ -346,7 +346,7 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-unsafe impl<T> AsIntoIter for IntoIter<T> {
+unsafe impl<T> AsVecIntoIter for IntoIter<T> {
     type Item = T;
 
     fn as_into_iter(&mut self) -> &mut IntoIter<Self::Item> {

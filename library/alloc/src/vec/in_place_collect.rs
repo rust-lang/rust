@@ -16,7 +16,7 @@
 //! `FromIterator` implementation benefit from this too.
 //!
 //! Access to the underlying source goes through a further layer of indirection via the private
-//! trait [`AsIntoIter`] to hide the implementation detail that other collections may use
+//! trait [`AsVecIntoIter`] to hide the implementation detail that other collections may use
 //! `vec::IntoIter` internally.
 //!
 //! In-place iteration depends on the interaction of several unsafe traits, implementation
@@ -142,16 +142,16 @@ impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
 impl<T, I> SpecFromIter<T, I> for Vec<T>
 where
-    I: Iterator<Item = T> + SourceIter<Source: AsIntoIter> + InPlaceIterableMarker,
+    I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
 {
     default fn from_iter(mut iterator: I) -> Self {
         // See "Layout constraints" section in the module documentation. We rely on const
         // optimization here since these conditions currently cannot be expressed as trait bounds
         if mem::size_of::<T>() == 0
             || mem::size_of::<T>()
-                != mem::size_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+                != mem::size_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
             || mem::align_of::<T>()
-                != mem::align_of::<<<I as SourceIter>::Source as AsIntoIter>::Item>()
+                != mem::align_of::<<<I as SourceIter>::Source as AsVecIntoIter>::Item>()
         {
             // fallback to more generic implementations
             return SpecFromIterNested::from_iter(iterator);
@@ -289,7 +289,7 @@ where
 /// In-place iteration relies on implementation details of `vec::IntoIter`, most importantly that
 /// it does not create references to the whole allocation during iteration, only raw pointers
 #[rustc_specialization_trait]
-pub(crate) unsafe trait AsIntoIter {
+pub(crate) unsafe trait AsVecIntoIter {
     type Item;
     fn as_into_iter(&mut self) -> &mut super::IntoIter<Self::Item>;
 }
