@@ -687,14 +687,23 @@ pub struct CombinedSnapshot<'a, 'tcx> {
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// calls `tcx.try_unify_abstract_consts` after
     /// canonicalizing the consts.
+    #[instrument(skip(self), level = "debug")]
     pub fn try_unify_abstract_consts(
         &self,
         a: ty::Unevaluated<'tcx, ()>,
         b: ty::Unevaluated<'tcx, ()>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        // Reject any attempt to unify two unevaluated constants that contain inference
+        // variables.
+        // FIXME `TyCtxt::const_eval_resolve` already rejects the resolution of those
+        // constants early, but the canonicalization below messes with that mechanism.
+        if a.substs.has_infer_types_or_consts() || b.substs.has_infer_types_or_consts() {
+            debug!("a or b contain infer vars in its substs -> cannot unify");
+            return false;
+        }
+
         let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
-        debug!("canonical consts: {:?}", &canonical.value);
 
         self.tcx.try_unify_abstract_consts(param_env.and(canonical.value))
     }
@@ -1599,6 +1608,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// This handles inferences variables within both `param_env` and `substs` by
     /// performing the operation on their respective canonical forms.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -1606,15 +1616,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let substs = self.resolve_vars_if_possible(unevaluated.substs);
+        debug!(?substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
+            debug!("has infer types or consts");
             return Err(ErrorHandled::TooGeneric);
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);
         let substs_erased = self.tcx.erase_regions(substs);
+        debug!(?param_env_erased);
+        debug!(?substs_erased);
 
         let unevaluated = ty::Unevaluated {
             def: unevaluated.def,
