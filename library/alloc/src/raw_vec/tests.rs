@@ -104,13 +104,14 @@ fn zst() {
     let v: RawVec<ZST> = RawVec::with_capacity_in(100, Global);
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(0, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::allocate_in::<!>(0, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
-    let v: RawVec<ZST> = RawVec::allocate_in(100, AllocInit::Uninitialized, Global);
+    let v: RawVec<ZST> = RawVec::allocate_in::<!>(100, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
-    let mut v: RawVec<ZST> = RawVec::allocate_in(usize::MAX, AllocInit::Uninitialized, Global);
+    let mut v: RawVec<ZST> =
+        RawVec::allocate_in::<!>(usize::MAX, AllocInit::Uninitialized, Global).unwrap();
     zst_sanity(&v);
 
     // Check all these operations work as expected with zero-sized elements.
@@ -127,20 +128,20 @@ fn zst() {
     //v.reserve_exact(101, usize::MAX - 100); // panics, in `zst_reserve_exact_panic` below
     zst_sanity(&v);
 
-    assert_eq!(v.try_reserve(100, usize::MAX - 100), Ok(()));
-    assert_eq!(v.try_reserve(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.reserve_impl::<TryReserveError>(100, usize::MAX - 100), Ok(()));
+    assert_eq!(v.reserve_impl::<TryReserveError>(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
     assert_eq!(v.try_reserve_exact(100, usize::MAX - 100), Ok(()));
     assert_eq!(v.try_reserve_exact(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_amortized(100, usize::MAX - 100), cap_err);
-    assert_eq!(v.grow_amortized(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.grow_amortized::<TryReserveError>(100, usize::MAX - 100), cap_err);
+    assert_eq!(v.grow_amortized::<TryReserveError>(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 
-    assert_eq!(v.grow_exact(100, usize::MAX - 100), cap_err);
-    assert_eq!(v.grow_exact(101, usize::MAX - 100), cap_err);
+    assert_eq!(v.grow_exact::<TryReserveError>(100, usize::MAX - 100), cap_err);
+    assert_eq!(v.grow_exact::<TryReserveError>(101, usize::MAX - 100), cap_err);
     zst_sanity(&v);
 }
 

@@ -141,7 +141,7 @@ use core::iter::{InPlaceIterable, SourceIter, TrustedRandomAccessNoCoerce};
 use core::mem::{self, ManuallyDrop, SizedTypeProperties};
 use core::ptr::{self};
 
-use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec};
+use super::{InPlaceDrop, InPlaceDstBufDrop, SpecFromIter, SpecFromIterNested, Vec, VecError};
 
 /// Specialization marker for collecting an iterator pipeline into a Vec while reusing the
 /// source allocation, i.e. executing the pipeline in place.
@@ -150,11 +150,11 @@ pub(super) trait InPlaceIterableMarker {}
 
 impl<T> InPlaceIterableMarker for T where T: InPlaceIterable {}
 
-impl<T, I> SpecFromIter<T, I> for Vec<T>
+impl<T, I, TError: VecError> SpecFromIter<T, I, TError> for Vec<T>
 where
     I: Iterator<Item = T> + SourceIter<Source: AsVecIntoIter> + InPlaceIterableMarker,
 {
-    default fn from_iter(mut iterator: I) -> Self {
+    default fn from_iter(mut iterator: I) -> Result<Self, TError> {
         // See "Layout constraints" section in the module documentation. We rely on const
         // optimization here since these conditions currently cannot be expressed as trait bounds
         if T::IS_ZST
@@ -208,7 +208,7 @@ where
 
         let vec = unsafe { Vec::from_raw_parts(dst_buf, len, cap) };
 
-        vec
+        Ok(vec)
     }
 }
 

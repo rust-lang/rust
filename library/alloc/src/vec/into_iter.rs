@@ -1,4 +1,3 @@
-#[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
 use crate::raw_vec::RawVec;
@@ -109,7 +108,6 @@ impl<T, A: Allocator> IntoIter<T, A> {
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect
     /// documentation for an overview.
-    #[cfg(not(no_global_oom_handling))]
     pub(super) fn forget_allocation_drop_remaining(&mut self) {
         let remaining = self.as_raw_mut_slice();
 
@@ -393,7 +391,6 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 unsafe impl<T> AsVecIntoIter for IntoIter<T> {
     type Item = T;
 

@@ -54,6 +54,70 @@ macro_rules! vec {
     );
 }
 
+/// Creates a [`Vec`] containing the arguments.
+///
+/// `try_vec!` allows `Vec`s to be defined with the same syntax as array expressions.
+/// There are two forms of this macro:
+///
+/// - Create a [`Vec`] containing a given list of elements:
+///
+/// ```
+/// #![feature(more_fallible_allocation_methods)]
+/// # #[macro_use] extern crate alloc;
+/// let v = try_vec![1, 2, 3]?;
+/// assert_eq!(v[0], 1);
+/// assert_eq!(v[1], 2);
+/// assert_eq!(v[2], 3);
+/// # Ok::<(), alloc::collections::TryReserveError>(())
+/// ```
+///
+/// - Create a [`Vec`] from a given element and size:
+///
+/// ```
+/// #![feature(more_fallible_allocation_methods)]
+/// # #[macro_use] extern crate alloc;
+/// let v = try_vec![1; 3]?;
+/// assert_eq!(v, [1, 1, 1]);
+/// # Ok::<(), alloc::collections::TryReserveError>(())
+/// ```
+///
+/// Note that unlike array expressions this syntax supports all elements
+/// which implement [`Clone`] and the number of elements doesn't have to be
+/// a constant.
+///
+/// This will use `clone` to duplicate an expression, so one should be careful
+/// using this with types having a nonstandard `Clone` implementation. For
+/// example, `try_vec![Rc::new(1); 5]` will create a vector of five references
+/// to the same boxed integer value, not five references pointing to independently
+/// boxed integers.
+///
+/// Also, note that `try_vec![expr; 0]` is allowed, and produces an empty vector.
+/// This will still evaluate `expr`, however, and immediately drop the resulting value, so
+/// be mindful of side effects.
+///
+/// [`Vec`]: crate::vec::Vec
+#[cfg(not(test))]
+#[macro_export]
+#[allow_internal_unstable(allocator_api, liballoc_internals)]
+#[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]
+macro_rules! try_vec {
+    () => (
+        $crate::__rust_force_expr!(core::result::Result::Ok($crate::vec::Vec::new()))
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::__rust_force_expr!($crate::vec::try_from_elem($elem, $n))
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::__rust_force_expr!({
+            let values = [$($x),+];
+            let layout = $crate::alloc::Layout::for_value(&values);
+            $crate::boxed::Box::try_new(values)
+                .map(|b| <[_]>::into_vec(b))
+                .map_err(|_| $crate::collections::TryReserveError::alloc_error(layout))
+        })
+    );
+}
+
 // HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is
 // required for this macro definition, is not available. Instead use the
 // `slice::into_vec`  function which is only available with cfg(test)
@@ -71,6 +135,27 @@ macro_rules! vec {
         $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
     );
     ($($x:expr,)*) => (vec![$($x),*])
+}
+
+#[cfg(test)]
+#[allow(unused_macros)]
+macro_rules! try_vec {
+    () => (
+        core::result::Result::Ok($crate::vec::Vec::new())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::vec::try_from_elem($elem, $n)
+    );
+    ($($x:expr),*) => (
+        {
+            let values = [$($x),+];
+            let layout = $crate::alloc::Layout::for_value(&values);
+            $crate::boxed::Box::try_new(values)
+                .map(|b| <[_]>::into_vec(b))
+                .map_err(|_| $crate::collections::TryReserveError::alloc_error(layout))
+        }
+    );
+    ($($x:expr,)*) => (try_vec![$($x),*])
 }
 
 /// Creates a `String` using interpolation of runtime expressions.

@@ -2123,3 +2123,24 @@ impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
 impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;
 }
+
+#[unstable(feature = "never_type", issue = "35121")]
+impl<T> Result<T, !> {
+    /// Returns the contained [`Ok`] value, consuming the `self` value,
+    /// where the [`Err`] variant is known to be unreachable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(never_type)]
+    ///
+    /// let x: Result<u32, !> = Ok(2);
+    /// assert_eq!(x.unwrap_infallible(), 2);
+    /// ```
+    #[inline(always)]
+    pub fn unwrap_infallible(self) -> T {
+        match self {
+            Ok(t) => t,
+        }
+    }
+}

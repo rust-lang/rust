@@ -74,6 +74,13 @@ impl TryReserveError {
     pub fn kind(&self) -> TryReserveErrorKind {
         self.kind.clone()
     }
+
+    /// Create a new [`TryReserveError`] indicating that there was an allocation failure.
+    #[must_use]
+    #[unstable(feature = "more_fallible_allocation_methods", issue = "86942")]
+    pub fn alloc_error(layout: Layout) -> Self {
+        Self { kind: TryReserveErrorKind::AllocError { layout, non_exhaustive: () } }
+    }
 }
 
 /// Details of the allocation that caused a `TryReserveError`
