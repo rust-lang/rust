@@ -152,6 +152,8 @@ declare_features! (
     (active, anonymous_lifetime_in_impl_trait, "1.63.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
+    /// Allows generators to be cloned.
+    (active, generator_clone, "1.60.0", None, None),
     /// Outputs useful `assert!` messages
     (active, generic_assert, "1.63.0", None, None),
     /// Allows using the `rust-intrinsic`'s "ABI".
@@ -396,8 +398,6 @@ declare_features! (
     (active, fn_align, "1.53.0", Some(82232), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
-    /// Allows generators to be cloned.
-    (active, generator_clone, "1.60.0", None, None),
     /// Infer generic args for both consts and types.
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
