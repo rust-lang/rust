@@ -1188,8 +1188,10 @@ impl DefWithBody {
             }
         }
         for (expr, mismatch) in infer.expr_type_mismatches() {
-            let expr =
-                source_map.expr_syntax(expr).expect("break outside of loop in synthetic syntax");
+            let expr = match source_map.expr_syntax(expr) {
+                Ok(expr) => expr,
+                Err(SyntheticSyntax) => continue,
+            };
             acc.push(
                 TypeMismatch {
                     expr,
