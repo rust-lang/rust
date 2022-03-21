@@ -39,14 +39,48 @@ impl Mutex {
     }
 
     fn lock_contended(&self) {
+        // Spin first to speed things up if the lock is released quickly.
+        let mut state = self.spin();
+
+        // If it's unlocked now, attempt to take the lock
+        // without marking it as contended.
+        if state == 0 {
+            match self.futex.compare_exchange(0, 1, Acquire, Relaxed) {
+                Ok(_) => return, // Locked!
+                Err(s) => state = s,
+            }
+        }
+
         loop {
-            // Put the lock in contended state, if it wasn't already.
-            if self.futex.swap(2, Acquire) == 0 {
-                // It was unlocked, so we just locked it.
+            // Put the lock in contended state.
+            // We avoid an unnecessary write if it as already set to 2,
+            // to be friendlier for the caches.
+            if state != 2 && self.futex.swap(2, Acquire) == 0 {
+                // We changed it from 0 to 2, so we just succesfully locked it.
                 return;
             }
-            // Wait for the futex to change state.
+
+            // Wait for the futex to change state, assuming it is still 2.
             futex_wait(&self.futex, 2, None);
+
+            // Spin again after waking up.
+            state = self.spin();
+        }
+    }
+
+    fn spin(&self) -> i32 {
+        let mut spin = 100;
+        loop {
+            // We only use `load` (and not `swap` or `compare_exchange`)
+            // while spinning, to be easier on the caches.
+            let state = self.futex.load(Relaxed);
+
+            if state == 0 || spin == 0 {
+                return state;
+            }
+
+            crate::hint::spin_loop();
+            spin -= 1;
         }
     }
 
