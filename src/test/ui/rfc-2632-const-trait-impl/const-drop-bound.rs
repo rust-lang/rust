@@ -3,7 +3,9 @@
 #![feature(const_trait_impl)]
 #![feature(const_precise_live_drops)]
 
-const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Drop {
+use std::marker::Destruct;
+
+const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
     match res {
         Ok(t) => Some(t),
         Err(_e) => None,
@@ -12,7 +14,7 @@ const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Drop {
 
 pub struct Foo<T>(T);
 
-const fn baz<T: ~const Drop, E: ~const Drop>(res: Result<Foo<T>, Foo<E>>) -> Option<Foo<T>> {
+const fn baz<T: ~const Destruct, E: ~const Destruct>(res: Result<Foo<T>, Foo<E>>) -> Option<Foo<T>> {
     foo(res)
 }
 

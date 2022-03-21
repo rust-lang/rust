@@ -765,6 +765,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         if unlikely!(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
             // remap without changing constness of this predicate.
             // this is because `T: ~const Drop` has a different meaning to `T: Drop`
+            // FIXME(fee1-dead): remove this logic after beta bump
             param_env.remap_constness_with(self.constness)
         } else {
             *param_env = param_env.with_constness(self.constness.and(param_env.constness()))

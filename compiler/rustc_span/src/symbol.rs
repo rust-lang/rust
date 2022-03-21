@@ -571,7 +571,7 @@ symbols! {
         deref_target,
         derive,
         derive_default_enum,
-        destructible,
+        destruct,
         destructuring_assignment,
         diagnostic,
         direct,
