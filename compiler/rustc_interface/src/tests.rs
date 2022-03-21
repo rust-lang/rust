@@ -762,7 +762,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
-    tracked!(panic_in_drop, PanicStrategy::Abort);
+    tracked!(panic_in_drop, PanicStrategy::Unwind);
     tracked!(pick_stable_methods_before_any_unstable, false);
     tracked!(plt, Some(true));
     tracked!(polonius, true);

@@ -1347,7 +1347,7 @@ options! {
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],
         "support compiling tests with panic=abort (default: no)"),
-    panic_in_drop: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy, [TRACKED],
+    panic_in_drop: PanicStrategy = (PanicStrategy::Abort, parse_panic_strategy, [TRACKED],
         "panic strategy for panics in drops"),
     parse_only: bool = (false, parse_bool, [UNTRACKED],
         "parse only; do not compile, assemble, or link (default: no)"),
