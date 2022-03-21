@@ -1,5 +1,5 @@
 //! Implementation of Chalk debug helper functions using TLS.
-use std::fmt;
+use std::fmt::{self, Display};
 
 use itertools::Itertools;
 
@@ -24,17 +24,17 @@ impl DebugContext<'_> {
             AdtId::UnionId(it) => self.0.union_data(it).name.clone(),
             AdtId::EnumId(it) => self.0.enum_data(it).name.clone(),
         };
-        write!(f, "{}", name)
+        name.fmt(f)
     }
 
     pub(crate) fn debug_trait_id(
         &self,
         id: chalk_db::TraitId,
-        fmt: &mut fmt::Formatter<'_>,
+        f: &mut fmt::Formatter<'_>,
     ) -> Result<(), fmt::Error> {
         let trait_: hir_def::TraitId = from_chalk_trait_id(id);
         let trait_data = self.0.trait_data(trait_);
-        write!(fmt, "{}", trait_data.name)
+        trait_data.name.fmt(f)
     }
 
     pub(crate) fn debug_assoc_type_id(

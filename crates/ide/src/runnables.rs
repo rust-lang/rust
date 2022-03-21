@@ -38,8 +38,8 @@ pub enum TestId {
 impl fmt::Display for TestId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TestId::Name(name) => write!(f, "{}", name),
-            TestId::Path(path) => write!(f, "{}", path),
+            TestId::Name(name) => name.fmt(f),
+            TestId::Path(path) => path.fmt(f),
         }
     }
 }

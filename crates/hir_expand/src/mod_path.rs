@@ -121,7 +121,7 @@ impl Display for ModPath {
                 f.write_str("::")?;
             }
             first_segment = false;
-            write!(f, "{}", segment)?;
+            segment.fmt(f)?;
         }
         Ok(())
     }

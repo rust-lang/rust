@@ -95,9 +95,10 @@ pub struct ServerError {
 
 impl fmt::Display for ServerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.message)?;
+        self.message.fmt(f)?;
         if let Some(io) = &self.io {
-            write!(f, ": {}", io)?;
+            f.write_str(": ")?;
+            io.fmt(f)?;
         }
         Ok(())
     }
