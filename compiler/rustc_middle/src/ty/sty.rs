@@ -698,7 +698,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     }
 
     /// This returns the types of the MIR locals which had to be stored across suspension points.
-    /// It is calculated in rustc_const_eval::transform::generator::StateTransform.
+    /// It is calculated in rustc_mir_transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
     ///
     /// The locals are grouped by their variant number. Note that some locals may
