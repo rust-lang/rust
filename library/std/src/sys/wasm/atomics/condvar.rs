@@ -2,7 +2,7 @@ use crate::arch::wasm32;
 use crate::cmp;
 use crate::mem;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-use crate::sys::mutex::Mutex;
+use crate::sys::locks::Mutex;
 use crate::time::Duration;
 
 pub struct Condvar {

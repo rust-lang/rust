@@ -37,13 +37,20 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
-pub use self::itron::{condvar, mutex, thread};
+pub use self::itron::thread;
 pub mod memchr;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
+
+mod rwlock;
+
+pub mod locks {
+    pub use super::itron::condvar::*;
+    pub use super::itron::mutex::*;
+    pub use super::rwlock::*;
+}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
