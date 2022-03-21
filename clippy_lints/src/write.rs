@@ -581,14 +581,19 @@ impl Write {
             };
 
             let replacement: String = match lit.token.kind {
-                LitKind::Integer | LitKind::Float | LitKind::Err => continue,
                 LitKind::StrRaw(_) | LitKind::ByteStrRaw(_) if matches!(fmtstr.style, StrStyle::Raw(_)) => {
                     lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
                 LitKind::Str | LitKind::ByteStr if matches!(fmtstr.style, StrStyle::Cooked) => {
                     lit.token.symbol.as_str().replace('{', "{{").replace('}', "}}")
                 },
-                LitKind::StrRaw(_) | LitKind::Str | LitKind::ByteStrRaw(_) | LitKind::ByteStr => continue,
+                LitKind::StrRaw(_)
+                | LitKind::Str
+                | LitKind::ByteStrRaw(_)
+                | LitKind::ByteStr
+                | LitKind::Integer
+                | LitKind::Float
+                | LitKind::Err => continue,
                 LitKind::Byte | LitKind::Char => match lit.token.symbol.as_str() {
                     "\"" if matches!(fmtstr.style, StrStyle::Cooked) => "\\\"",
                     "\"" if matches!(fmtstr.style, StrStyle::Raw(0)) => continue,
