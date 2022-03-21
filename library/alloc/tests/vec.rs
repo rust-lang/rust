@@ -321,6 +321,7 @@ fn test_retain_pred_panic_no_hole() {
     assert!(v.iter().all(|r| Rc::strong_count(r) == 1));
 }
 
+#[ignore]
 #[test]
 fn test_retain_drop_panic() {
     struct Wrap(Rc<i32>);
@@ -509,6 +510,7 @@ fn test_vec_truncate_drop() {
     assert_eq!(unsafe { DROPS }, 5);
 }
 
+#[ignore]
 #[test]
 #[should_panic]
 fn test_vec_truncate_fail() {
@@ -752,6 +754,7 @@ fn test_drain_end_overflow() {
     v.drain((Included(0), Included(usize::MAX)));
 }
 
+#[ignore]
 #[test]
 fn test_drain_leak() {
     static mut DROPS: i32 = 0;
@@ -945,6 +948,7 @@ fn test_into_iter_clone() {
     assert_eq!(it.next(), None);
 }
 
+#[ignore]
 #[test]
 fn test_into_iter_leak() {
     static mut DROPS: i32 = 0;
@@ -1071,6 +1075,7 @@ fn test_from_iter_specialization_panic_during_iteration_drops() {
     );
 }
 
+#[ignore]
 #[test]
 fn test_from_iter_specialization_panic_during_drop_leaks() {
     static mut DROP_COUNTER: usize = 0;
@@ -1392,6 +1397,7 @@ fn drain_filter_consumed_panic() {
 }
 
 // FIXME: Re-enable emscripten once it can catch panics
+#[ignore]
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn drain_filter_unconsumed_panic() {
@@ -2285,6 +2291,7 @@ fn test_vec_dedup() {
     }
 }
 
+#[ignore]
 #[test]
 fn test_vec_dedup_panicking() {
     #[derive(Debug)]

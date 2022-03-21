@@ -289,6 +289,7 @@ fn test_drain_sorted() {
     assert!(q.is_empty());
 }
 
+#[ignore]
 #[test]
 fn test_drain_sorted_leak() {
     static DROPS: AtomicU32 = AtomicU32::new(0);

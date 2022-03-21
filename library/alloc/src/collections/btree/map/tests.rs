@@ -1121,6 +1121,7 @@ mod test_drain_filter {
         map.check();
     }
 
+    #[ignore]
     #[test]
     fn drop_panic_leak() {
         let a = CrashTestDummy::new(0);
@@ -1141,6 +1142,7 @@ mod test_drain_filter {
         assert_eq!(c.dropped(), 1);
     }
 
+    #[ignore]
     #[test]
     fn pred_panic_leak() {
         let a = CrashTestDummy::new(0);
@@ -1415,6 +1417,7 @@ fn test_clear() {
     }
 }
 
+#[ignore]
 #[test]
 fn test_clear_drop_panic_leak() {
     let a = CrashTestDummy::new(0);
@@ -1960,6 +1963,7 @@ create_append_test!(test_append_239, 239);
 #[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_1700, 1700);
 
+#[ignore]
 #[test]
 fn test_append_drop_leak() {
     let a = CrashTestDummy::new(0);
@@ -2101,6 +2105,7 @@ fn test_split_off_large_random_sorted() {
     assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
 }
 
+#[ignore]
 #[test]
 fn test_into_iter_drop_leak_height_0() {
     let a = CrashTestDummy::new(0);
@@ -2124,6 +2129,7 @@ fn test_into_iter_drop_leak_height_0() {
     assert_eq!(e.dropped(), 1);
 }
 
+#[ignore]
 #[test]
 fn test_into_iter_drop_leak_height_1() {
     let size = MIN_INSERTS_HEIGHT_1;

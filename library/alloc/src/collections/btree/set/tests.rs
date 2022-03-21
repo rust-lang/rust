@@ -340,6 +340,7 @@ fn test_drain_filter() {
     assert_eq!(y.len(), 1);
 }
 
+#[ignore]
 #[test]
 fn test_drain_filter_drop_panic_leak() {
     let a = CrashTestDummy::new(0);
@@ -360,6 +361,7 @@ fn test_drain_filter_drop_panic_leak() {
     assert_eq!(c.dropped(), 1);
 }
 
+#[ignore]
 #[test]
 fn test_drain_filter_pred_panic_leak() {
     let a = CrashTestDummy::new(0);

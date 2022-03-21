@@ -530,6 +530,7 @@ fn drain_filter_complex() {
     }
 }
 
+#[ignore]
 #[test]
 fn drain_filter_drop_panic_leak() {
     static mut DROPS: i32 = 0;
@@ -565,6 +566,7 @@ fn drain_filter_drop_panic_leak() {
 }
 
 #[test]
+#[ignore]
 fn drain_filter_pred_panic_leak() {
     static mut DROPS: i32 = 0;
 
@@ -670,6 +672,7 @@ fn test_drop_clear() {
     assert_eq!(unsafe { DROPS }, 4);
 }
 
+#[ignore]
 #[test]
 fn test_drop_panic() {
     static mut DROPS: i32 = 0;

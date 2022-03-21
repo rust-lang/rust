@@ -725,6 +725,7 @@ fn test_drop_clear() {
     assert_eq!(unsafe { DROPS }, 4);
 }
 
+#[ignore]
 #[test]
 fn test_drop_panic() {
     static mut DROPS: i32 = 0;
@@ -1619,6 +1620,7 @@ fn test_try_rfold_moves_iter() {
     assert_eq!(iter.next_back(), Some(&70));
 }
 
+#[ignore]
 #[test]
 fn truncate_leak() {
     static mut DROPS: i32 = 0;
@@ -1652,6 +1654,7 @@ fn truncate_leak() {
     assert_eq!(unsafe { DROPS }, 7);
 }
 
+#[ignore]
 #[test]
 fn test_drain_leak() {
     static mut DROPS: i32 = 0;

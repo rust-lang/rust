@@ -1013,6 +1013,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[ignore]
     fn drop_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
@@ -1041,6 +1042,7 @@ mod test_drain_filter {
     }
 
     #[test]
+    #[ignore]
     fn pred_panic_leak() {
         static PREDS: AtomicUsize = AtomicUsize::new(0);
         static DROPS: AtomicUsize = AtomicUsize::new(0);
