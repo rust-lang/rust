@@ -14,7 +14,11 @@ const fn foo<T, E>(res: Result<T, E>) -> Option<T> where E: ~const Destruct {
 
 pub struct Foo<T>(T);
 
-const fn baz<T: ~const Destruct, E: ~const Destruct>(res: Result<Foo<T>, Foo<E>>) -> Option<Foo<T>> {
+const fn baz<T, E>(res: Result<Foo<T>, Foo<E>>) -> Option<Foo<T>>
+where
+    T: ~const Destruct,
+    E: ~const Destruct,
+{
     foo(res)
 }
 

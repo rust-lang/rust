@@ -1051,8 +1051,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         #[cfg(bootstrap)]
         {}
 
-        if obligation.predicate.skip_binder().def_id() == drop_trait
-        {
+        if obligation.predicate.skip_binder().def_id() == drop_trait {
             return Ok(ImplSourceConstDestructData { nested: vec![] });
         }
 
@@ -1068,7 +1067,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if let Some(impl_def_id) = impl_def_id {
             let obligations = self.infcx.commit_unconditionally(|_| {
                 let mut new_obligation = obligation.clone();
-                new_obligation.predicate = new_obligation.predicate.map_bound(|mut trait_pred| { trait_pred.trait_ref.def_id = drop_trait; trait_pred });
+                new_obligation.predicate = new_obligation.predicate.map_bound(|mut trait_pred| {
+                    trait_pred.trait_ref.def_id = drop_trait;
+                    trait_pred
+                });
                 let substs = self.rematch_impl(impl_def_id, &new_obligation);
                 debug!(?substs, "impl substs");
                 let cause = obligation.derived_cause(ImplDerivedObligation);
@@ -1140,7 +1142,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self_ty
                                 .rebind(ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
-                                        def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
+                                        def_id: self
+                                            .tcx()
+                                            .require_lang_item(LangItem::Destruct, None),
                                         substs: self.tcx().mk_substs_trait(nested_ty, &[]),
                                     },
                                     constness: ty::BoundConstness::ConstIfConst,
