@@ -800,11 +800,17 @@ impl<'a> Parser<'a> {
         &mut self,
         cast_expr: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
+        let span = cast_expr.span;
+        let maybe_ascription_span = if let ExprKind::Type(ascripted_expr, _) = &cast_expr.kind {
+            Some(ascripted_expr.span.shrink_to_hi().with_hi(span.hi()))
+        } else {
+            None
+        };
+
         // Save the memory location of expr before parsing any following postfix operators.
         // This will be compared with the memory location of the output expression.
         // If they different we can assume we parsed another expression because the existing expression is not reallocated.
         let addr_before = &*cast_expr as *const _ as usize;
-        let span = cast_expr.span;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
         let changed = addr_before != &*with_postfix as *const _ as usize;
 
@@ -825,11 +831,8 @@ impl<'a> Parser<'a> {
                 }
             );
             let mut err = self.struct_span_err(span, &msg);
-            // If type ascription is "likely an error", the user will already be getting a useful
-            // help message, and doesn't need a second.
-            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
-                self.maybe_annotate_with_ascription(&mut err, false);
-            } else {
+
+            let suggest_parens = |err: &mut DiagnosticBuilder<'_, _>| {
                 let suggestions = vec![
                     (span.shrink_to_lo(), "(".to_string()),
                     (span.shrink_to_hi(), ")".to_string()),
@@ -839,6 +842,32 @@ impl<'a> Parser<'a> {
                     suggestions,
                     Applicability::MachineApplicable,
                 );
+            };
+
+            // If type ascription is "likely an error", the user will already be getting a useful
+            // help message, and doesn't need a second.
+            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
+                self.maybe_annotate_with_ascription(&mut err, false);
+            } else if let Some(ascription_span) = maybe_ascription_span {
+                let is_nightly = self.sess.unstable_features.is_nightly_build();
+                if is_nightly {
+                    suggest_parens(&mut err);
+                }
+                err.span_suggestion(
+                    ascription_span,
+                    &format!(
+                        "{}remove the type ascription",
+                        if is_nightly { "alternatively, " } else { "" }
+                    ),
+                    String::new(),
+                    if is_nightly {
+                        Applicability::MaybeIncorrect
+                    } else {
+                        Applicability::MachineApplicable
+                    },
+                );
+            } else {
+                suggest_parens(&mut err);
             }
             err.emit();
         };
