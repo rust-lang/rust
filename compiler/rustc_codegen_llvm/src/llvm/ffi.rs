@@ -193,6 +193,9 @@ pub enum AttributeKind {
     SanitizeMemTag = 34,
     NoCfCheck = 35,
     ShadowCallStack = 36,
+    AllocSize = 37,
+    AllocatedPointer = 38,
+    AllocAlign = 39,
 }
 
 /// LLVMIntPredicate
@@ -986,6 +989,22 @@ pub mod debuginfo {
     }
 }
 
+use bitflags::bitflags;
+// These values **must** match with LLVMRustAllocKindFlags
+bitflags! {
+    #[repr(transparent)]
+    #[derive(Default)]
+    pub struct AllocKindFlags : u64 {
+        const Unknown = 0;
+        const Alloc = 1;
+        const Realloc = 1 << 1;
+        const Free = 1 << 2;
+        const Uninitialized = 1 << 3;
+        const Zeroed = 1 << 4;
+        const Aligned = 1 << 5;
+    }
+}
+
 extern "C" {
     pub type ModuleBuffer;
 }
@@ -1193,6 +1212,8 @@ extern "C" {
     pub fn LLVMRustCreateByValAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateStructRetAttr<'a>(C: &'a Context, ty: &'a Type) -> &'a Attribute;
     pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
+    pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
+    pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(

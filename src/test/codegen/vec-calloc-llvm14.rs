@@ -1,7 +1,6 @@
 // compile-flags: -O
 // only-x86_64
 // ignore-debug
-// min-llvm-version: 15.0
 
 #![crate_type = "lib"]
 
@@ -143,8 +142,3 @@ pub fn vec_non_zero_tuple(n: usize) -> Vec<(i16, u8, char)> {
     // CHECK: ret void
     vec![(0, 0, 'A'); n]
 }
-
-// Ensure that __rust_alloc_zeroed gets the right attributes for LLVM to optimize it away.
-// CHECK: declare noalias ptr @__rust_alloc_zeroed(i64, i64 allocalign) unnamed_addr [[RUST_ALLOC_ZEROED_ATTRS:#[0-9]+]]
-
-// CHECK-DAG: attributes [[RUST_ALLOC_ZEROED_ATTRS]] = { {{.*}} allockind("alloc,zeroed,aligned") allocsize(0) uwtable "alloc-family"="__rust_alloc" {{.*}} }

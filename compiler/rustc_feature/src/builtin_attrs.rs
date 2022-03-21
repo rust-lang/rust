@@ -532,6 +532,9 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     rustc_attr!(rustc_allocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     rustc_attr!(rustc_allocator_nounwind, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_reallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_deallocator, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
+    rustc_attr!(rustc_allocator_zeroed, Normal, template!(Word), WarnFollowing, IMPL_DETAIL),
     gated!(
         alloc_error_handler, Normal, template!(Word), WarnFollowing,
         experimental!(alloc_error_handler)
