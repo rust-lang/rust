@@ -24,11 +24,9 @@ assert-property: ("#crate-search", {"value": "lib2"})
 // Now we check that leaving the search results and putting them back keeps the
 // crate filtering.
 press-key: "Escape"
-wait-for: 100
-assert-css: ("#main-content", {"display": "block"})
+wait-for-css: ("#main-content", {"display": "block"})
 focus: ".search-input"
-wait-for: 100
-assert-css: ("#main-content", {"display": "none"})
+wait-for-css: ("#main-content", {"display": "none"})
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
 assert-property: ("#crate-search", {"value": "lib2"})
