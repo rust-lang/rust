@@ -13,7 +13,7 @@ use tracing::debug;
 #[derive(Debug)]
 pub enum InnerAttrPolicy<'a> {
     Permitted,
-    Forbidden { reason: &'a str, saw_doc_comment: bool, prev_attr_sp: Option<Span> },
+    Forbidden { reason: &'a str, saw_doc_comment: bool, prev_outer_attr_sp: Option<Span> },
 }
 
 const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
@@ -22,7 +22,7 @@ const DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG: &str = "an inner attribute is not \
 pub(super) const DEFAULT_INNER_ATTR_FORBIDDEN: InnerAttrPolicy<'_> = InnerAttrPolicy::Forbidden {
     reason: DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG,
     saw_doc_comment: false,
-    prev_attr_sp: None,
+    prev_outer_attr_sp: None,
 };
 
 enum OuterAttributeType {
@@ -34,14 +34,16 @@ enum OuterAttributeType {
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
-        let mut attrs: Vec<ast::Attribute> = Vec::new();
+        let mut outer_attrs: Vec<ast::Attribute> = Vec::new();
         let mut just_parsed_doc_comment = false;
         let start_pos = self.token_cursor.num_next_calls;
         loop {
             let attr = if self.check(&token::Pound) {
+                let prev_outer_attr_sp = outer_attrs.last().map(|attr| attr.span);
+
                 let inner_error_reason = if just_parsed_doc_comment {
                     "an inner attribute is not permitted following an outer doc comment"
-                } else if !attrs.is_empty() {
+                } else if prev_outer_attr_sp.is_some() {
                     "an inner attribute is not permitted following an outer attribute"
                 } else {
                     DEFAULT_UNEXPECTED_INNER_ATTR_ERR_MSG
@@ -49,7 +51,7 @@ impl<'a> Parser<'a> {
                 let inner_parse_policy = InnerAttrPolicy::Forbidden {
                     reason: inner_error_reason,
                     saw_doc_comment: just_parsed_doc_comment,
-                    prev_attr_sp: attrs.last().map(|a| a.span),
+                    prev_outer_attr_sp,
                 };
                 just_parsed_doc_comment = false;
                 Some(self.parse_attribute(inner_parse_policy)?)
@@ -97,12 +99,14 @@ impl<'a> Parser<'a> {
             };
 
             if let Some(attr) = attr {
-                attrs.push(attr);
+                if attr.style == ast::AttrStyle::Outer {
+                    outer_attrs.push(attr);
+                }
             } else {
                 break;
             }
         }
-        Ok(AttrWrapper::new(attrs.into(), start_pos))
+        Ok(AttrWrapper::new(outer_attrs.into(), start_pos))
     }
 
     /// Matches `attribute = # ! [ meta_item ]`.
@@ -215,15 +219,15 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn error_on_forbidden_inner_attr(&self, attr_sp: Span, policy: InnerAttrPolicy<'_>) {
-        if let InnerAttrPolicy::Forbidden { reason, saw_doc_comment, prev_attr_sp } = policy {
-            let prev_attr_note =
+        if let InnerAttrPolicy::Forbidden { reason, saw_doc_comment, prev_outer_attr_sp } = policy {
+            let prev_outer_attr_note =
                 if saw_doc_comment { "previous doc comment" } else { "previous outer attribute" };
 
             let mut diag = self.struct_span_err(attr_sp, reason);
 
-            if let Some(prev_attr_sp) = prev_attr_sp {
+            if let Some(prev_outer_attr_sp) = prev_outer_attr_sp {
                 diag.span_label(attr_sp, "not permitted following an outer attribute")
-                    .span_label(prev_attr_sp, prev_attr_note);
+                    .span_label(prev_outer_attr_sp, prev_outer_attr_note);
             }
 
             diag.note(
