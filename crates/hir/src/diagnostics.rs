@@ -153,6 +153,7 @@ pub struct MissingMatchArms {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
+    // FIXME: add mismatches in patterns as well
     pub expr: InFile<AstPtr<ast::Expr>>,
     pub expected: Type,
     pub actual: Type,
