@@ -657,7 +657,7 @@ public:
   }
 
   /// Keep only pointers (or anything's) to a repeated value (represented by -1)
-  TypeTree KeepMinusOne() const {
+  TypeTree KeepMinusOne(bool &legal) const {
     TypeTree dat;
 
     for (const auto &pair : mapping) {
@@ -674,9 +674,8 @@ public:
           dat.insert(pair.first, pair.second);
           continue;
         }
-        llvm::errs() << "could not merge test  " << str() << "\n";
-        assert(0 && "could not merge");
-        llvm_unreachable("could not merge");
+        legal = false;
+        break;
       }
 
       if (pair.first[1] == -1) {

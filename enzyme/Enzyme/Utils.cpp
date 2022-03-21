@@ -39,6 +39,11 @@
 
 using namespace llvm;
 
+extern "C" {
+void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
+                           void *) = nullptr;
+}
+
 EnzymeFailure::EnzymeFailure(llvm::StringRef RemarkName,
                              const llvm::DiagnosticLocation &Loc,
                              const llvm::Instruction *CodeRegion)

@@ -347,7 +347,7 @@ public:
 
   TypeTree getReturnAnalysis();
 
-  void dump();
+  void dump(llvm::raw_ostream &ss = llvm::errs());
 
   std::set<int64_t> knownIntegralValues(llvm::Value *val);
 

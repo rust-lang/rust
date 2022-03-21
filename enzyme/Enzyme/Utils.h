@@ -64,9 +64,17 @@ namespace llvm {
 class ScalarEvolution;
 }
 
+enum class ErrorType {
+  NoDerivative = 0,
+  NoShadow = 1,
+  IllegalTypeAnalysis = 2
+};
+
 extern "C" {
 /// Print additional debug info relevant to performance
 extern llvm::cl::opt<bool> EnzymePrintPerf;
+extern void (*CustomErrorHandler)(const char *, LLVMValueRef, ErrorType,
+                                  void *);
 }
 
 extern std::map<std::string, std::function<llvm::Value *(

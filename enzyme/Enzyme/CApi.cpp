@@ -221,6 +221,12 @@ void FreeTypeAnalysis(EnzymeTypeAnalysisRef TAR) {
   delete TA;
 }
 
+void *EnzymeAnalyzeTypes(EnzymeTypeAnalysisRef TAR, CFnTypeInfo CTI,
+                         LLVMValueRef F) {
+  FnTypeInfo FTI(eunwrap(CTI, cast<Function>(unwrap(F))));
+  return (void *)&((TypeAnalysis *)TAR)->analyzeFunction(FTI).analyzer;
+}
+
 void EnzymeRegisterAllocationHandler(char *Name, CustomShadowAlloc AHandle,
                                      CustomShadowFree FHandle) {
   shadowHandlers[std::string(Name)] =
@@ -539,7 +545,35 @@ const char *EnzymeTypeTreeToString(CTypeTreeRef src) {
 
   return cstr;
 }
+
+// TODO deprecated
 void EnzymeTypeTreeToStringFree(const char *cstr) { delete[] cstr; }
+
+const char *EnzymeTypeAnalyzerToString(void *src) {
+  auto TA = (TypeAnalyzer *)src;
+  std::string str;
+  raw_string_ostream ss(str);
+  TA->dump(ss);
+  ss.str();
+  char *cstr = new char[str.length() + 1];
+  std::strcpy(cstr, str.c_str());
+  return cstr;
+}
+
+const char *EnzymeGradientUtilsInvertedPointersToString(GradientUtils *gutils,
+                                                        void *src) {
+  std::string str;
+  raw_string_ostream ss(str);
+  for (auto z : gutils->invertedPointers) {
+    ss << "available inversion for " << *z.first << " of " << *z.second << "\n";
+  }
+  ss.str();
+  char *cstr = new char[str.length() + 1];
+  std::strcpy(cstr, str.c_str());
+  return cstr;
+}
+
+void EnzymeStringFree(const char *cstr) { delete[] cstr; }
 
 void EnzymeMoveBefore(LLVMValueRef inst1, LLVMValueRef inst2) {
   Instruction *I1 = cast<Instruction>(unwrap(inst1));

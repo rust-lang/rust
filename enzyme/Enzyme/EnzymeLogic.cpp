@@ -89,8 +89,6 @@ cl::opt<bool> nonmarkedglobals_inactiveloads(
 cl::opt<bool> EnzymeJuliaAddrLoad(
     "enzyme-julia-addr-load", cl::init(false), cl::Hidden,
     cl::desc("Mark all loads resulting in an addr(13)* to be legal to redo"));
-
-void (*CustomErrorHandler)(const char *) = nullptr;
 }
 
 struct CacheAnalysis {
@@ -1826,7 +1824,8 @@ const AugmentedReturn &EnzymeLogic::CreateAugmentedPrimal(
       llvm::raw_string_ostream ss(s);
       ss << "No augmented forward pass found for " + todiff->getName() << "\n";
       ss << *todiff << "\n";
-      CustomErrorHandler(ss.str().c_str());
+      CustomErrorHandler(ss.str().c_str(), wrap(todiff),
+                         ErrorType::NoDerivative, nullptr);
     }
     llvm::errs() << "mod: " << *todiff->getParent() << "\n";
     llvm::errs() << *todiff << "\n";
@@ -3343,7 +3342,8 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
     ss << "No reverse pass found for " + key.todiff->getName() << "\n";
     ss << *key.todiff << "\n";
     if (CustomErrorHandler) {
-      CustomErrorHandler(ss.str().c_str());
+      CustomErrorHandler(ss.str().c_str(), wrap(key.todiff),
+                         ErrorType::NoDerivative, nullptr);
     } else {
       llvm_unreachable(ss.str().c_str());
     }
@@ -3958,7 +3958,8 @@ Function *EnzymeLogic::CreateForwardDiff(
     llvm::raw_string_ostream ss(s);
     ss << "No forward derivative found for " + todiff->getName() << "\n";
     ss << *todiff << "\n";
-    CustomErrorHandler(s.c_str());
+    CustomErrorHandler(s.c_str(), wrap(todiff), ErrorType::NoDerivative,
+                       nullptr);
   }
   if (todiff->empty())
     llvm::errs() << *todiff << "\n";

@@ -50,7 +50,6 @@
 
 extern "C" {
 extern llvm::cl::opt<bool> EnzymePrint;
-extern void (*CustomErrorHandler)(const char *);
 }
 
 enum class AugmentedStruct { Tape, Return, DifferentialReturn };

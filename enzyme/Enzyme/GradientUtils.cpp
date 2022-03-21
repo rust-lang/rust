@@ -100,8 +100,6 @@ llvm::cl::opt<bool>
     EnzymeRematerialize("enzyme-rematerialize", cl::init(true), cl::Hidden,
                         cl::desc("Rematerialize allocations/shadows in the "
                                  "reverse rather than caching"));
-
-extern void (*CustomErrorHandler)(const char *);
 }
 
 unsigned int MD_ToCopy[5] = {LLVMContext::MD_dbg, LLVMContext::MD_tbaa,
@@ -4478,11 +4476,11 @@ end:;
   assert(BuilderM.GetInsertBlock()->getParent());
   assert(oval);
 
-  if (CustomErrorHandler && isa<Constant>(oval)) {
+  if (CustomErrorHandler) {
     std::string str;
     raw_string_ostream ss(str);
     ss << "cannot find shadow for " << *oval;
-    CustomErrorHandler(str.c_str());
+    CustomErrorHandler(str.c_str(), wrap(oval), ErrorType::NoShadow, this);
   }
 
   llvm::errs() << *newFunc->getParent() << "\n";
