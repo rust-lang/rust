@@ -1148,6 +1148,8 @@ options! {
 
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
+    allow_incompatible_panic_in_drop: bool = (false, parse_bool, [UNTRACKED],
+        "allow linking to crates with an incompatible panic-in-drop strategy"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
     assume_incomplete_release: bool = (false, parse_bool, [TRACKED],

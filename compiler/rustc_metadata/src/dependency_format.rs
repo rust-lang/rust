@@ -419,7 +419,9 @@ fn verify_ok(tcx: TyCtxt<'_>, list: &[Linkage]) {
             }
 
             let found_drop_strategy = tcx.panic_in_drop_strategy(cnum);
-            if tcx.sess.opts.debugging_opts.panic_in_drop != found_drop_strategy {
+            if !tcx.sess.opts.debugging_opts.allow_incompatible_panic_in_drop
+                && tcx.sess.opts.debugging_opts.panic_in_drop != found_drop_strategy
+            {
                 sess.err(&format!(
                     "the crate `{}` is compiled with the \
                                panic-in-drop strategy `{}` which is \
