@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 //! Name resolution for lifetimes.
 //!
 //! Name resolution for lifetimes follows *much* simpler rules than the
@@ -230,6 +231,10 @@ enum Scope<'a> {
         hir_id: hir::HirId,
 
         s: ScopeRef<'a>,
+
+        /// In some cases not allowing late bounds allows us to avoid ICEs.
+        /// This is almost ways set to true.
+        allow_late_bound: bool,
     },
 
     /// Lifetimes introduced by a fn are scoped to the call-site for that fn,
@@ -302,6 +307,7 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 scope_type,
                 hir_id,
                 s: _,
+                allow_late_bound,
             } => f
                 .debug_struct("Binder")
                 .field("lifetimes", lifetimes)
@@ -311,6 +317,7 @@ impl<'a> fmt::Debug for TruncatedScopeDebug<'a> {
                 .field("scope_type", scope_type)
                 .field("hir_id", hir_id)
                 .field("s", &"..")
+                .field("allow_late_bound", allow_late_bound)
                 .finish(),
             Scope::Body { id, s: _ } => {
                 f.debug_struct("Body").field("id", id).field("s", &"..").finish()
@@ -703,6 +710,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
+                    allow_late_bound: true,
                 };
                 self.with(scope, move |_old_scope, this| {
                     intravisit::walk_fn(this, fk, fd, b, s, hir_id)
@@ -828,6 +836,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses,
                     scope_type: BinderScopeType::Normal,
                     s: ROOT_SCOPE,
+                    allow_late_bound: false,
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
@@ -896,6 +905,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: false,
                     scope_type: BinderScopeType::Normal,
+                    allow_late_bound: true,
                 };
                 self.with(scope, |old_scope, this| {
                     // a bare fn has no bounds, so everything
@@ -1077,6 +1087,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             track_lifetime_uses: true,
                             opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
+                            allow_late_bound: false,
                         };
                         this.with(scope, |_old_scope, this| {
                             this.visit_generics(generics);
@@ -1097,6 +1108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         track_lifetime_uses: true,
                         opaque_type_parent: false,
                         scope_type: BinderScopeType::Normal,
+                        allow_late_bound: false,
                     };
                     self.with(scope, |_old_scope, this| {
                         let scope = Scope::TraitRefBoundary { s: this.scope };
@@ -1156,6 +1168,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
+                    allow_late_bound: false,
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
@@ -1225,6 +1238,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: true,
                     scope_type: BinderScopeType::Normal,
+                    allow_late_bound: true,
                 };
                 self.with(scope, |old_scope, this| {
                     this.check_lifetime_params(old_scope, &generics.params);
@@ -1378,6 +1392,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                             track_lifetime_uses: true,
                             opaque_type_parent: false,
                             scope_type: BinderScopeType::Normal,
+                            allow_late_bound: true,
                         };
                         this.with(scope, |old_scope, this| {
                             this.check_lifetime_params(old_scope, &bound_generic_params);
@@ -1425,6 +1440,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     track_lifetime_uses: true,
                     opaque_type_parent: false,
                     scope_type,
+                    allow_late_bound: true,
                 };
                 self.with(scope, |_, this| {
                     intravisit::walk_param_bound(this, bound);
@@ -1477,6 +1493,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             track_lifetime_uses: true,
             opaque_type_parent: false,
             scope_type,
+            allow_late_bound: true,
         };
         self.with(scope, |old_scope, this| {
             this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
@@ -2180,6 +2197,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             opaque_type_parent: true,
             track_lifetime_uses: false,
             scope_type: BinderScopeType::Normal,
+            allow_late_bound: true,
         };
         self.with(scope, move |old_scope, this| {
             this.check_lifetime_params(old_scope, &generics.params);
@@ -2602,7 +2620,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut scope = &*self.scope;
         let hir_id = loop {
             match scope {
-                Scope::Binder { hir_id, .. } => {
+                Scope::Binder { hir_id, allow_late_bound: true, .. } => {
                     break *hir_id;
                 }
                 Scope::ObjectLifetimeDefault { ref s, .. }
@@ -2611,8 +2629,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 | Scope::TraitRefBoundary { ref s, .. } => {
                     scope = *s;
                 }
-                Scope::Root | Scope::Body { .. } => {
+                Scope::Root
+                | Scope::Body { .. }
+                | Scope::Binder { allow_late_bound: false, .. } => {
                     // See issues #83907 and #83693. Just bail out from looking inside.
+                    // See the issue #95023 for not allowing late bound
                     self.tcx.sess.delay_span_bug(
                         rustc_span::DUMMY_SP,
                         "In fn_like_elision without appropriate scope above",
