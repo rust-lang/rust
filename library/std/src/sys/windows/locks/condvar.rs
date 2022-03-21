@@ -1,6 +1,6 @@
 use crate::cell::UnsafeCell;
 use crate::sys::c;
-use crate::sys::mutex::{self, Mutex};
+use crate::sys::locks::{mutex, Mutex};
 use crate::sys::os;
 use crate::time::Duration;
 
@@ -31,7 +31,7 @@ impl Condvar {
         let r = c::SleepConditionVariableSRW(
             self.inner.get(),
             mutex::raw(mutex),
-            super::dur2timeout(dur),
+            crate::sys::windows::dur2timeout(dur),
             0,
         );
         if r == 0 {
