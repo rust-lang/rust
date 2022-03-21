@@ -2377,7 +2377,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 flat_map_option::check(cx, expr, arg, span);
             },
             (name @ "flatten", args @ []) => match method_call(recv) {
-                Some(("map", [recv, map_arg], _)) => map_flatten::check(cx, expr, recv, map_arg),
+                Some(("map", [recv, map_arg], map_span)) => map_flatten::check(cx, expr, recv, map_arg, map_span),
                 Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
                 _ => {},
             },
