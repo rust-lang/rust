@@ -1,6 +1,10 @@
 //! Constant evaluation details
 
-use std::{collections::HashMap, convert::TryInto, fmt::Display};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+    fmt::{Display, Write},
+};
 
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
 use hir_def::{
@@ -79,28 +83,29 @@ impl Display for ComputedExpr {
                     if *x >= 16 {
                         write!(f, "{} ({:#X})", x, x)
                     } else {
-                        write!(f, "{}", x)
+                        x.fmt(f)
                     }
                 }
                 Literal::Uint(x, _) => {
                     if *x >= 16 {
                         write!(f, "{} ({:#X})", x, x)
                     } else {
-                        write!(f, "{}", x)
+                        x.fmt(f)
                     }
                 }
-                Literal::Float(x, _) => write!(f, "{}", x),
-                Literal::Bool(x) => write!(f, "{}", x),
-                Literal::Char(x) => write!(f, "{:?}", x),
-                Literal::String(x) => write!(f, "{:?}", x),
-                Literal::ByteString(x) => write!(f, "{:?}", x),
+                Literal::Float(x, _) => x.fmt(f),
+                Literal::Bool(x) => x.fmt(f),
+                Literal::Char(x) => std::fmt::Debug::fmt(x, f),
+                Literal::String(x) => std::fmt::Debug::fmt(x, f),
+                Literal::ByteString(x) => std::fmt::Debug::fmt(x, f),
             },
             ComputedExpr::Tuple(t) => {
-                write!(f, "(")?;
+                f.write_char('(')?;
                 for x in &**t {
-                    write!(f, "{}, ", x)?;
+                    x.fmt(f)?;
+                    f.write_str(", ")?;
                 }
-                write!(f, ")")
+                f.write_char(')')
             }
         }
     }

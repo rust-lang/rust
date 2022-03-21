@@ -72,7 +72,7 @@ impl fmt::Display for CaseType {
             CaseType::UpperCamelCase => "CamelCase",
         };
 
-        write!(f, "{}", repr)
+        repr.fmt(f)
     }
 }
 
@@ -103,7 +103,7 @@ impl fmt::Display for IdentType {
             IdentType::Variant => "Variant",
         };
 
-        write!(f, "{}", repr)
+        repr.fmt(f)
     }
 }
 

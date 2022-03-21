@@ -5,7 +5,7 @@ use hir_expand::{
     name::{AsName, Name},
     AstId, InFile,
 };
-use std::convert::TryInto;
+use std::{convert::TryInto, fmt::Write};
 use syntax::ast::{self, HasName};
 
 use crate::{body::LowerCtx, intern::Interned, path::Path};
@@ -364,8 +364,8 @@ pub enum ConstScalarOrPath {
 impl std::fmt::Display for ConstScalarOrPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConstScalarOrPath::Scalar(s) => write!(f, "{}", s),
-            ConstScalarOrPath::Path(n) => write!(f, "{}", n),
+            ConstScalarOrPath::Scalar(s) => s.fmt(f),
+            ConstScalarOrPath::Path(n) => n.fmt(f),
         }
     }
 }
@@ -425,10 +425,10 @@ pub enum ConstScalar {
 }
 
 impl std::fmt::Display for ConstScalar {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
-            ConstScalar::Usize(us) => write!(fmt, "{}", us),
-            ConstScalar::Unknown => write!(fmt, "_"),
+            ConstScalar::Usize(us) => us.fmt(f),
+            ConstScalar::Unknown => f.write_char('_'),
         }
     }
 }

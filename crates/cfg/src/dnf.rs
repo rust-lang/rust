@@ -6,7 +6,7 @@
 //!
 //! This is currently both messy and inefficient. Feel free to improve, there are unit tests.
 
-use std::fmt;
+use std::fmt::{self, Write};
 
 use rustc_hash::FxHashSet;
 
@@ -125,17 +125,17 @@ impl DnfExpr {
 impl fmt::Display for DnfExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.conjunctions.len() != 1 {
-            write!(f, "any(")?;
+            f.write_str("any(")?;
         }
         for (i, conj) in self.conjunctions.iter().enumerate() {
             if i != 0 {
                 f.write_str(", ")?;
             }
 
-            write!(f, "{}", conj)?;
+            conj.fmt(f)?;
         }
         if self.conjunctions.len() != 1 {
-            write!(f, ")")?;
+            f.write_char(')')?;
         }
 
         Ok(())
@@ -165,17 +165,17 @@ impl Conjunction {
 impl fmt::Display for Conjunction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.literals.len() != 1 {
-            write!(f, "all(")?;
+            f.write_str("all(")?;
         }
         for (i, lit) in self.literals.iter().enumerate() {
             if i != 0 {
                 f.write_str(", ")?;
             }
 
-            write!(f, "{}", lit)?;
+            lit.fmt(f)?;
         }
         if self.literals.len() != 1 {
-            write!(f, ")")?;
+            f.write_str(")")?;
         }
 
         Ok(())
@@ -204,12 +204,12 @@ impl fmt::Display for Literal {
         }
 
         match &self.var {
-            Some(var) => write!(f, "{}", var)?,
+            Some(var) => var.fmt(f)?,
             None => f.write_str("<invalid>")?,
         }
 
         if self.negate {
-            write!(f, ")")?;
+            f.write_char(')')?;
         }
 
         Ok(())

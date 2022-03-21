@@ -1,7 +1,10 @@
 //! Defines token tags we use for syntax highlighting.
 //! A tag is not unlike a CSS class.
 
-use std::{fmt, ops};
+use std::{
+    fmt::{self, Write},
+    ops,
+};
 
 use ide_db::SymbolKind;
 
@@ -254,9 +257,10 @@ impl fmt::Display for HlMod {
 
 impl fmt::Display for Highlight {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.tag)?;
+        self.tag.fmt(f)?;
         for modifier in self.mods.iter() {
-            write!(f, ".{}", modifier)?
+            f.write_char('.')?;
+            modifier.fmt(f)?;
         }
         Ok(())
     }

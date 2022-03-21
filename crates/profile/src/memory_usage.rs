@@ -11,8 +11,8 @@ pub struct MemoryUsage {
 }
 
 impl fmt::Display for MemoryUsage {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "{}", self.allocated)
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.allocated.fmt(f)
     }
 }
 

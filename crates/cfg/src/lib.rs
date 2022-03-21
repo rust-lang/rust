@@ -128,7 +128,7 @@ impl fmt::Display for CfgDiff {
                 };
                 f.write_str(sep)?;
 
-                write!(f, "{}", atom)?;
+                atom.fmt(f)?;
             }
 
             if !self.disable.is_empty() {
@@ -146,7 +146,7 @@ impl fmt::Display for CfgDiff {
                 };
                 f.write_str(sep)?;
 
-                write!(f, "{}", atom)?;
+                atom.fmt(f)?;
             }
         }
 
@@ -170,7 +170,7 @@ impl fmt::Display for InactiveReason {
                 };
                 f.write_str(sep)?;
 
-                write!(f, "{}", atom)?;
+                atom.fmt(f)?;
             }
             let is_are = if self.enabled.len() == 1 { "is" } else { "are" };
             write!(f, " {} enabled", is_are)?;
@@ -189,7 +189,7 @@ impl fmt::Display for InactiveReason {
                 };
                 f.write_str(sep)?;
 
-                write!(f, "{}", atom)?;
+                atom.fmt(f)?;
             }
             let is_are = if self.disabled.len() == 1 { "is" } else { "are" };
             write!(f, " {} disabled", is_are)?;
