@@ -1,44 +1,6 @@
 // check-pass
-#[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd, Clone, Copy)]
 struct Array<T> {
-    f00: [T; 00],
-    f01: [T; 01],
-    f02: [T; 02],
-    f03: [T; 03],
-    f04: [T; 04],
-    f05: [T; 05],
-    f06: [T; 06],
-    f07: [T; 07],
-    f08: [T; 08],
-    f09: [T; 09],
-    f10: [T; 10],
-    f11: [T; 11],
-    f12: [T; 12],
-    f13: [T; 13],
-    f14: [T; 14],
-    f15: [T; 15],
-    f16: [T; 16],
-    f17: [T; 17],
-    f18: [T; 18],
-    f19: [T; 19],
-    f20: [T; 20],
-    f21: [T; 21],
-    f22: [T; 22],
-    f23: [T; 23],
-    f24: [T; 24],
-    f25: [T; 25],
-    f26: [T; 26],
-    f27: [T; 27],
-    f28: [T; 28],
-    f29: [T; 29],
-    f30: [T; 30],
-    f31: [T; 31],
-    f32: [T; 32],
-}
-
-// FIXME(#44580): merge with `Array` once `[T; N]: Clone` where `T: Clone`
-#[derive(Clone, Copy)]
-struct CopyArray<T: Copy> {
     f00: [T; 00],
     f01: [T; 01],
     f02: [T; 02],
