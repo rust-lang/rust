@@ -141,15 +141,18 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
         &ctx.sema,
     )?;
 
+    let path_kind = match ctx.path_kind() {
+        Some(kind) => Some(kind),
+        None if ctx.pattern_ctx.is_some() => Some(PathKind::Pat),
+        None => None,
+    };
     let ns_filter = |import: &LocatedImport| {
-        let path_kind = match ctx.path_kind() {
-            Some(kind) => kind,
-            None => {
-                return match import.original_item {
-                    ItemInNs::Macros(mac) => mac.is_fn_like(ctx.db),
-                    _ => true,
-                }
-            }
+        let path_kind = match path_kind {
+            Some(path_kind) => path_kind,
+            None => match import.original_item {
+                ItemInNs::Macros(mac) => return mac.is_fn_like(ctx.db),
+                _ => return true,
+            },
         };
         match (path_kind, import.original_item) {
             // Aren't handled in flyimport
