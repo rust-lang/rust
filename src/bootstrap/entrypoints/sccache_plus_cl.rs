@@ -1,7 +1,7 @@
 use std::env;
 use std::process::{self, Command};
 
-fn main() {
+pub fn main() {
     let target = env::var("SCCACHE_TARGET").unwrap();
     // Locate the actual compiler that we're invoking
     env::set_var("CC", env::var_os("SCCACHE_CC").unwrap());

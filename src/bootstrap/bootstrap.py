@@ -837,10 +837,15 @@ class RustBuild(object):
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
         >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap",
-        ... "debug", "bootstrap")
+        ... "debug", "{}{}".format("rustbuild-binary-dispatch-shim", rb.exe_suffix()))
         True
         """
-        return os.path.join(self.build_dir, "bootstrap", "debug", "bootstrap")
+        return os.path.join(
+            self.build_dir,
+            "bootstrap",
+            "debug",
+            "{}{}".format("rustbuild-binary-dispatch-shim", self.exe_suffix())
+        )
 
     def build_bootstrap(self):
         """Build bootstrap"""

@@ -2,14 +2,13 @@
 //!
 //! See comments in `src/bootstrap/rustc.rs` for more information.
 
+use bootstrap::util::{dylib_path, dylib_path_var};
 use std::env;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::Command;
 
-include!("../dylib_util.rs");
-
-fn main() {
+pub fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
     let rustdoc = env::var_os("RUSTDOC_REAL").expect("RUSTDOC_REAL was not set");
     let libdir = env::var_os("RUSTDOC_LIBDIR").expect("RUSTDOC_LIBDIR was not set");

@@ -106,6 +106,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
@@ -450,15 +451,10 @@ impl Build {
         let bootstrap_out = if std::env::var("BOOTSTRAP_PYTHON").is_ok() {
             out.join("bootstrap").join("debug")
         } else {
-            let workspace_target_dir = std::env::var("CARGO_TARGET_DIR")
+            std::env::var("CARGO_TARGET_DIR")
                 .map(PathBuf::from)
-                .unwrap_or_else(|_| src.join("target"));
-            let bootstrap_out = workspace_target_dir.join("debug");
-            if !bootstrap_out.join("rustc").exists() && !cfg!(test) {
-                // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
-                panic!("run `cargo build --bins` before `cargo run`")
-            }
-            bootstrap_out
+                .unwrap_or_else(|_| src.join("target"))
+                .join("debug")
         };
 
         let mut build = Build {
@@ -501,6 +497,20 @@ impl Build {
             prerelease_version: Cell::new(None),
             tool_artifacts: Default::default(),
         };
+
+        let bootstrap_out = &build.bootstrap_out;
+        let dispatcher = bootstrap_out.join(format!("rustbuild-binary-dispatch-shim{EXE_SUFFIX}"));
+        if dispatcher.exists() && !cfg!(test) {
+            build.copy(&dispatcher, &bootstrap_out.join(format!("bootstrap{EXE_SUFFIX}")));
+            build.copy(&dispatcher, &bootstrap_out.join(format!("rustc{EXE_SUFFIX}")));
+            build.copy(&dispatcher, &bootstrap_out.join(format!("rustdoc{EXE_SUFFIX}")));
+            build.copy(&dispatcher, &bootstrap_out.join(format!("sccache-plus-cl{EXE_SUFFIX}")));
+            build
+                .copy(&dispatcher, &bootstrap_out.join(format!("llvm-config-wrapper{EXE_SUFFIX}")));
+        } else if !cfg!(test) {
+            // tests do not need these files to be copied.
+            panic!("bootstrap binary shim ({}) does not exist", dispatcher.display());
+        }
 
         build.verbose("finding compilers");
         cc_detect::find(&mut build);

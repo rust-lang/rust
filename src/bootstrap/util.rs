@@ -72,7 +72,29 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut Command) {
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
 }
 
-include!("dylib_util.rs");
+/// Returns the environment variable which the dynamic library lookup path
+/// resides in for this platform.
+pub fn dylib_path_var() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "PATH"
+    } else if cfg!(target_os = "macos") {
+        "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "haiku") {
+        "LIBRARY_PATH"
+    } else {
+        "LD_LIBRARY_PATH"
+    }
+}
+
+/// Parses the `dylib_path_var()` environment variable, returning a list of
+/// paths that are members of this lookup path.
+pub fn dylib_path() -> Vec<std::path::PathBuf> {
+    let var = match env::var_os(dylib_path_var()) {
+        Some(v) => v,
+        None => return vec![],
+    };
+    env::split_paths(&var).collect()
+}
 
 /// Adds a list of lookup paths to `cmd`'s link library lookup path.
 pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut Command) {

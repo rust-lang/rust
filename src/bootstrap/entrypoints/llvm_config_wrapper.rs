@@ -5,7 +5,7 @@ use std::env;
 use std::io::{self, Write};
 use std::process::{self, Command, Stdio};
 
-fn main() {
+pub fn main() {
     let real_llvm_config = env::var_os("LLVM_CONFIG_REAL").unwrap();
     let mut cmd = Command::new(real_llvm_config);
     cmd.args(env::args().skip(1)).stderr(Stdio::piped());

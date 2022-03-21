@@ -3,35 +3,15 @@ name = "bootstrap"
 version = "0.0.0"
 edition = "2021"
 build = "build.rs"
-default-run = "bootstrap"
+default-run = "rustbuild-binary-dispatch-shim"
 
 [lib]
 path = "lib.rs"
 doctest = false
 
 [[bin]]
-name = "bootstrap"
-path = "bin/main.rs"
-test = false
-
-[[bin]]
-name = "rustc"
-path = "bin/rustc.rs"
-test = false
-
-[[bin]]
-name = "rustdoc"
-path = "bin/rustdoc.rs"
-test = false
-
-[[bin]]
-name = "sccache-plus-cl"
-path = "bin/sccache-plus-cl.rs"
-test = false
-
-[[bin]]
-name = "llvm-config-wrapper"
-path = "bin/llvm-config-wrapper.rs"
+name = "rustbuild-binary-dispatch-shim"
+path = "entrypoints/dispatcher.rs"
 test = false
 
 [dependencies]

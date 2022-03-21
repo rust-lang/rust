@@ -15,15 +15,14 @@
 //! switching compilers for the bootstrap and for build scripts will probably
 //! never get replaced.
 
-include!("../dylib_util.rs");
-
+use bootstrap::util::{dylib_path, dylib_path_var};
 use std::env;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::str::FromStr;
 use std::time::Instant;
 
-fn main() {
+pub fn main() {
     let args = env::args_os().skip(1).collect::<Vec<_>>();
 
     // Detect whether or not we're a build script depending on whether --target
