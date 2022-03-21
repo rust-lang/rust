@@ -268,12 +268,6 @@ pub use self::buffered::WriterPanicked;
 pub use self::stdio::set_output_capture;
 #[unstable(feature = "is_terminal", issue = "80937")]
 pub use self::stdio::IsTerminal;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
-#[unstable(feature = "stdio_locked", issue = "86845")]
-pub use self::stdio::{stderr_locked, stdin_locked, stdout_locked};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "none")]
 pub use self::stdio::{_eprint, _print};
 #[stable(feature = "rust1", since = "1.0.0")]
