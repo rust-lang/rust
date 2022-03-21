@@ -378,7 +378,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
 
                 let visibility_emoji = match myitem.visibility {
                     clean::Visibility::Restricted(_) => {
-                        "<span title=\"Restricted Visibility\">🔒</span> "
+                        "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
                     }
                     _ => "",
                 };
@@ -389,7 +389,7 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
                             <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
-                            &nbsp;{visibility_emoji}&nbsp;\
+                            {visibility_emoji}\
                             {unsafety_flag}\
                             {stab_tags}\
                      </div>\
