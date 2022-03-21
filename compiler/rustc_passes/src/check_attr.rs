@@ -196,8 +196,7 @@ impl CheckAttrVisitor<'_> {
     fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
         self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
             lint.build(&format!(
-                "`#[{}]` is ignored on struct fields, match arms and macro defs",
-                sym,
+                "`#[{sym}]` is ignored on struct fields, match arms and macro defs",
             ))
             .warn(
                 "this was previously accepted by the compiler but is \
@@ -214,7 +213,7 @@ impl CheckAttrVisitor<'_> {
 
     fn inline_attr_str_error_without_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
         self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
-            lint.build(&format!("`#[{}]` is ignored on struct fields and match arms", sym))
+            lint.build(&format!("`#[{sym}]` is ignored on struct fields and match arms"))
                 .warn(
                     "this was previously accepted by the compiler but is \
                  being phased out; it will become a hard error in \
@@ -721,7 +720,7 @@ impl CheckAttrVisitor<'_> {
                 .sess
                 .struct_span_err(
                     meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
-                    &format!("`{}` is not a valid identifier", doc_keyword),
+                    &format!("`{doc_keyword}` is not a valid identifier"),
                 )
                 .emit();
             return false;
@@ -805,8 +804,7 @@ impl CheckAttrVisitor<'_> {
                 .struct_span_err(
                     meta.span(),
                     &format!(
-                        "`#![doc({} = \"...\")]` isn't allowed as a crate-level attribute",
-                        attr_name,
+                        "`#![doc({attr_name} = \"...\")]` isn't allowed as a crate-level attribute",
                     ),
                 )
                 .emit();
@@ -1035,8 +1033,7 @@ impl CheckAttrVisitor<'_> {
                                                 attr.meta().unwrap().span,
                                                 "use `doc = include_str!` instead",
                                                 format!(
-                                                    "#{}[doc = include_str!(\"{}\")]",
-                                                    inner, value
+                                                    "#{inner}[doc = include_str!(\"{value}\")]",
                                                 ),
                                                 applicability,
                                             );
@@ -1230,7 +1227,7 @@ impl CheckAttrVisitor<'_> {
                         if let Some(value) = attr.value_str() {
                             diag.span_help(
                                 attr.span,
-                                &format!(r#"try `#[link(name = "{}")]` instead"#, value),
+                                &format!(r#"try `#[link(name = "{value}")]` instead"#),
                             );
                         } else {
                             diag.span_help(attr.span, r#"try `#[link(name = "...")]` instead"#);
@@ -1518,15 +1515,14 @@ impl CheckAttrVisitor<'_> {
                 };
                 self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, attr.span, |lint| {
                     lint.build(&format!(
-                        "`#[no_mangle]` has no effect on a foreign {}",
-                        foreign_item_kind
+                        "`#[no_mangle]` has no effect on a foreign {foreign_item_kind}"
                     ))
                     .warn(
                         "this was previously accepted by the compiler but is \
                             being phased out; it will become a hard error in \
                             a future release!",
                     )
-                    .span_label(span, format!("foreign {}", foreign_item_kind))
+                    .span_label(span, format!("foreign {foreign_item_kind}"))
                     .note("symbol names in extern blocks are not mangled")
                     .span_suggestion(
                         attr.span,
@@ -1692,9 +1688,9 @@ impl CheckAttrVisitor<'_> {
                 hint.span(),
                 E0517,
                 "{}",
-                &format!("attribute should be applied to {} {}", article, allowed_targets)
+                &format!("attribute should be applied to {article} {allowed_targets}")
             )
-            .span_label(span, &format!("not {} {}", article, allowed_targets))
+            .span_label(span, &format!("not {article} {allowed_targets}"))
             .emit();
         }
 
