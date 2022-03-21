@@ -1026,7 +1026,7 @@ pub trait IsTerminal {
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(any(unix, windows, hermit))] {
+    if #[cfg(any(unix, windows))] {
         #[unstable(feature = "is_terminal", issue = "80937")]
         impl IsTerminal for Stdin {
             fn is_terminal() -> bool {
