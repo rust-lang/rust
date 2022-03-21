@@ -1,5 +1,4 @@
-// run-fail
-// known-bug
+// run-pass
 // no-prefer-dynamic
 
 // regression test for #95126: io::cleanup() can panic in unusual circumstances

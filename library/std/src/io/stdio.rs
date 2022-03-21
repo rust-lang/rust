@@ -621,7 +621,18 @@ pub fn cleanup() {
         // might have leaked a StdoutLock, which would
         // otherwise cause a deadlock here.
         if let Some(lock) = Pin::static_ref(instance).try_lock() {
-            *lock.borrow_mut() = LineWriter::with_capacity(0, stdout_raw());
+            if let Ok(mut refmut) = lock.try_borrow_mut() {
+                // construct an unbuffered LineWriter
+                let unbuffered = LineWriter::with_capacity(0, stdout_raw());
+                // replace the current LineWriter with the unbuffered one
+                let mut buffered = crate::mem::replace(&mut *refmut, unbuffered);
+                // flush the old, buffered LineWriter
+                let _ = buffered.flush();
+                // leak the old, buffered LineWriter to avoid deallocations this
+                // ensures that writes to stdout *during* cleanup (e.g., writes
+                // emitted by a custom global allocator) won't deadlock (#95126)
+                crate::mem::forget(buffered);
+            }
         }
     }
 }
