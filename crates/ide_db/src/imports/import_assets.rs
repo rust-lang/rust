@@ -66,7 +66,7 @@ pub struct FirstSegmentUnresolved {
 /// A name that will be used during item lookups.
 #[derive(Debug, Clone)]
 pub enum NameToImport {
-    /// Requires items with names that exactly match the given string, bool indicatse case-sensitivity.
+    /// Requires items with names that exactly match the given string, bool indicates case-sensitivity.
     Exact(String, bool),
     /// Requires items with names that case-insensitively contain all letters from the string,
     /// in the same order, but not necessary adjacent.

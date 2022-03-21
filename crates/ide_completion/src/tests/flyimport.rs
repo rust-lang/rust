@@ -1030,15 +1030,18 @@ fn flyimport_pattern() {
     check(
         r#"
 mod module {
-    pub struct Struct;
+    pub struct FooStruct {}
+    pub const FooConst: () = ();
+    pub fn foo_fun() {}
 }
 fn function() {
-    let Str$0
+    let foo$0
 }
 "#,
         expect![[r#"
-                st Struct (use module::Struct)
-            "#]],
+            ct FooConst (use module::FooConst)
+            st FooStruct (use module::FooStruct)
+        "#]],
     );
 }
 
