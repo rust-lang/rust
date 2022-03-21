@@ -49,12 +49,12 @@ fn render(
     name: hir::Name,
     path: Option<hir::ModPath>,
 ) -> Option<CompletionItem> {
-    if let Some(PathCompletionCtx { has_call_parens: true, .. }) = completion.path_context {
-        return None;
-    }
     let db = completion.db;
-    let fields = thing.fields(completion)?;
+    let kind = thing.kind(db);
+    let has_call_parens =
+        matches!(completion.path_context, Some(PathCompletionCtx { has_call_parens: true, .. }));
 
+    let fields = thing.fields(completion)?;
     let (qualified_name, short_qualified_name, qualified) = match path {
         Some(path) => {
             let short = hir::ModPath::from_segments(
@@ -68,13 +68,14 @@ fn render(
     let qualified_name = qualified_name.to_string();
     let snippet_cap = ctx.snippet_cap();
 
-    let kind = thing.kind(db);
     let mut rendered = match kind {
-        StructKind::Tuple => render_tuple_lit(db, snippet_cap, &fields, &qualified_name),
-        StructKind::Record => render_record_lit(db, snippet_cap, &fields, &qualified_name),
-        StructKind::Unit => {
-            RenderedLiteral { literal: qualified_name.clone(), detail: qualified_name.clone() }
+        StructKind::Tuple if !has_call_parens => {
+            render_tuple_lit(db, snippet_cap, &fields, &qualified_name)
         }
+        StructKind::Record if !has_call_parens => {
+            render_record_lit(db, snippet_cap, &fields, &qualified_name)
+        }
+        _ => RenderedLiteral { literal: qualified_name.clone(), detail: qualified_name.clone() },
     };
 
     if snippet_cap.is_some() {
