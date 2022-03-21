@@ -24,7 +24,6 @@
 //! don't yet have a great pattern for how to do them properly.
 
 mod handlers {
-    // pub(crate) mod add_reference_here;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
@@ -34,18 +33,16 @@ mod handlers {
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod missing_fields;
     pub(crate) mod missing_match_arms;
-    // pub(crate) mod missing_ok_or_some_in_tail_expr;
     pub(crate) mod missing_unsafe;
     pub(crate) mod no_such_field;
-    // pub(crate) mod remove_this_semicolon;
     pub(crate) mod replace_filter_map_next_with_find_map;
+    pub(crate) mod type_mismatch;
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_import;
     pub(crate) mod unresolved_macro_call;
     pub(crate) mod unresolved_module;
     pub(crate) mod unresolved_proc_macro;
-    pub(crate) mod type_mismatch;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
