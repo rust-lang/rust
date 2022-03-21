@@ -73,8 +73,6 @@ Misc
 Compatibility Notes
 -------------------
 - [Remove compiler-rt linking hack on Android][83822]
-- [Remove deprecated LLVM-style inline assembly][92816]
-- [Reject unsupported naked functions][93153]
 
 Internal Changes
 ----------------
@@ -100,9 +98,7 @@ and related tools.
 [92630]: https://github.com/rust-lang/rust/pull/92630
 [92670]: https://github.com/rust-lang/rust/pull/92670
 [92800]: https://github.com/rust-lang/rust/pull/92800
-[92816]: https://github.com/rust-lang/rust/pull/92816
 [92933]: https://github.com/rust-lang/rust/pull/92933
-[93153]: https://github.com/rust-lang/rust/pull/93153
 [93566]: https://github.com/rust-lang/rust/pull/93566
 [93577]: https://github.com/rust-lang/rust/pull/93577
 [93658]: https://github.com/rust-lang/rust/pull/93658
