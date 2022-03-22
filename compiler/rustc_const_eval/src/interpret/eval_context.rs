@@ -177,11 +177,10 @@ pub struct LocalState<'tcx, Tag: Provenance = AllocId> {
 pub enum LocalValue<Tag: Provenance = AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
-    /// This local is alive but not yet initialized. It can be written to
-    /// but not read from or its address taken. Locals get initialized on
-    /// first write because for unsized locals, we do not know their size
-    /// before that.
-    Uninitialized,
+    /// This local is alive but not yet allocated. It cannot be read from or have its address taken,
+    /// and will be allocated on the first write. This is to support unsized locals, where we cannot
+    /// know their size in advance.
+    Unallocated,
     /// A normal, live local.
     /// Mostly for convenience, we re-use the `Operand` type here.
     /// This is an optimization over just always having a pointer here;
@@ -198,7 +197,7 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
     pub fn access(&self) -> InterpResult<'tcx, Operand<Tag>> {
         match self.value {
             LocalValue::Dead => throw_ub!(DeadLocal),
-            LocalValue::Uninitialized => {
+            LocalValue::Unallocated => {
                 bug!("The type checker should prevent reading from a never-written local")
             }
             LocalValue::Live(val) => Ok(val),
@@ -216,8 +215,7 @@ impl<'tcx, Tag: Provenance + 'static> LocalState<'tcx, Tag> {
         match self.value {
             LocalValue::Dead => throw_ub!(DeadLocal),
             LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
-            ref mut
-            local @ (LocalValue::Live(Operand::Immediate(_)) | LocalValue::Uninitialized) => {
+            ref mut local @ (LocalValue::Live(Operand::Immediate(_)) | LocalValue::Unallocated) => {
                 Ok(Ok(local))
             }
         }
@@ -752,8 +750,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             })?;
         }
 
-        // Locals are initially uninitialized.
-        let dummy = LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
+        // Locals are initially unallocated.
+        let dummy = LocalState { value: LocalValue::Unallocated, layout: Cell::new(None) };
         let mut locals = IndexVec::from_elem(dummy, &body.local_decls);
 
         // Now mark those locals as dead that we do not want to initialize
@@ -921,7 +919,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let local_val = LocalValue::Uninitialized;
+        let local_val = LocalValue::Unallocated;
         // StorageLive expects the local to be dead, and marks it live.
         let old = mem::replace(&mut self.frame_mut().locals[local].value, local_val);
         if !matches!(old, LocalValue::Dead) {
@@ -1025,7 +1023,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
 
                 match self.ecx.stack()[frame].locals[local].value {
                     LocalValue::Dead => write!(fmt, " is dead")?,
-                    LocalValue::Uninitialized => write!(fmt, " is uninitialized")?,
+                    LocalValue::Unallocated => write!(fmt, " is unallocated")?,
                     LocalValue::Live(Operand::Indirect(mplace)) => {
                         write!(
                             fmt,
