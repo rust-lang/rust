@@ -206,8 +206,9 @@ struct TokenCursor {
     frame: TokenCursorFrame,
     stack: Vec<TokenCursorFrame>,
     desugar_doc_comments: bool,
-    // Counts the number of calls to `next` or `next_desugared`,
-    // depending on whether `desugar_doc_comments` is set.
+    // Counts the number of calls to `{,inlined_}next` or
+    // `{,inlined_}next_desugared`, depending on whether
+    // `desugar_doc_comments` is set.
     num_next_calls: usize,
     // During parsing, we may sometimes need to 'unglue' a
     // glued token into two component tokens
@@ -256,6 +257,12 @@ impl TokenCursorFrame {
 
 impl TokenCursor {
     fn next(&mut self) -> (Token, Spacing) {
+        self.inlined_next()
+    }
+
+    /// This always-inlined version should only be used on hot code paths.
+    #[inline(always)]
+    fn inlined_next(&mut self) -> (Token, Spacing) {
         loop {
             let (tree, spacing) = if !self.frame.open_delim {
                 self.frame.open_delim = true;
@@ -285,7 +292,13 @@ impl TokenCursor {
     }
 
     fn next_desugared(&mut self) -> (Token, Spacing) {
-        let (data, attr_style, sp) = match self.next() {
+        self.inlined_next_desugared()
+    }
+
+    /// This always-inlined version should only be used on hot code paths.
+    #[inline(always)]
+    fn inlined_next_desugared(&mut self) -> (Token, Spacing) {
+        let (data, attr_style, sp) = match self.inlined_next() {
             (Token { kind: token::DocComment(_, attr_style, data), span }, _) => {
                 (data, attr_style, span)
             }
@@ -463,12 +476,13 @@ impl<'a> Parser<'a> {
         parser
     }
 
+    #[inline]
     fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
         loop {
             let (mut next, spacing) = if self.desugar_doc_comments {
-                self.token_cursor.next_desugared()
+                self.token_cursor.inlined_next_desugared()
             } else {
-                self.token_cursor.next()
+                self.token_cursor.inlined_next()
             };
             self.token_cursor.num_next_calls += 1;
             // We've retrieved an token from the underlying
@@ -998,7 +1012,13 @@ impl<'a> Parser<'a> {
     }
 
     /// Advance the parser by one token using provided token as the next one.
-    fn bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
+    fn bump_with(&mut self, next: (Token, Spacing)) {
+        self.inlined_bump_with(next)
+    }
+
+    /// This always-inlined version should only be used on hot code paths.
+    #[inline(always)]
+    fn inlined_bump_with(&mut self, (next_token, next_spacing): (Token, Spacing)) {
         // Bumping after EOF is a bad sign, usually an infinite loop.
         if self.prev_token.kind == TokenKind::Eof {
             let msg = "attempted to bump the parser past EOF (may be stuck in a loop)";
@@ -1016,7 +1036,7 @@ impl<'a> Parser<'a> {
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
         let next_token = self.next_tok(self.token.span);
-        self.bump_with(next_token);
+        self.inlined_bump_with(next_token);
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
