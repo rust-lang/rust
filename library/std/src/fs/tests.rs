@@ -1360,6 +1360,12 @@ fn read_dir_not_found() {
 }
 
 #[test]
+fn file_open_not_found() {
+    let res = File::open("/path/that/does/not/exist");
+    assert_eq!(res.err().unwrap().kind(), ErrorKind::NotFound);
+}
+
+#[test]
 fn create_dir_all_with_junctions() {
     let tmpdir = tmpdir();
     let target = tmpdir.join("target");
