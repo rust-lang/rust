@@ -212,19 +212,24 @@ impl LsifManager<'_> {
                 in_v: result_id.into(),
                 out_v: result_set_id.into(),
             }));
-            for x in token.references {
-                let vertex = *self.range_map.get(&x.range).unwrap();
+            let edges = token.references.iter().fold(
+                HashMap::<_, Vec<lsp_types::NumberOrString>>::new(),
+                |mut edges, x| {
+                    let entry =
+                        edges.entry((x.range.file_id, x.is_definition)).or_insert_with(Vec::new);
+                    entry.push((*self.range_map.get(&x.range).unwrap()).into());
+                    edges
+                },
+            );
+            for ((file_id, is_definition), vertices) in edges.into_iter() {
                 self.add_edge(lsif::Edge::Item(lsif::Item {
-                    document: (*self.file_map.get(&x.range.file_id).unwrap()).into(),
-                    property: Some(if x.is_definition {
+                    document: (*self.file_map.get(&file_id).unwrap()).into(),
+                    property: Some(if is_definition {
                         lsif::ItemKind::Definitions
                     } else {
                         lsif::ItemKind::References
                     }),
-                    edge_data: lsif::EdgeDataMultiIn {
-                        in_vs: vec![vertex.into()],
-                        out_v: result_id.into(),
-                    },
+                    edge_data: lsif::EdgeDataMultiIn { in_vs: vertices, out_v: result_id.into() },
                 }));
             }
         }
