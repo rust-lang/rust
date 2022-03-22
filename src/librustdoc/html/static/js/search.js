@@ -564,7 +564,10 @@ window.initSearch = function(rawSearchIndex) {
         try {
             parseInput(query, parserState);
             if (parserState.typeFilter !== null) {
-                var typeFilter = parserState.typeFilter.replace(/^const$/, "constant");
+                var typeFilter = parserState.typeFilter;
+                if (typeFilter === "const") {
+                    typeFilter = "constant";
+                }
                 query.typeFilter = itemTypeFromName(typeFilter);
             }
         } catch (err) {
