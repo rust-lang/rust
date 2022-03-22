@@ -16,6 +16,33 @@ or a generic parameter, e.g. `[u8; N]`, converting a constant to its [`ty::Const
 returns an unevaluated constant. Even fully concrete constants which do not depend on
 generic parameters are not evaluated right away.
 
+Anonymous constants are typechecked separately from their containing item, e.g.
+```rust
+fn foo<const N: usize>() -> [u8; N + 1] {
+    [0; N + 1]
+}
+```
+is treated as
+```rust
+const ANON_CONST_1<const N: usize> = N + 1;
+const ANON_CONST_2<const N: usize> = N + 1;
+fn foo<const N: usize>() -> [u8; ANON_CONST_1::<N>] {
+    [0; ANON_CONST_2::<N>]
+}
+```
+
+### Unifying constants
+
+For the compiler, `ANON_CONST_1` and `ANON_CONST_2` are completely different, so
+we have to somehow look into unevaluated constants to check whether they should
+unify.
+
+For this we use [InferCtxt::try_unify_abstract_consts](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/infer/struct.InferCtxt.html#method.try_unify_abstract_consts).
+This builds a custom AST for the two inputs from their THIR. This is then used for
+the actual comparison.
+
+### Lazy normalization for constants
+
 We do not eagerly evaluate constant as they can be used in the `where`-clauses of their
 parent item, for example:
 
@@ -32,7 +59,7 @@ its parents caller bounds, but is also part of another bound itself.
 If we were to eagerly evaluate this constant while computing its parents bounds
 this would cause a query cycle.
 
-### Generic arguments of anonymous constants
+### Unused generic arguments of anonymous constants
 
 Anonymous constants inherit the generic parameters of their parent, which is
 why the array length in `foo<const N: usize>() -> [u8; N + 1]` can use `N`.
@@ -41,25 +68,7 @@ Without any manual adjustments, this causes us to include parameters even if
 the constant doesn't use them in any way. This can cause
 [some interesting errors][pcg-unused-substs] and breaks some already stable code.
 
-To deal with this, we intend to look at the generic parameters explicitly mentioned
-by the constants and then search the predicates of its parents to figure out which
-of the other generic parameters are reachable by our constant.
-
-**TODO**: Expand this section once the parameter filtering is implemented.
-
-As constants can be part of their parents `where`-clauses, we mention unevaluated
-constants in their parents predicates. It is therefore necessary to mention unevaluated
-constants before we have computed the generic parameters
-available to these constants.
-
-To do this unevaluated constants start out with [`substs_`] being `None` while assuming
-that their generic arguments could be arbitrary generic parameters.
-When first accessing the generic arguments of an unevaluated constants, we then replace
-`substs_` with the actual default arguments of a constants, which are the generic parameters
-of their parent we assume to be used by this constant.
-
 [`ty::Const`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.Const.html
 [`ty::ConstKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.ConstKind.html
 [`ty::TyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.TyKind.html
 [pcg-unused-substs]: https://github.com/rust-lang/project-const-generics/blob/master/design-docs/anon-const-substs.md#unused-substs
-[`substs_`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/consts/kind/struct.Unevaluated.html#structfield.substs_
