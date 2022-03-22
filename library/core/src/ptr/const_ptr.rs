@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): this module still uses lots of casts to polyfill things.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::intrinsics;
@@ -60,50 +63,124 @@ impl<T: ?Sized> *const T {
 
     /// Casts a pointer to its raw bits.
     ///
-    /// This is equivalent to `as usize`, but is more specific to enhance readability.
-    /// The inverse method is [`from_bits`](#method.from_bits).
+    /// In general, pointers cannot be understood as "just an integer"
+    /// and cannot be created from one without additional context.
     ///
-    /// In particular, `*p as usize` and `p as usize` will both compile for
-    /// pointers to numeric types but do very different things, so using this
-    /// helps emphasize that reading the bits was intentional.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(ptr_to_from_bits)]
-    /// let array = [13, 42];
-    /// let p0: *const i32 = &array[0];
-    /// assert_eq!(<*const _>::from_bits(p0.to_bits()), p0);
-    /// let p1: *const i32 = &array[1];
-    /// assert_eq!(p1.to_bits() - p0.to_bits(), 4);
-    /// ```
+    /// If you would like to treat a pointer like an integer anyway,
+    /// see [`addr`][] and [`with_addr`][] for the responsible way to do that.
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
-    pub fn to_bits(self) -> usize
+    pub fn to_bits(self) -> [u8; core::mem::size_of::<*const ()>()]
     where
         T: Sized,
     {
-        self as usize
+        unsafe { core::mem::transmute(self) }
     }
 
     /// Creates a pointer from its raw bits.
     ///
     /// This is equivalent to `as *const T`, but is more specific to enhance readability.
-    /// The inverse method is [`to_bits`](#method.to_bits).
+    /// The inverse method is [`to_bits`](#method.to_bits-1).
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(ptr_to_from_bits)]
     /// use std::ptr::NonNull;
-    /// let dangling: *const u8 = NonNull::dangling().as_ptr();
-    /// assert_eq!(<*const u8>::from_bits(1), dangling);
+    /// let dangling: *mut u8 = NonNull::dangling().as_ptr();
+    /// assert_eq!(<*mut u8>::from_bits(1), dangling);
     /// ```
+    #[rustc_deprecated(
+        since = "1.61.0",
+        reason = "This design is incompatible with Pointer Provenance",
+        suggestion = "from_addr"
+    )]
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     pub fn from_bits(bits: usize) -> Self
     where
         T: Sized,
     {
         bits as Self
+    }
+
+    /// Gets the "address" portion of the pointer.
+    ///
+    /// On most platforms this is a no-op, as the pointer is just an address,
+    /// and is equivalent to the deprecated `ptr as usize` cast.
+    ///
+    /// On more complicated platforms like CHERI and segmented architectures,
+    /// this may remove some important metadata. See [`with_addr`][] for
+    /// details on this distinction and why it's important.
+    #[unstable(feature = "strict_provenance", issue = "99999999")]
+    pub fn addr(self) -> usize
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        self as usize
+    }
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// See also: [`ptr::fake_alloc`][] and [`ptr::zst_exists`][].
+    ///
+    /// This replaces the deprecated `usize as ptr` cast, which had
+    /// fundamentally broken semantics because it couldn't restore
+    /// *segment* and *provenance*.
+    ///
+    /// A pointer semantically has 3 pieces of information associated with it:
+    ///
+    /// * Segment: The address-space it is part of.
+    /// * Provenance: An allocation (slice) that it is allowed to access.
+    /// * Address: The actual address it points at.
+    ///
+    /// The compiler and hardware need to properly understand all 3 of these
+    /// values at all times to properly execute your code.
+    ///
+    /// Segment and Provenance are implicitly defined by *how* a pointer is
+    /// constructed and generally propagates verbatim to all derived pointers.
+    /// It is therefore *impossible* to convert an address into a pointer
+    /// on its own, because there is no way to know what its segment and
+    /// provenance should be.
+    ///
+    /// By introducing a "representative" pointer into the process we can
+    /// properly construct a new pointer with *its* segment and provenance,
+    /// just as any other derived pointer would. This *should* be equivalent
+    /// to `wrapping_offset`ting the given pointer to the new address. See the
+    /// docs for `wrapping_offset` for the restrictions this applies.
+    ///
+    /// # Example
+    ///
+    /// Here is an example of how to properly use this API to mess around
+    /// with tagged pointers. Here we have a tag in the lowest bit:
+    ///
+    /// ```ignore
+    /// let my_tagged_ptr: *const T = ...;
+    ///
+    /// // Get the address and do whatever bit tricks we like
+    /// let addr = my_tagged_ptr.addr();
+    /// let has_tag = (addr & 0x1) != 0;
+    /// let real_addr = addr & !0x1;
+    ///
+    /// // Reconstitute a pointer with the new address and use it
+    /// let my_untagged_ptr = my_tagged_ptr.with_addr(real_addr);
+    /// let val = *my_untagged_ptr;
+    /// ```
+    #[unstable(feature = "strict_provenance", issue = "99999999")]
+    pub fn with_addr(self, addr: usize) -> Self
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        //
+        // In the mean-time, this operation is defined to be "as if" it was
+        // a wrapping_offset, so we can emulate it as such. This should properly
+        // restore pointer provenance even under today's compiler.
+        let self_addr = self.addr() as isize;
+        let dest_addr = addr as isize;
+        let offset = dest_addr.wrapping_sub(self_addr);
+
+        // This is the canonical desugarring of this operation
+        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
     }
 
     /// Decompose a (possibly wide) pointer into its address and metadata components.
@@ -305,10 +382,10 @@ impl<T: ?Sized> *const T {
     /// This operation itself is always safe, but using the resulting pointer is not.
     ///
     /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
-    /// be used to read or write other allocated objects.
+    /// be used to read or write other allocated objects. This is tracked by provenance.
     ///
-    /// In other words, `let z = x.wrapping_offset((y as isize) - (x as isize))` does *not* make `z`
-    /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
+    /// In other words, `let z = x.wrapping_offset((y.addr() as isize) - (x.addr() as isize))`
+    /// does *not* make `z` the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
     /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
     /// `x` and `y` point into the same allocated object.
     ///
@@ -320,8 +397,39 @@ impl<T: ?Sized> *const T {
     ///
     /// The delayed check only considers the value of the pointer that was dereferenced, not the
     /// intermediate values used during the computation of the final result. For example,
-    /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`. In other
-    /// words, leaving the allocated object and then re-entering it later is permitted.
+    /// `x.wrapping_offset(o).wrapping_offset(o.wrapping_neg())` is always the same as `x`...
+    ///
+    /// Usually.
+    ///
+    /// More work needs to be done to define the rules here, but on CHERI it is not *actually*
+    /// a no-op to wrapping_offset a pointer to some random address and back again. For practical
+    /// applications that actually need this, it *will* generally work, but if your offset is
+    /// "too out of bounds" the system will mark your pointer as invalid, and subsequent reads
+    /// will fault *as if* the pointer had been corrupted by a non-pointer instruction.
+    ///
+    /// CHERI has a roughly 64-bit address space but its 128-bit pointers contain
+    /// 3 ostensibly-address-space-sized values:
+    ///
+    /// * 2 values for the "slice" that the pointer can access.
+    /// * 1 value for the actuall address it points to.
+    ///
+    /// To accomplish this, CHERI compresses the values and even requires large allocations
+    /// to have higher alignment to free up extra bits. This compression scheme can support
+    /// the pointer being offset outside of the slice, but only to an extent. A *generous*
+    /// extent, but a limited one nonetheless. To quote CHERI's documenation:
+    ///
+    /// > With 27 bits of the capability used for bounds, CHERI-MIPS and 64-bit
+    /// > CHERI-RISC-V provide the following guarantees:
+    /// >
+    /// > * A pointer is able to travel at least 1⁄4 the size of the object, or 2 KiB,
+    /// > whichever is greater, above its upper bound.
+    /// > * It is able to travel at least 1⁄8 the size of the object, or 1 KiB,
+    /// > whichever is greater, below its lower bound.
+    ///
+    /// Needless to say, any scheme that relies on reusing the least significant bits
+    /// of a pointer based on alignment is going to be fine. Any scheme which tries
+    /// to set *high* bits isn't going to work, but that was *already* extremely
+    /// platform-specific and not at all portable.
     ///
     /// [`offset`]: #method.offset
     /// [allocated object]: crate::ptr#allocated-object
@@ -427,10 +535,10 @@ impl<T: ?Sized> *const T {
     /// ```rust,no_run
     /// let ptr1 = Box::into_raw(Box::new(0u8)) as *const u8;
     /// let ptr2 = Box::into_raw(Box::new(1u8)) as *const u8;
-    /// let diff = (ptr2 as isize).wrapping_sub(ptr1 as isize);
+    /// let diff = (ptr2.addr() as isize).wrapping_sub(ptr1.addr() as isize);
     /// // Make ptr2_other an "alias" of ptr2, but derived from ptr1.
     /// let ptr2_other = (ptr1 as *const u8).wrapping_offset(diff);
-    /// assert_eq!(ptr2 as usize, ptr2_other as usize);
+    /// assert_eq!(ptr2.addr(), ptr2_other.addr());
     /// // Since ptr2_other and ptr2 are derived from pointers to different objects,
     /// // computing their offset is undefined behavior, even though
     /// // they point to the same address!
@@ -653,7 +761,7 @@ impl<T: ?Sized> *const T {
     /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
-    /// In other words, `let z = x.wrapping_add((y as usize) - (x as usize))` does *not* make `z`
+    /// In other words, `let z = x.wrapping_add((y.addr()) - (x.addr()))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
     /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
     /// `x` and `y` point into the same allocated object.
@@ -715,7 +823,7 @@ impl<T: ?Sized> *const T {
     /// The resulting pointer "remembers" the [allocated object] that `self` points to; it must not
     /// be used to read or write other allocated objects.
     ///
-    /// In other words, `let z = x.wrapping_sub((x as usize) - (y as usize))` does *not* make `z`
+    /// In other words, `let z = x.wrapping_sub((x.addr()) - (y.addr()))` does *not* make `z`
     /// the same as `y` even if we assume `T` has size `1` and there is no overflow: `z` is still
     /// attached to the object `x` is attached to, and dereferencing it is Undefined Behavior unless
     /// `x` and `y` point into the same allocated object.
@@ -1003,7 +1111,7 @@ impl<T> *const [T] {
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
-    /// assert_eq!(slice.as_ptr(), 0 as *const i8);
+    /// assert_eq!(slice.as_ptr(), ptr::null());
     /// ```
     #[inline]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]

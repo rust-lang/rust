@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): this module still uses lots of casts to polyfill things.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 //! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](pointer).*
@@ -20,12 +23,8 @@
 //!   be *dereferenceable*: the memory range of the given size starting at the pointer must all be
 //!   within the bounds of a single allocated object. Note that in Rust,
 //!   every (stack-allocated) variable is considered a separate allocated object.
-//! * Even for operations of [size zero][zst], the pointer must not be pointing to deallocated
-//!   memory, i.e., deallocation makes pointers invalid even for zero-sized operations. However,
-//!   casting any non-zero integer *literal* to a pointer is valid for zero-sized accesses, even if
-//!   some memory happens to exist at that address and gets deallocated. This corresponds to writing
-//!   your own allocator: allocating zero-sized objects is not very hard. The canonical way to
-//!   obtain a pointer that is valid for zero-sized accesses is [`NonNull::dangling`].
+//! * Deallocating memory invalidates all pointers with provenance to that allocation, *even*
+//!   for accesses of [size zero][zst].
 //! * All accesses performed by functions in this module are *non-atomic* in the sense
 //!   of [atomic operations] used to synchronize between threads. This means it is
 //!   undefined behavior to perform two concurrent accesses to the same location from different
@@ -55,7 +54,7 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
-//! ## Allocated object
+//! ## Allocated Object and Provenance
 //!
 //! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
 //! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
@@ -63,12 +62,38 @@
 //! separate allocated object), heap allocations (each allocation created by the global allocator is
 //! a separate allocated object), and `static` variables.
 //!
+//! When an object is allocated there should be only one way to access to it (the variable's name,
+//! the pointer returned by malloc). This One True Handle is given a unique *provenance* which
+//! gives it permission to access that object. This provenance, and therefore permission to access
+//! the allocation, is implicitly shared with all pointers that are either directly or transitively
+//! *derived* from the One True Handle through operations like `offset` or borrowing.
+//!
+//! (Unclear detail: taking a subslice is proposed to create a slice that is no longer allowed
+//! to access the full range of memory -- is this part of provenance or another system?)
+//!
+//! You may always "forge" an allocated object of size 0 at any properly aligned non-[null]
+//! address with [`zst_exists`] or [`NonNull::dangling`], even at addresses which "accidentally"
+//! overlap other allocations. This is allowed because the forged pointer has its own
+//! provenance, which means the compiler can distinguish between the forged pointer
+//! and those that *genuinely* point into the allocation (and the forged pointer can't
+//! be used to load or store any memory, so it really can't do anything observable
+//! that alias analysis might be concerned with).
+//!
+//! Critically, this means that freeing the *actually* allocated object does not
+//! invalidate the "accidentally" overlapping forged allocation. This is in some sense
+//! equivalent to the fact you don't get to be "lucky" and use a freed pointer whenever
+//! the memory it points at happens to get reallocated -- the new allocation has a fresh
+//! provenance, and so has no relationship to the freed pointer, even if the addresses
+//! may be the same.
+//!
+//!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
 //! [ub]: ../../reference/behavior-considered-undefined.html
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
 //! [`offset`]: pointer::offset
+//! [`zst_exists`]: pointer::zst_exists
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -210,7 +235,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T>() -> *const T {
-    0 as *const T
+    invalid::<T>(0)
 }
 
 /// Creates a null mutable raw pointer.
@@ -230,7 +255,143 @@ pub const fn null<T>() -> *const T {
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T>() -> *mut T {
-    0 as *mut T
+    invalid_mut::<T>(0)
+}
+
+/// Forge a pointer to a Zero-Sized Type (ZST) from nothing.
+///
+/// Zero-sized types do not actually exist in memory, and therefore you cannot actually
+/// "read" or "write" a ZST (any method that claims to do so is just playing pretend,
+/// although you do still need to respect alignment for something like `&[u32; 0]`).
+/// As a result, you are free to claim a ZSTs exists anywhere you want (except null).
+///
+/// This API exists to make the soundness of this pattern explicit, even under
+/// "strict provenance". It is equivalent to the deprecated `addr as *mut T` cast.
+///
+/// **BUT YOU AREN'T ACTUALLY ALLOWED TO BLINDLY FORGE ZST _INSTANCES_.**
+///
+/// It's sound for an API to use an instance of a ZST to enforce some important
+/// safety property. So for instance, you can make an API like this:
+///
+/// ```ignore
+/// pub struct Step1Token(_private_to_construct: ());
+///
+/// pub fn step1() -> Step1Token { ... }
+/// pub fn step2(proof: Step1Token) { ... }
+/// ```
+///
+/// And it's sound in the body of `step2` to assume that `step1` has been run
+/// beforehand, because the only way to get an instance of Step1Token is to call
+/// `step1` (assuming `step1` is indeed the only API that creates one).
+///
+/// A well-behaved abstraction should conceptually only be "reading" ZSTs that it
+/// has previously "written". You don't *actually* need to do the write, and could
+/// feed it into [`mem::forget`][] instead, but for ZSTs `write` is a perfectly
+/// good way to say `forget` and better expresses the semantics of your code.
+///
+/// Anything that stores *many* ZSTs should at the minimum maintain a counter of how
+/// many it has written so that it can know how many it can/must read later.
+/// `Vec<()>` is basically just a counter that goes up on `push` and down on `pop`.
+///
+/// Note: if you need to "allocate" memory for a buffer of ZSTs,
+/// [`core::ptr::NonNull::dangling`][] is more useful, because it
+/// handles alignment for you.
+///
+/// # Example
+///
+/// ```
+/// use core::{ptr, mem};
+///
+/// // I store my ZSTs at the *coolest* address
+/// let my_good_ptr = ptr::zst_exists::<()>(0xc001_add7);
+///
+/// // "store" and then "load" a ZST at this cool address.
+/// my_good_ptr.write(());
+/// let output = my_good_ptr.read();
+/// ```
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "99999999")]
+pub const fn zst_exists<T>(addr: usize) -> *mut T
+where
+    T: Sized,
+{
+    // Probably a better way to enforce this, too tired.
+    assert!(core::mem::size_of::<T>() == 0);
+
+    // We are the language so we get to know that `invalid` is fine here.
+    invalid_mut::<T>(addr)
+}
+
+/// Claim that you have "allocated" and have unique access to the range
+/// of memory `address .. address + len * size_of::<T>()`.
+///
+/// (This is an extremely "shot in the dark" design, but throwing it out
+/// here as a possible sketch of an answer to the problem.)
+///
+/// When dealing with low-level situations like memory-mapped peripherals,
+/// the programmer typically needs to just blindly assume a specific address
+/// can be interpretted as a pointer and read/written.
+///
+/// This is a problem for Pointer Provenance and Segmenting, because there
+/// is no "chain of custody" to an allocation. One possible solution to this
+/// is for the programmer to Pretend To Be Malloc and "allocate" the address.
+/// See [`with_addr`] for more details.
+///
+/// Just as with *real* malloc, the compiler is free to assume the pointer
+/// returned from this function is completely unaliased, and that all accesses
+/// to this range of memory occur *only* from pointers with provenance derived
+/// from this one. These assumptions can be loosened with operations like
+/// [`read_volatile`][] which you were probably going to use already.
+///
+/// This is only sound to do if:
+///
+/// * You are actually allowed to access that specified range of memory
+/// * All future accesses to this range of memory are through this pointer
+/// * You never `claim_alloc` this memory again (Maybe? Should we have claim_dealloc?)
+///
+/// Basically, pretend you're `malloc` and think about how bad it would be
+/// if `malloc` returned the same pointer twice (without any freeing).
+///
+/// This design needs to be workshopped but needless to say it is Extremely
+/// Undefined Behaviour to do wrong things with this.
+#[must_use]
+#[unstable(feature = "strict_provenance", issue = "99999999")]
+pub unsafe fn claim_alloc<T>(addr: usize, _len: usize) -> *mut T
+where
+    T: Sized,
+{
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    addr as *mut T
+}
+
+/// Creates an invalid pointer with the given address.
+///
+/// This pointer will have no provenance associated with it and is therefore
+/// UB to read/write/offset it. This mostly exists to facilitate things
+/// like ptr::null and NonNull::dangling which make invalid pointers.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "99999999")]
+pub const fn invalid<T>(addr: usize) -> *const T {
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    addr as *const T
+}
+
+/// Creates a mutable invalid pointer with the given address.
+///
+/// This pointer will have no provenance associated with it and is therefore
+/// UB to read/write/offset it. This mostly exists to facilitate things
+/// like ptr::null and NonNull::dangling which make invalid pointers.
+#[inline(always)]
+#[must_use]
+#[rustc_const_stable(feature = "strict_provenance", since = "1.61.0")]
+#[unstable(feature = "strict_provenance", issue = "99999999")]
+pub const fn invalid_mut<T>(addr: usize) -> *mut T {
+    // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+    addr as *mut T
 }
 
 /// Forms a raw slice from a pointer and a length.
@@ -1110,6 +1271,8 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         unchecked_shl, unchecked_shr, unchecked_sub, wrapping_add, wrapping_mul, wrapping_sub,
     };
 
+    let addr = p.addr();
+
     /// Calculate multiplicative modular inverse of `x` modulo `m`.
     ///
     /// This implementation is tailored for `align_offset` and has following preconditions:
@@ -1170,13 +1333,10 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         //
         // which distributes operations around the load-bearing, but pessimizing `and` sufficiently
         // for LLVM to be able to utilize the various optimizations it knows about.
-        return wrapping_sub(
-            wrapping_add(p as usize, a_minus_one) & wrapping_sub(0, a),
-            p as usize,
-        );
+        return wrapping_sub(wrapping_add(addr, a_minus_one) & wrapping_sub(0, a), addr);
     }
 
-    let pmoda = p as usize & a_minus_one;
+    let pmoda = addr & a_minus_one;
     if pmoda == 0 {
         // Already aligned. Yay!
         return 0;
@@ -1193,7 +1353,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     let gcd = unsafe { unchecked_shl(1usize, gcdpow) };
 
     // SAFETY: gcd is always greater or equal to 1.
-    if p as usize & unsafe { unchecked_sub(gcd, 1) } == 0 {
+    if addr & unsafe { unchecked_sub(gcd, 1) } == 0 {
         // This branch solves for the following linear congruence equation:
         //
         // ` p + so = 0 mod a `
@@ -1347,6 +1507,10 @@ pub fn hash<T: ?Sized, S: hash::Hasher>(hashee: *const T, into: &mut S) {
     hashee.hash(into);
 }
 
+// FIXME(strict_provenance_magic): function pointers have buggy codegen that
+// necessitates casting to a usize to get the backend to do the right thing.
+// for now I will break AVR to silence *a billion* lints.
+
 // Impls for function pointers
 macro_rules! fnptr_impls_safety_abi {
     ($FnTy: ty, $($Arg: ident),*) => {
@@ -1354,7 +1518,7 @@ macro_rules! fnptr_impls_safety_abi {
         impl<Ret, $($Arg),*> PartialEq for $FnTy {
             #[inline]
             fn eq(&self, other: &Self) -> bool {
-                *self as usize == *other as usize
+                *self as *const () == *other as *const ()
             }
         }
 
@@ -1365,7 +1529,7 @@ macro_rules! fnptr_impls_safety_abi {
         impl<Ret, $($Arg),*> PartialOrd for $FnTy {
             #[inline]
             fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-                (*self as usize).partial_cmp(&(*other as usize))
+                (*self as *const ()).partial_cmp(&(*other as *const ()))
             }
         }
 
@@ -1373,14 +1537,14 @@ macro_rules! fnptr_impls_safety_abi {
         impl<Ret, $($Arg),*> Ord for $FnTy {
             #[inline]
             fn cmp(&self, other: &Self) -> Ordering {
-                (*self as usize).cmp(&(*other as usize))
+                (*self as *const ()).cmp(&(*other as *const ()))
             }
         }
 
         #[stable(feature = "fnptr_impls", since = "1.4.0")]
         impl<Ret, $($Arg),*> hash::Hash for $FnTy {
             fn hash<HH: hash::Hasher>(&self, state: &mut HH) {
-                state.write_usize(*self as usize)
+                state.write_usize((*self as *const ()).addr())
             }
         }
 
@@ -1392,7 +1556,7 @@ macro_rules! fnptr_impls_safety_abi {
                 // is preserved in the final function pointer.
                 //
                 // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::Pointer::fmt(&(*self as *const ()), f)
             }
         }
 
@@ -1404,7 +1568,7 @@ macro_rules! fnptr_impls_safety_abi {
                 // is preserved in the final function pointer.
                 //
                 // https://github.com/avr-rust/rust/issues/143
-                fmt::Pointer::fmt(&(*self as usize as *const ()), f)
+                fmt::Pointer::fmt(&(*self as *const ()), f)
             }
         }
     }
