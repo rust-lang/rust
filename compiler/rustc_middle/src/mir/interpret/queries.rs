@@ -43,7 +43,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // variables. We reject those here since `resolve_opt_const_arg`
         // would fail otherwise
         if ct.substs.has_infer_types_or_consts() {
-            return Err(ErrorHandled::TooGeneric);
+            bug!("did not expect inference variables here");
         }
 
         match ty::Instance::resolve_opt_const_arg(self, param_env, ct.def, ct.substs) {

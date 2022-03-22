@@ -20,8 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::interpret::EvalToConstValueResult;
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToConstValueResult};
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -695,9 +694,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         // Reject any attempt to unify two unevaluated constants that contain inference
-        // variables.
-        // FIXME `TyCtxt::const_eval_resolve` already rejects the resolution of those
-        // constants early, but the canonicalization below messes with that mechanism.
+        // variables, since inference variables in queries lead to ICEs.
         if a.substs.has_infer_types_or_consts() || b.substs.has_infer_types_or_consts() {
             debug!("a or b contain infer vars in its substs -> cannot unify");
             return false;
@@ -1621,8 +1618,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
-            debug!("has infer types or consts");
-            return Err(ErrorHandled::TooGeneric);
+            debug!("substs have infer types or consts: {:?}", substs);
+            if substs.has_infer_types_or_consts() {
+                return Err(ErrorHandled::TooGeneric);
+            }
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);

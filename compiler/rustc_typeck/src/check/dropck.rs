@@ -243,7 +243,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 (
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
-                ) => tcx.try_unify_abstract_consts((a, b)),
+                ) => tcx.try_unify_abstract_consts(self_param_env.and((a, b))),
                 (
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
                     ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),

@@ -569,6 +569,18 @@ pub(super) fn thir_abstract_const<'tcx>(
     }
 }
 
+/// Tries to unify two abstract constants using structural equality.
+#[instrument(skip(tcx), level = "debug")]
+pub(super) fn try_unify<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    a: AbstractConst<'tcx>,
+    b: AbstractConst<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
+    const_unify_ctxt.try_unify_inner(a, b)
+}
+
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
@@ -622,115 +634,119 @@ where
     recurse(tcx, ct, &mut f)
 }
 
-// Substitutes generics repeatedly to allow AbstractConsts to unify where a
-// ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
-// Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
-#[inline]
-#[instrument(skip(tcx), level = "debug")]
-fn try_replace_substs_in_root<'tcx>(
+pub(super) struct ConstUnifyCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
-    mut abstr_const: AbstractConst<'tcx>,
-) -> Option<AbstractConst<'tcx>> {
-    while let Node::Leaf(ct) = abstr_const.root(tcx) {
-        match AbstractConst::from_const(tcx, ct) {
-            Ok(Some(act)) => abstr_const = act,
-            Ok(None) => break,
-            Err(_) => return None,
-        }
-    }
-
-    Some(abstr_const)
+    param_env: ty::ParamEnv<'tcx>,
 }
 
-/// Tries to unify two abstract constants using structural equality.
-#[instrument(skip(tcx), level = "debug")]
-pub(super) fn try_unify<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    a: AbstractConst<'tcx>,
-    b: AbstractConst<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> bool {
-    let a = match try_replace_substs_in_root(tcx, a) {
-        Some(a) => a,
-        None => {
-            return true;
-        }
-    };
+impl<'tcx> ConstUnifyCtxt<'tcx> {
+    pub(super) fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
+        ConstUnifyCtxt { tcx, param_env }
+    }
 
-    let b = match try_replace_substs_in_root(tcx, b) {
-        Some(b) => b,
-        None => {
-            return true;
-        }
-    };
-
-    let a_root = a.root(tcx);
-    let b_root = b.root(tcx);
-    debug!(?a_root, ?b_root);
-
-    match (a_root, b_root) {
-        (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
-            let a_ct = a_ct.eval(tcx, param_env);
-            debug!("a_ct evaluated: {:?}", a_ct);
-            let b_ct = b_ct.eval(tcx, param_env);
-            debug!("b_ct evaluated: {:?}", b_ct);
-
-            if a_ct.ty() != b_ct.ty() {
-                return false;
-            }
-
-            match (a_ct.val(), b_ct.val()) {
-                // We can just unify errors with everything to reduce the amount of
-                // emitted errors here.
-                (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,
-                (ty::ConstKind::Param(a_param), ty::ConstKind::Param(b_param)) => {
-                    a_param == b_param
-                }
-                (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
-                // If we have `fn a<const N: usize>() -> [u8; N + 1]` and `fn b<const M: usize>() -> [u8; 1 + M]`
-                // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
-                // means that we only allow inference variables if they are equal.
-                (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => a_val == b_val,
-                // We expand generic anonymous constants at the start of this function, so this
-                // branch should only be taking when dealing with associated constants, at
-                // which point directly comparing them seems like the desired behavior.
-                //
-                // FIXME(generic_const_exprs): This isn't actually the case.
-                // We also take this branch for concrete anonymous constants and
-                // expand generic anonymous constants with concrete substs.
-                (ty::ConstKind::Unevaluated(a_uv), ty::ConstKind::Unevaluated(b_uv)) => {
-                    a_uv == b_uv
-                }
-                // FIXME(generic_const_exprs): We may want to either actually try
-                // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
-                // this, for now we just return false here.
-                _ => false,
+    // Substitutes generics repeatedly to allow AbstractConsts to unify where a
+    // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
+    // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
+    #[inline]
+    #[instrument(skip(self), level = "debug")]
+    pub(super) fn try_replace_substs_in_root(
+        &self,
+        mut abstr_const: AbstractConst<'tcx>,
+    ) -> Option<AbstractConst<'tcx>> {
+        while let Node::Leaf(ct) = abstr_const.root(self.tcx) {
+            match AbstractConst::from_const(self.tcx, ct) {
+                Ok(Some(act)) => abstr_const = act,
+                Ok(None) => break,
+                Err(_) => return None,
             }
         }
-        (Node::Binop(a_op, al, ar), Node::Binop(b_op, bl, br)) if a_op == b_op => {
-            try_unify(tcx, a.subtree(al), b.subtree(bl), param_env)
-                && try_unify(tcx, a.subtree(ar), b.subtree(br), param_env)
+
+        Some(abstr_const)
+    }
+
+    /// Tries to unify two abstract constants using structural equality.
+    #[instrument(skip(self), level = "debug")]
+    fn try_unify_inner(&self, a: AbstractConst<'tcx>, b: AbstractConst<'tcx>) -> bool {
+        let a = if let Some(a) = self.try_replace_substs_in_root(a) {
+            a
+        } else {
+            return true;
+        };
+
+        let b = if let Some(b) = self.try_replace_substs_in_root(b) {
+            b
+        } else {
+            return true;
+        };
+
+        let a_root = a.root(self.tcx);
+        let b_root = b.root(self.tcx);
+        debug!(?a_root, ?b_root);
+
+        match (a_root, b_root) {
+            (Node::Leaf(a_ct), Node::Leaf(b_ct)) => {
+                let a_ct = a_ct.eval(self.tcx, self.param_env);
+                debug!("a_ct evaluated: {:?}", a_ct);
+                let b_ct = b_ct.eval(self.tcx, self.param_env);
+                debug!("b_ct evaluated: {:?}", b_ct);
+
+                if a_ct.ty() != b_ct.ty() {
+                    return false;
+                }
+
+                match (a_ct.val(), b_ct.val()) {
+                    // We can just unify errors with everything to reduce the amount of
+                    // emitted errors here.
+                    (ty::ConstKind::Error(_), _) | (_, ty::ConstKind::Error(_)) => true,
+                    (ty::ConstKind::Param(a_param), ty::ConstKind::Param(b_param)) => {
+                        a_param == b_param
+                    }
+                    (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => a_val == b_val,
+                    // If we have `fn a<const N: usize>() -> [u8; N + 1]` and `fn b<const M: usize>() -> [u8; 1 + M]`
+                    // we do not want to use `assert_eq!(a(), b())` to infer that `N` and `M` have to be `1`. This
+                    // means that we only allow inference variables if they are equal.
+                    (ty::ConstKind::Infer(a_val), ty::ConstKind::Infer(b_val)) => a_val == b_val,
+                    // We expand generic anonymous constants at the start of this function, so this
+                    // branch should only be taking when dealing with associated constants, at
+                    // which point directly comparing them seems like the desired behavior.
+                    //
+                    // FIXME(generic_const_exprs): This isn't actually the case.
+                    // We also take this branch for concrete anonymous constants and
+                    // expand generic anonymous constants with concrete substs.
+                    (ty::ConstKind::Unevaluated(a_uv), ty::ConstKind::Unevaluated(b_uv)) => {
+                        a_uv == b_uv
+                    }
+                    // FIXME(generic_const_exprs): We may want to either actually try
+                    // to evaluate `a_ct` and `b_ct` if they are are fully concrete or something like
+                    // this, for now we just return false here.
+                    _ => false,
+                }
+            }
+            (Node::Binop(a_op, al, ar), Node::Binop(b_op, bl, br)) if a_op == b_op => {
+                self.try_unify_inner(a.subtree(al), b.subtree(bl))
+                    && self.try_unify_inner(a.subtree(ar), b.subtree(br))
+            }
+            (Node::UnaryOp(a_op, av), Node::UnaryOp(b_op, bv)) if a_op == b_op => {
+                self.try_unify_inner(a.subtree(av), b.subtree(bv))
+            }
+            (Node::FunctionCall(a_f, a_args), Node::FunctionCall(b_f, b_args))
+                if a_args.len() == b_args.len() =>
+            {
+                self.try_unify_inner(a.subtree(a_f), b.subtree(b_f))
+                    && iter::zip(a_args, b_args)
+                        .all(|(&an, &bn)| self.try_unify_inner(a.subtree(an), b.subtree(bn)))
+            }
+            (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty))
+                if (a_ty == b_ty) && (a_kind == b_kind) =>
+            {
+                self.try_unify_inner(a.subtree(a_operand), b.subtree(b_operand))
+            }
+            // use this over `_ => false` to make adding variants to `Node` less error prone
+            (Node::Cast(..), _)
+            | (Node::FunctionCall(..), _)
+            | (Node::UnaryOp(..), _)
+            | (Node::Binop(..), _)
+            | (Node::Leaf(..), _) => false,
         }
-        (Node::UnaryOp(a_op, av), Node::UnaryOp(b_op, bv)) if a_op == b_op => {
-            try_unify(tcx, a.subtree(av), b.subtree(bv), param_env)
-        }
-        (Node::FunctionCall(a_f, a_args), Node::FunctionCall(b_f, b_args))
-            if a_args.len() == b_args.len() =>
-        {
-            try_unify(tcx, a.subtree(a_f), b.subtree(b_f), param_env)
-                && iter::zip(a_args, b_args)
-                    .all(|(&an, &bn)| try_unify(tcx, a.subtree(an), b.subtree(bn), param_env))
-        }
-        (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty))
-            if (a_ty == b_ty) && (a_kind == b_kind) =>
-        {
-            try_unify(tcx, a.subtree(a_operand), b.subtree(b_operand), param_env)
-        }
-        // use this over `_ => false` to make adding variants to `Node` less error prone
-        (Node::Cast(..), _)
-        | (Node::FunctionCall(..), _)
-        | (Node::UnaryOp(..), _)
-        | (Node::Binop(..), _)
-        | (Node::Leaf(..), _) => false,
     }
 }
