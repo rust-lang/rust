@@ -2,10 +2,10 @@ use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        os: "haiku".to_string(),
+        os: "haiku".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".to_string()],
+        families: vec!["unix".into()],
         relro_level: RelroLevel::Full,
         ..Default::default()
     }

@@ -218,7 +218,7 @@ impl ModuleConfig {
                 false
             ),
             emit_obj,
-            bc_cmdline: sess.target.bitcode_llvm_cmdline.clone(),
+            bc_cmdline: sess.target.bitcode_llvm_cmdline.to_string(),
 
             verify_llvm_ir: sess.verify_llvm_ir(),
             no_prepopulate_passes: sess.opts.cg.no_prepopulate_passes,
@@ -1061,7 +1061,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         is_pe_coff: tcx.sess.target.is_like_windows,
         target_can_use_split_dwarf: tcx.sess.target_can_use_split_dwarf(),
         target_pointer_width: tcx.sess.target.pointer_width,
-        target_arch: tcx.sess.target.arch.clone(),
+        target_arch: tcx.sess.target.arch.to_string(),
         debuginfo: tcx.sess.opts.debuginfo,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.debugging_opts.split_dwarf_kind,

@@ -170,6 +170,7 @@ use self::JsonEvent::*;
 use self::ParserError::*;
 use self::ParserState::*;
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::mem::swap;
 use std::num::FpCategory as Fp;
@@ -2193,6 +2194,12 @@ impl ToJson for str {
 impl ToJson for string::String {
     fn to_json(&self) -> Json {
         Json::String((*self).clone())
+    }
+}
+
+impl<'a> ToJson for Cow<'a, str> {
+    fn to_json(&self) -> Json {
+        Json::String(self.to_string())
     }
 }
 

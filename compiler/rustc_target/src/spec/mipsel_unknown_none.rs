@@ -7,18 +7,18 @@ use crate::spec::{PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {
-        llvm_target: "mipsel-unknown-none".to_string(),
+        llvm_target: "mipsel-unknown-none".into(),
         pointer_width: 32,
-        data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".to_string(),
-        arch: "mips".to_string(),
+        data_layout: "e-m:m-p:32:32-i8:8:32-i16:16:32-i64:64-n32-S64".into(),
+        arch: "mips".into(),
 
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-            cpu: "mips32r2".to_string(),
-            features: "+mips32r2,+soft-float,+noabicalls".to_string(),
+            cpu: "mips32r2".into(),
+            features: "+mips32r2,+soft-float,+noabicalls".into(),
             max_atomic_width: Some(32),
             executables: true,
-            linker: Some("rust-lld".to_owned()),
+            linker: Some("rust-lld".into()),
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,
             emit_debug_gdb_scripts: false,

@@ -16,22 +16,22 @@ pub fn opts() -> TargetOptions {
             // FIXME: This should be replaced by a more complete and generic
             // mechanism for controlling the order of library arguments passed
             // to the linker.
-            "-lc".to_string(),
+            "-lc".into(),
             // LLVM will insert calls to the stack protector functions
             // "__stack_chk_fail" and "__stack_chk_guard" into code in native
             // object files.  Some platforms include these symbols directly in
             // libc, but at least historically these have been provided in
             // libssp.so on illumos and Solaris systems.
-            "-lssp".to_string(),
+            "-lssp".into(),
         ],
     );
 
     TargetOptions {
-        os: "illumos".to_string(),
+        os: "illumos".into(),
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
-        families: vec!["unix".to_string()],
+        families: vec!["unix".into()],
         is_like_solaris: true,
         linker_is_gnu: false,
         limit_rdylib_exports: false, // Linker doesn't support this
@@ -54,8 +54,8 @@ pub fn opts() -> TargetOptions {
         //
         // We want XPG6 behavior from libc and libm.  See standards(5)
         //pre_link_objects_exe: vec![
-        //    "/usr/lib/amd64/values-Xc.o".to_string(),
-        //    "/usr/lib/amd64/values-xpg6.o".to_string(),
+        //    "/usr/lib/amd64/values-Xc.o".into(),
+        //    "/usr/lib/amd64/values-xpg6.o".into(),
         //],
         ..Default::default()
     }

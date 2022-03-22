@@ -18,10 +18,10 @@ use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOp
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        abi: "eabi".to_string(),
+        abi: "eabi".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        linker: Some("rust-lld".to_owned()),
-        features: "+v7,+thumb2,+soft-float,-neon,+strict-align".to_string(),
+        linker: Some("rust-lld".into()),
+        features: "+v7,+thumb2,+soft-float,-neon,+strict-align".into(),
         executables: true,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
@@ -32,10 +32,10 @@ pub fn target() -> Target {
         ..Default::default()
     };
     Target {
-        llvm_target: "armv7a-none-eabi".to_string(),
+        llvm_target: "armv7a-none-eabi".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
-        arch: "arm".to_string(),
+        data_layout: "e-m:e-p:32:32-Fi8-i64:64-v128:64:128-a:0:32-n32-S64".into(),
+        arch: "arm".into(),
         options: opts,
     }
 }

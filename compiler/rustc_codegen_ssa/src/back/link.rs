@@ -675,10 +675,10 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
     linker::disable_localization(&mut cmd);
 
     for &(ref k, ref v) in &sess.target.link_env {
-        cmd.env(k, v);
+        cmd.env(k.as_ref(), v.as_ref());
     }
     for k in &sess.target.link_env_remove {
-        cmd.env_remove(k);
+        cmd.env_remove(k.as_ref());
     }
 
     if sess.opts.prints.contains(&PrintRequest::LinkArgs) {
@@ -1216,7 +1216,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     if let Some(ret) = infer_from(
         sess,
-        sess.target.linker.clone().map(PathBuf::from),
+        sess.target.linker.as_ref().map(|l| PathBuf::from(l.as_ref())),
         Some(sess.target.linker_flavor),
     ) {
         return ret;
@@ -1602,7 +1602,7 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
             let file_name = ["rustc", &sess.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
-            if let Err(e) = fs::write(&path, script) {
+            if let Err(e) = fs::write(&path, script.as_ref()) {
                 sess.fatal(&format!("failed to write link script to {}: {}", path.display(), e));
             }
 
@@ -1960,8 +1960,8 @@ fn add_order_independent_options(
         cmd.arg(&codegen_results.crate_info.target_cpu);
         cmd.arg("--cpu-features");
         cmd.arg(match &sess.opts.cg.target_feature {
-            feat if !feat.is_empty() => feat,
-            _ => &sess.target.options.features,
+            feat if !feat.is_empty() => feat.as_ref(),
+            _ => sess.target.options.features.as_ref(),
         });
     }
 
@@ -2478,12 +2478,12 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
     if sess.target.vendor != "apple"
-        || !matches!(os.as_str(), "ios" | "tvos")
+        || !matches!(os.as_ref(), "ios" | "tvos")
         || flavor != LinkerFlavor::Gcc
     {
         return;
     }
-    let sdk_name = match (arch.as_str(), os.as_str()) {
+    let sdk_name = match (arch.as_ref(), os.as_ref()) {
         ("aarch64", "tvos") => "appletvos",
         ("x86_64", "tvos") => "appletvsimulator",
         ("arm", "ios") => "iphoneos",

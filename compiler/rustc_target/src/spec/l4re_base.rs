@@ -3,14 +3,14 @@ use std::default::Default;
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        os: "l4re".to_string(),
-        env: "uclibc".to_string(),
+        os: "l4re".into(),
+        env: "uclibc".into(),
         linker_flavor: LinkerFlavor::L4Bender,
         executables: true,
         panic_strategy: PanicStrategy::Abort,
-        linker: Some("l4-bender".to_string()),
+        linker: Some("l4-bender".into()),
         linker_is_gnu: false,
-        families: vec!["unix".to_string()],
+        families: vec!["unix".into()],
         ..Default::default()
     }
 }

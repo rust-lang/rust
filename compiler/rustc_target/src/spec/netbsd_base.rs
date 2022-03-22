@@ -2,10 +2,10 @@ use crate::spec::{RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {
-        os: "netbsd".to_string(),
+        os: "netbsd".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".to_string()],
+        families: vec!["unix".into()],
         no_default_libraries: false,
         has_rpath: true,
         position_independent_executables: true,

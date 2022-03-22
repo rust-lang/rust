@@ -134,7 +134,7 @@ pub unsafe fn create_module<'ll>(
     let mod_name = SmallCStr::new(mod_name);
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let mut target_data_layout = sess.target.data_layout.clone();
+    let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
     if llvm_version < (13, 0, 0) {
         if sess.target.arch == "powerpc64" {
@@ -859,7 +859,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one and we assume it exists in `core::slice::cmp`
-        match self.sess().target.arch.as_str() {
+        match self.sess().target.arch.as_ref() {
             "avr" | "msp430" => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i16),
             _ => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32),
         }
