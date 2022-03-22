@@ -58,7 +58,6 @@ use hir_ty::{
     consteval::{
         eval_const, unknown_const_as_generic, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt,
     },
-    could_unify,
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,
@@ -85,12 +84,11 @@ use crate::db::{DefDatabase, HirDatabase};
 pub use crate::{
     attrs::{HasAttrs, Namespace},
     diagnostics::{
-        AddReferenceHere, AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase,
-        InvalidDeriveTarget, MacroError, MalformedDerive, MismatchedArgCount, MissingFields,
-        MissingMatchArms, MissingOkOrSomeInTailExpr, MissingUnsafe, NoSuchField,
-        RemoveThisSemicolon, ReplaceFilterMapNextWithFindMap, UnimplementedBuiltinMacro,
-        UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall, UnresolvedModule,
-        UnresolvedProcMacro,
+        AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
+        MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
+        MissingUnsafe, NoSuchField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
+        UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
+        UnresolvedModule, UnresolvedProcMacro,
     },
     has_source::HasSource,
     semantics::{PathResolution, Semantics, SemanticsScope, TypeInfo},
@@ -1005,6 +1003,24 @@ impl Adt {
         Type::from_def(db, id.module(db.upcast()).krate(), id)
     }
 
+    /// Turns this ADT into a type with the given type parameters. This isn't
+    /// the greatest API, FIXME find a better one.
+    pub fn ty_with_args(self, db: &dyn HirDatabase, args: &[Type]) -> Type {
+        let id = AdtId::from(self);
+        let mut it = args.iter().map(|t| t.ty.clone());
+        let ty = TyBuilder::def_ty(db, id.into())
+            .fill(|x| {
+                let r = it.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                match x {
+                    ParamKind::Type => GenericArgData::Ty(r).intern(Interner),
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                }
+            })
+            .build();
+        let krate = id.module(db.upcast()).krate();
+        Type::new(db, krate, id, ty)
+    }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
             Adt::Struct(s) => s.module(db),
@@ -1018,6 +1034,14 @@ impl Adt {
             Adt::Struct(s) => s.name(db),
             Adt::Union(u) => u.name(db),
             Adt::Enum(e) => e.name(db),
+        }
+    }
+
+    pub fn as_enum(&self) -> Option<Enum> {
+        if let Self::Enum(v) = self {
+            Some(*v)
+        } else {
+            None
         }
     }
 }
@@ -1163,6 +1187,30 @@ impl DefWithBody {
                 }
             }
         }
+        for (expr, mismatch) in infer.expr_type_mismatches() {
+            let expr = match source_map.expr_syntax(expr) {
+                Ok(expr) => expr,
+                Err(SyntheticSyntax) => continue,
+            };
+            acc.push(
+                TypeMismatch {
+                    expr,
+                    expected: Type::new(
+                        db,
+                        krate,
+                        DefWithBodyId::from(self),
+                        mismatch.expected.clone(),
+                    ),
+                    actual: Type::new(
+                        db,
+                        krate,
+                        DefWithBodyId::from(self),
+                        mismatch.actual.clone(),
+                    ),
+                }
+                .into(),
+            );
+        }
 
         for expr in hir_ty::diagnostics::missing_unsafe(db, self.into()) {
             match source_map.expr_syntax(expr) {
@@ -1259,25 +1307,6 @@ impl DefWithBody {
                         Err(SyntheticSyntax) => (),
                     }
                 }
-                BodyValidationDiagnostic::RemoveThisSemicolon { expr } => {
-                    match source_map.expr_syntax(expr) {
-                        Ok(expr) => acc.push(RemoveThisSemicolon { expr }.into()),
-                        Err(SyntheticSyntax) => (),
-                    }
-                }
-                BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr, required } => {
-                    match source_map.expr_syntax(expr) {
-                        Ok(expr) => acc.push(
-                            MissingOkOrSomeInTailExpr {
-                                expr,
-                                required,
-                                expected: self.body_type(db),
-                            }
-                            .into(),
-                        ),
-                        Err(SyntheticSyntax) => (),
-                    }
-                }
                 BodyValidationDiagnostic::MissingMatchArms { match_expr } => {
                     match source_map.expr_syntax(match_expr) {
                         Ok(source_ptr) => {
@@ -1296,12 +1325,6 @@ impl DefWithBody {
                                 }
                             }
                         }
-                        Err(SyntheticSyntax) => (),
-                    }
-                }
-                BodyValidationDiagnostic::AddReferenceHere { arg_expr, mutability } => {
-                    match source_map.expr_syntax(arg_expr) {
-                        Ok(expr) => acc.push(AddReferenceHere { expr, mutability }.into()),
                         Err(SyntheticSyntax) => (),
                     }
                 }
@@ -2618,6 +2641,17 @@ impl Type {
         Type { krate, env: environment, ty }
     }
 
+    pub fn reference(inner: &Type, m: Mutability) -> Type {
+        inner.derived(
+            TyKind::Ref(
+                if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
+                hir_ty::static_lifetime(),
+                inner.ty.clone(),
+            )
+            .intern(Interner),
+        )
+    }
+
     fn new(db: &dyn HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
         let resolver = lexical_env.resolver(db.upcast());
         let environment = resolver
@@ -2657,6 +2691,12 @@ impl Type {
 
     pub fn is_reference(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Ref(..))
+    }
+
+    pub fn as_reference(&self) -> Option<(Type, Mutability)> {
+        let (ty, _lt, m) = self.ty.as_reference()?;
+        let m = Mutability::from_mutable(matches!(m, hir_ty::Mutability::Mut));
+        Some((self.derived(ty.clone()), m))
     }
 
     pub fn is_slice(&self) -> bool {
@@ -2900,7 +2940,7 @@ impl Type {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
-    pub fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
+    fn autoderef_<'a>(&'a self, db: &'a dyn HirDatabase) -> impl Iterator<Item = Ty> + 'a {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
         let environment = self.env.clone();
@@ -3238,7 +3278,12 @@ impl Type {
 
     pub fn could_unify_with(&self, db: &dyn HirDatabase, other: &Type) -> bool {
         let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), other.ty.clone()));
-        could_unify(db, self.env.clone(), &tys)
+        hir_ty::could_unify(db, self.env.clone(), &tys)
+    }
+
+    pub fn could_coerce_to(&self, db: &dyn HirDatabase, to: &Type) -> bool {
+        let tys = hir_ty::replace_errors_with_variables(&(self.ty.clone(), to.ty.clone()));
+        hir_ty::could_coerce(db, self.env.clone(), &tys)
     }
 }
 

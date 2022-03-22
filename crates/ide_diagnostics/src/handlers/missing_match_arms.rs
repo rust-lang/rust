@@ -278,6 +278,7 @@ fn main() {
     match (true, false) {
         (true, false, true) => (),
         (true) => (),
+      // ^^^^  error: expected (bool, bool), found bool
     }
     match (true, false) { (true,) => {} }
     match (0) { () => () }

@@ -5,22 +5,25 @@
 //! See <https://doc.rust-lang.org/nomicon/coercions.html> and
 //! `librustc_typeck/check/coercion.rs`.
 
-use std::iter;
+use std::{iter, sync::Arc};
 
-use chalk_ir::{cast::Cast, Goal, Mutability, TyVariableKind};
+use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyVariableKind};
 use hir_def::{expr::ExprId, lang_item::LangItemTarget};
 use stdx::always;
 use syntax::SmolStr;
 
 use crate::{
     autoderef::{Autoderef, AutoderefKind},
+    db::HirDatabase,
     infer::{
-        Adjust, Adjustment, AutoBorrow, InferOk, InferResult, InferenceContext, OverloadedDeref,
-        PointerCast, TypeError, TypeMismatch,
+        Adjust, Adjustment, AutoBorrow, InferOk, InferenceContext, OverloadedDeref, PointerCast,
+        TypeError, TypeMismatch,
     },
     static_lifetime, Canonical, DomainGoal, FnPointer, FnSig, Guidance, InEnvironment, Interner,
-    Solution, Substitution, Ty, TyBuilder, TyExt, TyKind,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
+
+use super::unify::InferenceTable;
 
 pub(crate) type CoerceResult = Result<InferOk<(Vec<Adjustment>, Ty)>, TypeError>;
 
@@ -84,8 +87,8 @@ impl CoerceMany {
         };
         if let Some(sig) = sig {
             let target_ty = TyKind::Function(sig.to_fn_ptr()).intern(Interner);
-            let result1 = ctx.coerce_inner(self.expected_ty.clone(), &target_ty);
-            let result2 = ctx.coerce_inner(expr_ty.clone(), &target_ty);
+            let result1 = ctx.table.coerce_inner(self.expected_ty.clone(), &target_ty);
+            let result2 = ctx.table.coerce_inner(expr_ty.clone(), &target_ty);
             if let (Ok(result1), Ok(result2)) = (result1, result2) {
                 ctx.table.register_infer_ok(result1);
                 ctx.table.register_infer_ok(result2);
@@ -118,6 +121,45 @@ impl CoerceMany {
     }
 }
 
+pub fn could_coerce(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> bool {
+    coerce(db, env, tys).is_ok()
+}
+
+pub(crate) fn coerce(
+    db: &dyn HirDatabase,
+    env: Arc<TraitEnvironment>,
+    tys: &Canonical<(Ty, Ty)>,
+) -> Result<(Vec<Adjustment>, Ty), TypeError> {
+    let mut table = InferenceTable::new(db, env);
+    let vars = table.fresh_subst(tys.binders.as_slice(Interner));
+    let ty1_with_vars = vars.apply(tys.value.0.clone(), Interner);
+    let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
+    let (adjustments, ty) = table.coerce(&ty1_with_vars, &ty2_with_vars)?;
+    // default any type vars that weren't unified back to their original bound vars
+    // (kind of hacky)
+    let find_var = |iv| {
+        vars.iter(Interner).position(|v| match v.interned() {
+            chalk_ir::GenericArgData::Ty(ty) => ty.inference_var(Interner),
+            chalk_ir::GenericArgData::Lifetime(lt) => lt.inference_var(Interner),
+            chalk_ir::GenericArgData::Const(c) => c.inference_var(Interner),
+        } == Some(iv))
+    };
+    let fallback = |iv, kind, default, binder| match kind {
+        chalk_ir::VariableKind::Ty(_ty_kind) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_ty(Interner).cast(Interner)),
+        chalk_ir::VariableKind::Lifetime => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_lifetime(Interner).cast(Interner)),
+        chalk_ir::VariableKind::Const(ty) => find_var(iv)
+            .map_or(default, |i| BoundVar::new(binder, i).to_const(Interner, ty).cast(Interner)),
+    };
+    // FIXME also map the types in the adjustments
+    Ok((adjustments, table.resolve_with_fallback(ty, &fallback)))
+}
+
 impl<'a> InferenceContext<'a> {
     /// Unify two types, but may coerce the first one to the second one
     /// using "implicit coercion rules" if needed.
@@ -126,16 +168,31 @@ impl<'a> InferenceContext<'a> {
         expr: Option<ExprId>,
         from_ty: &Ty,
         to_ty: &Ty,
-    ) -> InferResult<Ty> {
+    ) -> Result<Ty, TypeError> {
+        let from_ty = self.resolve_ty_shallow(from_ty);
+        let to_ty = self.resolve_ty_shallow(to_ty);
+        let (adjustments, ty) = self.table.coerce(&from_ty, &to_ty)?;
+        if let Some(expr) = expr {
+            self.write_expr_adj(expr, adjustments);
+        }
+        Ok(ty)
+    }
+}
+
+impl<'a> InferenceTable<'a> {
+    /// Unify two types, but may coerce the first one to the second one
+    /// using "implicit coercion rules" if needed.
+    pub(crate) fn coerce(
+        &mut self,
+        from_ty: &Ty,
+        to_ty: &Ty,
+    ) -> Result<(Vec<Adjustment>, Ty), TypeError> {
         let from_ty = self.resolve_ty_shallow(from_ty);
         let to_ty = self.resolve_ty_shallow(to_ty);
         match self.coerce_inner(from_ty, &to_ty) {
             Ok(InferOk { value: (adjustments, ty), goals }) => {
-                if let Some(expr) = expr {
-                    self.write_expr_adj(expr, adjustments);
-                }
-                self.table.register_infer_ok(InferOk { value: (), goals });
-                Ok(InferOk { value: ty, goals: Vec::new() })
+                self.register_infer_ok(InferOk { value: (), goals });
+                Ok((adjustments, ty))
             }
             Err(e) => {
                 // FIXME deal with error
@@ -154,7 +211,7 @@ impl<'a> InferenceContext<'a> {
             //
             // here, we would coerce from `!` to `?T`.
             if let TyKind::InferenceVar(tv, TyVariableKind::General) = to_ty.kind(Interner) {
-                self.table.set_diverging(*tv, true);
+                self.set_diverging(*tv, true);
             }
             return success(simple(Adjust::NeverToAny)(to_ty.clone()), to_ty.clone(), vec![]);
         }
@@ -203,8 +260,7 @@ impl<'a> InferenceContext<'a> {
     where
         F: FnOnce(Ty) -> Vec<Adjustment>,
     {
-        self.table
-            .try_unify(t1, t2)
+        self.try_unify(t1, t2)
             .and_then(|InferOk { goals, .. }| success(f(t1.clone()), t1.clone(), goals))
     }
 
@@ -259,9 +315,9 @@ impl<'a> InferenceContext<'a> {
         // details of coercion errors though, so I think it's useful to leave
         // the structure like it is.
 
-        let snapshot = self.table.snapshot();
+        let snapshot = self.snapshot();
 
-        let mut autoderef = Autoderef::new(&mut self.table, from_ty.clone());
+        let mut autoderef = Autoderef::new(self, from_ty.clone());
         let mut first_error = None;
         let mut found = None;
 
@@ -317,7 +373,7 @@ impl<'a> InferenceContext<'a> {
         let InferOk { value: ty, goals } = match found {
             Some(d) => d,
             None => {
-                self.table.rollback_to(snapshot);
+                self.rollback_to(snapshot);
                 let err = first_error.expect("coerce_borrowed_pointer had no error");
                 return Err(err);
             }
@@ -513,7 +569,7 @@ impl<'a> InferenceContext<'a> {
         let coerce_from =
             reborrow.as_ref().map_or_else(|| from_ty.clone(), |(_, adj)| adj.target.clone());
 
-        let krate = self.resolver.krate().unwrap();
+        let krate = self.trait_env.krate;
         let coerce_unsized_trait =
             match self.db.lang_item(krate, SmolStr::new_inline("coerce_unsized")) {
                 Some(LangItemTarget::TraitId(trait_)) => trait_,
@@ -546,7 +602,7 @@ impl<'a> InferenceContext<'a> {
         match solution {
             Solution::Unique(v) => {
                 canonicalized.apply_solution(
-                    &mut self.table,
+                    self,
                     Canonical {
                         binders: v.binders,
                         // FIXME handle constraints
@@ -556,7 +612,7 @@ impl<'a> InferenceContext<'a> {
             }
             Solution::Ambig(Guidance::Definite(subst)) => {
                 // FIXME need to record an obligation here
-                canonicalized.apply_solution(&mut self.table, subst)
+                canonicalized.apply_solution(self, subst)
             }
             // FIXME actually we maybe should also accept unknown guidance here
             _ => return Err(TypeError),

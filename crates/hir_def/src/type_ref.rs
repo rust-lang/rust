@@ -38,6 +38,22 @@ impl Mutability {
             Mutability::Mut => "mut ",
         }
     }
+
+    /// Returns `true` if the mutability is [`Mut`].
+    ///
+    /// [`Mut`]: Mutability::Mut
+    #[must_use]
+    pub fn is_mut(&self) -> bool {
+        matches!(self, Self::Mut)
+    }
+
+    /// Returns `true` if the mutability is [`Shared`].
+    ///
+    /// [`Shared`]: Mutability::Shared
+    #[must_use]
+    pub fn is_shared(&self) -> bool {
+        matches!(self, Self::Shared)
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]

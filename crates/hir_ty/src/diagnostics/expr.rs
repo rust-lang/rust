@@ -4,10 +4,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    expr::Statement, path::path, resolver::HasResolver, type_ref::Mutability, AssocItemId,
-    DefWithBodyId, HasModule,
-};
+use hir_def::{path::path, resolver::HasResolver, AssocItemId, DefWithBodyId, HasModule};
 use hir_expand::name;
 use itertools::Either;
 use rustc_hash::FxHashSet;
@@ -20,7 +17,7 @@ use crate::{
         deconstruct_pat::DeconstructedPat,
         usefulness::{compute_match_usefulness, MatchCheckCtx},
     },
-    AdtId, InferenceResult, Interner, Ty, TyExt, TyKind,
+    InferenceResult, Interner, TyExt,
 };
 
 pub(crate) use hir_def::{
@@ -43,19 +40,8 @@ pub enum BodyValidationDiagnostic {
         expected: usize,
         found: usize,
     },
-    RemoveThisSemicolon {
-        expr: ExprId,
-    },
-    MissingOkOrSomeInTailExpr {
-        expr: ExprId,
-        required: String,
-    },
     MissingMatchArms {
         match_expr: ExprId,
-    },
-    AddReferenceHere {
-        arg_expr: ExprId,
-        mutability: Mutability,
     },
 }
 
@@ -116,30 +102,6 @@ impl ExprValidator {
                 });
             }
         }
-        let body_expr = &body[body.body_expr];
-        if let Expr::Block { statements, tail, .. } = body_expr {
-            if let Some(t) = tail {
-                self.validate_results_in_tail_expr(body.body_expr, *t, db);
-            } else if let Some(Statement::Expr { expr: id, .. }) = statements.last() {
-                self.validate_missing_tail_expr(body.body_expr, *id);
-            }
-        }
-
-        let infer = &self.infer;
-        let diagnostics = &mut self.diagnostics;
-
-        infer
-            .expr_type_mismatches()
-            .filter_map(|(expr, mismatch)| {
-                let (expr_without_ref, mutability) =
-                    check_missing_refs(infer, expr, &mismatch.expected)?;
-
-                Some((expr_without_ref, mutability))
-            })
-            .for_each(|(arg_expr, mutability)| {
-                diagnostics
-                    .push(BodyValidationDiagnostic::AddReferenceHere { arg_expr, mutability });
-            });
     }
 
     fn validate_call(
@@ -330,66 +292,6 @@ impl ExprValidator {
         }
         pattern
     }
-
-    fn validate_results_in_tail_expr(&mut self, body_id: ExprId, id: ExprId, db: &dyn HirDatabase) {
-        // the mismatch will be on the whole block currently
-        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
-            Some(m) => m,
-            None => return,
-        };
-
-        let core_result_path = path![core::result::Result];
-        let core_option_path = path![core::option::Option];
-
-        let resolver = self.owner.resolver(db.upcast());
-        let core_result_enum = match resolver.resolve_known_enum(db.upcast(), &core_result_path) {
-            Some(it) => it,
-            _ => return,
-        };
-        let core_option_enum = match resolver.resolve_known_enum(db.upcast(), &core_option_path) {
-            Some(it) => it,
-            _ => return,
-        };
-
-        let (params, required) = match mismatch.expected.kind(Interner) {
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
-                if *enum_id == core_result_enum =>
-            {
-                (parameters, "Ok".to_string())
-            }
-            TyKind::Adt(AdtId(hir_def::AdtId::EnumId(enum_id)), parameters)
-                if *enum_id == core_option_enum =>
-            {
-                (parameters, "Some".to_string())
-            }
-            _ => return,
-        };
-
-        if params.len(Interner) > 0 && params.at(Interner, 0).ty(Interner) == Some(&mismatch.actual)
-        {
-            self.diagnostics
-                .push(BodyValidationDiagnostic::MissingOkOrSomeInTailExpr { expr: id, required });
-        }
-    }
-
-    fn validate_missing_tail_expr(&mut self, body_id: ExprId, possible_tail_id: ExprId) {
-        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
-            Some(m) => m,
-            None => return,
-        };
-
-        let possible_tail_ty = match self.infer.type_of_expr.get(possible_tail_id) {
-            Some(ty) => ty,
-            None => return,
-        };
-
-        if !mismatch.actual.is_unit() || mismatch.expected != *possible_tail_ty {
-            return;
-        }
-
-        self.diagnostics
-            .push(BodyValidationDiagnostic::RemoveThisSemicolon { expr: possible_tail_id });
-    }
 }
 
 struct FilterMapNextChecker {
@@ -522,31 +424,4 @@ fn types_of_subpatterns_do_match(pat: PatId, body: &Body, infer: &InferenceResul
     let mut has_type_mismatches = false;
     walk(pat, body, infer, &mut has_type_mismatches);
     !has_type_mismatches
-}
-
-fn check_missing_refs(
-    infer: &InferenceResult,
-    arg: ExprId,
-    param: &Ty,
-) -> Option<(ExprId, Mutability)> {
-    let arg_ty = infer.type_of_expr.get(arg)?;
-
-    let reference_one = arg_ty.as_reference();
-    let reference_two = param.as_reference();
-
-    match (reference_one, reference_two) {
-        (None, Some((referenced_ty, _, mutability))) if referenced_ty == arg_ty => {
-            Some((arg, Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut))))
-        }
-        (None, Some((referenced_ty, _, mutability))) => match referenced_ty.kind(Interner) {
-            TyKind::Slice(subst) if matches!(arg_ty.kind(Interner), TyKind::Array(arr_subst, _) if arr_subst == subst) => {
-                Some((
-                    arg,
-                    Mutability::from_mutable(matches!(mutability, chalk_ir::Mutability::Mut)),
-                ))
-            }
-            _ => None,
-        },
-        _ => None,
-    }
 }

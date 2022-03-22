@@ -108,13 +108,13 @@ mod tests {
         check_diagnostics(
             r#"
 struct A { a: &'static str }
-fn main() { A { a: "hello" } }
+fn main() { A { a: "hello" }; }
 "#,
         );
         check_diagnostics(
             r#"
 struct A(usize);
-fn main() { A { 0: 0 } }
+fn main() { A { 0: 0 }; }
 "#,
         );
 
@@ -123,14 +123,14 @@ fn main() { A { 0: 0 } }
 struct A { a: &'static str }
 fn main() {
     let a = "haha";
-    A { a$0: a }
+    A { a$0: a };
 }
 "#,
             r#"
 struct A { a: &'static str }
 fn main() {
     let a = "haha";
-    A { a }
+    A { a };
 }
 "#,
         );
@@ -141,7 +141,7 @@ struct A { a: &'static str, b: &'static str }
 fn main() {
     let a = "haha";
     let b = "bb";
-    A { a$0: a, b }
+    A { a$0: a, b };
 }
 "#,
             r#"
@@ -149,7 +149,7 @@ struct A { a: &'static str, b: &'static str }
 fn main() {
     let a = "haha";
     let b = "bb";
-    A { a, b }
+    A { a, b };
 }
 "#,
         );

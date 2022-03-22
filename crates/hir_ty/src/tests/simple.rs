@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer, check_types};
+use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn infer_box() {
@@ -2620,6 +2620,24 @@ pub mod prelude {
     pub mod rust_2015 {
         pub struct Rust;
     }
+}
+    "#,
+    );
+}
+
+#[test]
+fn legacy_const_generics() {
+    check_no_mismatches(
+        r#"
+#[rustc_legacy_const_generics(1, 3)]
+fn mixed<const N1: &'static str, const N2: bool>(
+    a: u8,
+    b: i8,
+) {}
+
+fn f() {
+    mixed(0, "", -1, true);
+    mixed::<"", true>(0, -1);
 }
     "#,
     );

@@ -24,7 +24,6 @@
 //! don't yet have a great pattern for how to do them properly.
 
 mod handlers {
-    pub(crate) mod add_reference_here;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod inactive_code;
     pub(crate) mod incorrect_case;
@@ -34,11 +33,10 @@ mod handlers {
     pub(crate) mod mismatched_arg_count;
     pub(crate) mod missing_fields;
     pub(crate) mod missing_match_arms;
-    pub(crate) mod missing_ok_or_some_in_tail_expr;
     pub(crate) mod missing_unsafe;
     pub(crate) mod no_such_field;
-    pub(crate) mod remove_this_semicolon;
     pub(crate) mod replace_filter_map_next_with_find_map;
+    pub(crate) mod type_mismatch;
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unresolved_extern_crate;
     pub(crate) mod unresolved_import;
@@ -191,7 +189,6 @@ pub fn diagnostics(
     for diag in diags {
         #[rustfmt::skip]
         let d = match diag {
-            AnyDiagnostic::AddReferenceHere(d) => handlers::add_reference_here::add_reference_here(&ctx, &d),
             AnyDiagnostic::BreakOutsideOfLoop(d) => handlers::break_outside_of_loop::break_outside_of_loop(&ctx, &d),
             AnyDiagnostic::IncorrectCase(d) => handlers::incorrect_case::incorrect_case(&ctx, &d),
             AnyDiagnostic::MacroError(d) => handlers::macro_error::macro_error(&ctx, &d),
@@ -199,11 +196,10 @@ pub fn diagnostics(
             AnyDiagnostic::MismatchedArgCount(d) => handlers::mismatched_arg_count::mismatched_arg_count(&ctx, &d),
             AnyDiagnostic::MissingFields(d) => handlers::missing_fields::missing_fields(&ctx, &d),
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
-            AnyDiagnostic::MissingOkOrSomeInTailExpr(d) => handlers::missing_ok_or_some_in_tail_expr::missing_ok_or_some_in_tail_expr(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::NoSuchField(d) => handlers::no_such_field::no_such_field(&ctx, &d),
-            AnyDiagnostic::RemoveThisSemicolon(d) => handlers::remove_this_semicolon::remove_this_semicolon(&ctx, &d),
             AnyDiagnostic::ReplaceFilterMapNextWithFindMap(d) => handlers::replace_filter_map_next_with_find_map::replace_filter_map_next_with_find_map(&ctx, &d),
+            AnyDiagnostic::TypeMismatch(d) => handlers::type_mismatch::type_mismatch(&ctx, &d),
             AnyDiagnostic::UnimplementedBuiltinMacro(d) => handlers::unimplemented_builtin_macro::unimplemented_builtin_macro(&ctx, &d),
             AnyDiagnostic::UnresolvedExternCrate(d) => handlers::unresolved_extern_crate::unresolved_extern_crate(&ctx, &d),
             AnyDiagnostic::UnresolvedImport(d) => handlers::unresolved_import::unresolved_import(&ctx, &d),
