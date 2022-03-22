@@ -257,7 +257,7 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, &sp)?;
+                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, &sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -513,17 +513,23 @@ fn transcribe_metavar_expr<'a>(
     cx: &ExtCtxt<'a>,
     expr: MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    marker: &mut Marker,
     repeats: &[(usize, usize)],
     result: &mut Vec<TreeAndSpacing>,
     sp: &DelimSpan,
 ) -> PResult<'a, ()> {
+    let mut visited_span = || {
+        let mut span = sp.entire();
+        marker.visit_span(&mut span);
+        span
+    };
     match expr {
         MetaVarExpr::Count(original_ident, depth_opt) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;
             let tt = TokenTree::token(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
-                sp.entire(),
+                visited_span(),
             );
             result.push(tt.into());
         }
@@ -536,7 +542,7 @@ fn transcribe_metavar_expr<'a>(
                 result.push(
                     TokenTree::token(
                         TokenKind::lit(token::Integer, sym::integer(*index), None),
-                        sp.entire(),
+                        visited_span(),
                     )
                     .into(),
                 );
@@ -548,7 +554,7 @@ fn transcribe_metavar_expr<'a>(
                 result.push(
                     TokenTree::token(
                         TokenKind::lit(token::Integer, sym::integer(*length), None),
-                        sp.entire(),
+                        visited_span(),
                     )
                     .into(),
                 );
