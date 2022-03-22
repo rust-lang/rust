@@ -18,8 +18,7 @@ use crate::{
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(db: &dyn DefDatabase, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     let _p = profile::span("find_path");
-    let mut visited_modules = FxHashSet::default();
-    find_path_inner(db, item, from, MAX_PATH_LEN, None, &mut visited_modules)
+    find_path_inner(db, item, from, None)
 }
 
 pub fn find_path_prefixed(
@@ -29,8 +28,7 @@ pub fn find_path_prefixed(
     prefix_kind: PrefixKind,
 ) -> Option<ModPath> {
     let _p = profile::span("find_path_prefixed");
-    let mut visited_modules = FxHashSet::default();
-    find_path_inner(db, item, from, MAX_PATH_LEN, Some(prefix_kind), &mut visited_modules)
+    find_path_inner(db, item, from, Some(prefix_kind))
 }
 
 const MAX_PATH_LEN: usize = 15;
@@ -56,12 +54,12 @@ impl ModPathExt for ModPath {
 fn check_self_super(def_map: &DefMap, item: ItemInNs, from: ModuleId) -> Option<ModPath> {
     if item == ItemInNs::Types(from.into()) {
         // - if the item is the module we're in, use `self`
-        Some(ModPath::from_segments(PathKind::Super(0), Vec::new()))
+        Some(ModPath::from_segments(PathKind::Super(0), None))
     } else if let Some(parent_id) = def_map[from.local_id].parent {
         // - if the item is the parent module, use `super` (this is not used recursively, since `super::super` is ugly)
         let parent_id = def_map.module_id(parent_id);
         if item == ItemInNs::Types(ModuleDefId::ModuleId(parent_id)) {
-            Some(ModPath::from_segments(PathKind::Super(1), Vec::new()))
+            Some(ModPath::from_segments(PathKind::Super(1), None))
         } else {
             None
         }
@@ -97,12 +95,25 @@ impl PrefixKind {
         self == &PrefixKind::ByCrate
     }
 }
-
 /// Attempts to find a path to refer to the given `item` visible from the `from` ModuleId
 fn find_path_inner(
     db: &dyn DefDatabase,
     item: ItemInNs,
     from: ModuleId,
+    prefixed: Option<PrefixKind>,
+) -> Option<ModPath> {
+    // FIXME: Do fast path for std/core libs?
+
+    let mut visited_modules = FxHashSet::default();
+    let def_map = from.def_map(db);
+    find_path_inner_(db, &def_map, from, item, MAX_PATH_LEN, prefixed, &mut visited_modules)
+}
+
+fn find_path_inner_(
+    db: &dyn DefDatabase,
+    def_map: &DefMap,
+    from: ModuleId,
+    item: ItemInNs,
     max_len: usize,
     mut prefixed: Option<PrefixKind>,
     visited_modules: &mut FxHashSet<ModuleId>,
@@ -114,19 +125,24 @@ fn find_path_inner(
     // Base cases:
 
     // - if the item is already in scope, return the name under which it is
-    let def_map = from.def_map(db);
     let scope_name = def_map.with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
         def_map[local_id].scope.name_of(item).map(|(name, _)| name.clone())
     });
-    if prefixed.is_none() && scope_name.is_some() {
-        return scope_name
-            .map(|scope_name| ModPath::from_segments(PathKind::Plain, vec![scope_name]));
+    if prefixed.is_none() {
+        if let Some(scope_name) = scope_name {
+            return Some(ModPath::from_segments(PathKind::Plain, Some(scope_name)));
+        }
+    }
+
+    // - if the item is a builtin, it's in scope
+    if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
+        return Some(ModPath::from_segments(PathKind::Plain, Some(builtin.as_name())));
     }
 
     // - if the item is the crate root, return `crate`
-    let root = def_map.crate_root(db);
-    if item == ItemInNs::Types(ModuleDefId::ModuleId(root)) {
-        return Some(ModPath::from_segments(PathKind::Crate, Vec::new()));
+    let crate_root = def_map.crate_root(db);
+    if item == ItemInNs::Types(ModuleDefId::ModuleId(crate_root)) {
+        return Some(ModPath::from_segments(PathKind::Crate, None));
     }
 
     if prefixed.filter(PrefixKind::is_absolute).is_none() {
@@ -136,25 +152,28 @@ fn find_path_inner(
     }
 
     // - if the item is the crate root of a dependency crate, return the name from the extern prelude
-    let root_def_map = root.def_map(db);
-    for (name, def_id) in root_def_map.extern_prelude() {
-        if item == ItemInNs::Types(*def_id) {
-            let name = scope_name.unwrap_or_else(|| name.clone());
+    let root_def_map = crate_root.def_map(db);
+    if let ItemInNs::Types(ModuleDefId::ModuleId(item)) = item {
+        for (name, &def_id) in root_def_map.extern_prelude() {
+            if item == def_id {
+                let name = scope_name.unwrap_or_else(|| name.clone());
 
-            let name_already_occupied_in_type_ns = def_map
-                .with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
-                    def_map[local_id].scope.get(&name).take_types().filter(|&id| id != *def_id)
-                })
-                .is_some();
-            return Some(ModPath::from_segments(
-                if name_already_occupied_in_type_ns {
+                let name_already_occupied_in_type_ns = def_map
+                    .with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
+                        def_map[local_id]
+                            .scope
+                            .type_(&name)
+                            .filter(|&(id, _)| id != ModuleDefId::ModuleId(def_id))
+                    })
+                    .is_some();
+                let kind = if name_already_occupied_in_type_ns {
                     cov_mark::hit!(ambiguous_crate_start);
                     PathKind::Abs
                 } else {
                     PathKind::Plain
-                },
-                vec![name],
-            ));
+                };
+                return Some(ModPath::from_segments(kind, Some(name)));
+            }
         }
     }
 
@@ -162,18 +181,12 @@ fn find_path_inner(
     if let Some(prelude_module) = root_def_map.prelude() {
         // Preludes in block DefMaps are ignored, only the crate DefMap is searched
         let prelude_def_map = prelude_module.def_map(db);
-        let prelude_scope: &crate::item_scope::ItemScope =
-            &prelude_def_map[prelude_module.local_id].scope;
+        let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
         if let Some((name, vis)) = prelude_scope.name_of(item) {
             if vis.is_visible_from(db, from) {
-                return Some(ModPath::from_segments(PathKind::Plain, vec![name.clone()]));
+                return Some(ModPath::from_segments(PathKind::Plain, Some(name.clone())));
             }
         }
-    }
-
-    // - if the item is a builtin, it's in scope
-    if let ItemInNs::Types(ModuleDefId::BuiltinType(builtin)) = item {
-        return Some(ModPath::from_segments(PathKind::Plain, vec![builtin.as_name()]));
     }
 
     // Recursive case:
@@ -190,25 +203,24 @@ fn find_path_inner(
     }
 
     // - otherwise, look for modules containing (reexporting) it and import it from one of those
-
-    let crate_root = def_map.crate_root(db);
-    let crate_attrs = db.attrs(crate_root.into());
-    let prefer_no_std = crate_attrs.by_key("no_std").exists();
+    let prefer_no_std = db.attrs(crate_root.into()).by_key("no_std").exists();
     let mut best_path = None;
     let mut best_path_len = max_len;
 
     if item.krate(db) == Some(from.krate) {
         // Item was defined in the same crate that wants to import it. It cannot be found in any
         // dependency in this case.
+        // FIXME: this should have a fast path that doesn't look through the prelude again?
         for (module_id, name) in find_local_import_locations(db, item, from) {
             if !visited_modules.insert(module_id) {
                 cov_mark::hit!(recursive_imports);
                 continue;
             }
-            if let Some(mut path) = find_path_inner(
+            if let Some(mut path) = find_path_inner_(
                 db,
-                ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
+                def_map,
                 from,
+                ItemInNs::Types(ModuleDefId::ModuleId(module_id)),
                 best_path_len - 1,
                 prefixed,
                 visited_modules,
@@ -233,16 +245,18 @@ fn find_path_inner(
             let import_map = db.import_map(dep.crate_id);
             import_map.import_info_for(item).and_then(|info| {
                 // Determine best path for containing module and append last segment from `info`.
-                let mut path = find_path_inner(
+                // FIXME: we should guide this to look up the path locally, or from the same crate again?
+                let mut path = find_path_inner_(
                     db,
-                    ItemInNs::Types(ModuleDefId::ModuleId(info.container)),
+                    def_map,
                     from,
+                    ItemInNs::Types(ModuleDefId::ModuleId(info.container)),
                     best_path_len - 1,
                     prefixed,
                     visited_modules,
                 )?;
                 cov_mark::hit!(partially_imported);
-                path.push_segment(info.path.segments.last().unwrap().clone());
+                path.push_segment(info.path.segments.last()?.clone());
                 Some(path)
             })
         });
@@ -267,7 +281,7 @@ fn find_path_inner(
 
     match prefixed.map(PrefixKind::prefix) {
         Some(prefix) => best_path.or_else(|| {
-            scope_name.map(|scope_name| ModPath::from_segments(prefix, vec![scope_name]))
+            scope_name.map(|scope_name| ModPath::from_segments(prefix, Some(scope_name)))
         }),
         None => best_path,
     }
@@ -370,8 +384,8 @@ fn find_local_import_locations(
         }
 
         // Descend into all modules visible from `from`.
-        for (_, per_ns) in data.scope.entries() {
-            if let Some((ModuleDefId::ModuleId(module), vis)) = per_ns.take_types_vis() {
+        for (ty, vis) in data.scope.types() {
+            if let ModuleDefId::ModuleId(module) = ty {
                 if vis.is_visible_from(db, from) {
                     worklist.push(module);
                 }
@@ -415,15 +429,7 @@ mod tests {
             .take_types()
             .unwrap();
 
-        let mut visited_modules = FxHashSet::default();
-        let found_path = find_path_inner(
-            &db,
-            ItemInNs::Types(resolved),
-            module,
-            MAX_PATH_LEN,
-            prefix_kind,
-            &mut visited_modules,
-        );
+        let found_path = find_path_inner(&db, ItemInNs::Types(resolved), module, prefix_kind);
         assert_eq!(found_path, Some(mod_path), "{:?}", prefix_kind);
     }
 

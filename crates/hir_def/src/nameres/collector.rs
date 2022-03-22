@@ -70,7 +70,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         deps.insert(dep.as_name(), dep_root.into());
 
         if dep.is_prelude() && !tree_id.is_block() {
-            def_map.extern_prelude.insert(dep.as_name(), dep_root.into());
+            def_map.extern_prelude.insert(dep.as_name(), dep_root);
         }
     }
 
@@ -234,7 +234,7 @@ enum MacroDirectiveKind {
 struct DefCollector<'a> {
     db: &'a dyn DefDatabase,
     def_map: DefMap,
-    deps: FxHashMap<Name, ModuleDefId>,
+    deps: FxHashMap<Name, ModuleId>,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, Visibility)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
@@ -687,9 +687,7 @@ impl DefCollector<'_> {
             self.def_map.edition,
         );
 
-        let res = self.resolve_extern_crate(&extern_crate.name);
-
-        if let Some(ModuleDefId::ModuleId(m)) = res.take_types() {
+        if let Some(m) = self.resolve_extern_crate(&extern_crate.name) {
             if m == self.def_map.module_id(current_module_id) {
                 cov_mark::hit!(ignore_macro_use_extern_crate_self);
                 return;
@@ -757,10 +755,11 @@ impl DefCollector<'_> {
 
             let res = self.resolve_extern_crate(name);
 
-            if res.is_none() {
-                PartialResolvedImport::Unresolved
-            } else {
-                PartialResolvedImport::Resolved(res)
+            match res {
+                Some(res) => {
+                    PartialResolvedImport::Resolved(PerNs::types(res.into(), Visibility::Public))
+                }
+                None => PartialResolvedImport::Unresolved,
             }
         } else {
             let res = self.def_map.resolve_path_fp_with_macro(
@@ -796,7 +795,7 @@ impl DefCollector<'_> {
         }
     }
 
-    fn resolve_extern_crate(&self, name: &Name) -> PerNs {
+    fn resolve_extern_crate(&self, name: &Name) -> Option<ModuleId> {
         if *name == name!(self) {
             cov_mark::hit!(extern_crate_self_as);
             let root = match self.def_map.block {
@@ -806,9 +805,9 @@ impl DefCollector<'_> {
                 }
                 None => self.def_map.module_id(self.def_map.root()),
             };
-            PerNs::types(root.into(), Visibility::Public)
+            Some(root)
         } else {
-            self.deps.get(name).map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
+            self.deps.get(name).copied()
         }
     }
 
@@ -846,7 +845,8 @@ impl DefCollector<'_> {
 
                 // extern crates in the crate root are special-cased to insert entries into the extern prelude: rust-lang/rust#54658
                 if import.is_extern_crate && module_id == self.def_map.root {
-                    if let (Some(def), Some(name)) = (def.take_types(), name) {
+                    if let (Some(ModuleDefId::ModuleId(def)), Some(name)) = (def.take_types(), name)
+                    {
                         self.def_map.extern_prelude.insert(name.clone(), def);
                     }
                 }
