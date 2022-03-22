@@ -208,8 +208,11 @@ fn signature_help_for_generics(
 
 #[cfg(test)]
 mod tests {
+    use std::iter;
+
     use expect_test::{expect, Expect};
     use ide_db::base_db::{fixture::ChangeFixture, FilePosition};
+    use stdx::format_to;
 
     use crate::RootDatabase;
 
@@ -233,26 +236,32 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let call_info = crate::signature_help::signature_help(&db, position);
-        let actual = match call_info {
-            Some(call_info) => {
-                let docs = match &call_info.doc {
-                    None => "".to_string(),
-                    Some(docs) => format!("{}\n------\n", docs.as_str()),
-                };
-                let params = call_info
-                    .parameter_labels()
-                    .enumerate()
-                    .map(|(i, param)| {
-                        if Some(i) == call_info.active_parameter {
-                            format!("<{}>", param)
-                        } else {
-                            param.to_string()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{}{}\n({})\n", docs, call_info.signature, params)
+        let sig_help = crate::signature_help::signature_help(&db, position);
+        let actual = match sig_help {
+            Some(sig_help) => {
+                let mut rendered = String::new();
+                if let Some(docs) = &sig_help.doc {
+                    format_to!(rendered, "{}\n------\n", docs.as_str());
+                }
+                format_to!(rendered, "{}\n", sig_help.signature);
+                let mut offset = 0;
+                for (i, range) in sig_help.parameter_ranges().iter().enumerate() {
+                    let is_active = sig_help.active_parameter == Some(i);
+
+                    let start = u32::from(range.start());
+                    let gap = start.checked_sub(offset).unwrap_or_else(|| {
+                        panic!("parameter ranges out of order: {:?}", sig_help.parameter_ranges())
+                    });
+                    rendered.extend(iter::repeat(' ').take(gap as usize));
+                    let width = u32::from(range.end() - range.start());
+                    let marker = if is_active { '^' } else { '-' };
+                    rendered.extend(iter::repeat(marker).take(width as usize));
+                    offset += gap + width;
+                }
+                if !sig_help.parameter_ranges().is_empty() {
+                    format_to!(rendered, "\n");
+                }
+                rendered
             }
             None => String::new(),
         };
@@ -268,7 +277,7 @@ fn bar() { foo($03, ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
         check(
@@ -278,7 +287,7 @@ fn bar() { foo(3$0, ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
         check(
@@ -288,7 +297,7 @@ fn bar() { foo(3,$0 ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (x: u32, <y: u32>)
+                       ------  ^^^^^^
             "#]],
         );
         check(
@@ -298,7 +307,7 @@ fn bar() { foo(3, $0); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (x: u32, <y: u32>)
+                       ------  ^^^^^^
             "#]],
         );
     }
@@ -312,7 +321,7 @@ fn bar() { foo($0); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
     }
@@ -329,7 +338,7 @@ fn bar() { foo($03, ); }
 "#,
             expect![[r#"
                 fn foo(x: i32, y: {unknown}) -> u32
-                (<x: i32>, y: {unknown})
+                       ^^^^^^  ------------
             "#]],
         );
     }
@@ -343,7 +352,6 @@ fn bar() { foo($0); }
 "#,
             expect![[r#"
                 fn foo() -> {unknown}
-                ()
             "#]],
         );
     }
@@ -360,7 +368,6 @@ fn bar() {
 "#,
             expect![[r#"
                 fn new()
-                ()
             "#]],
         );
     }
@@ -379,7 +386,6 @@ fn bar() {
 "#,
             expect![[r#"
                 fn do_it(&self)
-                ()
             "#]],
         );
     }
@@ -397,7 +403,7 @@ fn main() { S.foo($0); }
 "#,
             expect![[r#"
                 fn foo(&self, x: i32)
-                (<x: i32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -415,7 +421,7 @@ fn main() { S(1u32).foo($0); }
 "#,
             expect![[r#"
                 fn foo(&self, x: u32)
-                (<x: u32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -433,7 +439,7 @@ fn main() { S::foo($0); }
 "#,
             expect![[r#"
                 fn foo(self: &S, x: i32)
-                (<self: &S>, x: i32)
+                       ^^^^^^^^  ------
             "#]],
         );
     }
@@ -453,11 +459,11 @@ fn bar() {
 }
 "#,
             expect![[r#"
-            test
-            ------
-            fn foo(j: u32) -> u32
-            (<j: u32>)
-        "#]],
+                test
+                ------
+                fn foo(j: u32) -> u32
+                       ^^^^^^
+            "#]],
         );
     }
 
@@ -482,19 +488,19 @@ pub fn do() {
     add_one($0
 }"#,
             expect![[r##"
-            Adds one to the number given.
+                Adds one to the number given.
 
-            # Examples
+                # Examples
 
-            ```
-            let five = 5;
+                ```
+                let five = 5;
 
-            assert_eq!(6, my_crate::add_one(5));
-            ```
-            ------
-            fn add_one(x: i32) -> i32
-            (<x: i32>)
-        "##]],
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                fn add_one(x: i32) -> i32
+                           ^^^^^^
+            "##]],
         );
     }
 
@@ -524,19 +530,19 @@ pub fn do_it() {
 }
 "#,
             expect![[r##"
-            Adds one to the number given.
+                Adds one to the number given.
 
-            # Examples
+                # Examples
 
-            ```
-            let five = 5;
+                ```
+                let five = 5;
 
-            assert_eq!(6, my_crate::add_one(5));
-            ```
-            ------
-            fn add_one(x: i32) -> i32
-            (<x: i32>)
-        "##]],
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                fn add_one(x: i32) -> i32
+                           ^^^^^^
+            "##]],
         );
     }
 
@@ -568,13 +574,13 @@ pub fn foo(mut r: WriteHandler<()>) {
 }
 "#,
             expect![[r#"
-            Method is called when writer finishes.
+                Method is called when writer finishes.
 
-            By default this method stops actor's `Context`.
-            ------
-            fn finished(&mut self, ctx: &mut {unknown})
-            (<ctx: &mut {unknown}>)
-        "#]],
+                By default this method stops actor's `Context`.
+                ------
+                fn finished(&mut self, ctx: &mut {unknown})
+                                       ^^^^^^^^^^^^^^^^^^^
+            "#]],
         );
     }
 
@@ -605,7 +611,7 @@ fn main() {
 "#,
             expect![[r#"
                 fn bar(&self, _: u32)
-                (<_: u32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -621,11 +627,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-            A cool tuple struct
-            ------
-            struct S(u32, i32)
-            (u32, <i32>)
-        "#]],
+                A cool tuple struct
+                ------
+                struct S(u32, i32)
+                         ---  ^^^
+            "#]],
         );
     }
 
@@ -640,7 +646,7 @@ fn main() {
 "#,
             expect![[r#"
                 struct S({unknown})
-                (<{unknown}>)
+                         ^^^^^^^^^
             "#]],
         );
     }
@@ -663,11 +669,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-            A Variant
-            ------
-            enum E::A(i32)
-            (<i32>)
-        "#]],
+                A Variant
+                ------
+                enum E::A(i32)
+                          ^^^
+            "#]],
         );
     }
 
@@ -717,7 +723,6 @@ id! {
 "#,
             expect![[r#"
                 fn foo()
-                ()
             "#]],
         );
     }
@@ -734,7 +739,7 @@ fn main() {
         "#,
             expect![[r#"
                 (S) -> i32
-                (<S>)
+                 ^
             "#]],
         )
     }
@@ -749,7 +754,7 @@ fn main(f: fn(i32, f64) -> char) {
         "#,
             expect![[r#"
                 (i32, f64) -> char
-                (i32, <f64>)
+                 ---  ^^^
             "#]],
         )
     }
@@ -763,9 +768,9 @@ fn main() {
     foo($0
 }"#,
             expect![[r#"
-            fn foo(foo: u32, bar: u32)
-            (<foo: u32>, bar: u32)
-        "#]],
+                fn foo(foo: u32, bar: u32)
+                       ^^^^^^^^  --------
+            "#]],
         );
         // check with surrounding space
         check(
@@ -775,9 +780,9 @@ fn main() {
     foo( $0
 }"#,
             expect![[r#"
-            fn foo(foo: u32, bar: u32)
-            (<foo: u32>, bar: u32)
-        "#]],
+                fn foo(foo: u32, bar: u32)
+                       ^^^^^^^^  --------
+            "#]],
         )
     }
 
@@ -799,7 +804,7 @@ fn f() {
                 Option docs.
                 ------
                 enum Option<T>
-                (<T>)
+                            ^
             "#]],
         );
     }
@@ -826,7 +831,7 @@ fn f() {
                 None docs.
                 ------
                 enum Option<T>
-                (<T>)
+                            ^
             "#]],
         );
     }
@@ -849,7 +854,7 @@ fn f() {
         "#,
             expect![[r#"
                 fn f<G: Tr<()>, H>
-                (G: Tr<()>, <H>)
+                     ---------  ^
             "#]],
         );
     }
@@ -872,7 +877,7 @@ fn f() {
         "#,
             expect![[r#"
                 fn f<T: Tr, U>
-                (<T: Tr>, U)
+                     ^^^^^  -
             "#]],
         );
     }
@@ -892,9 +897,9 @@ fn f() {
 }
         "#,
             expect![[r#"
-            fn f<T>
-            (<T>)
-        "#]],
+                fn f<T>
+                     ^
+            "#]],
         );
     }
 
@@ -909,9 +914,9 @@ fn f() {
 }
         "#,
             expect![[r#"
-            fn callee<'a, const A: (), T, const C: u8>
-            ('a, <const A: ()>, T, const C: u8)
-        "#]],
+                fn callee<'a, const A: (), T, const C: u8>
+                          --  ^^^^^^^^^^^  -  -----------
+            "#]],
         );
     }
 }
