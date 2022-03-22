@@ -275,6 +275,7 @@
 #![feature(extend_one)]
 #![feature(float_minimum_maximum)]
 #![feature(format_args_nl)]
+#![feature(strict_provenance)]
 #![feature(get_mut_unchecked)]
 #![feature(hashmap_internals)]
 #![feature(int_error_internals)]

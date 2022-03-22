@@ -136,7 +136,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
             ($($n:literal,)+) => {
                 $(
                     if start[$n] == needle {
-                        return Some((&start[$n] as *const u16 as usize - ptr as usize) / 2);
+                        return Some(((&start[$n] as *const u16).addr() - ptr.addr()) / 2);
                     }
                 )+
             }
@@ -149,7 +149,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
     for c in start {
         if *c == needle {
-            return Some((c as *const u16 as usize - ptr as usize) / 2);
+            return Some(((c as *const u16).addr() - ptr.addr()) / 2);
         }
     }
     None

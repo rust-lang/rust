@@ -106,7 +106,7 @@ use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
 use alloc::boxed::Box;
 use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
-use core::ptr::NonNull;
+use core::ptr::{self, NonNull};
 
 // The 2 least-significant bits are used as tag.
 const TAG_MASK: usize = 0b11;
@@ -136,7 +136,7 @@ impl Repr {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
-        debug_assert_eq!((p as usize & TAG_MASK), 0);
+        debug_assert_eq!((p.addr() & TAG_MASK), 0);
         // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
@@ -166,7 +166,7 @@ impl Repr {
     pub(super) fn new_os(code: i32) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) }, PhantomData);
+        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -180,7 +180,7 @@ impl Repr {
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) }, PhantomData);
+        let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -238,7 +238,7 @@ unsafe fn decode_repr<C, F>(ptr: NonNull<()>, make_custom: F) -> ErrorData<C>
 where
     F: FnOnce(*mut Custom) -> C,
 {
-    let bits = ptr.as_ptr() as usize;
+    let bits = ptr.as_ptr().addr();
     match bits & TAG_MASK {
         TAG_OS => {
             let code = ((bits as i64) >> 32) as i32;

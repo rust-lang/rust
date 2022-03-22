@@ -173,7 +173,7 @@ pub const PROGRESS_CONTINUE: DWORD = 0;
 
 pub const E_NOTIMPL: HRESULT = 0x80004001u32 as HRESULT;
 
-pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
+pub const INVALID_HANDLE_VALUE: HANDLE = ptr::invalid_mut(!0);
 
 pub const FACILITY_NT_BIT: DWORD = 0x1000_0000;
 

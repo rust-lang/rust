@@ -293,7 +293,7 @@ impl Backtrace {
         if !Backtrace::enabled() {
             return Backtrace { inner: Inner::Disabled };
         }
-        Backtrace::create(Backtrace::capture as usize)
+        Backtrace::create((Backtrace::capture as *mut ()).addr())
     }
 
     /// Forcibly captures a full backtrace, regardless of environment variable
@@ -308,7 +308,7 @@ impl Backtrace {
     /// parts of code.
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
-        Backtrace::create(Backtrace::force_capture as usize)
+        Backtrace::create((Backtrace::force_capture as *mut ()).addr())
     }
 
     /// Forcibly captures a disabled backtrace, regardless of environment
@@ -330,7 +330,7 @@ impl Backtrace {
                     frame: RawFrame::Actual(frame.clone()),
                     symbols: Vec::new(),
                 });
-                if frame.symbol_address() as usize == ip && actual_start.is_none() {
+                if frame.symbol_address().addr() == ip && actual_start.is_none() {
                     actual_start = Some(frames.len());
                 }
                 true
@@ -493,7 +493,7 @@ impl RawFrame {
         match self {
             RawFrame::Actual(frame) => frame.ip(),
             #[cfg(test)]
-            RawFrame::Fake => 1 as *mut c_void,
+            RawFrame::Fake => ptr::invalid_mut(1),
         }
     }
 }

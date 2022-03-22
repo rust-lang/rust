@@ -294,7 +294,7 @@ fn is_ascii(s: &[u8]) -> bool {
     // Paranoia check about alignment, since we're about to do a bunch of
     // unaligned loads. In practice this should be impossible barring a bug in
     // `align_offset` though.
-    debug_assert_eq!((word_ptr as usize) % mem::align_of::<usize>(), 0);
+    debug_assert_eq!((word_ptr.addr()) % mem::align_of::<usize>(), 0);
 
     // Read subsequent words until the last aligned word, excluding the last
     // aligned word by itself to be done in tail check later, to ensure that
@@ -302,9 +302,9 @@ fn is_ascii(s: &[u8]) -> bool {
     while byte_pos < len - USIZE_SIZE {
         debug_assert!(
             // Sanity check that the read is in bounds
-            (word_ptr as usize + USIZE_SIZE) <= (start.wrapping_add(len) as usize) &&
+            (word_ptr.addr() + USIZE_SIZE) <= (start.wrapping_add(len).addr()) &&
             // And that our assumptions about `byte_pos` hold.
-            (word_ptr as usize) - (start as usize) == byte_pos
+            (word_ptr.addr()) - (start.addr()) == byte_pos
         );
 
         // SAFETY: We know `word_ptr` is properly aligned (because of

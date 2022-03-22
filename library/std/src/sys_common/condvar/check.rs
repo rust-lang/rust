@@ -1,4 +1,5 @@
-use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::ptr;
+use crate::sync::atomic::{AtomicPtr, Ordering};
 use crate::sys::locks as imp;
 use crate::sys_common::mutex::MovableMutex;
 
@@ -13,17 +14,18 @@ impl CondvarCheck for Box<imp::Mutex> {
 }
 
 pub struct SameMutexCheck {
-    addr: AtomicUsize,
+    addr: AtomicPtr<()>,
 }
 
 #[allow(dead_code)]
 impl SameMutexCheck {
     pub const fn new() -> Self {
-        Self { addr: AtomicUsize::new(0) }
+        Self { addr: AtomicPtr::new(ptr::null_mut()) }
     }
     pub fn verify(&self, mutex: &MovableMutex) {
-        let addr = mutex.raw() as *const imp::Mutex as usize;
-        match self.addr.compare_exchange(0, addr, Ordering::SeqCst, Ordering::SeqCst) {
+        let addr = mutex.raw() as *const imp::Mutex as *const () as *mut _;
+        match self.addr.compare_exchange(ptr::null_mut(), addr, Ordering::SeqCst, Ordering::SeqCst)
+        {
             Ok(_) => {}               // Stored the address
             Err(n) if n == addr => {} // Lost a race to store the same address
             _ => panic!("attempted to use a condition variable with two mutexes"),

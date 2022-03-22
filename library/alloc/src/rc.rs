@@ -2115,13 +2115,12 @@ impl<T> Weak<T> {
     #[rustc_const_unstable(feature = "const_weak_new", issue = "95091", reason = "recently added")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak { ptr: unsafe { NonNull::new_unchecked(usize::MAX as *mut RcBox<T>) } }
+        Weak { ptr: unsafe { NonNull::new_unchecked(ptr::invalid_mut::<RcBox<T>>(usize::MAX)) } }
     }
 }
 
 pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
-    let address = ptr as *mut () as usize;
-    address == usize::MAX
+    (ptr as *mut ()).addr() == usize::MAX
 }
 
 /// Helper type to allow accessing the reference counts without

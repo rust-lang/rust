@@ -158,6 +158,7 @@
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(rustc_attrs)]
 #![feature(staged_api)]
+#![feature(strict_provenance)]
 #![cfg_attr(test, feature(test))]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]

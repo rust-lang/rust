@@ -90,7 +90,7 @@ impl<T: Sized> NonNull<T> {
         // to a *mut T. Therefore, `ptr` is not null and the conditions for
         // calling new_unchecked() are respected.
         unsafe {
-            let ptr = mem::align_of::<T>() as *mut T;
+            let ptr = crate::ptr::invalid_mut::<T>(mem::align_of::<T>());
             NonNull::new_unchecked(ptr)
         }
     }
@@ -469,7 +469,7 @@ impl<T> NonNull<[T]> {
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
-    /// assert_eq!(slice.as_non_null_ptr(), NonNull::new(1 as *mut i8).unwrap());
+    /// assert_eq!(slice.as_non_null_ptr(), NonNull::<i8>::dangling());
     /// ```
     #[inline]
     #[must_use]
@@ -489,7 +489,7 @@ impl<T> NonNull<[T]> {
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
-    /// assert_eq!(slice.as_mut_ptr(), 1 as *mut i8);
+    /// assert_eq!(slice.as_mut_ptr(), NonNull::<i8>::dangling().as_ptr());
     /// ```
     #[inline]
     #[must_use]
