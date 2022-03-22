@@ -13,7 +13,7 @@ doctest = false
 [dependencies]
 cov-mark = "2.0.0-pre.1"
 rustc-hash = "1.1.0"
-itertools = "0.10.0"
+itertools = "0.10.3"
 
 text_edit = { path = "../text_edit", version = "0.0.0" }
 parser = { path = "../parser", version = "0.0.0" }
@@ -23,4 +23,4 @@ hir = { path = "../hir", version = "0.0.0" }
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
-expect-test = "1.2.0-pre.1"
+expect-test = "1.2.2"

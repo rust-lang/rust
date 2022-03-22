@@ -10,18 +10,18 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-object = { version = "0.28", default-features = false, features = [
+object = { version = "0.28.3", default-features = false, features = [
     "std",
     "read_core",
     "elf",
     "macho",
     "pe",
 ] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", features = ["unbounded_depth"] }
-tracing = "0.1"
-memmap2 = "0.5"
-snap = "1.0"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = { version = "1.0.79", features = ["unbounded_depth"] }
+tracing = "0.1.32"
+memmap2 = "0.5.3"
+snap = "1.0.5"
 
 paths = { path = "../paths", version = "0.0.0" }
 tt = { path = "../tt", version = "0.0.0" }

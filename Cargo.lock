@@ -171,9 +171,9 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chalk-derive"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b14364774396379d5c488e73d88e0a6d2b51acd0dac9c8359e2f84c58cf3a16"
+checksum = "d0001adf0cf12361e08b65e1898ea138f8f77d8f5177cbf29b6b3b3532252bd6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -183,9 +183,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-ir"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd571e8931d3075f562a2d460bfe3028a9c7b343876765cce95b6143a76b882e"
+checksum = "92d8a95548f23618fda86426e4304e563ec2bb7ba0216139f0748d63c107b5f1"
 dependencies = [
  "bitflags",
  "chalk-derive",
@@ -194,9 +194,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-recursive"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "54ceedab35607f4680d02de80f8be005af0ad5c1dcfec56cfd849d33da5fe736"
+checksum = "759a811f4706f02304353db1b8b525fe6ec25648e004bf7e348139c86865240f"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -207,9 +207,9 @@ dependencies = [
 
 [[package]]
 name = "chalk-solve"
-version = "0.79.0"
+version = "0.80.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e31bb853cf921365759346db05d833f969e330462432bf38c9c2be1e78a9abd"
+checksum = "f37f492dacfafe2e21319b80827da2779932909bb392f0cc86b2bd5c07c1b4e1"
 dependencies = [
  "chalk-derive",
  "chalk-ir",
@@ -249,9 +249,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.3"
+version = "0.5.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdbfe11fe19ff083c48923cf179540e8cd0535903dc35e178a1fdeeb59aef51f"
+checksum = "5aaa7bd5fb665c6864b5f963dd9097905c54125909c7aa94c9e18507cdbe6c53"
 dependencies = [
  "cfg-if",
  "crossbeam-utils",
@@ -821,9 +821,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.120"
+version = "0.2.121"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad5c14e80759d0939d013e6ca49930e59fc53dd8e5009132f76240c179380c09"
+checksum = "efaa7b300f3b5fe8eb6bf21ce3895e1751d9665086af2d64b42f19701015ff4f"
 
 [[package]]
 name = "libloading"
@@ -880,9 +880,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.92.0"
+version = "0.92.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8a69d4142d51b208c9fc3cea68b1a7fcef30354e7aa6ccad07250fd8430fc76"
+checksum = "c79d4897790e8fd2550afa6d6125821edb5716e60e0e285046e070f0f6a06e0e"
 dependencies = [
  "bitflags",
  "serde",
@@ -1283,9 +1283,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.15"
+version = "1.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "864d3e96a899863136fc6e99f3d7cae289dafe43bf2c5ac19b70df7210c0a145"
+checksum = "b4af2ec4714533fcdf07e886f17025ace8b997b9ce51204ee69b6da831c3da57"
 dependencies = [
  "proc-macro2",
 ]
