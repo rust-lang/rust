@@ -9,6 +9,7 @@ use crate::fs;
 use crate::io;
 use crate::marker::PhantomData;
 use crate::mem::forget;
+use crate::ptr;
 use crate::sys::c;
 use crate::sys::cvt;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -182,7 +183,7 @@ impl OwnedHandle {
             return unsafe { Ok(Self::from_raw_handle(handle)) };
         }
 
-        let mut ret = 0 as c::HANDLE;
+        let mut ret = ptr::null_mut();
         cvt(unsafe {
             let cur_proc = c::GetCurrentProcess();
             c::DuplicateHandle(

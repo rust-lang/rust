@@ -73,7 +73,7 @@ impl<T: Sized> Unique<T> {
     pub const fn dangling() -> Self {
         // SAFETY: mem::align_of() returns a valid, non-null pointer. The
         // conditions to call new_unchecked() are thus respected.
-        unsafe { Unique::new_unchecked(mem::align_of::<T>() as *mut T) }
+        unsafe { Unique::new_unchecked(crate::ptr::invalid_mut::<T>(mem::align_of::<T>())) }
     }
 }
 

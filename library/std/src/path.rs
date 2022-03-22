@@ -1449,8 +1449,8 @@ impl PathBuf {
         };
 
         // truncate until right after the file stem
-        let end_file_stem = file_stem[file_stem.len()..].as_ptr() as usize;
-        let start = os_str_as_u8_slice(&self.inner).as_ptr() as usize;
+        let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
+        let start = os_str_as_u8_slice(&self.inner).as_ptr().addr();
         let v = self.as_mut_vec();
         v.truncate(end_file_stem.wrapping_sub(start));
 
