@@ -1268,7 +1268,7 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     #[inline]
     unsafe fn record_item_insert_at(&mut self, index: usize, old_ctrl: u8, hash: u64) {
-        self.growth_left -= special_is_empty(old_ctrl) as usize;
+        self.growth_left -= usize::from(special_is_empty(old_ctrl));
         self.set_ctrl_h2(index, hash);
         self.items += 1;
     }

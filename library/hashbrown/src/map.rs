@@ -5042,7 +5042,7 @@ mod test_map {
         let mut m = HashMap::new();
         assert!(m.insert(1, 2).is_none());
         assert_eq!(*m.get(&1).unwrap(), 2);
-        assert!(!m.insert(1, 3).is_none());
+        assert!(m.insert(1, 3).is_some());
         assert_eq!(*m.get(&1).unwrap(), 3);
     }
 
