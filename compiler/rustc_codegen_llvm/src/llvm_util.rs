@@ -187,7 +187,6 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> SmallVec<[&'a str; 2]
         ("x86", "avx512vaes") => smallvec!["vaes"],
         ("x86", "avx512gfni") => smallvec!["gfni"],
         ("x86", "avx512vpclmulqdq") => smallvec!["vpclmulqdq"],
-        ("aarch64", "fp") => smallvec!["fp-armv8"],
         ("aarch64", "rcpc2") => smallvec!["rcpc-immo"],
         ("aarch64", "dpb") => smallvec!["ccpp"],
         ("aarch64", "dpb2") => smallvec!["ccdp"],
@@ -238,12 +237,11 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
             .filter_map(|&(feature, gate)| {
                 if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
             })
+            .flat_map(|feature| to_llvm_features(sess, feature))
             .filter(|feature| {
-                for llvm_feature in to_llvm_features(sess, feature) {
-                    let cstr = SmallCStr::new(llvm_feature);
-                    if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
-                        return true;
-                    }
+                let cstr = SmallCStr::new(feature);
+                if unsafe { llvm::LLVMRustHasFeature(target_machine, cstr.as_ptr()) } {
+                    return true;
                 }
                 false
             })
