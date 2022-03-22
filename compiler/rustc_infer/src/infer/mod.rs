@@ -70,7 +70,6 @@ mod sub;
 pub mod type_variable;
 mod undo_log;
 
-use crate::infer::canonical::OriginalQueryValues;
 pub use rustc_middle::infer::unify_key;
 
 #[must_use]
@@ -695,14 +694,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) -> bool {
         // Reject any attempt to unify two unevaluated constants that contain inference
         // variables, since inference variables in queries lead to ICEs.
-        if a.substs.has_infer_types_or_consts() || b.substs.has_infer_types_or_consts() {
-            debug!("a or b contain infer vars in its substs -> cannot unify");
+        if a.substs.has_infer_types_or_consts()
+            || b.substs.has_infer_types_or_consts()
+            || param_env.has_infer_types_or_consts()
+        {
+            debug!("a or b or param_env contain infer vars in its substs -> cannot unify");
             return false;
         }
 
-        let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
+        let erased_args = self.tcx.erase_regions((a, b));
+        let erased_param_env = self.tcx.erase_regions(param_env);
+        debug!("after erase_regions args: {:?}, param_env: {:?}", erased_args, param_env);
 
-        self.tcx.try_unify_abstract_consts(param_env.and(canonical.value))
+        self.tcx.try_unify_abstract_consts(erased_param_env.and(erased_args))
     }
 
     pub fn is_in_snapshot(&self) -> bool {
@@ -1619,9 +1623,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // variables
         if substs.has_infer_types_or_consts() {
             debug!("substs have infer types or consts: {:?}", substs);
-            if substs.has_infer_types_or_consts() {
-                return Err(ErrorHandled::TooGeneric);
-            }
+            return Err(ErrorHandled::TooGeneric);
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);

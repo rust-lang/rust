@@ -195,11 +195,13 @@ fn satisfied_from_param_env<'tcx>(
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(uv) => {
                 if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
+                    let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
+
                     // Try to unify with each subtree in the AbstractConst to allow for
                     // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
                     // predicate for `(N + 1) * 2`
                     let result = walk_abstract_const(tcx, b_ct, |b_ct| {
-                        match try_unify(tcx, ct, b_ct, param_env) {
+                        match const_unify_ctxt.try_unify(ct, b_ct) {
                             true => ControlFlow::BREAK,
                             false => ControlFlow::CONTINUE,
                         }
@@ -569,18 +571,6 @@ pub(super) fn thir_abstract_const<'tcx>(
     }
 }
 
-/// Tries to unify two abstract constants using structural equality.
-#[instrument(skip(tcx), level = "debug")]
-pub(super) fn try_unify<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    a: AbstractConst<'tcx>,
-    b: AbstractConst<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> bool {
-    let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
-    const_unify_ctxt.try_unify_inner(a, b)
-}
-
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
@@ -589,7 +579,8 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     (|| {
         if let Some(a) = AbstractConst::new(tcx, a)? {
             if let Some(b) = AbstractConst::new(tcx, b)? {
-                return Ok(try_unify(tcx, a, b, param_env));
+                let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
+                return Ok(const_unify_ctxt.try_unify(a, b));
             }
         }
 
@@ -666,7 +657,7 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
 
     /// Tries to unify two abstract constants using structural equality.
     #[instrument(skip(self), level = "debug")]
-    fn try_unify_inner(&self, a: AbstractConst<'tcx>, b: AbstractConst<'tcx>) -> bool {
+    fn try_unify(&self, a: AbstractConst<'tcx>, b: AbstractConst<'tcx>) -> bool {
         let a = if let Some(a) = self.try_replace_substs_in_root(a) {
             a
         } else {
@@ -723,23 +714,23 @@ impl<'tcx> ConstUnifyCtxt<'tcx> {
                 }
             }
             (Node::Binop(a_op, al, ar), Node::Binop(b_op, bl, br)) if a_op == b_op => {
-                self.try_unify_inner(a.subtree(al), b.subtree(bl))
-                    && self.try_unify_inner(a.subtree(ar), b.subtree(br))
+                self.try_unify(a.subtree(al), b.subtree(bl))
+                    && self.try_unify(a.subtree(ar), b.subtree(br))
             }
             (Node::UnaryOp(a_op, av), Node::UnaryOp(b_op, bv)) if a_op == b_op => {
-                self.try_unify_inner(a.subtree(av), b.subtree(bv))
+                self.try_unify(a.subtree(av), b.subtree(bv))
             }
             (Node::FunctionCall(a_f, a_args), Node::FunctionCall(b_f, b_args))
                 if a_args.len() == b_args.len() =>
             {
-                self.try_unify_inner(a.subtree(a_f), b.subtree(b_f))
+                self.try_unify(a.subtree(a_f), b.subtree(b_f))
                     && iter::zip(a_args, b_args)
-                        .all(|(&an, &bn)| self.try_unify_inner(a.subtree(an), b.subtree(bn)))
+                        .all(|(&an, &bn)| self.try_unify(a.subtree(an), b.subtree(bn)))
             }
             (Node::Cast(a_kind, a_operand, a_ty), Node::Cast(b_kind, b_operand, b_ty))
                 if (a_ty == b_ty) && (a_kind == b_kind) =>
             {
-                self.try_unify_inner(a.subtree(a_operand), b.subtree(b_operand))
+                self.try_unify(a.subtree(a_operand), b.subtree(b_operand))
             }
             // use this over `_ => false` to make adding variants to `Node` less error prone
             (Node::Cast(..), _)
