@@ -55,7 +55,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.parent_module_from_def_id(id.owner)
     }
 
-    pub fn impl_header(self, def_id: DefId) -> ImplSubject<'tcx> {
+    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
         self.impl_trait_ref(def_id)
             .map(ImplSubject::Trait)
             .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id)))

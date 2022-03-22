@@ -307,7 +307,7 @@ fn negative_impl<'cx, 'tcx>(
         // create a parameter environment corresponding to a (placeholder) instantiation of impl1
         let impl1_env = tcx.param_env(impl1_def_id);
 
-        match tcx.impl_header(impl1_def_id) {
+        match tcx.impl_subject(impl1_def_id) {
             ImplSubject::Trait(impl1_trait_ref) => {
                 // Normalize the trait reference. The WF rules ought to ensure
                 // that this always succeeds.
