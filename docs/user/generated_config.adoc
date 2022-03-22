@@ -383,7 +383,7 @@ Whether to show inlay type hints for return types of closures with blocks.
 --
 Whether to show inlay type hints for compiler inserted reborrows.
 --
-[[rust-analyzer.inlayHints.lifetimeElisionHints]]rust-analyzer.inlayHints.lifetimeElisionHints (default: `"never"`)::
+[[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
 Whether to show inlay type hints for elided lifetimes in function signatures.

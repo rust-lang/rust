@@ -259,7 +259,7 @@ config_data! {
         /// Whether to show inlay type hints for compiler inserted reborrows.
         inlayHints_reborrowHints: bool                      = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
-        inlayHints_lifetimeElisionHints: LifetimeElisionDef = "\"never\"",
+        inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
         inlayHints_lifetimeElisionHints_useParameterNames: bool  = "false",
         /// Whether to hide inlay hints for constructors.
@@ -862,7 +862,7 @@ impl Config {
             parameter_hints: self.data.inlayHints_parameterHints,
             chaining_hints: self.data.inlayHints_chainingHints,
             closure_return_type_hints: self.data.inlayHints_closureReturnTypeHints,
-            lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints {
+            lifetime_elision_hints: match self.data.inlayHints_lifetimeElisionHints_enable {
                 LifetimeElisionDef::Always => LifetimeElisionHints::Always,
                 LifetimeElisionDef::Never => LifetimeElisionHints::Never,
                 LifetimeElisionDef::SkipTrivial => LifetimeElisionHints::SkipTrivial,
