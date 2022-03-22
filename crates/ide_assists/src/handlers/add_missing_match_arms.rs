@@ -303,7 +303,9 @@ fn lift_enum(e: hir::Enum) -> ExtendedEnum {
 impl ExtendedEnum {
     fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
-            ExtendedEnum::Enum(e) => e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate,
+            ExtendedEnum::Enum(e) => {
+                e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate
+            }
             _ => false,
         }
     }
