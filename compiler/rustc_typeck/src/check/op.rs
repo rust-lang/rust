@@ -672,6 +672,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ex.span,
                         format!("cannot apply unary operator `{}`", op.as_str()),
                     );
+                    let missing_trait = match op {
+                        hir::UnOp::Deref => unreachable!("check unary op `-` or `!` only"),
+                        hir::UnOp::Not => "std::ops::Not",
+                        hir::UnOp::Neg => "std::ops::Neg",
+                    };
+                    let mut visitor = TypeParamVisitor(vec![]);
+                    visitor.visit_ty(operand_ty);
+                    if let [ty] = &visitor.0[..] {
+                        if let ty::Param(p) = *operand_ty.kind() {
+                            suggest_constraining_param(
+                                self.tcx,
+                                self.body_id,
+                                &mut err,
+                                *ty,
+                                operand_ty,
+                                missing_trait,
+                                p,
+                                true,
+                            );
+                        }
+                    }
 
                     let sp = self.tcx.sess.source_map().start_point(ex.span);
                     if let Some(sp) =
