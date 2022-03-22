@@ -1763,6 +1763,42 @@ impl<T, A: Allocator> Vec<T, A> {
         }
     }
 
+    /// Removes the last `N` elements from a vector and returns them,
+    /// or return [`None`] if the vector is shorter than that.
+    ///
+    /// If you only need to pop one element, consider using [`Vec::pop`] instead.
+    ///
+    /// While this works with `N == 0`, that doesn't do anything useful
+    /// as it will always succeed with `Some([])`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_pop_chunk)]
+    ///
+    /// let mut vec = vec![1, 2, 3];
+    /// assert_eq!(vec.pop_chunk(), Some([2, 3]));
+    /// assert_eq!(vec, [1]);
+    /// assert_eq!(vec.pop_chunk::<2>(), None); // Not enough elements
+    /// assert_eq!(vec, [1]); // So the vector was unchanged
+    ///
+    /// let mut vec: Vec<i32> = Vec::new();
+    /// assert_eq!(vec.pop_chunk::<0>(), Some([]));
+    /// ```
+    #[inline]
+    #[unstable(feature = "vec_pop_chunk", issue = "95217")]
+    pub fn pop_chunk<const N: usize>(&mut self) -> Option<[T; N]> {
+        let new_len = self.len.checked_sub(N)?;
+
+        // SAFETY: The length is getting shorter, which is always sound.
+        // The `N` elements returned are those that were part of the
+        // initialized length previously, so are valid to read and return.
+        unsafe {
+            self.len = new_len;
+            Some(ptr::read(self.as_ptr().add(new_len).cast()))
+        }
+    }
+
     /// Moves all the elements of `other` into `self`, leaving `other` empty.
     ///
     /// # Panics
