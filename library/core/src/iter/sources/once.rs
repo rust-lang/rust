@@ -1,4 +1,4 @@
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen};
 
 /// Creates an iterator that yields an element exactly once.
 ///
@@ -89,6 +89,13 @@ impl<T> DoubleEndedIterator for Once<T> {
 impl<T> ExactSizeIterator for Once<T> {
     fn len(&self) -> usize {
         self.inner.len()
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<T: Clone> PeekableIterator for Once<T> {
+    fn peek(&self) -> Option<T> {
+        self.inner.peek()
     }
 }
 

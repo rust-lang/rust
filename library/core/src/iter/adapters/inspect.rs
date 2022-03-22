@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable};
+use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, PeekableIterator};
 use crate::ops::Try;
 
 /// An iterator that calls a function with a reference to each element before
@@ -142,6 +142,16 @@ where
 
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<I: PeekableIterator, F> PeekableIterator for Inspect<I, F>
+where
+    F: FnMut(&I::Item),
+{
+    fn peek(&self) -> Option<I::Item> {
+        self.iter.peek()
     }
 }
 

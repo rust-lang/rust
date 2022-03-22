@@ -1,7 +1,7 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, SourceIter, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{FusedIterator, InPlaceIterable, PeekableIterator, TrustedLen};
 use crate::ops::Try;
 
 /// An iterator that yields the current count and the element during iteration.
@@ -226,6 +226,16 @@ where
 
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> PeekableIterator for Enumerate<I>
+where
+    I: PeekableIterator,
+{
+    fn peek(&self) -> Option<(usize, I::Item)> {
+        self.iter.peek().map(|x| (self.count, x))
     }
 }
 

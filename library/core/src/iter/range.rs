@@ -4,7 +4,8 @@ use crate::mem;
 use crate::ops::{self, Try};
 
 use super::{
-    FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, TrustedStep,
+    FusedIterator, PeekableIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
+    TrustedStep,
 };
 
 // Safety: All invariants are upheld.
@@ -765,6 +766,13 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 }
 
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<A: Step> PeekableIterator for ops::Range<A> {
+    fn peek(&self) -> Option<A> {
+        if self.start < self.end { Some(self.start.clone()) } else { None }
+    }
+}
+
 // These macros generate `ExactSizeIterator` impls for various range types.
 //
 // * `ExactSizeIterator::len` is required to always return an exact `usize`,
@@ -876,6 +884,13 @@ impl<A: Step> Iterator for ops::RangeFrom<A> {
         let plus_n = Step::forward(self.start.clone(), n);
         self.start = Step::forward(plus_n.clone(), 1);
         Some(plus_n)
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<A: Step> PeekableIterator for ops::RangeFrom<A> {
+    fn peek(&self) -> Option<A> {
+        Some(self.start.clone())
     }
 }
 
@@ -1183,6 +1198,13 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
     #[inline]
     fn is_sorted(self) -> bool {
         true
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<A: Step> PeekableIterator for ops::RangeInclusive<A> {
+    fn peek(&self) -> Option<A> {
+        if self.is_empty() { None } else { Some(self.start.clone()) }
     }
 }
 

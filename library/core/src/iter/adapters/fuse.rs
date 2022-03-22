@@ -1,8 +1,8 @@
 use crate::intrinsics;
 use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::{
-    DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen, TrustedRandomAccess,
-    TrustedRandomAccessNoCoerce,
+    DoubleEndedIterator, ExactSizeIterator, FusedIterator, PeekableIterator, TrustedLen,
+    TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
 use crate::ops::Try;
 
@@ -23,6 +23,16 @@ pub struct Fuse<I> {
 impl<I> Fuse<I> {
     pub(in crate::iter) fn new(iter: I) -> Fuse<I> {
         Fuse { iter: Some(iter) }
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<I> PeekableIterator for Fuse<I>
+where
+    I: PeekableIterator,
+{
+    fn peek(&self) -> Option<I::Item> {
+        self.iter.as_ref().and_then(|iter| iter.peek())
     }
 }
 

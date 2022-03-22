@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen};
 use crate::marker;
 
 /// Creates an iterator that yields nothing.
@@ -65,6 +65,13 @@ impl<T> DoubleEndedIterator for Empty<T> {
 impl<T> ExactSizeIterator for Empty<T> {
     fn len(&self) -> usize {
         0
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<T> PeekableIterator for Empty<T> {
+    fn peek(&self) -> Option<T> {
+        None
     }
 }
 

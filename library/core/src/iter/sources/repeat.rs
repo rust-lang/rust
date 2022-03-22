@@ -1,4 +1,4 @@
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen};
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
@@ -119,6 +119,13 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     fn nth_back(&mut self, n: usize) -> Option<A> {
         let _ = n;
         Some(self.element.clone())
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<A: Copy> PeekableIterator for Repeat<A> {
+    fn peek(&self) -> Option<A> {
+        Some(self.element)
     }
 }
 

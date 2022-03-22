@@ -1,4 +1,7 @@
-use crate::{iter::FusedIterator, ops::Try};
+use crate::{
+    iter::{FusedIterator, PeekableIterator},
+    ops::Try,
+};
 
 /// An iterator that repeats endlessly.
 ///
@@ -102,6 +105,16 @@ where
 
     // No `fold` override, because `fold` doesn't make much sense for `Cycle`,
     // and we can't do anything better than the default.
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<I> PeekableIterator for Cycle<I>
+where
+    I: Clone + PeekableIterator,
+{
+    fn peek(&self) -> Option<I::Item> {
+        self.iter.peek().or_else(|| self.orig.peek())
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]

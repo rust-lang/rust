@@ -1,5 +1,7 @@
 use crate::cmp;
-use crate::iter::{adapters::SourceIter, FusedIterator, InPlaceIterable, TrustedLen};
+use crate::iter::{
+    adapters::SourceIter, FusedIterator, InPlaceIterable, PeekableIterator, TrustedLen,
+};
 use crate::ops::{ControlFlow, Try};
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
@@ -236,6 +238,16 @@ where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<I> PeekableIterator for Take<I>
+where
+    I: PeekableIterator,
+{
+    fn peek(&self) -> Option<I::Item> {
+        if self.n == 0 { None } else { self.iter.peek() }
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I> FusedIterator for Take<I> where I: FusedIterator {}

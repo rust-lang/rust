@@ -4,6 +4,7 @@ mod double_ended;
 mod exact_size;
 mod iterator;
 mod marker;
+mod peekable;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::{
@@ -19,3 +20,5 @@ pub use self::{
 pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::marker::TrustedStep;
+#[unstable(feature = "peekable_iterator", issue = "none")]
+pub use self::peekable::PeekableIterator;

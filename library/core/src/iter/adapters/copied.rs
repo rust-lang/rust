@@ -1,7 +1,7 @@
 use crate::iter::adapters::{
     zip::try_get_unchecked, TrustedRandomAccess, TrustedRandomAccessNoCoerce,
 };
-use crate::iter::{FusedIterator, TrustedLen};
+use crate::iter::{FusedIterator, PeekableIterator, TrustedLen};
 use crate::ops::Try;
 
 /// An iterator that copies the elements of an underlying iterator.
@@ -136,6 +136,17 @@ where
 
     fn is_empty(&self) -> bool {
         self.it.is_empty()
+    }
+}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<'a, I, T: 'a> PeekableIterator for Copied<I>
+where
+    I: PeekableIterator<Item = &'a T>,
+    T: Copy,
+{
+    fn peek(&self) -> Option<T> {
+        self.it.peek().map(|x| *x)
     }
 }
 

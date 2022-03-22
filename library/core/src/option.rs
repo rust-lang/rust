@@ -502,7 +502,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::iter::{self, FromIterator, FusedIterator, PeekableIterator, TrustedLen};
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
@@ -2043,6 +2043,12 @@ impl<A> DoubleEndedIterator for Item<A> {
     }
 }
 
+impl<A: Clone> PeekableIterator for Item<A> {
+    fn peek(&self) -> Option<A> {
+        self.opt.clone()
+    }
+}
+
 impl<A> ExactSizeIterator for Item<A> {}
 impl<A> FusedIterator for Item<A> {}
 unsafe impl<A> TrustedLen for Item<A> {}
@@ -2082,6 +2088,13 @@ impl<'a, A> DoubleEndedIterator for Iter<'a, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for Iter<'_, A> {}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<'a, A> PeekableIterator for Iter<'a, A> {
+    fn peek(&self) -> Option<&'a A> {
+        self.inner.peek()
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for Iter<'_, A> {}
@@ -2173,6 +2186,17 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> ExactSizeIterator for IntoIter<A> {}
+
+#[unstable(feature = "peekable_iterator", issue = "none")]
+impl<A: Clone> PeekableIterator for IntoIter<A> {
+    fn peek(&self) -> Option<A> {
+        self.inner.peek()
+    }
+
+    fn has_next(&self) -> bool {
+        self.inner.has_next()
+    }
+}
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<A> FusedIterator for IntoIter<A> {}
