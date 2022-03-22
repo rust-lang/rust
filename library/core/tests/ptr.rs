@@ -289,7 +289,7 @@ fn test_const_nonnull_new() {
 }
 
 #[test]
-#[cfg(any(unix, windows))] // printf may not be available on other platforms
+#[cfg(unix)] // printf may not be available on other platforms
 #[allow(deprecated)] // For SipHasher
 pub fn test_variadic_fnptr() {
     use core::ffi;
