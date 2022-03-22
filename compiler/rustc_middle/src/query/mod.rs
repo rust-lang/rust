@@ -165,6 +165,7 @@ rustc_queries! {
         }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
+        feedable
     }
 
     query collect_trait_impl_trait_tys(key: DefId)

@@ -489,6 +489,88 @@ impl<K: DepKind> DepGraph<K> {
         }
     }
 
+    /// Create a node when we force-feed a value into the query cache.
+    /// This is used to remove cycles during type-checking const generic parameters.
+    ///
+    /// As usual in the query system, we consider the current state of the calling query
+    /// only depends on the list of dependencies up to now.  As a consequence, the value
+    /// that this query gives us can only depend on those dependencies too.  Therefore,
+    /// it is sound to use the current dependency set for the created node.
+    ///
+    /// During replay, the order of the nodes is relevant in the dependency graph.
+    /// So the unchanged replay will mark the caller query before trying to mark this one.
+    /// If there is a change to report, the caller query will be re-executed before this one.
+    ///
+    /// FIXME: If the code is changed enough for this node to be marked before requiring the
+    /// caller's node, we suppose that those changes will be enough to mark this node red and
+    /// force a recomputation using the "normal" way.
+    pub fn with_feed_task<Ctxt: DepContext<DepKind = K>, A: Debug, R: Debug>(
+        &self,
+        node: DepNode<K>,
+        cx: Ctxt,
+        key: A,
+        result: &R,
+        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+    ) -> DepNodeIndex {
+        if let Some(data) = self.data.as_ref() {
+            if let Some(dep_node_index) = self.dep_node_index_of_opt(&node) {
+                #[cfg(debug_assertions)]
+                {
+                    let hashing_timer = cx.profiler().incr_result_hashing();
+                    let current_fingerprint =
+                        cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
+                    hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
+                    data.current.record_edge(dep_node_index, node, current_fingerprint);
+                }
+
+                return dep_node_index;
+            }
+
+            let mut edges = SmallVec::new();
+            K::read_deps(|task_deps| match task_deps {
+                TaskDepsRef::Allow(deps) => edges.extend(deps.lock().reads.iter().copied()),
+                TaskDepsRef::Ignore | TaskDepsRef::Forbid => {
+                    panic!("Cannot summarize when dependencies are not recorded.")
+                }
+            });
+
+            let hashing_timer = cx.profiler().incr_result_hashing();
+            let current_fingerprint =
+                cx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
+
+            let print_status = cfg!(debug_assertions) && cx.sess().opts.unstable_opts.dep_tasks;
+
+            // Intern the new `DepNode` with the dependencies up-to-now.
+            let (dep_node_index, prev_and_color) = data.current.intern_node(
+                cx.profiler(),
+                &data.previous,
+                node,
+                edges,
+                Some(current_fingerprint),
+                print_status,
+            );
+
+            hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
+
+            if let Some((prev_index, color)) = prev_and_color {
+                debug_assert!(
+                    data.colors.get(prev_index).is_none(),
+                    "DepGraph::with_task() - Duplicate DepNodeColor insertion for {key:?}",
+                );
+
+                data.colors.insert(prev_index, color);
+            }
+
+            dep_node_index
+        } else {
+            // Incremental compilation is turned off. We just execute the task
+            // without tracking. We still provide a dep-node index that uniquely
+            // identifies the task so that we have a cheap way of referring to
+            // the query for self-profiling.
+            self.next_virtual_depnode_index()
+        }
+    }
+
     #[inline]
     pub fn dep_node_index_of(&self, dep_node: &DepNode<K>) -> DepNodeIndex {
         self.dep_node_index_of_opt(dep_node).unwrap()

@@ -85,12 +85,23 @@ pub struct TyCtxtEnsure<'tcx> {
     pub tcx: TyCtxt<'tcx>,
 }
 
+#[derive(Copy, Clone)]
+pub struct TyCtxtFeed<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+}
+
 impl<'tcx> TyCtxt<'tcx> {
     /// Returns a transparent wrapper for `TyCtxt`, which ensures queries
     /// are executed instead of just returning their results.
     #[inline(always)]
     pub fn ensure(self) -> TyCtxtEnsure<'tcx> {
         TyCtxtEnsure { tcx: self }
+    }
+
+    /// Returns a transparent wrapper for `TyCtxt`, for setting a result into a query.
+    #[inline(always)]
+    pub fn feed(self) -> TyCtxtFeed<'tcx> {
+        TyCtxtFeed { tcx: self }
     }
 
     /// Returns a transparent wrapper for `TyCtxt` which uses
@@ -172,6 +183,18 @@ macro_rules! opt_remap_env_constness {
     };
     ([$other:tt $($modifiers:tt)*][$name:ident]) => {
         opt_remap_env_constness!([$($modifiers)*][$name])
+    };
+}
+
+macro_rules! hash_result {
+    ([]) => {{
+        Some(dep_graph::hash_result)
+    }};
+    ([(no_hash) $($rest:tt)*]) => {{
+        None
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        hash_result!([$($modifiers)*])
     };
 }
 
@@ -327,6 +350,50 @@ macro_rules! define_callbacks {
     };
 }
 
+macro_rules! define_feedable {
+    ($($(#[$attr:meta])* [$($modifiers:tt)*] fn $name:ident($($K:tt)*) -> $V:ty,)*) => {
+        impl<'tcx> TyCtxtFeed<'tcx> {
+            $($(#[$attr])*
+            #[inline(always)]
+            pub fn $name(
+                self,
+                key: query_helper_param_ty!($($K)*),
+                value: $V,
+            ) -> query_stored::$name<'tcx> {
+                let key = key.into_query_param();
+                opt_remap_env_constness!([$($modifiers)*][key]);
+
+                let tcx = self.tcx;
+                let cache = &tcx.query_caches.$name;
+
+                let cached = try_get_cached(tcx, cache, &key, copy);
+
+                match cached {
+                    Ok(old) => {
+                        assert_eq!(
+                            value, old,
+                            "Trying to feed an already recorded value for query {} key={key:?}",
+                            stringify!($name),
+                        );
+                        return old;
+                    }
+                    Err(()) => (),
+                }
+
+                let dep_node = dep_graph::DepNode::construct(tcx, dep_graph::DepKind::$name, &key);
+                let dep_node_index = tcx.dep_graph.with_feed_task(
+                    dep_node,
+                    tcx,
+                    key,
+                    &value,
+                    hash_result!([$($modifiers)*]).unwrap(),
+                );
+                cache.complete(key, value, dep_node_index)
+            })*
+        }
+    }
+}
+
 // Each of these queries corresponds to a function pointer field in the
 // `Providers` struct for requesting a value of that type, and a method
 // on `tcx: TyCtxt` (and `tcx.at(span)`) for doing that request in a way
@@ -340,6 +407,7 @@ macro_rules! define_callbacks {
 // as they will raise an fatal error on query cycles instead.
 
 rustc_query_append! { define_callbacks! }
+rustc_feedable_queries! { define_feedable! }
 
 mod sealed {
     use super::{DefId, LocalDefId, OwnerId};
