@@ -1,5 +1,8 @@
 // Type substitutions.
 
+// FIXME(strict_provenance_magic): rustc is grounded for pointer crimes.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 use crate::mir;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor};

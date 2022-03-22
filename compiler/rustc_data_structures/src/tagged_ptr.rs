@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): rustc is grounded for pointer crimes.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 //! This module implements tagged pointers.
 //!
 //! In order to utilize the pointer packing, you must have two types: a pointer,

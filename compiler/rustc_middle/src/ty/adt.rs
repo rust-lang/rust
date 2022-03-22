@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): rustc is grounded for pointer crimes.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 use crate::mir::interpret::ErrorHandled;
 use crate::ty;
 use crate::ty::util::{Discr, IntTypeExt};

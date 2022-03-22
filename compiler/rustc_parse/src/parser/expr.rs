@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): rustc is grounded for pointer crimes.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
