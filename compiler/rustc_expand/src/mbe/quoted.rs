@@ -45,10 +45,8 @@ pub(super) fn parse(
     node_id: NodeId,
     features: &Features,
     edition: Edition,
-) -> Vec<TokenTree> {
-    // Will contain the final collection of `self::TokenTree`
-    let mut result = Vec::new();
-
+    result: &mut Vec<TokenTree>,
+) {
     // For each token tree in `input`, parse the token into a `self::TokenTree`, consuming
     // additional trees if need be.
     let mut trees = input.trees();
@@ -115,7 +113,6 @@ pub(super) fn parse(
             _ => result.push(tree),
         }
     }
-    result
 }
 
 /// Asks for the `macro_metavar_expr` feature if it is not already declared
@@ -208,7 +205,8 @@ fn parse_tree(
                     // If we didn't find a metavar expression above, then we must have a
                     // repetition sequence in the macro (e.g. `$(pat)*`).  Parse the
                     // contents of the sequence itself
-                    let sequence = parse(tts, parsing_patterns, sess, node_id, features, edition);
+                    let mut sequence = vec![];
+                    parse(tts, parsing_patterns, sess, node_id, features, edition, &mut sequence);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
@@ -225,8 +223,8 @@ fn parse_tree(
                     )
                 }
 
-                // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate` special
-                // metavariable that names the crate of the invocation.
+                // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
+                // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
@@ -270,13 +268,15 @@ fn parse_tree(
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
-            span,
-            Lrc::new(Delimited {
-                delim,
-                tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
-            }),
-        ),
+        tokenstream::TokenTree::Delimited(span, delim, tts) => {
+            let mut all_tts = vec![];
+            // Add the explicit open and close delimiters, which
+            // `tokenstream::TokenTree::Delimited` lacks.
+            all_tts.push(TokenTree::token(token::OpenDelim(delim), span.open));
+            parse(tts, parsing_patterns, sess, node_id, features, edition, &mut all_tts);
+            all_tts.push(TokenTree::token(token::CloseDelim(delim), span.close));
+            TokenTree::Delimited(span, Lrc::new(Delimited { delim, all_tts }))
+        }
     }
 }
 

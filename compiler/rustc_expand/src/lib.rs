@@ -1,5 +1,6 @@
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
+#![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(if_let_guard)]
