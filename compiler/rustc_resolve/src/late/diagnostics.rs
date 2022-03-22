@@ -1021,8 +1021,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             (Res::Def(DefKind::TyAlias, def_id), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if self.r.session.is_nightly_build() {
-                    let msg =
-                        "you might have meant to use `#![feature(trait_alias)]` instead of a \
+                    let msg = "you might have meant to use `#![feature(trait_alias)]` instead of a \
                                `type` alias";
                     if let Some(span) = self.def_span(def_id) {
                         if let Ok(snip) = self.r.session.source_map().span_to_snippet(span) {
