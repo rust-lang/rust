@@ -298,6 +298,47 @@ fn main() {
 }
 
 #[test]
+fn trait_method_from_alias() {
+    let fixture = r#"
+//- /lib.rs crate:dep
+pub mod test_mod {
+    pub trait TestTrait {
+        fn random_method();
+    }
+    pub struct TestStruct {}
+    impl TestTrait for TestStruct {
+        fn random_method() {}
+    }
+    pub type TestAlias = TestStruct;
+}
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    dep::test_mod::TestAlias::ran$0
+}
+"#;
+
+    check(
+        fixture,
+        expect![[r#"
+                fn random_method() (use dep::test_mod::TestTrait) fn()
+            "#]],
+    );
+
+    check_edit(
+        "random_method",
+        fixture,
+        r#"
+use dep::test_mod::TestTrait;
+
+fn main() {
+    dep::test_mod::TestAlias::random_method()$0
+}
+"#,
+    );
+}
+
+#[test]
 fn no_trait_type_fuzzy_completion() {
     check(
         r#"
