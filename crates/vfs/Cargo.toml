@@ -10,8 +10,8 @@ rust-version = "1.57"
 doctest = false
 
 [dependencies]
-rustc-hash = "1.0"
-fst = "0.4"
+rustc-hash = "1.1.0"
+fst = "0.4.7"
 
 paths = { path = "../paths", version = "0.0.0" }
-indexmap = "1.7"
+indexmap = "1.8.0"

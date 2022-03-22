@@ -112,6 +112,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             .into(),
         ),
         moniker_provider: None,
+        inlay_hint_provider: None,
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,

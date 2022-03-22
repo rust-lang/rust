@@ -337,6 +337,10 @@ impl<'a> chalk_solve::RustIrDatabase<Interner> for ChalkContext<'a> {
             hir_def::AdtId::UnionId(id) => self.db.union_data(id).name.to_string(),
         }
     }
+    fn adt_size_align(&self, _id: chalk_ir::AdtId<Interner>) -> Arc<rust_ir::AdtSizeAlign> {
+        // FIXME
+        Arc::new(rust_ir::AdtSizeAlign::from_one_zst(false))
+    }
     fn assoc_type_name(&self, assoc_ty_id: chalk_ir::AssocTypeId<Interner>) -> String {
         let id = self.db.associated_ty_data(assoc_ty_id).name;
         self.db.type_alias_data(id).name.to_string()
@@ -480,34 +484,38 @@ pub(crate) fn trait_datum_query(
 
 fn well_known_trait_from_lang_attr(name: &str) -> Option<WellKnownTrait> {
     Some(match name {
-        "sized" => WellKnownTrait::Sized,
-        "copy" => WellKnownTrait::Copy,
         "clone" => WellKnownTrait::Clone,
-        "drop" => WellKnownTrait::Drop,
-        "fn_once" => WellKnownTrait::FnOnce,
-        "fn_mut" => WellKnownTrait::FnMut,
-        "fn" => WellKnownTrait::Fn,
-        "unsize" => WellKnownTrait::Unsize,
         "coerce_unsized" => WellKnownTrait::CoerceUnsized,
+        "copy" => WellKnownTrait::Copy,
         "discriminant_kind" => WellKnownTrait::DiscriminantKind,
+        "dispatch_from_dyn" => WellKnownTrait::DispatchFromDyn,
+        "drop" => WellKnownTrait::Drop,
+        "fn" => WellKnownTrait::Fn,
+        "fn_mut" => WellKnownTrait::FnMut,
+        "fn_once" => WellKnownTrait::FnOnce,
+        "generator" => WellKnownTrait::Generator,
+        "sized" => WellKnownTrait::Sized,
+        "unpin" => WellKnownTrait::Unpin,
+        "unsize" => WellKnownTrait::Unsize,
         _ => return None,
     })
 }
 
 fn lang_attr_from_well_known_trait(attr: WellKnownTrait) -> &'static str {
     match attr {
-        WellKnownTrait::Sized => "sized",
-        WellKnownTrait::Copy => "copy",
         WellKnownTrait::Clone => "clone",
-        WellKnownTrait::Drop => "drop",
-        WellKnownTrait::FnOnce => "fn_once",
-        WellKnownTrait::FnMut => "fn_mut",
-        WellKnownTrait::Fn => "fn",
-        WellKnownTrait::Unsize => "unsize",
-        WellKnownTrait::Unpin => "unpin",
         WellKnownTrait::CoerceUnsized => "coerce_unsized",
+        WellKnownTrait::Copy => "copy",
         WellKnownTrait::DiscriminantKind => "discriminant_kind",
+        WellKnownTrait::DispatchFromDyn => "dispatch_from_dyn",
+        WellKnownTrait::Drop => "drop",
+        WellKnownTrait::Fn => "fn",
+        WellKnownTrait::FnMut => "fn_mut",
+        WellKnownTrait::FnOnce => "fn_once",
         WellKnownTrait::Generator => "generator",
+        WellKnownTrait::Sized => "sized",
+        WellKnownTrait::Unpin => "unpin",
+        WellKnownTrait::Unsize => "unsize",
     }
 }
 

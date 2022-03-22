@@ -11,11 +11,11 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-itertools = "0.10.0"
+itertools = "0.10.3"
 rustc-hash = "1.1.0"
 either = "1.6.1"
-once_cell = "1.7"
-smallvec = "1.4"
+once_cell = "1.10.0"
+smallvec = "1.8.0"
 
 stdx = { path = "../stdx", version = "0.0.0" }
 syntax = { path = "../syntax", version = "0.0.0" }
@@ -29,6 +29,6 @@ profile = { path = "../profile", version = "0.0.0" }
 hir = { path = "../hir", version = "0.0.0" }
 
 [dev-dependencies]
-expect-test = "1.2.0-pre.1"
+expect-test = "1.2.2"
 
 test_utils = { path = "../test_utils" }
