@@ -630,10 +630,14 @@ impl<'a> Parser<'a> {
                 Ok(ty) => GenericArg::Type(ty),
                 Err(err) => {
                     if is_const_fn {
-                        if let Ok(expr) = (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None)
-                        {
-                            self.restore_snapshot(snapshot);
-                            return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                        match (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None) {
+                            Ok(expr) => {
+                                self.restore_snapshot(snapshot);
+                                return Ok(Some(self.dummy_const_arg_needs_braces(err, expr.span)));
+                            }
+                            Err(err) => {
+                                err.cancel();
+                            }
                         }
                     }
                     // Try to recover from possible `const` arg without braces.
