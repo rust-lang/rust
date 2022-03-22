@@ -317,7 +317,7 @@ where
 /// * The `dst` pointer is null
 /// * The `src` memory range is not in enclave memory
 /// * The `dst` memory range is not in user memory
-unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
+pub(crate) unsafe fn copy_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
     unsafe fn copy_bytewise_to_userspace(src: *const u8, dst: *mut u8, len: usize) {
         unsafe {
             let seg_sel: u16 = 0;
