@@ -702,11 +702,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return false;
         }
 
-        let erased_args = self.tcx.erase_regions((a, b));
-        let erased_param_env = self.tcx.erase_regions(param_env);
-        debug!("after erase_regions args: {:?}, param_env: {:?}", erased_args, param_env);
+        let param_env_and = param_env.and((a, b));
+        let erased = self.tcx.erase_regions(param_env_and);
+        debug!("after erase_regions: {:?}", erased);
 
-        self.tcx.try_unify_abstract_consts(erased_param_env.and(erased_args))
+        self.tcx.try_unify_abstract_consts(erased)
     }
 
     pub fn is_in_snapshot(&self) -> bool {

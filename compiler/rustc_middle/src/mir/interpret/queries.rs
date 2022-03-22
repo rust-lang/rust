@@ -41,7 +41,10 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> EvalToConstValueResult<'tcx> {
         // Cannot resolve `Unevaluated` constants that contain inference
         // variables. We reject those here since `resolve_opt_const_arg`
-        // would fail otherwise
+        // would fail otherwise.
+        //
+        // When trying to evaluate constants containing inference variables,
+        // use `Infcx::const_eval_resolve` instead.
         if ct.substs.has_infer_types_or_consts() {
             bug!("did not expect inference variables here");
         }

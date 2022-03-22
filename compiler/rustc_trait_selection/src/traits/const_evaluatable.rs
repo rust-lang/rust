@@ -195,7 +195,7 @@ fn satisfied_from_param_env<'tcx>(
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(uv) => {
                 if let Some(b_ct) = AbstractConst::new(tcx, uv)? {
-                    let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
+                    let const_unify_ctxt = ConstUnifyCtxt { tcx, param_env };
 
                     // Try to unify with each subtree in the AbstractConst to allow for
                     // `N + 1` being const evaluatable even if theres only a `ConstEvaluatable`
@@ -579,7 +579,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     (|| {
         if let Some(a) = AbstractConst::new(tcx, a)? {
             if let Some(b) = AbstractConst::new(tcx, b)? {
-                let const_unify_ctxt = ConstUnifyCtxt::new(tcx, param_env);
+                let const_unify_ctxt = ConstUnifyCtxt { tcx, param_env };
                 return Ok(const_unify_ctxt.try_unify(a, b));
             }
         }
@@ -625,22 +625,18 @@ where
     recurse(tcx, ct, &mut f)
 }
 
-pub(super) struct ConstUnifyCtxt<'tcx> {
+struct ConstUnifyCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> ConstUnifyCtxt<'tcx> {
-    pub(super) fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Self {
-        ConstUnifyCtxt { tcx, param_env }
-    }
-
     // Substitutes generics repeatedly to allow AbstractConsts to unify where a
     // ConstKind::Unevalated could be turned into an AbstractConst that would unify e.g.
     // Param(N) should unify with Param(T), substs: [Unevaluated("T2", [Unevaluated("T3", [Param(N)])])]
     #[inline]
     #[instrument(skip(self), level = "debug")]
-    pub(super) fn try_replace_substs_in_root(
+    fn try_replace_substs_in_root(
         &self,
         mut abstr_const: AbstractConst<'tcx>,
     ) -> Option<AbstractConst<'tcx>> {
