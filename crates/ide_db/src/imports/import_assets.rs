@@ -639,6 +639,17 @@ fn path_import_candidate(
                     assoc_item_name: name,
                 })
             }
+            Some(PathResolution::Def(ModuleDef::TypeAlias(alias))) => {
+                let ty = alias.ty(sema.db);
+                if ty.as_adt().is_some() {
+                    ImportCandidate::TraitAssocItem(TraitImportCandidate {
+                        receiver_ty: ty,
+                        assoc_item_name: name,
+                    })
+                } else {
+                    return None;
+                }
+            }
             Some(_) => return None,
         },
         None => ImportCandidate::Path(PathImportCandidate { qualifier: None, name }),
