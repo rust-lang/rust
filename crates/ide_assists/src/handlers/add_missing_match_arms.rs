@@ -78,7 +78,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
         bool,
     ) = if let Some(enum_def) = resolve_enum_def(&ctx.sema, &expr) {
-        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db());
+        let is_non_exhaustive = enum_def.is_non_exhaustive(ctx.db(), module.krate());
 
         let variants = enum_def.variants(ctx.db());
 
@@ -104,7 +104,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         (missing_pats.peekable(), is_non_exhaustive)
     } else if let Some(enum_defs) = resolve_tuple_of_enum_def(&ctx.sema, &expr) {
         let is_non_exhaustive =
-            enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db()));
+            enum_defs.iter().any(|enum_def| enum_def.is_non_exhaustive(ctx.db(), module.krate()));
 
         let mut n_arms = 1;
         let variants_of_enums: Vec<Vec<ExtendedVariant>> = enum_defs
@@ -301,9 +301,9 @@ fn lift_enum(e: hir::Enum) -> ExtendedEnum {
 }
 
 impl ExtendedEnum {
-    fn is_non_exhaustive(self, db: &RootDatabase) -> bool {
+    fn is_non_exhaustive(self, db: &RootDatabase, krate: Crate) -> bool {
         match self {
-            ExtendedEnum::Enum(e) => e.attrs(db).by_key("non_exhaustive").exists(),
+            ExtendedEnum::Enum(e) => e.attrs(db).by_key("non_exhaustive").exists() && e.module(db).krate() != krate,
             _ => false,
         }
     }
@@ -1657,8 +1657,32 @@ fn foo(t: E) {
     }
 
     #[test]
-    fn ignores_doc_hidden_for_crate_local_enums_but_not_non_exhaustive() {
-        cov_mark::check!(added_wildcard_pattern);
+    fn ignores_non_exhaustive_for_crate_local_enums() {
+        check_assist(
+            add_missing_match_arms,
+            r#"
+#[non_exhaustive]
+enum E { A, B, }
+
+fn foo(t: E) {
+    match $0t {
+    }
+}"#,
+            r#"
+#[non_exhaustive]
+enum E { A, B, }
+
+fn foo(t: E) {
+    match t {
+        $0E::A => todo!(),
+        E::B => todo!(),
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn ignores_doc_hidden_and_non_exhaustive_for_crate_local_enums() {
         check_assist(
             add_missing_match_arms,
             r#"
@@ -1677,7 +1701,6 @@ fn foo(t: E) {
     match t {
         $0E::A => todo!(),
         E::B => todo!(),
-        _ => todo!(),
     }
 }"#,
         );
