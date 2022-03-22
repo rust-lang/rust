@@ -20,7 +20,7 @@ use crate::{
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
+    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,19 +63,11 @@ impl DefMap {
         &self,
         db: &dyn DefDatabase,
         name: &Name,
-    ) -> PerNs {
-        let arc;
-        let root = match self.block {
-            Some(_) => {
-                arc = self.crate_root(db).def_map(db);
-                &*arc
-            }
-            None => self,
-        };
-
-        root.extern_prelude
-            .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public))
+    ) -> Option<ModuleId> {
+        match self.block {
+            Some(_) => self.crate_root(db).def_map(db).extern_prelude.get(name).copied(),
+            None => self.extern_prelude.get(name).copied(),
+        }
     }
 
     pub(crate) fn resolve_visibility(
@@ -273,9 +265,9 @@ impl DefMap {
                     Some((_, segment)) => segment,
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
-                if let Some(def) = self.extern_prelude.get(segment) {
+                if let Some(&def) = self.extern_prelude.get(segment) {
                     tracing::debug!("absolute path {:?} resolved to crate {:?}", path, def);
-                    PerNs::types(*def, Visibility::Public)
+                    PerNs::types(def.into(), Visibility::Public)
                 } else {
                     return ResolvePathResult::empty(ReachedFixedPoint::No); // extern crate declarations can add to the extern prelude
                 }
@@ -408,7 +400,7 @@ impl DefMap {
         let from_extern_prelude = self
             .extern_prelude
             .get(name)
-            .map_or(PerNs::none(), |&it| PerNs::types(it, Visibility::Public));
+            .map_or(PerNs::none(), |&it| PerNs::types(it.into(), Visibility::Public));
 
         let from_prelude = self.resolve_in_prelude(db, name);
 
@@ -429,7 +421,9 @@ impl DefMap {
             None => self,
         };
         let from_crate_root = crate_def_map[crate_def_map.root].scope.get(name);
-        let from_extern_prelude = self.resolve_name_in_extern_prelude(db, name);
+        let from_extern_prelude = self
+            .resolve_name_in_extern_prelude(db, name)
+            .map_or(PerNs::none(), |it| PerNs::types(it.into(), Visibility::Public));
 
         from_crate_root.or(from_extern_prelude)
     }

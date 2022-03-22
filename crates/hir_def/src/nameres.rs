@@ -75,7 +75,7 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::Visibility,
-    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, ModuleDefId, ModuleId, ProcMacroId,
+    AstId, BlockId, BlockLoc, FunctionId, LocalModuleId, ModuleId, ProcMacroId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -98,7 +98,7 @@ pub struct DefMap {
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
     prelude: Option<ModuleId>,
-    extern_prelude: FxHashMap<Name, ModuleDefId>,
+    extern_prelude: FxHashMap<Name, ModuleId>,
 
     /// Side table for resolving derive helpers.
     exported_derives: FxHashMap<MacroDefId, Box<[Name]>>,
@@ -318,7 +318,7 @@ impl DefMap {
         self.prelude
     }
 
-    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, &ModuleDefId)> + '_ {
+    pub(crate) fn extern_prelude(&self) -> impl Iterator<Item = (&Name, &ModuleId)> + '_ {
         self.extern_prelude.iter()
     }
 

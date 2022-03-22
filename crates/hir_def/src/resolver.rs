@@ -498,7 +498,7 @@ impl Scope {
                     acc.add(name, ScopeDef::ModuleDef(ModuleDefId::MacroId(MacroId::from(mac))));
                 });
                 m.def_map.extern_prelude().for_each(|(name, &def)| {
-                    acc.add(name, ScopeDef::ModuleDef(def));
+                    acc.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def)));
                 });
                 BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
                     acc.add_per_ns(name, def);

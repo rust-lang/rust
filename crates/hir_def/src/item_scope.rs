@@ -119,6 +119,12 @@ impl ItemScope {
         self.values.values().copied()
     }
 
+    pub fn types(
+        &self,
+    ) -> impl Iterator<Item = (ModuleDefId, Visibility)> + ExactSizeIterator + '_ {
+        self.types.values().copied()
+    }
+
     pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
         self.unnamed_consts.iter().copied()
     }
@@ -140,6 +146,10 @@ impl ItemScope {
             values: self.values.get(name).copied(),
             macros: self.macros.get(name).copied(),
         }
+    }
+
+    pub(crate) fn type_(&self, name: &Name) -> Option<(ModuleDefId, Visibility)> {
+        self.types.get(name).copied()
     }
 
     /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
