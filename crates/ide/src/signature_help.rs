@@ -4,11 +4,15 @@
 use either::Either;
 use hir::{HasAttrs, HirDisplay, Semantics};
 use ide_db::{
-    active_parameter::{callable_for_token, generics_for_token},
+    active_parameter::{callable_for_node, generics_for_token},
     base_db::FilePosition,
 };
 use stdx::format_to;
-use syntax::{algo, AstNode, Direction, TextRange, TextSize};
+use syntax::{
+    algo,
+    ast::{self, HasArgList},
+    AstNode, Direction, SyntaxToken, TextRange, TextSize,
+};
 
 use crate::RootDatabase;
 
@@ -65,8 +69,8 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros_single(token);
 
-    if let Some((callable, active_parameter)) = callable_for_token(&sema, token.clone()) {
-        return Some(signature_help_for_callable(db, callable, active_parameter));
+    if let Some(help) = signature_help_for_call(&sema, &token) {
+        return Some(help);
     }
 
     if let Some((generic_def, active_parameter)) = generics_for_token(&sema, token.clone()) {
@@ -76,14 +80,39 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
     None
 }
 
-fn signature_help_for_callable(
-    db: &RootDatabase,
-    callable: hir::Callable,
-    active_parameter: Option<usize>,
-) -> SignatureHelp {
+fn signature_help_for_call(
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
+) -> Option<SignatureHelp> {
+    // Find the calling expression and its NameRef
+    let mut node = token.parent()?;
+    let calling_node = loop {
+        if let Some(callable) = ast::CallableExpr::cast(node.clone()) {
+            if callable
+                .arg_list()
+                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
+            {
+                break callable;
+            }
+        }
+
+        // Stop at multi-line expressions, since the signature of the outer call is not very
+        // helpful inside them.
+        if let Some(expr) = ast::Expr::cast(node.clone()) {
+            if expr.syntax().text().contains_char('\n') {
+                return None;
+            }
+        }
+
+        node = node.parent()?;
+    };
+
+    let (callable, active_parameter) = callable_for_node(sema, &calling_node, token)?;
+
     let mut res =
         SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };
 
+    let db = sema.db;
     match callable.kind() {
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
@@ -134,7 +163,7 @@ fn signature_help_for_callable(
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
-    res
+    Some(res)
 }
 
 fn signature_help_for_generics(
@@ -784,6 +813,46 @@ fn main() {
                        ^^^^^^^^  --------
             "#]],
         )
+    }
+
+    #[test]
+    fn test_multiline_argument() {
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee(match 0 {
+        0 => 1,$0
+    })
+}"#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee(match 0 {
+        0 => 1,
+    },$0)
+}"#,
+            expect![[r#"
+                fn callee(a: u8, b: u8)
+                          -----  ^^^^^
+            "#]],
+        );
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee($0match 0 {
+        0 => 1,
+    })
+}"#,
+            expect![[r#"
+                fn callee(a: u8, b: u8)
+                          ^^^^^  -----
+            "#]],
+        );
     }
 
     #[test]

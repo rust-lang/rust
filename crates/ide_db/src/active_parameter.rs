@@ -43,13 +43,21 @@ pub fn callable_for_token(
     sema: &Semantics<RootDatabase>,
     token: SyntaxToken,
 ) -> Option<(hir::Callable, Option<usize>)> {
-    // Find the calling expression and it's NameRef
+    // Find the calling expression and its NameRef
     let parent = token.parent()?;
     let calling_node = parent.ancestors().filter_map(ast::CallableExpr::cast).find(|it| {
         it.arg_list()
             .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
     })?;
 
+    callable_for_node(sema, &calling_node, &token)
+}
+
+pub fn callable_for_node(
+    sema: &Semantics<RootDatabase>,
+    calling_node: &ast::CallableExpr,
+    token: &SyntaxToken,
+) -> Option<(hir::Callable, Option<usize>)> {
     let callable = match &calling_node {
         ast::CallableExpr::Call(call) => {
             let expr = call.expr()?;
