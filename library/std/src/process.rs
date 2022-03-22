@@ -2031,9 +2031,10 @@ pub fn id() -> u32 {
 /// The default implementations are returning `libc::EXIT_SUCCESS` to indicate
 /// a successful execution. In case of a failure, `libc::EXIT_FAILURE` is returned.
 ///
-/// For the reason that different runtimes have diffrent specificatons on the
-/// return value of the `main` function, this trait is likely to be available
-/// only on standard library's runtime for type convenience.
+/// Because different runtimes have different specifications on the return value
+/// of the `main` function, this trait is likely to be available only on
+/// standard library's runtime for convenience. Other runtimes are not required
+/// to provide similar functionality.
 #[cfg_attr(not(test), lang = "termination")]
 #[unstable(feature = "termination_trait_lib", issue = "43301")]
 #[rustc_on_unimplemented(
