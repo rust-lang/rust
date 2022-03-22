@@ -800,7 +800,7 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.inlayHints.lifetimeElisionHints": {
+                "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",
                     "type": "string",
