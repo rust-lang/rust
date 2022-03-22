@@ -319,6 +319,264 @@ impl<T> [T] {
         if let [.., last] = self { Some(last) } else { None }
     }
 
+    /// Returns the first `N` elements of the slice, or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let u = [10, 40, 30];
+    /// assert_eq!(Some(&[10, 40]), u.first_chunk::<2>());
+    ///
+    /// let v: &[i32] = &[10];
+    /// assert_eq!(None, v.first_chunk::<2>());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(Some(&[]), w.first_chunk::<0>());
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn first_chunk<const N: usize>(&self) -> Option<&[T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the reference outlive the slice.
+            Some(unsafe { &*(self.as_ptr() as *const [T; N]) })
+        }
+    }
+
+    /// Returns a mutable reference to the first `N` elements of the slice,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some(first) = x.first_chunk_mut::<2>() {
+    ///     first[0] = 5;
+    ///     first[1] = 4;
+    /// }
+    /// assert_eq!(x, &[5, 4, 2]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn first_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and require exclusive access to the entire slice to mutate the chunk.
+            Some(unsafe { &mut *(self.as_mut_ptr() as *mut [T; N]) })
+        }
+    }
+
+    /// Returns the first `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &[0, 1, 2];
+    ///
+    /// if let Some((first, elements)) = x.split_first_chunk::<2>() {
+    ///     assert_eq!(first, &[0, 1]);
+    ///     assert_eq!(elements, &[2]);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_first_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (first, tail) = unsafe { self.split_at_unchecked(N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some((unsafe { &*(first.as_ptr() as *const [T; N]) }, tail))
+        }
+    }
+
+    /// Returns a mutable reference to the first `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some((first, elements)) = x.split_first_chunk_mut::<2>() {
+    ///     first[0] = 3;
+    ///     first[1] = 4;
+    ///     elements[0] = 5;
+    /// }
+    /// assert_eq!(x, &[3, 4, 5]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_first_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [T; N], &mut [T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (first, tail) = unsafe { self.split_at_mut_unchecked(N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and enforce exclusive mutability of the chunk by the split.
+            Some((unsafe { &mut *(first.as_mut_ptr() as *mut [T; N]) }, tail))
+        }
+    }
+
+    /// Returns the last `N` elements of the slice and the remainder,
+    /// or `None` if it has fewer than `N` elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &[0, 1, 2];
+    ///
+    /// if let Some((last, elements)) = x.split_last_chunk::<2>() {
+    ///     assert_eq!(last, &[1, 2]);
+    ///     assert_eq!(elements, &[0]);
+    /// }
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_last_chunk<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (init, last) = unsafe { self.split_at_unchecked(self.len() - N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some((unsafe { &*(last.as_ptr() as *const [T; N]) }, init))
+        }
+    }
+
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some((last, elements)) = x.split_last_chunk_mut::<2>() {
+    ///     last[0] = 3;
+    ///     last[1] = 4;
+    ///     elements[0] = 5;
+    /// }
+    /// assert_eq!(x, &[5, 3, 4]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn split_last_chunk_mut<const N: usize>(
+        &mut self,
+    ) -> Option<(&mut [T; N], &mut [T])> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the split.
+            let (init, last) = unsafe { self.split_at_mut_unchecked(self.len() - N) };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and enforce exclusive mutability of the chunk by the split.
+            Some((unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) }, init))
+        }
+    }
+
+    /// Returns the last element of the slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let u = [10, 40, 30];
+    /// assert_eq!(Some(&[40, 30]), u.last_chunk::<2>());
+    ///
+    /// let v: &[i32] = &[10];
+    /// assert_eq!(None, v.last_chunk::<2>());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(Some(&[]), w.last_chunk::<0>());
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn last_chunk<const N: usize>(&self) -> Option<&[T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the slice.
+            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            let last = unsafe { self.split_at_unchecked(self.len() - N).1 };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   and do not let the references outlive the slice.
+            Some(unsafe { &*(last.as_ptr() as *const [T; N]) })
+        }
+    }
+
+    /// Returns a mutable pointer to the last item in the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_first_last_chunk)]
+    ///
+    /// let x = &mut [0, 1, 2];
+    ///
+    /// if let Some(last) = x.last_chunk_mut::<2>() {
+    ///     last[0] = 10;
+    ///     last[1] = 20;
+    /// }
+    /// assert_eq!(x, &[0, 10, 20]);
+    /// ```
+    #[unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[rustc_const_unstable(feature = "slice_first_last_chunk", issue = "111774")]
+    #[inline]
+    pub const fn last_chunk_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
+        if self.len() < N {
+            None
+        } else {
+            // SAFETY: We manually verified the bounds of the slice.
+            // FIXME: Without const traits, we need this instead of `get_unchecked`.
+            let last = unsafe { self.split_at_mut_unchecked(self.len() - N).1 };
+
+            // SAFETY: We explicitly check for the correct number of elements,
+            //   do not let the reference outlive the slice,
+            //   and require exclusive access to the entire slice to mutate the chunk.
+            Some(unsafe { &mut *(last.as_mut_ptr() as *mut [T; N]) })
+        }
+    }
+
     /// Returns a reference to an element or subslice depending on the type of
     /// index.
     ///
