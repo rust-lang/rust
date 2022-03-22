@@ -74,20 +74,9 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     error::decode_error_kind(code)
 }
 
-#[inline(always)]
+#[inline]
 pub fn abort_internal() -> ! {
-    loop {
-        abi::breakpoint_abort();
-    }
-}
-
-// This function is needed by the panic runtime. The symbol is named in
-// pre-link args for the target specification, so keep that in sync.
-#[cfg(not(test))]
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub extern "C" fn __rust_abort() {
-    abort_internal();
+    unsafe { libc::abort() }
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
