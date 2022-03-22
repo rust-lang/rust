@@ -22,14 +22,12 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-#[path = "../unsupported/condvar.rs"]
-pub mod condvar;
 pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod io;
-#[path = "../unsupported/mutex.rs"]
-pub mod mutex;
+#[path = "../unsupported/locks/mod.rs"]
+pub mod locks;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -40,8 +38,6 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../unsupported/rwlock.rs"]
-pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 #[path = "../unsupported/thread_local_dtor.rs"]

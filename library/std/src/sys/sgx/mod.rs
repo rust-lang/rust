@@ -15,7 +15,6 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
@@ -23,7 +22,6 @@ pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -33,11 +31,20 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
 pub mod time;
+
+mod condvar;
+mod mutex;
+mod rwlock;
+
+pub mod locks {
+    pub use super::condvar::*;
+    pub use super::mutex::*;
+    pub use super::rwlock::*;
+}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
