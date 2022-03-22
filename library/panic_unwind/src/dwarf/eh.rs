@@ -10,6 +10,16 @@
 
 #![allow(non_upper_case_globals)]
 #![allow(unused)]
+// FIXME(strict_provenance_magic): the unwinder has special permissions and semantics.
+//
+// This is at worst an Interesting Case Study that is worth doing a deep dive on.
+//
+// This implementation pretty aggressively puns *offsets* and actual addresses. It can
+// probably be made "strict" but requires a lot of very careful thinking about the
+// precise semantics of this format (I think it's basically shoe-horning a bunch of
+// things into a common path for simplicity, when in reality there are many impossible
+// combinations).
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
 
 use crate::dwarf::DwarfReader;
 use core::mem;

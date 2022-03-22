@@ -45,6 +45,12 @@
 //! [llvm]: https://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
 #![allow(nonstandard_style)]
+// FIXME(strict_provenance_magic): the unwinder has special permissions and semantics.
+//
+// This is at worst an Interesting Case Study that is worth doing a deep dive on.
+//
+// I haven't looked closely at this implementation yet.
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
 
 use alloc::boxed::Box;
 use core::any::Any;

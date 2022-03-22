@@ -793,7 +793,7 @@ mod impls {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             let (address, metadata) = self.to_raw_parts();
-            state.write_usize(address as usize);
+            state.write_usize(address.addr());
             metadata.hash(state);
         }
     }
@@ -803,7 +803,7 @@ mod impls {
         #[inline]
         fn hash<H: Hasher>(&self, state: &mut H) {
             let (address, metadata) = self.to_raw_parts();
-            state.write_usize(address as usize);
+            state.write_usize(address.addr());
             metadata.hash(state);
         }
     }

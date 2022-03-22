@@ -1071,7 +1071,7 @@ pub mod os {
         pub unsafe fn get(&'static self, init: impl FnOnce() -> T) -> Option<&'static T> {
             // SAFETY: See the documentation for this method.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
-            if ptr as usize > 1 {
+            if ptr.addr() > 1 {
                 // SAFETY: the check ensured the pointer is safe (its destructor
                 // is not running) + it is coming from a trusted source (self).
                 if let Some(ref value) = unsafe { (*ptr).inner.get() } {
@@ -1090,7 +1090,7 @@ pub mod os {
             // SAFETY: No mutable references are ever handed out meaning getting
             // the value is ok.
             let ptr = unsafe { self.os.get() as *mut Value<T> };
-            if ptr as usize == 1 {
+            if ptr.addr() == 1 {
                 // destructor is running
                 return None;
             }
@@ -1130,7 +1130,7 @@ pub mod os {
         unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
-            key.os.set(1 as *mut u8);
+            key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
         }

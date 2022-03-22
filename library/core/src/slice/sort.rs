@@ -269,7 +269,7 @@ where
     // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).
     fn width<T>(l: *mut T, r: *mut T) -> usize {
         assert!(mem::size_of::<T>() > 0);
-        (r as usize - l as usize) / mem::size_of::<T>()
+        (r.addr() - l.addr()) / mem::size_of::<T>()
     }
 
     loop {
