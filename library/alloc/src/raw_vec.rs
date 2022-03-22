@@ -2,7 +2,7 @@
 
 use core::alloc::LayoutError;
 use core::cmp;
-use core::intrinsics;
+use core::intrinsics::{self, unlikely};
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
@@ -285,7 +285,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             handle_reserve(slf.grow_amortized(len, additional));
         }
 
-        if self.needs_to_grow(len, additional) {
+        if unlikely(self.needs_to_grow(len, additional)) {
             do_reserve_and_handle(self, len, additional);
         }
     }
@@ -300,7 +300,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
     pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) {
+        if unlikely(self.needs_to_grow(len, additional)) {
             self.grow_amortized(len, additional)
         } else {
             Ok(())
@@ -335,7 +335,11 @@ impl<T, A: Allocator> RawVec<T, A> {
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) { self.grow_exact(len, additional) } else { Ok(()) }
+        if unlikely(self.needs_to_grow(len, additional)) {
+            self.grow_exact(len, additional)
+        } else {
+            Ok(())
+        }
     }
 
     /// Shrinks the buffer down to the specified capacity. If the given amount

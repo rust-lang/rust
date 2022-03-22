@@ -59,7 +59,7 @@ use core::cmp::Ordering;
 use core::convert::TryFrom;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::intrinsics::{arith_offset, assume};
+use core::intrinsics::{arith_offset, assume, unlikely};
 use core::iter;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
@@ -1725,7 +1725,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub fn push(&mut self, value: T) {
         // This will panic or abort if we would allocate > isize::MAX bytes
         // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.capacity() {
+        if unlikely(self.len == self.buf.capacity()) {
             self.buf.reserve_for_push(self.len);
         }
         unsafe {
