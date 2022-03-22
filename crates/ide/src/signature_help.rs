@@ -2,11 +2,8 @@
 //! a call or use-site.
 
 use either::Either;
-use hir::{HasAttrs, HirDisplay, Semantics};
-use ide_db::{
-    active_parameter::{callable_for_node, generics_for_token},
-    base_db::FilePosition,
-};
+use hir::{GenericParam, HasAttrs, HirDisplay, Semantics};
+use ide_db::{active_parameter::callable_for_node, base_db::FilePosition};
 use stdx::format_to;
 use syntax::{
     algo,
@@ -73,8 +70,8 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         return Some(help);
     }
 
-    if let Some((generic_def, active_parameter)) = generics_for_token(&sema, token.clone()) {
-        return signature_help_for_generics(db, generic_def, active_parameter);
+    if let Some(help) = signature_help_for_generics(&sema, &token) {
+        return Some(help);
     }
 
     None
@@ -167,17 +164,69 @@ fn signature_help_for_call(
 }
 
 fn signature_help_for_generics(
-    db: &RootDatabase,
-    mut generics_def: hir::GenericDef,
-    active_parameter: usize,
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
 ) -> Option<SignatureHelp> {
+    let parent = token.parent()?;
+    let arg_list = parent
+        .ancestors()
+        .filter_map(ast::GenericArgList::cast)
+        .find(|list| list.syntax().text_range().contains(token.text_range().start()))?;
+
+    let mut active_parameter = arg_list
+        .generic_args()
+        .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
+        .count();
+
+    let first_arg_is_non_lifetime = arg_list
+        .generic_args()
+        .next()
+        .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
+
+    let mut generics_def = if let Some(path) =
+        arg_list.syntax().ancestors().find_map(ast::Path::cast)
+    {
+        let res = sema.resolve_path(&path)?;
+        let generic_def: hir::GenericDef = match res {
+            hir::PathResolution::Def(hir::ModuleDef::Adt(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Function(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Const(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Module(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Static(_)) => return None,
+            hir::PathResolution::AssocItem(hir::AssocItem::Function(it)) => it.into(),
+            hir::PathResolution::AssocItem(hir::AssocItem::TypeAlias(it)) => it.into(),
+            hir::PathResolution::AssocItem(hir::AssocItem::Const(_)) => return None,
+            hir::PathResolution::BuiltinAttr(_)
+            | hir::PathResolution::ToolModule(_)
+            | hir::PathResolution::Local(_)
+            | hir::PathResolution::TypeParam(_)
+            | hir::PathResolution::ConstParam(_)
+            | hir::PathResolution::SelfType(_) => return None,
+        };
+
+        generic_def
+    } else if let Some(method_call) = arg_list.syntax().parent().and_then(ast::MethodCallExpr::cast)
+    {
+        // recv.method::<$0>()
+        let method = sema.resolve_method_call(&method_call)?;
+        method.into()
+    } else {
+        return None;
+    };
+
     let mut res = SignatureHelp {
         doc: None,
         signature: String::new(),
         parameters: vec![],
-        active_parameter: Some(active_parameter),
+        active_parameter: None,
     };
 
+    let db = sema.db;
     match generics_def {
         hir::GenericDef::Function(it) => {
             res.doc = it.docs(db).map(|it| it.into());
@@ -216,8 +265,16 @@ fn signature_help_for_generics(
         hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
     }
 
+    let params = generics_def.params(sema.db);
+    let num_lifetime_params =
+        params.iter().take_while(|param| matches!(param, GenericParam::LifetimeParam(_))).count();
+    if first_arg_is_non_lifetime {
+        // Lifetime parameters were omitted.
+        active_parameter += num_lifetime_params;
+    }
+    res.active_parameter = Some(active_parameter);
+
     res.signature.push('<');
-    let params = generics_def.params(db);
     let mut buf = String::new();
     for param in params {
         if let hir::GenericParam::TypeParam(ty) = param {
@@ -976,14 +1033,27 @@ fn f() {
     fn test_generic_kinds() {
         check(
             r#"
-fn callee<'a, const A: (), T, const C: u8>() {}
+fn callee<'a, const A: u8, T, const C: u8>() {}
 
 fn f() {
     callee::<'static, $0
 }
         "#,
             expect![[r#"
-                fn callee<'a, const A: (), T, const C: u8>
+                fn callee<'a, const A: u8, T, const C: u8>
+                          --  ^^^^^^^^^^^  -  -----------
+            "#]],
+        );
+        check(
+            r#"
+fn callee<'a, const A: u8, T, const C: u8>() {}
+
+fn f() {
+    callee::<NON_LIFETIME$0
+}
+        "#,
+            expect![[r#"
+                fn callee<'a, const A: u8, T, const C: u8>
                           --  ^^^^^^^^^^^  -  -----------
             "#]],
         );
