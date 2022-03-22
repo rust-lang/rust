@@ -234,11 +234,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
         let demand_compatible = |idx, final_arg_types: &mut Vec<Option<(Ty<'tcx>, Ty<'tcx>)>>| {
-            // Do not check argument compatibility if the number of args do not match
-            if arg_count_error.is_some() {
-                return;
-            }
-
             let formal_input_ty: Ty<'tcx> = formal_input_tys[idx];
             let expected_input_ty: Ty<'tcx> = expected_input_tys[idx];
             let provided_arg = &provided_args[idx];
