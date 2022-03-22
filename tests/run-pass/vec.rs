@@ -148,6 +148,16 @@ fn swap_remove() {
     vec.swap_remove(1);
 }
 
+fn reverse() {
+    #[repr(align(2))]
+    #[derive(Debug)]
+    struct Foo(u8);
+
+    let mut v: Vec<_> = (0..50).map(Foo).collect();
+    v.reverse();
+    assert!(v[0].0 == 49);
+}
+
 fn main() {
     assert_eq!(vec_reallocate().len(), 5);
 
@@ -176,4 +186,5 @@ fn main() {
     sort();
     swap();
     swap_remove();
+    reverse();
 }
