@@ -1076,9 +1076,8 @@ impl<'a> Resolver<'a> {
                 ident,
                 ScopeSet::All(ns, false),
                 &parent_scope,
+                None,
                 false,
-                false,
-                ident.span,
             ) {
                 let desc = match binding.res() {
                     Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
@@ -1405,10 +1404,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             _ => return None,
         }
 
-        self.make_missing_self_suggestion(span, path.clone(), parent_scope)
-            .or_else(|| self.make_missing_crate_suggestion(span, path.clone(), parent_scope))
-            .or_else(|| self.make_missing_super_suggestion(span, path.clone(), parent_scope))
-            .or_else(|| self.make_external_crate_suggestion(span, path, parent_scope))
+        self.make_missing_self_suggestion(path.clone(), parent_scope)
+            .or_else(|| self.make_missing_crate_suggestion(path.clone(), parent_scope))
+            .or_else(|| self.make_missing_super_suggestion(path.clone(), parent_scope))
+            .or_else(|| self.make_external_crate_suggestion(path, parent_scope))
     }
 
     /// Suggest a missing `self::` if that resolves to an correct module.
@@ -1420,13 +1419,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     fn make_missing_self_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.r.resolve_path(&path, None, parent_scope, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
@@ -1440,13 +1438,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     fn make_missing_crate_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.r.resolve_path(&path, None, parent_scope, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -1472,13 +1469,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// ```
     fn make_missing_super_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.r.resolve_path(&path, None, parent_scope, span, CrateLint::No);
+        let result = self.r.resolve_path(&path, None, parent_scope, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
@@ -1495,7 +1491,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// name as the first part of path.
     fn make_external_crate_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Vec<String>)> {
@@ -1513,7 +1508,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.r.resolve_path(&path, None, parent_scope, span, CrateLint::No);
+            let result = self.r.resolve_path(&path, None, parent_scope, CrateLint::No);
             debug!(
                 "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                 name, path, result

@@ -175,8 +175,7 @@ impl<'a> Resolver<'a> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
+        record_used: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
             module,
@@ -185,7 +184,6 @@ impl<'a> Resolver<'a> {
             parent_scope,
             false,
             record_used,
-            path_span,
         )
         .map_err(|(determinacy, _)| determinacy)
     }
@@ -199,8 +197,7 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         restricted_shadowing: bool,
-        record_used: bool,
-        path_span: Span,
+        record_used: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
@@ -211,8 +208,7 @@ impl<'a> Resolver<'a> {
                     ScopeSet::AbsolutePath(ns),
                     parent_scope,
                     record_used,
-                    record_used,
-                    path_span,
+                    record_used.is_some(),
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -220,7 +216,8 @@ impl<'a> Resolver<'a> {
                 assert!(!restricted_shadowing);
                 return if ns != TypeNS {
                     Err((Determined, Weak::No))
-                } else if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                } else if let Some(binding) = self.extern_prelude_get(ident, record_used.is_none())
+                {
                     Ok(binding)
                 } else if !self.graph_root.unexpanded_invocations.borrow().is_empty() {
                     // Macro-expanded `extern crate` items can add names to extern prelude.
@@ -251,8 +248,7 @@ impl<'a> Resolver<'a> {
                     scopes,
                     parent_scope,
                     record_used,
-                    record_used,
-                    path_span,
+                    record_used.is_some(),
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -262,7 +258,7 @@ impl<'a> Resolver<'a> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        if let Some(binding) = resolution.binding {
+        if let Some(binding) = resolution.binding && let Some(path_span) = record_used {
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
                 if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
@@ -280,7 +276,7 @@ impl<'a> Resolver<'a> {
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
 
-        if record_used {
+        if let Some(path_span) = record_used {
             return resolution
                 .binding
                 .and_then(|binding| {
@@ -353,14 +349,8 @@ impl<'a> Resolver<'a> {
             let ImportKind::Single { source: ident, .. } = single_import.kind else {
                 unreachable!();
             };
-            match self.resolve_ident_in_module(
-                module,
-                ident,
-                ns,
-                &single_import.parent_scope,
-                false,
-                path_span,
-            ) {
+            match self.resolve_ident_in_module(module, ident, ns, &single_import.parent_scope, None)
+            {
                 Err(Determined) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
@@ -434,8 +424,7 @@ impl<'a> Resolver<'a> {
                 ident,
                 ns,
                 adjusted_parent_scope,
-                false,
-                path_span,
+                None,
             );
 
             match result {
@@ -783,13 +772,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             // For better failure detection, pretend that the import will
             // not define any names while resolving its module path.
             let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-            let path_res = self.r.resolve_path(
-                &import.module_path,
-                None,
-                &import.parent_scope,
-                import.span,
-                CrateLint::No,
-            );
+            let path_res =
+                self.r.resolve_path(&import.module_path, None, &import.parent_scope, CrateLint::No);
             import.vis.set(orig_vis);
 
             match path_res {
@@ -828,8 +812,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         source,
                         ns,
                         &import.parent_scope,
-                        false,
-                        import.span,
+                        None,
                     );
                     import.vis.set(orig_vis);
                     source_bindings[ns].set(binding);
@@ -882,15 +865,13 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
-        let crate_lint =
-            CrateLint::UsePath { root_id: import.root_id, root_span: import.root_span };
-        let path_res = self.r.resolve_path(
-            &import.module_path,
-            None,
-            &import.parent_scope,
-            import.span,
-            crate_lint,
-        );
+        let crate_lint = CrateLint::UsePath {
+            root_id: import.root_id,
+            root_span: import.root_span,
+            path_span: import.span,
+        };
+        let path_res =
+            self.r.resolve_path(&import.module_path, None, &import.parent_scope, crate_lint);
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         if let Some(orig_unusable_binding) = orig_unusable_binding {
             self.r.unusable_binding = orig_unusable_binding;
@@ -977,12 +958,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = import.module_path.clone();
                     full_path.push(Segment::from_ident(Ident::empty()));
-                    self.r.lint_if_path_starts_with_module(
-                        crate_lint,
-                        &full_path,
-                        import.span,
-                        None,
-                    );
+                    self.r.lint_if_path_starts_with_module(crate_lint, &full_path, None);
                 }
 
                 if let ModuleOrUniformRoot::Module(module) = module {
@@ -1020,8 +996,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     ident,
                     ns,
                     &import.parent_scope,
-                    true,
-                    import.span,
+                    Some(import.span),
                 );
                 this.last_import_segment = orig_last_import_segment;
                 this.unusable_binding = orig_unusable_binding;
@@ -1082,8 +1057,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ident,
                         ns,
                         &import.parent_scope,
-                        true,
-                        import.span,
+                        Some(import.span),
                     );
                     if binding.is_ok() {
                         all_ns_failed = false;
@@ -1249,12 +1223,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             full_path.push(Segment::from_ident(ident));
             self.r.per_ns(|this, ns| {
                 if let Ok(binding) = source_bindings[ns].get() {
-                    this.lint_if_path_starts_with_module(
-                        crate_lint,
-                        &full_path,
-                        import.span,
-                        Some(binding),
-                    );
+                    this.lint_if_path_starts_with_module(crate_lint, &full_path, Some(binding));
                 }
             });
         }
@@ -1310,9 +1279,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     target,
                     ScopeSet::All(ns, false),
                     &import.parent_scope,
+                    None,
                     false,
-                    false,
-                    import.span,
                 ) {
                     Ok(other_binding) => {
                         is_redundant[ns] = Some(

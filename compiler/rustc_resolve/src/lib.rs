@@ -13,6 +13,7 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
@@ -54,9 +55,9 @@ use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
+use rustc_middle::{bug, span_bug};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_session::lint;
@@ -1949,8 +1950,7 @@ impl<'a> Resolver<'a> {
         mut ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used_id: Option<NodeId>,
-        path_span: Span,
+        crate_lint: CrateLint,
         ribs: &[Rib<'a>],
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
@@ -1972,7 +1972,7 @@ impl<'a> Resolver<'a> {
         let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
-        let record_used = record_used_id.is_some();
+        let record_used = crate_lint.path_span();
         let mut module = self.graph_root;
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
@@ -1987,7 +1987,6 @@ impl<'a> Resolver<'a> {
                     rib_ident,
                     *res,
                     record_used,
-                    path_span,
                     *original_rib_ident_def,
                     ribs,
                 )));
@@ -2015,7 +2014,6 @@ impl<'a> Resolver<'a> {
                 ns,
                 parent_scope,
                 record_used,
-                path_span,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -2024,11 +2022,10 @@ impl<'a> Resolver<'a> {
         }
         self.early_resolve_ident_in_lexical_scope(
             orig_ident,
-            ScopeSet::Late(ns, module, record_used_id),
+            ScopeSet::Late(ns, module, crate_lint.node_id()),
             parent_scope,
             record_used,
-            record_used,
-            path_span,
+            record_used.is_some(),
         )
         .ok()
         .map(LexicalScopeBinding::Item)
@@ -2088,10 +2085,9 @@ impl<'a> Resolver<'a> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
+        record_used: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, record_used, path_span)
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, record_used)
             .map_err(|(determinacy, _)| determinacy)
     }
 
@@ -2101,8 +2097,7 @@ impl<'a> Resolver<'a> {
         mut ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
+        record_used: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
@@ -2128,7 +2123,6 @@ impl<'a> Resolver<'a> {
             adjusted_parent_scope,
             false,
             record_used,
-            path_span,
         )
     }
 
@@ -2219,10 +2213,9 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, path_span, crate_lint, None)
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, crate_lint, None)
     }
 
     fn resolve_path_with_ribs(
@@ -2230,24 +2223,20 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        path_span: Span,
         crate_lint: CrateLint,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
     ) -> PathResult<'a> {
-        let record_used = crate_lint != CrateLint::No;
+        debug!("resolve_path(path={:?}, opt_ns={:?}, crate_lint={:?})", path, opt_ns, crate_lint);
+
+        let record_used = crate_lint.path_span();
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
 
-        debug!(
-            "resolve_path(path={:?}, opt_ns={:?}, path_span={:?}, crate_lint={:?})",
-            path, opt_ns, path_span, crate_lint,
-        );
-
         for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
             let record_segment_res = |this: &mut Self, res| {
-                if record_used {
+                if record_used.is_some() {
                     if let Some(id) = id {
                         if !this.partial_res_map.contains_key(&id) {
                             assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
@@ -2281,7 +2270,7 @@ impl<'a> Resolver<'a> {
                             continue;
                         }
                     }
-                    return PathResult::failed(ident.span, false, record_used, || {
+                    return PathResult::failed(ident.span, false, record_used.is_some(), || {
                         ("there are too many leading `super` keywords".to_string(), None)
                     });
                 }
@@ -2312,7 +2301,7 @@ impl<'a> Resolver<'a> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && i != 0 {
-                return PathResult::failed(ident.span, false, record_used, || {
+                return PathResult::failed(ident.span, false, record_used.is_some(), || {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
@@ -2333,14 +2322,7 @@ impl<'a> Resolver<'a> {
             }
             let find_binding_in_ns = |this: &mut Self, ns| {
                 let binding = if let Some(module) = module {
-                    this.resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns,
-                        parent_scope,
-                        record_used,
-                        path_span,
-                    )
+                    this.resolve_ident_in_module(module, ident, ns, parent_scope, record_used)
                 } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
                     let scopes = ScopeSet::All(ns, opt_ns.is_none());
                     this.early_resolve_ident_in_lexical_scope(
@@ -2348,16 +2330,14 @@ impl<'a> Resolver<'a> {
                         scopes,
                         parent_scope,
                         record_used,
-                        record_used,
-                        path_span,
+                        record_used.is_some(),
                     )
                 } else {
                     match this.resolve_ident_in_lexical_scope(
                         ident,
                         ns,
                         parent_scope,
-                        crate_lint.node_id(),
-                        path_span,
+                        crate_lint,
                         &ribs.unwrap()[ns],
                     ) {
                         // we found a locally-imported or available item/module
@@ -2371,7 +2351,7 @@ impl<'a> Resolver<'a> {
                                 PartialRes::with_unresolved_segments(res, path.len() - 1),
                             ));
                         }
-                        _ => Err(Determinacy::determined(record_used)),
+                        _ => Err(Determinacy::determined(record_used.is_some())),
                     }
                 };
                 FindBindingResult::Binding(binding)
@@ -2405,25 +2385,25 @@ impl<'a> Resolver<'a> {
                     } else if res == Res::Err {
                         return PathResult::NonModule(PartialRes::new(Res::Err));
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
-                        self.lint_if_path_starts_with_module(
-                            crate_lint,
-                            path,
-                            path_span,
-                            second_binding,
-                        );
+                        self.lint_if_path_starts_with_module(crate_lint, path, second_binding);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res,
                             path.len() - i - 1,
                         ));
                     } else {
-                        return PathResult::failed(ident.span, is_last, record_used, || {
-                            let label = format!(
-                                "`{ident}` is {} {}, not a module",
-                                res.article(),
-                                res.descr()
-                            );
-                            (label, None)
-                        });
+                        return PathResult::failed(
+                            ident.span,
+                            is_last,
+                            record_used.is_some(),
+                            || {
+                                let label = format!(
+                                    "`{ident}` is {} {}, not a module",
+                                    res.article(),
+                                    res.descr()
+                                );
+                                (label, None)
+                            },
+                        );
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
@@ -2437,7 +2417,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
 
-                    return PathResult::failed(ident.span, is_last, record_used, || {
+                    return PathResult::failed(ident.span, is_last, record_used.is_some(), || {
                         let module_res = match module {
                             Some(ModuleOrUniformRoot::Module(module)) => module.res(),
                             _ => None,
@@ -2477,8 +2457,7 @@ impl<'a> Resolver<'a> {
                                         ident,
                                         ValueNS,
                                         parent_scope,
-                                        None,
-                                        path_span,
+                                        CrateLint::No,
                                         &ribs.unwrap()[ValueNS],
                                     ) {
                                         // Name matches a local variable. For example:
@@ -2603,12 +2582,12 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        self.lint_if_path_starts_with_module(crate_lint, path, path_span, second_binding);
+        self.lint_if_path_starts_with_module(crate_lint, path, second_binding);
 
         PathResult::Module(match module {
             Some(module) => module,
             None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
-            _ => span_bug!(path_span, "resolve_path: non-empty path `{:?}` has no module", path),
+            _ => bug!("resolve_path: non-empty path `{:?}` has no module", path),
         })
     }
 
@@ -2616,14 +2595,13 @@ impl<'a> Resolver<'a> {
         &mut self,
         crate_lint: CrateLint,
         path: &[Segment],
-        path_span: Span,
         second_binding: Option<&NameBinding<'_>>,
     ) {
         let (diag_id, diag_span) = match crate_lint {
             CrateLint::No => return,
-            CrateLint::SimplePath(id) => (id, path_span),
-            CrateLint::UsePath { root_id, root_span } => (root_id, root_span),
-            CrateLint::QPathTrait { qpath_id, qpath_span } => (qpath_id, qpath_span),
+            CrateLint::SimplePath(id, path_span) => (id, path_span),
+            CrateLint::UsePath { root_id, root_span, .. } => (root_id, root_span),
+            CrateLint::QPathTrait { qpath_id, qpath_span, .. } => (qpath_id, qpath_span),
         };
 
         let first_name = match path.get(0) {
@@ -2678,8 +2656,7 @@ impl<'a> Resolver<'a> {
         rib_index: usize,
         rib_ident: Ident,
         mut res: Res,
-        record_used: bool,
-        span: Span,
+        record_used: Option<Span>,
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'a>],
     ) -> Res {
@@ -2689,7 +2666,7 @@ impl<'a> Resolver<'a> {
 
         // An invalid forward use of a generic parameter from a previous default.
         if let ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
-            if record_used {
+            if let Some(span) = record_used {
                 let res_error = if rib_ident.name == kw::SelfUpper {
                     ResolutionError::SelfInGenericParamDefault
                 } else {
@@ -2719,17 +2696,17 @@ impl<'a> Resolver<'a> {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
-                            if record_used {
+                            if let Some(span) = record_used {
                                 // We don't immediately trigger a resolve error, because
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
+                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
                         ConstantItemRibKind(_, item) => {
                             // Still doesn't deal with upvars
-                            if record_used {
+                            if let Some(span) = record_used {
                                 let (span, resolution_error) =
                                     if let Some((ident, constant_item_kind)) = item {
                                         let kind_str = match constant_item_kind {
@@ -2757,14 +2734,14 @@ impl<'a> Resolver<'a> {
                             return Res::Err;
                         }
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = record_used {
                                 self.report_error(span, ParamInTyOfConstParam(rib_ident.name));
                             }
                             return Res::Err;
                         }
                     }
                 }
-                if let Some(res_err) = res_err {
+                if let Some((span, res_err)) = res_err {
                     self.report_error(span, res_err);
                     return Res::Err;
                 }
@@ -2792,7 +2769,7 @@ impl<'a> Resolver<'a> {
                                 if let Res::SelfTy { trait_, alias_to: Some((def, _)) } = res {
                                     res = Res::SelfTy { trait_, alias_to: Some((def, true)) }
                                 } else {
-                                    if record_used {
+                                    if let Some(span) = record_used {
                                         self.report_error(
                                             span,
                                             ResolutionError::ParamInNonTrivialAnonConst {
@@ -2800,9 +2777,9 @@ impl<'a> Resolver<'a> {
                                                 is_type: true,
                                             },
                                         );
+                                        self.session.delay_span_bug(span, CG_BUG_STR);
                                     }
 
-                                    self.session.delay_span_bug(span, CG_BUG_STR);
                                     return Res::Err;
                                 }
                             }
@@ -2814,7 +2791,7 @@ impl<'a> Resolver<'a> {
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = record_used {
                                 self.report_error(
                                     span,
                                     ResolutionError::ParamInTyOfConstParam(rib_ident.name),
@@ -2824,7 +2801,7 @@ impl<'a> Resolver<'a> {
                         }
                     };
 
-                    if record_used {
+                    if let Some(span) = record_used {
                         self.report_error(
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
@@ -2858,7 +2835,7 @@ impl<'a> Resolver<'a> {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial || features.generic_const_exprs) {
-                                if record_used {
+                                if let Some(span) = record_used {
                                     self.report_error(
                                         span,
                                         ResolutionError::ParamInNonTrivialAnonConst {
@@ -2866,9 +2843,9 @@ impl<'a> Resolver<'a> {
                                             is_type: false,
                                         },
                                     );
+                                    self.session.delay_span_bug(span, CG_BUG_STR);
                                 }
 
-                                self.session.delay_span_bug(span, CG_BUG_STR);
                                 return Res::Err;
                             }
 
@@ -2878,7 +2855,7 @@ impl<'a> Resolver<'a> {
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = record_used {
                                 self.report_error(
                                     span,
                                     ResolutionError::ParamInTyOfConstParam(rib_ident.name),
@@ -2889,7 +2866,7 @@ impl<'a> Resolver<'a> {
                     };
 
                     // This was an attempt to use a const parameter outside its scope.
-                    if record_used {
+                    if let Some(span) = record_used {
                         self.report_error(
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
@@ -3330,7 +3307,6 @@ impl<'a> Resolver<'a> {
             &segments,
             Some(ns),
             &ParentScope::module(module, self),
-            DUMMY_SP,
             CrateLint::No,
         ) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
@@ -3425,8 +3401,7 @@ impl<'a> Resolver<'a> {
             ident,
             ValueNS,
             parent_scope,
-            false,
-            DUMMY_SP,
+            None
         ) else {
             return;
         };
@@ -3490,28 +3465,36 @@ enum CrateLint {
 
     /// This lint applies to some arbitrary path; e.g., `impl ::foo::Bar`.
     /// In this case, we can take the span of that path.
-    SimplePath(NodeId),
+    SimplePath(NodeId, Span),
 
     /// This lint comes from a `use` statement. In this case, what we
     /// care about really is the *root* `use` statement; e.g., if we
     /// have nested things like `use a::{b, c}`, we care about the
     /// `use a` part.
-    UsePath { root_id: NodeId, root_span: Span },
+    UsePath { root_id: NodeId, root_span: Span, path_span: Span },
 
     /// This is the "trait item" from a fully qualified path. For example,
     /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
     /// The `path_span` is the span of the to the trait itself (`X::Y`).
-    QPathTrait { qpath_id: NodeId, qpath_span: Span },
+    QPathTrait { qpath_id: NodeId, qpath_span: Span, path_span: Span },
 }
 
 impl CrateLint {
-    fn node_id(&self) -> Option<NodeId> {
+    fn node_id_and_path_span(&self) -> Option<(NodeId, Span)> {
         match *self {
             CrateLint::No => None,
-            CrateLint::SimplePath(id)
-            | CrateLint::UsePath { root_id: id, .. }
-            | CrateLint::QPathTrait { qpath_id: id, .. } => Some(id),
+            CrateLint::SimplePath(id, path_span)
+            | CrateLint::UsePath { root_id: id, path_span, .. }
+            | CrateLint::QPathTrait { qpath_id: id, path_span, .. } => Some((id, path_span)),
         }
+    }
+
+    fn node_id(&self) -> Option<NodeId> {
+        self.node_id_and_path_span().map(|(id, _)| id)
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        self.node_id_and_path_span().map(|(_, path_span)| path_span)
     }
 }
 

@@ -296,8 +296,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    path.span,
-                    if speculative { CrateLint::No } else { CrateLint::SimplePath(id) },
+                    if speculative { CrateLint::No } else { CrateLint::SimplePath(id, path.span) },
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -1130,8 +1129,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     ident,
                     MacroNS,
                     &self.parent_scope,
-                    false,
-                    ident.span,
+                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span);
