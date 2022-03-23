@@ -665,8 +665,9 @@ impl server::Span for Rustc {
         // FIXME handle span
         LineColumn { line: 0, column: 0 }
     }
-    fn join(&mut self, _first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
-        None
+    fn join(&mut self, first: Self::Span, _second: Self::Span) -> Option<Self::Span> {
+        // Just return the first span again, because some macros will unwrap the result.
+        Some(first)
     }
     fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
         // FIXME handle span
