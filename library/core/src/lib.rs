@@ -146,6 +146,7 @@
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
+#![feature(strict_provenance)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
 #![feature(variant_count)]

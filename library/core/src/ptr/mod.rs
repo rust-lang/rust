@@ -51,7 +51,7 @@
 //! has size 0, i.e., even if memory is not actually touched. Consider using
 //! [`NonNull::dangling`] in such cases.
 //!
-//! ## Allocated Object and Provenance
+//! ## Allocated Objects and Provenance
 //!
 //! For several operations, such as [`offset`] or field projections (`expr.field`), the notion of an
 //! "allocated object" becomes relevant. An allocated object is a contiguous region of memory.
@@ -297,14 +297,15 @@ pub const fn null_mut<T>() -> *mut T {
 /// # Example
 ///
 /// ```
-/// use core::{ptr, mem};
+/// #![feature(strict_provenance)]
+/// use core::ptr;
 ///
 /// // I store my ZSTs at the *coolest* address
 /// let my_good_ptr = ptr::zst_exists::<()>(0xc001_add7);
 ///
 /// // "store" and then "load" a ZST at this cool address.
-/// my_good_ptr.write(());
-/// let output = my_good_ptr.read();
+/// unsafe { my_good_ptr.write(()); }
+/// let output = unsafe { my_good_ptr.read() };
 /// ```
 #[inline(always)]
 #[must_use]

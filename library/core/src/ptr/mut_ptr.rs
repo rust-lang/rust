@@ -67,8 +67,10 @@ impl<T: ?Sized> *mut T {
     /// and cannot be created from one without additional context.
     ///
     /// If you would like to treat a pointer like an integer anyway,
-    /// see [`addr`][#method.addr-1] and [`with_addr`][#method.with_addr-1] for
-    /// the responsible way to do that.
+    /// see [`addr`] and [`with_addr`] for the responsible way to do that.
+    ///
+    /// [`addr`]: pointer::addr
+    /// [`with_addr`]: pointer::with_addr
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     pub fn to_bits(self) -> [u8; core::mem::size_of::<*mut ()>()]
     where
@@ -110,8 +112,10 @@ impl<T: ?Sized> *mut T {
     /// and is equivalent to the deprecated `ptr as usize` cast.
     ///
     /// On more complicated platforms like CHERI and segmented architectures,
-    /// this may remove some important metadata. See [`with_addr`][#method.with_addr-1] for
+    /// this may remove some important metadata. See [`with_addr`] for
     /// details on this distinction and why it's important.
+    ///
+    /// [`with_addr`]: pointer::with_addr
     #[unstable(feature = "strict_provenance", issue = "99999999")]
     pub fn addr(self) -> usize
     where
@@ -154,6 +158,7 @@ impl<T: ?Sized> *mut T {
     /// with tagged pointers. Here we have a tag in the lowest bit:
     ///
     /// ```text
+    /// #![feature(strict_provenance)]
     /// let my_tagged_ptr: *mut T = ...;
     ///
     /// // Get the address and do whatever bit tricks we like
@@ -352,7 +357,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_offset`]: #method.wrapping_offset
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -440,7 +445,7 @@ impl<T: ?Sized> *mut T {
     /// platform-specific and not at all portable.
     ///
     /// [`offset`]: #method.offset
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -683,7 +688,7 @@ impl<T: ?Sized> *mut T {
     /// such large allocations either.)
     ///
     /// [`add`]: #method.add
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Panics
     ///
@@ -708,6 +713,7 @@ impl<T: ?Sized> *mut T {
     /// *Incorrect* usage:
     ///
     /// ```rust,no_run
+    /// #![feature(strict_provenance)]
     /// let ptr1 = Box::into_raw(Box::new(0u8));
     /// let ptr2 = Box::into_raw(Box::new(1u8));
     /// let diff = (ptr2.addr() as isize).wrapping_sub(ptr1.addr() as isize);
@@ -768,7 +774,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_add`]: #method.wrapping_add
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -832,7 +838,7 @@ impl<T: ?Sized> *mut T {
     /// enables more aggressive compiler optimizations.
     ///
     /// [`wrapping_sub`]: #method.wrapping_sub
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -889,7 +895,7 @@ impl<T: ?Sized> *mut T {
     /// allocated object and then re-entering it later is permitted.
     ///
     /// [`add`]: #method.add
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -951,7 +957,7 @@ impl<T: ?Sized> *mut T {
     /// allocated object and then re-entering it later is permitted.
     ///
     /// [`sub`]: #method.sub
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     ///
     /// # Examples
     ///
@@ -1456,7 +1462,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts`][].
     ///
     /// [valid]: crate::ptr#safety
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
@@ -1508,7 +1514,7 @@ impl<T> *mut [T] {
     /// See also [`slice::from_raw_parts_mut`][].
     ///
     /// [valid]: crate::ptr#safety
-    /// [allocated object]: crate::ptr#allocated-object
+    /// [allocated object]: crate::ptr#allocated-objects-and-provenance
     #[inline]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]

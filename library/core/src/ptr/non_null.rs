@@ -489,7 +489,7 @@ impl<T> NonNull<[T]> {
     /// use std::ptr::NonNull;
     ///
     /// let slice: NonNull<[i8]> = NonNull::slice_from_raw_parts(NonNull::dangling(), 3);
-    /// assert_eq!(slice.as_mut_ptr(), NonNull::<i8>::dangling());
+    /// assert_eq!(slice.as_mut_ptr(), NonNull::<i8>::dangling().as_ptr());
     /// ```
     #[inline]
     #[must_use]
