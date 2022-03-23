@@ -490,6 +490,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
@@ -635,7 +636,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn ok(self) -> Option<T>
     where
-        E: ~const Drop,
+        E: ~const Drop + ~const Destruct,
     {
         match self {
             Ok(x) => Some(x),
@@ -666,7 +667,7 @@ impl<T, E> Result<T, E> {
     #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     pub const fn err(self) -> Option<E>
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         match self {
             // FIXME: ~const Drop doesn't quite work right yet
@@ -1282,9 +1283,9 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
     where
-        T: ~const Drop,
-        U: ~const Drop,
-        E: ~const Drop,
+        T: ~const Drop + ~const Destruct,
+        U: ~const Drop + ~const Destruct,
+        E: ~const Drop + ~const Destruct,
     {
         match self {
             // FIXME: ~const Drop doesn't quite work right yet
@@ -1367,9 +1368,9 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
     where
-        T: ~const Drop,
-        E: ~const Drop,
-        F: ~const Drop,
+        T: ~const Drop + ~const Destruct,
+        E: ~const Drop + ~const Destruct,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Ok(v) => Ok(v),
@@ -1431,8 +1432,8 @@ impl<T, E> Result<T, E> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn unwrap_or(self, default: T) -> T
     where
-        T: ~const Drop,
-        E: ~const Drop,
+        T: ~const Drop + ~const Destruct,
+        E: ~const Drop + ~const Destruct,
     {
         match self {
             Ok(t) => t,
@@ -1802,10 +1803,11 @@ fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 impl<T, E> const Clone for Result<T, E>
 where
-    T: ~const Clone + ~const Drop,
-    E: ~const Clone + ~const Drop,
+    T: ~const Clone + ~const Drop + ~const Destruct,
+    E: ~const Clone + ~const Drop + ~const Destruct,
 {
     #[inline]
     fn clone(&self) -> Self {

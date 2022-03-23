@@ -5,6 +5,7 @@
 //! candidates. See the [rustc dev guide] for more details.
 //!
 //! [rustc dev guide]:https://rustc-dev-guide.rust-lang.org/traits/resolution.html#candidate-assembly
+use hir::LangItem;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::TraitEngine;
@@ -307,7 +308,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if lang_items.drop_trait() == Some(def_id)
                 && obligation.predicate.is_const_if_const()
             {
-                self.assemble_const_drop_candidates(obligation, &mut candidates);
+                // holds to make it easier to transition
+                // FIXME(fee1-dead): add a note for selection error of `~const Drop`
+                // when beta is bumped
+                // FIXME: remove this when beta is bumped
+                #[cfg(bootstrap)]
+                {}
+
+                candidates.vec.push(SelectionCandidate::ConstDestructCandidate(None))
+            } else if lang_items.destruct_trait() == Some(def_id) {
+                self.assemble_const_destruct_candidates(obligation, &mut candidates);
             } else {
                 if lang_items.clone_trait() == Some(def_id) {
                     // Same builtin conditions as `Copy`, i.e., every type which has builtin support
@@ -906,15 +916,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn assemble_const_drop_candidates(
+    fn assemble_const_destruct_candidates(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
-        // If the predicate is `~const Drop` in a non-const environment, we don't actually need
+        // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
         // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        if obligation.param_env.constness() == hir::Constness::NotConst {
-            candidates.vec.push(ConstDropCandidate(None));
+        if !obligation.is_const() {
+            candidates.vec.push(ConstDestructCandidate(None));
             return;
         }
 
@@ -927,7 +937,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Param(_)
             | ty::Placeholder(_)
             | ty::Projection(_) => {
-                // We don't know if these are `~const Drop`, at least
+                // We don't know if these are `~const Destruct`, at least
                 // not structurally... so don't push a candidate.
             }
 
@@ -951,14 +961,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(..)
             | ty::Tuple(_)
             | ty::GeneratorWitness(_) => {
-                // These are built-in, and cannot have a custom `impl const Drop`.
-                candidates.vec.push(ConstDropCandidate(None));
+                // These are built-in, and cannot have a custom `impl const Destruct`.
+                candidates.vec.push(ConstDestructCandidate(None));
             }
 
             ty::Adt(..) => {
                 // Find a custom `impl Drop` impl, if it exists
                 let relevant_impl = self.tcx().find_map_relevant_impl(
-                    obligation.predicate.def_id(),
+                    self.tcx().require_lang_item(LangItem::Drop, None),
                     obligation.predicate.skip_binder().trait_ref.self_ty(),
                     Some,
                 );
@@ -966,11 +976,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if let Some(impl_def_id) = relevant_impl {
                     // Check that `impl Drop` is actually const, if there is a custom impl
                     if self.tcx().impl_constness(impl_def_id) == hir::Constness::Const {
-                        candidates.vec.push(ConstDropCandidate(Some(impl_def_id)));
+                        candidates.vec.push(ConstDestructCandidate(Some(impl_def_id)));
                     }
                 } else {
                     // Otherwise check the ADT like a built-in type (structurally)
-                    candidates.vec.push(ConstDropCandidate(None));
+                    candidates.vec.push(ConstDestructCandidate(None));
                 }
             }
 

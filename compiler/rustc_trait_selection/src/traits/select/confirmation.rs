@@ -8,7 +8,6 @@
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::Constness;
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
@@ -29,9 +28,9 @@ use crate::traits::TraitNotObjectSafe;
 use crate::traits::VtblSegment;
 use crate::traits::{BuiltinDerivedObligation, ImplDerivedObligation};
 use crate::traits::{
-    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData, ImplSourceConstDropData,
-    ImplSourceDiscriminantKindData, ImplSourceFnPointerData, ImplSourceGeneratorData,
-    ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
+    ImplSourceAutoImplData, ImplSourceBuiltinData, ImplSourceClosureData,
+    ImplSourceConstDestructData, ImplSourceDiscriminantKindData, ImplSourceFnPointerData,
+    ImplSourceGeneratorData, ImplSourceObjectData, ImplSourcePointeeData, ImplSourceTraitAliasData,
     ImplSourceTraitUpcastingData, ImplSourceUserDefinedData,
 };
 use crate::traits::{ObjectCastObligation, PredicateObligation, TraitObligation};
@@ -156,9 +155,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(ImplSource::TraitUpcasting(data))
             }
 
-            ConstDropCandidate(def_id) => {
-                let data = self.confirm_const_drop_candidate(obligation, def_id)?;
-                Ok(ImplSource::ConstDrop(data))
+            ConstDestructCandidate(def_id) => {
+                let data = self.confirm_const_destruct_candidate(obligation, def_id)?;
+                Ok(ImplSource::ConstDestruct(data))
             }
         }
     }
@@ -1037,14 +1036,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(ImplSourceBuiltinData { nested })
     }
 
-    fn confirm_const_drop_candidate(
+    fn confirm_const_destruct_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         impl_def_id: Option<DefId>,
-    ) -> Result<ImplSourceConstDropData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // `~const Drop` in a non-const environment is always trivially true, since our type is `Drop`
-        if obligation.param_env.constness() == Constness::NotConst {
-            return Ok(ImplSourceConstDropData { nested: vec![] });
+    ) -> Result<ImplSourceConstDestructData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
+        // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
+        if !obligation.is_const() {
+            return Ok(ImplSourceConstDestructData { nested: vec![] });
+        }
+
+        let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
+        // FIXME: remove if statement below when beta is bumped
+        #[cfg(bootstrap)]
+        {}
+
+        if obligation.predicate.skip_binder().def_id() == drop_trait {
+            return Ok(ImplSourceConstDestructData { nested: vec![] });
         }
 
         let tcx = self.tcx();
@@ -1054,9 +1062,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
         // If we have a custom `impl const Drop`, then
-        // first check it like a regular impl candidate
+        // first check it like a regular impl candidate.
+        // This is copied from confirm_impl_candidate but remaps the predicate to `~const Drop` beforehand.
         if let Some(impl_def_id) = impl_def_id {
-            nested.extend(self.confirm_impl_candidate(obligation, impl_def_id).nested);
+            let obligations = self.infcx.commit_unconditionally(|_| {
+                let mut new_obligation = obligation.clone();
+                new_obligation.predicate = new_obligation.predicate.map_bound(|mut trait_pred| {
+                    trait_pred.trait_ref.def_id = drop_trait;
+                    trait_pred
+                });
+                let substs = self.rematch_impl(impl_def_id, &new_obligation);
+                debug!(?substs, "impl substs");
+                let cause = obligation.derived_cause(ImplDerivedObligation);
+                ensure_sufficient_stack(|| {
+                    self.vtable_impl(
+                        impl_def_id,
+                        substs,
+                        cause,
+                        new_obligation.recursion_depth + 1,
+                        new_obligation.param_env,
+                    )
+                })
+            });
+            nested.extend(obligations.nested);
         }
 
         // We want to confirm the ADT's fields if we have an ADT
@@ -1114,7 +1142,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             self_ty
                                 .rebind(ty::TraitPredicate {
                                     trait_ref: ty::TraitRef {
-                                        def_id: self.tcx().require_lang_item(LangItem::Drop, None),
+                                        def_id: self
+                                            .tcx()
+                                            .require_lang_item(LangItem::Destruct, None),
                                         substs: self.tcx().mk_substs_trait(nested_ty, &[]),
                                     },
                                     constness: ty::BoundConstness::ConstIfConst,
@@ -1140,7 +1170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     let predicate = self_ty
                         .rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef {
-                                def_id: self.tcx().require_lang_item(LangItem::Drop, None),
+                                def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
                                 substs: self.tcx().mk_substs_trait(nested_ty, &[]),
                             },
                             constness: ty::BoundConstness::ConstIfConst,
@@ -1158,6 +1188,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        Ok(ImplSourceConstDropData { nested })
+        Ok(ImplSourceConstDestructData { nested })
     }
 }

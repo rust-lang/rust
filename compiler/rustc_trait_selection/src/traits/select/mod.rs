@@ -1179,7 +1179,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     GeneratorCandidate => {}
                     // FnDef where the function is const
                     FnPointerCandidate { is_const: true } => {}
-                    ConstDropCandidate(_) => {}
+                    ConstDestructCandidate(_) => {}
                     _ => {
                         // reject all other types of candidates
                         continue;
@@ -1589,7 +1589,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, and `ConstDropCandidate` to anything else.
+        // `DiscriminantKindCandidate`, and `ConstDestructCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -1606,7 +1606,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDropCandidate(_),
+                | ConstDestructCandidate(_),
                 _,
             ) => true,
             (
@@ -1614,7 +1614,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDropCandidate(_),
+                | ConstDestructCandidate(_),
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {

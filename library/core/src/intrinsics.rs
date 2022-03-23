@@ -54,7 +54,7 @@
 )]
 #![allow(missing_docs)]
 
-use crate::marker::DiscriminantKind;
+use crate::marker::{Destruct, DiscriminantKind};
 use crate::mem;
 
 // These imports are used for simplifying intra-doc links
@@ -2353,6 +2353,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select"]
 #[rustc_do_not_const_check]
+#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 pub const unsafe fn const_eval_select<ARG, F, G, RET>(
     arg: ARG,
     _called_in_const: F,
@@ -2360,7 +2361,7 @@ pub const unsafe fn const_eval_select<ARG, F, G, RET>(
 ) -> RET
 where
     F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Drop,
+    G: FnOnce<ARG, Output = RET> + ~const Drop + ~const Destruct,
 {
     called_at_rt.call_once(arg)
 }
@@ -2372,6 +2373,7 @@ where
 )]
 #[rustc_const_unstable(feature = "const_eval_select", issue = "none")]
 #[lang = "const_eval_select_ct"]
+#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
     arg: ARG,
     called_in_const: F,
@@ -2379,7 +2381,7 @@ pub const unsafe fn const_eval_select_ct<ARG, F, G, RET>(
 ) -> RET
 where
     F: ~const FnOnce<ARG, Output = RET>,
-    G: FnOnce<ARG, Output = RET> + ~const Drop,
+    G: FnOnce<ARG, Output = RET> + ~const Drop + ~const Destruct,
 {
     called_in_const.call_once(arg)
 }

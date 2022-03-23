@@ -216,6 +216,7 @@ language_item_table! {
     Freeze,                  sym::freeze,              freeze_trait,               Target::Trait,          GenericRequirement::Exact(0);
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
+    Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
 
     CoerceUnsized,           sym::coerce_unsized,      coerce_unsized_trait,       Target::Trait,          GenericRequirement::Minimum(1);
     DispatchFromDyn,         sym::dispatch_from_dyn,   dispatch_from_dyn_trait,    Target::Trait,          GenericRequirement::Minimum(1);
