@@ -17,9 +17,10 @@ const QUERY = [
     ":a",
     "a b:",
     "a (b:",
-    "{:",
+    "_:",
     "a-bb",
     "a>bb",
+    "ab'",
 ];
 
 const PARSED = [
@@ -188,11 +189,11 @@ const PARSED = [
     {
         elems: [],
         foundElems: 0,
-        original: "{:",
+        original: "_:",
         returned: [],
         typeFilter: -1,
-        userQuery: "{:",
-        error: "Unknown type filter `{`",
+        userQuery: "_:",
+        error: "Unknown type filter `_`",
     },
     {
         elems: [],
@@ -211,5 +212,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "a>bb",
         error: "Unexpected `>` (did you mean `->`?)",
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "ab'",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "ab'",
+        error: "Unexpected `'`",
     },
 ];

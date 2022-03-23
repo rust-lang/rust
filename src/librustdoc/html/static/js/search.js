@@ -212,6 +212,21 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * Returns `true` if the given `c` character is valid for an ident.
+     *
+     * @param {string} c
+     *
+     * @return {boolean}
+     */
+    function isIdentCharacter(c) {
+        return (
+            c === '_' ||
+            (c >= '0' && c <= '9') ||
+            (c >= 'a' && c <= 'z') ||
+            (c >= 'A' && c <= 'Z'));
+    }
+
+    /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      * @param {string} name                  - Name of the query element.
@@ -274,18 +289,22 @@ window.initSearch = function(rawSearchIndex) {
         } else {
             while (parserState.pos < parserState.length) {
                 var c = parserState.userQuery[parserState.pos];
-                if (isErrorCharacter(c)) {
-                    throw new Error(`Unexpected \`${c}\``);
-                } else if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
-                    break;
-                }
-                // If we allow paths ("str::string" for example).
-                else if (c === ":") {
-                    if (!isPathStart(parserState)) {
+                if (!isIdentCharacter(c)) {
+                    if (isErrorCharacter(c)) {
+                        throw new Error(`Unexpected \`${c}\``);
+                    } else if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
                         break;
                     }
-                    // Skip current ":".
-                    parserState.pos += 1;
+                    // If we allow paths ("str::string" for example).
+                    else if (c === ":") {
+                        if (!isPathStart(parserState)) {
+                            break;
+                        }
+                        // Skip current ":".
+                        parserState.pos += 1;
+                    } else {
+                        throw new Error(`Unexpected \`${c}\``);
+                    }
                 }
                 parserState.pos += 1;
                 end = parserState.pos;
