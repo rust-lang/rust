@@ -2512,14 +2512,21 @@ trait RcInnerPtr {
     fn inc_strong(&self) {
         let strong = self.strong();
 
+        // We insert an `assume` here to hint LLVM at an otherwise
+        // missed optimization.
+        // SAFETY: The reference count will never be zero when this is
+        // called.
+        unsafe { core::intrinsics::assume(strong != 0); }
+
+        let strong = strong.wrapping_add(1);
+        self.strong_ref().set(strong);
+
         // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if strong == 0 || strong == usize::MAX {
+        // Checking after the store instead of before allows for
+        // slightly better code generation.
+        if core::intrinsics::unlikely(strong == 0) {
             abort();
         }
-        self.strong_ref().set(strong + 1);
     }
 
     #[inline]
@@ -2536,14 +2543,21 @@ trait RcInnerPtr {
     fn inc_weak(&self) {
         let weak = self.weak();
 
+        // We insert an `assume` here to hint LLVM at an otherwise
+        // missed optimization.
+        // SAFETY: The reference count will never be zero when this is
+        // called.
+        unsafe { core::intrinsics::assume(weak != 0); }
+
+        let weak = weak.wrapping_add(1);
+        self.weak_ref().set(weak);
+
         // We want to abort on overflow instead of dropping the value.
-        // The reference count will never be zero when this is called;
-        // nevertheless, we insert an abort here to hint LLVM at
-        // an otherwise missed optimization.
-        if weak == 0 || weak == usize::MAX {
+        // Checking after the store instead of before allows for
+        // slightly better code generation.
+        if core::intrinsics::unlikely(weak == 0) {
             abort();
         }
-        self.weak_ref().set(weak + 1);
     }
 
     #[inline]
