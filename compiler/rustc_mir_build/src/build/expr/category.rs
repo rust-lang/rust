@@ -71,7 +71,7 @@ impl Category {
 
             ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }
-            | ExprKind::ScalarLiteral { .. }
+            | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::NamedConst { .. } => Some(Category::Constant),

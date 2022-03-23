@@ -413,7 +413,7 @@ pub enum ExprKind<'tcx> {
         neg: bool,
     },
     /// For literals that don't correspond to anything in the HIR
-    ScalarLiteral {
+    NonHirLiteral {
         lit: ty::ScalarInt,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
@@ -454,7 +454,7 @@ pub enum ExprKind<'tcx> {
 
 impl<'tcx> ExprKind<'tcx> {
     pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
-        ExprKind::ScalarLiteral { lit: ty::ScalarInt::ZST, user_ty }
+        ExprKind::NonHirLiteral { lit: ty::ScalarInt::ZST, user_ty }
     }
 }
 

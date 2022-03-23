@@ -695,7 +695,7 @@ impl<'tcx> Cx<'tcx> {
                             })
                             .size;
                         let lit = ScalarInt::try_from_uint(offset as u128, size).unwrap();
-                        let kind = ExprKind::ScalarLiteral { lit, user_ty: None };
+                        let kind = ExprKind::NonHirLiteral { lit, user_ty: None };
                         let offset = self.thir.exprs.push(Expr {
                             temp_lifetime,
                             ty: var_ty,

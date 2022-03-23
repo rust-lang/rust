@@ -337,6 +337,20 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     _ => false,
                 }
             }
+
+            fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
+                if pat.ty.has_param_types_or_consts() {
+                    return true;
+                }
+
+                match pat.kind.as_ref() {
+                    thir::PatKind::Constant { value } => value.has_param_types_or_consts(),
+                    thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
+                        lo.has_param_types_or_consts() || hi.has_param_types_or_consts()
+                    }
+                    _ => false,
+                }
+            }
         }
 
         impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
@@ -354,18 +368,9 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
             #[instrument(skip(self), level = "debug")]
             fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
-                self.is_poly |= pat.ty.has_param_types_or_consts();
+                self.is_poly |= self.pat_is_poly(pat);
                 if !self.is_poly {
-                    match pat.kind.as_ref() {
-                        thir::PatKind::Constant { value } => {
-                            self.is_poly |= value.has_param_types_or_consts();
-                        }
-                        thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
-                            self.is_poly |=
-                                lo.has_param_types_or_consts() | hi.has_param_types_or_consts();
-                        }
-                        _ => visit::walk_pat(self, pat),
-                    }
+                    visit::walk_pat(self, pat);
                 }
             }
         }
@@ -443,7 +448,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
 
                 self.nodes.push(Node::Leaf(constant))
             }
-            &ExprKind::ScalarLiteral { lit , user_ty: _} => {
+            &ExprKind::NonHirLiteral { lit , user_ty: _} => {
                 // FIXME Construct a Valtree from this ScalarInt when introducing Valtrees
                 let const_value = ConstValue::Scalar(Scalar::Int(lit));
                 self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, const_value, node.ty)))

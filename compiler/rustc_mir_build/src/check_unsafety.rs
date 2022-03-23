@@ -304,7 +304,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Borrow { .. }
             | ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
-            | ExprKind::ScalarLiteral { .. }
+            | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::Deref { .. }

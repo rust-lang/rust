@@ -567,7 +567,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
             | ExprKind::NamedConst { .. }
-            | ExprKind::ScalarLiteral { .. }
+            | ExprKind::NonHirLiteral { .. }
             | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::StaticRef { .. }
