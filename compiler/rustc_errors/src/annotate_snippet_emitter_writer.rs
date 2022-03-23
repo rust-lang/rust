@@ -41,7 +41,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
 
         self.emit_messages_default(
             &diag.level,
-            diag.message(),
+            diag.message().to_string(),
             &diag.code,
             &primary_span,
             &children,

@@ -18,6 +18,34 @@ use std::hash::{Hash, Hasher};
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct SuggestionsDisabled;
 
+/// Abstraction over a message in a diagnostic to support both translatable and non-translatable
+/// diagnostic messages.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+pub enum DiagnosticMessage {
+    /// Non-translatable diagnostic message.
+    Str(String),
+    /// Identifier for a Fluent message corresponding to the diagnostic message.
+    FluentIdentifier(String),
+}
+
+impl DiagnosticMessage {
+    /// Convert `DiagnosticMessage` to a `&str`.
+    pub fn as_str(&self) -> &str {
+        match self {
+            DiagnosticMessage::Str(msg) => msg,
+            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
+        }
+    }
+
+    /// Convert `DiagnosticMessage` to an owned `String`.
+    pub fn to_string(self) -> String {
+        match self {
+            DiagnosticMessage::Str(msg) => msg,
+            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
+        }
+    }
+}
+
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
 pub struct Diagnostic {
@@ -25,7 +53,7 @@ pub struct Diagnostic {
     // outside of what methods in this crate themselves allow.
     crate level: Level,
 
-    pub message: Vec<(String, Style)>,
+    pub message: Vec<(DiagnosticMessage, Style)>,
     pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
@@ -52,7 +80,7 @@ pub enum DiagnosticId {
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct SubDiagnostic {
     pub level: Level,
-    pub message: Vec<(String, Style)>,
+    pub message: Vec<(DiagnosticMessage, Style)>,
     pub span: MultiSpan,
     pub render_span: Option<MultiSpan>,
 }
@@ -112,7 +140,7 @@ impl Diagnostic {
     pub fn new_with_code(level: Level, code: Option<DiagnosticId>, message: &str) -> Self {
         Diagnostic {
             level,
-            message: vec![(message.to_owned(), Style::NoStyle)],
+            message: vec![(DiagnosticMessage::Str(message.to_owned()), Style::NoStyle)],
             code,
             span: MultiSpan::new(),
             children: vec![],
@@ -465,7 +493,7 @@ impl Diagnostic {
                     .map(|(span, snippet)| SubstitutionPart { snippet, span })
                     .collect(),
             }],
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style,
             applicability,
             tool_metadata: Default::default(),
@@ -493,7 +521,7 @@ impl Diagnostic {
                     .map(|(span, snippet)| SubstitutionPart { snippet, span })
                     .collect(),
             }],
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
             tool_metadata: Default::default(),
@@ -548,7 +576,7 @@ impl Diagnostic {
             substitutions: vec![Substitution {
                 parts: vec![SubstitutionPart { snippet: suggestion, span: sp }],
             }],
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style,
             applicability,
             tool_metadata: Default::default(),
@@ -591,7 +619,7 @@ impl Diagnostic {
             .collect();
         self.push_suggestion(CodeSuggestion {
             substitutions,
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style: SuggestionStyle::ShowCode,
             applicability,
             tool_metadata: Default::default(),
@@ -616,7 +644,7 @@ impl Diagnostic {
                         .collect(),
                 })
                 .collect(),
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style: SuggestionStyle::ShowCode,
             applicability,
             tool_metadata: Default::default(),
@@ -698,7 +726,7 @@ impl Diagnostic {
     ) {
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![],
-            msg: msg.to_owned(),
+            msg: DiagnosticMessage::Str(msg.to_owned()),
             style: SuggestionStyle::CompletelyHidden,
             applicability,
             tool_metadata: ToolMetadata::new(tool_metadata),
@@ -733,15 +761,15 @@ impl Diagnostic {
     }
 
     pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
-        self.message[0] = (msg.into(), Style::NoStyle);
+        self.message[0] = (DiagnosticMessage::Str(msg.into()), Style::NoStyle);
         self
     }
 
-    pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.as_str()).collect::<String>()
+    pub fn message(&self) -> DiagnosticMessage {
+        DiagnosticMessage::Str(self.message.iter().map(|i| i.0.as_str()).collect::<String>())
     }
 
-    pub fn styled_message(&self) -> &Vec<(String, Style)> {
+    pub fn styled_message(&self) -> &Vec<(DiagnosticMessage, Style)> {
         &self.message
     }
 
@@ -758,7 +786,7 @@ impl Diagnostic {
     ) {
         let sub = SubDiagnostic {
             level,
-            message: vec![(message.to_owned(), Style::NoStyle)],
+            message: vec![(DiagnosticMessage::Str(message.to_owned()), Style::NoStyle)],
             span,
             render_span,
         };
@@ -770,10 +798,11 @@ impl Diagnostic {
     fn sub_with_highlights(
         &mut self,
         level: Level,
-        message: Vec<(String, Style)>,
+        mut message: Vec<(String, Style)>,
         span: MultiSpan,
         render_span: Option<MultiSpan>,
     ) {
+        let message = message.drain(..).map(|m| (DiagnosticMessage::Str(m.0), m.1)).collect();
         let sub = SubDiagnostic { level, message, span, render_span };
         self.children.push(sub);
     }
@@ -783,7 +812,7 @@ impl Diagnostic {
         &self,
     ) -> (
         &Level,
-        &Vec<(String, Style)>,
+        &Vec<(DiagnosticMessage, Style)>,
         &Option<DiagnosticId>,
         &MultiSpan,
         &Result<Vec<CodeSuggestion>, SuggestionsDisabled>,
@@ -816,11 +845,11 @@ impl PartialEq for Diagnostic {
 }
 
 impl SubDiagnostic {
-    pub fn message(&self) -> String {
-        self.message.iter().map(|i| i.0.as_str()).collect::<String>()
+    pub fn message(&self) -> DiagnosticMessage {
+        DiagnosticMessage::Str(self.message.iter().map(|i| i.0.as_str()).collect::<String>())
     }
 
-    pub fn styled_message(&self) -> &Vec<(String, Style)> {
+    pub fn styled_message(&self) -> &Vec<(DiagnosticMessage, Style)> {
         &self.message
     }
 }

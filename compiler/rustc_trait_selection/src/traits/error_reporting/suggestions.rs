@@ -780,7 +780,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     if has_custom_message {
                         err.note(&msg);
                     } else {
-                        err.message = vec![(msg, Style::NoStyle)];
+                        err.message =
+                            vec![(rustc_errors::DiagnosticMessage::Str(msg), Style::NoStyle)];
                     }
                     if snippet.starts_with('&') {
                         // This is already a literal borrow and the obligation is failing

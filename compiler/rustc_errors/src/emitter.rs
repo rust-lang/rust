@@ -15,8 +15,8 @@ use rustc_span::{MultiSpan, SourceFile, Span};
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, Handler, Level, SubDiagnostic, SubstitutionHighlight,
-    SuggestionStyle,
+    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Handler, Level, SubDiagnostic,
+    SubstitutionHighlight, SuggestionStyle,
 };
 
 use rustc_lint_defs::pluralize;
@@ -236,7 +236,7 @@ pub trait Emitter {
                // don't display multipart suggestions as labels
                sugg.substitutions[0].parts.len() == 1 &&
                // don't display long messages as labels
-               sugg.msg.split_whitespace().count() < 10 &&
+               sugg.msg.as_str().split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
                !sugg.substitutions[0].parts[0].snippet.contains('\n') &&
                ![
@@ -252,12 +252,12 @@ pub trait Emitter {
                 let msg = if substitution.is_empty() || sugg.style.hide_inline() {
                     // This substitution is only removal OR we explicitly don't want to show the
                     // code inline (`hide_inline`). Therefore, we don't show the substitution.
-                    format!("help: {}", sugg.msg)
+                    format!("help: {}", sugg.msg.as_str())
                 } else {
                     // Show the default suggestion text with the substitution
                     format!(
                         "help: {}{}: `{}`",
-                        sugg.msg,
+                        sugg.msg.as_str(),
                         if self
                             .source_map()
                             .map(|sm| is_case_difference(
@@ -333,7 +333,7 @@ pub trait Emitter {
 
                 children.push(SubDiagnostic {
                     level: Level::Note,
-                    message: vec![(msg, Style::NoStyle)],
+                    message: vec![(DiagnosticMessage::Str(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
                     render_span: None,
                 });
@@ -1176,7 +1176,7 @@ impl EmitterWriter {
     fn msg_to_buffer(
         &self,
         buffer: &mut StyledBuffer,
-        msg: &[(String, Style)],
+        msg: &[(DiagnosticMessage, Style)],
         padding: usize,
         label: &str,
         override_style: Option<Style>,
@@ -1229,6 +1229,7 @@ impl EmitterWriter {
         //                very *weird* formats
         //                see?
         for &(ref text, ref style) in msg.iter() {
+            let text = text.as_str();
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
                 for (i, line) in lines.iter().enumerate() {
@@ -1247,7 +1248,7 @@ impl EmitterWriter {
     fn emit_message_default(
         &mut self,
         msp: &MultiSpan,
-        msg: &[(String, Style)],
+        msg: &[(DiagnosticMessage, Style)],
         code: &Option<DiagnosticId>,
         level: &Level,
         max_line_num_len: usize,
@@ -1287,6 +1288,7 @@ impl EmitterWriter {
                 label_width += 2;
             }
             for &(ref text, _) in msg.iter() {
+                let text = text.as_str();
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(text).lines().enumerate() {
                     buffer.append(
@@ -1852,7 +1854,7 @@ impl EmitterWriter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        message: &[(String, Style)],
+        message: &[(DiagnosticMessage, Style)],
         code: &Option<DiagnosticId>,
         span: &MultiSpan,
         children: &[SubDiagnostic],

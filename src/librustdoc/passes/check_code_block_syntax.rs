@@ -176,7 +176,7 @@ struct BufferEmitter {
 impl Emitter for BufferEmitter {
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let mut buffer = self.buffer.borrow_mut();
-        buffer.messages.push(format!("error from rustc: {}", diag.message[0].0));
+        buffer.messages.push(format!("error from rustc: {}", diag.message[0].0.as_str()));
         if diag.is_error() {
             buffer.has_errors = true;
         }

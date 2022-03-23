@@ -145,7 +145,7 @@ pub struct CodeSuggestion {
     /// ]
     /// ```
     pub substitutions: Vec<Substitution>,
-    pub msg: String,
+    pub msg: DiagnosticMessage,
     /// Visual representation of this suggestion.
     pub style: SuggestionStyle,
     /// Whether or not the suggestion is approximate
@@ -400,7 +400,9 @@ impl fmt::Display for ExplicitBug {
 
 impl error::Error for ExplicitBug {}
 
-pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
+pub use diagnostic::{
+    Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, SubDiagnostic,
+};
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
 use std::backtrace::Backtrace;
 

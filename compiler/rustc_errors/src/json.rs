@@ -346,7 +346,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
         let sugg = diag.suggestions.iter().flatten().map(|sugg| Diagnostic {
-            message: sugg.msg.clone(),
+            message: sugg.msg.clone().to_string(),
             code: None,
             level: "help",
             spans: DiagnosticSpan::from_suggestion(sugg, je),
@@ -385,7 +385,7 @@ impl Diagnostic {
         let output = String::from_utf8(output).unwrap();
 
         Diagnostic {
-            message: diag.message(),
+            message: diag.message().to_string(),
             code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
             level: diag.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&diag.span, je),
@@ -402,7 +402,7 @@ impl Diagnostic {
 
     fn from_sub_diagnostic(diag: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
-            message: diag.message(),
+            message: diag.message().to_string(),
             code: None,
             level: diag.level.to_str(),
             spans: diag
