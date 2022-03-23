@@ -1,18 +1,21 @@
 //! Inplace iterate-and-collect specialization for `Vec`
 //!
+//! Note: This documents Vec internals, some of the following sections explain implementation
+//! details and are best read together with the source of this module.
+//!
 //! The specialization in this module applies to iterators in the shape of
 //! `source.adapter().adapter().adapter().collect::<Vec<U>>()`
-//! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`] (by conversion to `Vec`)
+//! where `source` is an owning iterator obtained from [`Vec<T>`], [`Box<[T]>`][box] (by conversion to `Vec`)
 //! or [`BinaryHeap<T>`], the adapters each consume one or more items per step
 //! (represented by [`InPlaceIterable`]), provide transitive access to `source` (via [`SourceIter`])
 //! and thus the underlying allocation. And finally the layouts of `T` and `U` must
-//! have the same size and alignment, this is currently ensured via const eval instead of trait
-//! bounds.
+//! have the same size and alignment, this is currently ensured via const eval instead of trait bounds
+//! in the specialized [`SpecFromIter`] implementation.
 //!
 //! [`BinaryHeap<T>`]: crate::collections::BinaryHeap
-//! [`Box<[T]>`]: crate::boxed::Box
+//! [box]: crate::boxed::Box
 //!
-//! By extension some other collections which use `collect::Vec<_>()` internally in their
+//! By extension some other collections which use `collect::<Vec<_>>()` internally in their
 //! `FromIterator` implementation benefit from this too.
 //!
 //! Access to the underlying source goes through a further layer of indirection via the private
@@ -27,10 +30,10 @@
 //! # Reading from and writing to the same allocation
 //!
 //! By its nature collecting in place means that the reader and writer side of the iterator
-//! use the same allocation. Since `fold()` and co. take a reference to the iterator for the
-//! duration of the iteration that means we can't interleave the step of reading a value
-//! and getting a reference to write to. Instead raw pointers must be used on the reader
-//! and writer side.
+//! use the same allocation. Since `try_fold()` (used in [`SpecInPlaceCollect`]) takes a
+//! reference to the iterator for the duration of the iteration that means we can't interleave
+//! the step of reading a value and getting a reference to write to. Instead raw pointers must be
+//! used on the reader and writer side.
 //!
 //! That writes never clobber a yet-to-be-read item is ensured by the [`InPlaceIterable`] requirements.
 //!
@@ -49,7 +52,8 @@
 //! All those drops in turn can panic which then must either leak the allocation or abort to avoid
 //! double-drops.
 //!
-//! These tasks are handled by [`InPlaceDrop`] and [`vec::IntoIter::forget_allocation_drop_remaining()`]
+//! This is handled by the [`InPlaceDrop`] guard for sink items (`U`) and by
+//! [`vec::IntoIter::forget_allocation_drop_remaining()`] for remaining source items (`T`).
 //!
 //! [`vec::IntoIter::forget_allocation_drop_remaining()`]: super::IntoIter::forget_allocation_drop_remaining()
 //!
@@ -57,10 +61,11 @@
 //!
 //! The main iteration itself is further specialized when the iterator implements
 //! [`TrustedRandomAccessNoCoerce`] to let the optimizer see that it is a counted loop with a single
-//! induction variable. This can turn some iterators into a noop, i.e. it reduces them from O(n) to
+//! [induction variable]. This can turn some iterators into a noop, i.e. it reduces them from O(n) to
 //! O(1). This particular optimization is quite fickle and doesn't always work, see [#79308]
 //!
 //! [#79308]: https://github.com/rust-lang/rust/issues/79308
+//! [induction variable]: https://en.wikipedia.org/wiki/Induction_variable
 //!
 //! Since unchecked accesses through that trait do not advance the read pointer of `IntoIter`
 //! this would interact unsoundly with the requirements about dropping the tail described above.
@@ -68,6 +73,8 @@
 //! is only correct for `TrustedRandomAccessNoCoerce` to be implemented when the items don't
 //! have a destructor. Thus that implicit requirement also makes the specialization safe to use for
 //! in-place collection.
+//! Note that this safety concern is about the correctness of `impl Drop for IntoIter`,
+//! not the guarantees of `InPlaceIterable`.
 //!
 //! # Adapter implementations
 //!
@@ -76,7 +83,7 @@
 //! For example `InPlaceIterable` would be valid to implement for [`Peekable`], except
 //! that it is stateful, cloneable and `IntoIter`'s clone implementation shortens the underlying
 //! allocation which means if the iterator has been peeked and then gets cloned there no longer is
-//! enough room, thus breaking an invariant (#85322).
+//! enough room, thus breaking an invariant ([#85322]).
 //!
 //! [#85322]: https://github.com/rust-lang/rust/issues/85322
 //! [`Peekable`]: core::iter::Peekable
