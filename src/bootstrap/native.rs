@@ -217,12 +217,13 @@ fn fix_bin_or_dylib(builder: &Builder<'_>, fname: &Path) {
     if !builder.config.patch_binaries_for_nix {
         // Use `/etc/os-release` instead of `/etc/NIXOS`.
         // The latter one does not exist on NixOS when using tmpfs as root.
+        const NIX_IDS: &[&str] = &["ID=nixos", "ID='nixos'", "ID=\"nixos\""];
         let os_release = match File::open("/etc/os-release") {
             Err(e) if e.kind() == ErrorKind::NotFound => return,
             Err(e) => panic!("failed to access /etc/os-release: {}", e),
             Ok(f) => f,
         };
-        if !BufReader::new(os_release).lines().any(|l| t!(l).trim() == "ID=nixos") {
+        if !BufReader::new(os_release).lines().any(|l| NIX_IDS.contains(&t!(l).trim())) {
             return;
         }
         if Path::new("/lib").exists() {
