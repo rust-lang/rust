@@ -471,10 +471,17 @@ impl<'a> AstValidator<'a> {
     }
 
     fn error_item_without_body(&self, sp: Span, ctx: &str, msg: &str, sugg: &str) {
+        let source_map = self.session.source_map();
+        let end = source_map.end_point(sp);
+        let replace_span = if source_map.span_to_snippet(end).map(|s| s == ";").unwrap_or(false) {
+            end
+        } else {
+            sp.shrink_to_hi()
+        };
         self.err_handler()
             .struct_span_err(sp, msg)
             .span_suggestion(
-                self.session.source_map().end_point(sp),
+                replace_span,
                 &format!("provide a definition for the {}", ctx),
                 sugg.to_string(),
                 Applicability::HasPlaceholders,
