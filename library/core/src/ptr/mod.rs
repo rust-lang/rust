@@ -273,7 +273,7 @@ pub const fn null_mut<T>() -> *mut T {
 /// It's sound for an API to use an instance of a ZST to enforce some important
 /// safety property. So for instance, you can make an API like this:
 ///
-/// ```ignore
+/// ```text
 /// pub struct Step1Token(_private_to_construct: ());
 ///
 /// pub fn step1() -> Step1Token { ... }

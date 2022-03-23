@@ -76,6 +76,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
+        // SAFETY: I AM THE MAGIC
         unsafe { core::mem::transmute(self) }
     }
 
@@ -156,7 +157,7 @@ impl<T: ?Sized> *mut T {
     /// Here is an example of how to properly use this API to mess around
     /// with tagged pointers. Here we have a tag in the lowest bit:
     ///
-    /// ```ignore
+    /// ```text
     /// let my_tagged_ptr: *mut T = ...;
     ///
     /// // Get the address and do whatever bit tricks we like

@@ -73,6 +73,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        // SAFETY: I AM THE MAGIC
         unsafe { core::mem::transmute(self) }
     }
 
@@ -153,7 +154,7 @@ impl<T: ?Sized> *const T {
     /// Here is an example of how to properly use this API to mess around
     /// with tagged pointers. Here we have a tag in the lowest bit:
     ///
-    /// ```ignore
+    /// ```text
     /// let my_tagged_ptr: *const T = ...;
     ///
     /// // Get the address and do whatever bit tricks we like
