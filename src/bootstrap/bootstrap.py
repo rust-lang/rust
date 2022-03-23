@@ -678,7 +678,7 @@ class RustBuild(object):
             # The latter one does not exist on NixOS when using tmpfs as root.
             try:
                 with open("/etc/os-release", "r") as f:
-                    if not any(line.strip() == "ID=nixos" for line in f):
+                    if not any(l.strip() in ["ID=nixos", "ID='nixos'", 'ID="nixos"'] for l in f):
                         return
             except FileNotFoundError:
                 return
