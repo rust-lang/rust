@@ -101,11 +101,14 @@ struct MatcherTtFrame<'tt> {
     idx: usize,
 }
 
-type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
+// One element is enough to cover 95-99% of vectors for most benchmarks. Also,
+// vectors longer than one frequently have many elements, not just two or
+// three.
+type NamedMatchVec = SmallVec<[NamedMatch; 1]>;
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(NamedMatchVec, 168);
+rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
 
 /// Represents a single "position" (aka "matcher position", aka "item"), as
 /// described in the module documentation.
