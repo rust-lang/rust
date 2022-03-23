@@ -1,19 +1,18 @@
 // only-aarch64
 // run-pass
+#![allow(dead_code)]
+use std::arch::*;
 use std::arch::aarch64::*;
 
 // Smoke test to verify aarch64 code that enables NEON compiles.
 fn main() {
-    let zero = if is_aarch64_feature_detected!("neon") {
+    let _zero = if is_aarch64_feature_detected!("neon") {
         unsafe {
             let zeros = zero_vector();
-            vget_lane_u8::<1>(1)
+            vgetq_lane_u8::<1>(zeros)
         }
     } else {
         0
-    };
-    if cfg!(target feature = "neon") {
-        assert_eq!(zero, 0)
     };
 }
 
