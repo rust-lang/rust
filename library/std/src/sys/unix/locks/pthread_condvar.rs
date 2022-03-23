@@ -1,5 +1,5 @@
 use crate::cell::UnsafeCell;
-use crate::sys::mutex::{self, Mutex};
+use crate::sys::locks::{pthread_mutex, Mutex};
 use crate::time::Duration;
 
 pub struct Condvar {
@@ -79,7 +79,7 @@ impl Condvar {
 
     #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
-        let r = libc::pthread_cond_wait(self.inner.get(), mutex::raw(mutex));
+        let r = libc::pthread_cond_wait(self.inner.get(), pthread_mutex::raw(mutex));
         debug_assert_eq!(r, 0);
     }
 
@@ -111,7 +111,7 @@ impl Condvar {
         let timeout =
             sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
 
-        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
+        let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
     }
@@ -169,7 +169,7 @@ impl Condvar {
             .unwrap_or(TIMESPEC_MAX);
 
         // And wait!
-        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
+        let r = libc::pthread_cond_timedwait(self.inner.get(), pthread_mutex::raw(mutex), &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due

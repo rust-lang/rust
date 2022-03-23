@@ -1,5 +1,5 @@
 use crate::sync::atomic::{AtomicUsize, Ordering};
-use crate::sys::mutex as mutex_imp;
+use crate::sys::locks as imp;
 use crate::sys_common::mutex::MovableMutex;
 
 pub trait CondvarCheck {
@@ -8,7 +8,7 @@ pub trait CondvarCheck {
 
 /// For boxed mutexes, a `Condvar` will check it's only ever used with the same
 /// mutex, based on its (stable) address.
-impl CondvarCheck for Box<mutex_imp::Mutex> {
+impl CondvarCheck for Box<imp::Mutex> {
     type Check = SameMutexCheck;
 }
 
@@ -22,7 +22,7 @@ impl SameMutexCheck {
         Self { addr: AtomicUsize::new(0) }
     }
     pub fn verify(&self, mutex: &MovableMutex) {
-        let addr = mutex.raw() as *const mutex_imp::Mutex as usize;
+        let addr = mutex.raw() as *const imp::Mutex as usize;
         match self.addr.compare_exchange(0, addr, Ordering::SeqCst, Ordering::SeqCst) {
             Ok(_) => {}               // Stored the address
             Err(n) if n == addr => {} // Lost a race to store the same address
@@ -33,7 +33,7 @@ impl SameMutexCheck {
 
 /// Unboxed mutexes may move, so `Condvar` can not require its address to stay
 /// constant.
-impl CondvarCheck for mutex_imp::Mutex {
+impl CondvarCheck for imp::Mutex {
     type Check = NoCheck;
 }
 

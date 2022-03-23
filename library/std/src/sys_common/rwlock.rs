@@ -1,4 +1,4 @@
-use crate::sys::rwlock as imp;
+use crate::sys::locks as imp;
 
 /// An OS-based reader-writer lock, meant for use in static variables.
 ///
