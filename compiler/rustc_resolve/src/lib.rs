@@ -71,7 +71,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::{cmp, fmt, iter, mem, ptr};
+use std::{cmp, fmt, mem, ptr};
 use tracing::debug;
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
@@ -3309,80 +3309,37 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    /// Rustdoc uses this to resolve things in a recoverable way. `ResolutionError<'a>`
+    /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
-    pub fn resolve_str_path_error(
+    pub fn resolve_rustdoc_path(
         &mut self,
-        span: Span,
         path_str: &str,
         ns: Namespace,
         module_id: DefId,
-    ) -> Result<(ast::Path, Res), ()> {
-        let path = if path_str.starts_with("::") {
-            ast::Path {
-                span,
-                segments: iter::once(Ident::with_dummy_span(kw::PathRoot))
-                    .chain(path_str.split("::").skip(1).map(Ident::from_str))
-                    .map(|i| self.new_ast_path_segment(i))
-                    .collect(),
-                tokens: None,
-            }
-        } else {
-            ast::Path {
-                span,
-                segments: path_str
-                    .split("::")
-                    .map(Ident::from_str)
-                    .map(|i| self.new_ast_path_segment(i))
-                    .collect(),
-                tokens: None,
-            }
-        };
-        let module = self.expect_module(module_id);
-        let parent_scope = &ParentScope::module(module, self);
-        let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
-        Ok((path, res))
-    }
+    ) -> Option<Res> {
+        let mut segments =
+            Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));
+        if path_str.starts_with("::") {
+            segments[0].ident.name = kw::PathRoot;
+        }
 
-    // Resolve a path passed from rustdoc or HIR lowering.
-    fn resolve_ast_path(
-        &mut self,
-        path: &ast::Path,
-        ns: Namespace,
-        parent_scope: &ParentScope<'a>,
-    ) -> Result<Res, (Span, ResolutionError<'a>)> {
+        let module = self.expect_module(module_id);
         match self.resolve_path(
-            &Segment::from_path(path),
+            &segments,
             Some(ns),
-            parent_scope,
-            path.span,
+            &ParentScope::module(module, self),
+            DUMMY_SP,
             CrateLint::No,
         ) {
-            PathResult::Module(ModuleOrUniformRoot::Module(module)) => Ok(module.res().unwrap()),
+            PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                Ok(path_res.base_res())
+                Some(path_res.base_res())
             }
-            PathResult::NonModule(..) => Err((
-                path.span,
-                ResolutionError::FailedToResolve {
-                    label: String::from("type-relative paths are not supported in this context"),
-                    suggestion: None,
-                },
-            )),
+            PathResult::NonModule(..) | PathResult::Failed { .. } => None,
             PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
-            PathResult::Failed { span, label, suggestion, .. } => {
-                Err((span, ResolutionError::FailedToResolve { label, suggestion }))
-            }
         }
-    }
-
-    fn new_ast_path_segment(&mut self, ident: Ident) -> ast::PathSegment {
-        let mut seg = ast::PathSegment::from_ident(ident);
-        seg.id = self.next_node_id();
-        seg
     }
 
     // For rustdoc.
