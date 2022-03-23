@@ -2,13 +2,14 @@
 //! a call or use-site.
 
 use either::Either;
-use hir::{HasAttrs, HirDisplay, Semantics};
-use ide_db::{
-    active_parameter::{callable_for_token, generics_for_token},
-    base_db::FilePosition,
-};
+use hir::{GenericParam, HasAttrs, HirDisplay, Semantics};
+use ide_db::{active_parameter::callable_for_node, base_db::FilePosition};
 use stdx::format_to;
-use syntax::{algo, AstNode, Direction, TextRange, TextSize};
+use syntax::{
+    algo,
+    ast::{self, HasArgList},
+    AstNode, Direction, SyntaxToken, TextRange, TextSize,
+};
 
 use crate::RootDatabase;
 
@@ -65,25 +66,50 @@ pub(crate) fn signature_help(db: &RootDatabase, position: FilePosition) -> Optio
         .and_then(|tok| algo::skip_trivia_token(tok, Direction::Prev))?;
     let token = sema.descend_into_macros_single(token);
 
-    if let Some((callable, active_parameter)) = callable_for_token(&sema, token.clone()) {
-        return Some(signature_help_for_callable(db, callable, active_parameter));
+    if let Some(help) = signature_help_for_call(&sema, &token) {
+        return Some(help);
     }
 
-    if let Some((generic_def, active_parameter)) = generics_for_token(&sema, token.clone()) {
-        return signature_help_for_generics(db, generic_def, active_parameter);
+    if let Some(help) = signature_help_for_generics(&sema, &token) {
+        return Some(help);
     }
 
     None
 }
 
-fn signature_help_for_callable(
-    db: &RootDatabase,
-    callable: hir::Callable,
-    active_parameter: Option<usize>,
-) -> SignatureHelp {
+fn signature_help_for_call(
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
+) -> Option<SignatureHelp> {
+    // Find the calling expression and its NameRef
+    let mut node = token.parent()?;
+    let calling_node = loop {
+        if let Some(callable) = ast::CallableExpr::cast(node.clone()) {
+            if callable
+                .arg_list()
+                .map_or(false, |it| it.syntax().text_range().contains(token.text_range().start()))
+            {
+                break callable;
+            }
+        }
+
+        // Stop at multi-line expressions, since the signature of the outer call is not very
+        // helpful inside them.
+        if let Some(expr) = ast::Expr::cast(node.clone()) {
+            if expr.syntax().text().contains_char('\n') {
+                return None;
+            }
+        }
+
+        node = node.parent()?;
+    };
+
+    let (callable, active_parameter) = callable_for_node(sema, &calling_node, token)?;
+
     let mut res =
         SignatureHelp { doc: None, signature: String::new(), parameters: vec![], active_parameter };
 
+    let db = sema.db;
     match callable.kind() {
         hir::CallableKind::Function(func) => {
             res.doc = func.docs(db).map(|it| it.into());
@@ -134,21 +160,73 @@ fn signature_help_for_callable(
         }
         hir::CallableKind::TupleStruct(_) | hir::CallableKind::TupleEnumVariant(_) => {}
     }
-    res
+    Some(res)
 }
 
 fn signature_help_for_generics(
-    db: &RootDatabase,
-    mut generics_def: hir::GenericDef,
-    active_parameter: usize,
+    sema: &Semantics<RootDatabase>,
+    token: &SyntaxToken,
 ) -> Option<SignatureHelp> {
+    let parent = token.parent()?;
+    let arg_list = parent
+        .ancestors()
+        .filter_map(ast::GenericArgList::cast)
+        .find(|list| list.syntax().text_range().contains(token.text_range().start()))?;
+
+    let mut active_parameter = arg_list
+        .generic_args()
+        .take_while(|arg| arg.syntax().text_range().end() <= token.text_range().start())
+        .count();
+
+    let first_arg_is_non_lifetime = arg_list
+        .generic_args()
+        .next()
+        .map_or(false, |arg| !matches!(arg, ast::GenericArg::LifetimeArg(_)));
+
+    let mut generics_def = if let Some(path) =
+        arg_list.syntax().ancestors().find_map(ast::Path::cast)
+    {
+        let res = sema.resolve_path(&path)?;
+        let generic_def: hir::GenericDef = match res {
+            hir::PathResolution::Def(hir::ModuleDef::Adt(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Function(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Trait(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::TypeAlias(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::Variant(it)) => it.into(),
+            hir::PathResolution::Def(hir::ModuleDef::BuiltinType(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Const(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Module(_))
+            | hir::PathResolution::Def(hir::ModuleDef::Static(_)) => return None,
+            hir::PathResolution::AssocItem(hir::AssocItem::Function(it)) => it.into(),
+            hir::PathResolution::AssocItem(hir::AssocItem::TypeAlias(it)) => it.into(),
+            hir::PathResolution::AssocItem(hir::AssocItem::Const(_)) => return None,
+            hir::PathResolution::BuiltinAttr(_)
+            | hir::PathResolution::ToolModule(_)
+            | hir::PathResolution::Local(_)
+            | hir::PathResolution::TypeParam(_)
+            | hir::PathResolution::ConstParam(_)
+            | hir::PathResolution::SelfType(_) => return None,
+        };
+
+        generic_def
+    } else if let Some(method_call) = arg_list.syntax().parent().and_then(ast::MethodCallExpr::cast)
+    {
+        // recv.method::<$0>()
+        let method = sema.resolve_method_call(&method_call)?;
+        method.into()
+    } else {
+        return None;
+    };
+
     let mut res = SignatureHelp {
         doc: None,
         signature: String::new(),
         parameters: vec![],
-        active_parameter: Some(active_parameter),
+        active_parameter: None,
     };
 
+    let db = sema.db;
     match generics_def {
         hir::GenericDef::Function(it) => {
             res.doc = it.docs(db).map(|it| it.into());
@@ -187,8 +265,16 @@ fn signature_help_for_generics(
         hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
     }
 
+    let params = generics_def.params(sema.db);
+    let num_lifetime_params =
+        params.iter().take_while(|param| matches!(param, GenericParam::LifetimeParam(_))).count();
+    if first_arg_is_non_lifetime {
+        // Lifetime parameters were omitted.
+        active_parameter += num_lifetime_params;
+    }
+    res.active_parameter = Some(active_parameter);
+
     res.signature.push('<');
-    let params = generics_def.params(db);
     let mut buf = String::new();
     for param in params {
         if let hir::GenericParam::TypeParam(ty) = param {
@@ -208,8 +294,11 @@ fn signature_help_for_generics(
 
 #[cfg(test)]
 mod tests {
+    use std::iter;
+
     use expect_test::{expect, Expect};
     use ide_db::base_db::{fixture::ChangeFixture, FilePosition};
+    use stdx::format_to;
 
     use crate::RootDatabase;
 
@@ -233,26 +322,32 @@ mod tests {
             "#
         );
         let (db, position) = position(&fixture);
-        let call_info = crate::signature_help::signature_help(&db, position);
-        let actual = match call_info {
-            Some(call_info) => {
-                let docs = match &call_info.doc {
-                    None => "".to_string(),
-                    Some(docs) => format!("{}\n------\n", docs.as_str()),
-                };
-                let params = call_info
-                    .parameter_labels()
-                    .enumerate()
-                    .map(|(i, param)| {
-                        if Some(i) == call_info.active_parameter {
-                            format!("<{}>", param)
-                        } else {
-                            param.to_string()
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("{}{}\n({})\n", docs, call_info.signature, params)
+        let sig_help = crate::signature_help::signature_help(&db, position);
+        let actual = match sig_help {
+            Some(sig_help) => {
+                let mut rendered = String::new();
+                if let Some(docs) = &sig_help.doc {
+                    format_to!(rendered, "{}\n------\n", docs.as_str());
+                }
+                format_to!(rendered, "{}\n", sig_help.signature);
+                let mut offset = 0;
+                for (i, range) in sig_help.parameter_ranges().iter().enumerate() {
+                    let is_active = sig_help.active_parameter == Some(i);
+
+                    let start = u32::from(range.start());
+                    let gap = start.checked_sub(offset).unwrap_or_else(|| {
+                        panic!("parameter ranges out of order: {:?}", sig_help.parameter_ranges())
+                    });
+                    rendered.extend(iter::repeat(' ').take(gap as usize));
+                    let width = u32::from(range.end() - range.start());
+                    let marker = if is_active { '^' } else { '-' };
+                    rendered.extend(iter::repeat(marker).take(width as usize));
+                    offset += gap + width;
+                }
+                if !sig_help.parameter_ranges().is_empty() {
+                    format_to!(rendered, "\n");
+                }
+                rendered
             }
             None => String::new(),
         };
@@ -268,7 +363,7 @@ fn bar() { foo($03, ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
         check(
@@ -278,7 +373,7 @@ fn bar() { foo(3$0, ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
         check(
@@ -288,7 +383,7 @@ fn bar() { foo(3,$0 ); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (x: u32, <y: u32>)
+                       ------  ^^^^^^
             "#]],
         );
         check(
@@ -298,7 +393,7 @@ fn bar() { foo(3, $0); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (x: u32, <y: u32>)
+                       ------  ^^^^^^
             "#]],
         );
     }
@@ -312,7 +407,7 @@ fn bar() { foo($0); }
 "#,
             expect![[r#"
                 fn foo(x: u32, y: u32) -> u32
-                (<x: u32>, y: u32)
+                       ^^^^^^  ------
             "#]],
         );
     }
@@ -329,7 +424,7 @@ fn bar() { foo($03, ); }
 "#,
             expect![[r#"
                 fn foo(x: i32, y: {unknown}) -> u32
-                (<x: i32>, y: {unknown})
+                       ^^^^^^  ------------
             "#]],
         );
     }
@@ -343,7 +438,6 @@ fn bar() { foo($0); }
 "#,
             expect![[r#"
                 fn foo() -> {unknown}
-                ()
             "#]],
         );
     }
@@ -360,7 +454,6 @@ fn bar() {
 "#,
             expect![[r#"
                 fn new()
-                ()
             "#]],
         );
     }
@@ -379,7 +472,6 @@ fn bar() {
 "#,
             expect![[r#"
                 fn do_it(&self)
-                ()
             "#]],
         );
     }
@@ -397,7 +489,7 @@ fn main() { S.foo($0); }
 "#,
             expect![[r#"
                 fn foo(&self, x: i32)
-                (<x: i32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -415,7 +507,7 @@ fn main() { S(1u32).foo($0); }
 "#,
             expect![[r#"
                 fn foo(&self, x: u32)
-                (<x: u32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -433,7 +525,7 @@ fn main() { S::foo($0); }
 "#,
             expect![[r#"
                 fn foo(self: &S, x: i32)
-                (<self: &S>, x: i32)
+                       ^^^^^^^^  ------
             "#]],
         );
     }
@@ -453,11 +545,11 @@ fn bar() {
 }
 "#,
             expect![[r#"
-            test
-            ------
-            fn foo(j: u32) -> u32
-            (<j: u32>)
-        "#]],
+                test
+                ------
+                fn foo(j: u32) -> u32
+                       ^^^^^^
+            "#]],
         );
     }
 
@@ -482,19 +574,19 @@ pub fn do() {
     add_one($0
 }"#,
             expect![[r##"
-            Adds one to the number given.
+                Adds one to the number given.
 
-            # Examples
+                # Examples
 
-            ```
-            let five = 5;
+                ```
+                let five = 5;
 
-            assert_eq!(6, my_crate::add_one(5));
-            ```
-            ------
-            fn add_one(x: i32) -> i32
-            (<x: i32>)
-        "##]],
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                fn add_one(x: i32) -> i32
+                           ^^^^^^
+            "##]],
         );
     }
 
@@ -524,19 +616,19 @@ pub fn do_it() {
 }
 "#,
             expect![[r##"
-            Adds one to the number given.
+                Adds one to the number given.
 
-            # Examples
+                # Examples
 
-            ```
-            let five = 5;
+                ```
+                let five = 5;
 
-            assert_eq!(6, my_crate::add_one(5));
-            ```
-            ------
-            fn add_one(x: i32) -> i32
-            (<x: i32>)
-        "##]],
+                assert_eq!(6, my_crate::add_one(5));
+                ```
+                ------
+                fn add_one(x: i32) -> i32
+                           ^^^^^^
+            "##]],
         );
     }
 
@@ -568,13 +660,13 @@ pub fn foo(mut r: WriteHandler<()>) {
 }
 "#,
             expect![[r#"
-            Method is called when writer finishes.
+                Method is called when writer finishes.
 
-            By default this method stops actor's `Context`.
-            ------
-            fn finished(&mut self, ctx: &mut {unknown})
-            (<ctx: &mut {unknown}>)
-        "#]],
+                By default this method stops actor's `Context`.
+                ------
+                fn finished(&mut self, ctx: &mut {unknown})
+                                       ^^^^^^^^^^^^^^^^^^^
+            "#]],
         );
     }
 
@@ -605,7 +697,7 @@ fn main() {
 "#,
             expect![[r#"
                 fn bar(&self, _: u32)
-                (<_: u32>)
+                              ^^^^^^
             "#]],
         );
     }
@@ -621,11 +713,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-            A cool tuple struct
-            ------
-            struct S(u32, i32)
-            (u32, <i32>)
-        "#]],
+                A cool tuple struct
+                ------
+                struct S(u32, i32)
+                         ---  ^^^
+            "#]],
         );
     }
 
@@ -640,7 +732,7 @@ fn main() {
 "#,
             expect![[r#"
                 struct S({unknown})
-                (<{unknown}>)
+                         ^^^^^^^^^
             "#]],
         );
     }
@@ -663,11 +755,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-            A Variant
-            ------
-            enum E::A(i32)
-            (<i32>)
-        "#]],
+                A Variant
+                ------
+                enum E::A(i32)
+                          ^^^
+            "#]],
         );
     }
 
@@ -717,7 +809,6 @@ id! {
 "#,
             expect![[r#"
                 fn foo()
-                ()
             "#]],
         );
     }
@@ -734,7 +825,7 @@ fn main() {
         "#,
             expect![[r#"
                 (S) -> i32
-                (<S>)
+                 ^
             "#]],
         )
     }
@@ -749,7 +840,7 @@ fn main(f: fn(i32, f64) -> char) {
         "#,
             expect![[r#"
                 (i32, f64) -> char
-                (i32, <f64>)
+                 ---  ^^^
             "#]],
         )
     }
@@ -763,9 +854,9 @@ fn main() {
     foo($0
 }"#,
             expect![[r#"
-            fn foo(foo: u32, bar: u32)
-            (<foo: u32>, bar: u32)
-        "#]],
+                fn foo(foo: u32, bar: u32)
+                       ^^^^^^^^  --------
+            "#]],
         );
         // check with surrounding space
         check(
@@ -775,10 +866,50 @@ fn main() {
     foo( $0
 }"#,
             expect![[r#"
-            fn foo(foo: u32, bar: u32)
-            (<foo: u32>, bar: u32)
-        "#]],
+                fn foo(foo: u32, bar: u32)
+                       ^^^^^^^^  --------
+            "#]],
         )
+    }
+
+    #[test]
+    fn test_multiline_argument() {
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee(match 0 {
+        0 => 1,$0
+    })
+}"#,
+            expect![[r#""#]],
+        );
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee(match 0 {
+        0 => 1,
+    },$0)
+}"#,
+            expect![[r#"
+                fn callee(a: u8, b: u8)
+                          -----  ^^^^^
+            "#]],
+        );
+        check(
+            r#"
+fn callee(a: u8, b: u8) {}
+fn main() {
+    callee($0match 0 {
+        0 => 1,
+    })
+}"#,
+            expect![[r#"
+                fn callee(a: u8, b: u8)
+                          ^^^^^  -----
+            "#]],
+        );
     }
 
     #[test]
@@ -799,7 +930,7 @@ fn f() {
                 Option docs.
                 ------
                 enum Option<T>
-                (<T>)
+                            ^
             "#]],
         );
     }
@@ -826,7 +957,7 @@ fn f() {
                 None docs.
                 ------
                 enum Option<T>
-                (<T>)
+                            ^
             "#]],
         );
     }
@@ -849,7 +980,7 @@ fn f() {
         "#,
             expect![[r#"
                 fn f<G: Tr<()>, H>
-                (G: Tr<()>, <H>)
+                     ---------  ^
             "#]],
         );
     }
@@ -872,7 +1003,7 @@ fn f() {
         "#,
             expect![[r#"
                 fn f<T: Tr, U>
-                (<T: Tr>, U)
+                     ^^^^^  -
             "#]],
         );
     }
@@ -892,9 +1023,9 @@ fn f() {
 }
         "#,
             expect![[r#"
-            fn f<T>
-            (<T>)
-        "#]],
+                fn f<T>
+                     ^
+            "#]],
         );
     }
 
@@ -902,16 +1033,29 @@ fn f() {
     fn test_generic_kinds() {
         check(
             r#"
-fn callee<'a, const A: (), T, const C: u8>() {}
+fn callee<'a, const A: u8, T, const C: u8>() {}
 
 fn f() {
     callee::<'static, $0
 }
         "#,
             expect![[r#"
-            fn callee<'a, const A: (), T, const C: u8>
-            ('a, <const A: ()>, T, const C: u8)
-        "#]],
+                fn callee<'a, const A: u8, T, const C: u8>
+                          --  ^^^^^^^^^^^  -  -----------
+            "#]],
+        );
+        check(
+            r#"
+fn callee<'a, const A: u8, T, const C: u8>() {}
+
+fn f() {
+    callee::<NON_LIFETIME$0
+}
+        "#,
+            expect![[r#"
+                fn callee<'a, const A: u8, T, const C: u8>
+                          --  ^^^^^^^^^^^  -  -----------
+            "#]],
         );
     }
 }

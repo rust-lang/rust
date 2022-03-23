@@ -272,6 +272,7 @@ fn render_resolution_simple_(
                 cov_mark::hit!(inserts_angle_brackets_for_generics);
                 item.lookup_by(local_name.clone())
                     .label(SmolStr::from_iter([&local_name, "<…>"]))
+                    .trigger_call_info()
                     .insert_snippet(cap, format!("{}<$0>", local_name));
             }
         }
