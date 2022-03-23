@@ -235,7 +235,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     ) -> InterpResult<'tcx, InterpOperand<Self::PointerTag>> {
         let l = &frame.locals[local];
 
-        if l.value == LocalValue::Uninitialized {
+        if l.value == LocalValue::Unallocated {
             throw_machine_stop_str!("tried to access an uninitialized local")
         }
 
@@ -433,7 +433,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// but not reading from them anymore.
     fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
         ecx.frame_mut().locals[local] =
-            LocalState { value: LocalValue::Uninitialized, layout: Cell::new(None) };
+            LocalState { value: LocalValue::Unallocated, layout: Cell::new(None) };
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
@@ -906,7 +906,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                     let frame = self.ecx.frame_mut();
                     frame.locals[local].value =
                         if let StatementKind::StorageLive(_) = statement.kind {
-                            LocalValue::Uninitialized
+                            LocalValue::Unallocated
                         } else {
                             LocalValue::Dead
                         };
