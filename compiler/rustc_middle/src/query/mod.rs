@@ -962,10 +962,6 @@ rustc_queries! {
         desc { "converting literal to const" }
     }
 
-    query lit_to_constant(key: LitToConstInput<'tcx>) -> Result<mir::ConstantKind<'tcx>, LitToConstError> {
-        desc { "converting literal to mir constant"}
-    }
-
     query check_match(key: DefId) {
         desc { |tcx| "match-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }

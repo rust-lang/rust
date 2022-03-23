@@ -442,7 +442,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                             self.tcx.const_error(node.ty)
                         }
                         Err(LitToConstError::TypeError) => {
-                            bug!("encountered type error in lit_to_constant")
+                            bug!("encountered type error in lit_to_const")
                         }
                     };
 

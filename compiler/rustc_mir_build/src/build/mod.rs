@@ -1078,5 +1078,4 @@ mod matches;
 mod misc;
 mod scope;
 
-crate use expr::as_constant;
 pub(crate) use expr::category::Category as ExprCategory;

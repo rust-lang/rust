@@ -31,17 +31,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.as_constant(&this.thir[value])
             }
             ExprKind::Literal { lit, neg } => {
-                let literal = match tcx.at(expr.span).lit_to_constant(LitToConstInput {
-                    lit: &lit.node,
-                    ty,
-                    neg,
-                }) {
-                    Ok(c) => c,
-                    Err(LitToConstError::Reported) => ConstantKind::Ty(tcx.const_error(ty)),
-                    Err(LitToConstError::TypeError) => {
-                        bug!("encountered type error in `lit_to_constant")
-                    }
-                };
+                let literal =
+                    match lit_to_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
+                        Ok(c) => c,
+                        Err(LitToConstError::Reported) => ConstantKind::Ty(tcx.const_error(ty)),
+                        Err(LitToConstError::TypeError) => {
+                            bug!("encountered type error in `lit_to_constant")
+                        }
+                    };
 
                 Constant { span, user_ty: None, literal: literal.into() }
             }
