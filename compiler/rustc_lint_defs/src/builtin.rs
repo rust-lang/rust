@@ -2676,7 +2676,7 @@ declare_lint! {
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     /// [issue #9999999]: https://github.com/rust-lang/rust/issues/9999999
     pub FUZZY_PROVENANCE_CASTS,
-    Warn,
+    Allow,
     "A lossy pointer-integer integer cast is used",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #9999999 <https://github.com/rust-lang/rust/issues/9999999>",
