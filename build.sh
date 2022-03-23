@@ -4,11 +4,16 @@
 set -e
 
 codegen_channel=debug
+sysroot_channel=debug
 
 while [[ $# -gt 0 ]]; do
     case $1 in
         --release)
             codegen_channel=release
+            shift
+            ;;
+        --release-sysroot)
+            sysroot_channel=release
             shift
             ;;
         *)
@@ -51,5 +56,9 @@ rm -r target/out || true
 mkdir -p target/out/gccjit
 
 echo "[BUILD] sysroot"
-time ./build_sysroot/build_sysroot.sh $CHANNEL
+if [[ "$sysroot_channel" == "release" ]]; then
+    time ./build_sysroot/build_sysroot.sh --release
+else
+    time ./build_sysroot/build_sysroot.sh
+fi
 
