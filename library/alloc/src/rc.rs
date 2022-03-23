@@ -1291,6 +1291,9 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        if layout.size() > isize::MAX as usize {
+            crate::raw_vec::capacity_overflow();
+        }
         unsafe {
             Rc::try_allocate_for_layout(value_layout, allocate, mem_to_rcbox)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1314,7 +1317,9 @@ impl<T: ?Sized> Rc<T> {
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<RcBox<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
+        if layout.size() > isize::MAX as usize {
+            return Err(AllocError);
+        }
         // Allocate for the layout.
         let ptr = allocate(layout)?;
 
@@ -2050,7 +2055,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
             // length exceeding `usize::MAX`.
             // The default implementation would collect into a vec which would panic.
             // Thus we panic here immediately without invoking `Vec` code.
-            panic!("capacity overflow");
+            crate::raw_vec::capacity_overflow();
         }
     }
 }

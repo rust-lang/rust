@@ -4,6 +4,7 @@ use std::boxed::Box;
 use std::clone::Clone;
 use std::convert::{From, TryInto};
 use std::mem::drop;
+use std::mem::MaybeUninit;
 use std::ops::Drop;
 use std::option::Option::{self, None, Some};
 use std::sync::atomic::{
@@ -518,6 +519,21 @@ fn test_from_vec() {
     let r: Arc<[u32]> = Arc::from(v);
 
     assert_eq!(&r[..], [1, 2, 3]);
+}
+
+#[test]
+#[should_panic]
+fn test_uninit_slice_max_allocation() {
+    let _: Arc<[MaybeUninit<u8>]> = Arc::new_uninit_slice(isize::MAX as usize);
+}
+
+#[test]
+#[should_panic]
+fn test_from_iter_max_allocation() {
+    // isize::MAX is the max allocation size
+    // but due to the internal RcBox overhead the actual allocation will be larger and thus panic
+    let len = isize::MAX;
+    let _ = (0..len).map(|_| MaybeUninit::<u8>::uninit()).collect::<Arc<[_]>>();
 }
 
 #[test]

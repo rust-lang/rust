@@ -1137,6 +1137,9 @@ impl<T: ?Sized> Arc<T> {
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        if layout.size() > isize::MAX as usize {
+            crate::raw_vec::capacity_overflow();
+        }
         unsafe {
             Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1159,7 +1162,9 @@ impl<T: ?Sized> Arc<T> {
         // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
-
+        if layout.size() > isize::MAX as usize {
+            return Err(AllocError);
+        }
         let ptr = allocate(layout)?;
 
         // Initialize the ArcInner
@@ -2648,7 +2653,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToArcSlice<T> for I {
             // length exceeding `usize::MAX`.
             // The default implementation would collect into a vec which would panic.
             // Thus we panic here immediately without invoking `Vec` code.
-            panic!("capacity overflow");
+            crate::raw_vec::capacity_overflow();
         }
     }
 }
