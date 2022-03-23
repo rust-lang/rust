@@ -2524,8 +2524,8 @@ trait RcInnerPtr {
         self.strong_ref().set(strong);
 
         // We want to abort on overflow instead of dropping the value.
-        // Checking after the store instead of before allows for
-        // slightly better code generation.
+        // Checking for overflow after the store instead of before
+        // allows for slightly better code generation.
         if core::intrinsics::unlikely(strong == 0) {
             abort();
         }
@@ -2557,8 +2557,8 @@ trait RcInnerPtr {
         self.weak_ref().set(weak);
 
         // We want to abort on overflow instead of dropping the value.
-        // Checking after the store instead of before allows for
-        // slightly better code generation.
+        // Checking for overflow after the store instead of before
+        // allows for slightly better code generation.
         if core::intrinsics::unlikely(weak == 0) {
             abort();
         }
