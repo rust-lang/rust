@@ -188,7 +188,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             } else {
                 let mod_path = &path[..path.len() - 1];
                 let mod_prefix =
-                    match self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No) {
+                    match self.resolve_path(mod_path, Some(TypeNS), span, CrateLint::No) {
                         PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                         _ => None,
                     }
@@ -648,7 +648,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let crate::PathSource::TraitItem(_) = source {
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, None, false, span, CrateLint::No)
+                self.resolve_path(mod_path, None, span, CrateLint::No)
             {
                 let resolutions = self.r.resolutions(module).borrow();
                 let targets: Vec<_> =
@@ -1384,7 +1384,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No)
+                self.resolve_path(mod_path, Some(TypeNS), span, CrateLint::No)
             {
                 self.r.add_module_candidates(module, &mut names, &filter_fn);
             }

@@ -768,7 +768,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
@@ -776,7 +775,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             path,
             opt_ns,
             &self.parent_scope,
-            record_used,
             path_span,
             crate_lint,
             Some(&self.ribs),
@@ -1253,18 +1251,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 PathSource::Trait(AliasPossibility::No),
                 CrateLint::SimplePath(trait_ref.ref_id),
             );
-            let res = res.base_res();
-            if res != Res::Err {
-                if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(
-                    &path,
-                    Some(TypeNS),
-                    true,
-                    trait_ref.path.span,
-                    CrateLint::SimplePath(trait_ref.ref_id),
-                ) {
-                    new_id = Some(res.def_id());
-                    new_val = Some((module, trait_ref.clone()));
-                }
+            if let Some(def_id) = res.base_res().opt_def_id() {
+                new_id = Some(def_id);
+                new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
             }
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
@@ -2026,6 +2015,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             None
         };
 
+        assert_ne!(crate_lint, CrateLint::No);
         let partial_res = match self.resolve_qpath_anywhere(
             id,
             qself,
@@ -2060,7 +2050,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
                     std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
+                        self.resolve_path(&std_path, Some(ns), span, CrateLint::No)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
@@ -2228,7 +2218,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             )));
         }
 
-        let result = match self.resolve_path(&path, Some(ns), true, span, crate_lint) {
+        let result = match self.resolve_path(&path, Some(ns), span, crate_lint) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
@@ -2268,13 +2258,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             && path[0].ident.name != kw::DollarCrate
         {
             let unqualified_result = {
-                match self.resolve_path(
-                    &[*path.last().unwrap()],
-                    Some(ns),
-                    false,
-                    span,
-                    CrateLint::No,
-                ) {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), span, CrateLint::No) {
                     PathResult::NonModule(path_res) => path_res.base_res(),
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()

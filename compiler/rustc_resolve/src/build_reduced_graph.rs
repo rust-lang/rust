@@ -296,9 +296,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    !speculative,
                     path.span,
-                    CrateLint::SimplePath(id),
+                    if speculative { CrateLint::No } else { CrateLint::SimplePath(id) },
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");

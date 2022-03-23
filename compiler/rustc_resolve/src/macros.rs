@@ -415,7 +415,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         let mut indeterminate = false;
         for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
-            match self.resolve_path(path, Some(ns), &parent_scope, false, span, CrateLint::No) {
+            match self.resolve_path(path, Some(ns), &parent_scope, span, CrateLint::No) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
@@ -579,7 +579,6 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 parent_scope,
-                false,
                 path_span,
                 CrateLint::No,
             ) {
@@ -1033,9 +1032,8 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 &parent_scope,
-                true,
                 path_span,
-                CrateLint::No,
+                CrateLint::SimplePath(ast::CRATE_NODE_ID),
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     let res = path_res.base_res();

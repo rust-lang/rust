@@ -19,9 +19,6 @@ mod m {
 use m::edition_lint_paths::foo;
 //~^ ERROR absolute paths must start
 //~| WARNING this is accepted in the current edition
-//~| ERROR absolute paths must start
-//~| WARNING this is accepted in the current edition
-
 
 fn main() {
     foo();

@@ -123,10 +123,6 @@ impl<'a> Import<'a> {
             _ => false,
         }
     }
-
-    crate fn crate_lint(&self) -> CrateLint {
-        CrateLint::UsePath { root_id: self.root_id, root_span: self.root_span }
-    }
 }
 
 #[derive(Clone, Default, Debug)]
@@ -791,9 +787,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 &import.module_path,
                 None,
                 &import.parent_scope,
-                false,
                 import.span,
-                import.crate_lint(),
+                CrateLint::No,
             );
             import.vis.set(orig_vis);
 
@@ -887,13 +882,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
+        let crate_lint =
+            CrateLint::UsePath { root_id: import.root_id, root_span: import.root_span };
         let path_res = self.r.resolve_path(
             &import.module_path,
             None,
             &import.parent_scope,
-            true,
             import.span,
-            import.crate_lint(),
+            crate_lint,
         );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
         if let Some(orig_unusable_binding) = orig_unusable_binding {
@@ -982,7 +978,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     let mut full_path = import.module_path.clone();
                     full_path.push(Segment::from_ident(Ident::empty()));
                     self.r.lint_if_path_starts_with_module(
-                        import.crate_lint(),
+                        crate_lint,
                         &full_path,
                         import.span,
                         None,
@@ -1254,7 +1250,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             self.r.per_ns(|this, ns| {
                 if let Ok(binding) = source_bindings[ns].get() {
                     this.lint_if_path_starts_with_module(
-                        import.crate_lint(),
+                        crate_lint,
                         &full_path,
                         import.span,
                         Some(binding),
