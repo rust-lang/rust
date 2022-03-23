@@ -8,12 +8,14 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
+use crate::io;
 use crate::marker::PhantomData;
 use crate::num::NonZeroU16;
 use crate::os::windows::prelude::*;
 use crate::path::PathBuf;
 use crate::ptr::NonNull;
 use crate::sys::c;
+use crate::sys::process::ensure_no_nuls;
 use crate::sys::windows::os::current_exe;
 use crate::vec;
 
@@ -233,4 +235,67 @@ impl Iterator for WStrUnits<'_> {
             Some(next)
         }
     }
+}
+
+#[derive(Debug)]
+pub(crate) enum Arg {
+    /// Add quotes (if needed)
+    Regular(OsString),
+    /// Append raw string without quoting
+    Raw(OsString),
+}
+
+enum Quote {
+    // Every arg is quoted
+    Always,
+    // Whitespace and empty args are quoted
+    Auto,
+    // Arg appended without any changes (#29494)
+    Never,
+}
+
+pub(crate) fn append_arg(cmd: &mut Vec<u16>, arg: &Arg, force_quotes: bool) -> io::Result<()> {
+    let (arg, quote) = match arg {
+        Arg::Regular(arg) => (arg, if force_quotes { Quote::Always } else { Quote::Auto }),
+        Arg::Raw(arg) => (arg, Quote::Never),
+    };
+
+    // If an argument has 0 characters then we need to quote it to ensure
+    // that it actually gets passed through on the command line or otherwise
+    // it will be dropped entirely when parsed on the other end.
+    ensure_no_nuls(arg)?;
+    let arg_bytes = arg.bytes();
+    let (quote, escape) = match quote {
+        Quote::Always => (true, true),
+        Quote::Auto => {
+            (arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t') || arg_bytes.is_empty(), true)
+        }
+        Quote::Never => (false, false),
+    };
+    if quote {
+        cmd.push('"' as u16);
+    }
+
+    let mut backslashes: usize = 0;
+    for x in arg.encode_wide() {
+        if escape {
+            if x == '\\' as u16 {
+                backslashes += 1;
+            } else {
+                if x == '"' as u16 {
+                    // Add n+1 backslashes to total 2n+1 before internal '"'.
+                    cmd.extend((0..=backslashes).map(|_| '\\' as u16));
+                }
+                backslashes = 0;
+            }
+        }
+        cmd.push(x);
+    }
+
+    if quote {
+        // Add n backslashes to total 2n before ending '"'.
+        cmd.extend((0..backslashes).map(|_| '\\' as u16));
+        cmd.push('"' as u16);
+    }
+    Ok(())
 }
