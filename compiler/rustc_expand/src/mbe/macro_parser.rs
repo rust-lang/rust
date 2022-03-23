@@ -105,7 +105,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(NamedMatchVec, 72);
+rustc_data_structures::static_assert_size!(NamedMatchVec, 168);
 
 /// Represents a single "position" (aka "matcher position", aka "item"), as
 /// described in the module documentation.
@@ -278,22 +278,20 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-/// `NamedMatch` is a pattern-match result for a single `token::MATCH_NONTERMINAL`:
-/// so it is associated with a single ident in a parse, and all
-/// `MatchedNonterminal`s in the `NamedMatch` have the same non-terminal type
-/// (expr, item, etc). Each leaf in a single `NamedMatch` corresponds to a
-/// single `token::MATCH_NONTERMINAL` in the `TokenTree` that produced it.
+/// `NamedMatch` is a pattern-match result for a single metavar. All
+/// `MatchedNtNonTt`s in the `NamedMatch` have the same non-terminal type
+/// (expr, item, etc).
 ///
 /// The in-memory structure of a particular `NamedMatch` represents the match
 /// that occurred when a particular subset of a matcher was applied to a
 /// particular token tree.
 ///
 /// The width of each `MatchedSeq` in the `NamedMatch`, and the identity of
-/// the `MatchedNonterminal`s, will depend on the token tree it was applied
-/// to: each `MatchedSeq` corresponds to a single `TTSeq` in the originating
+/// the `MatchedNtNonTts`s, will depend on the token tree it was applied
+/// to: each `MatchedSeq` corresponds to a single repetition in the originating
 /// token tree. The depth of the `NamedMatch` structure will therefore depend
-/// only on the nesting depth of `ast::TTSeq`s in the originating
-/// token tree it was derived from.
+/// only on the nesting depth of repetitions in the originating token tree it
+/// was derived from.
 ///
 /// In layman's terms: `NamedMatch` will form a tree representing nested matches of a particular
 /// meta variable. For example, if we are matching the following macro against the following
@@ -312,24 +310,32 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
 /// ```rust
 /// MatchedSeq([
 ///   MatchedSeq([
-///     MatchedNonterminal(a),
-///     MatchedNonterminal(b),
-///     MatchedNonterminal(c),
-///     MatchedNonterminal(d),
+///     MatchedNtNonTt(a),
+///     MatchedNtNonTt(b),
+///     MatchedNtNonTt(c),
+///     MatchedNtNonTt(d),
 ///   ]),
 ///   MatchedSeq([
-///     MatchedNonterminal(a),
-///     MatchedNonterminal(b),
-///     MatchedNonterminal(c),
-///     MatchedNonterminal(d),
-///     MatchedNonterminal(e),
+///     MatchedNtNonTt(a),
+///     MatchedNtNonTt(b),
+///     MatchedNtNonTt(c),
+///     MatchedNtNonTt(d),
+///     MatchedNtNonTt(e),
 ///   ])
 /// ])
 /// ```
 #[derive(Debug, Clone)]
 crate enum NamedMatch {
     MatchedSeq(Lrc<NamedMatchVec>),
-    MatchedNonterminal(Lrc<Nonterminal>),
+
+    // This variant should never hold an `NtTT`. `MatchedNtTt` should be used
+    // for that case.
+    MatchedNtNonTt(Lrc<Nonterminal>),
+
+    // `NtTT` is handled without any cloning when transcribing, unlike other
+    // nonterminals. Therefore, an `Lrc` isn't helpful and causes unnecessary
+    // allocations. Hence this separate variant.
+    MatchedNtTt(rustc_ast::tokenstream::TokenTree),
 }
 
 /// Takes a slice of token trees `ms` representing a matcher which successfully matched input
@@ -669,7 +675,11 @@ impl<'tt> TtParser<'tt> {
                             }
                             Ok(nt) => nt,
                         };
-                        item.push_match(match_cur, MatchedNonterminal(Lrc::new(nt)));
+                        let m = match nt {
+                            Nonterminal::NtTT(tt) => MatchedNtTt(tt),
+                            _ => MatchedNtNonTt(Lrc::new(nt)),
+                        };
+                        item.push_match(match_cur, m);
                         item.idx += 1;
                         item.match_cur += 1;
                     } else {
