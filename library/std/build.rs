@@ -15,6 +15,7 @@ fn main() {
         || target.contains("illumos")
         || target.contains("apple-darwin")
         || target.contains("apple-ios")
+        || target.contains("apple-watchos")
         || target.contains("uwp")
         || target.contains("windows")
         || target.contains("fuchsia")

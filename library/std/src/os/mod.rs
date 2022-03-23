@@ -141,7 +141,6 @@ pub mod openbsd;
 pub mod redox;
 #[cfg(target_os = "solaris")]
 pub mod solaris;
-
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
 #[cfg(target_os = "vxworks")]

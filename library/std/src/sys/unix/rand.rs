@@ -14,6 +14,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     unix,
     not(target_os = "macos"),
     not(target_os = "ios"),
+    not(target_os = "watchos"),
     not(target_os = "openbsd"),
     not(target_os = "freebsd"),
     not(target_os = "netbsd"),
@@ -195,7 +196,7 @@ mod imp {
 // once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
 // only used on iOS where direct access to `/dev/urandom` is blocked by the
 // sandbox.
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "watchos"))]
 mod imp {
     use crate::io;
     use crate::ptr;
