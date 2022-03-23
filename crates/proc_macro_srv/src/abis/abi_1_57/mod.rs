@@ -1,4 +1,4 @@
-//! Macro ABI for version 1.58 of rustc
+//! Macro ABI for version 1.57 of rustc
 
 #[allow(dead_code)]
 #[doc(hidden)]
