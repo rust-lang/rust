@@ -2516,7 +2516,9 @@ trait RcInnerPtr {
         // missed optimization.
         // SAFETY: The reference count will never be zero when this is
         // called.
-        unsafe { core::intrinsics::assume(strong != 0); }
+        unsafe {
+            core::intrinsics::assume(strong != 0);
+        }
 
         let strong = strong.wrapping_add(1);
         self.strong_ref().set(strong);
@@ -2547,7 +2549,9 @@ trait RcInnerPtr {
         // missed optimization.
         // SAFETY: The reference count will never be zero when this is
         // called.
-        unsafe { core::intrinsics::assume(weak != 0); }
+        unsafe {
+            core::intrinsics::assume(weak != 0);
+        }
 
         let weak = weak.wrapping_add(1);
         self.weak_ref().set(weak);
