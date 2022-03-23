@@ -160,7 +160,7 @@ struct MatcherPos<'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 136);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 112);
 
 impl<'tt> MatcherPos<'tt> {
     /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
@@ -209,11 +209,7 @@ impl<'tt> MatcherPos<'tt> {
             match_lo: up.match_cur,
             match_cur: up.match_cur,
             match_hi: up.match_cur + seq.num_captures,
-            repetition: Some(MatcherPosRepetition {
-                up,
-                sep: seq.separator.clone(),
-                seq_op: seq.kleene.op,
-            }),
+            repetition: Some(MatcherPosRepetition { up, seq }),
             stack: smallvec![],
         }
     }
@@ -227,15 +223,12 @@ impl<'tt> MatcherPos<'tt> {
 
 #[derive(Clone)]
 struct MatcherPosRepetition<'tt> {
-    /// The KleeneOp of this sequence.
-    seq_op: mbe::KleeneOp,
-
-    /// The separator.
-    sep: Option<Token>,
-
     /// The "parent" matcher position. That is, the matcher position just before we enter the
     /// sequence.
     up: Box<MatcherPos<'tt>>,
+
+    /// The sequence itself.
+    seq: &'tt SequenceRepetition,
 }
 
 enum EofItems<'tt> {
@@ -559,14 +552,19 @@ impl<'tt> TtParser<'tt> {
                     self.cur_items.push(new_pos);
                 }
 
-                if idx == len && repetition.sep.is_some() {
-                    if repetition.sep.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
+                if idx == len && repetition.seq.separator.is_some() {
+                    if repetition
+                        .seq
+                        .separator
+                        .as_ref()
+                        .map_or(false, |sep| token_name_eq(token, sep))
+                    {
                         // The matcher has a separator, and it matches the current token. We can
                         // advance past the separator token.
                         item.idx += 1;
                         self.next_items.push(item);
                     }
-                } else if repetition.seq_op != mbe::KleeneOp::ZeroOrOne {
+                } else if repetition.seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
                     // We don't need a separator. Move the "dot" back to the beginning of the
                     // matcher and try to match again UNLESS we are only allowed to have _one_
                     // repetition.
