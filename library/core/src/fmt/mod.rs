@@ -355,8 +355,8 @@ impl<'a> ArgumentV1<'a> {
         // We are type punning a bit here: USIZE_MARKER only takes an &usize but
         // formatter takes an &Opaque. Rust understandably doesn't think we should compare
         // the function pointers if they don't have the same signature, so we cast to
-        // pointers to convince it that we know what we're doing.
-        if self.formatter as *mut u8 == USIZE_MARKER as *mut u8 {
+        // usizes to tell it that we just want to compare addresses.
+        if self.formatter as usize == USIZE_MARKER as usize {
             // SAFETY: The `formatter` field is only set to USIZE_MARKER if
             // the value is a usize, so this is safe
             Some(unsafe { *(self.value as *const _ as *const usize) })

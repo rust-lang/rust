@@ -293,7 +293,7 @@ impl Backtrace {
         if !Backtrace::enabled() {
             return Backtrace { inner: Inner::Disabled };
         }
-        Backtrace::create((Backtrace::capture as *mut ()).addr())
+        Backtrace::create(Backtrace::capture as usize)
     }
 
     /// Forcibly captures a full backtrace, regardless of environment variable
@@ -308,7 +308,7 @@ impl Backtrace {
     /// parts of code.
     #[inline(never)] // want to make sure there's a frame here to remove
     pub fn force_capture() -> Backtrace {
-        Backtrace::create((Backtrace::force_capture as *mut ()).addr())
+        Backtrace::create(Backtrace::force_capture as usize)
     }
 
     /// Forcibly captures a disabled backtrace, regardless of environment
