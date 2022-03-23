@@ -1,3 +1,6 @@
+// FIXME(strict_provenance_magic): system API wants us to pass a pointer as a u64 :(
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
+
 use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};

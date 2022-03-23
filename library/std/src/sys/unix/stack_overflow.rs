@@ -1,3 +1,5 @@
+// FIXME(strict_provenance_magic): system API wants us to pass a pointer as size_t :(
+#![cfg_attr(not(bootstrap), allow(fuzzy_provenance_casts))]
 #![cfg_attr(test, allow(dead_code))]
 
 use self::imp::{drop_handler, make_handler};
@@ -62,12 +64,12 @@ mod imp {
             si_addr: *mut libc::c_void,
         }
 
-        (*(info as *const siginfo_t)).si_addr as usize
+        (*(info as *const siginfo_t)).si_addr.addr()
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
     unsafe fn siginfo_si_addr(info: *mut libc::siginfo_t) -> usize {
-        (*info).si_addr as usize
+        (*info).si_addr.addr()
     }
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages

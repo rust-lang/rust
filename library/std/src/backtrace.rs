@@ -493,7 +493,7 @@ impl RawFrame {
         match self {
             RawFrame::Actual(frame) => frame.ip(),
             #[cfg(test)]
-            RawFrame::Fake => ptr::invalid_mut(1),
+            RawFrame::Fake => crate::ptr::invalid_mut(1),
         }
     }
 }
