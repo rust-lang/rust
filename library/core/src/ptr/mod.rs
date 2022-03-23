@@ -93,7 +93,7 @@
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
 //! [`offset`]: pointer::offset
-//! [`zst_exists`]: pointer::zst_exists
+//! [`zst_exists`]: core::ptr::zst_exists
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -337,7 +337,7 @@ where
 /// This is a problem for Pointer Provenance and Segmenting, because there
 /// is no "chain of custody" to an allocation. One possible solution to this
 /// is for the programmer to Pretend To Be Malloc and "allocate" the address.
-/// See [`with_addr`] for more details.
+/// See [`pointer::with_addr`] for more details.
 ///
 /// Just as with *real* malloc, the compiler is free to assume the pointer
 /// returned from this function is completely unaliased, and that all accesses

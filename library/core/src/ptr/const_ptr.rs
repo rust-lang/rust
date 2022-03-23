@@ -67,7 +67,8 @@ impl<T: ?Sized> *const T {
     /// and cannot be created from one without additional context.
     ///
     /// If you would like to treat a pointer like an integer anyway,
-    /// see [`addr`][] and [`with_addr`][] for the responsible way to do that.
+    /// see [`addr`][#method.addr-1] and [`with_addr`][#method.with_addr-1] for the responsible
+    /// way to do that.
     #[unstable(feature = "ptr_to_from_bits", issue = "91126")]
     pub fn to_bits(self) -> [u8; core::mem::size_of::<*const ()>()]
     where
@@ -109,7 +110,7 @@ impl<T: ?Sized> *const T {
     /// and is equivalent to the deprecated `ptr as usize` cast.
     ///
     /// On more complicated platforms like CHERI and segmented architectures,
-    /// this may remove some important metadata. See [`with_addr`][] for
+    /// this may remove some important metadata. See [`with_addr`][#method.with_addr-1] for
     /// details on this distinction and why it's important.
     #[unstable(feature = "strict_provenance", issue = "99999999")]
     pub fn addr(self) -> usize
@@ -121,8 +122,6 @@ impl<T: ?Sized> *const T {
     }
 
     /// Creates a new pointer with the given address.
-    ///
-    /// See also: [`ptr::fake_alloc`][] and [`ptr::zst_exists`][].
     ///
     /// This replaces the deprecated `usize as ptr` cast, which had
     /// fundamentally broken semantics because it couldn't restore
