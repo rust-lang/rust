@@ -299,3 +299,89 @@ pub(crate) fn append_arg(cmd: &mut Vec<u16>, arg: &Arg, force_quotes: bool) -> i
     }
     Ok(())
 }
+
+pub(crate) fn make_bat_command_line(
+    script: &[u16],
+    args: &[Arg],
+    force_quotes: bool,
+) -> io::Result<Vec<u16>> {
+    // Set the start of the command line to `cmd.exe /c "`
+    // It is necessary to surround the command in an extra pair of quotes,
+    // hence The trailing quote here. It will be closed after all arguments
+    // have been added.
+    let mut cmd: Vec<u16> = "cmd.exe /c \"".encode_utf16().collect();
+
+    // Push the script name surrounded by its quote pair.
+    cmd.push(b'"' as u16);
+    cmd.extend_from_slice(script.strip_suffix(&[0]).unwrap_or(script));
+    cmd.push(b'"' as u16);
+
+    // Append the arguments.
+    // FIXME: This needs tests to ensure that the arguments are properly
+    // reconstructed by the batch script by default.
+    for arg in args {
+        cmd.push(' ' as u16);
+        append_arg(&mut cmd, arg, force_quotes)?;
+    }
+
+    // Close the quote we left opened earlier.
+    cmd.push(b'"' as u16);
+
+    Ok(cmd)
+}
+
+/// Takes a path and tries to return a non-verbatim path.
+///
+/// This is necessary because cmd.exe does not support verbatim paths.
+pub(crate) fn to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
+    use crate::ptr;
+    use crate::sys::windows::fill_utf16_buf;
+
+    // UTF-16 encoded code points, used in parsing and building UTF-16 paths.
+    // All of these are in the ASCII range so they can be cast directly to `u16`.
+    const SEP: u16 = b'\\' as _;
+    const QUERY: u16 = b'?' as _;
+    const COLON: u16 = b':' as _;
+    const U: u16 = b'U' as _;
+    const N: u16 = b'N' as _;
+    const C: u16 = b'C' as _;
+
+    // Early return if the path is too long to remove the verbatim prefix.
+    const LEGACY_MAX_PATH: usize = 260;
+    if path.len() > LEGACY_MAX_PATH {
+        return Ok(path);
+    }
+
+    match &path[..] {
+        // `\\?\C:\...` => `C:\...`
+        [SEP, SEP, QUERY, SEP, _, COLON, SEP, ..] => unsafe {
+            let lpfilename = path[4..].as_ptr();
+            fill_utf16_buf(
+                |buffer, size| c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()),
+                |full_path: &[u16]| {
+                    if full_path == &path[4..path.len() - 1] { full_path.into() } else { path }
+                },
+            )
+        },
+        // `\\?\UNC\...` => `\\...`
+        [SEP, SEP, QUERY, SEP, U, N, C, SEP, ..] => unsafe {
+            // Change the `C` in `UNC\` to `\` so we can get a slice that starts with `\\`.
+            path[6] = b'\\' as u16;
+            let lpfilename = path[6..].as_ptr();
+            fill_utf16_buf(
+                |buffer, size| c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()),
+                |full_path: &[u16]| {
+                    if full_path == &path[6..path.len() - 1] {
+                        full_path.into()
+                    } else {
+                        // Restore the 'C' in "UNC".
+                        path[6] = b'C' as u16;
+                        path
+                    }
+                },
+            )
+        },
+        // For everything else, leave the path unchanged.
+        _ => Ok(path),
+    }
+}
