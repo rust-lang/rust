@@ -93,7 +93,7 @@
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
 //
-// Library features for const fns:
+// Library features:
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
@@ -146,6 +146,8 @@
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
+#![feature(utf16_extra)]
+#![feature(utf16_extra_const)]
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]

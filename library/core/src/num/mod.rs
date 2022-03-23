@@ -820,6 +820,31 @@ impl u16 {
     uint_impl! { u16, u16, i16, NonZeroU16, 16, 65535, 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
     "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
     widening_impl! { u16, u32, 16, unsigned }
+
+    /// Checks if the value is a Unicode surrogate code point, which are disallowed values for [`char`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(utf16_extra)]
+    ///
+    /// let low_non_surrogate = 0xA000u16;
+    /// let low_surrogate = 0xD800u16;
+    /// let high_surrogate = 0xDC00u16;
+    /// let high_non_surrogate = 0xE000u16;
+    ///
+    /// assert!(!low_non_surrogate.is_utf16_surrogate());
+    /// assert!(low_surrogate.is_utf16_surrogate());
+    /// assert!(high_surrogate.is_utf16_surrogate());
+    /// assert!(!high_non_surrogate.is_utf16_surrogate());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "utf16_extra", issue = "94919")]
+    #[rustc_const_unstable(feature = "utf16_extra_const", issue = "94919")]
+    #[inline]
+    pub const fn is_utf16_surrogate(self) -> bool {
+        matches!(self, 0xD800..=0xDFFF)
+    }
 }
 
 #[lang = "u32"]
