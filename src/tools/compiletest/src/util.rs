@@ -31,6 +31,7 @@ const OS_TABLE: &[(&str, &str)] = &[
     ("redox", "redox"),
     ("sgx", "sgx"),
     ("solaris", "solaris"),
+    ("watchos", "watchos"),
     ("win32", "windows"),
     ("windows", "windows"),
     ("vxworks", "vxworks"),

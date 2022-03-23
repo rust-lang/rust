@@ -315,8 +315,11 @@ impl Step for Llvm {
             cfg.define("LLVM_ENABLE_ZLIB", "OFF");
         }
 
-        // Are we compiling for iOS/tvOS?
-        if target.contains("apple-ios") || target.contains("apple-tvos") {
+        // Are we compiling for iOS/tvOS/watchOS?
+        if target.contains("apple-ios")
+            || target.contains("apple-tvos")
+            || target.contains("apple-watchos")
+        {
             // These two defines prevent CMake from automatically trying to add a MacOSX sysroot, which leads to a compiler error.
             cfg.define("CMAKE_OSX_SYSROOT", "/");
             cfg.define("CMAKE_OSX_DEPLOYMENT_TARGET", "");

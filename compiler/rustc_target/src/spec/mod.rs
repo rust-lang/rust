@@ -928,6 +928,11 @@ supported_targets! {
     ("aarch64-apple-tvos", aarch64_apple_tvos),
     ("x86_64-apple-tvos", x86_64_apple_tvos),
 
+    ("armv7k-apple-watchos", armv7k_apple_watchos),
+    ("arm64_32-apple-watchos", arm64_32_apple_watchos),
+    ("x86_64-apple-watchos-sim", x86_64_apple_watchos_sim),
+    ("aarch64-apple-watchos-sim", aarch64_apple_watchos_sim),
+
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),
     ("armv7r-none-eabi", armv7r_none_eabi),
