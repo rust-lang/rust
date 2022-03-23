@@ -896,44 +896,48 @@ pub trait PrettyPrinter<'tcx>:
             );
 
             if !generics.is_empty() || !assoc_items.is_empty() {
-                p!("<");
                 let mut first = true;
 
                 for ty in generics {
-                    if !first {
+                    if first {
+                        p!("<");
+                        first = false;
+                    } else {
                         p!(", ");
                     }
                     p!(print(trait_ref.rebind(*ty)));
-                    first = false;
                 }
 
                 for (assoc_item_def_id, term) in assoc_items {
-                    if !first {
+                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
+                    if let Some(ty) = term.skip_binder().ty() &&
+                       let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = ty.kind() &&
+                       Some(*item_def_id) == self.tcx().lang_items().generator_return() {
+                        continue;
+                    }
+
+                    if first {
+                        p!("<");
+                        first = false;
+                    } else {
                         p!(", ");
                     }
+
                     p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).name));
 
                     match term.skip_binder() {
                         Term::Ty(ty) => {
-                            // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
-                            if matches!(
-                              ty.kind(), ty::Projection(ty::ProjectionTy { item_def_id, .. })
-                              if Some(*item_def_id) == self.tcx().lang_items().generator_return()
-                            ) {
-                                p!("[async output]")
-                            } else {
-                                p!(print(ty))
-                            }
+                            p!(print(ty))
                         }
                         Term::Const(c) => {
                             p!(print(c));
                         }
                     };
-
-                    first = false;
                 }
 
-                p!(">");
+                if !first {
+                    p!(">");
+                }
             }
 
             first = false;

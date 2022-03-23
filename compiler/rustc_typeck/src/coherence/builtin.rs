@@ -91,8 +91,40 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
                 E0204,
                 "the trait `Copy` may not be implemented for this type"
             );
-            for span in fields.iter().map(|f| tcx.def_span(f.did)) {
-                err.span_label(span, "this field does not implement `Copy`");
+            for (field, ty) in fields {
+                let field_span = tcx.def_span(field.did);
+                err.span_label(field_span, "this field does not implement `Copy`");
+                // Spin up a new FulfillmentContext, so we can get the _precise_ reason
+                // why this field does not implement Copy. This is useful because sometimes
+                // it is not immediately clear why Copy is not implemented for a field, since
+                // all we point at is the field itself.
+                tcx.infer_ctxt().enter(|infcx| {
+                    let mut fulfill_cx = traits::FulfillmentContext::new_ignoring_regions();
+                    fulfill_cx.register_bound(
+                        &infcx,
+                        param_env,
+                        ty,
+                        tcx.lang_items().copy_trait().unwrap(),
+                        traits::ObligationCause::dummy_with_span(field_span),
+                    );
+                    for error in fulfill_cx.select_all_or_error(&infcx) {
+                        let error_predicate = error.obligation.predicate;
+                        // Only note if it's not the root obligation, otherwise it's trivial and
+                        // should be self-explanatory (i.e. a field literally doesn't implement Copy).
+
+                        // FIXME: This error could be more descriptive, especially if the error_predicate
+                        // contains a foreign type or if it's a deeply nested type...
+                        if error_predicate != error.root_obligation.predicate {
+                            err.span_note(
+                                error.obligation.cause.span,
+                                &format!(
+                                    "the `Copy` impl for `{}` requires that `{}`",
+                                    ty, error_predicate
+                                ),
+                            );
+                        }
+                    }
+                });
             }
             err.emit();
         }

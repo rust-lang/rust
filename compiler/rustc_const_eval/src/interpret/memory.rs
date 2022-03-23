@@ -427,22 +427,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        // Extract from the pointer an `Option<AllocId>` and an offset, which is relative to the
-        // allocation or (if that is `None`) an absolute address.
-        let ptr_or_addr = if size.bytes() == 0 {
-            // Let's see what we can do, but don't throw errors if there's nothing there.
-            self.ptr_try_get_alloc(ptr)
-        } else {
-            // A "real" access, we insist on getting an `AllocId`.
-            Ok(self.ptr_get_alloc(ptr)?)
-        };
-        Ok(match ptr_or_addr {
+        Ok(match self.ptr_try_get_alloc(ptr) {
             Err(addr) => {
-                // No memory is actually being accessed.
-                debug_assert!(size.bytes() == 0);
-                // Must be non-null.
-                if addr == 0 {
-                    throw_ub!(DanglingIntPointer(0, msg))
+                // We couldn't get a proper allocation. This is only okay if the access size is 0,
+                // and the address is not null.
+                if size.bytes() > 0 || addr == 0 {
+                    throw_ub!(DanglingIntPointer(addr, msg));
                 }
                 // Must be aligned.
                 if let Some(align) = align {
