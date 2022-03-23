@@ -4,7 +4,7 @@
 use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BuiltinMacroState, Determinacy};
-use crate::{CrateLint, DeriveData, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
+use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
@@ -415,7 +415,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         let mut indeterminate = false;
         for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
-            match self.resolve_path(path, Some(ns), &parent_scope, CrateLint::No) {
+            match self.resolve_path(path, Some(ns), &parent_scope, Finalize::No) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
@@ -575,7 +575,7 @@ impl<'a> Resolver<'a> {
         }
 
         let res = if path.len() > 1 {
-            let res = match self.resolve_path(&path, Some(MacroNS), parent_scope, CrateLint::No) {
+            let res = match self.resolve_path(&path, Some(MacroNS), parent_scope, Finalize::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     Ok(path_res.base_res())
                 }
@@ -640,7 +640,7 @@ impl<'a> Resolver<'a> {
         orig_ident: Ident,
         scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
-        record_used: Option<Span>,
+        finalize: Option<Span>,
         force: bool,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
@@ -653,7 +653,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        assert!(force || !record_used.is_some()); // `record_used` implies `force`
+        assert!(force || !finalize.is_some()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
         if orig_ident.is_path_segment_keyword() {
@@ -760,7 +760,7 @@ impl<'a> Resolver<'a> {
                             ident,
                             ns,
                             parent_scope,
-                            record_used,
+                            finalize,
                         );
                         match binding {
                             Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
@@ -781,7 +781,7 @@ impl<'a> Resolver<'a> {
                             ns,
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
-                            record_used,
+                            finalize,
                         );
                         match binding {
                             Ok(binding) => {
@@ -846,7 +846,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
                     Scope::ExternPrelude => {
-                        match this.extern_prelude_get(ident, record_used.is_none()) {
+                        match this.extern_prelude_get(ident, finalize.is_some()) {
                             Some(binding) => Ok((binding, Flags::empty())),
                             None => Err(Determinacy::determined(
                                 this.graph_root.unexpanded_invocations.borrow().is_empty(),
@@ -884,7 +884,7 @@ impl<'a> Resolver<'a> {
                     Ok((binding, flags))
                         if sub_namespace_match(binding.macro_kind(), macro_kind) =>
                     {
-                        if record_used.is_none() || matches!(scope_set, ScopeSet::Late(..)) {
+                        if finalize.is_none() || matches!(scope_set, ScopeSet::Late(..)) {
                             return Some(Ok(binding));
                         }
 
@@ -1023,7 +1023,7 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 &parent_scope,
-                CrateLint::SimplePath(ast::CRATE_NODE_ID, path_span),
+                Finalize::SimplePath(ast::CRATE_NODE_ID, path_span),
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     let res = path_res.base_res();

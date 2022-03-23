@@ -2,7 +2,7 @@ use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
-use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{Finalize, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
 use rustc_ast::visit::FnKind;
@@ -187,7 +187,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];
-                let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), CrateLint::No) {
+                let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), Finalize::No) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
                     _ => None,
                 }
@@ -646,7 +646,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let crate::PathSource::TraitItem(_) = source {
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, None, CrateLint::No)
+                self.resolve_path(mod_path, None, Finalize::No)
             {
                 let resolutions = self.r.resolutions(module).borrow();
                 let targets: Vec<_> =
@@ -702,7 +702,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 Namespace::TypeNS,
                 span,
                 true,
-                CrateLint::No,
+                Finalize::No,
             ) else {
                 return false;
             };
@@ -726,7 +726,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 Namespace::TypeNS,
                 span,
                 true,
-                CrateLint::No,
+                Finalize::No,
             ) else {
                 return false;
             };
@@ -1378,7 +1378,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, Some(TypeNS), CrateLint::No)
+                self.resolve_path(mod_path, Some(TypeNS), Finalize::No)
             {
                 self.r.add_module_candidates(module, &mut names, &filter_fn);
             }
