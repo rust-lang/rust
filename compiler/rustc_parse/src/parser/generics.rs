@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
                         Some(this.parse_ty_param(attrs)?)
                     } else if this.token.can_begin_type() {
                         // Trying to write an associated type bound? (#26271)
-                        let snapshot = this.clone();
+                        let snapshot = this.create_snapshot_for_diagnostic();
                         match this.parse_ty_where_predicate() {
                             Ok(where_predicate) => {
                                 this.struct_span_err(
@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
                             Err(err) => {
                                 err.cancel();
                                 // FIXME - maybe we should overwrite 'self' outside of `collect_tokens`?
-                                *this = snapshot;
+                                this.restore_snapshot(snapshot);
                                 return Ok((None, TrailingToken::None));
                             }
                         }
