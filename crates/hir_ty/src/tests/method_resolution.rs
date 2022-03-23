@@ -1750,3 +1750,15 @@ pub fn test() {
 "#,
     );
 }
+
+#[test]
+fn resolve_minicore_iterator() {
+    check_types(
+        r#"
+//- minicore: iterators, sized
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Option<i32>
+"#,
+    );
+}

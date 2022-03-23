@@ -518,7 +518,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::Take;
+    pub use self::adapters::{Take, FilterMap};
 
     mod sources {
         mod repeat {
