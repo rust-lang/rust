@@ -383,20 +383,13 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
             tcx.hir().local_def_id_to_hir_id(impl_def_id),
             tcx.def_span(impl_def_id),
             |err| {
+                let item_span = tcx.def_span(self_type_did);
+                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
                 let mut err = err.build(&format!(
                     "cross-crate traits with a default impl, like `{}`, \
                          should not be specialized",
                     tcx.def_path_str(trait_def_id),
                 ));
-                let item_span = tcx.def_span(self_type_did);
-                let self_descr = tcx.def_kind(self_type_did).descr(self_type_did);
-                err.span_note(
-                    item_span,
-                    &format!(
-                        "try using the same sequence of generic parameters as the {} definition",
-                        self_descr,
-                    ),
-                );
                 match arg {
                     ty::util::NotUniqueParam::DuplicateParam(arg) => {
                         err.note(&format!("`{}` is mentioned multiple times", arg));
@@ -405,6 +398,13 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
                         err.note(&format!("`{}` is not a generic parameter", arg));
                     }
                 }
+                err.span_note(
+                    item_span,
+                    &format!(
+                        "try using the same sequence of generic parameters as the {} definition",
+                        self_descr,
+                    ),
+                );
                 err.emit();
             },
         );
