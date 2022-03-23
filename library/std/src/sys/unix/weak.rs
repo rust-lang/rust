@@ -22,9 +22,10 @@
 // that, we'll just allow that some unix targets don't use this module at all.
 #![allow(dead_code, unused_macros)]
 
-use crate::ffi::CStr;
+use crate::ffi::{c_void, CStr};
 use crate::marker::PhantomData;
 use crate::mem;
+use crate::ptr;
 use crate::sync::atomic::{self, AtomicUsize, Ordering};
 
 // We can use true weak linkage on ELF targets.
@@ -129,25 +130,25 @@ impl<F> DlsymWeak<F> {
     // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(mem::size_of::<F>(), mem::size_of::<usize>());
+        assert_eq!(mem::size_of::<F>(), mem::size_of::<*mut ()>());
 
         let val = fetch(self.name);
         // This synchronizes with the acquire fence in `get`.
-        self.addr.store(val, Ordering::Release);
+        self.addr.store(val.addr(), Ordering::Release);
 
-        match val {
+        match val.addr() {
             0 => None,
-            addr => Some(mem::transmute_copy::<usize, F>(&addr)),
+            _ => Some(mem::transmute_copy::<*mut c_void, F>(&val)),
         }
     }
 }
 
-unsafe fn fetch(name: &str) -> usize {
+unsafe fn fetch(name: &str) -> *mut c_void {
     let name = match CStr::from_bytes_with_nul(name.as_bytes()) {
         Ok(cstr) => cstr,
-        Err(..) => return 0,
+        Err(..) => return ptr::null_mut(),
     };
-    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
+    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
