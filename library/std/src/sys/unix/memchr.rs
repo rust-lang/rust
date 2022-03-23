@@ -9,7 +9,7 @@ pub fn memchr(needle: u8, haystack: &[u8]) -> Option<usize> {
             haystack.len(),
         )
     };
-    if p.is_null() { None } else { Some(p as usize - (haystack.as_ptr() as usize)) }
+    if p.is_null() { None } else { Some(p.addr() - haystack.as_ptr().addr()) }
 }
 
 pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
@@ -26,7 +26,7 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
                 haystack.len(),
             )
         };
-        if p.is_null() { None } else { Some(p as usize - (haystack.as_ptr() as usize)) }
+        if p.is_null() { None } else { Some(p.addr() - haystack.as_ptr().addr()) }
     }
 
     #[cfg(not(target_os = "linux"))]
