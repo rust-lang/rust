@@ -146,6 +146,7 @@ where
                 }
                 ControlFlow::CONTINUE
             }
+            ty::PredicateKind::Trivial(ty) => ty.visit_with(self),
             _ => bug!("unexpected predicate: {:?}", predicate),
         }
     }

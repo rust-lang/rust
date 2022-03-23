@@ -148,6 +148,9 @@ pub fn predicate_obligations<'a, 'tcx>(
             wf.compute(c1.into());
             wf.compute(c2.into());
         }
+        ty::PredicateKind::Trivial(ty) => {
+            wf.compute(ty.into());
+        }
         ty::PredicateKind::TypeWellFormedFromEnv(..) => {
             bug!("TypeWellFormedFromEnv is only used for Chalk")
         }

@@ -625,6 +625,12 @@ pub enum PredicateKind<'tcx> {
     ///
     /// Only used for Chalk.
     TypeWellFormedFromEnv(Ty<'tcx>),
+
+    /// Represents a predicate that is known to always hold.
+    ///
+    /// This predicate is used in cases where we have `where Type:;` in a where-clause,
+    /// so that we uphold that the type inside is at least well-formed.
+    Trivial(Ty<'tcx>),
 }
 
 /// The crate outlives map is computed during typeck and contains the
@@ -991,7 +997,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::TypeOutlives(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::TypeWellFormedFromEnv(..)
+            | ty::PredicateKind::Trivial(_) => None,
         }
     }
 
@@ -1009,7 +1016,8 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::ClosureKind(..)
             | PredicateKind::ConstEvaluatable(..)
             | PredicateKind::ConstEquate(..)
-            | PredicateKind::TypeWellFormedFromEnv(..) => None,
+            | PredicateKind::TypeWellFormedFromEnv(..)
+            | ty::PredicateKind::Trivial(_) => None,
         }
     }
 }

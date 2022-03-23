@@ -265,6 +265,9 @@ impl FlagComputation {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 self.add_ty(ty);
             }
+            ty::PredicateKind::Trivial(ty) => {
+                self.add_ty(ty);
+            }
         }
     }
 

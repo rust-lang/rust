@@ -198,6 +198,9 @@ impl<'tcx> fmt::Debug for ty::PredicateKind<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 write!(f, "TypeWellFormedFromEnv({:?})", ty)
             }
+            ty::PredicateKind::Trivial(ty) => {
+                write!(f, "Trivial({:?})", ty)
+            }
         }
     }
 }
@@ -471,6 +474,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::PredicateKind<'a> {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 tcx.lift(ty).map(ty::PredicateKind::TypeWellFormedFromEnv)
             }
+            ty::PredicateKind::Trivial(ty) => tcx.lift(ty).map(ty::PredicateKind::Trivial),
         }
     }
 }

@@ -2647,6 +2647,9 @@ define_print_and_forward_display! {
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => {
                 p!("the type `", print(ty), "` is found in the environment")
             }
+            ty::PredicateKind::Trivial(ty) => {
+                p!("the type `", print(ty), "` can be named")
+            }
         }
     }
 

@@ -793,6 +793,10 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         )
                     }
 
+                    ty::PredicateKind::Trivial(_) => {
+                        span_bug!(span, "trivial predicates should always be true")
+                    }
+
                     ty::PredicateKind::TypeWellFormedFromEnv(..) => span_bug!(
                         span,
                         "TypeWellFormedFromEnv predicate should only exist in the environment"

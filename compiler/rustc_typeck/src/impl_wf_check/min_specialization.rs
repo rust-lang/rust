@@ -425,6 +425,7 @@ fn trait_predicate_kind<'tcx>(
         | ty::PredicateKind::ClosureKind(..)
         | ty::PredicateKind::ConstEvaluatable(..)
         | ty::PredicateKind::ConstEquate(..)
-        | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+        | ty::PredicateKind::TypeWellFormedFromEnv(..)
+        | ty::PredicateKind::Trivial(_) => None,
     }
 }

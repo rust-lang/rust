@@ -80,7 +80,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
         self,
         interner: RustInterner<'tcx>,
     ) -> chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>> {
-        let clauses = self.environment.into_iter().map(|predicate| {
+        let clauses = self.environment.into_iter().filter_map(|predicate| {
             let (predicate, binders, _named_regions) =
                 collect_bound_vars(interner, interner.tcx, predicate.kind());
             let consequence = match predicate {
@@ -105,6 +105,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 ty::PredicateKind::Projection(predicate) => chalk_ir::DomainGoal::Holds(
                     chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)),
                 ),
+                ty::PredicateKind::Trivial(_) => return None,
                 ty::PredicateKind::WellFormed(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::ClosureKind(..)
@@ -119,7 +120,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'
                 priority: chalk_ir::ClausePriority::High,
                 constraints: chalk_ir::Constraints::empty(interner),
             };
-            chalk_ir::ProgramClauseData(chalk_ir::Binders::new(binders, value)).intern(interner)
+            Some(
+                chalk_ir::ProgramClauseData(chalk_ir::Binders::new(binders, value))
+                    .intern(interner),
+            )
         });
 
         let goal: chalk_ir::GoalData<RustInterner<'tcx>> = self.goal.lower_into(interner);
@@ -202,7 +206,8 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::GoalData<RustInterner<'tcx>>> for ty::Predi
             ty::PredicateKind::ClosureKind(..)
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
-            | ty::PredicateKind::ConstEquate(..) => {
+            | ty::PredicateKind::ConstEquate(..)
+            | ty::PredicateKind::Trivial(_) => {
                 chalk_ir::GoalData::All(chalk_ir::Goals::empty(interner))
             }
             ty::PredicateKind::TypeWellFormedFromEnv(ty) => chalk_ir::GoalData::DomainGoal(
@@ -613,7 +618,7 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_ir::QuantifiedWhereClause<RustInterner<'
             ty::PredicateKind::Projection(predicate) => {
                 Some(chalk_ir::WhereClause::AliasEq(predicate.lower_into(interner)))
             }
-            ty::PredicateKind::WellFormed(_ty) => None,
+            ty::PredicateKind::WellFormed(_) | ty::PredicateKind::Trivial(_) => None,
 
             ty::PredicateKind::ObjectSafe(..)
             | ty::PredicateKind::ClosureKind(..)
@@ -750,7 +755,8 @@ impl<'tcx> LowerInto<'tcx, Option<chalk_solve::rust_ir::QuantifiedInlineBound<Ru
             | ty::PredicateKind::Coerce(..)
             | ty::PredicateKind::ConstEvaluatable(..)
             | ty::PredicateKind::ConstEquate(..)
-            | ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            | ty::PredicateKind::TypeWellFormedFromEnv(..)
+            | ty::PredicateKind::Trivial(_) => {
                 bug!("unexpected predicate {}", &self)
             }
         }

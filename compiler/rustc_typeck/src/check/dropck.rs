@@ -251,6 +251,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
                         && relator.relate(predicate.rebind(lt_a), p.rebind(lt_b)).is_ok()
                 }
+                (ty::PredicateKind::Trivial(ty_a), ty::PredicateKind::Trivial(ty_b)) => {
+                    relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
+                }
                 _ => predicate == p,
             }
         };

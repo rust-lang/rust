@@ -269,7 +269,7 @@ impl<'tcx> Elaborator<'tcx> {
                         }),
                 );
             }
-            ty::PredicateKind::TypeWellFormedFromEnv(..) => {
+            ty::PredicateKind::TypeWellFormedFromEnv(..) | ty::PredicateKind::Trivial(_) => {
                 // Nothing to elaborate
             }
         }

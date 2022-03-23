@@ -105,7 +105,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                     | ty::PredicateKind::ObjectSafe(..)
                     | ty::PredicateKind::ConstEvaluatable(..)
                     | ty::PredicateKind::ConstEquate(..)
-                    | ty::PredicateKind::TypeWellFormedFromEnv(..) => vec![],
+                    | ty::PredicateKind::TypeWellFormedFromEnv(..)
+                    | ty::PredicateKind::Trivial(_) => vec![],
                     ty::PredicateKind::WellFormed(arg) => {
                         wf_args.push(arg);
                         vec![]

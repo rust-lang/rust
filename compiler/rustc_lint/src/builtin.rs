@@ -1675,7 +1675,8 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
-                    TypeWellFormedFromEnv(..) => continue,
+                    TypeWellFormedFromEnv(..) |
+                    Trivial(_) => continue,
                 };
                 if predicate.is_global() {
                     cx.struct_span_lint(TRIVIAL_BOUNDS, span, |lint| {

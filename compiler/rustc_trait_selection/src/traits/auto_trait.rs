@@ -847,7 +847,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::Coerce(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => {}
+                | ty::PredicateKind::TypeWellFormedFromEnv(..)
+                | ty::PredicateKind::Trivial(_) => {}
             };
         }
         true

@@ -858,7 +858,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::PredicateKind::TypeOutlives(..)
                 | ty::PredicateKind::ConstEvaluatable(..)
                 | ty::PredicateKind::ConstEquate(..)
-                | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
+                | ty::PredicateKind::TypeWellFormedFromEnv(..)
+                | ty::PredicateKind::Trivial(_) => None,
             }
         });
 

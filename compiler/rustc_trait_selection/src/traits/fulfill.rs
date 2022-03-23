@@ -410,6 +410,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         obligation.with(pred.to_predicate(self.selcx.tcx())),
                     ]))
                 }
+                ty::PredicateKind::Trivial(_) => ProcessResult::Changed(vec![]),
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
@@ -655,6 +656,7 @@ impl<'a, 'b, 'tcx> FulfillProcessor<'a, 'b, 'tcx> {
                         }
                     }
                 }
+                ty::PredicateKind::Trivial(_) => ProcessResult::Changed(vec![]),
                 ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                     bug!("TypeWellFormedFromEnv is only used for Chalk")
                 }
