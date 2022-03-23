@@ -3,7 +3,7 @@
 //! `DefCollector::collect` contains the fixed-point iteration loop which
 //! resolves imports and expands macros.
 
-use std::iter;
+use std::{iter, mem};
 
 use base_db::{CrateId, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
@@ -15,9 +15,9 @@ use hir_expand::{
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
     proc_macro::ProcMacroExpander,
-    ExpandTo, HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
+    ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId,
+    MacroDefKind,
 };
-use hir_expand::{InFile, MacroCallLoc};
 use itertools::Itertools;
 use la_arena::Idx;
 use limit::Limit;
@@ -101,7 +101,6 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         mod_dirs: FxHashMap::default(),
         cfg_options,
         proc_macros,
-        exports_proc_macros: false,
         from_glob_import: Default::default(),
         skip_attrs: Default::default(),
         derive_helpers_in_scope: Default::default(),
@@ -247,7 +246,6 @@ struct DefCollector<'a> {
     /// them).
     proc_macros: Vec<(Name, ProcMacroExpander)>,
     is_proc_macro: bool,
-    exports_proc_macros: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
     /// This map is used to skip all attributes up to and including the one that failed to resolve,
@@ -403,10 +401,10 @@ impl DefCollector<'_> {
         self.unresolved_imports.extend(partial_resolved);
         self.resolve_imports();
 
-        let unresolved_imports = std::mem::take(&mut self.unresolved_imports);
+        let unresolved_imports = mem::take(&mut self.unresolved_imports);
         // show unresolved imports in completion, etc
         for directive in &unresolved_imports {
-            self.record_resolved_import(directive)
+            self.record_resolved_import(directive);
         }
         self.unresolved_imports = unresolved_imports;
 
@@ -435,7 +433,7 @@ impl DefCollector<'_> {
     fn reseed_with_unresolved_attribute(&mut self) -> ReachedFixedPoint {
         cov_mark::hit!(unresolved_attribute_fallback);
 
-        let mut unresolved_macros = std::mem::take(&mut self.unresolved_macros);
+        let mut unresolved_macros = mem::take(&mut self.unresolved_macros);
         let pos = unresolved_macros.iter().position(|directive| {
             if let MacroDirectiveKind::Attr { ast_id, mod_item, attr, tree } = &directive.kind {
                 self.skip_attrs.insert(ast_id.ast_id.with_value(*mod_item), attr.id);
@@ -458,10 +456,9 @@ impl DefCollector<'_> {
         });
 
         if let Some(pos) = pos {
-            unresolved_macros.remove(pos);
+            unresolved_macros.swap_remove(pos);
         }
 
-        // The collection above might add new unresolved macros (eg. derives), so merge the lists.
         self.unresolved_macros.extend(unresolved_macros);
 
         if pos.is_some() {
@@ -558,8 +555,6 @@ impl DefCollector<'_> {
         fn_id: FunctionId,
         module_id: ModuleId,
     ) {
-        self.exports_proc_macros = true;
-
         let kind = def.kind.to_basedb_kind();
         let (expander, kind) = match self.proc_macros.iter().find(|(n, _)| n == &def.name) {
             Some(&(_, expander)) => (expander, kind),
@@ -714,7 +709,7 @@ impl DefCollector<'_> {
     /// Tries to resolve every currently unresolved import.
     fn resolve_imports(&mut self) -> ReachedFixedPoint {
         let mut res = ReachedFixedPoint::Yes;
-        let imports = std::mem::take(&mut self.unresolved_imports);
+        let imports = mem::take(&mut self.unresolved_imports);
         let imports = imports
             .into_iter()
             .filter_map(|mut directive| {
@@ -1051,7 +1046,7 @@ impl DefCollector<'_> {
     }
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
-        let mut macros = std::mem::take(&mut self.unresolved_macros);
+        let mut macros = mem::take(&mut self.unresolved_macros);
         let mut resolved = Vec::new();
         let mut push_resolved = |directive: &MacroDirective, call_id| {
             resolved.push((directive.module_id, directive.depth, directive.container, call_id));
@@ -2095,7 +2090,6 @@ mod tests {
             mod_dirs: FxHashMap::default(),
             cfg_options: &CfgOptions::default(),
             proc_macros: Default::default(),
-            exports_proc_macros: false,
             from_glob_import: Default::default(),
             skip_attrs: Default::default(),
             derive_helpers_in_scope: Default::default(),

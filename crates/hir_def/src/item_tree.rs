@@ -144,6 +144,37 @@ impl ItemTree {
         Arc::new(item_tree)
     }
 
+    /// Returns an iterator over all items located at the top level of the `HirFileId` this
+    /// `ItemTree` was created from.
+    pub fn top_level_items(&self) -> &[ModItem] {
+        &self.top_level
+    }
+
+    /// Returns the inner attributes of the source file.
+    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
+        self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&RawAttrs::EMPTY).clone().filter(db, krate)
+    }
+
+    pub(crate) fn raw_attrs(&self, of: AttrOwner) -> &RawAttrs {
+        self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
+    }
+
+    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
+        self.raw_attrs(of).clone().filter(db, krate)
+    }
+
+    pub fn pretty_print(&self) -> String {
+        pretty::print_item_tree(self)
+    }
+
+    fn data(&self) -> &ItemTreeData {
+        self.data.as_ref().expect("attempted to access data of empty ItemTree")
+    }
+
+    fn data_mut(&mut self) -> &mut ItemTreeData {
+        self.data.get_or_insert_with(Box::default)
+    }
+
     fn block_item_tree(db: &dyn DefDatabase, block: BlockId) -> Arc<ItemTree> {
         let loc = db.lookup_intern_block(block);
         let block = loc.ast_id.to_node(db.upcast());
@@ -198,37 +229,6 @@ impl ItemTree {
 
             vis.arena.shrink_to_fit();
         }
-    }
-
-    /// Returns an iterator over all items located at the top level of the `HirFileId` this
-    /// `ItemTree` was created from.
-    pub fn top_level_items(&self) -> &[ModItem] {
-        &self.top_level
-    }
-
-    /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
-        self.attrs.get(&AttrOwner::TopLevel).unwrap_or(&RawAttrs::EMPTY).clone().filter(db, krate)
-    }
-
-    pub(crate) fn raw_attrs(&self, of: AttrOwner) -> &RawAttrs {
-        self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
-    }
-
-    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
-        self.raw_attrs(of).clone().filter(db, krate)
-    }
-
-    pub fn pretty_print(&self) -> String {
-        pretty::print_item_tree(self)
-    }
-
-    fn data(&self) -> &ItemTreeData {
-        self.data.as_ref().expect("attempted to access data of empty ItemTree")
-    }
-
-    fn data_mut(&mut self) -> &mut ItemTreeData {
-        self.data.get_or_insert_with(Box::default)
     }
 }
 
