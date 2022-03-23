@@ -11,7 +11,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 
 #[derive(Clone)]
 pub enum CopyImplementationError<'tcx> {
-    InfrigingFields(Vec<&'tcx ty::FieldDef>),
+    InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>)>),
     NotAnAdt,
     HasDestructor,
 }
@@ -67,7 +67,7 @@ pub fn can_type_implement_copy<'tcx>(
                 match traits::fully_normalize(&infcx, ctx, cause, param_env, ty) {
                     Ok(ty) => {
                         if !infcx.type_is_copy_modulo_regions(param_env, ty, span) {
-                            infringing.push(field);
+                            infringing.push((field, ty));
                         }
                     }
                     Err(errors) => {
