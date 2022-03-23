@@ -1952,6 +1952,52 @@ async fn main() {
         "#]],
     )
 }
+#[test]
+fn async_block_early_return() {
+    check_infer(
+        r#"
+//- minicore: future, result, fn
+fn test<I, E, F: FnMut() -> Fut, Fut: core::future::Future<Output = Result<I, E>>>(f: F) {}
+
+fn main() {
+    async {
+        return Err(());
+        Ok(())
+    };
+    test(|| async {
+        return Err(());
+        Ok(())
+    });
+}
+        "#,
+        expect![[r#"
+            83..84 'f': F
+            89..91 '{}': ()
+            103..231 '{     ... }); }': ()
+            109..161 'async ...     }': Result<(), ()>
+            109..161 'async ...     }': impl Future<Output = Result<(), ()>>
+            125..139 'return Err(())': !
+            132..135 'Err': Err<(), ()>(()) -> Result<(), ()>
+            132..139 'Err(())': Result<(), ()>
+            136..138 '()': ()
+            149..151 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            149..155 'Ok(())': Result<(), ()>
+            152..154 '()': ()
+            167..171 'test': fn test<(), (), || -> impl Future<Output = Result<(), ()>>, impl Future<Output = Result<(), ()>>>(|| -> impl Future<Output = Result<(), ()>>)
+            167..228 'test(|...    })': ()
+            172..227 '|| asy...     }': || -> impl Future<Output = Result<(), ()>>
+            175..227 'async ...     }': Result<(), ()>
+            175..227 'async ...     }': impl Future<Output = Result<(), ()>>
+            191..205 'return Err(())': !
+            198..201 'Err': Err<(), ()>(()) -> Result<(), ()>
+            198..205 'Err(())': Result<(), ()>
+            202..204 '()': ()
+            215..217 'Ok': Ok<(), ()>(()) -> Result<(), ()>
+            215..221 'Ok(())': Result<(), ()>
+            218..220 '()': ()
+        "#]],
+    )
+}
 
 #[test]
 fn infer_generic_from_later_assignment() {

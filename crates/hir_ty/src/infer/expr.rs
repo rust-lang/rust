@@ -157,9 +157,17 @@ impl<'a> InferenceContext<'a> {
                 self.err_ty()
             }
             Expr::Async { body } => {
+                let ret_ty = self.table.new_type_var();
+                let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
+                let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty.clone());
+
+                let inner_ty = self.infer_expr_coerce(*body, &Expectation::has_type(ret_ty));
+
+                self.diverges = prev_diverges;
+                self.return_ty = prev_ret_ty;
+
                 // Use the first type parameter as the output type of future.
                 // existential type AsyncBlockImplTrait<InnerType>: Future<Output = InnerType>
-                let inner_ty = self.infer_expr(*body, &Expectation::none());
                 let impl_trait_id = crate::ImplTraitId::AsyncBlockTypeImplTrait(self.owner, *body);
                 let opaque_ty_id = self.db.intern_impl_trait_id(impl_trait_id).into();
                 TyKind::OpaqueType(opaque_ty_id, Substitution::from1(Interner, inner_ty))
