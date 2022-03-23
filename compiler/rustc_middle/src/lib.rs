@@ -41,6 +41,7 @@
 #![feature(new_uninit)]
 #![feature(nll)]
 #![feature(once_cell)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]

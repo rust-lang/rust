@@ -28,7 +28,7 @@ note: required by a bound in `from_generator`
 LL |     T: Generator<ResumeTy, Yield = ()>,
    |                            ^^^^^^^^^^ required by this bound in `from_generator`
 
-error[E0280]: the requirement `<impl Future<Output = [async output]> as Future>::Output == u32` is not satisfied
+error[E0280]: the requirement `<impl Future as Future>::Output == u32` is not satisfied
   --> $DIR/async.rs:7:25
    |
 LL | async fn foo(x: u32) -> u32 {
