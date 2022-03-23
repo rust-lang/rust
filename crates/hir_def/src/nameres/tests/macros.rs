@@ -1143,3 +1143,40 @@ struct A;
         "#]],
     );
 }
+
+#[test]
+fn macro_use_imports_all_macro_types() {
+    let def_map = compute_crate_def_map(
+        r#"
+//- /main.rs crate:main deps:lib
+#[macro_use]
+extern crate lib;
+
+//- /lib.rs crate:lib deps:proc
+pub use proc::*;
+
+#[macro_export]
+macro_rules! legacy { () => () }
+
+pub macro macro20 {}
+
+//- /proc.rs crate:proc
+#![crate_type="proc-macro"]
+
+struct TokenStream;
+
+#[proc_macro_attribute]
+fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
+    "#,
+    );
+
+    let root = &def_map[def_map.root()].scope;
+    let actual = root.legacy_macros().map(|(name, _)| format!("{name}\n")).collect::<String>();
+
+    expect![[r#"
+        macro20
+        legacy
+        proc_attr
+    "#]]
+    .assert_eq(&actual);
+}

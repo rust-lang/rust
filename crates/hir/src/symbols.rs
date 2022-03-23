@@ -3,7 +3,7 @@
 use base_db::FileRange;
 use hir_def::{
     item_tree::ItemTreeNode, src::HasSource, AdtId, AssocItemId, AssocItemLoc, DefWithBodyId,
-    ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
+    HasModule, ImplId, ItemContainerId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
@@ -176,9 +176,12 @@ impl<'a> SymbolCollector<'a> {
         }
 
         for (_, id) in scope.legacy_macros() {
-            let loc = id.lookup(self.db.upcast());
-            if loc.container == module_id {
-                self.push_decl(id, FileSymbolKind::Macro);
+            if id.module(self.db.upcast()) == module_id {
+                match id {
+                    MacroId::Macro2Id(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    MacroId::MacroRulesId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                    MacroId::ProcMacroId(id) => self.push_decl(id, FileSymbolKind::Macro),
+                }
             }
         }
     }

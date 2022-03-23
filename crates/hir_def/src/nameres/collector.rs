@@ -610,7 +610,7 @@ impl DefCollector<'_> {
         export: bool,
     ) {
         // Textual scoping
-        self.define_legacy_macro(module_id, name.clone(), macro_);
+        self.define_legacy_macro(module_id, name.clone(), macro_.into());
 
         // Module scoping
         // In Rust, `#[macro_export]` macros are unconditionally visible at the
@@ -634,7 +634,7 @@ impl DefCollector<'_> {
     /// the definition of current module.
     /// And also, `macro_use` on a module will import all legacy macros visible inside to
     /// current legacy scope, with possible shadowing.
-    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, mac: MacroRulesId) {
+    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, mac: MacroId) {
         // Always shadowing
         self.def_map.modules[module_id].scope.define_legacy_macro(name, mac);
     }
@@ -706,10 +706,8 @@ impl DefCollector<'_> {
     fn import_all_macros_exported(&mut self, current_module_id: LocalModuleId, krate: CrateId) {
         let def_map = self.db.crate_def_map(krate);
         for (name, def) in def_map[def_map.root].scope.macros() {
-            if let MacroId::MacroRulesId(def) = def {
-                // `macro_use` only bring things into legacy scope.
-                self.define_legacy_macro(current_module_id, name.clone(), def);
-            }
+            // `#[macro_use]` brings macros into legacy scope. Yes, even non-`macro_rules!` macros.
+            self.define_legacy_macro(current_module_id, name.clone(), def);
         }
     }
 
