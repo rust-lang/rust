@@ -435,3 +435,24 @@ fn run_bat_script() {
     assert!(output.status.success());
     assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }
+
+// See issue #95178
+#[test]
+#[cfg(windows)]
+fn run_canonical_bat_script() {
+    let tempdir = crate::sys_common::io::test::tmpdir();
+    let script_path = tempdir.join("hello.cmd");
+
+    crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
+
+    // Try using a canonical path
+    let output = Command::new(&script_path.canonicalize().unwrap())
+        .arg("fellow Rustaceans")
+        .stdout(crate::process::Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
+}
