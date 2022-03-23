@@ -14,8 +14,7 @@ use syntax::ast;
 
 use crate::{
     attr::AttrId, db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType,
-    ConstId, HasModule, ImplId, LocalModuleId, MacroId, MacroRulesId, ModuleDefId, ModuleId,
-    TraitId,
+    ConstId, HasModule, ImplId, LocalModuleId, MacroId, ModuleDefId, ModuleId, TraitId,
 };
 
 #[derive(Copy, Clone)]
@@ -62,7 +61,7 @@ pub struct ItemScope {
     /// Module scoped macros will be inserted into `items` instead of here.
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
-    legacy_macros: FxHashMap<Name, MacroRulesId>,
+    legacy_macros: FxHashMap<Name, MacroId>,
     /// The derive macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
@@ -135,7 +134,7 @@ impl ItemScope {
     }
 
     /// Iterate over all legacy textual scoped macros visible at the end of the module
-    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroRulesId)> + 'a {
+    pub fn legacy_macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroId)> + 'a {
         self.legacy_macros.iter().map(|(name, def)| (name, *def))
     }
 
@@ -181,7 +180,7 @@ impl ItemScope {
         self.declarations.push(def)
     }
 
-    pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroRulesId> {
+    pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<MacroId> {
         self.legacy_macros.get(name).copied()
     }
 
@@ -193,7 +192,7 @@ impl ItemScope {
         self.unnamed_consts.push(konst);
     }
 
-    pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroRulesId) {
+    pub(crate) fn define_legacy_macro(&mut self, name: Name, mac: MacroId) {
         self.legacy_macros.insert(name, mac);
     }
 
@@ -323,7 +322,7 @@ impl ItemScope {
         )
     }
 
-    pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroRulesId> {
+    pub(crate) fn collect_legacy_macros(&self) -> FxHashMap<Name, MacroId> {
         self.legacy_macros.clone()
     }
 

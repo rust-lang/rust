@@ -103,9 +103,11 @@ impl ChildBySource for ItemScope {
             },
         );
         self.legacy_macros().for_each(|(_, id)| {
-            let loc = id.lookup(db);
-            if loc.id.file_id() == file_id {
-                res[keys::MACRO_RULES].insert(loc.source(db).value, id);
+            if let MacroId::MacroRulesId(id) = id {
+                let loc = id.lookup(db);
+                if loc.id.file_id() == file_id {
+                    res[keys::MACRO_RULES].insert(loc.source(db).value, id);
+                }
             }
         });
         self.derive_macro_invocs().filter(|(id, _)| id.file_id == file_id).for_each(
