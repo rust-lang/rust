@@ -17,7 +17,7 @@ use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, MultiSpan, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
@@ -1275,7 +1275,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .filter(|(_, ident)| !used_fields.contains_key(ident))
             .collect::<Vec<_>>();
 
-        let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered()) {
+        let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered())
+            && !inexistent_fields.iter().any(|field| field.name == kw::Underscore)
+        {
             Some(self.error_inexistent_fields(
                 adt.variant_descr(),
                 &inexistent_fields,
