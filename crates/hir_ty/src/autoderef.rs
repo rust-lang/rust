@@ -108,8 +108,13 @@ fn builtin_deref(ty: &Ty) -> Option<&Ty> {
 }
 
 fn deref_by_trait(table: &mut InferenceTable, ty: Ty) -> Option<Ty> {
-    let db = table.db;
     let _p = profile::span("deref_by_trait");
+    if table.resolve_ty_shallow(&ty).inference_var(Interner).is_some() {
+        // don't try to deref unknown variables
+        return None;
+    }
+
+    let db = table.db;
     let deref_trait = db
         .lang_item(table.trait_env.krate, SmolStr::new_inline("deref"))
         .and_then(|l| l.as_trait())?;

@@ -2,7 +2,7 @@ use expect_test::expect;
 
 use crate::tests::check;
 
-use super::{check_infer, check_types};
+use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn infer_slice_method() {
@@ -1694,6 +1694,71 @@ fn test() {
     let a = [1, 2, 3];
     a.len();
 } //^ adjustments: Pointer(Unsize), Borrow(Ref(Not))
+"#,
+    );
+}
+
+#[test]
+fn bad_inferred_reference_1() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized
+pub trait Into<T>: Sized {
+    fn into(self) -> T;
+}
+impl<T> Into<T> for T {
+    fn into(self) -> T { self }
+}
+
+trait ExactSizeIterator {
+    fn len(&self) -> usize;
+}
+
+pub struct Foo;
+impl Foo {
+    fn len(&self) -> usize { 0 }
+}
+
+pub fn test(generic_args: impl Into<Foo>) {
+    let generic_args = generic_args.into();
+    generic_args.len();
+    let _: Foo = generic_args;
+}
+"#,
+    );
+}
+
+#[test]
+fn bad_inferred_reference_2() {
+    check_no_mismatches(
+        r#"
+//- minicore: deref
+trait ExactSizeIterator {
+    fn len(&self) -> usize;
+}
+
+pub struct Foo;
+impl Foo {
+    fn len(&self) -> usize { 0 }
+}
+
+pub fn test() {
+    let generic_args;
+    generic_args.len();
+    let _: Foo = generic_args;
+}
+"#,
+    );
+}
+
+#[test]
+fn resolve_minicore_iterator() {
+    check_types(
+        r#"
+//- minicore: iterators, sized
+fn foo() {
+    let m = core::iter::repeat(()).filter_map(|()| Some(92)).next();
+}         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Option<i32>
 "#,
     );
 }

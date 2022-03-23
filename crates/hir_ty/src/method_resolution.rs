@@ -681,6 +681,11 @@ fn iterate_method_candidates_with_autoref(
     name: Option<&Name>,
     mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
+    if receiver_ty.value.is_general_var(Interner, &receiver_ty.binders) {
+        // don't try to resolve methods on unknown types
+        return ControlFlow::Continue(());
+    }
+
     iterate_method_candidates_by_receiver(
         receiver_ty,
         first_adjustment.clone(),
