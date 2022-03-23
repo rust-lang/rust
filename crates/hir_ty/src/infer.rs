@@ -364,7 +364,7 @@ pub(crate) struct InferenceContext<'a> {
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
     result: InferenceResult,
-    /// The return type of the function being inferred, or the closure if we're
+    /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
     ///
     /// We might consider using a nested inference context for checking
