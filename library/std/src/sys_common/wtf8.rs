@@ -3,13 +3,6 @@
 //! This library uses Rust’s type system to maintain
 //! [well-formedness](https://simonsapin.github.io/wtf-8/#well-formed),
 //! like the `String` and `&str` types do for UTF-8.
-//!
-//! Since [WTF-8 must not be used
-//! for interchange](https://simonsapin.github.io/wtf-8/#intended-audience),
-//! this library deliberately does not provide access to the underlying bytes
-//! of WTF-8 strings,
-//! nor can it decode WTF-8 from arbitrary bytes.
-//! WTF-8 strings can be obtained from UTF-8, UTF-16, or code points.
 
 // this module is imported from @SimonSapin's repo and has tons of dead code on
 // unix (it's mostly used on windows), so don't worry about dead code here.
@@ -398,6 +391,12 @@ impl Wtf8Buf {
     pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
         let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
         Wtf8Buf { bytes: bytes.into_vec() }
+    }
+
+    /// Converts this `Wtf8Buf` into a `Vec<u8>`.
+    #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.bytes
     }
 }
 

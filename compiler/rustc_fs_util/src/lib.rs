@@ -82,7 +82,7 @@ pub fn path_to_c_string(p: &Path) -> CString {
     use std::ffi::OsStr;
     use std::os::unix::ffi::OsStrExt;
     let p: &OsStr = p.as_ref();
-    CString::new(p.as_bytes()).unwrap()
+    CString::new(OsStrExt::as_bytes(p)).unwrap()
 }
 #[cfg(windows)]
 pub fn path_to_c_string(p: &Path) -> CString {

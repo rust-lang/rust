@@ -9,6 +9,7 @@
 // no-prefer-dynamic
 
 #![feature(rustc_private)]
+#![feature(osstr_bytes)]
 
 extern crate libc;
 
@@ -16,7 +17,6 @@ use libc::c_char;
 use libc::execve;
 use std::env;
 use std::ffi::CString;
-use std::os::unix::prelude::*;
 use std::ptr;
 
 fn main() {

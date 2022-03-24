@@ -90,7 +90,8 @@
 //! exists you will get a <code>[Some]\(os_string)</code>, which you can
 //! *then* try to convert to a Rust string. This yields a [`Result`], so that
 //! your code can detect errors in case the environment variable did
-//! not in fact contain valid Unicode data.
+//! not in fact contain valid Unicode data. You can also process the `OsString` directly, such as
+//! by using it as a filename.
 //!
 //! * [`OsStr`] losslessly represents a borrowed reference to a platform string.
 //! However, this representation is not necessarily in a form native to the platform.
@@ -99,17 +100,28 @@
 //!
 //! # Conversions
 //!
+//! ## On all platforms
+//!
+//! On all platforms, `OsStr` and `OsString` consist of a sequence of bytes; see [`OsString`] for
+//! more details on its encoding on different platforms.
+//!
+//! `OsStr` provides the method [`OsStr::as_bytes`], which provides a zero-cost conversion to a
+//! byte slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
+//! `Deref`.)
+//!
+//! `OsString` provides the method [`OsString::into_vec`], which provides a zero-cost conversion to
+//! `Vec<u8>`.
+//!
 //! ## On Unix
 //!
 //! On Unix, [`OsStr`] implements the
 //! <code>std::os::unix::ffi::[OsStrExt][unix.OsStrExt]</code> trait, which
-//! augments it with two methods, [`from_bytes`] and [`as_bytes`].
-//! These do inexpensive conversions from and to UTF-8 byte slices.
+//! augments it with an additional method [`from_bytes`], providing a zero-cost conversion from a
+//! byte slice.
 //!
 //! Additionally, on Unix [`OsString`] implements the
-//! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait,
-//! which provides [`from_vec`] and [`into_vec`] methods that consume
-//! their arguments, and take or produce vectors of [`u8`].
+//! <code>std::os::unix::ffi::[OsStringExt][unix.OsStringExt]</code> trait, which provides the
+//! [`from_vec`] method that consumes a `Vec<u8>` and produces an `OsString`.
 //!
 //! ## On Windows
 //!
@@ -119,8 +131,8 @@
 //! On Windows, [`OsStr`] implements the
 //! <code>std::os::windows::ffi::[OsStrExt][windows.OsStrExt]</code> trait,
 //! which provides an [`encode_wide`] method. This provides an
-//! iterator that can be [`collect`]ed into a vector of [`u16`]. After a nul
-//! characters is appended, this is the same as a native Windows string.
+//! iterator that can be [`collect`]ed into a vector of [`u16`]. After a 16-bit nul
+//! character is appended, this is the same as a native Windows string.
 //!
 //! Additionally, on Windows [`OsString`] implements the
 //! <code>std::os::windows:ffi::[OsStringExt][windows.OsStringExt]</code>
@@ -133,10 +145,8 @@
 //! [`env::var_os()`]: crate::env::var_os "env::var_os"
 //! [unix.OsStringExt]: crate::os::unix::ffi::OsStringExt "os::unix::ffi::OsStringExt"
 //! [`from_vec`]: crate::os::unix::ffi::OsStringExt::from_vec "os::unix::ffi::OsStringExt::from_vec"
-//! [`into_vec`]: crate::os::unix::ffi::OsStringExt::into_vec "os::unix::ffi::OsStringExt::into_vec"
 //! [unix.OsStrExt]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
 //! [`from_bytes`]: crate::os::unix::ffi::OsStrExt::from_bytes "os::unix::ffi::OsStrExt::from_bytes"
-//! [`as_bytes`]: crate::os::unix::ffi::OsStrExt::as_bytes "os::unix::ffi::OsStrExt::as_bytes"
 //! [`OsStrExt`]: crate::os::unix::ffi::OsStrExt "os::unix::ffi::OsStrExt"
 //! [windows.OsStrExt]: crate::os::windows::ffi::OsStrExt "os::windows::ffi::OsStrExt"
 //! [`encode_wide`]: crate::os::windows::ffi::OsStrExt::encode_wide "os::windows::ffi::OsStrExt::encode_wide"

@@ -30,20 +30,27 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// `OsString` and [`OsStr`] bridge this gap by simultaneously representing Rust
 /// and platform-native string values, and in particular allowing a Rust string
-/// to be converted into an "OS" string with no cost if possible. A consequence
-/// of this is that `OsString` instances are *not* `NUL` terminated; in order
-/// to pass to e.g., Unix system call, you should create a [`CStr`].
+/// to be converted into an "OS" string with no cost. A consequence of this is
+/// that `OsString` instances are *not* `NUL` terminated; in order to pass to
+/// e.g., a Unix system call, you should create a [`CStr`].
 ///
-/// `OsString` is to <code>&[OsStr]</code> as [`String`] is to <code>&[str]</code>: the former
-/// in each pair are owned strings; the latter are borrowed
-/// references.
+/// `OsString` is to <code>&[OsStr]</code> as [`String`] is to <code>&[str]</code>: `OsString` is
+/// an owned string like `String, while `&OsStr` is a borrowed reference like `&str`.
 ///
-/// Note, `OsString` and [`OsStr`] internally do not necessarily hold strings in
-/// the form native to the platform; While on Unix, strings are stored as a
-/// sequence of 8-bit values, on Windows, where strings are 16-bit value based
-/// as just discussed, strings are also actually stored as a sequence of 8-bit
-/// values, encoded in a less-strict variant of UTF-8. This is useful to
-/// understand when handling capacity and length values.
+/// Note that `OsString` and [`OsStr`] internally do not necessarily hold strings in the form
+/// native to the platform. On all platforms, `OsString` and `OsStr` consist of a sequence of
+/// bytes, in a superset of UTF-8; any valid UTF-8 sequence is a valid `OsString` or `OsStr`.
+/// * On Unix, these bytes can contain any values, in an arbitrary encoding (not necessarily
+///   UTF-8, and not necessarily the same encoding for different OS strings).
+/// * On Windows, where the native OS uses a sequence of 16-bit values, `OsString` and `OsStr`
+///   still consist of a sequence of 8-bit values, encoded in a superset of UTF-8 called
+///   ["WTF-8"](https://simonsapin.github.io/wtf-8/) ("Wobbly Translation Format 8-bit"). The
+///   WTF-8 format allows encoding arbitrary 16-bit values, including unpaired UTF-16 surrogates
+///   that do not constitute valid Unicode, since Windows accepts sequences of arbitrary 16-bit
+///   values. (In practice, Windows filenames and similar are almost always valid UTF-16.)
+///
+/// Capacity and length values are always in terms of the sequence of bytes, not characters or
+/// 16-bit values.
 ///
 /// # Creating an `OsString`
 ///
@@ -65,8 +72,16 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// # Conversions
 ///
+/// `OsStr` provides the method [`OsStr::as_bytes`], which provides a zero-cost conversion to a
+/// byte slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
+/// `Deref`.)
+///
+/// `OsString` provides the method [`OsString::into_vec`], which provides a zero-cost conversion to
+/// `Vec<u8>`.
+///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
-/// the traits which `OsString` implements for [conversions] from/to native representations.
+/// OS-specific traits which `OsString` and `OsStr` implement for [conversions] from/to native
+/// representations.
 ///
 /// [`CStr`]: crate::ffi::CStr
 /// [conversions]: super#conversions
@@ -161,6 +176,24 @@ impl OsString {
     #[inline]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf })
+    }
+
+    /// Converts the `OsString` into a `Vec<u8>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_bytes)]
+    /// use std::ffi::OsString;
+    ///
+    /// let os_string = OsString::from("foo");
+    /// let v = os_string.into_vec();
+    /// assert_eq!(v, b"foo");
+    /// ```
+    #[unstable(feature = "osstr_bytes", issue = "none")]
+    #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.inner.into_vec()
     }
 
     /// Extends the string with the given <code>&[OsStr]</code> slice.
@@ -665,6 +698,23 @@ impl OsStr {
     #[inline]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
+    }
+
+    /// Converts the `OsStr` into a `&[u8]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstr_bytes)]
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// assert_eq!(os_str.as_bytes(), b"foo");
+    /// ```
+    #[unstable(feature = "osstr_bytes", issue = "none")]
+    #[inline]
+    pub fn as_bytes(&self) -> &[u8] {
+        self.inner.as_u8_slice()
     }
 
     /// Converts an `OsStr` to a <code>[Cow]<[str]></code>.

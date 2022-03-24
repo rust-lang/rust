@@ -182,12 +182,22 @@ impl Buf {
     pub fn into_rc(&self) -> Rc<Slice> {
         self.as_slice().into_rc()
     }
+
+    #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.inner
+    }
 }
 
 impl Slice {
     #[inline]
     fn from_u8_slice(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(s) }
+    }
+
+    #[inline]
+    pub fn as_u8_slice(&self) -> &[u8] {
+        unsafe { mem::transmute(self) }
     }
 
     #[inline]

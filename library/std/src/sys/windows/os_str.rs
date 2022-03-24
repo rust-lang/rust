@@ -146,6 +146,11 @@ impl Buf {
     pub fn into_rc(&self) -> Rc<Slice> {
         self.as_slice().into_rc()
     }
+
+    #[inline]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.inner.into_vec()
+    }
 }
 
 impl Slice {
@@ -191,6 +196,11 @@ impl Slice {
     pub fn into_rc(&self) -> Rc<Slice> {
         let rc = self.inner.into_rc();
         unsafe { Rc::from_raw(Rc::into_raw(rc) as *const Slice) }
+    }
+
+    #[inline]
+    pub fn as_u8_slice(&self) -> &[u8] {
+        self.inner.as_inner()
     }
 
     #[inline]
