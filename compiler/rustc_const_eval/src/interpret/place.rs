@@ -625,7 +625,7 @@ where
     }
 
     /// Computes a place. You should only use this if you intend to write into this
-    /// place; for reading, a more efficient alternative is `eval_place_for_read`.
+    /// place; for reading, a more efficient alternative is `eval_place_to_op`.
     #[instrument(skip(self), level = "debug")]
     pub fn eval_place(
         &mut self,
