@@ -690,23 +690,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(mt) = self.shallow_resolve(expected).builtin_deref(true)
             && let ty::Dynamic(..) = mt.ty.kind()
         {
-                    // This is "x = SomeTrait" being reduced from
-                    // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
-                    let type_str = self.ty_to_string(expected);
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        span,
-                        E0033,
-                        "type `{}` cannot be dereferenced",
-                        type_str
-                    );
-                    err.span_label(span, format!("type `{}` cannot be dereferenced", type_str));
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
-                    }
-                    err.emit();
-                    return false;
-                }
+            // This is "x = SomeTrait" being reduced from
+            // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
+            let type_str = self.ty_to_string(expected);
+            let mut err = struct_span_err!(
+                self.tcx.sess,
+                span,
+                E0033,
+                "type `{}` cannot be dereferenced",
+                type_str
+            );
+            err.span_label(span, format!("type `{}` cannot be dereferenced", type_str));
+            if self.tcx.sess.teach(&err.get_code().unwrap()) {
+                err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
+            }
+            err.emit();
+            return false;
+        }
         true
     }
 
@@ -1363,7 +1363,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (Some(mut err), None) => {
                 err.emit();
             }
-            (None, None) if let Some(mut err) =
+            (None, None)
+                if let Some(mut err) =
                     self.error_tuple_variant_index_shorthand(variant, pat, fields) =>
             {
                 err.emit();

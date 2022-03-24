@@ -337,8 +337,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         icx.to_ty(ty)
                     }
                 }
-                ItemKind::TyAlias(self_ty, _)
-                | ItemKind::Impl(hir::Impl { self_ty, .. }) => icx.to_ty(self_ty),
+                ItemKind::TyAlias(self_ty, _) | ItemKind::Impl(hir::Impl { self_ty, .. }) => {
+                    icx.to_ty(self_ty)
+                }
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)
@@ -352,7 +353,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     find_opaque_ty_constraints(tcx, def_id)
                 }
                 // Opaque types desugared from `impl Trait`.
-                ItemKind::OpaqueTy(OpaqueTy { origin: hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner), .. }) => {
+                ItemKind::OpaqueTy(OpaqueTy {
+                    origin:
+                        hir::OpaqueTyOrigin::FnReturn(owner) | hir::OpaqueTyOrigin::AsyncFn(owner),
+                    ..
+                }) => {
                     let concrete_ty = tcx
                         .mir_borrowck(owner)
                         .concrete_opaque_types
@@ -366,9 +371,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                                     owner, def_id,
                                 ),
                             );
-                            if let Some(_) =
-                                tcx.typeck(owner).tainted_by_errors
-                            {
+                            if let Some(_) = tcx.typeck(owner).tainted_by_errors {
                                 // Some error in the
                                 // owner fn prevented us from populating
                                 // the `concrete_opaque_types` table.
@@ -424,7 +427,9 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
 
         Node::Field(field) => icx.to_ty(field.ty),
 
-        Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => tcx.typeck(def_id).node_type(hir_id),
+        Node::Expr(&Expr { kind: ExprKind::Closure(..), .. }) => {
+            tcx.typeck(def_id).node_type(hir_id)
+        }
 
         Node::AnonConst(_) if let Some(param) = tcx.opt_const_param_of(def_id) => {
             // We defer to `type_of` of the corresponding parameter
@@ -462,44 +467,40 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     tcx.typeck(def_id).node_type(hir_id)
                 }
 
-                Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => tcx
-                    .adt_def(tcx.hir().get_parent_item(hir_id))
-                    .repr()
-                    .discr_type()
-                    .to_ty(tcx),
+                Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => {
+                    tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
+                }
 
-                Node::TraitRef(trait_ref @ &TraitRef {
-                  path, ..
-                }) if let Some((binding, seg)) =
-                  path
-                      .segments
-                      .iter()
-                      .find_map(|seg| {
-                          seg.args?.bindings
-                              .iter()
-                              .find_map(|binding| if binding.opt_const()?.hir_id == hir_id {
+                Node::TraitRef(trait_ref @ &TraitRef { path, .. })
+                    if let Some((binding, seg)) = path.segments.iter().find_map(|seg| {
+                        seg.args?.bindings.iter().find_map(|binding| {
+                            if binding.opt_const()?.hir_id == hir_id {
                                 Some((binding, seg))
-                              } else {
+                            } else {
                                 None
-                              })
-                      }) =>
+                            }
+                        })
+                    }) =>
                 {
-                  let Some(trait_def_id) = trait_ref.trait_def_id() else {
+                    let Some(trait_def_id) = trait_ref.trait_def_id() else {
                     return tcx.ty_error_with_message(DUMMY_SP, "Could not find trait");
                   };
-                  let assoc_items = tcx.associated_items(trait_def_id);
-                  let assoc_item = assoc_items.find_by_name_and_kind(
-                    tcx, binding.ident, ty::AssocKind::Const, def_id.to_def_id(),
-                  );
-                  if let Some(assoc_item) = assoc_item {
-                    tcx.type_of(assoc_item.def_id)
-                  } else {
-                      // FIXME(associated_const_equality): add a useful error message here.
-                      tcx.ty_error_with_message(
-                        DUMMY_SP,
-                        "Could not find associated const on trait",
-                    )
-                  }
+                    let assoc_items = tcx.associated_items(trait_def_id);
+                    let assoc_item = assoc_items.find_by_name_and_kind(
+                        tcx,
+                        binding.ident,
+                        ty::AssocKind::Const,
+                        def_id.to_def_id(),
+                    );
+                    if let Some(assoc_item) = assoc_item {
+                        tcx.type_of(assoc_item.def_id)
+                    } else {
+                        // FIXME(associated_const_equality): add a useful error message here.
+                        tcx.ty_error_with_message(
+                            DUMMY_SP,
+                            "Could not find associated const on trait",
+                        )
+                    }
                 }
 
                 Node::GenericParam(&GenericParam {
@@ -508,8 +509,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     ..
                 }) if ct.hir_id == hir_id => tcx.type_of(tcx.hir().local_def_id(param_hir_id)),
 
-                x =>
-                  tcx.ty_error_with_message(
+                x => tcx.ty_error_with_message(
                     DUMMY_SP,
                     &format!("unexpected const parent in type_of(): {x:?}"),
                 ),

@@ -378,7 +378,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if self.local_names[local].is_some()
                     && let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place
                     && let Some(borrowed_local) = place.as_local()
-                    && self.local_names[borrowed_local].is_some() && local != borrowed_local
+                    && self.local_names[borrowed_local].is_some()
+                    && local != borrowed_local
                 {
                     should_note_order = true;
                 }

@@ -202,10 +202,8 @@ crate fn placeholder_type_error<'tcx>(
                 Node::Item(&hir::Item {
                     kind: hir::ItemKind::Const(..) | hir::ItemKind::Static(..),
                     ..
-                }) | Node::TraitItem(&hir::TraitItem {
-                    kind: hir::TraitItemKind::Const(..),
-                    ..
-                }) | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
+                }) | Node::TraitItem(&hir::TraitItem { kind: hir::TraitItemKind::Const(..), .. })
+                    | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. })
             );
         }
 
@@ -3279,10 +3277,7 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         && let ty::AssocItemContainer::ImplContainer(_) = impl_item.container
         && let Some(trait_item) = impl_item.trait_item_def_id
     {
-        return tcx
-            .codegen_fn_attrs(trait_item)
-            .flags
-            .intersects(CodegenFnAttrFlags::TRACK_CALLER);
+        return tcx.codegen_fn_attrs(trait_item).flags.intersects(CodegenFnAttrFlags::TRACK_CALLER);
     }
 
     false

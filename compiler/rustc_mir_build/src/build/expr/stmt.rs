@@ -118,9 +118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let adjusted_span = (|| {
                     if let ExprKind::Block { body } = &expr.kind && let Some(tail_ex) = body.expr {
                         let mut expr = &this.thir[tail_ex];
-                        while let ExprKind::Block {
-                            body: Block { expr: Some(nested_expr), .. },
-                        }
+                        while let ExprKind::Block { body: Block { expr: Some(nested_expr), .. } }
                         | ExprKind::Scope { value: nested_expr, .. } = expr.kind
                         {
                             expr = &this.thir[nested_expr];

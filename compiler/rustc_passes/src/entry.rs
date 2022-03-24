@@ -148,9 +148,13 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) -> Option<(De
     } else if let Some((def_id, _)) = visitor.attr_main_fn {
         Some((def_id.to_def_id(), EntryFnType::Main))
     } else {
-        if let Some(main_def) = tcx.resolutions(()).main_def && let Some(def_id) = main_def.opt_fn_def_id() {
+        if let Some(main_def) = tcx.resolutions(()).main_def
+            && let Some(def_id) = main_def.opt_fn_def_id()
+        {
             // non-local main imports are handled below
-            if let Some(def_id) = def_id.as_local() && matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_))) {
+            if let Some(def_id) = def_id.as_local()
+                && matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_)))
+            {
                 tcx.sess
                     .struct_span_err(
                         tcx.def_span(def_id),
@@ -221,7 +225,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
         err.note(&note);
     }
 
-    if let Some(main_def) = tcx.resolutions(()).main_def && main_def.opt_fn_def_id().is_none(){
+    if let Some(main_def) = tcx.resolutions(()).main_def && main_def.opt_fn_def_id().is_none() {
         // There is something at `crate::main`, but it is not a function definition.
         err.span_label(main_def.span, "non-function item at `crate::main` is found");
     }

@@ -635,8 +635,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // will still match the original object type, but it won't pollute our
                 // type variables in any form, so just do that!
                 let (QueryResponse { value: generalized_self_ty, .. }, _ignored_var_values) =
-                    self.fcx
-                        .instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
+                    self.fcx.instantiate_canonical_with_fresh_inference_vars(self.span, self_ty);
 
                 self.assemble_inherent_candidates_from_object(generalized_self_ty);
                 self.assemble_inherent_impl_candidates_for_type(p.def_id());

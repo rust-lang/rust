@@ -607,7 +607,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
-                    && ty.is_box() && ty.boxed_ty() == found
+                    && ty.is_box()
+                    && ty.boxed_ty() == found
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
                 {
                     err.span_suggestion(
@@ -2047,7 +2048,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // specify a character literal (issue #92479)
                         (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
                             if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
-                                && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
+                                && let Some(code) =
+                                    code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                                 && code.chars().count() == 1
                             {
                                 err.span_suggestion(

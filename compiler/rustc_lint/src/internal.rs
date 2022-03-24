@@ -77,7 +77,7 @@ impl LateLintPass<'_> for QueryStability {
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
             {
                 (segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id))
-            },
+            }
             _ => {
                 let &ty::FnDef(def_id, substs) =
                     cx.typeck_results()

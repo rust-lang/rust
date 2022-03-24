@@ -176,7 +176,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             }
                         }
                         hir::ExprKind::AssignOp(..)
-                            if let Some(a) = typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
+                            if let Some(a) =
+                                typeck_results.adjustments_mut().get_mut(lhs.hir_id) =>
                         {
                             a.pop();
                         }

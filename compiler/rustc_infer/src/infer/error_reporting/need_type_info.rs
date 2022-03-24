@@ -124,12 +124,13 @@ impl<'a, 'tcx> Visitor<'tcx> for FindHirNodeVisitor<'a, 'tcx> {
         }
         if let ExprKind::MethodCall(segment, exprs, _) = expr.kind
             && segment.ident.span == self.target_span
-            && Some(self.target) == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
-                typeck_results
-                    .borrow()
-                    .node_type_opt(exprs.first().unwrap().hir_id)
-                    .map(Into::into)
-            })
+            && Some(self.target)
+                == self.infcx.in_progress_typeck_results.and_then(|typeck_results| {
+                    typeck_results
+                        .borrow()
+                        .node_type_opt(exprs.first().unwrap().hir_id)
+                        .map(Into::into)
+                })
         {
             self.found_exact_method_call = Some(&expr);
             return;
@@ -731,17 +732,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 //    |               help: specify type like: `<Impl as Into<u32>>::into(foo_impl)`
                 //    |
                 //    = note: cannot satisfy `Impl: Into<_>`
-                if !impl_candidates.is_empty() && e.span.contains(span)
+                if !impl_candidates.is_empty()
+                    && e.span.contains(span)
                     && let Some(expr) = exprs.first()
                     && let ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind
                     && let [path_segment] = path.segments
                 {
                     let candidate_len = impl_candidates.len();
                     let suggestions = impl_candidates.iter().map(|candidate| {
-                        format!(
-                            "{}::{}({})",
-                            candidate, segment.ident, path_segment.ident
-                        )
+                        format!("{}::{}({})", candidate, segment.ident, path_segment.ident)
                     });
                     err.span_suggestions(
                         e.span,

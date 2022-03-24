@@ -910,9 +910,10 @@ pub trait PrettyPrinter<'tcx>:
 
                 for (assoc_item_def_id, term) in assoc_items {
                     // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
-                    if let Some(ty) = term.skip_binder().ty() &&
-                       let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = ty.kind() &&
-                       Some(*item_def_id) == self.tcx().lang_items().generator_return() {
+                    if let Some(ty) = term.skip_binder().ty()
+                        && let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = ty.kind()
+                        && Some(*item_def_id) == self.tcx().lang_items().generator_return()
+                    {
                         continue;
                     }
 
@@ -1202,14 +1203,12 @@ pub trait PrettyPrinter<'tcx>:
                     }
                 }
             }
-            ty::ConstKind::Infer(infer_ct) => {
-                match infer_ct {
-                    ty::InferConst::Var(ct_vid)
-                        if let Some(name) = self.const_infer_name(ct_vid) =>
-                            p!(write("{}", name)),
-                    _ => print_underscore!(),
+            ty::ConstKind::Infer(infer_ct) => match infer_ct {
+                ty::InferConst::Var(ct_vid) if let Some(name) = self.const_infer_name(ct_vid) => {
+                    p!(write("{}", name))
                 }
-            }
+                _ => print_underscore!(),
+            },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
             ty::ConstKind::Value(value) => {
                 return self.pretty_print_const_value(value, ct.ty(), print_ty);

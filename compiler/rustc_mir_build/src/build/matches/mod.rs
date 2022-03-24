@@ -1597,8 +1597,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         // Insert a Shallow borrow of any places that is switched on.
-        if let Some(fb) = fake_borrows && let Ok(match_place_resolved) =
-            match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
+        if let Some(fb) = fake_borrows
+            && let Ok(match_place_resolved) =
+                match_place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
         {
             let resolved_place = match_place_resolved.into_place(self.tcx, self.typeck_results);
             fb.insert(resolved_place);

@@ -224,20 +224,22 @@ impl<'tcx> OnUnimplementedDirective {
             options.iter().filter_map(|(k, v)| v.as_ref().map(|v| (*k, v.to_owned()))).collect();
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
-            if let Some(ref condition) = command.condition && !attr::eval_condition(
-                condition,
-                &tcx.sess.parse_sess,
-                Some(tcx.features()),
-                &mut |c| {
-                    c.ident().map_or(false, |ident| {
-                        let value = c.value_str().map(|s| {
-                            OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
-                        });
+            if let Some(ref condition) = command.condition
+                && !attr::eval_condition(
+                    condition,
+                    &tcx.sess.parse_sess,
+                    Some(tcx.features()),
+                    &mut |c| {
+                        c.ident().map_or(false, |ident| {
+                            let value = c.value_str().map(|s| {
+                                OnUnimplementedFormatString(s).format(tcx, trait_ref, &options_map)
+                            });
 
-                        options.contains(&(ident.name, value))
-                    })
-                },
-            ) {
+                            options.contains(&(ident.name, value))
+                        })
+                    },
+                )
+            {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;
             }

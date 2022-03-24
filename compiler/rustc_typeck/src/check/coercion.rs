@@ -1703,7 +1703,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             && let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty)
             && let ty::Dynamic(..) = ty.kind()
         {
-                    return true;
+            return true;
         }
         false
     }

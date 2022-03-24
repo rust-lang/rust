@@ -355,7 +355,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 diag.emit()
             });
         };
-        if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
+        if let Some(until) =
+            chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false))))
+            && until > 0
+        {
             // The chain has a non-zero prefix of irrefutable `let` statements.
 
             // Check if the let source is while, for there is no alternative place to put a prefix,
@@ -367,7 +370,10 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 lint_affix(prefix, "leading", "outside of the construct");
             }
         }
-        if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
+        if let Some(from) =
+            chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false))))
+            && from != (chain_refutabilities.len() - 1)
+        {
             // The chain has a non-empty suffix of irrefutable `let` statements
             let suffix = &chain_refutabilities[from + 1..];
             lint_affix(suffix, "trailing", "into the body");
@@ -551,32 +557,27 @@ fn check_for_bindings_named_same_as_variants(
             })
         {
             let variant_count = edef.variants().len();
-            cx.tcx.struct_span_lint_hir(
-                BINDINGS_WITH_VARIANT_NAME,
-                p.hir_id,
-                p.span,
-                |lint| {
-                    let ty_path = cx.tcx.def_path_str(edef.did());
-                    let mut err = lint.build(&format!(
-                        "pattern binding `{}` is named the same as one \
+            cx.tcx.struct_span_lint_hir(BINDINGS_WITH_VARIANT_NAME, p.hir_id, p.span, |lint| {
+                let ty_path = cx.tcx.def_path_str(edef.did());
+                let mut err = lint.build(&format!(
+                    "pattern binding `{}` is named the same as one \
                          of the variants of the type `{}`",
-                        ident, ty_path
-                    ));
-                    err.code(error_code!(E0170));
-                    // If this is an irrefutable pattern, and there's > 1 variant,
-                    // then we can't actually match on this. Applying the below
-                    // suggestion would produce code that breaks on `check_irrefutable`.
-                    if rf == Refutable || variant_count == 1 {
-                        err.span_suggestion(
-                            p.span,
-                            "to match on the variant, qualify the path",
-                            format!("{}::{}", ty_path, ident),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                    err.emit();
-                },
-            )
+                    ident, ty_path
+                ));
+                err.code(error_code!(E0170));
+                // If this is an irrefutable pattern, and there's > 1 variant,
+                // then we can't actually match on this. Applying the below
+                // suggestion would produce code that breaks on `check_irrefutable`.
+                if rf == Refutable || variant_count == 1 {
+                    err.span_suggestion(
+                        p.span,
+                        "to match on the variant, qualify the path",
+                        format!("{}::{}", ty_path, ident),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err.emit();
+            })
         }
     });
 }

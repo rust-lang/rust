@@ -2118,10 +2118,13 @@ impl<'a> Parser<'a> {
 
         let missing_then_block_binop_span = || {
             match cond.kind {
-                ExprKind::Binary(Spanned { span: binop_span, .. }, _, ref right)
-                    if let ExprKind::Block(..) = right.kind => Some(binop_span),
-                _ => None
+            ExprKind::Binary(Spanned { span: binop_span, .. }, _, ref right)
+                if let ExprKind::Block(..) = right.kind =>
+            {
+                Some(binop_span)
             }
+            _ => None,
+        }
         };
 
         // Verify that the parsed `if` condition makes sense as a condition. If it is a block, then

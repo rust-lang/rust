@@ -1954,23 +1954,17 @@ impl CheckAttrVisitor<'_> {
                 | sym::target_feature
         ) && attr.meta_item_list().map_or(false, |list| list.is_empty())
         {
-            format!(
-                "attribute `{}` with an empty list has no effect",
-                attr.name_or_empty()
-            )
+            format!("attribute `{}` with an empty list has no effect", attr.name_or_empty())
         } else if matches!(
-                attr.name_or_empty(),
-                sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
-            ) && let Some(meta) = attr.meta_item_list()
+            attr.name_or_empty(),
+            sym::allow | sym::warn | sym::deny | sym::forbid | sym::expect
+        ) && let Some(meta) = attr.meta_item_list()
             && meta.len() == 1
             && let Some(item) = meta[0].meta_item()
             && let MetaItemKind::NameValue(_) = &item.kind
             && item.path == sym::reason
         {
-            format!(
-                "attribute `{}` without any lints has no effect",
-                attr.name_or_empty()
-            )
+            format!("attribute `{}` without any lints has no effect", attr.name_or_empty())
         } else {
             return;
         };

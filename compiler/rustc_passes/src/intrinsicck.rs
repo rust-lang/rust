@@ -79,7 +79,9 @@ impl<'tcx> ExprVisitor<'tcx> {
             // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&self.tcx) {
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to)
+                && size_to == Pointer.size(&self.tcx)
+            {
                 struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
                     .note(&format!("source type: {from}"))
                     .note(&format!("target type: {to}"))
@@ -505,9 +507,7 @@ impl<'tcx> Visitor<'tcx> for ExprVisitor<'tcx> {
         match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
-                if let Res::Def(DefKind::Fn, did) = res
-                    && self.def_id_is_transmute(did)
-                {
+                if let Res::Def(DefKind::Fn, did) = res && self.def_id_is_transmute(did) {
                     let typ = self.typeck_results.node_type(expr.hir_id);
                     let sig = typ.fn_sig(self.tcx);
                     let from = sig.inputs().skip_binder()[0];

@@ -796,8 +796,7 @@ impl<'a> Parser<'a> {
                         .emit();
                         match self.parse_expr() {
                             Ok(_) => {
-                                *expr =
-                                    self.mk_expr_err(expr.span.to(self.prev_token.span));
+                                *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
                                 return Ok(());
                             }
                             Err(err) => {

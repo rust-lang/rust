@@ -1597,13 +1597,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Arc), "Arc::new"),
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
-                    if let Some(new_rcvr_t) = *rcvr_ty && let Ok(pick) = self.lookup_probe(
-                        span,
-                        item_name,
-                        new_rcvr_t,
-                        rcvr,
-                        crate::check::method::probe::ProbeScope::AllTraits,
-                    ) {
+                    if let Some(new_rcvr_t) = *rcvr_ty
+                        && let Ok(pick) = self.lookup_probe(
+                            span,
+                            item_name,
+                            new_rcvr_t,
+                            rcvr,
+                            crate::check::method::probe::ProbeScope::AllTraits,
+                        )
+                    {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
                         let did = Some(pick.item.container.id());
                         // We don't want to suggest a container type when the missing

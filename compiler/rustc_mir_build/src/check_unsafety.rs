@@ -421,9 +421,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() && adt_def.is_union() {
                     if let Some((assigned_ty, assignment_span)) = self.assignment_info {
                         // To avoid semver hazard, we only consider `Copy` and `ManuallyDrop` non-dropping.
-                        if !(assigned_ty
-                            .ty_adt_def()
-                            .map_or(false, |adt| adt.is_manually_drop())
+                        if !(assigned_ty.ty_adt_def().map_or(false, |adt| adt.is_manually_drop())
                             || assigned_ty
                                 .is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env))
                         {

@@ -609,29 +609,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "b\"", "\"").is_some()
                     {
-                                let pos = sp.lo() + BytePos(1);
-                                return Some((
-                                    sp.with_hi(pos),
-                                    "consider removing the leading `b`".to_string(),
-                                    String::new(),
-                                    Applicability::MachineApplicable,
-                                    true,
-                                ));
-                            }
-                        }
+                        let pos = sp.lo() + BytePos(1);
+                        return Some((
+                            sp.with_hi(pos),
+                            "consider removing the leading `b`".to_string(),
+                            String::new(),
+                            Applicability::MachineApplicable,
+                            true,
+                        ));
+                    }
+                }
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
                         && let Ok(src) = sm.span_to_snippet(sp)
                         && replace_prefix(&src, "\"", "b\"").is_some()
                     {
-                                return Some((
-                                    sp.shrink_to_lo(),
-                                    "consider adding a leading `b`".to_string(),
-                                    "b".to_string(),
-                                    Applicability::MachineApplicable,
-                                    true,
-                                ));
-
+                        return Some((
+                            sp.shrink_to_lo(),
+                            "consider adding a leading `b`".to_string(),
+                            "b".to_string(),
+                            Applicability::MachineApplicable,
+                            true,
+                        ));
                     }
                 }
                 _ => {}

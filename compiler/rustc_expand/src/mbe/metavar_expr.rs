@@ -115,8 +115,7 @@ fn parse_depth<'sess>(
         && let Ok(n_usize) = usize::try_from(n_u128)
     {
         Ok(n_usize)
-    }
-    else {
+    } else {
         let msg = "only unsuffixes integer literals are supported in meta-variable expressions";
         Err(sess.span_diagnostic.struct_span_err(span, msg))
     }

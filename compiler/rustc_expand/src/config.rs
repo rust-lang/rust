@@ -290,7 +290,8 @@ impl<'a> StripUnconfigured<'a> {
         let trees: Vec<_> = stream
             .0
             .iter()
-            .flat_map(|(tree, spacing)| match tree.clone() {
+            .flat_map(|(tree, spacing)| {
+                match tree.clone() {
                 AttrAnnotatedTokenTree::Attributes(mut data) => {
                     let mut attrs: Vec<_> = std::mem::take(&mut data.attrs).into();
                     attrs.flat_map_in_place(|attr| self.process_cfg_attr(attr));
@@ -310,15 +311,15 @@ impl<'a> StripUnconfigured<'a> {
                     Some((AttrAnnotatedTokenTree::Delimited(sp, delim, inner), *spacing))
                         .into_iter()
                 }
-                AttrAnnotatedTokenTree::Token(ref token) if let TokenKind::Interpolated(ref nt) = token.kind => {
-                    panic!(
-                        "Nonterminal should have been flattened at {:?}: {:?}",
-                        token.span, nt
-                    );
+                AttrAnnotatedTokenTree::Token(ref token)
+                    if let TokenKind::Interpolated(ref nt) = token.kind =>
+                {
+                    panic!("Nonterminal should have been flattened at {:?}: {:?}", token.span, nt);
                 }
                 AttrAnnotatedTokenTree::Token(token) => {
                     Some((AttrAnnotatedTokenTree::Token(token), *spacing)).into_iter()
                 }
+            }
             })
             .collect();
         AttrAnnotatedTokenStream::new(trees)

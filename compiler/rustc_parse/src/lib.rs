@@ -269,10 +269,7 @@ pub fn nt_to_tokenstream(
         Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
         Nonterminal::NtStmt(ref stmt) if let ast::StmtKind::Empty = stmt.kind => {
             let tokens = AttrAnnotatedTokenStream::new(vec![(
-                tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
-                    TokenKind::Semi,
-                    stmt.span,
-                )),
+                tokenstream::AttrAnnotatedTokenTree::Token(Token::new(TokenKind::Semi, stmt.span)),
                 Spacing::Alone,
             )]);
             prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))

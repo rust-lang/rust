@@ -286,8 +286,8 @@ pub(super) fn check_fn<'a, 'tcx>(
                         && let ItemKind::Fn(_, ref generics, _) = item.kind
                         && !generics.params.is_empty()
                     {
-                                sess.span_err(span, "should have no type parameters");
-                            }
+                        sess.span_err(span, "should have no type parameters");
+                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -322,11 +322,11 @@ pub(super) fn check_fn<'a, 'tcx>(
                         && let ItemKind::Fn(_, ref generics, _) = item.kind
                         && !generics.params.is_empty()
                     {
-                                sess.span_err(
-                                    span,
+                        sess.span_err(
+                            span,
                             "`#[alloc_error_handler]` function should have no type parameters",
-                                );
-                            }
+                        );
+                    }
                 } else {
                     let span = sess.source_map().guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
@@ -1148,13 +1148,13 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                     && let Some(repr_pack) = repr.pack
                     && pack as u64 != repr_pack.bytes()
                 {
-                            struct_span_err!(
-                                tcx.sess,
-                                sp,
-                                E0634,
-                                "type has conflicting packed representation hints"
-                            )
-                            .emit();
+                    struct_span_err!(
+                        tcx.sess,
+                        sp,
+                        E0634,
+                        "type has conflicting packed representation hints"
+                    )
+                    .emit();
                 }
             }
         }
@@ -1400,7 +1400,7 @@ fn display_discriminant_value<'tcx>(
             && let rustc_ast::LitKind::Int(lit_value, _int_kind) = &lit.node
             && evaluated != *lit_value
         {
-                    return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
+            return format!("`{}` (overflowed from `{}`)", evaluated, lit_value);
         }
     }
     format!("`{}`", evaluated)

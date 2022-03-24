@@ -1003,8 +1003,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_expr(&mut self, expr: &'a Expr) {
-        self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
-            match &expr.kind {
+        self.with_let_management(
+            Some(ForbiddenLetReason::GenericForbidden),
+            |this, forbidden_let_reason| {
+                match &expr.kind {
                 ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
                     let forbidden_let_reason = Some(ForbiddenLetReason::ForbiddenWithOr(*span));
                     this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(lhs));
@@ -1018,23 +1020,25 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 ExprKind::Let(..) if let Some(elem) = forbidden_let_reason => {
                     this.ban_let_expr(expr, elem);
-                },
+                }
                 ExprKind::Match(scrutinee, arms) => {
                     this.visit_expr(scrutinee);
                     for arm in arms {
                         this.visit_expr(&arm.body);
                         this.visit_pat(&arm.pat);
                         walk_list!(this, visit_attribute, &arm.attrs);
-                        if let Some(guard) = &arm.guard && let ExprKind::Let(_, guard_expr, _) = &guard.kind {
-                            this.with_let_management(None, |this, _| {
-                                this.visit_expr(guard_expr)
-                            });
+                        if let Some(guard) = &arm.guard
+                            && let ExprKind::Let(_, guard_expr, _) = &guard.kind
+                        {
+                            this.with_let_management(None, |this, _| this.visit_expr(guard_expr));
                             return;
                         }
                     }
                 }
                 ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
-                    this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
+                    this.with_let_management(forbidden_let_reason, |this, _| {
+                        visit::walk_expr(this, expr)
+                    });
                     return;
                 }
                 ExprKind::While(cond, then, opt_label) => {
@@ -1045,7 +1049,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 _ => visit::walk_expr(this, expr),
             }
-        });
+            },
+        );
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {

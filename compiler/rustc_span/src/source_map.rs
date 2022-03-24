@@ -1031,11 +1031,11 @@ impl SourceMap {
     pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(|| {
             match source_file.name {
-                FileName::Real(ref name) if let Some(local_path) = name.local_path() => {
-                    self.file_loader.read_file(local_path).ok()
-                }
-                _ => None,
+            FileName::Real(ref name) if let Some(local_path) = name.local_path() => {
+                self.file_loader.read_file(local_path).ok()
             }
+            _ => None,
+        }
         })
     }
 

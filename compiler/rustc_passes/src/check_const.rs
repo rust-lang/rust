@@ -80,57 +80,56 @@ impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for CheckConstTraitVisitor<
     /// of the trait being implemented; as those provided functions can be non-const.
     fn visit_item<'hir>(&mut self, item: &'hir hir::Item<'hir>) {
         let _: Option<_> = try {
-            if let hir::ItemKind::Impl(ref imp) = item.kind && let hir::Constness::Const = imp.constness {
-                    let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
-                    let ancestors = self
-                        .tcx
-                        .trait_def(trait_def_id)
-                        .ancestors(self.tcx, item.def_id.to_def_id())
-                        .ok()?;
-                    let mut to_implement = Vec::new();
+            if let hir::ItemKind::Impl(ref imp) = item.kind
+                && let hir::Constness::Const = imp.constness
+            {
+                let trait_def_id = imp.of_trait.as_ref()?.trait_def_id()?;
+                let ancestors = self
+                    .tcx
+                    .trait_def(trait_def_id)
+                    .ancestors(self.tcx, item.def_id.to_def_id())
+                    .ok()?;
+                let mut to_implement = Vec::new();
 
-                    for trait_item in self.tcx.associated_items(trait_def_id).in_definition_order()
+                for trait_item in self.tcx.associated_items(trait_def_id).in_definition_order() {
+                    if let ty::AssocItem {
+                        kind: ty::AssocKind::Fn,
+                        defaultness,
+                        def_id: trait_item_id,
+                        ..
+                    } = *trait_item
                     {
-                        if let ty::AssocItem {
-                            kind: ty::AssocKind::Fn,
-                            defaultness,
-                            def_id: trait_item_id,
-                            ..
-                        } = *trait_item
+                        // we can ignore functions that do not have default bodies:
+                        // if those are unimplemented it will be catched by typeck.
+                        if !defaultness.has_value()
+                            || self.tcx.has_attr(trait_item_id, sym::default_method_body_is_const)
                         {
-                            // we can ignore functions that do not have default bodies:
-                            // if those are unimplemented it will be catched by typeck.
-                            if !defaultness.has_value()
-                                || self
-                                    .tcx
-                                    .has_attr(trait_item_id, sym::default_method_body_is_const)
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            let is_implemented = ancestors
-                                .leaf_def(self.tcx, trait_item_id)
-                                .map(|node_item| !node_item.defining_node.is_from_trait())
-                                .unwrap_or(false);
+                        let is_implemented = ancestors
+                            .leaf_def(self.tcx, trait_item_id)
+                            .map(|node_item| !node_item.defining_node.is_from_trait())
+                            .unwrap_or(false);
 
-                            if !is_implemented {
-                                to_implement.push(self.tcx.item_name(trait_item_id).to_string());
-                            }
+                        if !is_implemented {
+                            to_implement.push(self.tcx.item_name(trait_item_id).to_string());
                         }
                     }
+                }
 
-                    // all nonconst trait functions (not marked with #[default_method_body_is_const])
-                    // must be implemented
-                    if !to_implement.is_empty() {
-                        self.tcx
-                            .sess
-                            .struct_span_err(
-                                item.span,
-                                "const trait implementations may not use non-const default functions",
-                            )
-                            .note(&format!("`{}` not implemented", to_implement.join("`, `")))
-                            .emit();
-                    }
+                // all nonconst trait functions (not marked with #[default_method_body_is_const])
+                // must be implemented
+                if !to_implement.is_empty() {
+                    self.tcx
+                        .sess
+                        .struct_span_err(
+                            item.span,
+                            "const trait implementations may not use non-const default functions",
+                        )
+                        .note(&format!("`{}` not implemented", to_implement.join("`, `")))
+                        .emit();
+                }
             }
         };
     }

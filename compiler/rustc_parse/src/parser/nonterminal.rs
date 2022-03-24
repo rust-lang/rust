@@ -124,9 +124,12 @@ impl<'a> Parser<'a> {
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
-                    NonterminalKind::PatWithOr { .. } => {
-                        this.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No, CommaRecoveryMode::EitherTupleOrPipe)
-                    }
+                    NonterminalKind::PatWithOr { .. } => this.parse_pat_allow_top_alt(
+                        None,
+                        RecoverComma::No,
+                        RecoverColon::No,
+                        CommaRecoveryMode::EitherTupleOrPipe,
+                    ),
                     _ => unreachable!(),
                 })?)
             }
@@ -139,13 +142,11 @@ impl<'a> Parser<'a> {
                 )
             }
 
-            NonterminalKind::Ty => {
-                token::NtTy(self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?)
-            }
+            NonterminalKind::Ty => token::NtTy(
+                self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?,
+            ),
             // this could be handled like a token, since it is one
-            NonterminalKind::Ident
-                if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
-            {
+            NonterminalKind::Ident if let Some((ident, is_raw)) = get_macro_ident(&self.token) => {
                 self.bump();
                 token::NtIdent(ident, is_raw)
             }

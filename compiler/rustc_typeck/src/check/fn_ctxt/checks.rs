@@ -1096,18 +1096,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 result_code
             }
-            let self_: ty::subst::GenericArg<'_> = match &*unpeel_to_top(error.obligation.cause.clone_code()) {
-                ObligationCauseCode::BuiltinDerivedObligation(code) |
-                ObligationCauseCode::ImplDerivedObligation(code) |
-                ObligationCauseCode::DerivedObligation(code) => {
-                    code.parent_trait_pred.self_ty().skip_binder().into()
-                }
-                _ if let ty::PredicateKind::Trait(predicate) =
-                    error.obligation.predicate.kind().skip_binder() => {
+            let self_: ty::subst::GenericArg<'_> =
+                match &*unpeel_to_top(error.obligation.cause.clone_code()) {
+                    ObligationCauseCode::BuiltinDerivedObligation(code)
+                    | ObligationCauseCode::ImplDerivedObligation(code)
+                    | ObligationCauseCode::DerivedObligation(code) => {
+                        code.parent_trait_pred.self_ty().skip_binder().into()
+                    }
+                    _ if let ty::PredicateKind::Trait(predicate) =
+                        error.obligation.predicate.kind().skip_binder() =>
+                    {
                         predicate.self_ty().into()
                     }
-                _ =>  continue,
-            };
+                    _ => continue,
+                };
             let self_ = self.resolve_vars_if_possible(self_);
 
             // Collect the argument position for all arguments that could have caused this
