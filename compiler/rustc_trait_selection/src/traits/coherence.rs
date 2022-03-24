@@ -7,7 +7,7 @@
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{CombinedSnapshot, InferOk, RegionckMode};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::util::impl_trait_ref_and_oblig;
+use crate::traits::util::{impl_trait_ref_and_oblig, inherent_impl_and_oblig};
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
@@ -338,7 +338,13 @@ fn impl_subject_and_obligations<'cx, 'tcx>(
 
         (ImplSubject::Trait(impl2_trait_ref), Box::new(obligations))
     } else {
-        (infcx.tcx.impl_subject(impl2_def_id), Box::new(iter::empty()))
+        // Attempt to prove that impl2 applies, given all of the above.
+        let selcx = &mut SelectionContext::new(&infcx);
+        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+        let (impl2_ty, obligations) =
+            inherent_impl_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+
+        (ImplSubject::Inherent(impl2_ty), Box::new(obligations))
     }
 }
 

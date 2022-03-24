@@ -218,6 +218,34 @@ pub fn impl_trait_ref_and_oblig<'a, 'tcx>(
     (impl_trait_ref, impl_obligations)
 }
 
+/// Instantiate all bound parameters of the impl with the given substs,
+/// returning the resulting trait ref and all obligations that arise.
+/// The obligations are closed under normalization.
+pub fn inherent_impl_and_oblig<'a, 'tcx>(
+    selcx: &mut SelectionContext<'a, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    impl_def_id: DefId,
+    impl_substs: SubstsRef<'tcx>,
+) -> (Ty<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
+    let ty = selcx.tcx().type_of(impl_def_id);
+    let ty = ty.subst(selcx.tcx(), impl_substs);
+    let Normalized { value: ty, obligations: normalization_obligations1 } =
+        super::normalize(selcx, param_env, ObligationCause::dummy(), ty);
+
+    let predicates = selcx.tcx().predicates_of(impl_def_id);
+    let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
+    let Normalized { value: predicates, obligations: normalization_obligations2 } =
+        super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
+    let impl_obligations =
+        predicates_for_generics(ObligationCause::dummy(), 0, param_env, predicates);
+
+    let impl_obligations = impl_obligations
+        .chain(normalization_obligations1.into_iter())
+        .chain(normalization_obligations2.into_iter());
+
+    (ty, impl_obligations)
+}
+
 pub fn predicates_for_generics<'tcx>(
     cause: ObligationCause<'tcx>,
     recursion_depth: usize,
