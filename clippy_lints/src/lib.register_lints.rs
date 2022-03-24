@@ -97,6 +97,7 @@ store.register_lints(&[
     copies::IF_SAME_THEN_ELSE,
     copies::SAME_FUNCTIONS_IN_IF_CONDITION,
     copy_iterator::COPY_ITERATOR,
+    crate_in_macro_def::CRATE_IN_MACRO_DEF,
     create_dir::CREATE_DIR,
     dbg_macro::DBG_MACRO,
     default::DEFAULT_TRAIT_ACCESS,

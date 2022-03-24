@@ -190,6 +190,7 @@ mod collapsible_match;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
+mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
 mod default;
@@ -867,6 +868,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             ignore_publish: cargo_ignore_publish,
         })
     });
+    store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
