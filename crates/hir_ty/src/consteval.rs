@@ -8,13 +8,12 @@ use std::{
 
 use chalk_ir::{BoundVar, DebruijnIndex, GenericArgData, IntTy, Scalar};
 use hir_def::{
-    expr::{ArithOp, BinaryOp, Expr, ExprId, Literal, Pat},
+    expr::{ArithOp, BinaryOp, Expr, ExprId, Literal, Pat, PatId},
     path::ModPath,
     resolver::{resolver_for_expr, ResolveValueResult, Resolver, ValueNs},
     type_ref::ConstScalar,
     ConstId, DefWithBodyId,
 };
-use hir_expand::name::Name;
 use la_arena::{Arena, Idx};
 use stdx::never;
 
@@ -57,7 +56,7 @@ pub struct ConstEvalCtx<'a> {
     pub owner: DefWithBodyId,
     pub exprs: &'a Arena<Expr>,
     pub pats: &'a Arena<Pat>,
-    pub local_data: HashMap<Name, ComputedExpr>,
+    pub local_data: HashMap<PatId, ComputedExpr>,
     infer: &'a InferenceResult,
 }
 
@@ -266,13 +265,13 @@ pub fn eval_const(
             }
         }
         Expr::Block { statements, tail, .. } => {
-            let mut prev_values = HashMap::<Name, Option<ComputedExpr>>::default();
+            let mut prev_values = HashMap::<PatId, Option<ComputedExpr>>::default();
             for statement in &**statements {
                 match *statement {
-                    hir_def::expr::Statement::Let { pat, initializer, .. } => {
-                        let pat = &ctx.pats[pat];
-                        let name = match pat {
-                            Pat::Bind { name, subpat, .. } if subpat.is_none() => name.clone(),
+                    hir_def::expr::Statement::Let { pat: pat_id, initializer, .. } => {
+                        let pat = &ctx.pats[pat_id];
+                        match pat {
+                            Pat::Bind { subpat, .. } if subpat.is_none() => (),
                             _ => {
                                 return Err(ConstEvalError::NotSupported("complex patterns in let"))
                             }
@@ -281,11 +280,11 @@ pub fn eval_const(
                             Some(x) => eval_const(x, ctx)?,
                             None => continue,
                         };
-                        if !prev_values.contains_key(&name) {
-                            let prev = ctx.local_data.insert(name.clone(), value);
-                            prev_values.insert(name, prev);
+                        if !prev_values.contains_key(&pat_id) {
+                            let prev = ctx.local_data.insert(pat_id, value);
+                            prev_values.insert(pat_id, prev);
                         } else {
-                            ctx.local_data.insert(name, value);
+                            ctx.local_data.insert(pat_id, value);
                         }
                     }
                     hir_def::expr::Statement::Expr { .. } => {
@@ -330,12 +329,10 @@ pub fn eval_const(
                 }
             };
             match pr {
-                ValueNs::LocalBinding(_) => {
-                    let name =
-                        p.mod_path().as_ident().ok_or(ConstEvalError::NotSupported("big paths"))?;
+                ValueNs::LocalBinding(pat_id) => {
                     let r = ctx
                         .local_data
-                        .get(name)
+                        .get(&pat_id)
                         .ok_or(ConstEvalError::NotSupported("Unexpected missing local"))?;
                     Ok(r.clone())
                 }
