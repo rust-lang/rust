@@ -104,6 +104,7 @@
 
 use super::{Custom, ErrorData, ErrorKind, SimpleMessage};
 use alloc::boxed::Box;
+use core::marker::PhantomData;
 use core::mem::{align_of, size_of};
 use core::ptr::NonNull;
 
@@ -115,7 +116,7 @@ const TAG_OS: usize = 0b10;
 const TAG_SIMPLE: usize = 0b11;
 
 #[repr(transparent)]
-pub(super) struct Repr(NonNull<()>);
+pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
 
 // All the types `Repr` stores internally are Send + Sync, and so is it.
 unsafe impl Send for Repr {}
@@ -145,7 +146,7 @@ impl Repr {
         // box, and `TAG_CUSTOM` just... isn't zero -- it's `0b01`). Therefore,
         // `TAG_CUSTOM + p` isn't zero and so `tagged` can't be, and the
         // `new_unchecked` is safe.
-        let res = Self(unsafe { NonNull::new_unchecked(tagged) });
+        let res = Self(unsafe { NonNull::new_unchecked(tagged) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
@@ -156,7 +157,7 @@ impl Repr {
     pub(super) fn new_os(code: i32) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -170,7 +171,7 @@ impl Repr {
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
-        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) });
+        let res = Self(unsafe { NonNull::new_unchecked(utagged as *mut ()) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
         // only run in libstd's tests, unless the user uses -Zbuild-std)
         debug_assert!(
@@ -184,7 +185,7 @@ impl Repr {
     #[inline]
     pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
         // Safety: References are never null.
-        Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) })
+        Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) }, PhantomData)
     }
 
     #[inline]
