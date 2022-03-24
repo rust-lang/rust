@@ -100,6 +100,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
         &self,
         trait_id: chalk_ir::TraitId<RustInterner<'tcx>>,
     ) -> Arc<chalk_solve::rust_ir::TraitDatum<RustInterner<'tcx>>> {
+        use chalk_solve::rust_ir::WellKnownTrait::*;
+
         let def_id = trait_id.0;
         let trait_def = self.interner.tcx.trait_def(def_id);
 
@@ -119,25 +121,27 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
 
         let lang_items = self.interner.tcx.lang_items();
         let well_known = if lang_items.sized_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Sized)
+            Some(Sized)
         } else if lang_items.copy_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Copy)
+            Some(Copy)
         } else if lang_items.clone_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Clone)
+            Some(Clone)
         } else if lang_items.drop_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Drop)
+            Some(Drop)
         } else if lang_items.fn_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Fn)
+            Some(Fn)
         } else if lang_items.fn_once_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::FnOnce)
+            Some(FnOnce)
         } else if lang_items.fn_mut_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::FnMut)
+            Some(FnMut)
         } else if lang_items.unsize_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Unsize)
+            Some(Unsize)
         } else if lang_items.unpin_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::Unpin)
+            Some(Unpin)
         } else if lang_items.coerce_unsized_trait() == Some(def_id) {
-            Some(chalk_solve::rust_ir::WellKnownTrait::CoerceUnsized)
+            Some(CoerceUnsized)
+        } else if lang_items.dispatch_from_dyn_trait() == Some(def_id) {
+            Some(DispatchFromDyn)
         } else {
             None
         };
@@ -230,6 +234,28 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                 },
             }),
         })
+    }
+
+    fn adt_size_align(
+        &self,
+        adt_id: chalk_ir::AdtId<RustInterner<'tcx>>,
+    ) -> Arc<chalk_solve::rust_ir::AdtSizeAlign> {
+        let tcx = self.interner.tcx;
+        let did = adt_id.0.did();
+
+        // Grab the ADT and the param we might need to calculate its layout
+        let param_env = tcx.param_env(did);
+        let adt_ty = tcx.type_of(did);
+
+        // The ADT is a 1-zst if it's a ZST and its alignment is 1.
+        // Mark the ADT as _not_ a 1-zst if there was a layout error.
+        let one_zst = if let Ok(layout) = tcx.layout_of(param_env.and(adt_ty)) {
+            layout.is_zst() && layout.align.abi.bytes() == 1
+        } else {
+            false
+        };
+
+        Arc::new(chalk_solve::rust_ir::AdtSizeAlign::from_one_zst(one_zst))
     }
 
     fn fn_def_datum(
@@ -540,6 +566,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Unpin => lang_items.unpin_trait(),
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
+            DispatchFromDyn => lang_items.dispatch_from_dyn_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
