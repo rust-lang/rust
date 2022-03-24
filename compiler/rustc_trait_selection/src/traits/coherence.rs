@@ -305,22 +305,15 @@ fn negative_impl<'cx, 'tcx>(
     tcx.infer_ctxt().enter(|infcx| {
         // create a parameter environment corresponding to a (placeholder) instantiation of impl1
         let impl_env = tcx.param_env(impl1_def_id);
-        let subject1 = match tcx.impl_subject(impl1_def_id) {
-            ImplSubject::Trait(impl1_trait_ref) => {
-                match traits::fully_normalize(
-                    &infcx,
-                    FulfillmentContext::new(),
-                    ObligationCause::dummy(),
-                    impl_env,
-                    impl1_trait_ref,
-                ) {
-                    Ok(impl1_trait_ref) => ImplSubject::Trait(impl1_trait_ref),
-                    Err(err) => {
-                        bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
-                    }
-                }
-            }
-            subject @ ImplSubject::Inherent(_) => subject,
+        let subject1 = match traits::fully_normalize(
+            &infcx,
+            FulfillmentContext::new(),
+            ObligationCause::dummy(),
+            impl_env,
+            tcx.impl_subject(impl1_def_id),
+        ) {
+            Ok(s) => s,
+            Err(err) => bug!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
         };
 
         let (subject2, obligations) =
