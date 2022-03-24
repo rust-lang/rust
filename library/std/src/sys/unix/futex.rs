@@ -9,13 +9,13 @@ use crate::time::Duration;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -> bool {
-    use super::time::Instant;
+    use super::time::Timespec;
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
 
     // Calculate the timeout as an absolute timespec.
     let timespec =
-        timeout.and_then(|d| Some(Instant::now().checked_add_duration(&d)?.as_timespec()));
+        timeout.and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?));
 
     loop {
         // No need to wait if the value already changed.
@@ -31,7 +31,7 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -
                 futex as *const AtomicI32,
                 libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
                 expected,
-                timespec.as_ref().map_or(null(), |d| d as *const libc::timespec),
+                timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
                 null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
                 !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
             )
