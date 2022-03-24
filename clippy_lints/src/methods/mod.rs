@@ -60,6 +60,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_iter_cloned;
+mod unnecessary_join;
 mod unnecessary_lazy_eval;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
@@ -2049,6 +2050,35 @@ declare_clippy_lint! {
     "unnecessary calls to `to_owned`-like functions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for use of `.collect::<Vec<String>>().join("")` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// `.collect::<String>()` is more concise and usually more performant
+    ///
+    /// ### Example
+    /// ```rust
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<Vec<String>>().join("");
+    /// println!("{}", output);
+    /// ```
+    /// The correct use would be:
+    /// ```rust
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<String>();
+    /// println!("{}", output);
+    /// ```
+    /// ### Known problems
+    /// While `.collect::<String>()` is more performant in most cases, there are cases where
+    /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
+    /// will prevent loop unrolling and will result in a negative performance impact.
+    #[clippy::version = "1.61.0"]
+    pub UNNECESSARY_JOIN,
+    pedantic,
+    "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2134,6 +2164,7 @@ impl_lint_pass!(Methods => [
     MANUAL_SPLIT_ONCE,
     NEEDLESS_SPLITN,
     UNNECESSARY_TO_OWNED,
+    UNNECESSARY_JOIN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2429,6 +2460,11 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+            ("join", [join_arg]) => {
+                if let Some(("collect", _, span)) = method_call(recv) {
+                    unnecessary_join::check(cx, expr, recv, join_arg, span);
+                }
+            },
             ("last", args @ []) | ("skip", args @ [_]) => {
                 if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
                     if let ("cloned", []) = (name2, args2) {

@@ -334,6 +334,7 @@ store.register_lints(&[
     methods::UNNECESSARY_FILTER_MAP,
     methods::UNNECESSARY_FIND_MAP,
     methods::UNNECESSARY_FOLD,
+    methods::UNNECESSARY_JOIN,
     methods::UNNECESSARY_LAZY_EVALUATIONS,
     methods::UNNECESSARY_TO_OWNED,
     methods::UNWRAP_OR_ELSE_DEFAULT,
