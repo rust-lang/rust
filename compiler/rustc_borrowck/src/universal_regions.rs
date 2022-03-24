@@ -61,6 +61,9 @@ pub struct UniversalRegions<'tcx> {
     /// to have around in a few limited cases.
     pub root_empty: RegionVid,
 
+    /// Another special region variable created for `'empty(U::MAX)`.
+    pub top_empty: RegionVid,
+
     /// The "defining" type for this function, with all universal
     /// regions instantiated. For a closure or generator, this is the
     /// closure type, but for a top-level function it's the `FnDef`.
@@ -325,6 +328,8 @@ impl<'tcx> UniversalRegions<'tcx> {
     pub fn to_region_vid(&self, r: ty::Region<'tcx>) -> RegionVid {
         if let ty::ReEmpty(ty::UniverseIndex::ROOT) = *r {
             self.root_empty
+        } else if let ty::ReEmpty(ty::UniverseIndex::MAX) = *r {
+            self.top_empty
         } else {
             self.indices.to_region_vid(r)
         }
@@ -503,11 +508,20 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             .next_nll_region_var(NllRegionVariableOrigin::RootEmptyRegion)
             .to_region_vid();
 
+        let top_empty = self
+            .infcx
+            .next_nll_region_var_in_universe(
+                NllRegionVariableOrigin::TopEmptyRegion,
+                ty::UniverseIndex::MAX,
+            )
+            .to_region_vid();
+
         UniversalRegions {
             indices,
             fr_static,
             fr_fn_body,
             root_empty,
+            top_empty,
             first_extern_index,
             first_local_index,
             num_universals,

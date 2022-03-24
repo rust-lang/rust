@@ -490,6 +490,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::TopEmptyRegion
                 | NllRegionVariableOrigin::Existential { .. } => {
                     // For existential, regions, nothing to do.
                 }
@@ -1346,6 +1347,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::TopEmptyRegion
                 | NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
@@ -1449,6 +1451,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
 
                 NllRegionVariableOrigin::RootEmptyRegion
+                | NllRegionVariableOrigin::TopEmptyRegion
                 | NllRegionVariableOrigin::Existential { .. } => {
                     // nothing to check here
                 }
@@ -1722,6 +1725,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 );
                 universe1.cannot_name(placeholder.universe)
             }
+
+            NllRegionVariableOrigin::TopEmptyRegion => true,
 
             NllRegionVariableOrigin::RootEmptyRegion
             | NllRegionVariableOrigin::FreeRegion
@@ -2087,6 +2092,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             NllRegionVariableOrigin::FreeRegion
             | NllRegionVariableOrigin::Existential { from_forall: false } => true,
             NllRegionVariableOrigin::RootEmptyRegion
+            | NllRegionVariableOrigin::TopEmptyRegion
             | NllRegionVariableOrigin::Placeholder(_)
             | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };

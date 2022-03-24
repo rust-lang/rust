@@ -184,6 +184,7 @@ impl CanonicalizeMode for CanonicalizeQueryResponse {
             | ty::ReErased
             | ty::ReStatic
             | ty::ReEmpty(ty::UniverseIndex::ROOT)
+            | ty::ReEmpty(ty::UniverseIndex::MAX)
             | ty::ReEarlyBound(..) => r,
 
             ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(

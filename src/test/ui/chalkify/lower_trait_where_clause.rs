@@ -8,7 +8,8 @@ where
     T: Borrow<U> + ?Sized,
     U: ?Sized + 'b,
     'a: 'b,
-    Box<T>:, // NOTE(#53696) this checks an empty list of bounds.
+//    Box<T>:, // NOTE(#53696) this checks an empty list of bounds.
+// FIXME(compiler-errors): Add the above bound back once chalk knows `ReFree(U::MAX)`
 {
 }
 

@@ -513,6 +513,9 @@ pub enum NllRegionVariableOrigin {
     /// The variable we create to represent `'empty(U0)`.
     RootEmptyRegion,
 
+    /// The variable we create to represent `'empty(U::MAX)`
+    TopEmptyRegion,
+
     Existential {
         /// If this is true, then this variable was created to represent a lifetime
         /// bound in a `for` binder. For example, it might have been created to
