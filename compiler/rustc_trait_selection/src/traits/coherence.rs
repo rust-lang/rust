@@ -17,7 +17,6 @@ use crate::traits::{
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::CRATE_HIR_ID;
-use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{util, TraitEngine};
 use rustc_middle::traits::specialization_graph::OverlapMode;
@@ -305,72 +304,72 @@ fn negative_impl<'cx, 'tcx>(
     // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
         // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-        let impl1_env = tcx.param_env(impl1_def_id);
-
-        match tcx.impl_subject(impl1_def_id) {
+        let impl_env = tcx.param_env(impl1_def_id);
+        let subject1 = match tcx.impl_subject(impl1_def_id) {
             ImplSubject::Trait(impl1_trait_ref) => {
-                // Normalize the trait reference. The WF rules ought to ensure
-                // that this always succeeds.
-                let impl1_trait_ref = match traits::fully_normalize(
+                match traits::fully_normalize(
                     &infcx,
                     FulfillmentContext::new(),
                     ObligationCause::dummy(),
-                    impl1_env,
+                    impl_env,
                     impl1_trait_ref,
                 ) {
-                    Ok(impl1_trait_ref) => impl1_trait_ref,
+                    Ok(impl1_trait_ref) => ImplSubject::Trait(impl1_trait_ref),
                     Err(err) => {
                         bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
                     }
-                };
-
-                // Attempt to prove that impl2 applies, given all of the above.
-                let selcx = &mut SelectionContext::new(&infcx);
-                let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-                let (impl2_trait_ref, obligations) =
-                    impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
-
-                !equate(
-                    &infcx,
-                    impl1_env,
-                    impl1_def_id,
-                    impl1_trait_ref,
-                    impl2_trait_ref,
-                    obligations,
-                )
+                }
             }
-            ImplSubject::Inherent(ty1) => {
-                let ty2 = tcx.type_of(impl2_def_id);
-                !equate(&infcx, impl1_env, impl1_def_id, ty1, ty2, iter::empty())
-            }
-        }
+            subject @ ImplSubject::Inherent(_) => subject,
+        };
+
+        let (subject2, obligations) =
+            impl_subject_and_obligations(&infcx, impl_env, subject1, impl2_def_id);
+
+        !equate(&infcx, impl_env, impl1_def_id, subject1, subject2, obligations)
     })
 }
 
-fn equate<'cx, 'tcx, T: Debug + ToTrace<'tcx>>(
+fn impl_subject_and_obligations<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    impl1_env: ty::ParamEnv<'tcx>,
+    impl_env: ty::ParamEnv<'tcx>,
+    subject1: ImplSubject<'tcx>,
+    impl2_def_id: DefId,
+) -> (ImplSubject<'tcx>, Box<dyn Iterator<Item = PredicateObligation<'tcx>> + 'tcx>) {
+    if let ImplSubject::Trait(_) = subject1 {
+        // Attempt to prove that impl2 applies, given all of the above.
+        let selcx = &mut SelectionContext::new(&infcx);
+        let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
+        let (impl2_trait_ref, obligations) =
+            impl_trait_ref_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
+
+        (ImplSubject::Trait(impl2_trait_ref), Box::new(obligations))
+    } else {
+        (infcx.tcx.impl_subject(impl2_def_id), Box::new(iter::empty()))
+    }
+}
+
+fn equate<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
+    impl_env: ty::ParamEnv<'tcx>,
     impl1_def_id: DefId,
-    impl1: T,
-    impl2: T,
+    subject1: ImplSubject<'tcx>,
+    subject2: ImplSubject<'tcx>,
     obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
 ) -> bool {
     // do the impls unify? If not, not disjoint.
-    let Ok(InferOk { obligations: more_obligations, .. }) = infcx
-        .at(&ObligationCause::dummy(), impl1_env)
-        .eq(impl1, impl2) else {
-            debug!(
-                "explicit_disjoint: {:?} does not unify with {:?}",
-                impl1, impl2
-            );
-            return true;
-        };
+    let Ok(InferOk { obligations: more_obligations, .. }) =
+        infcx.at(&ObligationCause::dummy(), impl_env).eq(subject1, subject2)
+    else {
+        debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
+        return true;
+    };
 
     let selcx = &mut SelectionContext::new(&infcx);
     let opt_failing_obligation = obligations
         .into_iter()
         .chain(more_obligations)
-        .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
+        .find(|o| negative_impl_exists(selcx, impl_env, impl1_def_id, o));
 
     if let Some(failing_obligation) = opt_failing_obligation {
         debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);

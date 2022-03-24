@@ -28,7 +28,7 @@
 use super::*;
 
 use rustc_middle::ty::relate::{Relate, TypeRelation};
-use rustc_middle::ty::Const;
+use rustc_middle::ty::{Const, ImplSubject};
 
 pub struct At<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'a, 'tcx>,
@@ -269,6 +269,29 @@ impl<'a, 'tcx> Trace<'a, 'tcx> {
                 .relate(a, b)
                 .map(move |t| InferOk { value: t, obligations: fields.obligations })
         })
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ImplSubject<'tcx> {
+    fn to_trace(
+        tcx: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        match (a, b) {
+            (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
+                ToTrace::to_trace(tcx, cause, a_is_expected, trait_ref_a, trait_ref_b)
+            }
+            (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
+                ToTrace::to_trace(tcx, cause, a_is_expected, ty_a, ty_b)
+            }
+            (ImplSubject::Trait(_), ImplSubject::Inherent(_))
+            | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
+                bug!("can not trace TraitRef and Ty");
+            }
+        }
     }
 }
 

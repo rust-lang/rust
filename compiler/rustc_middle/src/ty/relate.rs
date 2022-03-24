@@ -7,7 +7,7 @@
 use crate::mir::interpret::{get_slice_bytes, ConstValue, GlobalAlloc, Scalar};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::subst::{GenericArg, GenericArgKind, Subst, SubstsRef};
-use crate::ty::{self, Term, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, ImplSubject, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_hir as ast;
 use rustc_hir::def_id::DefId;
 use rustc_span::DUMMY_SP;
@@ -353,6 +353,30 @@ impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
         let tcx = relation.tcx();
         let types = tcx.mk_type_list(iter::zip(a.0, b.0).map(|(a, b)| relation.relate(a, b)))?;
         Ok(GeneratorWitness(types))
+    }
+}
+
+impl<'tcx> Relate<'tcx> for ImplSubject<'tcx> {
+    #[inline]
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ImplSubject<'tcx>,
+        b: ImplSubject<'tcx>,
+    ) -> RelateResult<'tcx, ImplSubject<'tcx>> {
+        match (a, b) {
+            (ImplSubject::Trait(trait_ref_a), ImplSubject::Trait(trait_ref_b)) => {
+                let trait_ref = ty::TraitRef::relate(relation, trait_ref_a, trait_ref_b)?;
+                Ok(ImplSubject::Trait(trait_ref))
+            }
+            (ImplSubject::Inherent(ty_a), ImplSubject::Inherent(ty_b)) => {
+                let ty = Ty::relate(relation, ty_a, ty_b)?;
+                Ok(ImplSubject::Inherent(ty))
+            }
+            (ImplSubject::Trait(_), ImplSubject::Inherent(_))
+            | (ImplSubject::Inherent(_), ImplSubject::Trait(_)) => {
+                bug!("can not relate TraitRef and Ty");
+            }
+        }
     }
 }
 
