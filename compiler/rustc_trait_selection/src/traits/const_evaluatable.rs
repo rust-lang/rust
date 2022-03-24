@@ -14,7 +14,9 @@ use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{
+    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
+};
 use rustc_middle::thir;
 use rustc_middle::thir::abstract_const::{self, Node, NodeId, NotConstEvaluatable};
 use rustc_middle::ty::subst::{Subst, SubstsRef};
@@ -28,13 +30,13 @@ use std::iter;
 use std::ops::ControlFlow;
 
 /// Check if a given constant can be evaluated.
+#[instrument(skip(infcx), level = "debug")]
 pub fn is_const_evaluatable<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     uv: ty::Unevaluated<'tcx, ()>,
     param_env: ty::ParamEnv<'tcx>,
     span: Span,
 ) -> Result<(), NotConstEvaluatable> {
-    debug!("is_const_evaluatable({:?})", uv);
     let tcx = infcx.tcx;
 
     if tcx.features().generic_const_exprs {
@@ -304,6 +306,7 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         Err(reported)
     }
 
+    #[instrument(skip(tcx, body, body_id), level = "debug")]
     fn new(
         tcx: TyCtxt<'tcx>,
         (body, body_id): (&'a thir::Thir<'tcx>, thir::ExprId),
@@ -315,28 +318,60 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
             thir: &'a thir::Thir<'tcx>,
         }
 
+        use crate::rustc_middle::thir::visit::Visitor;
         use thir::visit;
-        impl<'a, 'tcx: 'a> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
+
+        impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
+            fn expr_is_poly(&mut self, expr: &thir::Expr<'tcx>) -> bool {
+                if expr.ty.has_param_types_or_consts() {
+                    return true;
+                }
+
+                match expr.kind {
+                    thir::ExprKind::NamedConst { substs, .. } => substs.has_param_types_or_consts(),
+                    thir::ExprKind::ConstParam { .. } => true,
+                    thir::ExprKind::Repeat { value, count } => {
+                        self.visit_expr(&self.thir()[value]);
+                        count.has_param_types_or_consts()
+                    }
+                    _ => false,
+                }
+            }
+
+            fn pat_is_poly(&mut self, pat: &thir::Pat<'tcx>) -> bool {
+                if pat.ty.has_param_types_or_consts() {
+                    return true;
+                }
+
+                match pat.kind.as_ref() {
+                    thir::PatKind::Constant { value } => value.has_param_types_or_consts(),
+                    thir::PatKind::Range(thir::PatRange { lo, hi, .. }) => {
+                        lo.has_param_types_or_consts() || hi.has_param_types_or_consts()
+                    }
+                    _ => false,
+                }
+            }
+        }
+
+        impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
             fn thir(&self) -> &'a thir::Thir<'tcx> {
                 &self.thir
             }
 
+            #[instrument(skip(self), level = "debug")]
             fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
-                self.is_poly |= expr.ty.has_param_types_or_consts();
+                self.is_poly |= self.expr_is_poly(expr);
                 if !self.is_poly {
                     visit::walk_expr(self, expr)
                 }
             }
 
+            #[instrument(skip(self), level = "debug")]
             fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
-                self.is_poly |= pat.ty.has_param_types_or_consts();
+                self.is_poly |= self.pat_is_poly(pat);
                 if !self.is_poly {
                     visit::walk_pat(self, pat);
                 }
-            }
-
-            fn visit_const(&mut self, ct: ty::Const<'tcx>) {
-                self.is_poly |= ct.has_param_types_or_consts();
             }
         }
 
@@ -393,16 +428,49 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
     fn recurse_build(&mut self, node: thir::ExprId) -> Result<NodeId, ErrorGuaranteed> {
         use thir::ExprKind;
         let node = &self.body.exprs[node];
-        debug!("recurse_build: node={:?}", node);
         Ok(match &node.kind {
             // I dont know if handling of these 3 is correct
             &ExprKind::Scope { value, .. } => self.recurse_build(value)?,
             &ExprKind::PlaceTypeAscription { source, .. }
             | &ExprKind::ValueTypeAscription { source, .. } => self.recurse_build(source)?,
+            &ExprKind::Literal { lit, neg} => {
+                let sp = node.span;
+                let constant =
+                    match self.tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg }) {
+                        Ok(c) => c,
+                        Err(LitToConstError::Reported) => {
+                            self.tcx.const_error(node.ty)
+                        }
+                        Err(LitToConstError::TypeError) => {
+                            bug!("encountered type error in lit_to_const")
+                        }
+                    };
 
-            // subtle: associated consts are literals this arm handles
-            // `<T as Trait>::ASSOC` as well as `12`
-            &ExprKind::Literal { literal, .. } => self.nodes.push(Node::Leaf(literal)),
+                self.nodes.push(Node::Leaf(constant))
+            }
+            &ExprKind::NonHirLiteral { lit , user_ty: _} => {
+                // FIXME Construct a Valtree from this ScalarInt when introducing Valtrees
+                let const_value = ConstValue::Scalar(Scalar::Int(lit));
+                self.nodes.push(Node::Leaf(ty::Const::from_value(self.tcx, const_value, node.ty)))
+            }
+            &ExprKind::NamedConst { def_id, substs, user_ty: _ } => {
+                let uneval = ty::Unevaluated::new(ty::WithOptConstParam::unknown(def_id), substs);
+
+                let constant = self.tcx.mk_const(ty::ConstS {
+                                val: ty::ConstKind::Unevaluated(uneval),
+                                ty: node.ty,
+                            });
+
+                self.nodes.push(Node::Leaf(constant))
+            }
+
+            ExprKind::ConstParam {param, ..} => {
+                let const_param = self.tcx.mk_const(ty::ConstS {
+                        val: ty::ConstKind::Param(*param),
+                        ty: node.ty,
+                    });
+                self.nodes.push(Node::Leaf(const_param))
+            }
 
             ExprKind::Call { fun, args, .. } => {
                 let fun = self.recurse_build(*fun)?;
@@ -585,6 +653,7 @@ pub(super) fn try_unify_abstract_consts<'tcx>(
     // on `ErrorGuaranteed`.
 }
 
+#[instrument(skip(tcx, f), level = "debug")]
 pub fn walk_abstract_const<'tcx, R, F>(
     tcx: TyCtxt<'tcx>,
     ct: AbstractConst<'tcx>,
@@ -593,6 +662,7 @@ pub fn walk_abstract_const<'tcx, R, F>(
 where
     F: FnMut(AbstractConst<'tcx>) -> ControlFlow<R>,
 {
+    #[instrument(skip(tcx, f), level = "debug")]
     fn recurse<'tcx, R>(
         tcx: TyCtxt<'tcx>,
         ct: AbstractConst<'tcx>,
@@ -600,6 +670,7 @@ where
     ) -> ControlFlow<R> {
         f(ct)?;
         let root = ct.root(tcx);
+        debug!(?root);
         match root {
             Node::Leaf(_) => ControlFlow::CONTINUE,
             Node::Binop(_, l, r) => {

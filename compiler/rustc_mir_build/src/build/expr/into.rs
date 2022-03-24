@@ -533,6 +533,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Closure { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::NamedConst { .. }
+            | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {

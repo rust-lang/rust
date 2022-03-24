@@ -566,6 +566,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::NamedConst { .. }
+            | ExprKind::NonHirLiteral { .. }
+            | ExprKind::ConstParam { .. }
             | ExprKind::ConstBlock { .. }
             | ExprKind::StaticRef { .. }
             | ExprKind::InlineAsm { .. }

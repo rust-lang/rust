@@ -955,6 +955,7 @@ rustc_queries! {
         desc { "get a &core::panic::Location referring to a span" }
     }
 
+    // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
     ) -> Result<ty::Const<'tcx>, LitToConstError> {
