@@ -42,7 +42,7 @@ pub struct PromoteTemps<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::ConstPromotion)
+        Some(MirPhase::ConstsPromoted)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
