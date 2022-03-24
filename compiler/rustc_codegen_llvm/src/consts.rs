@@ -545,7 +545,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 //
                 // However, unconditional use of `llvm.compiler.used` caused a nontrivial amount of
                 // ecosystem breakage, especially on Mach-O targets. To resolve this, we compile it
-                // as llvm.used on ELF targets and llvm.compiler.used elsewhere, which and should be
+                // as llvm.compiler.used on ELF targets and llvm.used elsewhere, which should be
                 // equivalent to how we compiled `#[used]` before LLVM 13, as `llvm.used` and
                 // `llvm.compiler.used` were treated the same on ELF targets prior in earlier LLVM
                 // versions (additionally, it seems to be how Clang handles `__attribute__((used))`,
