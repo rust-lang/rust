@@ -1,61 +1,5 @@
-error: Rust has no postfix increment operator
-  --> $DIR/increment-autofix.rs:5:6
-   |
-LL |     i++;
-   |      ^^ not a valid postfix operator
-   |
-help: use `+= 1` instead
-   |
-LL |     { let tmp = i; i += 1; tmp };
-   |     +++++++++++  ~~~~~~~~~~~~~~~
-LL -     i++;
-LL +     i += 1;
-   | 
-
-error: Rust has no postfix increment operator
-  --> $DIR/increment-autofix.rs:11:12
-   |
-LL |     while i++ < 5 {
-   |            ^^ not a valid postfix operator
-   |
-help: use `+= 1` instead
-   |
-LL |     while { let tmp = i; i += 1; tmp } < 5 {
-   |           +++++++++++  ~~~~~~~~~~~~~~~
-LL -     while i++ < 5 {
-LL +     while i += 1 < 5 {
-   | 
-
-error: Rust has no postfix increment operator
-  --> $DIR/increment-autofix.rs:19:8
-   |
-LL |     tmp++;
-   |        ^^ not a valid postfix operator
-   |
-help: use `+= 1` instead
-   |
-LL |     { let tmp_ = tmp; tmp += 1; tmp_ };
-   |     ++++++++++++    ~~~~~~~~~~~~~~~~~~
-LL -     tmp++;
-LL +     tmp += 1;
-   | 
-
-error: Rust has no postfix increment operator
-  --> $DIR/increment-autofix.rs:25:14
-   |
-LL |     while tmp++ < 5 {
-   |              ^^ not a valid postfix operator
-   |
-help: use `+= 1` instead
-   |
-LL |     while { let tmp_ = tmp; tmp += 1; tmp_ } < 5 {
-   |           ++++++++++++    ~~~~~~~~~~~~~~~~~~
-LL -     while tmp++ < 5 {
-LL +     while tmp += 1 < 5 {
-   | 
-
 error: Rust has no prefix increment operator
-  --> $DIR/increment-autofix.rs:33:5
+  --> $DIR/increment-autofix.rs:5:5
    |
 LL |     ++i;
    |     ^^ not a valid prefix operator
@@ -67,7 +11,7 @@ LL +     i += 1;
    | 
 
 error: Rust has no prefix increment operator
-  --> $DIR/increment-autofix.rs:39:11
+  --> $DIR/increment-autofix.rs:11:11
    |
 LL |     while ++i < 5 {
    |           ^^ not a valid prefix operator
@@ -77,5 +21,28 @@ help: use `+= 1` instead
 LL |     while { i += 1; i } < 5 {
    |           ~   +++++++++
 
-error: aborting due to 6 previous errors
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:19:5
+   |
+LL |     ++tmp;
+   |     ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL -     ++tmp;
+LL +     tmp += 1;
+   | 
+
+error: Rust has no prefix increment operator
+  --> $DIR/increment-autofix.rs:25:11
+   |
+LL |     while ++tmp < 5 {
+   |           ^^ not a valid prefix operator
+   |
+help: use `+= 1` instead
+   |
+LL |     while { tmp += 1; tmp } < 5 {
+   |           ~     +++++++++++
+
+error: aborting due to 4 previous errors
 

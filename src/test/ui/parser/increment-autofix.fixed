@@ -1,19 +1,5 @@
 // run-rustfix
 
-fn post_regular() {
-    let mut i = 0;
-    { let tmp = i; i += 1; tmp }; //~ ERROR Rust has no postfix increment operator
-    println!("{}", i);
-}
-
-fn post_while() {
-    let mut i = 0;
-    while { let tmp = i; i += 1; tmp } < 5 {
-        //~^ ERROR Rust has no postfix increment operator
-        println!("{}", i);
-    }
-}
-
 fn pre_regular() {
     let mut i = 0;
     i += 1; //~ ERROR Rust has no prefix increment operator
@@ -28,9 +14,18 @@ fn pre_while() {
     }
 }
 
-fn main() {
-    post_regular();
-    post_while();
-    pre_regular();
-    pre_while();
+fn pre_regular_tmp() {
+    let mut tmp = 0;
+    tmp += 1; //~ ERROR Rust has no prefix increment operator
+    println!("{}", tmp);
 }
+
+fn pre_while_tmp() {
+    let mut tmp = 0;
+    while { tmp += 1; tmp } < 5 {
+        //~^ ERROR Rust has no prefix increment operator
+        println!("{}", tmp);
+    }
+}
+
+fn main() {}

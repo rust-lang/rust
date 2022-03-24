@@ -1326,7 +1326,7 @@ impl<'a> Parser<'a> {
                 MultiSugg::emit_many(
                     &mut err,
                     "use `+= 1` instead",
-                    Applicability::MaybeIncorrect,
+                    Applicability::Unspecified,
                     [sugg1, sugg2].into_iter(),
                 )
             }

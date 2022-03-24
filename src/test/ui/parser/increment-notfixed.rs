@@ -6,6 +6,34 @@ struct Bar {
     qux: i32,
 }
 
+fn post_regular() {
+    let mut i = 0;
+    i++; //~ ERROR Rust has no postfix increment operator
+    println!("{}", i);
+}
+
+fn post_while() {
+    let mut i = 0;
+    while i++ < 5 {
+        //~^ ERROR Rust has no postfix increment operator
+        println!("{}", i);
+    }
+}
+
+fn post_regular_tmp() {
+    let mut tmp = 0;
+    tmp++; //~ ERROR Rust has no postfix increment operator
+    println!("{}", tmp);
+}
+
+fn post_while_tmp() {
+    let mut tmp = 0;
+    while tmp++ < 5 {
+        //~^ ERROR Rust has no postfix increment operator
+        println!("{}", tmp);
+    }
+}
+
 fn post_field() {
     let foo = Foo { bar: Bar { qux: 0 } };
     foo.bar.qux++;
@@ -30,8 +58,4 @@ fn pre_field() {
     println!("{}", foo.bar.qux);
 }
 
-fn main() {
-    post_field();
-    post_field_tmp();
-    pre_field();
-}
+fn main() {}
