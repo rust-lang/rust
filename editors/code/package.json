@@ -645,7 +645,7 @@
                 },
                 "rust-analyzer.diagnostics.enableExperimental": {
                     "markdownDescription": "Whether to show experimental rust-analyzer diagnostics that might\nhave more false positives than usual.",
-                    "default": true,
+                    "default": false,
                     "type": "boolean"
                 },
                 "rust-analyzer.diagnostics.disabled": {

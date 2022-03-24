@@ -223,7 +223,7 @@ Enables completions of private items and fields that are defined in the current 
 --
 Whether to show native rust-analyzer diagnostics.
 --
-[[rust-analyzer.diagnostics.enableExperimental]]rust-analyzer.diagnostics.enableExperimental (default: `true`)::
+[[rust-analyzer.diagnostics.enableExperimental]]rust-analyzer.diagnostics.enableExperimental (default: `false`)::
 +
 --
 Whether to show experimental rust-analyzer diagnostics that might
