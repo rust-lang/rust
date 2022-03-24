@@ -17,7 +17,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
 use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
@@ -225,13 +225,13 @@ struct MultiSugg {
 }
 
 impl MultiSugg {
-    fn emit(self, err: &mut DiagnosticBuilder<'_>) {
+    fn emit<G: EmissionGuarantee>(self, err: &mut DiagnosticBuilder<'_, G>) {
         err.multipart_suggestion(&self.msg, self.patches, self.applicability);
     }
 
     /// Overrides individual messages and applicabilities.
-    fn emit_many(
-        err: &mut DiagnosticBuilder<'_>,
+    fn emit_many<G: EmissionGuarantee>(
+        err: &mut DiagnosticBuilder<'_, G>,
         msg: &str,
         applicability: Applicability,
         suggestions: impl Iterator<Item = Self>,
@@ -1289,7 +1289,7 @@ impl<'a> Parser<'a> {
         );
         err.span_label(op_span, &format!("not a valid {} operator", kind.fixity));
 
-        let help_base_case = |mut err: DiagnosticBuilder<'_>, base| {
+        let help_base_case = |mut err: DiagnosticBuilder<'_, _>, base| {
             err.help(&format!("use `{}= 1` instead", kind.op.chr()));
             err.emit();
             Ok(base)

@@ -16,7 +16,9 @@ error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:17:12
    |
 LL |     while i++ < 5 {
-   |            ^^ not a valid postfix operator
+   |     -----  ^^ not a valid postfix operator
+   |     |
+   |     while parsing the condition of this `while` expression
    |
 help: use `+= 1` instead
    |
@@ -44,7 +46,9 @@ error: Rust has no postfix increment operator
   --> $DIR/increment-notfixed.rs:31:14
    |
 LL |     while tmp++ < 5 {
-   |              ^^ not a valid postfix operator
+   |     -----    ^^ not a valid postfix operator
+   |     |
+   |     while parsing the condition of this `while` expression
    |
 help: use `+= 1` instead
    |
