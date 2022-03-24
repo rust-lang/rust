@@ -20,7 +20,7 @@ pub struct ElaborateDrops;
 
 impl<'tcx> MirPass<'tcx> for ElaborateDrops {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::DropLowering)
+        Some(MirPhase::DropsLowered)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

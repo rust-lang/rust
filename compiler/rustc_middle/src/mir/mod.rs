@@ -127,14 +127,11 @@ pub trait MirPass<'tcx> {
 /// These phases all describe dialects of MIR. Since all MIR uses the same datastructures, the
 /// dialects forbid certain variants or values in certain phases.
 ///
-/// Note: Each phase's validation checks all invariants of the *previous* phases' dialects. A phase
-/// that changes the dialect documents what invariants must be upheld *after* that phase finishes.
-///
 /// Warning: ordering of variants is significant.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
-    Build = 0,
+    Built = 0,
     // FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
     // We used to have this for pre-miri MIR based const eval.
     Const = 1,
@@ -142,17 +139,32 @@ pub enum MirPhase {
     /// by creating a new MIR body per promoted element. After this phase (and thus the termination
     /// of the `mir_promoted` query), these promoted elements are available in the `promoted_mir`
     /// query.
-    ConstPromotion = 2,
-    /// After this phase
-    /// * the only `AggregateKind`s allowed are `Array` and `Generator`,
-    /// * `DropAndReplace` is gone for good
-    /// * `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop` terminator
-    ///   means that the auto-generated drop glue will be invoked.
-    DropLowering = 3,
-    /// After this phase, generators are explicit state machines (no more `Yield`).
-    /// `AggregateKind::Generator` is gone for good.
-    GeneratorLowering = 4,
-    Optimization = 5,
+    ConstsPromoted = 2,
+    /// Beginning with this phase, the following variants are disallowed:
+    /// * [`TerminatorKind::DropAndReplace`](terminator::TerminatorKind::DropAndReplace)
+    /// * [`TerminatorKind::FalseUnwind`](terminator::TerminatorKind::FalseUnwind)
+    /// * [`TerminatorKind::FalseEdge`](terminator::TerminatorKind::FalseEdge)
+    /// * [`StatementKind::FakeRead`]
+    /// * [`StatementKind::AscribeUserType`]
+    /// * [`Rvalue::Ref`] with `BorrowKind::Shallow`
+    ///
+    /// And the following variant is allowed:
+    /// * [`StatementKind::Retag`]
+    ///
+    /// Furthermore, `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop`
+    /// terminator means that the auto-generated drop glue will be invoked.
+    DropsLowered = 3,
+    /// Beginning with this phase, the following variant is disallowed:
+    /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
+    ///
+    /// And the following variant is allowed:
+    /// * [`StatementKind::SetDiscriminant`]
+    Deaggregated = 4,
+    /// Beginning with this phase, the following variants are disallowed:
+    /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
+    /// * [`TerminatorKind::GeneratorDrop](terminator::TerminatorKind::GeneratorDrop)
+    GeneratorsLowered = 5,
+    Optimized = 6,
 }
 
 impl MirPhase {
@@ -311,7 +323,7 @@ impl<'tcx> Body<'tcx> {
         );
 
         let mut body = Body {
-            phase: MirPhase::Build,
+            phase: MirPhase::Built,
             source,
             basic_blocks,
             source_scopes,
@@ -346,7 +358,7 @@ impl<'tcx> Body<'tcx> {
     /// crate.
     pub fn new_cfg_only(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>) -> Self {
         let mut body = Body {
-            phase: MirPhase::Build,
+            phase: MirPhase::Built,
             source: MirSource::item(DefId::local(CRATE_DEF_INDEX)),
             basic_blocks,
             source_scopes: IndexVec::new(),
@@ -1541,9 +1553,16 @@ impl Statement<'_> {
     }
 }
 
+/// The various kinds of statements that can appear in MIR.
+///
+/// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
+/// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
+/// causing an ICE if they are violated.
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
+    ///
+    /// The LHS place may not overlap with any memory accessed on the RHS.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
     /// This represents all the reading that a pattern match may do
@@ -1761,6 +1780,19 @@ static_assert_size!(Place<'_>, 16);
 pub enum ProjectionElem<V, T> {
     Deref,
     Field(Field, T),
+    /// Index into a slice/array.
+    ///
+    /// Note that this does not also dereference, and so it does not exactly correspond to slice
+    /// indexing in Rust. In other words, in the below Rust code:
+    ///
+    /// ```rust
+    /// let x = &[1, 2, 3, 4];
+    /// let i = 2;
+    /// x[i];
+    /// ```
+    ///
+    /// The `x[i]` is turned into a `Deref` followed by an `Index`, not just an `Index`. The same
+    /// thing is true of the `ConstantIndex` and `Subslice` projections below.
     Index(V),
 
     /// These indices are generated by slice patterns. Easiest to explain
@@ -2223,6 +2255,11 @@ impl<'tcx> Operand<'tcx> {
 /// Rvalues
 
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
+/// The various kinds of rvalues that can appear in MIR.
+///
+/// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
+/// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
+/// causing an ICE if they are violated.
 pub enum Rvalue<'tcx> {
     /// x (either a move or copy, depending on type of x)
     Use(Operand<'tcx>),
