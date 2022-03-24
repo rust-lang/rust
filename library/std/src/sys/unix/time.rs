@@ -299,6 +299,10 @@ mod inner {
         pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
             Some(Instant { t: self.t.checked_sub_duration(other)? })
         }
+
+        pub(in crate::sys::unix) fn as_timespec(&self) -> libc::timespec {
+            self.t.t
+        }
     }
 
     impl fmt::Debug for Instant {
