@@ -436,7 +436,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                             DerefTy::Path,
                             None,
                         ),
-                        Some(sym::Cow) => {
+                        Some(sym::Cow) if mutability == Mutability::Not => {
                             let ty_name = name.args
                                 .and_then(|args| {
                                     args.args.iter().find_map(|a| match a {
