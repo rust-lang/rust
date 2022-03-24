@@ -1750,6 +1750,18 @@ fn main() {
 }
 
 #[test]
+fn const_eval_array_repeat_expr() {
+    check_types(
+        r#"
+fn main() {
+    const X: usize = 6 - 1;
+    let t = [(); X + 2];
+      //^ [(); 7]
+}"#,
+    );
+}
+
+#[test]
 fn shadowing_primitive_with_inner_items() {
     check_types(
         r#"
