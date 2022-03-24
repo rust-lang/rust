@@ -1235,7 +1235,7 @@ fn create_cases<'tcx>(
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn phase_change(&self) -> Option<MirPhase> {
-        Some(MirPhase::GeneratorLowering)
+        Some(MirPhase::GeneratorsLowered)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
