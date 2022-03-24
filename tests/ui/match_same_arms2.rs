@@ -174,4 +174,57 @@ fn main() {
         Some(2) => 2,
         _ => 1,
     };
+
+    enum Foo {
+        X(u32),
+        Y(u32),
+        Z(u32),
+    }
+
+    // Don't lint. `Foo::X(0)` and `Foo::Z(_)` overlap with the arm in between.
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::X(_) | Foo::Y(_) | Foo::Z(0) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
+
+    // Suggest moving `Foo::Z(_)` up.
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::X(_) | Foo::Y(_) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
+
+    // Suggest moving `Foo::X(0)` down.
+    let _ = match Foo::X(0) {
+        Foo::X(0) => 1,
+        Foo::Y(_) | Foo::Z(0) => 2,
+        Foo::Z(_) => 1,
+        _ => 0,
+    };
+
+    // Don't lint.
+    let _ = match 0 {
+        -2 => 1,
+        -5..=50 => 2,
+        -150..=88 => 1,
+        _ => 3,
+    };
+
+    struct Bar {
+        x: u32,
+        y: u32,
+        z: u32,
+    }
+
+    // Lint.
+    let _ = match None {
+        Some(Bar { x: 0, y: 5, .. }) => 1,
+        Some(Bar { y: 10, z: 0, .. }) => 2,
+        None => 50,
+        Some(Bar { y: 0, x: 5, .. }) => 1,
+        _ => 200,
+    };
 }
