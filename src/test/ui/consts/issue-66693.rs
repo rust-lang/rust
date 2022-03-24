@@ -8,7 +8,10 @@ static _FOO: () = panic!(true);
 //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
 
 const fn _foo() {
-    panic!(&1); //~ ERROR: argument to `panic!()` in a const context must have type `&str`
+    panic!(&1);
+    //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
+    //~| ERROR: erroneous constant used [const_err]
+    //~| WARNING: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 }
 
 // ensure that conforming panics don't cause an error
