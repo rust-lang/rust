@@ -76,6 +76,9 @@ impl<'tcx> PlaceTy<'tcx> {
         V: ::std::fmt::Debug,
         T: ::std::fmt::Debug + Copy,
     {
+        if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
+            bug!("cannot use non field projection on downcasted place")
+        }
         let answer = match *elem {
             ProjectionElem::Deref => {
                 let ty = self
