@@ -3,8 +3,8 @@
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
+use rustc_middle::mir::{traversal, Place};
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPass, MirPhase, Operand,
     PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
@@ -238,6 +238,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
         self.super_projection_elem(local, proj_base, elem, context, location);
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, location: Location) {
+        // Set off any `bug!`s in the type computation code
+        let ty = place.ty(&self.body.local_decls, self.tcx);
+        if ty.variant_index.is_some() {
+            self.fail(location, "Top level places may not have their variant index set!");
+        }
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
