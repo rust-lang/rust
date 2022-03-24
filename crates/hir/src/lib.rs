@@ -55,10 +55,7 @@ use hir_def::{
 use hir_expand::{name::name, MacroCallKind};
 use hir_ty::{
     autoderef,
-    consteval::{
-        eval_const, unknown_const_as_generic, ComputedExpr, ConstEvalCtx, ConstEvalError, ConstExt,
-    },
-    could_unify,
+    consteval::{unknown_const_as_generic, ComputedExpr, ConstEvalError, ConstExt},
     diagnostics::BodyValidationDiagnostic,
     method_resolution::{self, TyFingerprint},
     primitive::UintTy,

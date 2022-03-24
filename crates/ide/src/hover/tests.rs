@@ -3399,13 +3399,13 @@ impl<const LEN: usize> Foo<LEN$0> {}
     );
 }
 
-// FIXME: move these tests to consteval module
 #[test]
 fn hover_const_eval() {
+    // show hex for <10
     check(
         r#"
 /// This is a doc
-const FOO$0: usize = !0 & !(!0 >> 1);
+const FOO$0: usize = 1 << 3;
 "#,
         expect![[r#"
             *FOO*
@@ -3415,7 +3415,7 @@ const FOO$0: usize = !0 & !(!0 >> 1);
             ```
 
             ```rust
-            const FOO: usize = 9223372036854775808 (0x8000000000000000)
+            const FOO: usize = 8
             ```
 
             ---
@@ -3423,14 +3423,11 @@ const FOO$0: usize = !0 & !(!0 >> 1);
             This is a doc
         "#]],
     );
+    // show hex for >10
     check(
         r#"
 /// This is a doc
-const FOO$0: usize = {
-    let a = 3 + 2;
-    let b = a * a;
-    b
-};
+const FOO$0: usize = (1 << 3) + (1 << 2);
 "#,
         expect![[r#"
             *FOO*
@@ -3440,7 +3437,7 @@ const FOO$0: usize = {
             ```
 
             ```rust
-            const FOO: usize = 25 (0x19)
+            const FOO: usize = 12 (0xC)
             ```
 
             ---
@@ -3448,52 +3445,7 @@ const FOO$0: usize = {
             This is a doc
         "#]],
     );
-    check(
-        r#"
-/// This is a doc
-const FOO$0: usize = 1 << 10;
-"#,
-        expect![[r#"
-            *FOO*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const FOO: usize = 1024 (0x400)
-            ```
-
-            ---
-
-            This is a doc
-        "#]],
-    );
-    check(
-        r#"
-/// This is a doc
-const FOO$0: usize = {
-    let b = 4;
-    let a = { let b = 2; let a = b; a } + { let a = 1; a + b };
-    a
-};
-"#,
-        expect![[r#"
-            *FOO*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const FOO: usize = 7
-            ```
-
-            ---
-
-            This is a doc
-        "#]],
-    );
+    // show original body when const eval fails
     check(
         r#"
 /// This is a doc
@@ -3515,6 +3467,7 @@ const FOO$0: usize = 2 - 3;
             This is a doc
         "#]],
     );
+    // don't show hex for negatives
     check(
         r#"
 /// This is a doc
@@ -3529,27 +3482,6 @@ const FOO$0: i32 = 2 - 3;
 
             ```rust
             const FOO: i32 = -1
-            ```
-
-            ---
-
-            This is a doc
-        "#]],
-    );
-    check(
-        r#"
-/// This is a doc
-const FOO$0: usize = 1 << 100;
-"#,
-        expect![[r#"
-            *FOO*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const FOO: usize = 1 << 100
             ```
 
             ---
@@ -3576,90 +3508,6 @@ const FOO$0: &str = "bar";
             ---
 
             This is a doc
-        "#]],
-    );
-    check(
-        r#"
-const F1: i32 = 1;
-const F$03: i32 = 3 * F2;
-const F2: i32 = 2 * F1;
-"#,
-        expect![[r#"
-            *F3*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const F3: i32 = 6
-            ```
-        "#]],
-    );
-    check(
-        r#"
-const F1: i32 = 1 * F3;
-const F2: i32 = 2 * F1;
-const F$03: i32 = 3 * F2;
-"#,
-        expect![[r#"
-            *F3*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const F3: i32 = 3 * F2
-            ```
-        "#]],
-    );
-    check(
-        r#"
-struct U5;
-impl U5 {
-    const VAL: usize = 5;
-}
-const X$0X: usize = U5::VAL;
-"#,
-        expect![[r#"
-            *XX*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const XX: usize = 5
-            ```
-        "#]],
-    );
-}
-
-// FIXME: this should evaluate to zero
-#[test]
-fn hover_const_eval_broken() {
-    check(
-        r#"
-struct U0;
-trait ToConst {
-    const VAL: usize;
-}
-impl ToConst for U0 {
-    const VAL: usize = 0;
-}
-const X$0X: usize = U0::VAL;
-"#,
-        expect![[r#"
-            *XX*
-
-            ```rust
-            test
-            ```
-
-            ```rust
-            const XX: usize = U0::VAL
-            ```
         "#]],
     );
 }

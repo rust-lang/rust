@@ -87,14 +87,14 @@ impl Display for ComputedExpr {
         match self {
             ComputedExpr::Literal(l) => match l {
                 Literal::Int(x, _) => {
-                    if *x >= 16 {
+                    if *x >= 10 {
                         write!(f, "{} ({:#X})", x, x)
                     } else {
                         x.fmt(f)
                     }
                 }
                 Literal::Uint(x, _) => {
-                    if *x >= 16 {
+                    if *x >= 10 {
                         write!(f, "{} ({:#X})", x, x)
                     } else {
                         x.fmt(f)
@@ -156,6 +156,7 @@ pub fn eval_const(
 ) -> Result<ComputedExpr, ConstEvalError> {
     let expr = &ctx.exprs[expr_id];
     match expr {
+        Expr::Missing => Err(ConstEvalError::IncompleteExpr),
         Expr::Literal(l) => Ok(ComputedExpr::Literal(l.clone())),
         &Expr::UnaryOp { expr, op } => {
             let ty = &ctx.expr_ty(expr);
@@ -339,6 +340,9 @@ pub fn eval_const(
                     Ok(r.clone())
                 }
                 ValueNs::ConstId(id) => ctx.db.const_eval(id),
+                ValueNs::GenericParam(_) => {
+                    Err(ConstEvalError::NotSupported("const generic without substitution"))
+                }
                 _ => Err(ConstEvalError::NotSupported("path that are not const or local")),
             }
         }
@@ -433,7 +437,7 @@ pub(crate) fn const_eval_query(
 ) -> Result<ComputedExpr, ConstEvalError> {
     let def = const_id.into();
     let body = db.body(def);
-    let mut infer = db.infer_query(def);
+    let infer = &db.infer(def);
     let result = eval_const(
         body.body_expr,
         &mut ConstEvalCtx {
@@ -442,7 +446,7 @@ pub(crate) fn const_eval_query(
             exprs: &body.exprs,
             pats: &body.pats,
             local_data: HashMap::default(),
-            infer: &mut infer,
+            infer,
         },
     );
     result
@@ -473,3 +477,6 @@ pub(crate) fn eval_to_const<'a>(
     };
     usize_const(eval_usize(expr, ctx))
 }
+
+#[cfg(test)]
+mod tests;
