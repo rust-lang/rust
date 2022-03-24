@@ -2226,6 +2226,7 @@ macro_rules! uint_impl {
         #[doc = concat!("assert_eq!(3", stringify!($SelfT), ".wrapping_next_power_of_two(), 4);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.wrapping_next_power_of_two(), 0);")]
         /// ```
+        #[inline]
         #[unstable(feature = "wrapping_next_power_of_two", issue = "32463",
                    reason = "needs decision on wrapping behaviour")]
         #[rustc_const_unstable(feature = "wrapping_next_power_of_two", issue = "32463")]
