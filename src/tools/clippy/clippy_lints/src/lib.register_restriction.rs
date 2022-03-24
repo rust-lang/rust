@@ -62,6 +62,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(strings::STRING_SLICE),
     LintId::of(strings::STRING_TO_STRING),
     LintId::of(strings::STR_TO_STRING),
+    LintId::of(try_err::TRY_ERR),
     LintId::of(types::RC_BUFFER),
     LintId::of(types::RC_MUTEX),
     LintId::of(undocumented_unsafe_blocks::UNDOCUMENTED_UNSAFE_BLOCKS),
