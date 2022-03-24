@@ -78,6 +78,11 @@ pub use self::zip::zip;
 /// The trait is unsafe because implementers must uphold additional safety properties.
 /// See [`as_inner`] for details.
 ///
+/// The primary use of this trait is in-place iteration. Refer to the [`vec::in_place_collect`]
+/// module documentation for more information.
+///
+/// [`vec::in_place_collect`]: ../../../../alloc/vec/in_place_collect/index.html
+///
 /// # Examples
 ///
 /// Retrieving a partially consumed source:

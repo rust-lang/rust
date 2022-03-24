@@ -96,7 +96,7 @@ mod drain;
 mod cow;
 
 #[cfg(not(no_global_oom_handling))]
-pub(crate) use self::into_iter::AsIntoIter;
+pub(crate) use self::in_place_collect::AsVecIntoIter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::into_iter::IntoIter;
 
@@ -108,7 +108,7 @@ use self::is_zero::IsZero;
 mod is_zero;
 
 #[cfg(not(no_global_oom_handling))]
-mod source_iter_marker;
+mod in_place_collect;
 
 mod partial_eq;
 
