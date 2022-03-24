@@ -24,14 +24,14 @@
 //!
 
 // pub(crate) so tests can use the TokenStream, more notes in test/utils.rs
-pub(crate) mod abi_1_47;
+pub(crate) mod abi_1_48;
 mod abi_1_54;
 mod abi_1_56;
 mod abi_1_57;
 mod abi_1_58;
 
 use super::dylib::LoadProcMacroDylibError;
-pub(crate) use abi_1_47::Abi as Abi_1_47;
+pub(crate) use abi_1_48::Abi as Abi_1_48;
 pub(crate) use abi_1_54::Abi as Abi_1_54;
 pub(crate) use abi_1_56::Abi as Abi_1_56;
 pub(crate) use abi_1_57::Abi as Abi_1_57;
@@ -50,7 +50,7 @@ impl PanicMessage {
 }
 
 pub(crate) enum Abi {
-    Abi1_47(Abi_1_47),
+    Abi1_48(Abi_1_48),
     Abi1_54(Abi_1_54),
     Abi1_56(Abi_1_56),
     Abi1_57(Abi_1_57),
@@ -75,9 +75,9 @@ impl Abi {
         // FIXME: this should use exclusive ranges when they're stable
         // https://github.com/rust-lang/rust/issues/37854
         match (info.version.0, info.version.1) {
-            (1, 47..=53) => {
-                let inner = unsafe { Abi_1_47::from_lib(lib, symbol_name) }?;
-                Ok(Abi::Abi1_47(inner))
+            (1, 48..=53) => {
+                let inner = unsafe { Abi_1_48::from_lib(lib, symbol_name) }?;
+                Ok(Abi::Abi1_48(inner))
             }
             (1, 54..=55) => {
                 let inner = unsafe { Abi_1_54::from_lib(lib, symbol_name) }?;
@@ -106,7 +106,7 @@ impl Abi {
         attributes: Option<&tt::Subtree>,
     ) -> Result<tt::Subtree, PanicMessage> {
         match self {
-            Self::Abi1_47(abi) => abi.expand(macro_name, macro_body, attributes),
+            Self::Abi1_48(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_54(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_56(abi) => abi.expand(macro_name, macro_body, attributes),
             Self::Abi1_57(abi) => abi.expand(macro_name, macro_body, attributes),
@@ -116,7 +116,7 @@ impl Abi {
 
     pub fn list_macros(&self) -> Vec<(String, ProcMacroKind)> {
         match self {
-            Self::Abi1_47(abi) => abi.list_macros(),
+            Self::Abi1_48(abi) => abi.list_macros(),
             Self::Abi1_54(abi) => abi.list_macros(),
             Self::Abi1_56(abi) => abi.list_macros(),
             Self::Abi1_57(abi) => abi.list_macros(),
