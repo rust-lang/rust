@@ -115,6 +115,15 @@ const TAG_CUSTOM: usize = 0b01;
 const TAG_OS: usize = 0b10;
 const TAG_SIMPLE: usize = 0b11;
 
+/// The internal representation.
+///
+/// See the module docs for more, this is just a way to hack in a check that we
+/// indeed are not unwind-safe.
+///
+/// ```compile_fail
+/// fn is_unwind_safe<T: core::panic::UnwindSafe>() {}
+/// is_unwind_safe::<std::io::Error>();
+/// ```
 #[repr(transparent)]
 pub(super) struct Repr(NonNull<()>, PhantomData<ErrorData<Box<Custom>>>);
 
