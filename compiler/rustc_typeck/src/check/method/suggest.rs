@@ -16,9 +16,8 @@ use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::print::with_crate_prefix;
 use rustc_middle::ty::ToPolyTraitRef;
 use rustc_middle::ty::{self, DefIdTree, ToPredicate, Ty, TyCtxt, TypeFoldable};
-use rustc_span::lev_distance;
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{source_map, FileName, MultiSpan, Span};
+use rustc_span::{lev_distance, source_map, ExpnKind, FileName, MacroKind, MultiSpan, Span};
 use rustc_trait_selection::traits::error_reporting::on_unimplemented::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -723,102 +722,190 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Find all the requirements that come from a local `impl` block.
                     let mut skip_list: FxHashSet<_> = Default::default();
                     let mut spanned_predicates: FxHashMap<MultiSpan, _> = Default::default();
-                    for (data, p, parent_p) in unsatisfied_predicates
+                    for (data, p, parent_p, impl_def_id, cause_span) in unsatisfied_predicates
                         .iter()
                         .filter_map(|(p, parent, c)| c.as_ref().map(|c| (p, parent, c)))
                         .filter_map(|(p, parent, c)| match c.code() {
                             ObligationCauseCode::ImplDerivedObligation(ref data) => {
-                                Some((data, p, parent))
+                                Some((&data.derived, p, parent, data.impl_def_id, data.span))
                             }
                             _ => None,
                         })
                     {
                         let parent_trait_ref = data.parent_trait_pred;
-                        let parent_def_id = parent_trait_ref.def_id();
                         let path = parent_trait_ref.print_modifiers_and_trait_path();
                         let tr_self_ty = parent_trait_ref.skip_binder().self_ty();
-                        let mut candidates = vec![];
-                        self.tcx.for_each_relevant_impl(
-                            parent_def_id,
-                            parent_trait_ref.self_ty().skip_binder(),
-                            |impl_def_id| match self.tcx.hir().get_if_local(impl_def_id) {
-                                Some(Node::Item(hir::Item {
-                                    kind: hir::ItemKind::Impl(hir::Impl { .. }),
-                                    ..
-                                })) => {
-                                    candidates.push(impl_def_id);
+                        let unsatisfied_msg = "unsatisfied trait bound introduced here".to_string();
+                        let derive_msg =
+                            "unsatisfied trait bound introduced in this `derive` macro";
+                        match self.tcx.hir().get_if_local(impl_def_id) {
+                            // Unmet obligation comes from a `derive` macro, point at it once to
+                            // avoid multiple span labels pointing at the same place.
+                            Some(Node::Item(hir::Item {
+                                kind: hir::ItemKind::Trait(..),
+                                ident,
+                                ..
+                            })) if matches!(
+                                ident.span.ctxt().outer_expn_data().kind,
+                                ExpnKind::Macro(MacroKind::Derive, _)
+                            ) =>
+                            {
+                                let span = ident.span.ctxt().outer_expn_data().call_site;
+                                let mut spans: MultiSpan = span.into();
+                                spans.push_span_label(span, derive_msg.to_string());
+                                let entry = spanned_predicates.entry(spans);
+                                entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
+                            }
+
+                            Some(Node::Item(hir::Item {
+                                kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                                ..
+                            })) if matches!(
+                                self_ty.span.ctxt().outer_expn_data().kind,
+                                ExpnKind::Macro(MacroKind::Derive, _)
+                            ) || matches!(
+                                of_trait.as_ref().map(|t| t
+                                    .path
+                                    .span
+                                    .ctxt()
+                                    .outer_expn_data()
+                                    .kind),
+                                Some(ExpnKind::Macro(MacroKind::Derive, _))
+                            ) =>
+                            {
+                                let span = self_ty.span.ctxt().outer_expn_data().call_site;
+                                let mut spans: MultiSpan = span.into();
+                                spans.push_span_label(span, derive_msg.to_string());
+                                let entry = spanned_predicates.entry(spans.into());
+                                entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
+                            }
+
+                            // Unmet obligation coming from a `trait`.
+                            Some(Node::Item(hir::Item {
+                                kind: hir::ItemKind::Trait(..),
+                                ident,
+                                span: item_span,
+                                ..
+                            })) if !matches!(
+                                ident.span.ctxt().outer_expn_data().kind,
+                                ExpnKind::Macro(MacroKind::Derive, _)
+                            ) =>
+                            {
+                                if let Some(pred) = parent_p {
+                                    // Done to add the "doesn't satisfy" `span_label`.
+                                    let _ = format_pred(*pred);
                                 }
-                                _ => {}
-                            },
-                        );
-                        if let [def_id] = &candidates[..] {
-                            match self.tcx.hir().get_if_local(*def_id) {
-                                Some(Node::Item(hir::Item {
-                                    kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
-                                    ..
-                                })) => {
-                                    if let Some(pred) = parent_p {
-                                        // Done to add the "doesn't satisfy" `span_label`.
-                                        let _ = format_pred(*pred);
-                                    }
-                                    skip_list.insert(p);
+                                skip_list.insert(p);
+                                let mut spans = if cause_span != *item_span {
+                                    let mut spans: MultiSpan = cause_span.into();
+                                    spans.push_span_label(cause_span, unsatisfied_msg);
+                                    spans
+                                } else {
+                                    ident.span.into()
+                                };
+                                spans.push_span_label(ident.span, "in this trait".to_string());
+                                let entry = spanned_predicates.entry(spans.into());
+                                entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
+                            }
+
+                            // Unmet obligation coming from an `impl`.
+                            Some(Node::Item(hir::Item {
+                                kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                                span: item_span,
+                                ..
+                            })) if !matches!(
+                                self_ty.span.ctxt().outer_expn_data().kind,
+                                ExpnKind::Macro(MacroKind::Derive, _)
+                            ) && !matches!(
+                                of_trait.as_ref().map(|t| t
+                                    .path
+                                    .span
+                                    .ctxt()
+                                    .outer_expn_data()
+                                    .kind),
+                                Some(ExpnKind::Macro(MacroKind::Derive, _))
+                            ) =>
+                            {
+                                if let Some(pred) = parent_p {
+                                    // Done to add the "doesn't satisfy" `span_label`.
+                                    let _ = format_pred(*pred);
+                                }
+                                skip_list.insert(p);
+                                let mut spans = if cause_span != *item_span {
+                                    let mut spans: MultiSpan = cause_span.into();
+                                    spans.push_span_label(cause_span, unsatisfied_msg);
+                                    spans
+                                } else {
                                     let mut spans = Vec::with_capacity(2);
                                     if let Some(trait_ref) = of_trait {
                                         spans.push(trait_ref.path.span);
                                     }
                                     spans.push(self_ty.span);
-                                    let entry = spanned_predicates.entry(spans.into());
-                                    entry
-                                        .or_insert_with(|| (path, tr_self_ty, Vec::new()))
-                                        .2
-                                        .push(p);
+                                    spans.into()
+                                };
+                                if let Some(trait_ref) = of_trait {
+                                    spans.push_span_label(trait_ref.path.span, String::new());
                                 }
-                                _ => {}
+                                spans.push_span_label(self_ty.span, String::new());
+
+                                let entry = spanned_predicates.entry(spans.into());
+                                entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                             }
+                            _ => {}
                         }
                     }
-                    for (span, (path, self_ty, preds)) in spanned_predicates {
-                        err.span_note(
-                            span,
-                            &format!(
-                                "the following trait bounds were not satisfied because of the \
-                                 requirements of the implementation of `{}` for `{}`:\n{}",
-                                path,
-                                self_ty,
-                                preds
-                                    .into_iter()
-                                    // .map(|pred| format!("{:?}", pred))
-                                    .filter_map(|pred| format_pred(*pred))
-                                    .map(|(p, _)| format!("`{}`", p))
-                                    .collect::<Vec<_>>()
-                                    .join("\n"),
-                            ),
-                        );
+                    let mut spanned_predicates: Vec<_> = spanned_predicates.into_iter().collect();
+                    spanned_predicates.sort_by_key(|(span, (_, _, _))| span.primary_span());
+                    for (span, (_path, _self_ty, preds)) in spanned_predicates {
+                        let mut preds: Vec<_> = preds
+                            .into_iter()
+                            .filter_map(|pred| format_pred(*pred))
+                            .map(|(p, _)| format!("`{}`", p))
+                            .collect();
+                        preds.sort();
+                        preds.dedup();
+                        let msg = if let [pred] = &preds[..] {
+                            format!("trait bound {} was not satisfied", pred)
+                        } else {
+                            format!(
+                                "the following trait bounds were not satisfied:\n{}",
+                                preds.join("\n"),
+                            )
+                        };
+                        err.span_note(span, &msg);
+                        unsatisfied_bounds = true;
                     }
 
                     // The requirements that didn't have an `impl` span to show.
                     let mut bound_list = unsatisfied_predicates
                         .iter()
-                        .filter(|(pred, _, _parent_pred)| !skip_list.contains(&pred))
                         .filter_map(|(pred, parent_pred, _cause)| {
                             format_pred(*pred).map(|(p, self_ty)| {
                                 collect_type_param_suggestions(self_ty, *pred, &p);
-                                match parent_pred {
-                                    None => format!("`{}`", &p),
-                                    Some(parent_pred) => match format_pred(*parent_pred) {
+                                (
+                                    match parent_pred {
                                         None => format!("`{}`", &p),
-                                        Some((parent_p, _)) => {
-                                            collect_type_param_suggestions(
-                                                self_ty,
-                                                *parent_pred,
-                                                &p,
-                                            );
-                                            format!("`{}`\nwhich is required by `{}`", p, parent_p)
-                                        }
+                                        Some(parent_pred) => match format_pred(*parent_pred) {
+                                            None => format!("`{}`", &p),
+                                            Some((parent_p, _)) => {
+                                                collect_type_param_suggestions(
+                                                    self_ty,
+                                                    *parent_pred,
+                                                    &p,
+                                                );
+                                                format!(
+                                                    "`{}`\nwhich is required by `{}`",
+                                                    p, parent_p
+                                                )
+                                            }
+                                        },
                                     },
-                                }
+                                    *pred,
+                                )
                             })
                         })
+                        .filter(|(_, pred)| !skip_list.contains(&pred))
+                        .map(|(t, _)| t)
                         .enumerate()
                         .collect::<Vec<(usize, String)>>();
 

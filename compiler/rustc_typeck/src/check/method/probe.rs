@@ -1521,6 +1521,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             let selcx = &mut traits::SelectionContext::new(self);
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
 
+            let mut parent_pred = None;
+
             // If so, impls may carry other conditions (e.g., where
             // clauses) that must be considered. Make sure that those
             // match as well (or at least may match, sometimes we
@@ -1584,6 +1586,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                     let predicate =
                         ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx);
+                    parent_pred = Some(predicate);
                     let obligation = traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         result = ProbeResult::NoMatch;
@@ -1639,7 +1642,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 let o = self.resolve_vars_if_possible(o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
-                    possibly_unsatisfied_predicates.push((o.predicate, None, Some(o.cause)));
+                    possibly_unsatisfied_predicates.push((o.predicate, parent_pred, Some(o.cause)));
                 }
             }
 
