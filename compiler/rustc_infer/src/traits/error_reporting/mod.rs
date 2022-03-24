@@ -2,11 +2,11 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use std::fmt;
 use std::iter;
 

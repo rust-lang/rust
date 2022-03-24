@@ -10,13 +10,13 @@
 use Destination::*;
 
 use rustc_span::source_map::SourceMap;
-use rustc_span::{MultiSpan, SourceFile, Span};
+use rustc_span::{SourceFile, Span};
 
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Style, StyledString};
 use crate::styled_buffer::StyledBuffer;
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Handler, Level, SubDiagnostic,
-    SubstitutionHighlight, SuggestionStyle,
+    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Handler, Level, MultiSpan,
+    SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
 };
 
 use rustc_lint_defs::pluralize;
@@ -2003,7 +2003,7 @@ impl FileWithAnnotatedLines {
                         start_col: lo.col_display,
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
-                        label: span_label.label,
+                        label: span_label.label.map(|m| m.to_string()),
                         overlaps_exactly: false,
                     };
                     multiline_annotations.push((lo.file, ml));
@@ -2012,7 +2012,7 @@ impl FileWithAnnotatedLines {
                         start_col: lo.col_display,
                         end_col: hi.col_display,
                         is_primary: span_label.is_primary,
-                        label: span_label.label,
+                        label: span_label.label.map(|m| m.to_string()),
                         annotation_type: AnnotationType::Singleline,
                     };
                     add_annotation_to_file(&mut output, lo.file, lo.line, ann);

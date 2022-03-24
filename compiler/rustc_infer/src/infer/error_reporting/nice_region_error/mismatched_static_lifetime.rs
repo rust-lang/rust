@@ -7,11 +7,10 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 use rustc_data_structures::stable_set::FxHashSet;
-use rustc_errors::{Applicability, ErrorGuaranteed};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::ty::TypeVisitor;
-use rustc_span::MultiSpan;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     pub(super) fn try_report_mismatched_static_lifetime(&self) -> Option<ErrorGuaranteed> {

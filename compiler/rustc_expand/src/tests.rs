@@ -4,11 +4,11 @@ use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_str
 use rustc_session::parse::ParseSess;
 use rustc_span::create_default_session_if_not_set_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{BytePos, MultiSpan, Span};
+use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, PResult};
+use rustc_errors::{Handler, MultiSpan, PResult};
 
 use std::io;
 use std::io::prelude::*;

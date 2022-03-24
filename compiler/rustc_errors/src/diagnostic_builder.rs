@@ -1,8 +1,8 @@
 use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString, ErrorGuaranteed};
-use crate::{Handler, Level, StashKey};
+use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};

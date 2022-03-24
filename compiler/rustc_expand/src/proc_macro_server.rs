@@ -7,13 +7,13 @@ use rustc_ast::tokenstream::{DelimSpan, Spacing::*, TokenStream, TreeAndSpacing}
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, PResult};
+use rustc_errors::{Diagnostic, MultiSpan, PResult};
 use rustc_parse::lexer::nfc_normalize;
 use rustc_parse::{nt_to_tokenstream, parse_stream_from_source_str};
 use rustc_session::parse::ParseSess;
 use rustc_span::def_id::CrateNum;
 use rustc_span::symbol::{self, kw, sym, Symbol};
-use rustc_span::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+use rustc_span::{BytePos, FileName, Pos, SourceFile, Span};
 
 use pm::bridge::{server, TokenTree};
 use pm::{Delimiter, Level, LineColumn, Spacing};

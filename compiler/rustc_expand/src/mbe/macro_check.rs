@@ -109,10 +109,11 @@ use crate::mbe::{KleeneToken, TokenTree};
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::MultiSpan;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use rustc_span::{symbol::MacroRulesNormalizedIdent, MultiSpan, Span};
+use rustc_span::{symbol::MacroRulesNormalizedIdent, Span};
 
 use smallvec::SmallVec;
 

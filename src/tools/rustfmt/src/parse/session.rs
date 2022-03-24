@@ -313,7 +313,8 @@ mod tests {
         use super::*;
         use crate::config::IgnoreList;
         use crate::utils::mk_sp;
-        use rustc_span::{FileName as SourceMapFileName, MultiSpan, RealFileName};
+        use rustc_errors::MultiSpan;
+        use rustc_span::{FileName as SourceMapFileName, RealFileName};
         use std::path::PathBuf;
         use std::sync::atomic::AtomicU32;
 

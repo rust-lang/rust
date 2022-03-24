@@ -31,11 +31,12 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
+pub use rustc_error_messages::{DiagnosticMessage, MultiSpan, SpanLabel};
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{Loc, MultiSpan, Span};
+use rustc_span::{Loc, Span};
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
@@ -55,6 +56,7 @@ mod lock;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
+
 pub use snippet::Style;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a, ErrorGuaranteed>>;
@@ -400,9 +402,7 @@ impl fmt::Display for ExplicitBug {
 
 impl error::Error for ExplicitBug {}
 
-pub use diagnostic::{
-    Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, SubDiagnostic,
-};
+pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
 use std::backtrace::Backtrace;
 

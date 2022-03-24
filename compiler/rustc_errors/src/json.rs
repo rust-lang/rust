@@ -15,12 +15,12 @@ use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::DiagnosticId;
 use crate::ToolMetadata;
-use crate::{CodeSuggestion, SubDiagnostic};
+use crate::{CodeSuggestion, MultiSpan, SpanLabel, SubDiagnostic};
 use rustc_lint_defs::Applicability;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_span::hygiene::ExpnData;
-use rustc_span::{MultiSpan, Span, SpanLabel};
+use rustc_span::Span;
 use std::io::{self, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -423,7 +423,13 @@ impl DiagnosticSpan {
         suggestion: Option<(&String, Applicability)>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
-        Self::from_span_etc(span.span, span.is_primary, span.label, suggestion, je)
+        Self::from_span_etc(
+            span.span,
+            span.is_primary,
+            span.label.map(|m| m.to_string()),
+            suggestion,
+            je,
+        )
     }
 
     fn from_span_etc(

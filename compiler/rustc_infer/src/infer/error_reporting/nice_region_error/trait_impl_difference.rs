@@ -4,7 +4,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, Subtype};
 use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use rustc_errors::ErrorGuaranteed;
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,8 +12,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
-
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 use std::ops::ControlFlow;
 

@@ -18,10 +18,10 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
-use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, Handler, MultiSpan, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
@@ -1752,7 +1752,7 @@ impl<'a> Parser<'a> {
                     let mut primary_span: MultiSpan = primary_span.into();
                     for span_label in err.span.span_labels() {
                         if let Some(label) = span_label.label {
-                            primary_span.push_span_label(span_label.span, label);
+                            primary_span.push_span_message(span_label.span, label);
                         }
                     }
                     err.set_span(primary_span);

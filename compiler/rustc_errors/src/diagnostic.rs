@@ -1,15 +1,13 @@
 use crate::snippet::Style;
-use crate::CodeSuggestion;
-use crate::Level;
-use crate::Substitution;
-use crate::SubstitutionPart;
-use crate::SuggestionStyle;
-use crate::ToolMetadata;
+use crate::{
+    CodeSuggestion, DiagnosticMessage, Level, MultiSpan, Substitution, SubstitutionPart,
+    SuggestionStyle, ToolMetadata,
+};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_serialize::json::Json;
 use rustc_span::edition::LATEST_STABLE_EDITION;
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
@@ -17,34 +15,6 @@ use std::hash::{Hash, Hasher};
 /// `.disable_suggestions()` was called on the `Diagnostic`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub struct SuggestionsDisabled;
-
-/// Abstraction over a message in a diagnostic to support both translatable and non-translatable
-/// diagnostic messages.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub enum DiagnosticMessage {
-    /// Non-translatable diagnostic message.
-    Str(String),
-    /// Identifier for a Fluent message corresponding to the diagnostic message.
-    FluentIdentifier(String),
-}
-
-impl DiagnosticMessage {
-    /// Convert `DiagnosticMessage` to a `&str`.
-    pub fn as_str(&self) -> &str {
-        match self {
-            DiagnosticMessage::Str(msg) => msg,
-            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
-        }
-    }
-
-    /// Convert `DiagnosticMessage` to an owned `String`.
-    pub fn to_string(self) -> String {
-        match self {
-            DiagnosticMessage::Str(msg) => msg,
-            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
-        }
-    }
-}
 
 #[must_use]
 #[derive(Clone, Debug, Encodable, Decodable)]
@@ -262,7 +232,7 @@ impl Diagnostic {
         self.set_span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
-                self.span_label(after, label);
+                self.span.push_span_message(after, label);
             }
         }
         self

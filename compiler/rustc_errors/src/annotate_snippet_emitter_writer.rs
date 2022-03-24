@@ -7,12 +7,12 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Emitter, Level, SubDiagnostic};
+use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Emitter, Level, MultiSpan, SubDiagnostic};
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{MultiSpan, SourceFile};
+use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {
