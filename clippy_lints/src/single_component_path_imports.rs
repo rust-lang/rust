@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use rustc_ast::{ptr::P, Crate, Item, ItemKind, MacroDef, ModKind, UseTreeKind, VisibilityKind};
+use rustc_ast::{ptr::P, Crate, Item, ItemKind, MacroDef, ModKind, UseTreeKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -76,14 +76,13 @@ fn check_mod(cx: &EarlyContext<'_>, items: &[P<Item>]) {
         );
     }
 
-    for single_use in &single_use_usages {
-        if !imports_reused_with_self.contains(&single_use.0) {
-            let can_suggest = single_use.2;
+    for (name, span, can_suggest) in single_use_usages {
+        if !imports_reused_with_self.contains(&name) {
             if can_suggest {
                 span_lint_and_sugg(
                     cx,
                     SINGLE_COMPONENT_PATH_IMPORTS,
-                    single_use.1,
+                    span,
                     "this import is redundant",
                     "remove it entirely",
                     String::new(),
@@ -93,7 +92,7 @@ fn check_mod(cx: &EarlyContext<'_>, items: &[P<Item>]) {
                 span_lint_and_help(
                     cx,
                     SINGLE_COMPONENT_PATH_IMPORTS,
-                    single_use.1,
+                    span,
                     "this import is redundant",
                     None,
                     "remove this import",
@@ -124,14 +123,11 @@ fn track_uses(
         ItemKind::Use(use_tree) => {
             let segments = &use_tree.prefix.segments;
 
-            let should_report =
-                |name: &Symbol| !macros.contains(name) || matches!(item.vis.kind, VisibilityKind::Inherited);
-
             // keep track of `use some_module;` usages
             if segments.len() == 1 {
                 if let UseTreeKind::Simple(None, _, _) = use_tree.kind {
                     let name = segments[0].ident.name;
-                    if should_report(&name) {
+                    if !macros.contains(&name) {
                         single_use_usages.push((name, item.span, true));
                     }
                 }
@@ -146,7 +142,7 @@ fn track_uses(
                         if segments.len() == 1 {
                             if let UseTreeKind::Simple(None, _, _) = tree.0.kind {
                                 let name = segments[0].ident.name;
-                                if should_report(&name) {
+                                if !macros.contains(&name) {
                                     single_use_usages.push((name, tree.0.span, false));
                                 }
                             }

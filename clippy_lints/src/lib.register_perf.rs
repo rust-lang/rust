@@ -16,7 +16,6 @@ store.register_group(true, "clippy::perf", Some("clippy_perf"), vec![
     LintId::of(methods::EXTEND_WITH_DRAIN),
     LintId::of(methods::ITER_NTH),
     LintId::of(methods::ITER_OVEREAGER_CLONED),
-    LintId::of(methods::ITER_WITH_DRAIN),
     LintId::of(methods::MANUAL_STR_REPEAT),
     LintId::of(methods::OR_FUN_CALL),
     LintId::of(methods::SINGLE_CHAR_PATTERN),

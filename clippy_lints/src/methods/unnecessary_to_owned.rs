@@ -2,7 +2,9 @@ use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{
+    contains_ty, get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs,
+};
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item};
 use rustc_errors::Applicability;
 use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind};
@@ -114,7 +116,12 @@ fn check_addr_of_expr(
                     parent.span,
                     &format!("unnecessary use of `{}`", method_name),
                     "use",
-                    format!("{:&>width$}{}", "", receiver_snippet, width = n_target_refs - n_receiver_refs),
+                    format!(
+                        "{:&>width$}{}",
+                        "",
+                        receiver_snippet,
+                        width = n_target_refs - n_receiver_refs
+                    ),
                     Applicability::MachineApplicable,
                 );
                 return true;
@@ -182,20 +189,10 @@ fn check_into_iter_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: 
         if let Some(item_ty) = get_iterator_item_ty(cx, parent_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
-            if unnecessary_iter_cloned::check_for_loop_iter(
-                cx,
-                parent,
-                method_name,
-                receiver,
-                true,
-            ) {
+            if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) {
-                "copied"
-            } else {
-                "cloned"
-            };
+            let cloned_or_copied = if is_copy(cx, item_ty) { "copied" } else { "cloned" };
             // The next suggestion may be incorrect because the removal of the `to_owned`-like
             // function could cause the iterator to hold a reference to a resource that is used
             // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.
@@ -243,10 +240,11 @@ fn check_other_call_arg<'tcx>(
         if if trait_predicate.def_id() == deref_trait_id {
             if let [projection_predicate] = projection_predicates[..] {
                 let normalized_ty =
-                    cx.tcx.subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
+                    cx.tcx
+                        .subst_and_normalize_erasing_regions(call_substs, cx.param_env, projection_predicate.term);
                 implements_trait(cx, receiver_ty, deref_trait_id, &[])
-                    && get_associated_type(cx, receiver_ty, deref_trait_id,
-                    "Target").map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
+                    && get_associated_type(cx, receiver_ty, deref_trait_id, "Target")
+                        .map_or(false, |ty| ty::Term::Ty(ty) == normalized_ty)
             } else {
                 false
             }
@@ -254,7 +252,7 @@ fn check_other_call_arg<'tcx>(
             let composed_substs = compose_substs(
                 cx,
                 &trait_predicate.trait_ref.substs.iter().skip(1).collect::<Vec<_>>()[..],
-                call_substs
+                call_substs,
             );
             implements_trait(cx, receiver_ty, as_ref_trait_id, &composed_substs)
         } else {
@@ -264,6 +262,12 @@ fn check_other_call_arg<'tcx>(
         // `Target = T`.
         if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
         let n_refs = max(n_refs, if is_copy(cx, receiver_ty) { 0 } else { 1 });
+        // If the trait is `AsRef` and the input type variable `T` occurs in the output type, then
+        // `T` must not be instantiated with a reference
+        // (https://github.com/rust-lang/rust-clippy/issues/8507).
+        if (n_refs == 0 && !receiver_ty.is_ref())
+            || trait_predicate.def_id() != as_ref_trait_id
+            || !contains_ty(fn_sig.output(), input);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
@@ -339,11 +343,7 @@ fn get_input_traits_and_projections<'tcx>(
                 if let Some(arg) = substs.iter().next();
                 if let GenericArgKind::Type(arg_ty) = arg.unpack();
                 if arg_ty == input;
-                then {
-                    true
-                } else {
-                    false
-                }
+                then { true } else { false }
             }
         };
         match predicate.kind().skip_binder() {

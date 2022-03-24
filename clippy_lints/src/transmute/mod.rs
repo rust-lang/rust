@@ -415,7 +415,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 // And see https://github.com/rust-lang/rust/issues/51911 for dereferencing raw pointers.
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty(arg);
+                let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
                 let to_ty = cx.typeck_results().expr_ty(e);
 
                 // If useless_transmute is triggered, the other lints can be skipped.
