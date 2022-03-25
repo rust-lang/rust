@@ -59,6 +59,7 @@
 #![feature(unwrap_infallible)]
 #![feature(decl_macro)]
 #![feature(drain_filter)]
+#![feature(intra_doc_pointers)]
 #![recursion_limit = "512"]
 #![allow(rustc::potential_query_instability)]
 
