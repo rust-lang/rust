@@ -72,6 +72,10 @@ function base_sysroot_tests() {
     $MY_RUSTC example/track-caller-attribute.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/track-caller-attribute
 
+    echo "[AOT] float-minmax-pass"
+    $MY_RUSTC example/float-minmax-pass.rs --crate-type bin -Cpanic=abort --target "$TARGET_TRIPLE"
+    $RUN_WRAPPER ./target/out/float-minmax-pass
+
     echo "[AOT] mod_bench"
     $MY_RUSTC example/mod_bench.rs --crate-type bin --target "$TARGET_TRIPLE"
     $RUN_WRAPPER ./target/out/mod_bench

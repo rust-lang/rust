@@ -354,8 +354,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!("{:?}", lane_ty),
                 }
                 match intrinsic {
-                    sym::simd_fmin => fx.bcx.ins().fmin(x_lane, y_lane),
-                    sym::simd_fmax => fx.bcx.ins().fmax(x_lane, y_lane),
+                    sym::simd_fmin => crate::num::codegen_float_min(fx, x_lane, y_lane),
+                    sym::simd_fmax => crate::num::codegen_float_max(fx, x_lane, y_lane),
                     _ => unreachable!(),
                 }
             });
@@ -495,7 +495,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let lt = match ty.kind() {
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedLessThan, a, b),
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedLessThan, a, b),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::LessThan, a, b),
+                    ty::Float(_) => return crate::num::codegen_float_min(fx, a, b),
                     _ => unreachable!(),
                 };
                 fx.bcx.ins().select(lt, a, b)
@@ -512,7 +512,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 let gt = match ty.kind() {
                     ty::Int(_) => fx.bcx.ins().icmp(IntCC::SignedGreaterThan, a, b),
                     ty::Uint(_) => fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, a, b),
-                    ty::Float(_) => fx.bcx.ins().fcmp(FloatCC::GreaterThan, a, b),
+                    ty::Float(_) => return crate::num::codegen_float_max(fx, a, b),
                     _ => unreachable!(),
                 };
                 fx.bcx.ins().select(gt, a, b)
