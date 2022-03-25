@@ -4,11 +4,11 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
+use crate::mbe::macro_parser::{MatchedNtTt, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
+use rustc_ast::token::{self, NonterminalKind, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -470,22 +470,20 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNonterminal(ref nt) = *m {
-                    if let NtTT(ref tt) = **nt {
-                        let mut tts = vec![];
-                        mbe::quoted::parse(
-                            tt.clone().into(),
-                            true,
-                            &sess.parse_sess,
-                            def.id,
-                            features,
-                            edition,
-                            &mut tts,
-                        );
-                        let tt = tts.pop().unwrap();
-                        valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
-                        return tt;
-                    }
+                if let MatchedNtTt(ref tt) = *m {
+                    let mut tts = vec![];
+                    mbe::quoted::parse(
+                        tt.clone().into(),
+                        true,
+                        &sess.parse_sess,
+                        def.id,
+                        features,
+                        edition,
+                        &mut tts,
+                    );
+                    let tt = tts.pop().unwrap();
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
+                    return tt;
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
@@ -497,20 +495,18 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNonterminal(ref nt) = *m {
-                    if let NtTT(ref tt) = **nt {
-                        let mut tts = vec![];
-                        mbe::quoted::parse(
-                            tt.clone().into(),
-                            false,
-                            &sess.parse_sess,
-                            def.id,
-                            features,
-                            edition,
-                            &mut tts,
-                        );
-                        return tts.pop().unwrap();
-                    }
+                if let MatchedNtTt(ref tt) = *m {
+                    let mut tts = vec![];
+                    mbe::quoted::parse(
+                        tt.clone().into(),
+                        false,
+                        &sess.parse_sess,
+                        def.id,
+                        features,
+                        edition,
+                        &mut tts,
+                    );
+                    return tts.pop().unwrap();
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
