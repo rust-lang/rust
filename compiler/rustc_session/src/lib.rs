@@ -1,5 +1,6 @@
 #![feature(crate_visibility_modifier)]
 #![feature(derive_default_enum)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(once_cell)]

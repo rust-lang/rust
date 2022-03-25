@@ -183,24 +183,18 @@ pub fn default_output_for_target(sess: &Session) -> CrateType {
 
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool {
-    match crate_type {
-        CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => {
-            if !sess.target.dynamic_linking {
-                return true;
-            }
-            if sess.crt_static(Some(crate_type)) && !sess.target.crt_static_allows_dylibs {
-                return true;
-            }
+    if let CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro = crate_type {
+        if !sess.target.dynamic_linking {
+            return true;
         }
-        _ => {}
-    }
-    if sess.target.only_cdylib {
-        match crate_type {
-            CrateType::ProcMacro | CrateType::Dylib => return true,
-            _ => {}
+        if sess.crt_static(Some(crate_type)) && !sess.target.crt_static_allows_dylibs {
+            return true;
         }
     }
-    if !sess.target.executables && crate_type == CrateType::Executable {
+    if let CrateType::ProcMacro | CrateType::Dylib = crate_type && sess.target.only_cdylib {
+        return true;
+    }
+    if let CrateType::Executable = crate_type && !sess.target.executables {
         return true;
     }
 
