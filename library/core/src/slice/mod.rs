@@ -2262,7 +2262,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitN::new(self.split(pred), n)
+        self.split(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2288,7 +2288,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitNMut::new(self.split_mut(pred), n)
+        self.split_mut(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2317,7 +2317,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitN::new(self.rsplit(pred), n)
+        self.rsplit(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2344,7 +2344,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitNMut::new(self.rsplit_mut(pred), n)
+        self.rsplit_mut(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2369,7 +2369,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitNInclusive::new(self.split_inclusive(pred), n)
+        self.split_inclusive(pred).max_items(n)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -2395,7 +2395,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        SplitNInclusiveMut::new(self.split_inclusive_mut(pred), n)
+        self.split_inclusive_mut(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -2424,7 +2424,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitNInclusive::new(self.rsplit_inclusive(pred), n)
+        self.rsplit_inclusive(pred).max_items(n)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -2450,7 +2450,7 @@ impl<T> [T] {
     where
         F: FnMut(&T) -> bool,
     {
-        RSplitNInclusiveMut::new(self.rsplit_inclusive_mut(pred), n)
+        self.rsplit_inclusive_mut(pred).max_items(n)
     }
 
     /// Returns an iterator over subslices separated by elements that match

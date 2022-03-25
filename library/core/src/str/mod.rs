@@ -15,7 +15,7 @@ mod validations;
 
 use self::iter::{
     SplitEndsInternal, SplitInclusiveInternal, SplitInitiatorInternal, SplitLeftInclusiveInternal,
-    SplitNInclusiveInternal, SplitNLeftInclusiveInternal, SplitTerminatorInternal,
+    SplitTerminatorInternal,
 };
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 
@@ -83,8 +83,8 @@ pub use iter::{
 pub use validations::{next_code_point, utf8_char_width};
 
 use iter::MatchIndicesInternal;
+use iter::MatchesInternal;
 use iter::SplitInternal;
-use iter::{MatchesInternal, SplitNInternal};
 
 #[inline(never)]
 #[cold]
@@ -1472,7 +1472,10 @@ impl str {
     /// ```
     #[unstable(feature = "split_inclusive_variants", issue = "none")]
     #[inline]
-    pub fn rsplit_inclusive<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitInclusive<'a, P> {
+    pub fn rsplit_inclusive<'a, P>(&'a self, pat: P) -> RSplitInclusive<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
         RSplitInclusive(self.split_inclusive(pat).0)
     }
 
@@ -1566,10 +1569,10 @@ impl str {
     /// ```
     #[unstable(feature = "split_inclusive_variants", issue = "none")]
     #[inline]
-    pub fn rsplit_left_inclusive<'a, P: Pattern<'a>>(
-        &'a self,
-        pat: P,
-    ) -> RSplitLeftInclusive<'a, P> {
+    pub fn rsplit_left_inclusive<'a, P>(&'a self, pat: P) -> RSplitLeftInclusive<'a, P>
+    where
+        P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+    {
         RSplitLeftInclusive(self.split_left_inclusive(pat).0)
     }
 
@@ -1921,7 +1924,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
-        SplitN(SplitNInternal { iter: self.split(pat).0, count: n })
+        self.split(pat).max_items(n)
     }
 
     /// An iterator over substrings of this string slice, separated by a
@@ -1973,7 +1976,7 @@ impl str {
     where
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
-        RSplitN(self.splitn(n, pat).0)
+        self.rsplit(pat).max_items(n)
     }
 
     /// An iterator over substrings of the given string slice, separated by a
@@ -2034,7 +2037,7 @@ impl str {
         n: usize,
         pat: P,
     ) -> SplitNInclusive<'a, P> {
-        SplitNInclusive(SplitNInclusiveInternal { iter: self.split_inclusive(pat).0, count: n })
+        self.split_inclusive(pat).max_items(n)
     }
 
     /// An iterator over substrings of this string slice, separated by a
@@ -2094,7 +2097,7 @@ impl str {
     where
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
-        RSplitNInclusive(self.splitn_inclusive(n, pat).0)
+        self.rsplit_inclusive(pat).max_items(n)
     }
 
     /// An iterator over substrings of the given string slice, separated by a
@@ -2155,10 +2158,7 @@ impl str {
         n: usize,
         pat: P,
     ) -> SplitNLeftInclusive<'a, P> {
-        SplitNLeftInclusive(SplitNLeftInclusiveInternal {
-            iter: self.split_left_inclusive(pat).0,
-            count: n,
-        })
+        self.split_left_inclusive(pat).max_items(n)
     }
 
     /// An iterator over substrings of this string slice, separated by a
@@ -2218,7 +2218,7 @@ impl str {
     where
         P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
     {
-        RSplitNLeftInclusive(self.splitn_left_inclusive(n, pat).0)
+        self.rsplit_left_inclusive(pat).max_items(n)
     }
 
     /// Splits the string on the first occurrence of the specified delimiter and

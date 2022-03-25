@@ -400,14 +400,13 @@ macro_rules! iterator {
 macro_rules! split_iter {
     (
         #[$stability:meta]
+        #[debug($debug_stability:meta)]
         #[fused($fused_stability:meta)]
         $(#[$outer:meta])*
         struct $split_iter:ident<
             $(shared_ref: & $lt:lifetime)?
             $(mut_ref: & $m_lt:lifetime)?
         > {
-            #[$debug_stability:meta]
-            debug: $debug_name:literal,
             include_leading: $include_leading:literal,
             include_trailing: $include_trailing:literal,
         }
@@ -442,7 +441,7 @@ macro_rules! split_iter {
             P: FnMut(&T) -> bool,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct($debug_name)
+                f.debug_struct(stringify!(split_iter))
                     .field("v", &self.v)
                     .field("finished", &self.finished)
                     .finish()
@@ -659,7 +658,7 @@ macro_rules! reverse_iter {
     (
         #[$stability:meta]
         $(#[$outer:meta])*
-        $vis:vis struct $rev:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
+        $vis:vis struct $rev:ident { inner: $inner:ident } $(: $clone:ident)?
     ) => {
         $(#[$outer])*
         #[$stability]
@@ -683,7 +682,7 @@ macro_rules! reverse_iter {
             P: FnMut(&T) -> bool,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct($str)
+                f.debug_struct(stringify!($rev))
                     .field("v", &self.inner.v)
                     .field("finished", &self.inner.finished)
                     .finish()
@@ -754,7 +753,10 @@ macro_rules! iter_n {
         #[$stability:meta]
         #[fused($fused_stability:meta)]
         $(#[$outer:meta])*
-        $vis:vis struct $iter_n:ident { $str:literal ; $inner:ident } $(: $clone:ident)?
+        $vis:vis struct $iter_n:ident { inner: $inner:ident } $(: $clone:ident)?
+
+        $(#[$max_items_attrs:meta])*
+        fn max_items;
     ) => {
         $(#[$outer])*
         #[$stability]
@@ -790,7 +792,7 @@ macro_rules! iter_n {
             P: FnMut(&T) -> bool,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct($str).field("inner", &self.inner).finish()
+                f.debug_struct(stringify!($iter_n)).field("inner", &self.inner).finish()
             }
         }
 
@@ -814,5 +816,13 @@ macro_rules! iter_n {
 
         #[$fused_stability]
         impl<'a, T, P> FusedIterator for $iter_n<'a, T, P> where P: FnMut(&T) -> bool {}
+
+        impl<'a, T, P> $inner<'a, T, P> where P: FnMut(&T) -> bool {
+            $(#[$max_items_attrs])*
+            #[inline]
+            pub fn max_items(self, n: usize) -> $iter_n<'a, T, P> {
+                $iter_n::new(self, n)
+            }
+        }
     };
 }

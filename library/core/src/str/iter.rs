@@ -358,11 +358,19 @@ unsafe impl TrustedRandomAccessNoCoerce for Bytes<'_> {
 /// This macro generates a Clone impl for string pattern API
 /// wrapper types of the form X<'a, P>
 macro_rules! derive_pattern_clone {
-    (clone $t:ident with |$s:ident| $e:expr) => {
+    (
+        $(#[$impl_attr:meta])*
+        clone $t:ident
+        $(where Searcher: ($where_clause:path))?
+        with $(#[$fn_attr:meta])* |$s:ident| $e:expr
+    ) => {
+        $(#[$impl_attr])*
         impl<'a, P> Clone for $t<'a, P>
         where
-            P: Pattern<'a, Searcher: Clone>,
+            P: Pattern<'a, Searcher: $($where_clause +)? Clone>,
         {
+            $(#[$fn_attr])*
+            #[inline]
             fn clone(&self) -> Self {
                 let $s = self;
                 $e
@@ -409,21 +417,27 @@ macro_rules! derive_pattern_clone {
 /// so the two wrapper structs implement `Iterator`
 /// and `DoubleEndedIterator` depending on the concrete pattern type, leading
 /// to the complex impls seen above.
+///
+/// In addition, when requested, as_str methods are are also generated for all iterators.
 macro_rules! generate_pattern_iterators {
     {
         // Forward iterator
         forward:
             #[$forward_stability_attribute:meta]
-            #[fused($fused_forward_stability_attribute:meta)]
+            #[fused($forward_fused_stability_attribute:meta)]
             $(#[$forward_iterator_attribute:meta])*
             struct $forward_iterator:ident;
+            $($(#[$forward_as_str_attribute:meta])*
+            fn as_str;)?
 
         // Reverse iterator
         reverse:
             #[$reverse_stability_attribute:meta]
-            #[fused($fused_reverse_stability_attribute:meta)]
+            #[fused($reverse_fused_stability_attribute:meta)]
             $(#[$reverse_iterator_attribute:meta])*
             struct $reverse_iterator:ident;
+            $($(#[$reverse_as_str_attribute:meta])*
+            fn as_str;)?
 
         // Internal almost-iterator that is being delegated to
         internal:
@@ -434,7 +448,13 @@ macro_rules! generate_pattern_iterators {
     } => {
         $(#[$forward_iterator_attribute])*
         #[$forward_stability_attribute]
+        #[repr(transparent)]
         pub struct $forward_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
+
+        derive_pattern_clone! {
+            #[$forward_stability_attribute]
+            clone $forward_iterator with |s| Self(s.0.clone())
+        }
 
         #[$forward_stability_attribute]
         impl<'a, P> fmt::Debug for $forward_iterator<'a, P>
@@ -458,25 +478,31 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-        #[$forward_stability_attribute]
-        impl<'a, P> Clone for $forward_iterator<'a, P>
-        where
-            P: Pattern<'a, Searcher: Clone>,
-        {
-            fn clone(&self) -> Self {
-                $forward_iterator(self.0.clone())
+        $(impl<'a, P: Pattern<'a>> $forward_iterator<'a, P> {
+            $(#[$forward_as_str_attribute])*
+            #[inline]
+            pub fn as_str(&self) -> &'a str {
+                self.0.as_str()
             }
-        }
+        })?
+
+        #[$forward_fused_stability_attribute]
+        impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
 
         $(#[$reverse_iterator_attribute])*
         #[$reverse_stability_attribute]
-        pub struct $reverse_iterator<'a, P: Pattern<'a>>(pub(super) $internal_iterator<'a, P>);
+        #[repr(transparent)]
+        pub struct $reverse_iterator<'a, P>(pub(super) $internal_iterator<'a, P>) where P: Pattern<'a, Searcher: ReverseSearcher<'a>>;
+
+        derive_pattern_clone! {
+            #[$reverse_stability_attribute]
+            clone $reverse_iterator where Searcher: (ReverseSearcher<'a>) with |s| Self(s.0.clone())
+        }
 
         #[$reverse_stability_attribute]
         impl<'a, P> fmt::Debug for $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: fmt::Debug>,
+            P: Pattern<'a, Searcher: ReverseSearcher<'a> + fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($reverse_iterator))
@@ -498,20 +524,18 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
-        #[$reverse_stability_attribute]
-        impl<'a, P> Clone for $reverse_iterator<'a, P>
+        $(impl<'a, P> $reverse_iterator<'a, P>
         where
-            P: Pattern<'a, Searcher: Clone>,
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
         {
-            fn clone(&self) -> Self {
-                $reverse_iterator(self.0.clone())
+            $(#[$reverse_as_str_attribute])*
+            #[inline]
+            pub fn as_str(&self) -> &'a str {
+                self.0.as_str()
             }
-        }
+        })?
 
-        #[$fused_forward_stability_attribute]
-        impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
-
-        #[$fused_reverse_stability_attribute]
+        #[$reverse_fused_stability_attribute]
         impl<'a, P> FusedIterator for $reverse_iterator<'a, P>
         where
             P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
@@ -565,13 +589,13 @@ macro_rules! generate_pattern_iterators {
     } => {}
 }
 
-// Making this a trait suppresses some `unused` lints
-trait SplitIterInternal<'a, P: Pattern<'a>> {
+trait SplitIterInternal<'a>: Sized {
+    type Pat: Pattern<'a>;
     fn next(&mut self) -> Option<&'a str>;
 
     fn next_back(&mut self) -> Option<&'a str>
     where
-        P::Searcher: ReverseSearcher<'a>;
+        <<Self as SplitIterInternal<'a>>::Pat as Pattern<'a>>::Searcher: ReverseSearcher<'a>;
 
     fn finish(&mut self) -> Option<&'a str>;
 
@@ -581,7 +605,6 @@ trait SplitIterInternal<'a, P: Pattern<'a>> {
 macro_rules! split_internal {
     (
         $split_struct:ident {
-            debug: $name_str:literal,
             $(skip_leading_empty: $skip_leading_empty:ident,)?
             $(skip_trailing_empty: $skip_trailing_empty:ident,)?
             include_leading: $include_leading:literal,
@@ -607,7 +630,7 @@ macro_rules! split_internal {
             P: Pattern<'a, Searcher: fmt::Debug>,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct($name_str)
+                f.debug_struct(stringify!(split_struct))
                     .field("start", &self.start)
                     .field("end", &self.end)
                     .field("matcher", &self.matcher)
@@ -632,7 +655,9 @@ macro_rules! split_internal {
             }
         }
 
-        impl<'a, P: Pattern<'a>> SplitIterInternal<'a, P> for $split_struct<'a, P> {
+        impl<'a, P: Pattern<'a>> SplitIterInternal<'a> for $split_struct<'a, P> {
+            type Pat = P;
+
             #[inline]
             fn next(&mut self) -> Option<&'a str> {
                 if self.finished {
@@ -743,9 +768,189 @@ macro_rules! split_internal {
     }
 }
 
+macro_rules! generate_n_iterators {
+    (
+        forward:
+            #[$forward_stability_attribute:meta]
+            #[fused($forward_fused_stability_attribute:meta)]
+            $(#[$forward_iterator_attribute:meta])*
+            struct $forward_n_iterator:ident { inner: $forward_inner_iterator:ident }
+
+            $(#[$forward_max_items_attribute:meta])*
+            fn max_items;
+
+            $($(#[$forward_as_str_attribute:meta])*
+            fn as_str;)?
+        reverse:
+            #[$reverse_stability_attribute:meta]
+            #[fused($reverse_fused_stability_attribute:meta)]
+            $(#[$reverse_iterator_attribute:meta])*
+            struct $reverse_n_iterator:ident { inner: $reverse_inner_iterator:ident }
+
+            $(#[$reverse_max_items_attribute:meta])*
+            fn max_items;
+
+            $($(#[$reverse_as_str_attribute:meta])*
+            fn as_str;)?
+    ) => {
+        #[$forward_stability_attribute]
+        $(#[$forward_iterator_attribute])*
+        pub struct $forward_n_iterator<'a, P: Pattern<'a>> {
+            iter: $forward_inner_iterator<'a, P>,
+            count: usize
+        }
+
+        derive_pattern_clone! {
+            #[$forward_stability_attribute]
+            clone $forward_n_iterator with |s| Self { iter: s.iter.clone(), count: s.count }
+        }
+
+        #[$forward_stability_attribute]
+        impl<'a, P> fmt::Debug for $forward_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: fmt::Debug>,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct(stringify!($forward_n_iterator))
+                    .field("iter", &self.iter)
+                    .field("count", &self.count)
+                    .finish()
+            }
+        }
+
+        #[$forward_stability_attribute]
+        impl<'a, P: Pattern<'a>> Iterator for $forward_n_iterator<'a, P> {
+            type Item = <$forward_inner_iterator<'a, P> as Iterator>::Item;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.count {
+                    0 => None,
+                    1 => {
+                        self.count = 0;
+                        self.iter.0.finish()
+                    }
+                    _ => {
+                        self.count -= 1;
+                        self.iter.next()
+                    }
+                }
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (0, Some(self.count))
+            }
+        }
+
+        $(impl<'a, P: Pattern<'a>> $forward_n_iterator<'a, P> {
+            $(#[$forward_as_str_attribute])*
+            #[inline]
+            pub fn as_str(&self) -> &'a str {
+                self.iter.as_str()
+            }
+        })?
+
+        impl<'a, P: Pattern<'a>> $forward_inner_iterator<'a, P> {
+            $(#[$forward_max_items_attribute])*
+            #[inline]
+            pub fn max_items(self, n: usize) -> $forward_n_iterator<'a, P> {
+                $forward_n_iterator { iter: self, count: n }
+            }
+        }
+
+        #[$forward_fused_stability_attribute]
+        impl<'a, P: Pattern<'a>> FusedIterator for $forward_n_iterator<'a, P> {}
+
+        #[$reverse_stability_attribute]
+        $(#[$reverse_iterator_attribute])*
+        pub struct $reverse_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        {
+            iter: $reverse_inner_iterator<'a, P>,
+            count: usize
+        }
+
+        derive_pattern_clone! {
+            #[$reverse_stability_attribute]
+            clone $reverse_n_iterator where Searcher: (ReverseSearcher<'a>) with |s| Self { iter: s.iter.clone(), count: s.count }
+        }
+
+        #[$reverse_stability_attribute]
+        impl<'a, P> fmt::Debug for $reverse_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a> + fmt::Debug>,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.debug_struct(stringify!($reverse_n_iterator))
+                    .field("iter", &self.iter)
+                    .field("count", &self.count)
+                    .finish()
+            }
+        }
+
+        #[$reverse_stability_attribute]
+        impl<'a, P> Iterator for $reverse_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        {
+            type Item = <$reverse_inner_iterator<'a, P> as Iterator>::Item;
+
+            #[inline]
+            fn next(&mut self) -> Option<Self::Item> {
+                match self.count {
+                    0 => None,
+                    1 => {
+                        self.count = 0;
+                        self.iter.0.finish()
+                    }
+                    _ => {
+                        self.count -= 1;
+                        self.iter.next()
+                    }
+                }
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                (0, Some(self.count))
+            }
+        }
+
+        $(impl<'a, P> $reverse_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        {
+            $(#[$reverse_as_str_attribute])*
+            #[inline]
+            pub fn as_str(&self) -> &'a str {
+                self.iter.as_str()
+            }
+        })?
+
+
+        impl<'a, P> $reverse_inner_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        {
+            $(#[$reverse_max_items_attribute])*
+            #[inline]
+            pub fn max_items(self, n: usize) -> $reverse_n_iterator<'a, P> {
+                $reverse_n_iterator { iter: self, count: n }
+            }
+        }
+
+        #[$reverse_fused_stability_attribute]
+        impl<'a, P> FusedIterator for $reverse_n_iterator<'a, P>
+        where
+            P: Pattern<'a, Searcher: ReverseSearcher<'a>>,
+        {}
+    }
+}
+
 split_internal! {
     SplitInternal {
-        debug: "SplitInternal",
         include_leading: false,
         include_trailing: false,
     }
@@ -759,6 +964,23 @@ generate_pattern_iterators! {
         ///
         /// [`split`]: str::split
         struct Split;
+
+        /// Returns remainder of the split string.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_as_str)]
+        /// let mut split = "Mary had a little lamb".split(' ');
+        /// assert_eq!(split.as_str(), "Mary had a little lamb");
+        /// split.next();
+        /// assert_eq!(split.as_str(), "had a little lamb");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[stable(feature = "rust1", since = "1.0.0")]
         #[fused(stable(feature = "fused", since = "1.26.0"))]
@@ -766,56 +988,60 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit`]: str::rsplit
         struct RSplit;
+
+        /// Returns remainder of the split string.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_as_str)]
+        /// let mut split = "Mary had a little lamb".rsplit(' ');
+        /// assert_eq!(split.as_str(), "Mary had a little lamb");
+        /// split.next();
+        /// assert_eq!(split.as_str(), "Mary had a little");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitInternal yielding (&'a str);
     delegate double ended;
 }
 
-impl<'a, P: Pattern<'a>> Split<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "Mary had a little lamb".split(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
-}
+generate_n_iterators! {
+    forward:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
+        /// Created with the method [`splitn`].
+        ///
+        /// [`splitn`]: str::splitn
+        struct SplitN { inner: Split }
 
-impl<'a, P: Pattern<'a>> RSplit<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "Mary had a little lamb".rsplit(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "Mary had a little");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
+    reverse:
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[fused(stable(feature = "fused", since = "1.26.0"))]
+        /// Created with the method [`rsplitn`].
+        ///
+        /// [`rsplitn`]: str::rsplitn
+        struct RSplitN { inner: RSplit }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
 }
 
 split_internal! {
     SplitInclusiveInternal {
-        debug: "SplitInclusiveInternal",
         skip_trailing_empty: skip_trailing_empty,
         include_leading: false,
         include_trailing: true,
@@ -830,6 +1056,23 @@ generate_pattern_iterators! {
         ///
         /// [`split_inclusive`]: str::split_inclusive
         struct SplitInclusive;
+
+        /// Returns remainder of the split string
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_inclusive_as_str)]
+        /// let mut split = "Mary had a little lamb".split_inclusive(' ');
+        /// assert_eq!(split.as_str(), "Mary had a little lamb");
+        /// split.next();
+        /// assert_eq!(split.as_str(), "had a little lamb");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
@@ -837,14 +1080,47 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit_inclusive`]: str::rsplit_inclusive
         struct RSplitInclusive;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitInclusiveInternal yielding (&'a str);
     delegate double ended;
 }
 
+generate_n_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`splitn_inclusive`].
+        ///
+        /// [`splitn_inclusive`]: str::splitn_inclusive
+        struct SplitNInclusive { inner: SplitInclusive }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplitn_inclusive`].
+        ///
+        /// [`rsplitn_inclusive`]: str::rsplitn_inclusive
+        struct RSplitNInclusive { inner: RSplitInclusive }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+}
+
 split_internal! {
     SplitLeftInclusiveInternal {
-        debug: "SplitLeftInclusiveInternal",
         skip_leading_empty: skip_leading_empty,
         include_leading: true,
         include_trailing: false,
@@ -859,6 +1135,24 @@ generate_pattern_iterators! {
         ///
         /// [`split_left_inclusive`]: str::split_left_inclusive
         struct SplitLeftInclusive;
+
+        /// Returns remainder of the splitted string
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_inclusive_as_str)]
+        /// #![feature(split_inclusive_variants)]
+        /// let mut split = "Mary had a little lamb".split_left_inclusive(' ');
+        /// assert_eq!(split.as_str(), "Mary had a little lamb");
+        /// split.next();
+        /// assert_eq!(split.as_str(), " had a little lamb");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
@@ -866,14 +1160,47 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit_left_inclusive`]: str::rsplit_left_inclusive
         struct RSplitLeftInclusive;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitLeftInclusiveInternal yielding (&'a str);
     delegate double ended;
 }
 
+generate_n_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`splitn_left_inclusive`].
+        ///
+        /// [`splitn_left_inclusive`]: str::splitn_left_inclusive
+        struct SplitNLeftInclusive { inner: SplitLeftInclusive }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        /// Created with the method [`rsplitn_left_inclusive`].
+        ///
+        /// [`rsplitn_left_inclusive`]: str::rsplitn_left_inclusive
+        struct RSplitNLeftInclusive { inner: RSplitLeftInclusive }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+}
+
 split_internal! {
     SplitInitiatorInternal {
-        debug: "SplitInitiatorInternal",
         skip_leading_empty: skip_leading_empty,
         include_leading: false,
         include_trailing: false,
@@ -888,6 +1215,10 @@ generate_pattern_iterators! {
         ///
         /// [`split_initiator`]: str::split_initiator
         struct SplitInitiator;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
@@ -895,14 +1226,41 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit_initiator`]: str::rsplit_initiator
         struct RSplitInitiator;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitInitiatorInternal yielding (&'a str);
     delegate double ended;
 }
 
+generate_n_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        struct SplitNInitiator { inner: SplitInitiator }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        struct RSplitNInitiator { inner: RSplitInitiator }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+}
+
 split_internal! {
     SplitTerminatorInternal {
-        debug: "SplitTerminatorInternal",
         skip_trailing_empty: skip_trailing_empty,
         include_leading: false,
         include_trailing: false,
@@ -917,6 +1275,23 @@ generate_pattern_iterators! {
         ///
         /// [`split_terminator`]: str::split_terminator
         struct SplitTerminator;
+
+        /// Returns remainder of the split string.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_as_str)]
+        /// let mut split = "A..B..".split_terminator('.');
+        /// assert_eq!(split.as_str(), "A..B..");
+        /// split.next();
+        /// assert_eq!(split.as_str(), ".B..");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[stable(feature = "rust1", since = "1.0.0")]
         #[fused(stable(feature = "fused", since = "1.26.0"))]
@@ -924,14 +1299,54 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit_terminator`]: str::rsplit_terminator
         struct RSplitTerminator;
+
+        /// Returns remainder of the split string.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(str_split_as_str)]
+        /// let mut split = "A..B..".rsplit_terminator('.');
+        /// assert_eq!(split.as_str(), "A..B..");
+        /// split.next();
+        /// assert_eq!(split.as_str(), "A..B");
+        /// split.by_ref().for_each(drop);
+        /// assert_eq!(split.as_str(), "");
+        /// ```
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitTerminatorInternal yielding (&'a str);
     delegate double ended;
 }
 
+generate_n_iterators! {
+    forward:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        struct SplitNTerminator { inner: SplitTerminator }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
+    reverse:
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
+        struct RSplitNTerminator { inner: RSplitTerminator }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+}
+
 split_internal! {
     SplitEndsInternal {
-        debug: "SplitEndsInternal",
         skip_leading_empty: skip_leading_empty,
         skip_trailing_empty: skip_trailing_empty,
         include_leading: false,
@@ -947,6 +1362,10 @@ generate_pattern_iterators! {
         ///
         /// [`split_ends`]: str::split_ends
         struct SplitEnds;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
@@ -954,249 +1373,37 @@ generate_pattern_iterators! {
         ///
         /// [`rsplit_ends`]: str::rsplit_ends
         struct RSplitEnds;
+
+        #[unstable(feature = "str_split_as_str", issue = "77998")]
+        fn as_str;
+
     internal:
         SplitEndsInternal yielding (&'a str);
     delegate double ended;
 }
 
-impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "A..B..".split_terminator('.');
-    /// assert_eq!(split.as_str(), "A..B..");
-    /// split.next();
-    /// assert_eq!(split.as_str(), ".B..");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
-}
-
-impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "A..B..".rsplit_terminator('.');
-    /// assert_eq!(split.as_str(), "A..B..");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "A..B");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
-}
-
-macro_rules! splitn_internal {
-    (
-        struct $splitn_struct:ident {
-            debug: $debug_str:literal,
-            iter: $inner_iter:ident,
-        }
-    ) => {
-        derive_pattern_clone! {
-            clone $splitn_struct
-            with |s| $splitn_struct { iter: s.iter.clone(), ..*s }
-        }
-
-        pub(super) struct $splitn_struct<'a, P: Pattern<'a>> {
-            pub(super) iter: $inner_iter<'a, P>,
-            /// The number of splits remaining
-            pub(super) count: usize,
-        }
-
-        impl<'a, P> fmt::Debug for $splitn_struct<'a, P>
-        where
-            P: Pattern<'a, Searcher: fmt::Debug>,
-        {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_struct($debug_str)
-                    .field("iter", &self.iter)
-                    .field("count", &self.count)
-                    .finish()
-            }
-        }
-
-        impl<'a, P: Pattern<'a>> $splitn_struct<'a, P> {
-            #[inline]
-            fn next(&mut self) -> Option<&'a str> {
-                match self.count {
-                    0 => None,
-                    1 => {
-                        self.count = 0;
-                        self.iter.finish()
-                    }
-                    _ => {
-                        self.count -= 1;
-                        self.iter.next()
-                    }
-                }
-            }
-
-            #[unstable(feature = "str_split_as_str", issue = "77998")]
-            #[allow(unused)] // FIXME complete this feature?
-            fn as_str(&self) -> &'a str {
-                self.iter.as_str()
-            }
-        }
-
-        impl<'a, P: Pattern<'a>> $splitn_struct<'a, P>
-        where
-            P::Searcher: ReverseSearcher<'a>,
-        {
-            #[inline]
-            fn next_back(&mut self) -> Option<&'a str> {
-                match self.count {
-                    0 => None,
-                    1 => {
-                        self.count = 0;
-                        self.iter.finish()
-                    }
-                    _ => {
-                        self.count -= 1;
-                        self.iter.next_back()
-                    }
-                }
-            }
-        }
-    };
-}
-
-splitn_internal! {
-    struct SplitNInternal {
-        debug: "SplitNInternal",
-        iter: SplitInternal,
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[fused(stable(feature = "fused", since = "1.26.0"))]
-        /// Created with the method [`splitn`].
-        ///
-        /// [`splitn`]: str::splitn
-        struct SplitN;
-    reverse:
-        #[stable(feature = "rust1", since = "1.0.0")]
-        #[fused(stable(feature = "fused", since = "1.26.0"))]
-        /// Created with the method [`rsplitn`].
-        ///
-        /// [`rsplitn`]: str::rsplitn
-        struct RSplitN;
-    internal:
-        SplitNInternal yielding (&'a str);
-    delegate single ended;
-}
-
-splitn_internal! {
-    struct SplitNInclusiveInternal {
-        debug: "SplitNInclusiveInternal",
-        iter: SplitInclusiveInternal,
-    }
-}
-
-generate_pattern_iterators! {
+generate_n_iterators! {
     forward:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
-        /// Created with the method [`splitn_inclusive`].
-        ///
-        /// [`splitn_inclusive`]: str::splitn_inclusive
-        struct SplitNInclusive;
+        struct SplitNEnds { inner: SplitEnds }
+
+        #[unstable(feature = "split_inclusive_variants", issue = "none")]
+        fn max_items;
+
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
+
     reverse:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
         #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
-        /// Created with the method [`rsplitn_inclusive`].
-        ///
-        /// [`rsplitn_inclusive`]: str::rsplitn_inclusive
-        struct RSplitNInclusive;
-    internal:
-        SplitNInclusiveInternal yielding (&'a str);
-    delegate single ended;
-}
+        struct RSplitNEnds { inner: RSplitEnds }
 
-splitn_internal! {
-    struct SplitNLeftInclusiveInternal {
-        debug: "SplitNLeftInclusiveInternal",
-        iter: SplitLeftInclusiveInternal,
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
         #[unstable(feature = "split_inclusive_variants", issue = "none")]
-        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
-        /// Created with the method [`splitn_left_inclusive`].
-        ///
-        /// [`splitn_left_inclusive`]: str::splitn_left_inclusive
-        struct SplitNLeftInclusive;
-    reverse:
-        #[unstable(feature = "split_inclusive_variants", issue = "none")]
-        #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
-        /// Created with the method [`rsplitn_left_inclusive`].
-        ///
-        /// [`rsplitn_left_inclusive`]: str::rsplitn_left_inclusive
-        struct RSplitNLeftInclusive;
-    internal:
-        SplitNLeftInclusiveInternal yielding (&'a str);
-    delegate single ended;
-}
+        fn max_items;
 
-impl<'a, P: Pattern<'a>> SplitN<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "Mary had a little lamb".splitn(3, ' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
-}
-
-impl<'a, P: Pattern<'a>> RSplitN<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_as_str)]
-    /// let mut split = "Mary had a little lamb".rsplitn(3, ' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "Mary had a little");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
+        #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
+        fn as_str;
 }
 
 derive_pattern_clone! {
@@ -1537,49 +1744,6 @@ impl<'a> SplitAsciiWhitespace<'a> {
 
         // SAFETY: Slice is created from str.
         unsafe { crate::str::from_utf8_unchecked(&self.inner.iter.iter.v) }
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
-    /// Returns remainder of the split string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_inclusive_as_str)]
-    /// let mut split = "Mary had a little lamb".split_inclusive(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), "had a little lamb");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitLeftInclusive<'a, P> {
-    /// Returns remainder of the splitted string
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(str_split_inclusive_as_str)]
-    /// #![feature(split_inclusive_variants)]
-    /// let mut split = "Mary had a little lamb".split_left_inclusive(' ');
-    /// assert_eq!(split.as_str(), "Mary had a little lamb");
-    /// split.next();
-    /// assert_eq!(split.as_str(), " had a little lamb");
-    /// split.by_ref().for_each(drop);
-    /// assert_eq!(split.as_str(), "");
-    /// ```
-    #[inline]
-    #[unstable(feature = "str_split_inclusive_as_str", issue = "77998")]
-    pub fn as_str(&self) -> &'a str {
-        self.0.as_str()
     }
 }
 

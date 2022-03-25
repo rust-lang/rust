@@ -376,6 +376,7 @@ pub(super) trait SplitIter: DoubleEndedIterator {
 
 split_iter! {
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[debug(stable(feature = "core_impl_debug", since = "1.9.0"))]
     #[fused(stable(feature = "fused", since = "1.26.0"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over subslices separated by elements that match a predicate
@@ -393,12 +394,16 @@ split_iter! {
     /// [`split`]: slice::split
     /// [slices]: slice
     struct Split<shared_ref: &'a> {
-        #[stable(feature = "core_impl_debug", since = "1.9.0")]
-        debug: "Split",
         include_leading: false,
         include_trailing: false,
     }
+}
 
+impl<'a, T, P> Split<'a, T, P>
+where
+    T: 'a,
+    P: FnMut(&T) -> bool,
+{
     /// Returns a slice which contains items not yet handled by split.
     /// # Example
     ///
@@ -417,6 +422,7 @@ split_iter! {
 
 split_iter! {
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[debug(stable(feature = "core_impl_debug", since = "1.9.0"))]
     #[fused(stable(feature = "fused", since = "1.26.0"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over the mutable subslices of the vector which are separated
@@ -434,8 +440,6 @@ split_iter! {
     /// [`split_mut`]: slice::split_mut
     /// [slices]: slice
     struct SplitMut<mut_ref: &'a> {
-        #[stable(feature = "core_impl_debug", since = "1.9.0")]
-        debug: "SplitMut",
         include_leading: false,
         include_trailing: false,
     }
@@ -443,6 +447,7 @@ split_iter! {
 
 split_iter! {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[debug(stable(feature = "core_impl_debug", since = "1.9.0"))]
     #[fused(stable(feature = "split_inclusive", since = "1.51.0"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over subslices separated by elements that match a predicate
@@ -461,8 +466,6 @@ split_iter! {
     /// [`split_inclusive`]: slice::split_inclusive
     /// [slices]: slice
     struct SplitInclusive<shared_ref: &'a> {
-        #[stable(feature = "split_inclusive", since = "1.51.0")]
-        debug: "SplitInclusive",
         include_leading: false,
         include_trailing: true,
     }
@@ -470,6 +473,7 @@ split_iter! {
 
 split_iter! {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
+    #[debug(stable(feature = "split_inclusive", since = "1.51.0"))]
     #[fused(stable(feature = "split_inclusive", since = "1.51.0"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over the mutable subslices of the vector which are separated
@@ -488,8 +492,6 @@ split_iter! {
     /// [`split_inclusive_mut`]: slice::split_inclusive_mut
     /// [slices]: slice
     struct SplitInclusiveMut<mut_ref: &'a> {
-        #[stable(feature = "split_inclusive", since = "1.51.0")]
-        debug: "SplitInclusiveMut",
         include_leading: false,
         include_trailing: true,
     }
@@ -497,6 +499,7 @@ split_iter! {
 
 split_iter! {
     #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[debug(stable(feature = "split_inclusive", since = "1.51.0"))]
     #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over subslices separated by elements that match a predicate
@@ -517,8 +520,6 @@ split_iter! {
     /// [`split_left_inclusive`]: slice::split_left_inclusive
     /// [slices]: slice
     struct SplitLeftInclusive<shared_ref: &'a> {
-        #[unstable(feature = "split_inclusive_variants", issue = "none")]
-        debug: "SplitLeftInclusive",
         include_leading: true,
         include_trailing: false,
     }
@@ -526,6 +527,7 @@ split_iter! {
 
 split_iter! {
     #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    #[debug(unstable(feature = "split_inclusive_variants", issue = "none"))]
     #[fused(unstable(feature = "split_inclusive_variants", issue = "none"))]
     #[must_use = "iterators are lazy and do nothing unless consumed"]
     /// An iterator over the mutable subslices of the vector which are separated
@@ -547,8 +549,6 @@ split_iter! {
     /// [`split_left_inclusive_mut`]: slice::split_left_inclusive_mut
     /// [slices]: slice
     struct SplitLeftInclusiveMut<mut_ref: &'a> {
-        #[unstable(feature = "split_inclusive_variants", issue = "none")]
-        debug: "SplitLeftInclusiveMut",
         include_leading: true,
         include_trailing: false,
     }
@@ -571,7 +571,7 @@ reverse_iter! {
     ///
     /// [`rsplit`]: slice::rsplit
     /// [slices]: slice
-    pub struct RSplit { "RSplit"; Split }: Clone
+    pub struct RSplit { inner: Split }: Clone
 }
 
 reverse_iter! {
@@ -594,7 +594,7 @@ reverse_iter! {
     ///
     /// [`rsplit_left_inclusive`]: slice::rsplit_inclusive
     /// [slices]: slice
-    pub struct RSplitInclusive { "RSplitInclusive"; SplitInclusive }: Clone
+    pub struct RSplitInclusive { inner: SplitInclusive }: Clone
 }
 
 reverse_iter! {
@@ -617,7 +617,7 @@ reverse_iter! {
     ///
     /// [`rsplit_left_inclusive`]: slice::rsplit_left_inclusive
     /// [slices]: slice
-    pub struct RSplitLeftInclusive { "RSplitLeftInclusive"; SplitLeftInclusive }: Clone
+    pub struct RSplitLeftInclusive { inner: SplitLeftInclusive }: Clone
 }
 
 reverse_iter! {
@@ -637,7 +637,7 @@ reverse_iter! {
     ///
     /// [`rsplit_mut`]: slice::rsplit_mut
     /// [slices]: slice
-    pub struct RSplitMut { "RSplitMut"; SplitMut }
+    pub struct RSplitMut { inner: SplitMut }
 }
 
 reverse_iter! {
@@ -660,7 +660,7 @@ reverse_iter! {
     ///
     /// [`rsplit_inclusive_mut`]: slice::rsplit_inclusive_mut
     /// [slices]: slice
-    pub struct RSplitInclusiveMut { "RSplitInclusiveMut" ; SplitInclusiveMut }
+    pub struct RSplitInclusiveMut { inner: SplitInclusiveMut }
 }
 
 reverse_iter! {
@@ -683,7 +683,7 @@ reverse_iter! {
     ///
     /// [`rsplit_left_inclusive_mut`]: slice::rsplit_left_inclusive_mut
     /// [slices]: slice
-    pub struct RSplitLeftInclusiveMut { "RSplitLeftInclusiveMut" ; SplitLeftInclusiveMut }
+    pub struct RSplitLeftInclusiveMut { inner: SplitLeftInclusiveMut }
 }
 
 /// An private iterator over subslices separated by elements that
@@ -741,7 +741,10 @@ iter_n! {
     ///
     /// [`splitn`]: slice::splitn
     /// [slices]: slice
-    pub struct SplitN {"SplitN"; Split }: Clone
+    pub struct SplitN { inner:  Split }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -763,7 +766,10 @@ iter_n! {
     ///
     /// [`rsplitn`]: slice::rsplitn
     /// [slices]: slice
-    pub struct RSplitN {"RSplitN"; RSplit }: Clone
+    pub struct RSplitN { inner: RSplit }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -784,7 +790,10 @@ iter_n! {
     ///
     /// [`splitn_mut`]: slice::splitn_mut
     /// [slices]: slice
-    pub struct SplitNMut {"SplitNMut"; SplitMut }
+    pub struct SplitNMut { inner: SplitMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -806,7 +815,10 @@ iter_n! {
     ///
     /// [`rsplitn_mut`]: slice::rsplitn_mut
     /// [slices]: slice
-    pub struct RSplitNMut {"RSplitNMut"; RSplitMut }
+    pub struct RSplitNMut { inner: RSplitMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -830,7 +842,10 @@ iter_n! {
     ///
     /// [`splitn_inclusive`]: slice::splitn_inclusive
     /// [slices]: slice
-    pub struct SplitNInclusive {"SplitNInclusive"; SplitInclusive}: Clone
+    pub struct SplitNInclusive { inner: SplitInclusive }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -854,7 +869,10 @@ iter_n! {
     ///
     /// [`splitn_left_inclusive`]: slice::splitn_left_inclusive
     /// [slices]: slice
-    pub struct SplitNLeftInclusive {"SplitNLeftInclusive"; SplitLeftInclusive}: Clone
+    pub struct SplitNLeftInclusive { inner: SplitLeftInclusive }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -878,7 +896,10 @@ iter_n! {
     ///
     /// [`rsplitn_inclusive`]: slice::rsplitn_inclusive
     /// [slices]: slice
-    pub struct RSplitNInclusive {"RSplitNInclusive"; RSplitInclusive}: Clone
+    pub struct RSplitNInclusive { inner: RSplitInclusive }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -902,7 +923,10 @@ iter_n! {
     ///
     /// [`rsplitn_left_inclusive`]: slice::rsplitn_left_inclusive
     /// [slices]: slice
-    pub struct RSplitNLeftInclusive {"RSplitNLeftInclusive"; RSplitLeftInclusive}: Clone
+    pub struct RSplitNLeftInclusive { inner: RSplitLeftInclusive }: Clone
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -926,7 +950,10 @@ iter_n! {
     ///
     /// [`splitn_inclusive_mut`]: slice::splitn_inclusive_mut
     /// [slices]: slice
-    pub struct SplitNInclusiveMut {"SplitNInclusiveMut"; SplitInclusiveMut}
+    pub struct SplitNInclusiveMut { inner: SplitInclusiveMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -950,7 +977,10 @@ iter_n! {
     ///
     /// [`splitn_left_inclusive_mut`]: slice::splitn_left_inclusive_mut
     /// [slices]: slice
-    pub struct SplitNLeftInclusiveMut {"SplitNLeftInclusiveMut"; SplitLeftInclusiveMut}
+    pub struct SplitNLeftInclusiveMut { inner: SplitLeftInclusiveMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -974,7 +1004,10 @@ iter_n! {
     ///
     /// [`rsplitn_inclusive_mut`]: slice::rsplitn_inclusive_mut
     /// [slices]: slice
-    pub struct RSplitNInclusiveMut {"RSplitNInclusiveMut"; RSplitInclusiveMut}
+    pub struct RSplitNInclusiveMut { inner: RSplitInclusiveMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 iter_n! {
@@ -998,7 +1031,10 @@ iter_n! {
     ///
     /// [`rsplitn_left_inclusive_mut`]: slice::rsplitn_left_inclusive_mut
     /// [slices]: slice
-    pub struct RSplitNLeftInclusiveMut {"RSplitNLeftInclusiveMut"; RSplitLeftInclusiveMut}
+    pub struct RSplitNLeftInclusiveMut { inner: RSplitLeftInclusiveMut }
+
+    #[unstable(feature = "split_inclusive_variants", issue = "none")]
+    fn max_items;
 }
 
 /// An iterator over overlapping subslices of length `size`.
