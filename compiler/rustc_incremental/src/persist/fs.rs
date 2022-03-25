@@ -111,7 +111,7 @@ use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
 
 use std::fs as std_fs;
-use std::io;
+use std::io::{self, ErrorKind};
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -371,7 +371,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match std_fs::rename(&*incr_comp_session_dir, &new_path) {
+    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
 
@@ -959,5 +959,26 @@ fn safe_remove_file(p: &Path) -> io::Result<()> {
     match std_fs::remove_file(canonicalized) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
         result => result,
+    }
+}
+
+// On Windows the compiler would sometimes fail to rename the session directory because
+// the OS thought something was still being accessed in it. So we retry a few times to give
+// the OS time to catch up.
+// See https://github.com/rust-lang/rust/issues/86929.
+fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> std::io::Result<()> {
+    loop {
+        match std_fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if retries_left > 0 && e.kind() == ErrorKind::PermissionDenied {
+                    // Try again after a short waiting period.
+                    std::thread::sleep(Duration::from_millis(50));
+                    retries_left -= 1;
+                } else {
+                    return Err(e);
+                }
+            }
+        }
     }
 }
