@@ -315,7 +315,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
             fn drop(&mut self) {
                 unsafe {
                     // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
-                    let alloc = ManuallyDrop::into_inner(ptr::read(&self.0.alloc));
+                    let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
                     let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
                 }
