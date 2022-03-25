@@ -24,7 +24,6 @@
 #![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
-#![feature(extern_types)]
 #![feature(negative_impls)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
