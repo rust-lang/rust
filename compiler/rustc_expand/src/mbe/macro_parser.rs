@@ -76,7 +76,7 @@ crate use ParseResult::*;
 use crate::mbe::{self, SequenceRepetition, TokenTree};
 
 use rustc_ast::token::{self, DocComment, Nonterminal, Token};
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{NtOrTt, Parser};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 
@@ -275,7 +275,7 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
 }
 
 /// `NamedMatch` is a pattern-match result for a single metavar. All
-/// `MatchedNtNonTt`s in the `NamedMatch` have the same non-terminal type
+/// `MatchedNonterminal`s in the `NamedMatch` have the same non-terminal type
 /// (expr, item, etc).
 ///
 /// The in-memory structure of a particular `NamedMatch` represents the match
@@ -306,17 +306,17 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
 /// ```rust
 /// MatchedSeq([
 ///   MatchedSeq([
-///     MatchedNtNonTt(a),
-///     MatchedNtNonTt(b),
-///     MatchedNtNonTt(c),
-///     MatchedNtNonTt(d),
+///     MatchedNonterminal(a),
+///     MatchedNonterminal(b),
+///     MatchedNonterminal(c),
+///     MatchedNonterminal(d),
 ///   ]),
 ///   MatchedSeq([
-///     MatchedNtNonTt(a),
-///     MatchedNtNonTt(b),
-///     MatchedNtNonTt(c),
-///     MatchedNtNonTt(d),
-///     MatchedNtNonTt(e),
+///     MatchedNonterminal(a),
+///     MatchedNonterminal(b),
+///     MatchedNonterminal(c),
+///     MatchedNonterminal(d),
+///     MatchedNonterminal(e),
 ///   ])
 /// ])
 /// ```
@@ -324,14 +324,11 @@ pub(super) fn count_names(ms: &[TokenTree]) -> usize {
 crate enum NamedMatch {
     MatchedSeq(Lrc<NamedMatchVec>),
 
-    // This variant should never hold an `NtTT`. `MatchedNtTt` should be used
-    // for that case.
-    MatchedNtNonTt(Lrc<Nonterminal>),
+    // A metavar match of type `tt`.
+    MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
 
-    // `NtTT` is handled without any cloning when transcribing, unlike other
-    // nonterminals. Therefore, an `Lrc` isn't helpful and causes unnecessary
-    // allocations. Hence this separate variant.
-    MatchedNtTt(rustc_ast::tokenstream::TokenTree),
+    // A metavar match of any type other than `tt`.
+    MatchedNonterminal(Lrc<Nonterminal>),
 }
 
 /// Takes a slice of token trees `ms` representing a matcher which successfully matched input
@@ -677,8 +674,8 @@ impl<'tt> TtParser<'tt> {
                             Ok(nt) => nt,
                         };
                         let m = match nt {
-                            Nonterminal::NtTT(tt) => MatchedNtTt(tt),
-                            _ => MatchedNtNonTt(Lrc::new(nt)),
+                            NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
+                            NtOrTt::Tt(tt) => MatchedTokenTree(tt),
                         };
                         item.push_match(match_cur, m);
                         item.idx += 1;

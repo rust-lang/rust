@@ -4,7 +4,7 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedNtTt, MatchedSeq};
+use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
@@ -470,7 +470,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNtTt(ref tt) = *m {
+                if let MatchedTokenTree(ref tt) = *m {
                     let mut tts = vec![];
                     mbe::quoted::parse(
                         tt.clone().into(),
@@ -495,7 +495,7 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNtTt(ref tt) = *m {
+                if let MatchedTokenTree(ref tt) = *m {
                     let mut tts = vec![];
                     mbe::quoted::parse(
                         tt.clone().into(),
