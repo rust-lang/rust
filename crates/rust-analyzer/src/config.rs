@@ -176,7 +176,7 @@ config_data! {
         diagnostics_enable: bool                = "true",
         /// Whether to show experimental rust-analyzer diagnostics that might
         /// have more false positives than usual.
-        diagnostics_enableExperimental: bool    = "true",
+        diagnostics_enableExperimental: bool    = "false",
         /// List of rust-analyzer diagnostics to disable.
         diagnostics_disabled: FxHashSet<String> = "[]",
         /// Map of prefixes to be substituted when parsing diagnostic file paths.
