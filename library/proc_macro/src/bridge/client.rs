@@ -2,6 +2,8 @@
 
 use super::*;
 
+use std::marker::PhantomData;
+
 macro_rules! define_handles {
     (
         'owned: $($oty:ident,)*
@@ -45,20 +47,25 @@ macro_rules! define_handles {
 
         $(
             #[repr(C)]
-            pub(crate) struct $oty(handle::Handle);
-            impl !Send for $oty {}
-            impl !Sync for $oty {}
+            pub(crate) struct $oty {
+                handle: handle::Handle,
+                // Prevent Send and Sync impls
+                _marker: PhantomData<*mut ()>,
+            }
 
             // Forward `Drop::drop` to the inherent `drop` method.
             impl Drop for $oty {
                 fn drop(&mut self) {
-                    $oty(self.0).drop();
+                    $oty {
+                        handle: self.handle,
+                        _marker: PhantomData,
+                    }.drop();
                 }
             }
 
             impl<S> Encode<S> for $oty {
                 fn encode(self, w: &mut Writer, s: &mut S) {
-                    let handle = self.0;
+                    let handle = self.handle;
                     mem::forget(self);
                     handle.encode(w, s);
                 }
@@ -74,7 +81,7 @@ macro_rules! define_handles {
 
             impl<S> Encode<S> for &$oty {
                 fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.0.encode(w, s);
+                    self.handle.encode(w, s);
                 }
             }
 
@@ -88,7 +95,7 @@ macro_rules! define_handles {
 
             impl<S> Encode<S> for &mut $oty {
                 fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.0.encode(w, s);
+                    self.handle.encode(w, s);
                 }
             }
 
@@ -113,7 +120,10 @@ macro_rules! define_handles {
 
             impl<S> DecodeMut<'_, '_, S> for $oty {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
-                    $oty(handle::Handle::decode(r, s))
+                    $oty {
+                        handle: handle::Handle::decode(r, s),
+                        _marker: PhantomData,
+                    }
                 }
             }
         )*
@@ -121,13 +131,15 @@ macro_rules! define_handles {
         $(
             #[repr(C)]
             #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-            pub(crate) struct $ity(handle::Handle);
-            impl !Send for $ity {}
-            impl !Sync for $ity {}
+            pub(crate) struct $ity {
+                handle: handle::Handle,
+                // Prevent Send and Sync impls
+                _marker: PhantomData<*mut ()>,
+            }
 
             impl<S> Encode<S> for $ity {
                 fn encode(self, w: &mut Writer, s: &mut S) {
-                    self.0.encode(w, s);
+                    self.handle.encode(w, s);
                 }
             }
 
@@ -149,7 +161,10 @@ macro_rules! define_handles {
 
             impl<S> DecodeMut<'_, '_, S> for $ity {
                 fn decode(r: &mut Reader<'_>, s: &mut S) -> Self {
-                    $ity(handle::Handle::decode(r, s))
+                    $ity {
+                        handle: handle::Handle::decode(r, s),
+                        _marker: PhantomData,
+                    }
                 }
             }
         )*
