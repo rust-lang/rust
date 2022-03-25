@@ -136,7 +136,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     ///
     /// # Parameters
     ///
-    /// - `region_bound_pairs`: the set of region bounds implied by
+    /// - `region_bound_pairs_map`: the set of region bounds implied by
     ///   the parameters and where-clauses. In particular, each pair
     ///   `('a, K)` in this list tells us that the bounds in scope
     ///   indicate that `K: 'a`, where `K` is either a generic
@@ -147,12 +147,6 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
     /// - `param_env` is the parameter environment for the enclosing function.
     /// - `body_id` is the body-id whose region obligations are being
     ///   processed.
-    ///
-    /// # Returns
-    ///
-    /// This function may have to perform normalizations, and hence it
-    /// returns an `InferOk` with subobligations that must be
-    /// processed.
     #[instrument(level = "debug", skip(self, region_bound_pairs_map))]
     pub fn process_registered_region_obligations(
         &self,

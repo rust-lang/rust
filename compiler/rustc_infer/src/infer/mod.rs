@@ -181,7 +181,7 @@ pub struct InferCtxtInner<'tcx> {
     ///
     /// Before running `resolve_regions_and_report_errors`, the creator
     /// of the inference context is expected to invoke
-    /// `process_region_obligations` (defined in `self::region_obligations`)
+    /// [`InferCtxt::process_registered_region_obligations`]
     /// for each body-id in this map, which will process the
     /// obligations within. This is expected to be done 'late enough'
     /// that all type inference variables have been bound and so forth.
