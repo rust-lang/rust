@@ -20,8 +20,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
-use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::interpret::EvalToConstValueResult;
+use rustc_middle::mir::interpret::{ErrorHandled, EvalToConstValueResult};
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
@@ -71,7 +70,6 @@ mod sub;
 pub mod type_variable;
 mod undo_log;
 
-use crate::infer::canonical::OriginalQueryValues;
 pub use rustc_middle::infer::unify_key;
 
 #[must_use]
@@ -687,15 +685,28 @@ pub struct CombinedSnapshot<'a, 'tcx> {
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// calls `tcx.try_unify_abstract_consts` after
     /// canonicalizing the consts.
+    #[instrument(skip(self), level = "debug")]
     pub fn try_unify_abstract_consts(
         &self,
         a: ty::Unevaluated<'tcx, ()>,
         b: ty::Unevaluated<'tcx, ()>,
+        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let canonical = self.canonicalize_query((a, b), &mut OriginalQueryValues::default());
-        debug!("canonical consts: {:?}", &canonical.value);
+        // Reject any attempt to unify two unevaluated constants that contain inference
+        // variables, since inference variables in queries lead to ICEs.
+        if a.substs.has_infer_types_or_consts()
+            || b.substs.has_infer_types_or_consts()
+            || param_env.has_infer_types_or_consts()
+        {
+            debug!("a or b or param_env contain infer vars in its substs -> cannot unify");
+            return false;
+        }
 
-        self.tcx.try_unify_abstract_consts(canonical.value)
+        let param_env_and = param_env.and((a, b));
+        let erased = self.tcx.erase_regions(param_env_and);
+        debug!("after erase_regions: {:?}", erased);
+
+        self.tcx.try_unify_abstract_consts(erased)
     }
 
     pub fn is_in_snapshot(&self) -> bool {
@@ -1598,6 +1609,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ///
     /// This handles inferences variables within both `param_env` and `substs` by
     /// performing the operation on their respective canonical forms.
+    #[instrument(skip(self), level = "debug")]
     pub fn const_eval_resolve(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -1605,15 +1617,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         span: Option<Span>,
     ) -> EvalToConstValueResult<'tcx> {
         let substs = self.resolve_vars_if_possible(unevaluated.substs);
+        debug!(?substs);
 
         // Postpone the evaluation of constants whose substs depend on inference
         // variables
         if substs.has_infer_types_or_consts() {
+            debug!("substs have infer types or consts: {:?}", substs);
             return Err(ErrorHandled::TooGeneric);
         }
 
         let param_env_erased = self.tcx.erase_regions(param_env);
         let substs_erased = self.tcx.erase_regions(substs);
+        debug!(?param_env_erased);
+        debug!(?substs_erased);
 
         let unevaluated = ty::Unevaluated {
             def: unevaluated.def,

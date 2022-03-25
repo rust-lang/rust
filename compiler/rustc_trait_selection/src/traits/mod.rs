@@ -862,7 +862,10 @@ pub fn provide(providers: &mut ty::query::Providers) {
                 ty::WithOptConstParam { did, const_param_did: Some(param_did) },
             )
         },
-        try_unify_abstract_consts: const_evaluatable::try_unify_abstract_consts,
+        try_unify_abstract_consts: |tcx, param_env_and| {
+            let (param_env, (a, b)) = param_env_and.into_parts();
+            const_evaluatable::try_unify_abstract_consts(tcx, (a, b), param_env)
+        },
         ..*providers
     };
 }
