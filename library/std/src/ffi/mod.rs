@@ -105,11 +105,11 @@
 //! On all platforms, `OsStr` and `OsString` consist of a sequence of bytes; see [`OsString`] for
 //! more details on its encoding on different platforms.
 //!
-//! `OsStr` provides the method [`OsStr::as_bytes`], which provides a zero-cost conversion to a
-//! byte slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
+//! `OsStr` provides the method `OsStr::as_bytes`, which provides a zero-cost conversion to a byte
+//! slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
 //! `Deref`.)
 //!
-//! `OsString` provides the method [`OsString::into_vec`], which provides a zero-cost conversion to
+//! `OsString` provides the method `OsString::into_vec`, which provides a zero-cost conversion to
 //! `Vec<u8>`.
 //!
 //! ## On Unix

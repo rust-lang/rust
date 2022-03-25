@@ -72,11 +72,11 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 ///
 /// # Conversions
 ///
-/// `OsStr` provides the method [`OsStr::as_bytes`], which provides a zero-cost conversion to a
-/// byte slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
+/// `OsStr` provides the method `OsStr::as_bytes`, which provides a zero-cost conversion to a byte
+/// slice. (`OsString` provides this method as well, along with all other `OsStr` methods, via
 /// `Deref`.)
 ///
-/// `OsString` provides the method [`OsString::into_vec`], which provides a zero-cost conversion to
+/// `OsString` provides the method `OsString::into_vec`, which provides a zero-cost conversion to
 /// `Vec<u8>`.
 ///
 /// See the [module's toplevel documentation about conversions][conversions] for a discussion on
