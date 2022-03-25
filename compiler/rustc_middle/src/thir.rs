@@ -193,7 +193,7 @@ pub enum StmtKind<'tcx> {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Expr<'_>, 144);
+rustc_data_structures::static_assert_size!(Expr<'_>, 104);
 
 /// A THIR expression.
 #[derive(Debug, HashStable)]
@@ -736,11 +736,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
                         Some(adt_def.variant(variant_index))
                     }
                     _ => self.ty.ty_adt_def().and_then(|adt| {
-                        if !adt.is_enum() {
-                            Some(adt.non_enum_variant())
-                        } else {
-                            None
-                        }
+                        if !adt.is_enum() { Some(adt.non_enum_variant()) } else { None }
                     }),
                 };
 

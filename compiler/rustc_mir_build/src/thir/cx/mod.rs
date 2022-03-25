@@ -5,6 +5,7 @@
 use crate::thir::pattern::pat_from_hir;
 use crate::thir::util::UserAnnotatedTyHelpers;
 
+use rustc_ast::ast;
 use rustc_data_structures::steal::Steal;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -15,7 +16,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::interpret::{LitToConstError, LitToConstInput};
 use rustc_middle::mir::ConstantKind;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 crate fn thir_body<'tcx>(

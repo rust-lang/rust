@@ -184,13 +184,13 @@ pub(crate) fn destructure_mir_constant<'tcx>(
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match val.ty().kind() {
         ty::Array(_, len) => (usize::try_from(len.eval_usize(tcx, param_env)).unwrap(), None, op),
-        ty::Adt(def, _) if def.variants.is_empty() => {
+        ty::Adt(def, _) if def.variants().is_empty() => {
             return mir::DestructuredMirConstant { variant: None, fields: &[] };
         }
         ty::Adt(def, _) => {
             let variant = ecx.read_discriminant(&op).unwrap().1;
             let down = ecx.operand_downcast(&op, variant).unwrap();
-            (def.variants[variant].fields.len(), Some(variant), down)
+            (def.variants()[variant].fields.len(), Some(variant), down)
         }
         ty::Tuple(substs) => (substs.len(), None, op),
         _ => bug!("cannot destructure constant {:?}", val),
@@ -253,7 +253,7 @@ pub(crate) fn deref_mir_constant<'tcx>(
     let mplace = ecx.deref_operand(&op).unwrap();
     if let Some(alloc_id) = mplace.ptr.provenance {
         assert_eq!(
-            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().mutability,
+            tcx.get_global_alloc(alloc_id).unwrap().unwrap_memory().0.0.mutability,
             Mutability::Not,
             "deref_const cannot be used with mutable allocations as \
             that could allow pattern matching to observe mutable statics",

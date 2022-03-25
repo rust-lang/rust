@@ -76,11 +76,7 @@ static_assert_size!(ConstKind<'_>, 40);
 impl<'tcx> ConstKind<'tcx> {
     #[inline]
     pub fn try_to_value(self) -> Option<ConstValue<'tcx>> {
-        if let ConstKind::Value(val) = self {
-            Some(val)
-        } else {
-            None
-        }
+        if let ConstKind::Value(val) = self { Some(val) } else { None }
     }
 
     #[inline]

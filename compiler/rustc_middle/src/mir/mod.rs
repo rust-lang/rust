@@ -2711,7 +2711,7 @@ impl<'tcx> ConstantKind<'tcx> {
                 if let Some(val) = c.val().try_eval(tcx, param_env) {
                     match val {
                         Ok(val) => Self::Val(val, c.ty()),
-                        Err(ErrorReported) => Self::Ty(tcx.const_error(self.ty())),
+                        Err(_) => Self::Ty(tcx.const_error(self.ty())),
                     }
                 } else {
                     self
