@@ -79,7 +79,6 @@ rm src/test/ui/abi/stack-protector.rs # requires stack protector support
 
 # giving different but possibly correct results
 # =============================================
-rm src/test/ui/numbers-arithmetic/saturating-float-casts.rs # intrinsic gives different but valid result
 rm src/test/ui/simd/intrinsic/float-minmax-pass.rs # same
 rm src/test/ui/mir/mir_misc_casts.rs # depends on deduplication of constants
 rm src/test/ui/mir/mir_raw_fat_ptr.rs # same
