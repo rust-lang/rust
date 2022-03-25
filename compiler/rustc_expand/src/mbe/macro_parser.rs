@@ -177,7 +177,7 @@ impl<'tt> MatcherPos<'tt> {
     /// Generates the top-level matcher position in which the "dot" is before the first token of
     /// the matcher `ms`.
     fn new(ms: &'tt [TokenTree]) -> Self {
-        let match_idx_hi = count_names(ms);
+        let match_idx_hi = count_metavar_decls(ms);
         MatcherPos {
             // Start with the top level matcher given to us.
             top_elts: ms,
@@ -254,24 +254,24 @@ crate enum ParseResult<T> {
 /// of metavars to the token trees they bind to.
 crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
 
-/// Count how many metavars are named in the given matcher `ms`.
-pub(super) fn count_names(ms: &[TokenTree]) -> usize {
-    ms.iter().fold(0, |count, elt| {
-        count
-            + match elt {
-                TokenTree::Delimited(_, delim) => count_names(delim.inner_tts()),
+/// Count how many metavars declarations are in `matcher`.
+pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
+    matcher
+        .iter()
+        .map(|tt| {
+            match tt {
+                TokenTree::Delimited(_, delim) => count_metavar_decls(delim.inner_tts()),
                 TokenTree::MetaVar(..) => 0,
                 TokenTree::MetaVarDecl(..) => 1,
-                // Panicking here would abort execution because `parse_tree` makes use of this
-                // function. In other words, RHS meta-variable expressions eventually end-up here.
-                //
-                // `0` is still returned to inform that no meta-variable was found. `Meta-variables
-                // != Meta-variable expressions`
+                // RHS meta-variable expressions eventually end-up here. `0` is returned to inform
+                // that no meta-variable was found, because "meta-variables" != "meta-variable
+                // expressions".
                 TokenTree::MetaVarExpr(..) => 0,
                 TokenTree::Sequence(_, seq) => seq.num_captures,
                 TokenTree::Token(..) => 0,
             }
-    })
+        })
+        .sum()
 }
 
 /// `NamedMatch` is a pattern-match result for a single metavar. All
