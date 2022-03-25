@@ -312,6 +312,7 @@ impl<'a> Parser<'a> {
                 id: ast::DUMMY_NODE_ID,
             }))
         } else {
+            self.maybe_recover_bounds_doubled_colon(&ty)?;
             self.unexpected()
         }
     }
