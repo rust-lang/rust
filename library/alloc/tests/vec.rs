@@ -1009,10 +1009,14 @@ fn test_into_iter_drop_allocator() {
     }
 
     let mut drop_count = 0;
+
+    let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
+    let _ = Vec::<u32, _>::new_in(allocator);
+    assert_eq!(drop_count, 1);
+
     let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
     let _ = Vec::<u32, _>::new_in(allocator).into_iter();
-
-    assert_eq!(drop_count, 1);
+    assert_eq!(drop_count, 2);
 }
 
 #[test]
