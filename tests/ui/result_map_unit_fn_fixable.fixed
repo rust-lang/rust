@@ -75,6 +75,8 @@ fn result_map_unit_fn() {
 
 
     if let Ok(ref value) = x.field { do_nothing(value + captured) }
+
+    if let Ok(value) = x.field { println!("{:?}", value) }
 }
 
 fn main() {}
