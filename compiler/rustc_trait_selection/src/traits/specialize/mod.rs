@@ -20,12 +20,12 @@ use rustc_errors::{struct_span_err, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, TyCtxt};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
 use rustc_span::{Span, DUMMY_SP};
 
-use super::util::impl_trait_ref_and_oblig;
+use super::util;
 use super::{FulfillmentContext, SelectionContext};
 
 /// Information pertinent to an overlapping impl error.
@@ -186,18 +186,20 @@ fn fulfill_implication<'a, 'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
+    let source_trait = ImplSubject::Trait(source_trait_ref);
+
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, obligations) =
-        impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
+    let (target_trait, obligations) =
+        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs);
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",
-            source_trait_ref, target_trait_ref
+            source_trait, target_trait
         );
         return Err(());
     };
@@ -225,7 +227,7 @@ fn fulfill_implication<'a, 'tcx>(
             [] => {
                 debug!(
                     "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait_ref, target_trait_ref
+                    source_trait, target_trait
                 );
 
                 // Now resolve the *substitution* we built for the target earlier, replacing
@@ -237,8 +239,8 @@ fn fulfill_implication<'a, 'tcx>(
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
                      could not fulfill: {:?} given {:?}",
-                    source_trait_ref,
-                    target_trait_ref,
+                    source_trait,
+                    target_trait,
                     errors,
                     param_env.caller_bounds()
                 );

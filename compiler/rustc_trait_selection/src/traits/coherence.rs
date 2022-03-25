@@ -7,7 +7,7 @@
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::{CombinedSnapshot, InferOk, RegionckMode};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::util::impl_trait_ref_and_oblig;
+use crate::traits::util::impl_subject_and_oblig;
 use crate::traits::SkipLeakCheck;
 use crate::traits::{
     self, FulfillmentContext, Normalized, Obligation, ObligationCause, PredicateObligation,
@@ -23,9 +23,10 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::{self, TreatParams};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::Subst;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::DUMMY_SP;
+use std::fmt::Debug;
 use std::iter;
 
 /// Whether we do the orphan check relative to this crate or
@@ -300,60 +301,62 @@ fn negative_impl<'cx, 'tcx>(
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
     let tcx = selcx.infcx().tcx;
 
-    // create a parameter environment corresponding to a (placeholder) instantiation of impl1
-    let impl1_env = tcx.param_env(impl1_def_id);
-    let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
-
     // Create an infcx, taking the predicates of impl1 as assumptions:
     tcx.infer_ctxt().enter(|infcx| {
-        // Normalize the trait reference. The WF rules ought to ensure
-        // that this always succeeds.
-        let impl1_trait_ref = match traits::fully_normalize(
+        // create a parameter environment corresponding to a (placeholder) instantiation of impl1
+        let impl_env = tcx.param_env(impl1_def_id);
+        let subject1 = match traits::fully_normalize(
             &infcx,
             FulfillmentContext::new(),
             ObligationCause::dummy(),
-            impl1_env,
-            impl1_trait_ref,
+            impl_env,
+            tcx.impl_subject(impl1_def_id),
         ) {
-            Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(err) => {
-                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
-            }
+            Ok(s) => s,
+            Err(err) => bug!("failed to fully normalize {:?}: {:?}", impl1_def_id, err),
         };
 
         // Attempt to prove that impl2 applies, given all of the above.
         let selcx = &mut SelectionContext::new(&infcx);
         let impl2_substs = infcx.fresh_substs_for_item(DUMMY_SP, impl2_def_id);
-        let (impl2_trait_ref, obligations) =
-            impl_trait_ref_and_oblig(selcx, impl1_env, impl2_def_id, impl2_substs);
+        let (subject2, obligations) =
+            impl_subject_and_oblig(selcx, impl_env, impl2_def_id, impl2_substs);
 
-        // do the impls unify? If not, not disjoint.
-        let Ok(InferOk { obligations: more_obligations, .. }) = infcx
-            .at(&ObligationCause::dummy(), impl1_env)
-            .eq(impl1_trait_ref, impl2_trait_ref)
-        else {
-            debug!(
-                "explicit_disjoint: {:?} does not unify with {:?}",
-                impl1_trait_ref, impl2_trait_ref
-            );
-            return false;
-        };
-
-        let opt_failing_obligation = obligations
-            .into_iter()
-            .chain(more_obligations)
-            .find(|o| negative_impl_exists(selcx, impl1_env, impl1_def_id, o));
-
-        if let Some(failing_obligation) = opt_failing_obligation {
-            debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
-            true
-        } else {
-            false
-        }
+        !equate(&infcx, impl_env, impl1_def_id, subject1, subject2, obligations)
     })
 }
 
-/// Try to prove that a negative impl exist for the given obligation and their super predicates.
+fn equate<'cx, 'tcx>(
+    infcx: &InferCtxt<'cx, 'tcx>,
+    impl_env: ty::ParamEnv<'tcx>,
+    impl1_def_id: DefId,
+    subject1: ImplSubject<'tcx>,
+    subject2: ImplSubject<'tcx>,
+    obligations: impl Iterator<Item = PredicateObligation<'tcx>>,
+) -> bool {
+    // do the impls unify? If not, not disjoint.
+    let Ok(InferOk { obligations: more_obligations, .. }) =
+        infcx.at(&ObligationCause::dummy(), impl_env).eq(subject1, subject2)
+    else {
+        debug!("explicit_disjoint: {:?} does not unify with {:?}", subject1, subject2);
+        return true;
+    };
+
+    let selcx = &mut SelectionContext::new(&infcx);
+    let opt_failing_obligation = obligations
+        .into_iter()
+        .chain(more_obligations)
+        .find(|o| negative_impl_exists(selcx, impl_env, impl1_def_id, o));
+
+    if let Some(failing_obligation) = opt_failing_obligation {
+        debug!("overlap: obligation unsatisfiable {:?}", failing_obligation);
+        false
+    } else {
+        true
+    }
+}
+
+/// Try to prove that a negative impl exist for the given obligation and its super predicates.
 #[instrument(level = "debug", skip(selcx))]
 fn negative_impl_exists<'cx, 'tcx>(
     selcx: &SelectionContext<'cx, 'tcx>,
@@ -367,7 +370,7 @@ fn negative_impl_exists<'cx, 'tcx>(
         return true;
     }
 
-    // Try to prove a negative obligation exist for super predicates
+    // Try to prove a negative obligation exists for super predicates
     for o in util::elaborate_predicates(infcx.tcx, iter::once(o.predicate)) {
         if resolve_negative_obligation(infcx, param_env, region_context, &o) {
             return true;

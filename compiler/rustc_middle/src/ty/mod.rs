@@ -44,6 +44,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
 
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 use std::{fmt, str};
@@ -170,6 +171,12 @@ pub struct ImplHeader<'tcx> {
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<TraitRef<'tcx>>,
     pub predicates: Vec<Predicate<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug, TypeFoldable)]
+pub enum ImplSubject<'tcx> {
+    Trait(TraitRef<'tcx>),
+    Inherent(Ty<'tcx>),
 }
 
 #[derive(

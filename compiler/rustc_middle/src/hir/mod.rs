@@ -7,10 +7,10 @@ pub mod nested_filter;
 pub mod place;
 
 use crate::ty::query::Providers;
-use crate::ty::TyCtxt;
+use crate::ty::{ImplSubject, TyCtxt};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_span::DUMMY_SP;
@@ -53,6 +53,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn parent_module(self, id: HirId) -> LocalDefId {
         self.parent_module_from_def_id(id.owner)
+    }
+
+    pub fn impl_subject(self, def_id: DefId) -> ImplSubject<'tcx> {
+        self.impl_trait_ref(def_id)
+            .map(ImplSubject::Trait)
+            .unwrap_or_else(|| ImplSubject::Inherent(self.type_of(def_id)))
     }
 }
 
