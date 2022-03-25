@@ -307,12 +307,20 @@ pub(crate) fn make_bat_command_line(
 ) -> io::Result<Vec<u16>> {
     // Set the start of the command line to `cmd.exe /c "`
     // It is necessary to surround the command in an extra pair of quotes,
-    // hence The trailing quote here. It will be closed after all arguments
+    // hence the trailing quote here. It will be closed after all arguments
     // have been added.
     let mut cmd: Vec<u16> = "cmd.exe /c \"".encode_utf16().collect();
 
     // Push the script name surrounded by its quote pair.
     cmd.push(b'"' as u16);
+    // Windows file names cannot contain a `"` character or end with `\\`.
+    // If the script name does then return an error.
+    if script.contains(&(b'"' as u16)) || script.last() == Some(&(b'\\' as u16)) {
+        return Err(io::const_io_error!(
+            io::ErrorKind::InvalidInput,
+            "Windows file names may not contain `\"` or end with `\\`"
+        ));
+    }
     cmd.extend_from_slice(script.strip_suffix(&[0]).unwrap_or(script));
     cmd.push(b'"' as u16);
 
