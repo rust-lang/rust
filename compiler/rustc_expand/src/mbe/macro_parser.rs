@@ -588,8 +588,13 @@ impl<'tt> TtParser<'tt> {
         if *token == token::Eof {
             Some(match eof_items {
                 EofItems::One(mut eof_item) => {
-                    let matches =
-                        eof_item.matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
+                    let matches = eof_item.matches.iter_mut().map(|dv| {
+                        // Top-level metavars only ever get one match. (Sub-matchers can get
+                        // multiple matches, which get aggregated into a `MatcherSeq` before being
+                        // put into the top-level.)
+                        debug_assert_eq!(dv.len(), 1);
+                        Lrc::make_mut(dv).pop().unwrap()
+                    });
                     nameize(sess, ms, matches)
                 }
                 EofItems::Multiple => {
