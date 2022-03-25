@@ -26,7 +26,6 @@
 #![feature(decl_macro)]
 #![feature(extern_types)]
 #![feature(negative_impls)]
-#![feature(auto_traits)]
 #![feature(restricted_std)]
 #![feature(rustc_attrs)]
 #![feature(min_specialization)]
