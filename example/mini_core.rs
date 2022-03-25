@@ -16,6 +16,9 @@
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "destruct"]
+pub trait Destruct {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
