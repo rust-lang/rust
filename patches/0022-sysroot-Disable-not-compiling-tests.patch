@@ -30,25 +30,5 @@ index 0000000..46fd999
 +
 +[dependencies]
 +rand = "0.7"
-diff --git a/library/core/tests/ptr.rs b/library/core/tests/ptr.rs
-index 1a6be3a..42dbd59 100644
---- a/library/core/tests/ptr.rs
-+++ b/library/core/tests/ptr.rs
-@@ -250,6 +250,7 @@ fn test_unsized_nonnull() {
-     };
- }
- 
-+/*
- #[test]
- #[allow(warnings)]
- // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
-@@ -277,6 +277,7 @@ pub fn test_variadic_fnptr() {
-     let mut s = SipHasher::new();
-     assert_eq!(p.hash(&mut s), q.hash(&mut s));
- }
-+*/
- 
- #[test]
- fn write_unaligned_drop() {
 --
 2.21.0 (Apple Git-122)
