@@ -7,7 +7,7 @@
 
 use RibKind::*;
 
-use crate::{path_names_to_string, BindingError, CrateLint, LexicalScopeBinding};
+use crate::{path_names_to_string, BindingError, Finalize, LexicalScopeBinding};
 use crate::{Module, ModuleOrUniformRoot, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
@@ -483,7 +483,11 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
             TyKind::ImplicitSelf => {
                 let self_ty = Ident::with_dummy_span(kw::SelfUpper);
                 let res = self
-                    .resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
+                    .resolve_ident_in_lexical_scope(
+                        self_ty,
+                        TypeNS,
+                        Finalize::SimplePath(ty.id, ty.span),
+                    )
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
             }
@@ -675,8 +679,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                             self.resolve_ident_in_lexical_scope(
                                 path.segments[0].ident,
                                 ns,
-                                None,
-                                path.span,
+                                Finalize::No,
                             )
                             .is_some()
                         };
@@ -751,15 +754,13 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         ident: Ident,
         ns: Namespace,
-        record_used_id: Option<NodeId>,
-        path_span: Span,
+        finalize: Finalize,
     ) -> Option<LexicalScopeBinding<'a>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
             ns,
             &self.parent_scope,
-            record_used_id,
-            path_span,
+            finalize,
             &self.ribs[ns],
         )
     }
@@ -768,19 +769,9 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
-        record_used: bool,
-        path_span: Span,
-        crate_lint: CrateLint,
+        finalize: Finalize,
     ) -> PathResult<'a> {
-        self.r.resolve_path_with_ribs(
-            path,
-            opt_ns,
-            &self.parent_scope,
-            record_used,
-            path_span,
-            crate_lint,
-            Some(&self.ribs),
-        )
+        self.r.resolve_path_with_ribs(path, opt_ns, &self.parent_scope, finalize, Some(&self.ribs))
     }
 
     // AST resolution
@@ -943,15 +934,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
 
             for &ns in nss {
-                match self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
+                match self.resolve_ident_in_lexical_scope(ident, ns, Finalize::No) {
                     Some(LexicalScopeBinding::Res(..)) => {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
                         let orig_unusable_binding =
                             replace(&mut self.r.unusable_binding, Some(binding));
-                        if let Some(LexicalScopeBinding::Res(..)) = self
-                            .resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span)
+                        if let Some(LexicalScopeBinding::Res(..)) =
+                            self.resolve_ident_in_lexical_scope(ident, ns, Finalize::No)
                         {
                             report_error(self, ns);
                         }
@@ -1246,25 +1237,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         if let Some(trait_ref) = opt_trait_ref {
             let path: Vec<_> = Segment::from_path(&trait_ref.path);
             let res = self.smart_resolve_path_fragment(
-                trait_ref.ref_id,
                 None,
                 &path,
-                trait_ref.path.span,
                 PathSource::Trait(AliasPossibility::No),
-                CrateLint::SimplePath(trait_ref.ref_id),
+                Finalize::SimplePath(trait_ref.ref_id, trait_ref.path.span),
             );
-            let res = res.base_res();
-            if res != Res::Err {
-                if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.resolve_path(
-                    &path,
-                    Some(TypeNS),
-                    true,
-                    trait_ref.path.span,
-                    CrateLint::SimplePath(trait_ref.ref_id),
-                ) {
-                    new_id = Some(res.def_id());
-                    new_val = Some((module, trait_ref.clone()));
-                }
+            if let Some(def_id) = res.base_res().opt_def_id() {
+                new_id = Some(def_id);
+                new_val = Some((self.r.expect_module(def_id), trait_ref.clone()));
             }
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
@@ -1702,7 +1682,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     // then fall back to a fresh binding.
                     let has_sub = sub.is_some();
                     let res = self
-                        .try_resolve_as_non_binding(pat_src, pat, bmode, ident, has_sub)
+                        .try_resolve_as_non_binding(pat_src, bmode, ident, has_sub)
                         .unwrap_or_else(|| self.fresh_binding(ident, pat.id, pat_src, bindings));
                     self.r.record_partial_res(pat.id, PartialRes::new(res));
                     self.r.record_pat_span(pat.id, pat.span);
@@ -1813,7 +1793,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     fn try_resolve_as_non_binding(
         &mut self,
         pat_src: PatternSource,
-        pat: &Pat,
         bm: BindingMode,
         ident: Ident,
         has_sub: bool,
@@ -1823,7 +1802,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // also be interpreted as a path to e.g. a constant, variant, etc.
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
-        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, pat.span)?;
+        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, Finalize::No)?;
         let (res, binding) = match ls_binding {
             LexicalScopeBinding::Item(binding)
                 if is_syntactic_ambiguity && binding.is_ambiguity() =>
@@ -1912,35 +1891,34 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
     ) {
         self.smart_resolve_path_fragment(
-            id,
             qself,
             &Segment::from_path(path),
-            path.span,
             source,
-            CrateLint::SimplePath(id),
+            Finalize::SimplePath(id, path.span),
         );
     }
 
     fn smart_resolve_path_fragment(
         &mut self,
-        id: NodeId,
         qself: Option<&QSelf>,
         path: &[Segment],
-        span: Span,
         source: PathSource<'ast>,
-        crate_lint: CrateLint,
+        finalize: Finalize,
     ) -> PartialRes {
         tracing::debug!(
-            "smart_resolve_path_fragment(id={:?}, qself={:?}, path={:?})",
-            id,
+            "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
             qself,
-            path
+            path,
+            finalize,
         );
         let ns = source.namespace();
 
+        let (id, path_span) =
+            finalize.node_id_and_path_span().expect("unexpected speculative resolution");
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
-                let (err, candidates) = this.smart_resolve_report_errors(path, span, source, res);
+                let (err, candidates) =
+                    this.smart_resolve_report_errors(path, path_span, source, res);
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
@@ -1978,7 +1956,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
 
             let (mut err, candidates) =
-                this.smart_resolve_report_errors(path, span, PathSource::Type, None);
+                this.smart_resolve_report_errors(path, path_span, PathSource::Type, None);
 
             if candidates.is_empty() {
                 err.cancel();
@@ -2027,13 +2005,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         };
 
         let partial_res = match self.resolve_qpath_anywhere(
-            id,
             qself,
             path,
             ns,
-            span,
+            path_span,
             source.defer_to_typeck(),
-            crate_lint,
+            finalize,
         ) {
             Ok(Some(partial_res)) if partial_res.unresolved_segments() == 0 => {
                 if source.is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err
@@ -2060,14 +2037,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
                     std_path.extend(path);
                     if let PathResult::Module(_) | PathResult::NonModule(_) =
-                        self.resolve_path(&std_path, Some(ns), false, span, CrateLint::No)
+                        self.resolve_path(&std_path, Some(ns), Finalize::No)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
                         let item_span =
-                            path.iter().last().map_or(span, |segment| segment.ident.span);
+                            path.iter().last().map_or(path_span, |segment| segment.ident.span);
 
-                        self.r.confused_type_with_std_module.insert(item_span, span);
-                        self.r.confused_type_with_std_module.insert(span, span);
+                        self.r.confused_type_with_std_module.insert(item_span, path_span);
+                        self.r.confused_type_with_std_module.insert(path_span, path_span);
                     }
                 }
 
@@ -2093,19 +2070,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         partial_res
     }
 
-    fn self_type_is_available(&mut self, span: Span) -> bool {
+    fn self_type_is_available(&mut self) -> bool {
         let binding = self.resolve_ident_in_lexical_scope(
             Ident::with_dummy_span(kw::SelfUpper),
             TypeNS,
-            None,
-            span,
+            Finalize::No,
         );
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
-    fn self_value_is_available(&mut self, self_span: Span, path_span: Span) -> bool {
+    fn self_value_is_available(&mut self, self_span: Span) -> bool {
         let ident = Ident::new(kw::SelfLower, self_span);
-        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, None, path_span);
+        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, Finalize::No);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
@@ -2127,19 +2103,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
     fn resolve_qpath_anywhere(
         &mut self,
-        id: NodeId,
         qself: Option<&QSelf>,
         path: &[Segment],
         primary_ns: Namespace,
         span: Span,
         defer_to_typeck: bool,
-        crate_lint: CrateLint,
+        finalize: Finalize,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         let mut fin_res = None;
 
         for (i, &ns) in [primary_ns, TypeNS, ValueNS].iter().enumerate() {
             if i == 0 || ns != primary_ns {
-                match self.resolve_qpath(id, qself, path, ns, span, crate_lint)? {
+                match self.resolve_qpath(qself, path, ns, finalize)? {
                     Some(partial_res)
                         if partial_res.unresolved_segments() == 0 || defer_to_typeck =>
                     {
@@ -2172,16 +2147,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     /// Handles paths that may refer to associated items.
     fn resolve_qpath(
         &mut self,
-        id: NodeId,
         qself: Option<&QSelf>,
         path: &[Segment],
         ns: Namespace,
-        span: Span,
-        crate_lint: CrateLint,
+        finalize: Finalize,
     ) -> Result<Option<PartialRes>, Spanned<ResolutionError<'a>>> {
         debug!(
-            "resolve_qpath(id={:?}, qself={:?}, path={:?}, ns={:?}, span={:?})",
-            id, qself, path, ns, span,
+            "resolve_qpath(qself={:?}, path={:?}, ns={:?}, finalize={:?})",
+            qself, path, ns, finalize,
         );
 
         if let Some(qself) = qself {
@@ -2208,15 +2181,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             // *actually* appears, so for the purposes of the crate
             // lint we pass along information that this is the trait
             // name from a fully qualified path, and this also
-            // contains the full span (the `CrateLint::QPathTrait`).
+            // contains the full span (the `Finalize::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let partial_res = self.smart_resolve_path_fragment(
-                id,
                 None,
                 &path[..=qself.position],
-                span,
                 PathSource::TraitItem(ns),
-                CrateLint::QPathTrait { qpath_id: id, qpath_span: qself.path_span },
+                finalize.node_id_and_path_span().map_or(Finalize::No, |(qpath_id, path_span)| {
+                    Finalize::QPathTrait { qpath_id, qpath_span: qself.path_span, path_span }
+                }),
             );
 
             // The remaining segments (the `C` in our example) will
@@ -2228,7 +2201,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             )));
         }
 
-        let result = match self.resolve_path(&path, Some(ns), true, span, crate_lint) {
+        let result = match self.resolve_path(&path, Some(ns), finalize) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
                 PartialRes::new(module.res().unwrap())
@@ -2266,15 +2239,10 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             && result.base_res() != Res::Err
             && path[0].ident.name != kw::PathRoot
             && path[0].ident.name != kw::DollarCrate
+            && let Some((id, path_span)) = finalize.node_id_and_path_span()
         {
             let unqualified_result = {
-                match self.resolve_path(
-                    &[*path.last().unwrap()],
-                    Some(ns),
-                    false,
-                    span,
-                    CrateLint::No,
-                ) {
+                match self.resolve_path(&[*path.last().unwrap()], Some(ns), Finalize::No) {
                     PathResult::NonModule(path_res) => path_res.base_res(),
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         module.res().unwrap()
@@ -2284,7 +2252,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
             if result.base_res() == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
-                self.r.lint_buffer.buffer_lint(lint, id, span, "unnecessary qualification")
+                self.r.lint_buffer.buffer_lint(lint, id, path_span, "unnecessary qualification")
             }
         }
 

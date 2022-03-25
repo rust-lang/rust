@@ -2,7 +2,7 @@ use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::lifetimes::{ElisionFailureInfo, LifetimeContext};
 use crate::late::{AliasPossibility, LateResolutionVisitor, RibKind};
 use crate::path_names_to_string;
-use crate::{CrateLint, Module, ModuleKind, ModuleOrUniformRoot};
+use crate::{Finalize, Module, ModuleKind, ModuleOrUniformRoot};
 use crate::{PathResult, PathSource, Segment};
 
 use rustc_ast::visit::FnKind;
@@ -187,12 +187,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 (String::new(), "the crate root".to_string())
             } else {
                 let mod_path = &path[..path.len() - 1];
-                let mod_prefix =
-                    match self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No) {
-                        PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
-                        _ => None,
-                    }
-                    .map_or_else(String::new, |res| format!("{} ", res.descr()));
+                let mod_prefix = match self.resolve_path(mod_path, Some(TypeNS), Finalize::No) {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
+                    _ => None,
+                }
+                .map_or_else(String::new, |res| format!("{} ", res.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (
@@ -232,7 +231,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             _ => {}
         }
 
-        let is_assoc_fn = self.self_type_is_available(span);
+        let is_assoc_fn = self.self_type_is_available();
         // Emit help message for fake-self from other languages (e.g., `this` in Javascript).
         if ["this", "my"].contains(&item_str.as_str()) && is_assoc_fn {
             err.span_suggestion_short(
@@ -241,7 +240,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 "self".to_string(),
                 Applicability::MaybeIncorrect,
             );
-            if !self.self_value_is_available(path[0].ident.span, span) {
+            if !self.self_value_is_available(path[0].ident.span) {
                 if let Some((FnKind::Fn(_, _, sig, ..), fn_span)) =
                     &self.diagnostic_metadata.current_function
                 {
@@ -402,9 +401,9 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 );
             }
         }
-        if path.len() == 1 && self.self_type_is_available(span) {
+        if path.len() == 1 && self.self_type_is_available() {
             if let Some(candidate) = self.lookup_assoc_candidate(ident, ns, is_expected) {
-                let self_is_available = self.self_value_is_available(path[0].ident.span, span);
+                let self_is_available = self.self_value_is_available(path[0].ident.span);
                 match candidate {
                     AssocSuggestion::Field => {
                         if self_is_available {
@@ -461,7 +460,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         }
 
         // Try Levenshtein algorithm.
-        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected, span);
+        let typo_sugg = self.lookup_typo_candidate(path, ns, is_expected);
         // Try context-dependent help if relaxed lookup didn't work.
         if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(
@@ -562,7 +561,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 }
 
                 // If the trait has a single item (which wasn't matched by Levenshtein), suggest it
-                let suggestion = self.get_single_associated_item(&path, span, &source, is_expected);
+                let suggestion = self.get_single_associated_item(&path, &source, is_expected);
                 self.r.add_typo_suggestion(&mut err, suggestion, ident_span);
             }
             if fallback {
@@ -641,14 +640,13 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
     fn get_single_associated_item(
         &mut self,
         path: &[Segment],
-        span: Span,
         source: &PathSource<'_>,
         filter_fn: &impl Fn(Res) -> bool,
     ) -> Option<TypoSuggestion> {
         if let crate::PathSource::TraitItem(_) = source {
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, None, false, span, CrateLint::No)
+                self.resolve_path(mod_path, None, Finalize::No)
             {
                 let resolutions = self.r.resolutions(module).borrow();
                 let targets: Vec<_> =
@@ -699,13 +697,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         {
             // use this to verify that ident is a type param.
             let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
-                bounded_ty.id,
                 None,
                 &Segment::from_path(path),
                 Namespace::TypeNS,
                 span,
                 true,
-                CrateLint::No,
+                Finalize::No,
             ) else {
                 return false;
             };
@@ -724,13 +721,12 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         if let ast::TyKind::Path(None, type_param_path) = &ty.peel_refs().kind {
             // Confirm that the `SelfTy` is a type parameter.
             let Ok(Some(partial_res)) = self.resolve_qpath_anywhere(
-                bounded_ty.id,
                 None,
                 &Segment::from_path(type_param_path),
                 Namespace::TypeNS,
                 span,
                 true,
-                CrateLint::No,
+                Finalize::No,
             ) else {
                 return false;
             };
@@ -1292,8 +1288,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 ident,
                 ns,
                 &self.parent_scope,
-                false,
-                module.span,
+                None,
             ) {
                 let res = binding.res();
                 if filter_fn(res) {
@@ -1323,7 +1318,6 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         path: &[Segment],
         ns: Namespace,
         filter_fn: &impl Fn(Res) -> bool,
-        span: Span,
     ) -> Option<TypoSuggestion> {
         let mut names = Vec::new();
         if path.len() == 1 {
@@ -1384,7 +1378,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                self.resolve_path(mod_path, Some(TypeNS), false, span, CrateLint::No)
+                self.resolve_path(mod_path, Some(TypeNS), Finalize::No)
             {
                 self.r.add_module_candidates(module, &mut names, &filter_fn);
             }
