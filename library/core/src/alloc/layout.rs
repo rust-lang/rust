@@ -1,4 +1,5 @@
 use crate::cmp;
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::mem;
 use crate::num::NonZeroUsize;
@@ -53,8 +54,8 @@ impl Layout {
     /// * `align` must be a power of two,
     ///
     /// * `size`, when rounded up to the nearest multiple of `align`,
-    ///    must not overflow (i.e., the rounded value must be less than
-    ///    or equal to `usize::MAX`).
+    ///    must not overflow isize (i.e., the rounded value must be
+    ///    less than or equal to `isize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[rustc_const_stable(feature = "const_alloc_layout", since = "1.50.0")]
     #[inline]
@@ -77,7 +78,7 @@ impl Layout {
         //
         // Above implies that checking for summation overflow is both
         // necessary and sufficient.
-        if size > usize::MAX - (align - 1) {
+        if size > isize::MAX as usize - (align - 1) {
             return Err(LayoutError);
         }
 
@@ -277,8 +278,8 @@ impl Layout {
         let pad = self.padding_needed_for(self.align());
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
-        // > must not overflow (i.e., the rounded value must be less than
-        // > `usize::MAX`)
+        // > must not overflow isize (i.e., the rounded value must be
+        // > less than or equal to `isize::MAX`)
         let new_size = self.size() + pad;
 
         // SAFETY: self.align is already known to be valid and new_size has been
@@ -299,14 +300,21 @@ impl Layout {
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutError> {
         // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
-        // > must not overflow (i.e., the rounded value must be less than
-        // > `usize::MAX`)
+        // > must not overflow isize (i.e., the rounded value must be
+        // > less than or equal to `isize::MAX`)
         let padded_size = self.size() + self.padding_needed_for(self.align());
-        let alloc_size = padded_size.checked_mul(n).ok_or(LayoutError)?;
+        // Size manipulation is done in isize space to avoid overflowing isize.
+        let n = isize::try_from(n).map_err(|_| LayoutError)?;
+        let alloc_size = (padded_size as isize).checked_mul(n).ok_or(LayoutError)?;
 
         // SAFETY: self.align is already known to be valid and alloc_size has been
         // padded already.
-        unsafe { Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size)) }
+        unsafe {
+            Ok((
+                Layout::from_size_align_unchecked(alloc_size as usize, self.align()),
+                padded_size as usize,
+            ))
+        }
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -360,11 +368,12 @@ impl Layout {
         let new_align = cmp::max(self.align(), next.align());
         let pad = self.padding_needed_for(next.align());
 
-        let offset = self.size().checked_add(pad).ok_or(LayoutError)?;
-        let new_size = offset.checked_add(next.size()).ok_or(LayoutError)?;
+        // Size manipulation is done in isize space to avoid overflowing isize.
+        let offset = (self.size() as isize).checked_add(pad as isize).ok_or(LayoutError)?;
+        let new_size = offset.checked_add(next.size() as isize).ok_or(LayoutError)?;
 
-        let layout = Layout::from_size_align(new_size, new_align)?;
-        Ok((layout, offset))
+        let layout = Layout::from_size_align(new_size as usize, new_align)?;
+        Ok((layout, offset as usize))
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -382,8 +391,10 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutError> {
-        let size = self.size().checked_mul(n).ok_or(LayoutError)?;
-        Layout::from_size_align(size, self.align())
+        // Size manipulation is done in isize space to avoid overflowing isize.
+        let n = isize::try_from(n).map_err(|_| LayoutError)?;
+        let size = (self.size() as isize).checked_mul(n).ok_or(LayoutError)?;
+        Layout::from_size_align(size as usize, self.align())
     }
 
     /// Creates a layout describing the record for `self` followed by
@@ -395,8 +406,10 @@ impl Layout {
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutError> {
-        let new_size = self.size().checked_add(next.size()).ok_or(LayoutError)?;
-        Layout::from_size_align(new_size, self.align())
+        // Size manipulation is done in isize space to avoid overflowing isize.
+        let new_size =
+            (self.size() as isize).checked_add(next.size() as isize).ok_or(LayoutError)?;
+        Layout::from_size_align(new_size as usize, self.align())
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
@@ -405,7 +418,9 @@ impl Layout {
     #[stable(feature = "alloc_layout_manipulation", since = "1.44.0")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutError> {
-        let array_size = mem::size_of::<T>().checked_mul(n).ok_or(LayoutError)?;
+        // Size manipulation is done in isize space to avoid overflowing isize.
+        let n = isize::try_from(n).map_err(|_| LayoutError)?;
+        let array_size = (mem::size_of::<T>() as isize).checked_mul(n).ok_or(LayoutError)?;
 
         // SAFETY:
         // - Size: `array_size` cannot be too big because `size_of::<T>()` must
@@ -415,7 +430,7 @@ impl Layout {
         //   just checked by the `checked_mul()`.
         // - Alignment: `align_of::<T>()` will always give an acceptable
         //   (non-zero, power of two) alignment.
-        Ok(unsafe { Layout::from_size_align_unchecked(array_size, mem::align_of::<T>()) })
+        Ok(unsafe { Layout::from_size_align_unchecked(array_size as usize, mem::align_of::<T>()) })
     }
 }
 
