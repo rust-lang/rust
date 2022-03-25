@@ -9,7 +9,7 @@ use rustc_hir::def::{
     Namespace::{self, *},
     PerNS,
 };
-use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
+use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
@@ -1043,16 +1043,11 @@ impl<'a, 'tcx> DocVisitor for LinkCollector<'a, 'tcx> {
         // so we know which module it came from.
         for (parent_module, doc) in item.attrs.collapsed_doc_value_by_module_level() {
             debug!("combined_docs={}", doc);
-
-            let (krate, parent_node) = if let Some(id) = parent_module {
-                (id.krate, Some(id))
-            } else {
-                (item.def_id.krate(), parent_node)
-            };
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
+            let parent_node = parent_module.or(parent_node);
             for md_link in markdown_links(&doc) {
-                let link = self.resolve_link(&item, &doc, parent_node, krate, md_link);
+                let link = self.resolve_link(&item, &doc, parent_node, md_link);
                 if let Some(link) = link {
                     self.cx.cache.intra_doc_links.entry(item.def_id).or_default().push(link);
                 }
@@ -1187,7 +1182,6 @@ impl LinkCollector<'_, '_> {
         item: &Item,
         dox: &str,
         parent_node: Option<DefId>,
-        krate: CrateNum,
         ori_link: MarkdownLink,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
@@ -1199,7 +1193,7 @@ impl LinkCollector<'_, '_> {
             link_range: ori_link.range.clone(),
         };
 
-        let PreprocessingInfo { path_str, disambiguator, extra_fragment, link_text } =
+        let PreprocessingInfo { ref path_str, disambiguator, extra_fragment, link_text } =
             match preprocess_link(&ori_link)? {
                 Ok(x) => x,
                 Err(err) => {
@@ -1221,7 +1215,6 @@ impl LinkCollector<'_, '_> {
                     return None;
                 }
             };
-        let mut path_str = &*path_str;
 
         let inner_docs = item.inner_docs(self.cx.tcx);
 
@@ -1239,7 +1232,7 @@ impl LinkCollector<'_, '_> {
         let base_node =
             if item.is_mod() && inner_docs { self.mod_ids.last().copied() } else { parent_node };
 
-        let Some(mut module_id) = base_node else {
+        let Some(module_id) = base_node else {
             // This is a bug.
             debug!("attempting to resolve item without parent module: {}", path_str);
             resolution_failure(
@@ -1251,26 +1244,6 @@ impl LinkCollector<'_, '_> {
             );
             return None;
         };
-
-        let resolved_self;
-        let is_lone_crate = path_str == "crate";
-        if path_str.starts_with("crate::") || is_lone_crate {
-            use rustc_span::def_id::CRATE_DEF_INDEX;
-
-            // HACK(jynelson): rustc_resolve thinks that `crate` is the crate currently being documented.
-            // But rustdoc wants it to mean the crate this item was originally present in.
-            // To work around this, remove it and resolve relative to the crate root instead.
-            // HACK(jynelson)(2): If we just strip `crate::` then suddenly primitives become ambiguous
-            // (consider `crate::char`). Instead, change it to `self::`. This works because 'self' is now the crate root.
-            // FIXME(#78696): This doesn't always work.
-            if is_lone_crate {
-                path_str = "self";
-            } else {
-                resolved_self = format!("self::{}", &path_str["crate::".len()..]);
-                path_str = &resolved_self;
-            }
-            module_id = DefId { krate, index: CRATE_DEF_INDEX };
-        }
 
         let (mut res, fragment) = self.resolve_with_disambiguator_cached(
             ResolutionInfo {
