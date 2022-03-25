@@ -342,7 +342,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
             pm::run_passes(
                 tcx,
                 &mut body,
-                &[&const_prop::ConstProp, &marker::PhaseChange(MirPhase::Optimization)],
+                &[&const_prop::ConstProp, &marker::PhaseChange(MirPhase::Optimized)],
             );
         }
     }
@@ -399,7 +399,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     }
 
     run_post_borrowck_cleanup_passes(tcx, &mut body);
-    assert!(body.phase == MirPhase::DropLowering);
+    assert!(body.phase == MirPhase::Deaggregated);
     tcx.alloc_steal_mir(body)
 }
 
@@ -460,7 +460,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         ],
     );
 
-    assert!(body.phase == MirPhase::GeneratorLowering);
+    assert!(body.phase == MirPhase::GeneratorsLowered);
 
     // The main optimizations that we do on MIR.
     pm::run_passes(
@@ -497,7 +497,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
-            &marker::PhaseChange(MirPhase::Optimization),
+            &marker::PhaseChange(MirPhase::Optimized),
             // Dump the end result for testing and debugging purposes.
             &dump_mir::Marker("PreCodegen"),
         ],

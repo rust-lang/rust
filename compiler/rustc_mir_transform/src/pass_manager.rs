@@ -114,7 +114,7 @@ pub fn run_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, passes: &[&dyn
         }
     }
 
-    if validate || body.phase == MirPhase::Optimization {
+    if validate || body.phase == MirPhase::Optimized {
         validate_body(tcx, body, format!("end of phase transition to {:?}", body.phase));
     }
 }

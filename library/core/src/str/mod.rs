@@ -904,6 +904,7 @@ impl str {
     #[must_use = "this returns the split string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_split_whitespace")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
@@ -1846,6 +1847,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim")]
     pub fn trim(&self) -> &str {
         self.trim_matches(|c: char| c.is_whitespace())
     }
@@ -1884,6 +1886,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_start")]
     pub fn trim_start(&self) -> &str {
         self.trim_start_matches(|c: char| c.is_whitespace())
     }
@@ -1922,6 +1925,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_end")]
     pub fn trim_end(&self) -> &str {
         self.trim_end_matches(|c: char| c.is_whitespace())
     }

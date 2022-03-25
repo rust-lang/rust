@@ -25,7 +25,7 @@ use crate::traits::project::ProjectionCacheKeyExt;
 use crate::traits::ProjectionCacheKey;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::Diagnostic;
+use rustc_errors::{Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::LateBoundRegionConversionTime;
@@ -316,11 +316,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         let candidate = match self.select_from_obligation(obligation) {
-            Err(SelectionError::Overflow) => {
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                return Err(SelectionError::Overflow);
+                return Err(SelectionError::Overflow(OverflowError::Canonical));
             }
             Err(SelectionError::Ambiguous(_)) => {
                 return Ok(None);
@@ -335,9 +335,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         match self.confirm_candidate(obligation, candidate) {
-            Err(SelectionError::Overflow) => {
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                Err(SelectionError::Overflow)
+                Err(SelectionError::Overflow(OverflowError::Canonical))
             }
             Err(e) => Err(e),
             Ok(candidate) => {
@@ -639,7 +639,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val(), c2.val())
                         {
-                            if self.infcx.try_unify_abstract_consts(a.shrink(), b.shrink()) {
+                            if self.infcx.try_unify_abstract_consts(
+                                a.shrink(),
+                                b.shrink(),
+                                obligation.param_env,
+                            ) {
                                 return Ok(EvaluatedToOk);
                             }
                         }
@@ -954,7 +958,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow) => Err(OverflowError::Canonical),
+            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
@@ -1113,7 +1117,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             match self.query_mode {
                 TraitQueryMode::Standard => {
                     if self.infcx.is_tainted_by_errors() {
-                        return Err(OverflowError::ErrorReporting);
+                        return Err(OverflowError::Error(
+                            ErrorGuaranteed::unchecked_claim_error_was_emitted(),
+                        ));
                     }
                     self.infcx.report_overflow_error(error_obligation, true);
                 }
@@ -1349,7 +1355,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if let Err(Overflow) = candidate {
+            if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.needs_infer() {
                 if !candidate.needs_infer() {
