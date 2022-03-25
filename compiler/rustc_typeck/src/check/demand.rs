@@ -39,6 +39,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_no_capture_closure(err, expected, expr_ty);
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_parentheses(err, expr);
+        self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.report_closure_inferred_return_type(err, expected);

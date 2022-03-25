@@ -1919,17 +1919,13 @@ impl<'a> Parser<'a> {
         match snapshot.parse_array_or_repeat_expr(attrs, token::Brace) {
             Ok(arr) => {
                 let hi = snapshot.prev_token.span;
-                self.struct_span_err(
-                    arr.span,
-                    "this code is interpreted as a block expression, not an array",
-                )
-                .multipart_suggestion(
-                    "try using [] instead of {}",
-                    vec![(lo, "[".to_owned()), (hi, "]".to_owned())],
-                    Applicability::MaybeIncorrect,
-                )
-                .note("to define an array, one would use square brackets instead of curly braces")
-                .emit();
+                self.struct_span_err(arr.span, "this is a block expression, not an array")
+                    .multipart_suggestion(
+                        "to make an array, use square brackets instead of curly braces",
+                        vec![(lo, "[".to_owned()), (hi, "]".to_owned())],
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
 
                 self.restore_snapshot(snapshot);
                 Some(self.mk_expr_err(arr.span))

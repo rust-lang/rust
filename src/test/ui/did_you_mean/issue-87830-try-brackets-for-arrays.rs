@@ -1,15 +1,16 @@
 fn main() {}
 
-const FOO: [u8; 3] = { //~ ERROR this code is interpreted as a block expression
+const FOO: [u8; 3] = {
+    //~^ ERROR this is a block expression, not an array
     1, 2, 3
 };
 
 const BAR: [&str; 3] = {"one", "two", "three"};
-//~^ ERROR this code is interpreted as a block expression
+//~^ ERROR this is a block expression, not an array
 
 fn foo() {
     {1, 2, 3};
-    //~^ ERROR this code is interpreted as a block expression
+    //~^ ERROR this is a block expression, not an array
 }
 
 fn bar() {
