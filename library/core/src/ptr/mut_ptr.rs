@@ -1338,6 +1338,111 @@ impl<T> *mut [T] {
         metadata(self)
     }
 
+    /// Returns `true` if the raw slice has a length of 0.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_ptr_len)]
+    ///
+    /// let mut a = [1, 2, 3];
+    /// let ptr = &mut a as *mut [_];
+    /// assert!(!ptr.is_empty());
+    /// ```
+    #[inline(always)]
+    #[unstable(feature = "slice_ptr_len", issue = "71146")]
+    #[rustc_const_unstable(feature = "const_slice_ptr_len", issue = "71146")]
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// Divides one mutable raw slice into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(raw_slice_split)]
+    /// #![feature(slice_ptr_get)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// let ptr = &mut v as *mut [_];
+    /// let (left, right) = ptr.split_at_mut(2);
+    /// unsafe {
+    ///     assert_eq!(&*left, [1, 0]);
+    ///     assert_eq!(&*right, [3, 0, 5, 6]);
+    /// }
+    /// ```
+    #[inline(always)]
+    #[track_caller]
+    #[unstable(feature = "raw_slice_split", issue = "71146")]
+    pub fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
+        assert!(mid <= self.len());
+        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
+        // fulfills the requirements of `from_raw_parts_mut`.
+        unsafe { self.split_at_mut_unchecked(mid) }
+    }
+
+    /// Divides one mutable raw slice into two at an index, without doing bounds checking.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// For a safe alternative see [`split_at_mut`].
+    ///
+    /// [`split_at_mut`]: #method.split_at_mut
+    ///
+    /// # Safety
+    ///
+    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
+    /// even if the resulting reference is not used. The caller has to ensure that
+    /// `0 <= mid <= self.len()`.
+    ///
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(raw_slice_split)]
+    ///
+    /// let mut v = [1, 0, 3, 0, 5, 6];
+    /// // scoped to restrict the lifetime of the borrows
+    /// unsafe {
+    ///     let ptr = &mut v as *mut [_];
+    ///     let (left, right) = ptr.split_at_mut_unchecked(2);
+    ///     assert_eq!(&*left, [1, 0]);
+    ///     assert_eq!(&*right, [3, 0, 5, 6]);
+    ///     (&mut *left)[1] = 2;
+    ///     (&mut *right)[1] = 4;
+    /// }
+    /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
+    /// ```
+    #[inline(always)]
+    #[unstable(feature = "raw_slice_split", issue = "71146")]
+    pub unsafe fn split_at_mut_unchecked(self, mid: usize) -> (*mut [T], *mut [T]) {
+        let len = self.len();
+        let ptr = self.as_mut_ptr();
+
+        // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
+        //
+        // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
+        // is fine.
+        unsafe {
+            (
+                crate::ptr::slice_from_raw_parts_mut(ptr, mid),
+                crate::ptr::slice_from_raw_parts_mut(ptr.add(mid), len - mid),
+            )
+        }
+    }
+
     /// Returns a raw pointer to the slice's buffer.
     ///
     /// This is equivalent to casting `self` to `*mut T`, but more type-safe.
