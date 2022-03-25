@@ -1573,18 +1573,44 @@ impl Statement<'_> {
 /// causing an ICE if they are violated.
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
-    /// Write the RHS Rvalue to the LHS Place.
+    /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
+    /// without the possibility of dropping the previous value (that must be done separately, if at
+    /// all). The *exact* way this works is undecided. It probably does something like evaluating
+    /// the LHS and RHS, and then doing the inverse of a place to value conversion to write the
+    /// resulting value into memory. Various parts of this may do type specific things that are more
+    /// complicated than simply copying over the bytes depending on the types.
     ///
-    /// The LHS place may not overlap with any memory accessed on the RHS.
+    /// **Needs clarification**: The implication of the above idea would be that assignment implies
+    /// that the resulting value is initialized. I believe we could commit to this separately from
+    /// committing to whatever part of the memory model we would need to decide on to make the above
+    /// paragragh precise. Do we want to?
+    ///
+    /// Assignments in which the types of the place and rvalue differ are not well-formed.
+    ///
+    /// **Needs clarification**: Do we ever want to worry about non-free (in the body) lifetimes for
+    /// the typing requirement in post drop-elaboration MIR? I think probably not - I'm not sure we
+    /// could meaningfully require this anyway. How about free lifetimes? Is ignoring this
+    /// interesting for optimizations? Do we want to allow such optimizations?
+    ///
+    /// **Needs clarification**: We currently require that the LHS place not overlap with any place
+    /// read as part of computation of the RHS. This requirement is under discussion in [#68364]. As
+    /// a part of this discussion, it is also unclear in what order the components are evaluated.
+    ///
+    /// [#68364]: https://github.com/rust-lang/rust/issues/68364
+    ///
+    /// See [`Rvalue`] documentation for details on each of those.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
-    /// This represents all the reading that a pattern match may do
-    /// (e.g., inspecting constants and discriminant values), and the
-    /// kind of pattern it comes from. This is in order to adapt potential
-    /// error messages to these specific patterns.
+    /// This represents all the reading that a pattern match may do (e.g., inspecting constants and
+    /// discriminant values), and the kind of pattern it comes from. This is in order to adapt
+    /// potential error messages to these specific patterns.
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
     FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
@@ -1599,17 +1625,36 @@ pub enum StatementKind<'tcx> {
     /// This writes `uninit` bytes to the entire place.
     Deinit(Box<Place<'tcx>>),
 
-    /// Start a live range for the storage of the local.
+    /// `StorageLive` and `StorageDead` statements mark the live range of a local.
+    ///
+    /// Using a local before a `StorageLive` or after a `StorageDead` is not well-formed. These
+    /// statements are not required. If the entire MIR body contains no `StorageLive`/`StorageDead`
+    /// statements for a particular local, the local is always considered live.
+    ///
+    /// More precisely, the MIR validator currently does a `MaybeLiveLocals` analysis to check
+    /// validity of each use of a local. I believe this is equivalent to requiring for every use of
+    /// a local, there exist at least one path from the root to that use that contains a
+    /// `StorageLive` more recently than a `StorageDead`.
+    ///
+    /// **Needs clarification**: Is it permitted to `StorageLive` a local for which we previously
+    /// executed `StorageDead`? How about two `StorageLive`s without an intervening `StorageDead`?
+    /// Two `StorageDead`s without an intervening `StorageLive`? LLVM says yes, poison, yes. If the
+    /// answer to any of these is "no," is breaking that rule UB or is it an error to have a path in
+    /// the CFG that might do this?
     StorageLive(Local),
 
-    /// End the current live range for the storage of the local.
+    /// See `StorageLive` above.
     StorageDead(Local),
 
-    /// Retag references in the given place, ensuring they got fresh tags. This is
-    /// part of the Stacked Borrows model. These statements are currently only interpreted
-    /// by miri and only generated when "-Z mir-emit-retag" is passed.
-    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
-    /// for more details.
+    /// Retag references in the given place, ensuring they got fresh tags.
+    ///
+    /// This is part of the Stacked Borrows model. These statements are currently only interpreted
+    /// by miri and only generated when `-Z mir-emit-retag` is passed. See
+    /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
+    /// more details.
+    ///
+    /// For code that is not specific to stacked borrows, you should consider statements to read
+    /// and modify the place in an opaque way.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -1624,6 +1669,10 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
     /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
@@ -1633,9 +1682,20 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
-    /// Denotes a call to the intrinsic function copy_overlapping, where `src_dst` denotes the
-    /// memory being read from and written to(one field to save memory), and size
-    /// indicates how many bytes are being copied over.
+    /// Denotes a call to the intrinsic function `copy_overlapping`.
+    ///
+    /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
+    /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
+    /// `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning with the first byte of
+    /// the `src` place are copied to the continguous range of bytes beginning with the first byte
+    /// of `dest`.
+    ///
+    /// **Needs clarification**: In what order are operands computed and dereferenced? It should
+    /// probably match the order for assignment, but that is also undecided.
+    ///
+    /// **Needs clarification**: Is this typed or not, ie is there a place to value and back
+    /// conversion involved? I vaguely remember Ralf saying somewhere that he thought it should not
+    /// be.
     CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
