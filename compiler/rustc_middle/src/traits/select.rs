@@ -5,6 +5,7 @@
 use self::EvaluationResult::*;
 
 use super::{SelectionError, SelectionResult};
+use rustc_errors::ErrorGuaranteed;
 
 use crate::ty;
 
@@ -264,14 +265,26 @@ impl EvaluationResult {
 /// Indicates that trait evaluation caused overflow and in which pass.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
 pub enum OverflowError {
+    Error(ErrorGuaranteed),
     Canonical,
     ErrorReporting,
+}
+
+impl From<ErrorGuaranteed> for OverflowError {
+    fn from(e: ErrorGuaranteed) -> OverflowError {
+        OverflowError::Error(e)
+    }
+}
+
+TrivialTypeFoldableAndLiftImpls! {
+    OverflowError,
 }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {
         match overflow_error {
-            OverflowError::Canonical => SelectionError::Overflow,
+            OverflowError::Error(e) => SelectionError::Overflow(OverflowError::Error(e)),
+            OverflowError::Canonical => SelectionError::Overflow(OverflowError::Canonical),
             OverflowError::ErrorReporting => SelectionError::ErrorReporting,
         }
     }
