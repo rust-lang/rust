@@ -549,7 +549,7 @@ rustc_queries! {
 
     query adt_dtorck_constraint(
         key: DefId
-    ) -> Result<&'tcx DtorckConstraint<'tcx>, NoSolution> {
+    ) -> Result<&'tcx DropckConstraint<'tcx>, NoSolution> {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 

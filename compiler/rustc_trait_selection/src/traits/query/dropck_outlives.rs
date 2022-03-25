@@ -5,7 +5,7 @@ use crate::infer::InferOk;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
-pub use rustc_middle::traits::query::{DropckOutlivesResult, DtorckConstraint};
+pub use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 
 pub trait AtExt<'tcx> {
     fn dropck_outlives(&self, ty: Ty<'tcx>) -> InferOk<'tcx, Vec<GenericArg<'tcx>>>;

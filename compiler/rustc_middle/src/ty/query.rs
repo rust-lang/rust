@@ -23,7 +23,7 @@ use crate::traits::query::{
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
 use crate::traits::query::{
-    DropckOutlivesResult, DtorckConstraint, MethodAutoderefStepsResult, NormalizationResult,
+    DropckConstraint, DropckOutlivesResult, MethodAutoderefStepsResult, NormalizationResult,
     OutlivesBound,
 };
 use crate::traits::specialization_graph;

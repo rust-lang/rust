@@ -52,7 +52,7 @@ macro_rules! arena_types {
                         Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
                     >
                 >,
-            [] dtorck_constraint: rustc_middle::traits::query::DtorckConstraint<'tcx>,
+            [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
             [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
             [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
             [] type_op_subtype:
