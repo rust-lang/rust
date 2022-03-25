@@ -297,6 +297,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::truncf64 => ("trunc", 1, fx.tcx.types.f64),
         sym::roundf32 => ("roundf", 1, fx.tcx.types.f32),
         sym::roundf64 => ("round", 1, fx.tcx.types.f64),
+        sym::roundevenf32 => ("roundevenf", 1, fx.tcx.types.f32),
+        sym::roundevenf64 => ("roundeven", 1, fx.tcx.types.f64),
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64),
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32),

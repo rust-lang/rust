@@ -1179,6 +1179,8 @@ symbols! {
         rlib,
         rotate_left,
         rotate_right,
+        roundevenf32,
+        roundevenf64,
         roundf32,
         roundf64,
         rt,

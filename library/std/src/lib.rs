@@ -307,6 +307,7 @@
 #![feature(provide_any)]
 #![feature(ptr_as_uninit)]
 #![feature(raw_os_nonzero)]
+#![cfg_attr(not(bootstrap), feature(round_ties_even))]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
 #![feature(std_internals)]
