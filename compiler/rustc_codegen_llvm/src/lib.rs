@@ -7,6 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(extern_types)]
 #![feature(once_cell)]

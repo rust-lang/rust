@@ -23,25 +23,26 @@ pub fn compute_mir_scopes<'ll, 'tcx>(
     fn_dbg_scope: &'ll DIScope,
     debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
 ) {
-    // Find all the scopes with variables defined in them.
-    let mut has_variables = BitSet::new_empty(mir.source_scopes.len());
-
-    // Only consider variables when they're going to be emitted.
-    // FIXME(eddyb) don't even allocate `has_variables` otherwise.
-    if cx.sess().opts.debuginfo == DebugInfo::Full {
+    // Find all scopes with variables defined in them.
+    let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
+        let mut vars = BitSet::new_empty(mir.source_scopes.len());
         // FIXME(eddyb) take into account that arguments always have debuginfo,
         // irrespective of their name (assuming full debuginfo is enabled).
         // NOTE(eddyb) actually, on second thought, those are always in the
         // function scope, which always exists.
         for var_debug_info in &mir.var_debug_info {
-            has_variables.insert(var_debug_info.source_info.scope);
+            vars.insert(var_debug_info.source_info.scope);
         }
-    }
+        Some(vars)
+    } else {
+        // Nothing to emit, of course.
+        None
+    };
 
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
-        make_mir_scope(cx, instance, mir, fn_dbg_scope, &has_variables, debug_context, scope);
+        make_mir_scope(cx, instance, mir, fn_dbg_scope, &variables, debug_context, scope);
     }
 }
 
@@ -50,7 +51,7 @@ fn make_mir_scope<'ll, 'tcx>(
     instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     fn_dbg_scope: &'ll DIScope,
-    has_variables: &BitSet<SourceScope>,
+    variables: &Option<BitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<&'ll DIScope, &'ll DILocation>,
     scope: SourceScope,
 ) {
@@ -60,7 +61,7 @@ fn make_mir_scope<'ll, 'tcx>(
 
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
-        make_mir_scope(cx, instance, mir, fn_dbg_scope, has_variables, debug_context, parent);
+        make_mir_scope(cx, instance, mir, fn_dbg_scope, variables, debug_context, parent);
         debug_context.scopes[parent]
     } else {
         // The root is the function itself.
@@ -74,7 +75,7 @@ fn make_mir_scope<'ll, 'tcx>(
         return;
     };
 
-    if !has_variables.contains(scope) && scope_data.inlined.is_none() {
+    if let Some(vars) = variables && !vars.contains(scope) && scope_data.inlined.is_none() {
         // Do not create a DIScope if there are no variables defined in this
         // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
         debug_context.scopes[scope] = parent_scope;
