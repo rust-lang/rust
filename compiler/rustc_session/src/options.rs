@@ -345,14 +345,13 @@ fn build_options<O: Default>(
                         Some(value) => early_error(
                             error_format,
                             &format!(
-                                "incorrect value `{}` for {} option `{}` - {} was expected",
-                                value, outputname, key, type_desc
+                                "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
                         ),
                     }
                 }
             }
-            None => early_error(error_format, &format!("unknown {} option: `{}`", outputname, key)),
+            None => early_error(error_format, &format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;

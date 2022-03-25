@@ -120,14 +120,13 @@ pub fn add_feature_diagnostics_for_issue<'a>(
 ) {
     if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
-            "see issue #{} <https://github.com/rust-lang/rust/issues/{}> for more information",
-            n, n,
+            "see issue #{n} <https://github.com/rust-lang/rust/issues/{n}> for more information"
         ));
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.unstable_features.is_nightly_build() {
-        err.help(&format!("add `#![feature({})]` to the crate attributes to enable", feature));
+        err.help(&format!("add `#![feature({feature})]` to the crate attributes to enable"));
     }
 }
 

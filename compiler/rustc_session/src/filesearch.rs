@@ -85,7 +85,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
                 p.pop();
                 p
             }
-            Err(e) => panic!("failed to get current_exe: {}", e),
+            Err(e) => panic!("failed to get current_exe: {e}"),
         }
     }
 

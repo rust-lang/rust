@@ -63,8 +63,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
             if name.as_str() != s {
                 let msg = format!(
                     "`--crate-name` and `#[crate_name]` are \
-                                   required to match, but `{}` != `{}`",
-                    s, name
+                                   required to match, but `{s}` != `{name}`"
                 );
                 sess.span_err(attr.span, &msg);
             }
@@ -80,8 +79,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
             if s.starts_with('-') {
                 let msg = format!(
                     "crate names cannot start with a `-`, but \
-                                   `{}` has a leading hyphen",
-                    s
+                                   `{s}` has a leading hyphen"
                 );
                 sess.err(&msg);
             } else {
@@ -113,7 +111,7 @@ pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
             if c == '_' {
                 continue;
             }
-            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
+            say(&format!("invalid character `{c}` in crate name: `{s}`"));
         }
     }
 
@@ -137,7 +135,7 @@ pub fn filename_for_metadata(
     let out_filename = outputs
         .single_output_file
         .clone()
-        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
+        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{libname}.rmeta")));
 
     check_file_is_writeable(&out_filename, sess);
 
@@ -153,14 +151,14 @@ pub fn filename_for_input(
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        CrateType::Rlib => outputs.out_directory.join(&format!("lib{}.rlib", libname)),
+        CrateType::Rlib => outputs.out_directory.join(&format!("lib{libname}.rlib")),
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
-            outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
+            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
         }
         CrateType::Staticlib => {
             let (prefix, suffix) = (&sess.target.staticlib_prefix, &sess.target.staticlib_suffix);
-            outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
+            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
         }
         CrateType::Executable => {
             let suffix = &sess.target.exe_suffix;

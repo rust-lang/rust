@@ -99,7 +99,7 @@ impl CodeStats {
             let indent = "    ";
 
             let discr_size = if let Some(discr_size) = info.opt_discr_size {
-                println!("print-type-size {}discriminant: {} bytes", indent, discr_size);
+                println!("print-type-size {indent}discriminant: {discr_size} bytes");
                 discr_size
             } else {
                 0
@@ -123,10 +123,8 @@ impl CodeStats {
                         None => i.to_string(),
                     };
                     println!(
-                        "print-type-size {}variant `{}`: {} bytes",
-                        indent,
-                        name,
-                        size - discr_size
+                        "print-type-size {indent}variant `{name}`: {diff} bytes",
+                        diff = size - discr_size
                     );
                     "        "
                 } else {
@@ -149,25 +147,23 @@ impl CodeStats {
 
                     if offset > min_offset {
                         let pad = offset - min_offset;
-                        println!("print-type-size {}padding: {} bytes", indent, pad);
+                        println!("print-type-size {indent}padding: {pad} bytes");
                     }
 
                     if offset < min_offset {
                         // If this happens it's probably a union.
                         println!(
-                            "print-type-size {}field `.{}`: {} bytes, \
-                                  offset: {} bytes, \
-                                  alignment: {} bytes",
-                            indent, name, size, offset, align
+                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                                  offset: {offset} bytes, \
+                                  alignment: {align} bytes"
                         );
                     } else if info.packed || offset == min_offset {
-                        println!("print-type-size {}field `.{}`: {} bytes", indent, name, size);
+                        println!("print-type-size {indent}field `.{name}`: {size} bytes");
                     } else {
                         // Include field alignment in output only if it caused padding injection
                         println!(
-                            "print-type-size {}field `.{}`: {} bytes, \
-                                  alignment: {} bytes",
-                            indent, name, size, align
+                            "print-type-size {indent}field `.{name}`: {size} bytes, \
+                                  alignment: {align} bytes"
                         );
                     }
 
