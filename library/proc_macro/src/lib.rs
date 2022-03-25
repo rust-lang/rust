@@ -17,6 +17,9 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
+// This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
+// Please avoid unstable features where possible to minimize the amount of changes necessary
+// to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
