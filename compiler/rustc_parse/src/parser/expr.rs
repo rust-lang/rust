@@ -1703,7 +1703,7 @@ impl<'a> Parser<'a> {
                     if matches!(expr.kind, ExprKind::Err) {
                         let mut err = self
                             .diagnostic()
-                            .struct_span_err(self.token.span, &"invalid interpolated expression");
+                            .struct_span_err(self.token.span, "invalid interpolated expression");
                         err.downgrade_to_delayed_bug();
                         return err;
                     }
@@ -1820,7 +1820,7 @@ impl<'a> Parser<'a> {
                 } else if let Some(fixed) = fix_base_capitalisation(suf) {
                     let msg = "invalid base prefix for number literal";
 
-                    self.struct_span_err(span, &msg)
+                    self.struct_span_err(span, msg)
                         .note("base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase")
                         .span_suggestion(
                             span,

@@ -102,7 +102,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let mut span = MultiSpan::from_span(method_name.ident.span);
-                    span.push_span_label(iter_call.span, "the iterator could be used here instead".into());
+                    span.push_span_label(iter_call.span, "the iterator could be used here instead");
                     span_lint_hir_and_then(
                         cx,
                         super::NEEDLESS_COLLECT,

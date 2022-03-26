@@ -41,8 +41,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut err = self.tcx().sess.struct_span_err(cause.span, "incompatible lifetime on type");
         // FIXME: we should point at the lifetime
         let mut multi_span: MultiSpan = vec![binding_span].into();
-        multi_span
-            .push_span_label(binding_span, "introduces a `'static` lifetime requirement".into());
+        multi_span.push_span_label(binding_span, "introduces a `'static` lifetime requirement");
         err.span_note(multi_span, "because this has an unmet lifetime requirement");
         note_and_explain_region(self.tcx(), &mut err, "", sup, "...", Some(binding_span));
         if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {

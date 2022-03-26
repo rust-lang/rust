@@ -19,7 +19,10 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed,
+    FluentBundle, MultiSpan,
+};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -279,34 +282,34 @@ impl Session {
     pub fn struct_span_warn<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_warn(sp, msg)
     }
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_warn_with_code(sp, msg, code)
     }
-    pub fn struct_warn(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
+    pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_warn(msg)
     }
     pub fn struct_span_allow<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_span_allow(sp, msg)
     }
-    pub fn struct_allow(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
+    pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_allow(msg)
     }
     pub fn struct_expect(
         &self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         id: lint::LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_expect(msg, id)
@@ -314,25 +317,28 @@ impl Session {
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.diagnostic().struct_span_err(sp, msg)
     }
     pub fn struct_span_err_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.diagnostic().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
-    pub fn struct_err(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_err(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.diagnostic().struct_err(msg)
     }
     pub fn struct_err_with_code(
         &self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.diagnostic().struct_err_with_code(msg, code)
@@ -340,50 +346,64 @@ impl Session {
     pub fn struct_span_fatal<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, !> {
+    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_fatal(msg)
     }
 
-    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
+    pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().span_fatal(sp, msg)
     }
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> ! {
         self.diagnostic().span_fatal_with_code(sp, msg, code)
     }
-    pub fn fatal(&self, msg: &str) -> ! {
+    pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.diagnostic().fatal(msg).raise()
     }
-    pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
+    pub fn span_err_or_warn<S: Into<MultiSpan>>(
+        &self,
+        is_warning: bool,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) {
         if is_warning {
             self.span_warn(sp, msg);
         } else {
             self.span_err(sp, msg);
         }
     }
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
+    pub fn span_err<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> ErrorGuaranteed {
         self.diagnostic().span_err(sp, msg)
     }
-    pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
-        self.diagnostic().span_err_with_code(sp, &msg, code)
+    pub fn span_err_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+        code: DiagnosticId,
+    ) {
+        self.diagnostic().span_err_with_code(sp, msg, code)
     }
-    pub fn err(&self, msg: &str) -> ErrorGuaranteed {
+    pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
@@ -423,25 +443,34 @@ impl Session {
             Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         }
     }
-    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().span_warn(sp, msg)
     }
-    pub fn span_warn_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
+    pub fn span_warn_with_code<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+        code: DiagnosticId,
+    ) {
         self.diagnostic().span_warn_with_code(sp, msg, code)
     }
-    pub fn warn(&self, msg: &str) {
+    pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().warn(msg)
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
+    pub fn delay_span_bug<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> ErrorGuaranteed {
         self.diagnostic().delay_span_bug(sp, msg)
     }
 
     /// Used for code paths of expensive computations that should only take place when
     /// warnings or errors are emitted. If no messages are emitted ("good path"), then
     /// it's likely a bug.
-    pub fn delay_good_path_bug(&self, msg: &str) {
+    pub fn delay_good_path_bug(&self, msg: impl Into<DiagnosticMessage>) {
         if self.opts.debugging_opts.print_type_sizes
             || self.opts.debugging_opts.query_dep_graph
             || self.opts.debugging_opts.dump_mir.is_some()
@@ -455,13 +484,20 @@ impl Session {
         self.diagnostic().delay_good_path_bug(msg)
     }
 
-    pub fn note_without_error(&self, msg: &str) {
+    pub fn note_without_error(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().note_without_error(msg)
     }
-    pub fn span_note_without_error<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_note_without_error<S: Into<MultiSpan>>(
+        &self,
+        sp: S,
+        msg: impl Into<DiagnosticMessage>,
+    ) {
         self.diagnostic().span_note_without_error(sp, msg)
     }
-    pub fn struct_note_without_error(&self, msg: &str) -> DiagnosticBuilder<'_, ()> {
+    pub fn struct_note_without_error(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, ()> {
         self.diagnostic().struct_note_without_error(msg)
     }
 
@@ -1033,6 +1069,7 @@ fn default_emitter(
     sopts: &config::Options,
     registry: rustc_errors::registry::Registry,
     source_map: Lrc<SourceMap>,
+    fallback_bundle: Lrc<FluentBundle>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.debugging_opts.macro_backtrace;
@@ -1041,14 +1078,19 @@ fn default_emitter(
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
-                let emitter =
-                    AnnotateSnippetEmitterWriter::new(Some(source_map), short, macro_backtrace);
+                let emitter = AnnotateSnippetEmitterWriter::new(
+                    Some(source_map),
+                    fallback_bundle,
+                    short,
+                    macro_backtrace,
+                );
                 Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
             } else {
                 let emitter = match dst {
                     None => EmitterWriter::stderr(
                         color_config,
                         Some(source_map),
+                        fallback_bundle,
                         short,
                         sopts.debugging_opts.teach,
                         sopts.debugging_opts.terminal_width,
@@ -1057,6 +1099,7 @@ fn default_emitter(
                     Some(dst) => EmitterWriter::new(
                         dst,
                         Some(source_map),
+                        fallback_bundle,
                         short,
                         false, // no teach messages when writing to a buffer
                         false, // no colors when writing to a buffer
@@ -1071,6 +1114,7 @@ fn default_emitter(
             JsonEmitter::stderr(
                 Some(registry),
                 source_map,
+                fallback_bundle,
                 pretty,
                 json_rendered,
                 sopts.debugging_opts.terminal_width,
@@ -1083,6 +1127,7 @@ fn default_emitter(
                 dst,
                 Some(registry),
                 source_map,
+                fallback_bundle,
                 pretty,
                 json_rendered,
                 sopts.debugging_opts.terminal_width,
@@ -1152,7 +1197,10 @@ pub fn build_session(
         sopts.file_path_mapping(),
         hash_kind,
     ));
-    let emitter = default_emitter(&sopts, registry, source_map.clone(), write_dest);
+
+    let fallback_bundle = fallback_fluent_bundle();
+    let emitter =
+        default_emitter(&sopts, registry, source_map.clone(), fallback_bundle.clone(), write_dest);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1385,13 +1433,22 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
+    let fallback_bundle = fallback_fluent_bundle();
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
+            Box::new(EmitterWriter::stderr(
+                color_config,
+                None,
+                fallback_bundle,
+                short,
+                false,
+                None,
+                false,
+            ))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
+            Box::new(JsonEmitter::basic(pretty, json_rendered, fallback_bundle, None, false))
         }
     };
     rustc_errors::Handler::with_emitter(true, None, emitter)

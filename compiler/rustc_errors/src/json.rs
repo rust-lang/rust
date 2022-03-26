@@ -15,10 +15,11 @@ use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::DiagnosticId;
 use crate::ToolMetadata;
-use crate::{CodeSuggestion, MultiSpan, SpanLabel, SubDiagnostic};
+use crate::{CodeSuggestion, FluentBundle, MultiSpan, SpanLabel, SubDiagnostic};
 use rustc_lint_defs::Applicability;
 
 use rustc_data_structures::sync::Lrc;
+use rustc_error_messages::FluentArgs;
 use rustc_span::hygiene::ExpnData;
 use rustc_span::Span;
 use std::io::{self, Write};
@@ -36,6 +37,7 @@ pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
     sm: Lrc<SourceMap>,
+    fallback_bundle: Lrc<FluentBundle>,
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
@@ -47,6 +49,7 @@ impl JsonEmitter {
     pub fn stderr(
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
+        fallback_bundle: Lrc<FluentBundle>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         terminal_width: Option<usize>,
@@ -56,6 +59,7 @@ impl JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
             registry,
             sm: source_map,
+            fallback_bundle,
             pretty,
             ui_testing: false,
             json_rendered,
@@ -67,6 +71,7 @@ impl JsonEmitter {
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        fallback_bundle: Lrc<FluentBundle>,
         terminal_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
@@ -74,6 +79,7 @@ impl JsonEmitter {
         JsonEmitter::stderr(
             None,
             Lrc::new(SourceMap::new(file_path_mapping)),
+            fallback_bundle,
             pretty,
             json_rendered,
             terminal_width,
@@ -85,6 +91,7 @@ impl JsonEmitter {
         dst: Box<dyn Write + Send>,
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
+        fallback_bundle: Lrc<FluentBundle>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         terminal_width: Option<usize>,
@@ -94,6 +101,7 @@ impl JsonEmitter {
             dst,
             registry,
             sm: source_map,
+            fallback_bundle,
             pretty,
             ui_testing: false,
             json_rendered,
@@ -171,6 +179,14 @@ impl Emitter for JsonEmitter {
 
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
+    }
+
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        None
+    }
+
+    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
+        &self.fallback_bundle
     }
 
     fn should_show_explain(&self) -> bool {
@@ -345,14 +361,18 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let sugg = diag.suggestions.iter().flatten().map(|sugg| Diagnostic {
-            message: sugg.msg.clone().to_string(),
-            code: None,
-            level: "help",
-            spans: DiagnosticSpan::from_suggestion(sugg, je),
-            children: vec![],
-            rendered: None,
-            tool_metadata: sugg.tool_metadata.clone(),
+        let args = je.to_fluent_args(diag.args());
+        let sugg = diag.suggestions.iter().flatten().map(|sugg| {
+            let translated_message = je.translate_message(&sugg.msg, &args);
+            Diagnostic {
+                message: translated_message.to_string(),
+                code: None,
+                level: "help",
+                spans: DiagnosticSpan::from_suggestion(sugg, &args, je),
+                children: vec![],
+                rendered: None,
+                tool_metadata: sugg.tool_metadata.clone(),
+            }
         });
 
         // generate regular command line output and store it in the json
@@ -375,6 +395,7 @@ impl Diagnostic {
             .new_emitter(
                 Box::new(buf),
                 Some(je.sm.clone()),
+                je.fallback_bundle.clone(),
                 false,
                 je.terminal_width,
                 je.macro_backtrace,
@@ -384,15 +405,16 @@ impl Diagnostic {
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
+        let translated_message = je.translate_messages(&diag.message, &args);
         Diagnostic {
-            message: diag.message().to_string(),
+            message: translated_message.to_string(),
             code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
             level: diag.level.to_str(),
-            spans: DiagnosticSpan::from_multispan(&diag.span, je),
+            spans: DiagnosticSpan::from_multispan(&diag.span, &args, je),
             children: diag
                 .children
                 .iter()
-                .map(|c| Diagnostic::from_sub_diagnostic(c, je))
+                .map(|c| Diagnostic::from_sub_diagnostic(c, &args, je))
                 .chain(sugg)
                 .collect(),
             rendered: Some(output),
@@ -400,16 +422,21 @@ impl Diagnostic {
         }
     }
 
-    fn from_sub_diagnostic(diag: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+    fn from_sub_diagnostic(
+        diag: &SubDiagnostic,
+        args: &FluentArgs<'_>,
+        je: &JsonEmitter,
+    ) -> Diagnostic {
+        let translated_message = je.translate_messages(&diag.message, args);
         Diagnostic {
-            message: diag.message().to_string(),
+            message: translated_message.to_string(),
             code: None,
             level: diag.level.to_str(),
             spans: diag
                 .render_span
                 .as_ref()
-                .map(|sp| DiagnosticSpan::from_multispan(sp, je))
-                .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, je)),
+                .map(|sp| DiagnosticSpan::from_multispan(sp, args, je))
+                .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, args, je)),
             children: vec![],
             rendered: None,
             tool_metadata: ToolMetadata::default(),
@@ -421,12 +448,13 @@ impl DiagnosticSpan {
     fn from_span_label(
         span: SpanLabel,
         suggestion: Option<(&String, Applicability)>,
+        args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> DiagnosticSpan {
         Self::from_span_etc(
             span.span,
             span.is_primary,
-            span.label.map(|m| m.to_string()),
+            span.label.as_ref().map(|m| je.translate_message(m, args)).map(|m| m.to_string()),
             suggestion,
             je,
         )
@@ -492,14 +520,22 @@ impl DiagnosticSpan {
         }
     }
 
-    fn from_multispan(msp: &MultiSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
+    fn from_multispan(
+        msp: &MultiSpan,
+        args: &FluentArgs<'_>,
+        je: &JsonEmitter,
+    ) -> Vec<DiagnosticSpan> {
         msp.span_labels()
             .into_iter()
-            .map(|span_str| Self::from_span_label(span_str, None, je))
+            .map(|span_str| Self::from_span_label(span_str, None, args, je))
             .collect()
     }
 
-    fn from_suggestion(suggestion: &CodeSuggestion, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
+    fn from_suggestion(
+        suggestion: &CodeSuggestion,
+        args: &FluentArgs<'_>,
+        je: &JsonEmitter,
+    ) -> Vec<DiagnosticSpan> {
         suggestion
             .substitutions
             .iter()
@@ -510,6 +546,7 @@ impl DiagnosticSpan {
                     DiagnosticSpan::from_span_label(
                         span_label,
                         Some((&suggestion_inner.snippet, suggestion.applicability)),
+                        args,
                         je,
                     )
                 })

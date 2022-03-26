@@ -169,10 +169,7 @@ fn lint_object_unsafe_trait(
         let node = tcx.hir().get_if_local(trait_def_id);
         let mut spans = MultiSpan::from_span(span);
         if let Some(hir::Node::Item(item)) = node {
-            spans.push_span_label(
-                item.ident.span,
-                "this trait cannot be made into an object...".into(),
-            );
+            spans.push_span_label(item.ident.span, "this trait cannot be made into an object...");
             spans.push_span_label(span, format!("...because {}", violation.error_msg()));
         } else {
             spans.push_span_label(

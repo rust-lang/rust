@@ -537,12 +537,28 @@ crate fn make_test(
             // Any errors in parsing should also appear when the doctest is compiled for real, so just
             // send all the errors that librustc_ast emits directly into a `Sink` instead of stderr.
             let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            supports_color =
-                EmitterWriter::stderr(ColorConfig::Auto, None, false, false, Some(80), false)
-                    .supports_color();
+            let fallback_bundle = rustc_errors::fallback_fluent_bundle();
+            supports_color = EmitterWriter::stderr(
+                ColorConfig::Auto,
+                None,
+                fallback_bundle.clone(),
+                false,
+                false,
+                Some(80),
+                false,
+            )
+            .supports_color();
 
-            let emitter =
-                EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
+            let emitter = EmitterWriter::new(
+                box io::sink(),
+                None,
+                fallback_bundle,
+                false,
+                false,
+                false,
+                None,
+                false,
+            );
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = Handler::with_emitter(false, None, box emitter);

@@ -1,31 +1,75 @@
+use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
+use std::borrow::Cow;
+use tracing::debug;
+
+pub use fluent::{FluentArgs, FluentValue};
+
+static FALLBACK_FLUENT_RESOURCE: &'static str = include_str!("../locales/en-US/diagnostics.ftl");
+
+pub type FluentBundle = fluent::FluentBundle<fluent::FluentResource>;
+
+/// Return the default `FluentBundle` with standard en-US diagnostic messages.
+pub fn fallback_fluent_bundle() -> Lrc<FluentBundle> {
+    let fallback_resource = fluent::FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
+        .expect("failed to parse ftl resource");
+    debug!(?fallback_resource);
+    let mut fallback_bundle = FluentBundle::new(vec![unic_langid::langid!("en-US")]);
+    fallback_bundle.add_resource(fallback_resource).expect("failed to add resource to bundle");
+    let fallback_bundle = Lrc::new(fallback_bundle);
+    fallback_bundle
+}
+
+/// Identifier for the Fluent message/attribute corresponding to a diagnostic message.
+type FluentId = Cow<'static, str>;
 
 /// Abstraction over a message in a diagnostic to support both translatable and non-translatable
 /// diagnostic messages.
+///
+/// Intended to be removed once diagnostics are entirely translatable.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DiagnosticMessage {
     /// Non-translatable diagnostic message.
+    // FIXME(davidtwco): can a `Cow<'static, str>` be used here?
     Str(String),
     /// Identifier for a Fluent message corresponding to the diagnostic message.
-    FluentIdentifier(String),
+    FluentIdentifier(FluentId, Option<FluentId>),
 }
 
 impl DiagnosticMessage {
-    /// Convert `DiagnosticMessage` to a `&str`.
-    pub fn as_str(&self) -> &str {
+    /// Returns the `String` contained within the `DiagnosticMessage::Str` variant, assuming that
+    /// this diagnostic message is of the legacy, non-translatable variety. Panics if this
+    /// assumption does not hold.
+    ///
+    /// Don't use this - it exists to support some places that do comparison with diagnostic
+    /// strings.
+    pub fn expect_str(&self) -> &str {
         match self {
-            DiagnosticMessage::Str(msg) => msg,
-            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
+            DiagnosticMessage::Str(s) => s,
+            _ => panic!("expected non-translatable diagnostic message"),
         }
     }
 
-    /// Convert `DiagnosticMessage` to an owned `String`.
-    pub fn to_string(self) -> String {
-        match self {
-            DiagnosticMessage::Str(msg) => msg,
-            DiagnosticMessage::FluentIdentifier(..) => unimplemented!(),
-        }
+    /// Create a `DiagnosticMessage` for the provided Fluent identifier.
+    pub fn fluent(id: impl Into<Cow<'static, str>>) -> Self {
+        DiagnosticMessage::FluentIdentifier(id.into(), None)
+    }
+
+    /// Create a `DiagnosticMessage` for the provided Fluent identifier and attribute.
+    pub fn fluent_attr(
+        id: impl Into<Cow<'static, str>>,
+        attr: impl Into<Cow<'static, str>>,
+    ) -> Self {
+        DiagnosticMessage::FluentIdentifier(id.into(), Some(attr.into()))
+    }
+}
+
+/// `From` impl that enables existing diagnostic calls to functions which now take
+/// `impl Into<DiagnosticMessage>` to continue to work as before.
+impl<S: Into<String>> From<S> for DiagnosticMessage {
+    fn from(s: S) -> Self {
+        DiagnosticMessage::Str(s.into())
     }
 }
 
@@ -72,12 +116,8 @@ impl MultiSpan {
         MultiSpan { primary_spans: vec, span_labels: vec![] }
     }
 
-    pub fn push_span_label(&mut self, span: Span, label: String) {
-        self.span_labels.push((span, DiagnosticMessage::Str(label)));
-    }
-
-    pub fn push_span_message(&mut self, span: Span, message: DiagnosticMessage) {
-        self.span_labels.push((span, message));
+    pub fn push_span_label(&mut self, span: Span, label: impl Into<DiagnosticMessage>) {
+        self.span_labels.push((span, label.into()));
     }
 
     /// Selects the first primary span (if any).

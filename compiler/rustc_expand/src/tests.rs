@@ -127,6 +127,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     create_default_session_if_not_set_then(|_| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle();
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
@@ -142,6 +143,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
         let emitter = EmitterWriter::new(
             Box::new(Shared { data: output.clone() }),
             Some(source_map.clone()),
+            fallback_bundle,
             false,
             false,
             false,

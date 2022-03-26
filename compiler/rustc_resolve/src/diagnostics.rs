@@ -1341,7 +1341,7 @@ impl<'a> Resolver<'a> {
             let def_span = self.session.source_map().guess_head_span(binding.span);
             let mut note_span = MultiSpan::from_span(def_span);
             if !first && binding.vis.is_public() {
-                note_span.push_span_label(def_span, "consider importing it directly".into());
+                note_span.push_span_label(def_span, "consider importing it directly");
             }
             err.span_note(note_span, &msg);
         }

@@ -1011,7 +1011,7 @@ impl<'a> Parser<'a> {
                 let current_qual_sp = current_qual_sp.to(sp_start);
                 if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
                     // FIXME(davidtwco): avoid depending on the error message text
-                    if err.message().as_str() == "expected `{`, found keyword `unsafe`" {
+                    if err.message[0].0.expect_str() == "expected `{`, found keyword `unsafe`" {
                         let invalid_qual_sp = self.token.uninterpolated_span();
                         let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
 

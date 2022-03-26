@@ -597,7 +597,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(format!("{}", name))
                 }
                 _ => {
-                    err.note(&msg);
+                    err.note(msg);
                     None
                 }
             }
@@ -2481,7 +2481,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .opt_associated_item(trait_item_def_id)
                     .and_then(|i| self.tcx.opt_item_name(i.container.id()))
                 {
-                    assoc_span.push_span_label(ident.span, "in this trait".into());
+                    assoc_span.push_span_label(ident.span, "in this trait");
                 }
                 err.span_note(assoc_span, &msg);
             }
@@ -2506,7 +2506,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     .opt_associated_item(trait_item_def_id)
                     .and_then(|i| self.tcx.opt_item_name(i.container.id()))
                 {
-                    assoc_span.push_span_label(ident.span, "in this trait".into());
+                    assoc_span.push_span_label(ident.span, "in this trait");
                 }
                 err.span_note(assoc_span, &msg);
             }

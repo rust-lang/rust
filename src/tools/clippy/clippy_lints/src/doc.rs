@@ -621,7 +621,17 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let emitter = EmitterWriter::new(Box::new(io::sink()), None, false, false, false, None, false);
+                let fallback_bundle = rustc_errors::fallback_fluent_bundle();
+                let emitter = EmitterWriter::new(
+                    Box::new(io::sink()),
+                    None,
+                    fallback_bundle,
+                    false,
+                    false,
+                    false,
+                    None,
+                    false,
+                );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));
                 let sess = ParseSess::with_span_handler(handler, sm);
 

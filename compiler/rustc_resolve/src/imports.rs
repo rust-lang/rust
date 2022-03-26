@@ -739,7 +739,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
             for message in note {
-                diag.note(&message);
+                diag.note(message);
             }
         }
 

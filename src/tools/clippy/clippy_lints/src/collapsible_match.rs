@@ -130,8 +130,8 @@ fn check_arm<'tcx>(
                 &msg,
                 |diag| {
                     let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
-                    help_span.push_span_label(binding_span, "replace this binding".into());
-                    help_span.push_span_label(inner_then_pat.span, "with this pattern".into());
+                    help_span.push_span_label(binding_span, "replace this binding");
+                    help_span.push_span_label(inner_then_pat.span, "with this pattern");
                     diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );

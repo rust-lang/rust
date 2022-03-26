@@ -1571,7 +1571,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
                         lint.build("bounds on generic parameters are not enforced in type aliases");
                     let msg = "the bound will not be checked when the type alias is used, \
                                    and should be removed";
-                    err.multipart_suggestion(&msg, suggestion, Applicability::MachineApplicable);
+                    err.multipart_suggestion(msg, suggestion, Applicability::MachineApplicable);
                     if !suggested_changing_assoc_types {
                         TypeAliasBounds::suggest_changing_assoc_types(ty, &mut err);
                         suggested_changing_assoc_types = true;
