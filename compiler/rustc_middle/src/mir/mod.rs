@@ -127,12 +127,24 @@ pub trait MirPass<'tcx> {
 /// The various "big phases" that MIR goes through.
 ///
 /// These phases all describe dialects of MIR. Since all MIR uses the same datastructures, the
-/// dialects forbid certain variants or values in certain phases.
+/// dialects forbid certain variants or values in certain phases. The sections below summarize the
+/// changes, but do not document them thoroughly. The full documentation is found in the appropriate
+/// documentation for the thing the change is affecting.
 ///
 /// Warning: ordering of variants is significant.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
+    /// The dialect of MIR used during all phases before `DropsLowered` is the same. This is also
+    /// the MIR that analysis such as borrowck uses.
+    ///
+    /// One important thing to remember about the behavior of this section of MIR is that drop terminators
+    /// (including drop and replace) are *conditional*. The elaborate drops pass will then replace each
+    /// instance of a drop terminator with a nop, an unconditional drop, or a drop conditioned on a drop
+    /// flag. Of course, this means that it is important that the drop elaboration can accurately recognize
+    /// when things are initialized and when things are de-initialized. That means any code running on this
+    /// version of MIR must be sure to produce output that drop elaboration can reason about. See the
+    /// section on the drop terminatorss for more details.
     Built = 0,
     // FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
     // We used to have this for pre-miri MIR based const eval.
@@ -162,6 +174,16 @@ pub enum MirPhase {
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]
     Deaggregated = 4,
+    /// Before this phase, generators are in the "source code" form, featuring `yield` statements
+    /// and such. With this phase change, they are transformed into a proper state machine. Running
+    /// optimizations before this change can be potentially dangerous because the source code is to
+    /// some extent a "lie." In particular, `yield` terminators effectively make the value of all
+    /// locals visible to the caller. This means that dead store elimination before them, or code
+    /// motion across them, is not correct in general. This is also exasperated by type checking
+    /// having pre-computed a list of the types that it thinks are ok to be live across a yield
+    /// point - this is necessary to decide eg whether autotraits are implemented. Introducing new
+    /// types across a yield point will lead to ICEs becaues of this.
+    ///
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
     /// * [`TerminatorKind::GeneratorDrop](terminator::TerminatorKind::GeneratorDrop)
