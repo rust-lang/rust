@@ -103,7 +103,7 @@ impl CodegenBackend for GccCodegenBackend {
     }
 
     fn provide(&self, providers: &mut Providers) {
-        // FIXME compute list of enabled features from cli flags
+        // FIXME(antoyo) compute list of enabled features from cli flags
         providers.global_backend_features = |_tcx, ()| vec![];
     }
 
