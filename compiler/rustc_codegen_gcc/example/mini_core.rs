@@ -14,6 +14,9 @@ unsafe extern "C" fn _Unwind_Resume() {
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "destruct"]
+pub trait Destruct {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
@@ -59,6 +62,7 @@ unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
 unsafe impl Copy for isize {}
 unsafe impl Copy for f32 {}
+unsafe impl Copy for f64 {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
@@ -443,12 +447,22 @@ pub trait Deref {
     fn deref(&self) -> &Self::Target;
 }
 
+pub trait Allocator {
+}
+
+pub struct Global;
+
+impl Allocator for Global {}
+
 #[lang = "owned_box"]
-pub struct Box<T: ?Sized>(*mut T);
+pub struct Box<
+    T: ?Sized,
+    A: Allocator = Global,
+>(*mut T, A);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
-impl<T: ?Sized> Drop for Box<T> {
+impl<T: ?Sized, A: Allocator> Drop for Box<T, A> {
     fn drop(&mut self) {
         // drop is currently performed by compiler.
     }
@@ -468,7 +482,7 @@ unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[lang = "box_free"]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+unsafe fn box_free<T: ?Sized, A: Allocator>(ptr: *mut T, alloc: A) {
     libc::free(ptr as *mut u8);
 }
 

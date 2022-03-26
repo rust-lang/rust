@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -35,7 +35,12 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
         // following:
         for (value, variable) in &*self.const_globals.borrow() {
             if format!("{:?}", value) == format!("{:?}", cv) {
-                // TODO(antoyo): upgrade alignment.
+                if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
+                    let alignment = align.bits() as i32;
+                    if alignment > global_variable.get_alignment() {
+                        global_variable.set_alignment(alignment);
+                    }
+                }
                 return *variable;
             }
         }
@@ -165,11 +170,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
-                    // TODO(antoyo): check if it's okay that TLS is off here.
-                    // TODO(antoyo): check if it's okay that link_section is None here.
+                    // TODO(antoyo): check if it's okay that no link_section is set.
                     // TODO(antoyo): set alignment here as well.
-                    let global = self.define_global(&name[..], self.val_ty(cv), false, None);
-                    // TODO(antoyo): set linkage.
+                    let global = self.declare_private_global(&name[..], self.val_ty(cv));
                     global
                 }
                 _ => {
@@ -178,11 +181,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     global
                 },
             };
-        // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
-        // globally.
         global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
-        global.get_address(None)
+        let rvalue = global.get_address(None);
+        self.global_lvalues.borrow_mut().insert(rvalue, global);
+        rvalue
     }
 
     pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {
@@ -218,7 +221,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                         }
 
                         let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(&sym, llty, is_tls, fn_attrs.link_section);
+                        let global = self.declare_global(
+                            &sym,
+                            llty,
+                            GlobalKind::Exported,
+                            is_tls,
+                            fn_attrs.link_section,
+                        );
 
                         if !self.tcx.is_reachable_non_generic(def_id) {
                             // TODO(antoyo): set visibility.
@@ -390,6 +399,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, llty, is_tls, attrs.link_section)
+        cx.declare_global(&sym, llty, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }
