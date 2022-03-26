@@ -1139,7 +1139,6 @@ struct Ctx<T: Clone> {
 }
 
 impl<T: Clone> Ctx<T> {
-    #[must_use]
     fn $0new(data: T) -> Self { Self { data } }
 }
 "#####,
