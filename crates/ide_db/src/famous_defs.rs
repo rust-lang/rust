@@ -1,4 +1,6 @@
 //! See [`FamousDefs`].
+
+use base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase};
 use hir::{Crate, Enum, Macro, Module, ScopeDef, Semantics, Trait};
 
 use crate::RootDatabase;
@@ -21,11 +23,23 @@ pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Option<Cr
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
     pub fn std(&self) -> Option<Crate> {
-        self.find_crate("std")
+        self.find_lang_crate(LangCrateOrigin::Std)
     }
 
     pub fn core(&self) -> Option<Crate> {
-        self.find_crate("core")
+        self.find_lang_crate(LangCrateOrigin::Core)
+    }
+
+    pub fn alloc(&self) -> Option<Crate> {
+        self.find_lang_crate(LangCrateOrigin::Alloc)
+    }
+
+    pub fn test(&self) -> Option<Crate> {
+        self.find_lang_crate(LangCrateOrigin::Test)
+    }
+
+    pub fn proc_macro(&self) -> Option<Crate> {
+        self.find_lang_crate(LangCrateOrigin::ProcMacro)
     }
 
     pub fn core_cmp_Ord(&self) -> Option<Trait> {
@@ -88,18 +102,6 @@ impl FamousDefs<'_, '_> {
         self.find_macro("core:macros:builtin:derive")
     }
 
-    pub fn alloc(&self) -> Option<Crate> {
-        self.find_crate("alloc")
-    }
-
-    pub fn test(&self) -> Option<Crate> {
-        self.find_crate("test")
-    }
-
-    pub fn proc_macro(&self) -> Option<Crate> {
-        self.find_crate("proc_macro")
-    }
-
     pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),
@@ -139,11 +141,15 @@ impl FamousDefs<'_, '_> {
         }
     }
 
-    fn find_crate(&self, name: &str) -> Option<Crate> {
+    fn find_lang_crate(&self, origin: LangCrateOrigin) -> Option<Crate> {
         let krate = self.1?;
         let db = self.0.db;
-        let res =
-            krate.dependencies(db).into_iter().find(|dep| dep.name.to_smol_str() == name)?.krate;
+        let crate_graph = self.0.db.crate_graph();
+        let res = krate
+            .dependencies(db)
+            .into_iter()
+            .find(|dep| crate_graph[dep.krate.into()].origin == CrateOrigin::Lang(origin))?
+            .krate;
         Some(res)
     }
 
@@ -151,8 +157,16 @@ impl FamousDefs<'_, '_> {
         let db = self.0.db;
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
-        let std_crate = path.next()?;
-        let std_crate = self.find_crate(std_crate)?;
+        let lang_crate = path.next()?;
+        let lang_crate = match lang_crate {
+            "core" => LangCrateOrigin::Core,
+            "alloc" => LangCrateOrigin::Alloc,
+            "test" => LangCrateOrigin::Test,
+            "proc_macro" => LangCrateOrigin::ProcMacro,
+            "std" => LangCrateOrigin::Std,
+            _ => return None,
+        };
+        let std_crate = self.find_lang_crate(lang_crate)?;
         let mut module = std_crate.root_module(db);
         for segment in path {
             module = module.children(db).find_map(|child| {

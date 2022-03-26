@@ -1,7 +1,6 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
 use hir::{ScopeDef, Trait};
-use ide_db::famous_defs::FamousDefs;
 use rustc_hash::FxHashSet;
 use syntax::ast;
 
@@ -26,7 +25,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
     };
     let traits_in_scope = |ctx: &CompletionContext| {
         let mut traits_in_scope = ctx.scope.visible_traits();
-        if let Some(drop) = FamousDefs(&ctx.sema, ctx.krate).core_ops_Drop() {
+        if let Some(drop) = ctx.famous_defs().core_ops_Drop() {
             traits_in_scope.remove(&drop.into());
         }
         traits_in_scope
@@ -133,12 +132,8 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
                     ty
                 }
                 hir::ModuleDef::BuiltinType(builtin) => {
-                    let module = match ctx.module {
-                        Some(it) => it,
-                        None => return,
-                    };
                     cov_mark::hit!(completes_primitive_assoc_const);
-                    builtin.ty(ctx.db, module)
+                    builtin.ty(ctx.db)
                 }
                 _ => unreachable!(),
             };

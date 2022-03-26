@@ -3,7 +3,6 @@
 use hir::{AsAssocItem, HasVisibility, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
-    famous_defs::FamousDefs,
     RootDatabase, SymbolKind,
 };
 use rustc_hash::FxHashMap;
@@ -472,14 +471,12 @@ fn highlight_def(
         Definition::ToolModule(_) => Highlight::new(HlTag::Symbol(SymbolKind::ToolModule)),
     };
 
-    let famous_defs = FamousDefs(sema, krate);
     let def_crate = def.module(db).map(hir::Module::krate).or_else(|| match def {
         Definition::Module(module) => Some(module.krate()),
         _ => None,
     });
     let is_from_other_crate = def_crate != krate;
-    let is_from_builtin_crate =
-        def_crate.map_or(false, |def_crate| famous_defs.builtin_crates().any(|it| def_crate == it));
+    let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
     let is_builtin_type = matches!(def, Definition::BuiltinType(_));
     let is_public = def.visibility(db) == Some(hir::Visibility::Public);
 
@@ -525,10 +522,9 @@ fn highlight_method_call(
         h |= HlMod::Trait;
     }
 
-    let famous_defs = FamousDefs(sema, krate);
     let def_crate = func.module(sema.db).krate();
     let is_from_other_crate = Some(def_crate) != krate;
-    let is_from_builtin_crate = famous_defs.builtin_crates().any(|it| def_crate == it);
+    let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
     if is_from_other_crate {

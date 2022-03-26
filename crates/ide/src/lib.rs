@@ -64,7 +64,7 @@ use cfg::CfgOptions;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        Env, FileLoader, FileSet, SourceDatabase, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
     symbol_index, LineIndexDatabase,
 };
@@ -232,7 +232,7 @@ impl Analysis {
             Env::default(),
             Default::default(),
             false,
-            Default::default(),
+            CrateOrigin::CratesIo { repo: None },
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);

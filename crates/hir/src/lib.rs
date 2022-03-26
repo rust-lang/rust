@@ -148,6 +148,10 @@ impl Crate {
         db.crate_graph()[self.id].origin.clone()
     }
 
+    pub fn is_builtin(self, db: &dyn HirDatabase) -> bool {
+        matches!(self.origin(db), CrateOrigin::Lang(_))
+    }
+
     pub fn dependencies(self, db: &dyn HirDatabase) -> Vec<CrateDependency> {
         db.crate_graph()[self.id]
             .dependencies
@@ -155,7 +159,7 @@ impl Crate {
             .map(|dep| {
                 let krate = Crate { id: dep.crate_id };
                 let name = dep.as_name();
-                CrateDependency { krate, name }
+                CrateDependency { krate, name, }
             })
             .collect()
     }
@@ -1741,10 +1745,8 @@ impl BuiltinType {
         BuiltinType { inner: hir_def::builtin_type::BuiltinType::Str }
     }
 
-    pub fn ty(self, db: &dyn HirDatabase, module: Module) -> Type {
-        let resolver = module.id.resolver(db.upcast());
-        Type::new_with_resolver(db, &resolver, TyBuilder::builtin(self.inner))
-            .expect("crate not present in resolver")
+    pub fn ty(self, db: &dyn HirDatabase) -> Type {
+        Type::new_for_crate(db.crate_graph().iter().next().unwrap(), TyBuilder::builtin(self.inner))
     }
 
     pub fn name(self) -> Name {
@@ -2619,6 +2621,7 @@ impl Type {
         let krate = resolver.krate()?;
         Some(Type::new_with_resolver_inner(db, krate, resolver, ty))
     }
+
     pub(crate) fn new_with_resolver_inner(
         db: &dyn HirDatabase,
         krate: CrateId,
@@ -2629,6 +2632,10 @@ impl Type {
             .generic_def()
             .map_or_else(|| Arc::new(TraitEnvironment::empty(krate)), |d| db.trait_environment(d));
         Type { krate, env: environment, ty }
+    }
+
+    pub(crate) fn new_for_crate(krate: CrateId, ty: Ty) -> Type {
+        Type { krate, env: Arc::new(TraitEnvironment::empty(krate)), ty }
     }
 
     pub fn reference(inner: &Type, m: Mutability) -> Type {

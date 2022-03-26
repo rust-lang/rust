@@ -7,7 +7,7 @@ use std::{collections::VecDeque, fmt, fs, process::Command};
 use anyhow::{format_err, Context, Result};
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Edition, Env,
-    FileId, ProcMacro,
+    FileId, LangCrateOrigin, ProcMacro,
 };
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
@@ -487,7 +487,7 @@ fn project_json_to_crate_graph(
                     if krate.display_name.is_some() {
                         CrateOrigin::CratesIo { repo: krate.repository.clone() }
                     } else {
-                        CrateOrigin::Unknown
+                        CrateOrigin::CratesIo { repo: None }
                     },
                 ),
             )
@@ -710,7 +710,7 @@ fn detached_files_to_crate_graph(
             Env::default(),
             Vec::new(),
             false,
-            CrateOrigin::Unknown,
+            CrateOrigin::CratesIo { repo: None },
         );
 
         public_deps.add(detached_file_crate, &mut crate_graph);
@@ -908,7 +908,14 @@ fn sysroot_to_crate_graph(
                 env,
                 proc_macro,
                 false,
-                CrateOrigin::Lang,
+                CrateOrigin::Lang(match &*sysroot[krate].name {
+                    "alloc" => LangCrateOrigin::Alloc,
+                    "core" => LangCrateOrigin::Core,
+                    "proc_macro" => LangCrateOrigin::ProcMacro,
+                    "std" => LangCrateOrigin::Std,
+                    "test" => LangCrateOrigin::Test,
+                    _ => LangCrateOrigin::Other,
+                }),
             );
             Some((krate, crate_id))
         })

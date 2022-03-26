@@ -159,13 +159,7 @@ fn pattern_path_completion(
                         hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(u))) => {
                             u.ty(ctx.db)
                         }
-                        hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => {
-                            let module = match ctx.module {
-                                Some(m) => m,
-                                None => return,
-                            };
-                            ty.ty(ctx.db, module)
-                        }
+                        hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => ty.ty(ctx.db),
                         _ => return,
                     };
 
