@@ -1272,7 +1272,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the master cache. Since coherence executes pretty quickly,
         // it's not worth going to more trouble to increase the
         // hit-rate, I don't think.
-        if self.intercrate || self.allow_negative_impls {
+        if self.intercrate {
             return false;
         }
 
@@ -1289,7 +1289,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate || self.allow_negative_impls {
+        if self.intercrate {
             return None;
         }
         let tcx = self.tcx();

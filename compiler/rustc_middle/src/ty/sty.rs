@@ -999,6 +999,15 @@ impl<'tcx> PolyTraitRef<'tcx> {
             polarity: ty::ImplPolarity::Positive,
         })
     }
+
+    /// Same as [`PolyTraitRef::to_poly_trait_predicate`] but sets a negative polarity instead.
+    pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
+        self.map_bound(|trait_ref| ty::TraitPredicate {
+            trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Negative,
+        })
+    }
 }
 
 /// An existential reference to a trait, where `Self` is erased.

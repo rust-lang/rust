@@ -101,6 +101,24 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                          manual impl found, bailing out",
                         trait_ref
                     );
+                    return true;
+                }
+                _ => {}
+            }
+
+            let result = selcx.select(&Obligation::new(
+                ObligationCause::dummy(),
+                orig_env,
+                trait_pred.to_poly_trait_predicate_negative_polarity(),
+            ));
+
+            match result {
+                Ok(Some(ImplSource::UserDefined(_))) => {
+                    debug!(
+                        "find_auto_trait_generics({:?}): \
+                         manual impl found, bailing out",
+                        trait_ref
+                    );
                     true
                 }
                 _ => false,
