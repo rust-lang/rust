@@ -1,5 +1,5 @@
 // compile-flags: -O
-// compile-pass
+// build-pass
 
 #![feature(allocator_api, bench_black_box)]
 
