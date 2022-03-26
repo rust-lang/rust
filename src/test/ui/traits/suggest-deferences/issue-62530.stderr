@@ -5,7 +5,7 @@ LL |     takes_type_parameter(&string);  // Error
    |     -------------------- ^^^^^^^
    |     |                    |
    |     |                    the trait `SomeTrait` is not implemented for `&String`
-   |     |                    help: consider adding dereference here: `&*string`
+   |     |                    help: consider dereferencing here: `&*string`
    |     required by a bound introduced by this call
    |
 note: required by a bound in `takes_type_parameter`
