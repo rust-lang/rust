@@ -163,5 +163,26 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         simd_xor: Uint, Int => xor;
     }
 
+    macro_rules! arith_unary {
+        ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
+            $(if name == sym::$name {
+                match in_elem.kind() {
+                    $($(ty::$p(_))|* => {
+                        return Ok(bx.$call(args[0].immediate()))
+                    })*
+                    _ => {},
+                }
+                require!(false,
+                         "unsupported operation on `{}` with element `{}`",
+                         in_ty,
+                         in_elem)
+            })*
+        }
+    }
+
+    arith_unary! {
+        simd_neg: Int => neg, Float => fneg;
+    }
+
     unimplemented!("simd {}", name);
 }
