@@ -1,6 +1,7 @@
 //! Completion of paths, i.e. `some::prefix::$0`.
 
 use hir::{ScopeDef, Trait};
+use ide_db::famous_defs::FamousDefs;
 use rustc_hash::FxHashSet;
 use syntax::ast;
 
@@ -23,6 +24,13 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
         Some(PathCompletionCtx { qualifier: Some(ref qualifier), kind, .. }) => (qualifier, kind),
         _ => return,
     };
+    let traits_in_scope = |ctx: &CompletionContext| {
+        let mut traits_in_scope = ctx.scope.visible_traits();
+        if let Some(drop) = FamousDefs(&ctx.sema, ctx.krate).core_ops_Drop() {
+            traits_in_scope.remove(&drop.into());
+        }
+        traits_in_scope
+    };
 
     // special case `<_>::$0` as this doesn't resolve to anything.
     if qualifier.path.qualifier().is_none() {
@@ -34,8 +42,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             })
         ) {
             cov_mark::hit!(completion_type_anchor_empty);
-            ctx.scope
-                .visible_traits()
+            traits_in_scope(ctx)
                 .into_iter()
                 .flat_map(|it| Trait::from(it).items(ctx.sema.db))
                 .for_each(|item| add_assoc_item(acc, ctx, item));
@@ -141,7 +148,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
 
             let krate = ctx.krate;
             if let Some(krate) = krate {
-                let traits_in_scope = ctx.scope.visible_traits();
+                let traits_in_scope = traits_in_scope(ctx);
                 ty.iterate_path_candidates(
                     ctx.db,
                     &ctx.scope,
@@ -179,8 +186,7 @@ pub(crate) fn complete_qualified_path(acc: &mut Completions, ctx: &CompletionCon
             if let Some(hir::Adt::Enum(e)) = ty.as_adt() {
                 add_enum_variants(acc, ctx, e);
             }
-
-            let traits_in_scope = ctx.scope.visible_traits();
+            let traits_in_scope = traits_in_scope(ctx);
             let mut seen = FxHashSet::default();
             ty.iterate_path_candidates(
                 ctx.db,

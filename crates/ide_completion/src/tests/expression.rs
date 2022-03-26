@@ -554,6 +554,23 @@ fn func() {
 }
 
 #[test]
+fn ty_qualified_no_drop() {
+    check_empty(
+        r#"
+//- minicore: drop
+struct Foo;
+impl Drop for Foo {
+    fn drop(&mut self) {}
+}
+fn func() {
+    Foo::$0
+}
+"#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
 fn with_parens() {
     check_empty(
         r#"
