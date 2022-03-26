@@ -2,10 +2,11 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    EvaluationResult, FulfillmentContext, FulfillmentError, FulfillmentErrorCode,
-    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
-    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
+    DerivedObligationCause, EvaluationResult, FulfillmentContext, FulfillmentError,
+    FulfillmentErrorCode, ImplDerivedObligationCause, MismatchedProjectionTypes, Obligation,
+    ObligationCause, ObligationCauseCode, OnUnimplementedDirective, OnUnimplementedNote,
+    OutputTypeParameterMismatch, Overflow, PredicateObligation, SelectionContext, SelectionError,
+    TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -654,11 +655,77 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         } else if !suggested {
                             // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
-                            self.report_similar_impl_candidates(
+                            if !self.report_similar_impl_candidates(
                                 impl_candidates,
                                 trait_ref,
                                 &mut err,
-                            );
+                            ) {
+                                // This is *almost* equivalent to
+                                // `obligation.cause.code().peel_derives()`, but it gives us the
+                                // trait predicate for that corresponding root obligation. This
+                                // lets us get a derived obligation from a type parameter, like
+                                // when calling `string.strip_suffix(p)` where `p` is *not* an
+                                // implementer of `Pattern<'_>`.
+                                let mut code = obligation.cause.code();
+                                let mut trait_pred = trait_predicate;
+                                let mut peeled = false;
+                                loop {
+                                    match &*code {
+                                        ObligationCauseCode::FunctionArgumentObligation {
+                                            parent_code,
+                                            ..
+                                        } => {
+                                            code = &parent_code;
+                                        }
+                                        ObligationCauseCode::ImplDerivedObligation(
+                                            box ImplDerivedObligationCause {
+                                                derived:
+                                                    DerivedObligationCause {
+                                                        parent_code,
+                                                        parent_trait_pred,
+                                                    },
+                                                ..
+                                            },
+                                        )
+                                        | ObligationCauseCode::BuiltinDerivedObligation(
+                                            DerivedObligationCause {
+                                                parent_code,
+                                                parent_trait_pred,
+                                            },
+                                        )
+                                        | ObligationCauseCode::DerivedObligation(
+                                            DerivedObligationCause {
+                                                parent_code,
+                                                parent_trait_pred,
+                                            },
+                                        ) => {
+                                            peeled = true;
+                                            code = &parent_code;
+                                            trait_pred = *parent_trait_pred;
+                                        }
+                                        _ => break,
+                                    };
+                                }
+                                let def_id = trait_pred.def_id();
+                                // Mention *all* the `impl`s for the *top most* obligation, the
+                                // user might have meant to use one of them, if any found. We skip
+                                // auto-traits or fundamental traits that might not be exactly what
+                                // the user might expect to be presented with. Instead this is
+                                // useful for less general traits.
+                                if peeled
+                                    && !self.tcx.trait_is_auto(def_id)
+                                    && !self.tcx.lang_items().items().contains(&Some(def_id))
+                                {
+                                    let trait_ref = trait_pred.to_poly_trait_ref();
+                                    let impl_candidates =
+                                        self.find_similar_impl_candidates(trait_ref);
+                                    self.report_similar_impl_candidates(
+                                        impl_candidates,
+                                        trait_ref,
+                                        &mut err,
+                                    );
+                                }
+                            }
                         }
 
                         // Changing mutability doesn't make a difference to whether we have
