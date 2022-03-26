@@ -1116,7 +1116,7 @@ fn test_escape_debug() {
     assert_eq!("abc".escape_debug().to_string(), "abc");
     assert_eq!("a c".escape_debug().to_string(), "a c");
     assert_eq!("éèê".escape_debug().to_string(), "éèê");
-    assert_eq!("\r\n\t".escape_debug().to_string(), "\\r\\n\\t");
+    assert_eq!("\0\r\n\t".escape_debug().to_string(), "\\0\\r\\n\\t");
     assert_eq!("'\"\\".escape_debug().to_string(), "\\'\\\"\\\\");
     assert_eq!("\u{7f}\u{ff}".escape_debug().to_string(), "\\u{7f}\u{ff}");
     assert_eq!("\u{100}\u{ffff}".escape_debug().to_string(), "\u{100}\\u{ffff}");
