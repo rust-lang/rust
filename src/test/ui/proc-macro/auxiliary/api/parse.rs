@@ -21,13 +21,13 @@ fn test_display_literal() {
 
     assert_eq!(
         Literal::string("a \t ❤ ' \" \u{1}").to_string(),
-        "\"a \\t ❤ \\' \\\" \\u{1}\"",
+        "\"a \\t ❤ ' \\\" \\u{1}\"",
     );
-    assert_eq!(Literal::character('a').to_string(), "'\\u{61}'");
-    assert_eq!(Literal::character('\t').to_string(), "'\\u{9}'");
-    assert_eq!(Literal::character('❤').to_string(), "'\\u{2764}'");
-    assert_eq!(Literal::character('\'').to_string(), "'\\u{27}'");
-    assert_eq!(Literal::character('"').to_string(), "'\\u{22}'");
+    assert_eq!(Literal::character('a').to_string(), "'a'");
+    assert_eq!(Literal::character('\t').to_string(), "'\\t'");
+    assert_eq!(Literal::character('❤').to_string(), "'❤'");
+    assert_eq!(Literal::character('\'').to_string(), "'\\''");
+    assert_eq!(Literal::character('"').to_string(), "'\"'");
     assert_eq!(Literal::character('\u{1}').to_string(), "'\\u{1}'");
 }
 
