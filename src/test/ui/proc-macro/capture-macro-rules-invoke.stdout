@@ -112,15 +112,9 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         spacing: Alone,
         span: $DIR/capture-macro-rules-invoke.rs:14:54: 14:55 (#8),
     },
-    Group {
-        delimiter: None,
-        stream: TokenStream [
-            Ident {
-                ident: "my_name",
-                span: $DIR/capture-macro-rules-invoke.rs:42:13: 42:20 (#0),
-            },
-        ],
-        span: $DIR/capture-macro-rules-invoke.rs:14:56: 14:62 (#8),
+    Ident {
+        ident: "my_name",
+        span: $DIR/capture-macro-rules-invoke.rs:42:13: 42:20 (#0),
     },
     Punct {
         ch: ',',
