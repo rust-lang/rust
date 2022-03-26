@@ -386,6 +386,19 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrStringValue(cx.llcx, "target-features", &target_features));
     }
 
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED) {
+        // `USED` and `USED_LINKER` can't be used together.
+        assert!(!codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
+
+        cx.add_compiler_used_global(llfn);
+    }
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+        // `USED` and `USED_LINKER` can't be used together.
+        assert!(!codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::USED));
+
+        cx.add_used_global(llfn);
+    }
+
     attributes::apply_to_llfn(llfn, Function, &to_add);
 }
 

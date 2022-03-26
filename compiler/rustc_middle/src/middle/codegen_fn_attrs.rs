@@ -127,6 +127,8 @@ impl CodegenFnAttrs {
     /// * `#[linkage]` is present
     pub fn contains_extern_indicator(&self) -> bool {
         self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+            || self.flags.contains(CodegenFnAttrFlags::USED)
+            || self.flags.contains(CodegenFnAttrFlags::USED_LINKER)
             || self.export_name.is_some()
             || match self.linkage {
                 // These are private, so make sure we don't try to consider

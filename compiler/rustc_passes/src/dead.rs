@@ -11,7 +11,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::{Node, PatKind, TyKind};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
@@ -466,10 +465,7 @@ fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
 
     // #[used], #[no_mangle], #[export_name], etc also keeps the item alive
     // forcefully, e.g., for placing it in a specific section.
-    if cg_attrs.contains_extern_indicator()
-        || cg_attrs.flags.contains(CodegenFnAttrFlags::USED)
-        || cg_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-    {
+    if cg_attrs.contains_extern_indicator() {
         return true;
     }
 

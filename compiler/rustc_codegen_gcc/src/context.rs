@@ -323,7 +323,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.codegen_unit
     }
 
-    fn used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
+    fn used_globals(&self) -> &RefCell<Vec<RValue<'gcc>>> {
         unimplemented!();
     }
 
@@ -351,7 +351,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn compiler_used_statics(&self) -> &RefCell<Vec<RValue<'gcc>>> {
+    fn compiler_used_globals(&self) -> &RefCell<Vec<RValue<'gcc>>> {
         unimplemented!()
     }
 

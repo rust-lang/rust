@@ -1742,9 +1742,26 @@ impl CheckAttrVisitor<'_> {
         let mut used_compiler_span = None;
         for attr in attrs.iter().filter(|attr| attr.has_name(sym::used)) {
             if target != Target::Static {
-                self.tcx
-                    .sess
-                    .span_err(attr.span, "attribute must be applied to a `static` variable");
+                if target == Target::Fn {
+                    if !self.tcx.features().used_on_fn_def {
+                        feature_err(
+                            &self.tcx.sess.parse_sess,
+                            sym::used_on_fn_def,
+                            attr.span,
+                            "`#[used]` on a function definition is currently unstable",
+                        )
+                        .emit();
+                    }
+                } else if self.tcx.features().used_on_fn_def {
+                    self.tcx.sess.span_err(
+                        attr.span,
+                        "attribute must be applied to a `static` variable or a function definition",
+                    );
+                } else {
+                    self.tcx
+                        .sess
+                        .span_err(attr.span, "attribute must be applied to a `static` variable");
+                }
             }
             let inner = attr.meta_item_list();
             match inner.as_deref() {

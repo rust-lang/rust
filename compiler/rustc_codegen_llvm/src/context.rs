@@ -79,11 +79,11 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     /// Statics that will be placed in the llvm.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-used-global-variable> for details
-    pub used_statics: RefCell<Vec<&'ll Value>>,
+    pub used_globals: RefCell<Vec<&'ll Value>>,
 
     /// Statics that will be placed in the llvm.compiler.used variable
     /// See <https://llvm.org/docs/LangRef.html#the-llvm-compiler-used-global-variable> for details
-    pub compiler_used_statics: RefCell<Vec<&'ll Value>>,
+    pub compiler_used_globals: RefCell<Vec<&'ll Value>>,
 
     /// Mapping of non-scalar types to llvm types and field remapping if needed.
     pub type_lowering: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), TypeLowering<'ll>>>,
@@ -423,8 +423,8 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             const_unsized: Default::default(),
             const_globals: Default::default(),
             statics_to_rauw: RefCell::new(Vec::new()),
-            used_statics: RefCell::new(Vec::new()),
-            compiler_used_statics: RefCell::new(Vec::new()),
+            used_globals: RefCell::new(Vec::new()),
+            compiler_used_globals: RefCell::new(Vec::new()),
             type_lowering: Default::default(),
             scalar_lltypes: Default::default(),
             pointee_infos: Default::default(),
@@ -546,12 +546,12 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.codegen_unit
     }
 
-    fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
-        &self.used_statics
+    fn used_globals(&self) -> &RefCell<Vec<&'ll Value>> {
+        &self.used_globals
     }
 
-    fn compiler_used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
-        &self.compiler_used_statics
+    fn compiler_used_globals(&self) -> &RefCell<Vec<&'ll Value>> {
+        &self.compiler_used_globals
     }
 
     fn set_frame_pointer_type(&self, llfn: &'ll Value) {
@@ -568,13 +568,13 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn create_used_variable(&self) {
-        self.create_used_variable_impl(cstr!("llvm.used"), &*self.used_statics.borrow());
+        self.create_used_variable_impl(cstr!("llvm.used"), &*self.used_globals.borrow());
     }
 
     fn create_compiler_used_variable(&self) {
         self.create_used_variable_impl(
             cstr!("llvm.compiler.used"),
-            &*self.compiler_used_statics.borrow(),
+            &*self.compiler_used_globals.borrow(),
         );
     }
 

@@ -115,10 +115,10 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             }
 
             // Create the llvm.used and llvm.compiler.used variables.
-            if !cx.used_statics().borrow().is_empty() {
+            if !cx.used_globals().borrow().is_empty() {
                 cx.create_used_variable()
             }
-            if !cx.compiler_used_statics().borrow().is_empty() {
+            if !cx.compiler_used_globals().borrow().is_empty() {
                 cx.create_compiler_used_variable()
             }
 

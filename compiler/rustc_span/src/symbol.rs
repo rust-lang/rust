@@ -1486,6 +1486,7 @@ symbols! {
         use_extern_macros,
         use_nested_groups,
         used,
+        used_on_fn_def,
         used_with_arg,
         usize,
         v1,
