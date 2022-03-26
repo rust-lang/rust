@@ -1078,14 +1078,20 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
         // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
         unsafe {
-            let unchecked_additive_op =
-                if is_positive { T::unchecked_add } else { T::unchecked_sub };
-
-            for &c in digits {
-                result = result.unchecked_mul(radix);
-                let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-                result = unchecked_additive_op(&result, x);
+            macro_rules! run_loop {
+                ($unchecked_additive_op:ident) => {
+                    for &c in digits {
+                        result = result.unchecked_mul(radix);
+                        let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                        result = T::$unchecked_additive_op(&result, x);
+                    }
+                };
             }
+            if is_positive {
+                run_loop!(unchecked_add)
+            } else {
+                run_loop!(unchecked_sub)
+            };
         }
     } else {
         let additive_op = if is_positive { T::checked_add } else { T::checked_sub };
