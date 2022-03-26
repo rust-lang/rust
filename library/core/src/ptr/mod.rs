@@ -66,22 +66,30 @@
 //!
 //! # Strict Provenance
 //!
-//! This section is *non-normative* and describes an experimental set of APIs that help tools
-//! that validate the memory-safety of your program's execution. Notably this includes [miri][]
+//! **The following text is non-normative, insufficiently formal, and is an extremely strict
+//! interpretation of provenance. It's ok if your code doesn't strictly conform to it.**
+//!
+//! [Strict Provenance][] is an experimental set of APIs that help tools that try
+//! to validate the memory-safety of your program's execution. Notably this includes [miri][]
 //! and [CHERI][], which can detect when you access out of bounds memory or otherwise violate
 //! Rust's memory model.
 //!
-//! **The following text is overly strict and insufficiently formal, and is an extremely
-//! strict interpretation of provenance.** Provenance must exist in some form for any language
-//! higher-level than an assembler, but to our knowledge no one has ever been able to square
-//! the notion of provenance with all the operations that programmers believe should be permitted.
+//! Provenance must exist in some form for any programming
+//! language compiled for modern computer architectures, but specifying a model for provenance
+//! in a way that is useful to both compilers and programmers is an ongoing challenge.
 //! The [Strict Provenance][] experiment seeks to explore the question: *what if we just said you
 //! couldn't do all the nasty operations that make provenance so messy?*
 //!
 //! What APIs would have to be removed? What APIs would have to be added? How much would code
 //! have to change, and is it worse or better now? Would any patterns become truly inexpressible?
-//! Could we carve out special exceptions for those patterns?
+//! Could we carve out special exceptions for those patterns? Should we?
 //!
+//! A secondary goal of this project is to see if we can disamiguate the many functions of
+//! pointer<->integer casts enough for the definition of `usize` to be loosened so that it
+//! isn't *pointer*-sized but address-space/offset/allocation-sized (we'll probably continue
+//! to conflate these notions). This would potentially make it possible to more efficiently
+//! target platforms where pointers are larger than offsets, such as CHERI and maybe some
+//! segmented architecures.
 //!
 //! ## Provenance
 //!
@@ -102,25 +110,36 @@
 //! The Original Pointer for an allocation is guaranteed to have unique access to the entire
 //! allocation and *only* that allocation. In this sense, an allocation can be thought of
 //! as a "sandbox" that cannot be broken into or out of. *Provenance* is the permission
-//! to access an allocation's sandbox and consists of:
+//! to access an allocation's sandbox and has both a *spatial* and *temporal* component:
 //!
-//! * Some kind of globally unique identifier tied to the allocation itself.
-//! * A range of bytes in the allocation that the pointer is allowed to access.
+//! * Spatial: A range of bytes in the allocation that the pointer is allowed to access.
+//! * Temporal: Some kind of globally unique identifier tied to the allocation itself.
+//!
+//! Spatial provenance makes sure you don't go beyond your sandbox, while temporal provenance
+//! makes sure that you can't "get lucky" after your permission to access some memory
+//! has been revoked (either through deallocations or borrows expiring).
 //!
 //! Provenance is implicitly shared with all pointers transitively derived from
 //! The Original Pointer through operations like [`offset`], borrowing, and pointer casts.
-//! Some operations may produce a pointer whose provenance has a smaller range
-//! than the one it's derived from (i.e. borrowing a subfield and subslicing).
+//! Some operations may *shrink* the derived provenance, limiting how much memory it can
+//! access or how long it's valid for (i.e. borrowing a subfield and subslicing).
 //!
 //! Shrinking provenance cannot be undone: even if you "know" there is a larger allocation, you
 //! can't derive a pointer with a larger provenance. Similarly, you cannot "recombine"
 //! two contiguous provenances back into one (i.e. with a `fn merge(&[T], &[T]) -> &[T]`).
 //!
 //! A reference to a value always has provenance over exactly the memory that field occupies.
-//! A reference slice always has provenance over exactly the range that slice describes.
+//! A reference to a slice always has provenance over exactly the range that slice describes.
 //!
 //! If an allocation is deallocated, all pointers with provenance to that allocation become
 //! invalidated, and effectively lose their provenance.
+//!
+//! The strict provenance experiment is mostly only interested in exploring stricter *spatial*
+//! provenance. In this sense it can be thought of as a subset of the more ambitious and
+//! formal [Stacked Borrows][] research project, which is what tools like [miri][] are based on.
+//! In particular, Stacked Borrows is necessary to properly describe what borrows are allowed
+//! to do and when they become invalidated. This necessarily involves much more complex
+//! *temporal* reasoning than simply identifying allocations.
 //!
 //!
 //! ## Pointer Vs Addresses
@@ -241,19 +260,32 @@
 //!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
 //!   never be dereferencable.
 //!
-//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers
-//!   which have no provenance. Unfortunately there may be practical limits on this for a
-//!   particular platform ([CHERI][] may mark your pointers as invalid, but it has a pretty
-//!   generour buffer that is *at least* 1KB on each side of the provenance). Note that
-//!   least-significant-bit tagging is generally pretty robust, and often doesn't even
-//!   go out of bounds because types have a size >= align.
-//!
 //! * Forge an allocation of size zero at any sufficiently aligned non-null address.
 //!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
 //!   for actual forgery (integers cast to pointers). If you borrow some structs subfield
 //!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
 //!   that allocation and it will still get invalidated if the allocation gets deallocated.
 //!   In the future we may introduce an API to make such a forged allocation explicit.
+//!
+//! * [`wrapping_offset`][] a pointer outside its provenance. This includes invalid pointers
+//!   which have "no" provenance. Unfortunately there may be practical limits on this for a
+//!   particular platform, and it's an open question as to how to specify this (if at all).
+//!   Notably, [CHERI][] relies on a compression scheme that can't handle a
+//!   pointer getting offset "too far" out of bounds. If this happens, the address
+//!   returned by `addr` will be the value you expect, but the provenance will get invalidated
+//!   and using it to read/write will fault. The details of this are architecture-specific
+//!   and based on alignment, but the buffer on either side of the pointer's range is pretty
+//!   generous (think kilobytes, not bytes).
+//!
+//! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
+//!   mentioning in more detail because of the limitations of [CHERI][]. Low-bit tagging
+//!   is very robust, and often doesn't even go out of bounds because types have a
+//!   size >= align (and over-aligning actually gives CHERI more flexibility). Anything
+//!   more complex than this rapidly enters "extremely platform-specific" territory as
+//!   certain things may or may not be allowed based on specific supported operations.
+//!   For instance, ARM explicitly supports high-bit tagging, and so CHERI on ARM inherits
+//!   that and should support it.
+//!
 //!
 //! [aliasing]: ../../nomicon/aliasing.html
 //! [book]: ../../book/ch19-01-unsafe-rust.html#dereferencing-a-raw-pointer
@@ -269,6 +301,7 @@
 //! [miri]: https://github.com/rust-lang/miri
 //! [CHERI]: https://www.cl.cam.ac.uk/research/security/ctsrd/cheri/
 //! [Strict Provenance]: https://github.com/rust-lang/rust/issues/95228
+//! [Stacked Borrows]: https://plv.mpi-sws.org/rustbelt/stacked-borrows/
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -410,7 +443,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null"]
 pub const fn null<T>() -> *const T {
-    invalid::<T>(0)
+    invalid(0)
 }
 
 /// Creates a null mutable raw pointer.
@@ -430,7 +463,7 @@ pub const fn null<T>() -> *const T {
 #[rustc_const_stable(feature = "const_ptr_null", since = "1.24.0")]
 #[rustc_diagnostic_item = "ptr_null_mut"]
 pub const fn null_mut<T>() -> *mut T {
-    invalid_mut::<T>(0)
+    invalid_mut(0)
 }
 
 /// Creates an invalid pointer with the given address.
@@ -438,13 +471,16 @@ pub const fn null_mut<T>() -> *mut T {
 /// This is *currently* equivalent to `addr as *const T` but it expresses the intended semantic
 /// more clearly, and may become important under future memory models.
 ///
-/// The module's to-level documentation discusses the precise meaning of an "invalid"
+/// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
 /// with any actual allocation and is little more than a usize address in disguise.
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
 /// like ptr::null and NonNull::dangling which make invalid pointers.
+///
+/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
+/// may be desirable to give them their own API just to make that 100% clear.)
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.
@@ -459,16 +495,19 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 
 /// Creates an invalid mutable pointer with the given address.
 ///
-/// This is *currently* equivalent to `addr as *const T` but it expresses the intended semantic
+/// This is *currently* equivalent to `addr as *mut T` but it expresses the intended semantic
 /// more clearly, and may become important under future memory models.
 ///
-/// The module's to-level documentation discusses the precise meaning of an "invalid"
+/// The module's top-level documentation discusses the precise meaning of an "invalid"
 /// pointer but essentially this expresses that the pointer is not associated
 /// with any actual allocation and is little more than a usize address in disguise.
 ///
 /// This pointer will have no provenance associated with it and is therefore
 /// UB to read/write/offset. This mostly exists to facilitate things
 /// like ptr::null and NonNull::dangling which make invalid pointers.
+///
+/// (Standard "Zero-Sized-Types get to cheat and lie" caveats apply, although it
+/// may be desirable to give them their own API just to make that 100% clear.)
 ///
 /// This API and its claimed semantics are part of the Strict Provenance experiment,
 /// see the [module documentation][crate::ptr] for details.

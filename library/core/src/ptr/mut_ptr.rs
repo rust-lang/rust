@@ -160,14 +160,16 @@ impl<T: ?Sized> *mut T {
     /// *provenance* and *address-space* information. To properly restore that information,
     /// use [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
     ///
-    /// On most platforms this information isn't represented at runtime, and so the loss
-    /// of information is "only" semantic. On more complicated platforms like miri, CHERI,
-    /// and segmented architectures, this may result in an actual change of representation
-    /// and the loss of information.
+    /// On most platforms this will produce a value with the same bytes as the original
+    /// pointer, because all the bytes are dedicated to describing the address.
+    /// Platforms which need to store additional information in the pointer may
+    /// perform a change of representation to produce a value containing only the address
+    /// portion of the pointer. What that means is up to the platform to define.
     ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
     /// see the [module documentation][crate::ptr] for details.
     #[must_use]
+    #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn addr(self) -> usize
     where
@@ -184,12 +186,13 @@ impl<T: ?Sized> *mut T {
     /// This allows us to dynamically preserve and propagate this important
     /// information in a way that is otherwise impossible with a unary cast.
     ///
-    /// This is equivalent to using [`wrapping_offset`][pointer::wrapping_offset] to offset `self` to the
-    /// given address, and therefore has all the same capabilities and restrictions.
+    /// This is equivalent to using [`wrapping_offset`][pointer::wrapping_offset] to offset
+    /// `self` to the given address, and therefore has all the same capabilities and restrictions.
     ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
     /// see the [module documentation][crate::ptr] for details.
     #[must_use]
+    #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn with_addr(self, addr: usize) -> Self
     where
@@ -215,6 +218,7 @@ impl<T: ?Sized> *mut T {
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
     /// see the [module documentation][crate::ptr] for details.
     #[must_use]
+    #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self
     where
