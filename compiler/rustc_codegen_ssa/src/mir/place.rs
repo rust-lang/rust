@@ -454,10 +454,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         for elem in place_ref.projection[base..].iter() {
             cg_base = match elem.clone() {
                 mir::ProjectionElem::Deref => {
-                    // custom allocators can change box's abi, making it unable to be derefed directly
-                    if cg_base.layout.ty.is_box()
-                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. } | Abi::Uninhabited)
-                    {
+                    // a box with a non-zst allocator should not be directly dereferenced
+                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 0).is_zst() {
                         let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
 
                         bx.load_operand(ptr).deref(bx.cx())
