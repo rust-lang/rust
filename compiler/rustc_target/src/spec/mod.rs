@@ -63,7 +63,6 @@ mod freebsd_base;
 mod fuchsia_base;
 mod haiku_base;
 mod hermit_base;
-mod hermit_kernel_base;
 mod illumos_base;
 mod l4re_base;
 mod linux_base;
@@ -970,9 +969,6 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
-
-    ("aarch64-unknown-none-hermitkernel", aarch64_unknown_none_hermitkernel),
-    ("x86_64-unknown-none-hermitkernel", x86_64_unknown_none_hermitkernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32im-unknown-none-elf", riscv32im_unknown_none_elf),
