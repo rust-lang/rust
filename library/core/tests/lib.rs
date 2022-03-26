@@ -20,7 +20,6 @@
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
-#![feature(const_ptr_offset)]
 #![feature(const_trait_impl)]
 #![feature(const_likely)]
 #![feature(core_ffi_c)]
