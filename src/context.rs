@@ -89,12 +89,13 @@ pub struct CodegenCx<'gcc, 'tcx> {
 
     /// Cache of emitted const globals (value -> global)
     pub const_globals: RefCell<FxHashMap<RValue<'gcc>, RValue<'gcc>>>,
+
     /// Map from the address of a global variable (rvalue) to the global variable itself (lvalue).
     /// TODO(antoyo): remove when the rustc API is fixed.
     pub global_lvalues: RefCell<FxHashMap<RValue<'gcc>, LValue<'gcc>>>,
 
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
+    pub const_str_cache: RefCell<FxHashMap<Symbol, LValue<'gcc>>>,
 
     /// Cache of globals.
     pub globals: RefCell<FxHashMap<String, RValue<'gcc>>>,
@@ -219,7 +220,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             vtables: Default::default(),
             const_globals: Default::default(),
             global_lvalues: Default::default(),
-            const_cstr_cache: Default::default(),
+            const_str_cache: Default::default(),
             globals: Default::default(),
             scalar_types: Default::default(),
             types: Default::default(),
