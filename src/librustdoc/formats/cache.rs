@@ -187,8 +187,20 @@ impl Cache {
 
     /// `external_trats` / `cache.traits` is modified in various passes.
     /// Run this separate from the main `populate` call, since `impls` isn't used until later in the HTML formatter.
-    crate fn populate_impls(&mut self, krate: &clean::Crate) {
+    crate fn populate_impls(&mut self, krate: clean::Crate) -> clean::Crate {
         self.traits = krate.external_traits.take();
+        ImplRemover.fold_crate(krate)
+    }
+}
+
+struct ImplRemover;
+impl DocFolder for ImplRemover {
+    fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        let item = self.fold_item_recur(item);
+        match *item.kind {
+            clean::ItemKind::ImplItem(_) => None,
+            _ => Some(item),
+        }
     }
 }
 
@@ -438,7 +450,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
         let item = self.fold_item_recur(item);
-        let ret = if let clean::Item { kind: box clean::ImplItem(ref i), .. } = item {
+        if let clean::Item { kind: box clean::ImplItem(ref i), .. } = item {
             // Figure out the id of this impl. This may map to a
             // primitive rather than always to a struct/enum.
             // Note: matching twice to restrict the lifetime of the `i` borrow.
@@ -470,7 +482,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     }
                 }
             }
-            let impl_item = Impl { impl_item: item };
+            let impl_item = Impl { impl_item: item.clone() };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
@@ -479,18 +491,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 let trait_did = impl_item.trait_did().expect("no trait did");
                 self.cache.orphan_trait_impls.push((trait_did, dids, impl_item.clone()));
             }
-            // TODO: stripping this from `Module` seems ... not great
-            // None
-            let item = impl_item.impl_item;
-            if item.def_id.is_local() {
-                debug!("propagating impl {:?}", item);
-                Some(item)
-            } else {
-                None
-            }
-        } else {
-            Some(item)
-        };
+        }
 
         if pushed {
             self.cache.stack.pop().expect("stack already empty");
@@ -500,6 +501,6 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         }
         self.cache.stripped_mod = orig_stripped_mod;
         self.cache.parent_is_trait_impl = orig_parent_is_trait_impl;
-        ret
+        Some(item)
     }
 }
