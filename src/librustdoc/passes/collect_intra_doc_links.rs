@@ -26,13 +26,21 @@ use std::fmt::Write;
 use std::mem;
 use std::ops::Range;
 
-use crate::{clean::{self, utils::find_nearest_parent_module}, html::{format::HrefError, markdown::{MarkdownLink, markdown_links}}, lint::{PRIVATE_INTRA_DOC_LINKS, BROKEN_INTRA_DOC_LINKS}, visit::DocVisitor};
 use crate::clean::{Crate, Item, ItemId, ItemLink, PrimitiveType};
 use crate::core::DocContext;
+use crate::{
+    clean::{self, utils::find_nearest_parent_module},
+    html::{
+        format::HrefError,
+        markdown::{markdown_links, MarkdownLink},
+    },
+    lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS},
+    visit::DocVisitor,
+};
 
 mod early;
-crate use early::early_resolve_intra_doc_links;
 use super::Pass;
+crate use early::early_resolve_intra_doc_links;
 
 crate const COLLECT_INTRA_DOC_LINKS: Pass = Pass {
     name: "collect-intra-doc-links",
@@ -1436,7 +1444,9 @@ impl LinkCollector<'_, '_> {
             return Some(());
         }
         // `relative_to` is only used for the actual path of the link, not whether it's resolved or not.
-        if let Err(missing) = crate::html::format::href_inner(id, self.cx.tcx, &self.cx.cache, None, &[]) {
+        if let Err(missing) =
+            crate::html::format::href_inner(id, self.cx.tcx, &self.cx.cache, None, &[])
+        {
             missing_docs_for_link(self.cx, &item, id, missing, &path_str, &diag_info);
         }
 

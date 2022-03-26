@@ -25,7 +25,6 @@ crate enum RenderMode {
 
 /// Metadata about implementations for a type or trait.
 #[derive(Clone, Debug)]
-// TODO: this should not exist
 crate struct Impl {
     crate impl_item: clean::Item,
 }

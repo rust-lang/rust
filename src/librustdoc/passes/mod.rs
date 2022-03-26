@@ -110,15 +110,18 @@ crate const DEFAULT_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (
         ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
         ConditionalPass::always(PROPAGATE_DOC_CFG),
         ConditionalPass::always(CHECK_BARE_URLS),
-    ]
+    ],
 );
 
 /// The list of default passes run when `--doc-coverage` is passed to rustdoc.
-crate const COVERAGE_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (&[
-    ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
-    ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
-    ConditionalPass::always(CALCULATE_DOC_COVERAGE),
-], &[]);
+crate const COVERAGE_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (
+    &[
+        ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
+        ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
+        ConditionalPass::always(CALCULATE_DOC_COVERAGE),
+    ],
+    &[],
+);
 
 impl ConditionalPass {
     crate const fn always(pass: Pass) -> Self {
