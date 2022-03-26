@@ -102,13 +102,13 @@ crate const DEFAULT_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (
         ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
         ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
         ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+        ConditionalPass::always(PROPAGATE_DOC_CFG),
     ],
     // populate cache
     &[
         ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
         ConditionalPass::always(CHECK_CODE_BLOCK_SYNTAX),
         ConditionalPass::always(CHECK_INVALID_HTML_TAGS),
-        ConditionalPass::always(PROPAGATE_DOC_CFG),
         ConditionalPass::always(CHECK_BARE_URLS),
     ],
 );
