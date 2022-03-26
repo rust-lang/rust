@@ -467,6 +467,8 @@ crate fn run_global_ctxt(
         rustc_errors::FatalError.raise();
     }
 
+    ctxt.cache.populate_impls(&krate);
+
     (krate, ctxt.render_options, ctxt.cache)
 }
 

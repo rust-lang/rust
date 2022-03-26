@@ -56,11 +56,6 @@ crate trait DocVisitor: Sized {
 
     fn visit_mod(&mut self, m: &Module) {
         m.items.iter().for_each(|i| self.visit_item(i));
-        // for i in self.cache.impls {
-        //     if m.def_id() == find_nearest_parent_module(self.tcx, i.def_id) {
-        //         self.visit_item(i);
-        //     }
-        // }
     }
 
     fn visit_crate(&mut self, c: &Crate) {

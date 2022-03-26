@@ -1490,6 +1490,7 @@ impl<'test> TestCx<'test> {
             .arg(out_dir)
             .arg("--deny")
             .arg("warnings")
+            .arg("-Arustdoc::private-intra-doc-links")
             .arg(&self.testpaths.file)
             .args(&self.props.compile_flags);
 

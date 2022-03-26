@@ -179,8 +179,16 @@ impl Cache {
                 }
             }
         }
+        // god what a mess
+        *krate.external_traits.borrow_mut() = mem::take(&mut cx.cache.traits);
 
         krate
+    }
+
+    /// `external_trats` / `cache.traits` is modified in various passes.
+    /// Run this separate from the main `populate` call, since `impls` isn't used until later in the HTML formatter.
+    crate fn populate_impls(&mut self, krate: &clean::Crate) {
+        self.traits = krate.external_traits.take();
     }
 }
 
@@ -462,7 +470,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     }
                 }
             }
-            let impl_item = Impl { impl_item: item.clone() };
+            let impl_item = Impl { impl_item: item };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
@@ -472,7 +480,14 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                 self.cache.orphan_trait_impls.push((trait_did, dids, impl_item.clone()));
             }
             // TODO: stripping this from `Module` seems ... not great
-            Some(impl_item.impl_item)
+            // None
+            let item = impl_item.impl_item;
+            if item.def_id.is_local() {
+                debug!("propagating impl {:?}", item);
+                Some(item)
+            } else {
+                None
+            }
         } else {
             Some(item)
         };
