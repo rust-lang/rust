@@ -1,3 +1,4 @@
+use core::fmt;
 use std::cell::RefCell;
 use std::default::Default;
 use std::hash::Hash;
@@ -351,7 +352,7 @@ crate enum ExternalLocation {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 crate struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
@@ -364,6 +365,27 @@ crate struct Item {
     crate def_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
+}
+
+impl fmt::Debug for Item {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alternate = f.alternate();
+        // hand-picked fields that don't bloat the logs too much
+        let mut fmt = f.debug_struct("Item");
+        fmt.field("name", &self.name)
+            .field("visibility", &self.visibility)
+            .field("def_id", &self.def_id);
+        // allow printing the full item if someone really wants to
+        if alternate {
+            fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
+        } else {
+            fmt.field("kind", &self.type_());
+            if let Some(docs) = self.doc_value() {
+                fmt.field("docs", &docs);
+            }
+        }
+        fmt.finish()
+    }
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
