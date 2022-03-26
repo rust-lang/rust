@@ -45,6 +45,7 @@ use std::{iter, mem, option};
 use self::graph_cyclic_cache::GraphIsCyclicCache;
 use self::predecessors::{PredecessorCache, Predecessors};
 pub use self::query::*;
+use self::switch_sources::{SwitchSourceCache, SwitchSources};
 
 pub mod coverage;
 mod generic_graph;
@@ -58,6 +59,7 @@ mod predecessors;
 pub mod pretty;
 mod query;
 pub mod spanview;
+mod switch_sources;
 pub mod tcx;
 pub mod terminator;
 pub use terminator::*;
@@ -284,6 +286,7 @@ pub struct Body<'tcx> {
     pub is_polymorphic: bool,
 
     predecessor_cache: PredecessorCache,
+    switch_source_cache: SwitchSourceCache,
     is_cyclic: GraphIsCyclicCache,
 
     pub tainted_by_errors: Option<ErrorGuaranteed>,
@@ -332,6 +335,7 @@ impl<'tcx> Body<'tcx> {
             required_consts: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            switch_source_cache: SwitchSourceCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
             tainted_by_errors,
         };
@@ -360,6 +364,7 @@ impl<'tcx> Body<'tcx> {
             var_debug_info: Vec::new(),
             is_polymorphic: false,
             predecessor_cache: PredecessorCache::new(),
+            switch_source_cache: SwitchSourceCache::new(),
             is_cyclic: GraphIsCyclicCache::new(),
             tainted_by_errors: None,
         };
@@ -380,6 +385,7 @@ impl<'tcx> Body<'tcx> {
         // FIXME: Use a finer-grained API for this, so only transformations that alter terminators
         // invalidate the caches.
         self.predecessor_cache.invalidate();
+        self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
         &mut self.basic_blocks
     }
@@ -389,6 +395,7 @@ impl<'tcx> Body<'tcx> {
         &mut self,
     ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
         self.predecessor_cache.invalidate();
+        self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls)
     }
@@ -402,6 +409,7 @@ impl<'tcx> Body<'tcx> {
         &mut Vec<VarDebugInfo<'tcx>>,
     ) {
         self.predecessor_cache.invalidate();
+        self.switch_source_cache.invalidate();
         self.is_cyclic.invalidate();
         (&mut self.basic_blocks, &mut self.local_decls, &mut self.var_debug_info)
     }
@@ -527,6 +535,11 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn predecessors(&self) -> &Predecessors {
         self.predecessor_cache.compute(&self.basic_blocks)
+    }
+
+    #[inline]
+    pub fn switch_sources(&self) -> &SwitchSources {
+        self.switch_source_cache.compute(&self.basic_blocks)
     }
 
     #[inline]

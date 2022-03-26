@@ -267,11 +267,11 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::SwitchInt { ref targets, ref discr, switch_ty: _ } => {
+                mir::TerminatorKind::SwitchInt { targets: _, ref discr, switch_ty: _ } => {
                     let mut applier = BackwardSwitchIntEdgeEffectsApplier {
                         pred,
                         exit_state,
-                        targets,
+                        values: &body.switch_sources()[bb][pred],
                         bb,
                         propagate: &mut propagate,
                         effects_applied: false,
@@ -309,7 +309,7 @@ impl Direction for Backward {
 struct BackwardSwitchIntEdgeEffectsApplier<'a, D, F> {
     pred: BasicBlock,
     exit_state: &'a mut D,
-    targets: &'a SwitchTargets,
+    values: &'a [Option<u128>],
     bb: BasicBlock,
     propagate: &'a mut F,
 
@@ -324,10 +324,14 @@ where
     fn apply(&mut self, mut apply_edge_effect: impl FnMut(&mut D, SwitchIntTarget)) {
         assert!(!self.effects_applied);
 
-        let value =
-            self.targets.iter().find_map(|(value, target)| (target == self.bb).then_some(value));
-        apply_edge_effect(self.exit_state, SwitchIntTarget { value, target: self.bb });
-        (self.propagate)(self.pred, self.exit_state);
+        let targets = self.values.iter().map(|&value| SwitchIntTarget { value, target: self.bb });
+
+        let mut tmp = None;
+        for target in targets {
+            let tmp = opt_clone_from_or_clone(&mut tmp, self.exit_state);
+            apply_edge_effect(tmp, target);
+            (self.propagate)(self.pred, tmp);
+        }
 
         self.effects_applied = true;
     }
