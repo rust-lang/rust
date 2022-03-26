@@ -225,8 +225,10 @@ impl ParseSess {
 // Methods that should be restricted within the parse module.
 impl ParseSess {
     pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diagnostic>) {
-        for diagnostic in diagnostics {
-            self.parse_sess.span_diagnostic.emit_diagnostic(&diagnostic);
+        for mut diagnostic in diagnostics {
+            self.parse_sess
+                .span_diagnostic
+                .emit_diagnostic(&mut diagnostic);
         }
     }
 

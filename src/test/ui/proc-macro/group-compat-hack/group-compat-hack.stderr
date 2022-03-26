@@ -111,6 +111,7 @@ LL |         #[my_macro] struct One($name);
 LL |     impl_macros!(Foo);
    |     ----------------- in this macro invocation
    |
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the `time-macros-impl` crate will stop compiling in futures version of Rust. Please update to the latest version of the `time` crate to avoid breakage
@@ -128,6 +129,7 @@ LL |         #[my_macro] struct Two($name);
 LL |     arrays!(Foo);
    |     ------------ in this macro invocation
    |
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: older versions of the `js-sys` crate will stop compiling in future versions of Rust; please update to `js-sys` v0.3.40 or above
@@ -145,6 +147,7 @@ LL |         #[my_macro] struct Three($T);
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
    |
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage
@@ -162,6 +165,7 @@ LL |         #[my_macro] struct Three($T);
 LL |     tuple_from_req!(Foo);
    |     -------------------- in this macro invocation
    |
+   = note: `#[deny(proc_macro_back_compat)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
    = note: the version of `actix-web` you are using might stop compiling in future versions of Rust; please update to the latest version of the `actix-web` crate to avoid breakage

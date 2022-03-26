@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc_middle::ty::{ToPredicate, TypeFoldable};
-use rustc_session::{DiagnosticMessageId, Limit};
+use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::Span;
 
@@ -222,24 +222,19 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`", ty);
-    let error_id = (DiagnosticMessageId::ErrorId(55), Some(span), msg);
-    let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-    if fresh {
-        struct_span_err!(
-            tcx.sess,
-            span,
-            E0055,
-            "reached the recursion limit while auto-dereferencing `{:?}`",
-            ty
-        )
-        .span_label(span, "deref recursion limit reached")
-        .help(&format!(
-            "consider increasing the recursion limit by adding a \
+    struct_span_err!(
+        tcx.sess,
+        span,
+        E0055,
+        "reached the recursion limit while auto-dereferencing `{:?}`",
+        ty
+    )
+    .span_label(span, "deref recursion limit reached")
+    .help(&format!(
+        "consider increasing the recursion limit by adding a \
              `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
-            suggested_limit,
-            tcx.crate_name(LOCAL_CRATE),
-        ))
-        .emit();
-    }
+        suggested_limit,
+        tcx.crate_name(LOCAL_CRATE),
+    ))
+    .emit();
 }

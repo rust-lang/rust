@@ -28,7 +28,6 @@ use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -1406,60 +1405,49 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
-            let msg = format!("type mismatch resolving `{}`", predicate);
-            let error_id = (DiagnosticMessageId::ErrorId(271), Some(obligation.cause.span), msg);
-            let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-            if fresh {
-                let mut diag = struct_span_err!(
-                    self.tcx.sess,
-                    obligation.cause.span,
-                    E0271,
-                    "type mismatch resolving `{}`",
-                    predicate
-                );
-                let secondary_span = match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Projection(proj) => self
-                        .tcx
-                        .opt_associated_item(proj.projection_ty.item_def_id)
-                        .and_then(|trait_assoc_item| {
+            let mut diag = struct_span_err!(
+                self.tcx.sess,
+                obligation.cause.span,
+                E0271,
+                "type mismatch resolving `{}`",
+                predicate
+            );
+            let secondary_span = match predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(proj) => self
+                    .tcx
+                    .opt_associated_item(proj.projection_ty.item_def_id)
+                    .and_then(|trait_assoc_item| {
+                        self.tcx
+                            .trait_of_item(proj.projection_ty.item_def_id)
+                            .map(|id| (trait_assoc_item, id))
+                    })
+                    .and_then(|(trait_assoc_item, id)| {
+                        let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
+                        self.tcx.find_map_relevant_impl(id, proj.projection_ty.self_ty(), |did| {
                             self.tcx
-                                .trait_of_item(proj.projection_ty.item_def_id)
-                                .map(|id| (trait_assoc_item, id))
+                                .associated_items(did)
+                                .in_definition_order()
+                                .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
                         })
-                        .and_then(|(trait_assoc_item, id)| {
-                            let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-                            self.tcx.find_map_relevant_impl(
-                                id,
-                                proj.projection_ty.self_ty(),
-                                |did| {
-                                    self.tcx
-                                        .associated_items(did)
-                                        .in_definition_order()
-                                        .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
-                                },
-                            )
-                        })
-                        .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
-                            Some(
-                                hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Type(_, Some(ty)),
-                                    ..
-                                })
-                                | hir::Node::ImplItem(hir::ImplItem {
-                                    kind: hir::ImplItemKind::TyAlias(ty),
-                                    ..
-                                }),
-                            ) => {
-                                Some((ty.span, format!("type mismatch resolving `{}`", predicate)))
-                            }
-                            _ => None,
-                        }),
-                    _ => None,
-                };
-                self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
-                self.note_obligation_cause(&mut diag, obligation);
-                diag.emit();
-            }
+                    })
+                    .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
+                        Some(
+                            hir::Node::TraitItem(hir::TraitItem {
+                                kind: hir::TraitItemKind::Type(_, Some(ty)),
+                                ..
+                            })
+                            | hir::Node::ImplItem(hir::ImplItem {
+                                kind: hir::ImplItemKind::TyAlias(ty),
+                                ..
+                            }),
+                        ) => Some((ty.span, format!("type mismatch resolving `{}`", predicate))),
+                        _ => None,
+                    }),
+                _ => None,
+            };
+            self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
+            self.note_obligation_cause(&mut diag, obligation);
+            diag.emit();
         });
     }
 
