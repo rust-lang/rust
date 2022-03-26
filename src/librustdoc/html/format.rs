@@ -567,7 +567,7 @@ crate fn href_inner(
 ) -> Result<(String, ItemType, Vec<Symbol>), HrefError> {
     let def_kind = tcx.def_kind(did);
     let did = match def_kind {
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant | DefKind::Field => {
             // documented on their parent's page
             tcx.parent(did).unwrap()
         }

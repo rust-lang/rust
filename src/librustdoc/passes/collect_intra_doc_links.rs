@@ -2324,11 +2324,13 @@ fn missing_docs_for_link(
     path_str: &str,
     diag_info: &DiagnosticInfo<'_>,
 ) {
+    debug!("missing docs for {:?} because {:?}", item, why);
     // FIXME: this is a bug, rustdoc should load all items into the cache before doing this check.
     //   Otherwise, there will be false negatives where rustdoc doesn't warn but should.
-    if why == HrefError::NotInExternalCache {
-        return;
-    }
+    // if why == HrefError::NotInExternalCache {
+    //     debug!("ignoring NotInExternalCache");
+    //     return;
+    // }
 
     let item_name = match item.name {
         Some(name) => name.to_string(),
@@ -2355,8 +2357,7 @@ fn missing_docs_for_link(
             return;
         }
 
-        // NOTE: theoretically it shouldn't be possible to resolve private items,
-        // but `resolve_primitive_associated_item` is buggy and allows it.
+        // NOTE: `href_inner` is buggy and thinks that primitive associated items can be unreachable
         // assert_ne!(why, HrefError::Private, "{:?}", destination_id);
 
         if let Some(attr) =
@@ -2368,17 +2369,18 @@ fn missing_docs_for_link(
 
         let mut current = destination_id;
         while let Some(parent) = cx.tcx.parent(current) {
-            if cx.tcx.get_attrs(parent).lists(sym::doc).has_word(sym::hidden) {
+            if let Some(attr) = cx.tcx.get_attrs(parent).lists(sym::doc).get_word_attr(sym::hidden) {
                 let name = cx.tcx.item_name(parent);
                 let (_, description) = cx.tcx.article_and_description(parent);
                 let span = cx.tcx.def_span(parent);
                 diag.span_label(
                     span,
                     &format!(
-                        "{} is in the {} `{}`, which is marked as `#[doc(hidden)]`",
+                        "`{}` is in the {} `{}`, which is marked as `#[doc(hidden)]`",
                         path_str, description, name
                     ),
                 );
+                diag.span_label(attr.span(), &format!("`{}` is hidden here", name));
                 return;
             }
             current = parent;

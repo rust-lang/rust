@@ -1,0 +1,47 @@
+error: documentation for `warn_undocumented` links to item `dep1` which will not have documentation generated
+  --> $DIR/warn-undocumented.rs:6:14
+   |
+LL | //! Link to [dep1]
+   |              ^^^^ this item is will not be documented
+   |
+note: the lint level is defined here
+  --> $DIR/warn-undocumented.rs:3:9
+   |
+LL | #![deny(rustdoc::private_intra_doc_links)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `dep1` is in the crate `dep1`, which will not be documented
+
+error: documentation for `warn_undocumented` links to item `S` which will not have documentation generated
+  --> $DIR/warn-undocumented.rs:11:14
+   |
+LL | //! Link to [S]
+   |              ^ this item is will not be documented
+   |
+   = note: `S` may be in a private module with all re-exports marked as `#[doc(no_inline)]`
+
+error: documentation for `warn_undocumented` links to item `T` which will not have documentation generated
+  --> $DIR/warn-undocumented.rs:16:14
+   |
+LL | //! Link to [T]
+   |              ^ this item is will not be documented
+...
+LL | #[doc(hidden)]
+   |       ------ `T` is marked as `#[doc(hidden)]`
+
+error: documentation for `warn_undocumented` links to item `secret::U` which will not have documentation generated
+  --> $DIR/warn-undocumented.rs:20:14
+   |
+LL |   //! Link to [secret::U]
+   |                ^^^^^^^^^ this item is will not be documented
+...
+LL |   #[doc(hidden)]
+   |         ------ `secret` is hidden here
+LL |
+LL | / pub mod secret {
+LL | |
+LL | |     pub struct U;
+LL | | }
+   | |_- `secret::U` is in the module `secret`, which is marked as `#[doc(hidden)]`
+
+error: aborting due to 4 previous errors
+
