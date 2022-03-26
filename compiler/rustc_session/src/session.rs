@@ -19,7 +19,7 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -35,7 +35,6 @@ use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
-use std::num::NonZeroU32;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -136,10 +135,6 @@ pub struct Session {
     /// `None` means that there is no source file.
     pub local_crate_source_file: Option<PathBuf>,
 
-    /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
-    /// (sub)diagnostics that have been set once, but should not be set again,
-    /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     crate_types: OnceCell<Vec<CrateType>>,
     /// The `stable_crate_id` is constructed out of the crate name and all the
     /// `-C metadata` arguments passed to the compiler. Its value forms a unique
@@ -209,34 +204,12 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
-/// Enum to support dispatch of one-time diagnostics (in `Session.diag_once`).
-enum DiagnosticBuilderMethod {
-    Note,
-    SpanNote,
-    // Add more variants as needed to support one-time diagnostics.
-}
-
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
 pub trait SessionDiagnostic<'a> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
     fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, ErrorGuaranteed>;
-}
-
-/// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
-/// emitting the same message more than once.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum DiagnosticMessageId {
-    ErrorId(u16), // EXXXX error code as integer
-    LintId(lint::LintId),
-    StabilityId(Option<NonZeroU32>), // issue number
-}
-
-impl From<&'static lint::Lint> for DiagnosticMessageId {
-    fn from(lint: &'static lint::Lint) -> Self {
-        DiagnosticMessageId::LintId(lint::LintId::of(lint))
-    }
 }
 
 impl Session {
@@ -495,50 +468,6 @@ impl Session {
     #[inline]
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
-    }
-
-    /// Analogous to calling methods on the given `DiagnosticBuilder`, but
-    /// deduplicates on lint ID, span (if any), and message for this `Session`
-    fn diag_once(
-        &self,
-        diag: &mut Diagnostic,
-        method: DiagnosticBuilderMethod,
-        msg_id: DiagnosticMessageId,
-        message: &str,
-        span_maybe: Option<Span>,
-    ) {
-        let id_span_message = (msg_id, span_maybe, message.to_owned());
-        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-        if fresh {
-            match method {
-                DiagnosticBuilderMethod::Note => {
-                    diag.note(message);
-                }
-                DiagnosticBuilderMethod::SpanNote => {
-                    let span = span_maybe.expect("`span_note` needs a span");
-                    diag.span_note(span, message);
-                }
-            }
-        }
-    }
-
-    pub fn diag_span_note_once(
-        &self,
-        diag: &mut Diagnostic,
-        msg_id: DiagnosticMessageId,
-        span: Span,
-        message: &str,
-    ) {
-        self.diag_once(diag, DiagnosticBuilderMethod::SpanNote, msg_id, message, Some(span));
-    }
-
-    pub fn diag_note_once(
-        &self,
-        diag: &mut Diagnostic,
-        msg_id: DiagnosticMessageId,
-        message: &str,
-    ) {
-        self.diag_once(diag, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
     #[inline]
@@ -1306,7 +1235,6 @@ pub fn build_session(
         parse_sess,
         sysroot,
         local_crate_source_file,
-        one_time_diagnostics: Default::default(),
         crate_types: OnceCell::new(),
         stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
