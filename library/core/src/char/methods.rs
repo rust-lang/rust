@@ -421,6 +421,7 @@ impl char {
     #[inline]
     pub(crate) fn escape_debug_ext(self, args: EscapeDebugExtArgs) -> EscapeDebug {
         let init_state = match self {
+            '\0' => EscapeDefaultState::Backslash('0'),
             '\t' => EscapeDefaultState::Backslash('t'),
             '\r' => EscapeDefaultState::Backslash('r'),
             '\n' => EscapeDefaultState::Backslash('n'),
