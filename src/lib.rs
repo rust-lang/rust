@@ -64,6 +64,7 @@ use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::query::Providers;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -99,6 +100,11 @@ impl CodegenBackend for GccCodegenBackend {
         // NOTE: we cannot just call compile() as this would require other files than libgccjit.so.
         check_context.compile_to_file(gccjit::OutputKind::Assembler, temp_file.to_str().expect("path to str"));
         *self.supports_128bit_integers.lock().expect("lock") = check_context.get_last_error() == Ok(None);
+    }
+
+    fn provide(&self, providers: &mut Providers) {
+        // FIXME compute list of enabled features from cli flags
+        providers.global_backend_features = |_tcx, ()| vec![];
     }
 
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: EncodedMetadata, need_metadata_module: bool) -> Box<dyn Any> {

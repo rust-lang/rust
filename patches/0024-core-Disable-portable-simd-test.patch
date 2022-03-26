@@ -11,7 +11,7 @@ diff --git a/library/core/src/lib.rs b/library/core/src/lib.rs
 index aa1ad93..95fbf55 100644
 --- a/library/core/src/lib.rs
 +++ b/library/core/src/lib.rs
-@@ -398,25 +398,4 @@ pub mod arch {
+@@ -398,23 +398,4 @@ pub mod arch {
      }
  }
  
@@ -25,12 +25,10 @@ index aa1ad93..95fbf55 100644
 -#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 -#[allow(rustdoc::bare_urls)]
 -#[unstable(feature = "portable_simd", issue = "86656")]
--#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 -mod core_simd;
 -
 -#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 -#[unstable(feature = "portable_simd", issue = "86656")]
--#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 -pub mod simd {
 -    #[unstable(feature = "portable_simd", issue = "86656")]
 -    pub use crate::core_simd::simd::*;
@@ -41,15 +39,14 @@ diff --git a/library/core/src/slice/mod.rs b/library/core/src/slice/mod.rs
 index cd38c3a..ad632dc 100644
 --- a/library/core/src/slice/mod.rs
 +++ b/library/core/src/slice/mod.rs
-@@ -17,7 +17,6 @@ use crate::ptr;
+@@ -17,6 +17,5 @@ use crate::ptr;
  use crate::result::Result;
  use crate::result::Result::{Err, Ok};
- #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
 -use crate::simd::{self, Simd};
  use crate::slice;
  
  #[unstable(
-@@ -3475,123 +3474,6 @@ impl<T> [T] {
+@@ -3475,121 +3474,6 @@ impl<T> [T] {
          }
      }
  
@@ -102,14 +99,13 @@ index cd38c3a..ad632dc 100644
 -    ///         suffix.iter().copied().sum(),
 -    ///     ]);
 -    ///     let sums = middle.iter().copied().fold(sums, f32x4::add);
--    ///     sums.horizontal_sum()
+-    ///     sums.reduce_sum()
 -    /// }
 -    ///
 -    /// let numbers: Vec<f32> = (1..101).map(|x| x as _).collect();
 -    /// assert_eq!(basic_simd_sum(&numbers[1..99]), 4949.0);
 -    /// ```
 -    #[unstable(feature = "portable_simd", issue = "86656")]
--    #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
 -    pub fn as_simd<const LANES: usize>(&self) -> (&[T], &[Simd<T, LANES>], &[T])
 -    where
 -        Simd<T, LANES>: AsRef<[T; LANES]>,
@@ -153,7 +149,6 @@ index cd38c3a..ad632dc 100644
 -    /// be lifted in a way that would make it possible to see panics from this
 -    /// method for something like `LANES == 3`.
 -    #[unstable(feature = "portable_simd", issue = "86656")]
--    #[cfg(not(miri))] // Miri does not support all SIMD intrinsics
 -    pub fn as_simd_mut<const LANES: usize>(&mut self) -> (&mut [T], &mut [Simd<T, LANES>], &mut [T])
 -    where
 -        Simd<T, LANES>: AsMut<[T; LANES]>,
@@ -197,15 +192,14 @@ diff --git a/library/std/src/lib.rs b/library/std/src/lib.rs
 index 5dc586d..b6fc48f 100644
 --- a/library/std/src/lib.rs
 +++ b/library/std/src/lib.rs
-@@ -312,7 +312,6 @@
+@@ -312,6 +312,5 @@
  #![feature(panic_can_unwind)]
  #![feature(panic_unwind)]
  #![feature(platform_intrinsics)]
 -#![feature(portable_simd)]
  #![feature(prelude_import)]
  #![feature(ptr_as_uninit)]
- #![feature(ptr_internals)]
-@@ -508,25 +508,6 @@ pub mod time;
+@@ -508,23 +508,6 @@ pub mod time;
  #[unstable(feature = "once_cell", issue = "74465")]
  pub mod lazy;
  
@@ -215,10 +209,8 @@ index 5dc586d..b6fc48f 100644
 -#[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
 -#[allow(rustdoc::bare_urls)]
 -#[unstable(feature = "portable_simd", issue = "86656")]
--#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 -mod std_float;
 -
--#[cfg(not(all(miri, doctest)))] // Miri does not support all SIMD intrinsics
 -#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 -#[unstable(feature = "portable_simd", issue = "86656")]
 -pub mod simd {

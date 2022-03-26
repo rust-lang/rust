@@ -1252,7 +1252,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
-        unimplemented!();
+        // FIMXE(bjorn3): implement
     }
 
     fn set_span(&mut self, _span: Span) {}
