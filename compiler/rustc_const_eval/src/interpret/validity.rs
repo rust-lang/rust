@@ -21,7 +21,7 @@ use std::hash::Hash;
 
 use super::{
     alloc_range, CheckInAllocMsg, GlobalAlloc, InterpCx, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, OpTy, ScalarMaybeUninit, ValueVisitor,
+    MemPlaceMeta, OpTy, Scalar, ScalarMaybeUninit, ValueVisitor,
 };
 
 macro_rules! throw_validation_failure {
@@ -521,8 +521,11 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // NOTE: Keep this in sync with the array optimization for int/float
                 // types below!
                 if M::enforce_number_validity(self.ecx) {
-                    // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
-                    let is_bits = value.check_init().map_or(false, |v| v.try_to_int().is_ok());
+                    // Integers/floats with number validity: Must be scalar bits, pointers are dangerous.
+                    // As a special exception we *do* match on a `Scalar` here, since we truly want
+                    // to know its underlying representation (and *not* cast it to an integer).
+                    let is_bits =
+                        value.check_init().map_or(false, |v| matches!(v, Scalar::Int(..)));
                     if !is_bits {
                         throw_validation_failure!(self.path,
                             { "{:x}", value } expected { "initialized plain (non-pointer) bytes" }
