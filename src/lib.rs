@@ -60,10 +60,11 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{ErrorReported, Handler};
+use rustc_errors::{ErrorGuaranteed, Handler};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::query::Providers;
 use rustc_session::config::{Lto, OptLevel, OutputFilenames};
 use rustc_session::Session;
 use rustc_span::Symbol;
@@ -101,6 +102,11 @@ impl CodegenBackend for GccCodegenBackend {
         *self.supports_128bit_integers.lock().expect("lock") = check_context.get_last_error() == Ok(None);
     }
 
+    fn provide(&self, providers: &mut Providers) {
+        // FIXME(antoyo) compute list of enabled features from cli flags
+        providers.global_backend_features = |_tcx, ()| vec![];
+    }
+
     fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>, metadata: EncodedMetadata, need_metadata_module: bool) -> Box<dyn Any> {
         let target_cpu = target_cpu(tcx.sess);
         let res = codegen_crate(self.clone(), tcx, target_cpu.to_string(), metadata, need_metadata_module);
@@ -108,7 +114,7 @@ impl CodegenBackend for GccCodegenBackend {
         Box::new(res)
     }
 
-    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+    fn join_codegen(&self, ongoing_codegen: Box<dyn Any>, sess: &Session, _outputs: &OutputFilenames) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let (codegen_results, work_products) = ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
@@ -117,7 +123,7 @@ impl CodegenBackend for GccCodegenBackend {
         Ok((codegen_results, work_products))
     }
 
-    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorReported> {
+    fn link(&self, sess: &Session, codegen_results: CodegenResults, outputs: &OutputFilenames) -> Result<(), ErrorGuaranteed> {
         use rustc_codegen_ssa::back::link::link_binary;
 
         link_binary::<crate::archive::ArArchiveBuilder<'_>>(
@@ -147,7 +153,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
         base::compile_codegen_unit(tcx, cgu_name, *self.supports_128bit_integers.lock().expect("lock"))
     }
 
-    fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel) -> TargetMachineFactoryFn<Self> {
+    fn target_machine_factory(&self, _sess: &Session, _opt_level: OptLevel, _features: &[String]) -> TargetMachineFactoryFn<Self> {
         // TODO(antoyo): set opt level.
         Arc::new(|_| {
             Ok(())

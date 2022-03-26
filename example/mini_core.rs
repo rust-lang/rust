@@ -14,6 +14,9 @@ unsafe extern "C" fn _Unwind_Resume() {
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "destruct"]
+pub trait Destruct {}
+
 #[lang = "unsize"]
 pub trait Unsize<T: ?Sized> {}
 
@@ -59,6 +62,7 @@ unsafe impl Copy for i16 {}
 unsafe impl Copy for i32 {}
 unsafe impl Copy for isize {}
 unsafe impl Copy for f32 {}
+unsafe impl Copy for f64 {}
 unsafe impl Copy for char {}
 unsafe impl<'a, T: ?Sized> Copy for &'a T {}
 unsafe impl<T: ?Sized> Copy for *const T {}
