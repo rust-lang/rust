@@ -10,10 +10,4 @@ Run the tests with the command
 cargo run --example dot_product
 ```
 
-and the benchmarks via the command
-
-```
-cargo run --example --benchmark ???
-```
-
-and measure the timings on your local system.
+and verify the code for `dot_product.rs` on your machine.
