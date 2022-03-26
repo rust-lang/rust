@@ -525,7 +525,11 @@ impl Command {
     /// * No arguments to the program
     /// * Inherit the current process's environment
     /// * Inherit the current process's working directory
-    /// * Inherit stdin/stdout/stderr for `spawn` or `status`, but create pipes for `output`
+    /// * Inherit stdin/stdout/stderr for [`spawn`] or [`status`], but create pipes for [`output`]
+    ///
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
@@ -772,11 +776,14 @@ impl Command {
 
     /// Configuration for the child process's standard input (stdin) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
@@ -798,11 +805,14 @@ impl Command {
 
     /// Configuration for the child process's standard output (stdout) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
@@ -824,11 +834,14 @@ impl Command {
 
     /// Configuration for the child process's standard error (stderr) handle.
     ///
-    /// Defaults to [`inherit`] when used with `spawn` or `status`, and
-    /// defaults to [`piped`] when used with `output`.
+    /// Defaults to [`inherit`] when used with [`spawn`] or [`status`], and
+    /// defaults to [`piped`] when used with [`output`].
     ///
     /// [`inherit`]: Stdio::inherit
     /// [`piped`]: Stdio::piped
+    /// [`spawn`]: Self::spawn
+    /// [`status`]: Self::status
+    /// [`output`]: Self::output
     ///
     /// # Examples
     ///
