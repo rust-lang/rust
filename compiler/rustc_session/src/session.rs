@@ -87,7 +87,7 @@ impl From<usize> for Limit {
 
 impl fmt::Display for Limit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        self.0.fmt(f)
     }
 }
 
@@ -225,8 +225,8 @@ impl Session {
             let mut diag = self.struct_warn("skipping const checks");
             for &(span, feature_gate) in unleashed_features.iter() {
                 // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
-                if let Some(feature_gate) = feature_gate {
-                    diag.span_help(span, &format!("skipping check for `{}` feature", feature_gate));
+                if let Some(gate) = feature_gate {
+                    diag.span_help(span, &format!("skipping check for `{gate}` feature"));
                     // The unleash flag must *not* be used to just "hack around" feature gates.
                     must_err = true;
                 } else {
@@ -1133,7 +1133,7 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
+        early_error(sopts.error_format, &format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
         early_warn(sopts.error_format, &warning)
@@ -1172,7 +1172,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                early_warn(sopts.error_format, &format!("failed to create profiler: {}", e));
+                early_warn(sopts.error_format, &format!("failed to create profiler: {e}"));
                 None
             }
         }
@@ -1335,7 +1335,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     // Cannot mix and match sanitizers.
     let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
-        sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
+        sess.err(&format!("`-Zsanitizer={first}` is incompatible with `-Zsanitizer={second}`"));
     }
 
     // Cannot enable crt-static with sanitizers on Linux
