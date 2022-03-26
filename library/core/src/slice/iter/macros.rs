@@ -20,7 +20,7 @@ macro_rules! len {
         if size == 0 {
             // This _cannot_ use `unchecked_sub` because we depend on wrapping
             // to represent the length of long ZST slice iterators.
-            ($self.end.addr()).wrapping_sub(start.as_ptr().addr())
+            $self.end.addr().wrapping_sub(start.as_ptr().addr())
         } else {
             // We know that `start <= end`, so can do better than `offset_from`,
             // which needs to deal in signed.  By setting appropriate flags here

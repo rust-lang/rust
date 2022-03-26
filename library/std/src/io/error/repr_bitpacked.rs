@@ -136,7 +136,7 @@ impl Repr {
         let p = Box::into_raw(b).cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
-        debug_assert_eq!((p.addr() & TAG_MASK), 0);
+        debug_assert_eq!(p.addr() & TAG_MASK, 0);
         // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
