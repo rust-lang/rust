@@ -1,7 +1,7 @@
 use crate::*;
 use rustc_ast::ast::Mutability;
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, Instance, TypeAndMut};
+use rustc_middle::ty::{self, Instance};
 use rustc_span::{BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
 use std::convert::TryInto as _;
@@ -71,8 +71,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let len: u64 = ptrs.len().try_into().unwrap();
 
-        let ptr_ty = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
-
+        let ptr_ty = this.machine.layouts.mut_raw_ptr.ty;
         let array_layout = this.layout_of(tcx.mk_array(ptr_ty, len)).unwrap();
 
         match flags {
