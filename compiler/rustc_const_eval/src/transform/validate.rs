@@ -642,6 +642,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`Yield` cannot appear outside generator bodies");
+                }
                 if self.mir_phase >= MirPhase::GeneratorsLowered {
                     self.fail(location, "`Yield` should have been replaced by generator lowering");
                 }
@@ -681,6 +684,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::GeneratorDrop => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
+                }
                 if self.mir_phase >= MirPhase::GeneratorsLowered {
                     self.fail(
                         location,
@@ -688,11 +694,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            // Nothing to validate for these.
-            TerminatorKind::Resume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable => {}
+            TerminatorKind::Resume | TerminatorKind::Abort => {
+                let bb = location.block;
+                if !self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Resume` from non-cleanup basic block")
+                }
+            }
+            TerminatorKind::Return => {
+                let bb = location.block;
+                if self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Return` from cleanup basic block")
+                }
+            }
+            TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator(terminator, location);
