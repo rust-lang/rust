@@ -2287,6 +2287,14 @@ impl<T> const ops::FromResidual for Option<T> {
     }
 }
 
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+impl<T> ops::FromResidual<ops::Yeet<()>> for Option<T> {
+    #[inline]
+    fn from_residual(ops::Yeet(()): ops::Yeet<()>) -> Self {
+        None
+    }
+}
+
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 impl<T> ops::Residual<T> for Option<convert::Infallible> {
     type TryType = Option<T>;

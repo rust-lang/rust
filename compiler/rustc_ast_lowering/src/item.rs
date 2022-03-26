@@ -85,7 +85,7 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             task_context: None,
             current_item: None,
             captured_lifetimes: None,
-            allow_try_trait: Some([sym::try_trait_v2][..].into()),
+            allow_try_trait: Some([sym::try_trait_v2, sym::yeet_desugar_details][..].into()),
             allow_gen_future: Some([sym::gen_future][..].into()),
             allow_into_future: Some([sym::into_future][..].into()),
         };

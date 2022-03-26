@@ -221,6 +221,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let e = e.as_ref().map(|x| self.lower_expr(x));
                     hir::ExprKind::Ret(e)
                 }
+                ExprKind::Yeet(ref sub_expr) => self.lower_expr_yeet(e.span, sub_expr.as_deref()),
                 ExprKind::InlineAsm(ref asm) => {
                     hir::ExprKind::InlineAsm(self.lower_inline_asm(e.span, asm))
                 }
@@ -1541,6 +1542,44 @@ impl<'hir> LoweringContext<'_, 'hir> {
             arena_vec![self; break_arm, continue_arm],
             hir::MatchSource::TryDesugar,
         )
+    }
+
+    /// Desugar `ExprKind::Yeet` from: `do yeet <expr>` into:
+    /// ```rust
+    /// // If there is an enclosing `try {...}`:
+    /// break 'catch_target FromResidual::from_residual(Yeet(residual)),
+    /// // Otherwise:
+    /// return FromResidual::from_residual(Yeet(residual)),
+    /// ```
+    /// But to simplify this, there's a `from_yeet` lang item function which
+    /// handles the combined `FromResidual::from_residual(Yeet(residual))`.
+    fn lower_expr_yeet(&mut self, span: Span, sub_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
+        // The expression (if present) or `()` otherwise.
+        let (yeeted_span, yeeted_expr) = if let Some(sub_expr) = sub_expr {
+            (sub_expr.span, self.lower_expr(sub_expr))
+        } else {
+            (self.mark_span_with_reason(DesugaringKind::YeetExpr, span, None), self.expr_unit(span))
+        };
+
+        let unstable_span = self.mark_span_with_reason(
+            DesugaringKind::YeetExpr,
+            span,
+            self.allow_try_trait.clone(),
+        );
+
+        let from_yeet_expr = self.wrap_in_try_constructor(
+            hir::LangItem::TryTraitFromYeet,
+            unstable_span,
+            yeeted_expr,
+            yeeted_span,
+        );
+
+        if let Some(catch_node) = self.catch_scope {
+            let target_id = Ok(self.lower_node_id(catch_node));
+            hir::ExprKind::Break(hir::Destination { label: None, target_id }, Some(from_yeet_expr))
+        } else {
+            hir::ExprKind::Ret(Some(from_yeet_expr))
+        }
     }
 
     // =========================================================================

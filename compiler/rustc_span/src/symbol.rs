@@ -101,6 +101,7 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Union:              "union",
+        Yeet:               "yeet",
     }
 
     // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
@@ -714,6 +715,7 @@ symbols! {
         from_residual,
         from_size_align_unchecked,
         from_usize,
+        from_yeet,
         fsub_fast,
         fundamental,
         future,
@@ -1534,6 +1536,8 @@ symbols! {
         x87_reg,
         xer,
         xmm_reg,
+        yeet_desugar_details,
+        yeet_expr,
         ymm_reg,
         zmm_reg,
     }

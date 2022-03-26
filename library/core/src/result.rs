@@ -2107,6 +2107,14 @@ impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible
     }
 }
 
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
+        Err(From::from(e))
+    }
+}
+
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 impl<T, E> ops::Residual<T> for Result<convert::Infallible, E> {
     type TryType = Result<T, E>;

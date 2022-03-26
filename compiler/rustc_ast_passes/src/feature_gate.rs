@@ -619,6 +619,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
+            ast::ExprKind::Yeet(_) => {
+                gate_feature_post!(
+                    &self,
+                    yeet_expr,
+                    e.span,
+                    "`do yeet` expression is experimental"
+                );
+            }
             ast::ExprKind::Block(_, Some(label)) => {
                 gate_feature_post!(
                     &self,

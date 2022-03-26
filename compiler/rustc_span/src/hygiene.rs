@@ -1132,6 +1132,7 @@ pub enum DesugaringKind {
     CondTemporary,
     QuestionMark,
     TryBlock,
+    YeetExpr,
     /// Desugaring of an `impl Trait` in return type position
     /// to an `type Foo = impl Trait;` and replacing the
     /// `impl Trait` with `Foo`.
@@ -1152,6 +1153,7 @@ impl DesugaringKind {
             DesugaringKind::Await => "`await` expression",
             DesugaringKind::QuestionMark => "operator `?`",
             DesugaringKind::TryBlock => "`try` block",
+            DesugaringKind::YeetExpr => "`do yeet` expression",
             DesugaringKind::OpaqueTy => "`impl Trait`",
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::LetElse => "`let...else`",
