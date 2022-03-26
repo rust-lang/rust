@@ -1890,6 +1890,7 @@ fn clean_maybe_renamed_item(
 ) -> Vec<Item> {
     use hir::ItemKind;
 
+    debug!("clean HIR item {:?}", item);
     let def_id = item.def_id.to_def_id();
     let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
@@ -2017,6 +2018,7 @@ fn clean_impl(impl_: &hir::Impl<'_>, hir_id: hir::HirId, cx: &mut DocContext<'_>
         ret.push(make_item(trait_.clone(), type_alias, items.clone()));
     }
     ret.push(make_item(trait_, for_, items));
+    debug!("create cleaned impl item {:?}", ret);
     ret
 }
 

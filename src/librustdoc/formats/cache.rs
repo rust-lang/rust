@@ -210,6 +210,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     .def_id(self.cache)
                     .map_or(false, |d| self.cache.masked_crates.contains(&d.krate))
             {
+                debug!("remove masked impl {:?}", i);
                 return None;
             }
         }
@@ -461,16 +462,17 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     }
                 }
             }
-            let impl_item = Impl { impl_item: item };
+            let impl_item = Impl { impl_item: item.clone() };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
                 }
             } else {
                 let trait_did = impl_item.trait_did().expect("no trait did");
-                self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
+                self.cache.orphan_trait_impls.push((trait_did, dids, impl_item.clone()));
             }
-            None
+            // TODO: stripping this from `Module` seems ... not great
+            Some(impl_item.impl_item)
         } else {
             Some(item)
         };

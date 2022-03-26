@@ -1123,11 +1123,16 @@ impl Attributes {
                         ast::LitKind::Str(s, _) => {
                             aliases.insert(s);
                         }
-                        _ => unreachable!(),
+                        // This can be reached in case of an invalid attribute.
+                        // We test that rustc_passes gives an error in `src/test/rustdoc-ui/check-doc-alias-attr.rs`
+                        _ => {}
                     }
                 }
-            } else {
-                aliases.insert(attr.value_str().unwrap());
+            // This can be None if the user specified an invalid attribute, e.g. `doc(alias = 0)`.
+            // The error will be caught by rustc_passes, but we still need to handle it here because
+            // the Cache is populated before calling `abort_if_err()`.
+            } else if let Some(value) = attr.value_str() {
+                aliases.insert(value);
             }
         }
         aliases.into_iter().collect::<Vec<_>>().into()

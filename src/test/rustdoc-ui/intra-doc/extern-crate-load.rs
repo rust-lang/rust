@@ -4,6 +4,7 @@
 // aux-crate:dep3=dep3.rs
 // aux-crate:dep4=dep4.rs
 #![deny(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::private_intra_doc_links)]
 
 pub trait Trait {
     /// [dep1]

@@ -18,7 +18,7 @@ LL | //! [pointer::add]
    = note: rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does
 
 warning: documentation for `feature_gate_intra_doc_pointers` links to item `pointer::wrapping_add` which will not have documentation generated
-  --> $DIR/feature-gate-intra-doc-pointers.rs:3:6
+  --> $DIR/feature-gate-intra-doc-pointers.rs:4:6
    |
 LL | //! [pointer::wrapping_add]
    |      ^^^^^^^^^^^^^^^^^^^^^ this item is will not be documented
@@ -26,7 +26,7 @@ LL | //! [pointer::wrapping_add]
    = note: `pointer::wrapping_add` may be in a private module with all re-exports marked as `#[doc(no_inline)]`
 
 error[E0658]: linking to associated items of raw pointers is experimental
-  --> $DIR/feature-gate-intra-doc-pointers.rs:3:6
+  --> $DIR/feature-gate-intra-doc-pointers.rs:4:6
    |
 LL | //! [pointer::wrapping_add]
    |      ^^^^^^^^^^^^^^^^^^^^^

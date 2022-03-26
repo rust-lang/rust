@@ -98,6 +98,7 @@ crate const DEFAULT_PASSES: (&[ConditionalPass], &[ConditionalPass]) = (
     &[
         ConditionalPass::always(COLLECT_TRAIT_IMPLS),
         ConditionalPass::always(UNINDENT_COMMENTS),
+        ConditionalPass::always(CHECK_DOC_TEST_VISIBILITY),
         ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
         ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
         ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),

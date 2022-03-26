@@ -457,13 +457,15 @@ crate fn run_global_ctxt(
     for &p in passes_before_cache {
         krate = run_pass(p, krate, &mut ctxt);
     }
-    ctxt.sess().abort_if_errors();
 
     krate = tcx.sess.time("create_format_cache", || Cache::populate(&mut ctxt, krate));
     for &p in passes_after_cache {
         krate = run_pass(p, krate, &mut ctxt);
     }
-    ctxt.sess().abort_if_errors();
+
+    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+        rustc_errors::FatalError.raise();
+    }
 
     (krate, ctxt.render_options, ctxt.cache)
 }
