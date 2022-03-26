@@ -444,6 +444,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match scalar.try_to_int() {
             Ok(int) => int.is_null(),
             Err(_) => {
+                // Can only happen during CTFE.
                 let ptr = self.scalar_to_ptr(scalar);
                 match self.memory.ptr_try_get_alloc(ptr) {
                     Ok((alloc_id, offset, _)) => {
@@ -455,7 +456,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // Note that one-past-the-end (offset == size) is still inbounds, and never null.
                         offset > size
                     }
-                    Err(offset) => offset == 0,
+                    Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
         }
