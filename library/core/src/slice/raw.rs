@@ -85,6 +85,7 @@ use crate::ptr;
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[must_use]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_check_data_len(data, len);
 
@@ -124,6 +125,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[must_use]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     debug_check_data_len(data as _, len);
 
@@ -168,6 +170,7 @@ const fn debug_check_data_len<T>(_data: *const T, _len: usize) {}
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
 }
@@ -175,6 +178,7 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
 }
