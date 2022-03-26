@@ -12,6 +12,10 @@ LL |     Ok(Err(123_i32)?)
              <u8 as From<bool>>
              <f32 as From<i16>>
              <f32 as From<i8>>
+             <f32 as From<u16>>
+             <f32 as From<u8>>
+             <f64 as From<f32>>
+             <f64 as From<i16>>
            and 67 others
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, i32>>` for `Result<u64, u8>`
 

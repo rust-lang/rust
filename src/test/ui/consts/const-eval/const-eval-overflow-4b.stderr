@@ -16,6 +16,10 @@ LL |     : [u32; (i8::MAX as i8 + 1u8) as usize]
              <&i8 as Add<&i8>>
              <i8 as Add<&i8>>
              <i8 as Add>
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
            and 48 others
 
 error[E0604]: only `u8` can be cast as `char`, not `i8`

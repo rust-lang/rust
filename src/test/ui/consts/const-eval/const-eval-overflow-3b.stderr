@@ -16,6 +16,10 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
              <&i8 as Add<&i8>>
              <i8 as Add<&i8>>
              <i8 as Add>
+             <&'a f32 as Add<f32>>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
            and 48 others
 
 error: aborting due to 2 previous errors

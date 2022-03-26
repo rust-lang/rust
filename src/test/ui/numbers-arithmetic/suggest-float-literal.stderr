@@ -10,6 +10,10 @@ LL |     x + 100
              <&f32 as Add<&f32>>
              <f32 as Add<&f32>>
              <f32 as Add>
+             <&'a f64 as Add<f64>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
            and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -28,6 +32,10 @@ LL |     x + 100
              <&f64 as Add<&f64>>
              <f64 as Add<&f64>>
              <f64 as Add>
+             <&'a f32 as Add<f32>>
+             <&'a i128 as Add<i128>>
+             <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
            and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -46,6 +54,10 @@ LL |     x - 100
              <&f32 as Sub<&f32>>
              <f32 as Sub<&f32>>
              <f32 as Sub>
+             <&'a f64 as Sub<f64>>
+             <&'a i128 as Sub<i128>>
+             <&'a i16 as Sub<i16>>
+             <&'a i32 as Sub<i32>>
            and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -64,6 +76,10 @@ LL |     x - 100
              <&f64 as Sub<&f64>>
              <f64 as Sub<&f64>>
              <f64 as Sub>
+             <&'a f32 as Sub<f32>>
+             <&'a i128 as Sub<i128>>
+             <&'a i16 as Sub<i16>>
+             <&'a i32 as Sub<i32>>
            and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -82,6 +98,10 @@ LL |     x * 100
              <&f32 as Mul<&f32>>
              <f32 as Mul<&f32>>
              <f32 as Mul>
+             <&'a f64 as Mul<f64>>
+             <&'a i128 as Mul<i128>>
+             <&'a i16 as Mul<i16>>
+             <&'a i32 as Mul<i32>>
            and 49 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -100,6 +120,10 @@ LL |     x * 100
              <&f64 as Mul<&f64>>
              <f64 as Mul<&f64>>
              <f64 as Mul>
+             <&'a f32 as Mul<f32>>
+             <&'a i128 as Mul<i128>>
+             <&'a i16 as Mul<i16>>
+             <&'a i32 as Mul<i32>>
            and 49 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -118,6 +142,10 @@ LL |     x / 100
              <&f32 as Div<&f32>>
              <f32 as Div<&f32>>
              <f32 as Div>
+             <&'a f64 as Div<f64>>
+             <&'a i128 as Div<i128>>
+             <&'a i16 as Div<i16>>
+             <&'a i32 as Div<i32>>
            and 54 others
 help: consider using a floating-point literal by writing it with `.0`
    |
@@ -136,6 +164,10 @@ LL |     x / 100
              <&f64 as Div<&f64>>
              <f64 as Div<&f64>>
              <f64 as Div>
+             <&'a f32 as Div<f32>>
+             <&'a i128 as Div<i128>>
+             <&'a i16 as Div<i16>>
+             <&'a i32 as Div<i32>>
            and 54 others
 help: consider using a floating-point literal by writing it with `.0`
    |

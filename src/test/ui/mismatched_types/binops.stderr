@@ -10,6 +10,10 @@ LL |     1 + Some(1);
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>
              <&'a i16 as Add<i16>>
+             <&'a i32 as Add<i32>>
+             <&'a i64 as Add<i64>>
+             <&'a i8 as Add<i8>>
+             <&'a isize as Add<isize>>
            and 48 others
 
 error[E0277]: cannot subtract `Option<{integer}>` from `usize`
@@ -24,6 +28,10 @@ LL |     2 as usize - Some(1);
              <&usize as Sub<&usize>>
              <usize as Sub<&usize>>
              <usize as Sub>
+             <&'a f32 as Sub<f32>>
+             <&'a f64 as Sub<f64>>
+             <&'a i128 as Sub<i128>>
+             <&'a i16 as Sub<i16>>
            and 48 others
 
 error[E0277]: cannot multiply `{integer}` by `()`
@@ -38,6 +46,10 @@ LL |     3 * ();
              <&'a f64 as Mul<f64>>
              <&'a i128 as Mul<i128>>
              <&'a i16 as Mul<i16>>
+             <&'a i32 as Mul<i32>>
+             <&'a i64 as Mul<i64>>
+             <&'a i8 as Mul<i8>>
+             <&'a isize as Mul<isize>>
            and 49 others
 
 error[E0277]: cannot divide `{integer}` by `&str`
@@ -52,6 +64,10 @@ LL |     4 / "";
              <&'a f64 as Div<f64>>
              <&'a i128 as Div<i128>>
              <&'a i16 as Div<i16>>
+             <&'a i32 as Div<i32>>
+             <&'a i64 as Div<i64>>
+             <&'a i8 as Div<i8>>
+             <&'a isize as Div<isize>>
            and 54 others
 
 error[E0277]: can't compare `{integer}` with `String`
@@ -66,6 +82,10 @@ LL |     5 < String::new();
              <f64 as PartialOrd>
              <i128 as PartialOrd>
              <i16 as PartialOrd>
+             <i32 as PartialOrd>
+             <i64 as PartialOrd>
+             <i8 as PartialOrd>
+             <isize as PartialOrd>
            and 6 others
 
 error[E0277]: can't compare `{integer}` with `Result<{integer}, _>`
@@ -80,6 +100,10 @@ LL |     6 == Ok(1);
              <f64 as PartialEq>
              <i128 as PartialEq>
              <i16 as PartialEq>
+             <i32 as PartialEq>
+             <i64 as PartialEq>
+             <i8 as PartialEq>
+             <isize as PartialEq>
            and 6 others
 
 error: aborting due to 6 previous errors

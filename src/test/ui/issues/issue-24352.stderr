@@ -10,6 +10,10 @@ LL |     1.0f64 - 1
              <&f64 as Sub<&f64>>
              <f64 as Sub<&f64>>
              <f64 as Sub>
+             <&'a f32 as Sub<f32>>
+             <&'a i128 as Sub<i128>>
+             <&'a i16 as Sub<i16>>
+             <&'a i32 as Sub<i32>>
            and 48 others
 help: consider using a floating-point literal by writing it with `.0`
    |
