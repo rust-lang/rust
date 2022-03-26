@@ -771,8 +771,8 @@ impl server::Diagnostic for Rustc<'_, '_> {
     ) {
         diag.sub(level.to_internal(), msg, MultiSpan::from_spans(spans), None);
     }
-    fn emit(&mut self, diag: Self::Diagnostic) {
-        self.sess().span_diagnostic.emit_diagnostic(&diag);
+    fn emit(&mut self, mut diag: Self::Diagnostic) {
+        self.sess().span_diagnostic.emit_diagnostic(&mut diag);
     }
 }
 

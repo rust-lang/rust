@@ -1748,7 +1748,7 @@ impl SharedEmitterMain {
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
-                    handler.emit_diagnostic(&d);
+                    handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg);

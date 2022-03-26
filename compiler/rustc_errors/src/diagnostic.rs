@@ -135,7 +135,12 @@ impl Diagnostic {
             | Level::Error { .. }
             | Level::FailureNote => true,
 
-            Level::Warning | Level::Note | Level::Help | Level::Allow | Level::Expect(_) => false,
+            Level::Warning
+            | Level::Note
+            | Level::OnceNote
+            | Level::Help
+            | Level::Allow
+            | Level::Expect(_) => false,
         }
     }
 
@@ -335,8 +340,22 @@ impl Diagnostic {
 
     /// Prints the span with a note above it.
     /// This is like [`Diagnostic::note()`], but it gets its own span.
+    pub fn note_once(&mut self, msg: &str) -> &mut Self {
+        self.sub(Level::OnceNote, msg, MultiSpan::new(), None);
+        self
+    }
+
+    /// Prints the span with a note above it.
+    /// This is like [`Diagnostic::note()`], but it gets its own span.
     pub fn span_note<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
         self.sub(Level::Note, msg, sp.into(), None);
+        self
+    }
+
+    /// Prints the span with a note above it.
+    /// This is like [`Diagnostic::note()`], but it gets its own span.
+    pub fn span_note_once<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {
+        self.sub(Level::OnceNote, msg, sp.into(), None);
         self
     }
 

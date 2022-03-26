@@ -554,7 +554,6 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
                     tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, usage_lint_root);
                 assert_eq!(level, Level::Allow);
                 lint::explain_lint_level_source(
-                    tcx.sess,
                     UNSAFE_OP_IN_UNSAFE_FN,
                     Level::Allow,
                     source,

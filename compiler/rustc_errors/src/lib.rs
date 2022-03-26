@@ -4,6 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
 #![feature(backtrace)]
 #![feature(if_let_guard)]
 #![feature(let_else)]
@@ -919,7 +920,7 @@ impl Handler {
         self.inner.borrow_mut().force_print_diagnostic(db)
     }
 
-    pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) -> Option<ErrorGuaranteed> {
+    pub fn emit_diagnostic(&self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
     }
 
@@ -993,25 +994,25 @@ impl HandlerInner {
         self.taught_diagnostics.insert(code.clone())
     }
 
-    fn force_print_diagnostic(&mut self, db: Diagnostic) {
-        self.emitter.emit_diagnostic(&db);
+    fn force_print_diagnostic(&mut self, mut db: Diagnostic) {
+        self.emitter.emit_diagnostic(&mut db);
     }
 
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
         let mut reported = None;
-        diags.iter().for_each(|diag| {
+        for mut diag in diags {
             if diag.is_error() {
                 reported = Some(ErrorGuaranteed(()));
             }
-            self.emit_diagnostic(diag);
-        });
+            self.emit_diagnostic(&mut diag);
+        }
         reported
     }
 
     // FIXME(eddyb) this should ideally take `diagnostic` by value.
-    fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) -> Option<ErrorGuaranteed> {
+    fn emit_diagnostic(&mut self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         if diagnostic.level == Level::DelayedBug {
             // FIXME(eddyb) this should check for `has_errors` and stop pushing
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
@@ -1070,7 +1071,23 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            self.emitter.emit_diagnostic(diagnostic);
+            debug!(?diagnostic);
+            debug!(?self.emitted_diagnostics);
+            let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                debug!(?sub);
+                if sub.level != Level::OnceNote {
+                    return false;
+                }
+                let mut hasher = StableHasher::new();
+                sub.hash(&mut hasher);
+                let diagnostic_hash = hasher.finish();
+                debug!(?diagnostic_hash);
+                !self.emitted_diagnostics.insert(diagnostic_hash)
+            };
+
+            diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+
+            self.emitter.emit_diagnostic(&diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if diagnostic.level == Warning {
@@ -1221,22 +1238,22 @@ impl HandlerInner {
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp.into());
         diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
-        self.emit_diagnostic(&diagnostic).unwrap()
+        self.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
     fn delay_good_path_bug(&mut self, msg: &str) {
-        let diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if self.flags.report_delayed_bugs {
-            self.emit_diagnostic(&diagnostic);
+            self.emit_diagnostic(&mut diagnostic);
         }
         let backtrace = std::backtrace::Backtrace::force_capture();
         self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
     fn failure(&mut self, msg: &str) {
-        self.emit_diagnostic(&Diagnostic::new(FailureNote, msg));
+        self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
     }
 
     fn fatal(&mut self, msg: &str) -> FatalError {
@@ -1253,11 +1270,11 @@ impl HandlerInner {
         if self.treat_err_as_bug() {
             self.bug(msg);
         }
-        self.emit_diagnostic(&Diagnostic::new(level, msg)).unwrap()
+        self.emit_diagnostic(&mut Diagnostic::new(level, msg)).unwrap()
     }
 
     fn bug(&mut self, msg: &str) -> ! {
-        self.emit_diagnostic(&Diagnostic::new(Bug, msg));
+        self.emit_diagnostic(&mut Diagnostic::new(Bug, msg));
         panic::panic_any(ExplicitBug);
     }
 
@@ -1267,7 +1284,7 @@ impl HandlerInner {
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
-                self.emit_diagnostic(&Diagnostic::new(Bug, explanation));
+                self.emit_diagnostic(&mut Diagnostic::new(Bug, explanation));
                 no_bugs = false;
             }
 
@@ -1283,7 +1300,7 @@ impl HandlerInner {
             }
             bug.level = Level::Bug;
 
-            self.emit_diagnostic(&bug);
+            self.emit_diagnostic(&mut bug);
         }
 
         // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
@@ -1350,6 +1367,8 @@ pub enum Level {
     },
     Warning,
     Note,
+    /// A note that is only emitted once.
+    OnceNote,
     Help,
     FailureNote,
     Allow,
@@ -1372,7 +1391,7 @@ impl Level {
             Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
-            Note => {
+            Note | OnceNote => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
             Help => {
@@ -1389,7 +1408,7 @@ impl Level {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error { .. } => "error",
             Warning => "warning",
-            Note => "note",
+            Note | OnceNote => "note",
             Help => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
