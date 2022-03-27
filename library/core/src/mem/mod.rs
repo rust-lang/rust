@@ -705,6 +705,58 @@ pub unsafe fn uninitialized<T>() -> T {
     }
 }
 
+/// Create a fresh instance of the inhabited ZST type `T`.
+///
+/// Prefer this to [`zeroed`] or [`uninitialized`] or [`transmute_copy`]
+/// in places where you know that `T` is zero-sized, but don't have a bound
+/// (such as [`Default`]) that would allow you to instantiate it using safe code.
+///
+/// If you're not sure whether `T` is an inhabited ZST, then you should be
+/// using [`MaybeUninit`], not this function.
+///
+/// # Safety
+///
+/// - `size_of::<T>()` must be zero.
+///
+/// - `T` must be *inhabited*.  (It must not be a zero-variant `enum`, for example.)
+///
+/// - You must use the value only in ways which do not violate any *safety*
+///   invariants of the type.
+///
+/// While it's easy to create a *valid* instance of an inhabited ZST, since having
+/// no bits in its representation means there's only one possible value, that
+/// doesn't mean that it's always *sound* to do so.
+///
+/// For example, a library with a global semaphore could give out ZST tokens
+/// on `acquire`, and by them being `!Default`+`!Clone` could consume them
+/// in `release` to ensure that it's called at most once per `acquire`.
+/// Or a library could use a `!Default`+`!Send` token to ensure it's used only
+/// from the thread on which it was initialized.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(mem_conjure_zst)]
+/// use std::mem::conjure_zst;
+///
+/// assert_eq!(unsafe { conjure_zst::<()>() }, ());
+/// assert_eq!(unsafe { conjure_zst::<[i32; 0]>() }, []);
+/// ```
+#[inline(always)]
+#[must_use]
+#[unstable(feature = "mem_conjure_zst", issue = "95383")]
+#[track_caller]
+pub const unsafe fn conjure_zst<T>() -> T {
+    // This is not a guarantee exposed to clients, but it'll easily optimize out
+    // in the sound cases, so we might as well check because we can.
+    assert!(size_of::<T>() == 0); // FIXME: Use assert_eq! once that's allowed in const
+
+    // SAFETY: because the caller must guarantee that it's inhabited and zero-sized,
+    // there's nothing in the representation that needs to be set.
+    // `assume_init` calls `assert_inhabited`, so we don't need to here.
+    unsafe { MaybeUninit::uninit().assume_init() }
+}
+
 /// Swaps the values at two mutable locations, without deinitializing either one.
 ///
 /// * If you want to swap with a default or dummy value, see [`take`].
