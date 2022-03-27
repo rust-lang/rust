@@ -336,7 +336,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let compatible_variants: Vec<String> = expected_adt
                 .variants()
                 .iter()
-                .filter(|variant| variant.fields.len() == 1)
+                .filter(|variant| {
+                    variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                })
                 .filter_map(|variant| {
                     let sole_field = &variant.fields[0];
                     let sole_field_ty = sole_field.ty(self.tcx, substs);

@@ -190,6 +190,14 @@ help: try wrapping the expression in `Some`
 LL |     let _ = Foo { bar: Some(bar) };
    |                   ++++++++++   +
 
-error: aborting due to 11 previous errors
+error[E0308]: mismatched types
+  --> $DIR/compatible-variants.rs:79:16
+   |
+LL |     let a: A = B::Fst;
+   |            -   ^^^^^^ expected enum `A`, found enum `B`
+   |            |
+   |            expected due to this
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
