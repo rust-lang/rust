@@ -1183,6 +1183,19 @@ impl DefWithBody {
                         .expect("break outside of loop in synthetic syntax");
                     acc.push(BreakOutsideOfLoop { expr }.into())
                 }
+                hir_ty::InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
+                    match source_map.expr_syntax(*call_expr) {
+                        Ok(source_ptr) => acc.push(
+                            MismatchedArgCount {
+                                call_expr: source_ptr,
+                                expected: *expected,
+                                found: *found,
+                            }
+                            .into(),
+                        ),
+                        Err(SyntheticSyntax) => (),
+                    }
+                }
             }
         }
         for (expr, mismatch) in infer.expr_type_mismatches() {
@@ -1295,14 +1308,6 @@ impl DefWithBody {
                             }
                             .into(),
                         );
-                    }
-                }
-                BodyValidationDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                    match source_map.expr_syntax(call_expr) {
-                        Ok(source_ptr) => acc.push(
-                            MismatchedArgCount { call_expr: source_ptr, expected, found }.into(),
-                        ),
-                        Err(SyntheticSyntax) => (),
                     }
                 }
                 BodyValidationDiagnostic::MissingMatchArms { match_expr } => {

@@ -17,7 +17,7 @@ use crate::{
         deconstruct_pat::DeconstructedPat,
         usefulness::{compute_match_usefulness, MatchCheckCtx},
     },
-    InferenceResult, Interner, TyExt,
+    InferenceResult, TyExt,
 };
 
 pub(crate) use hir_def::{
@@ -34,11 +34,6 @@ pub enum BodyValidationDiagnostic {
     },
     ReplaceFilterMapNextWithFindMap {
         method_call_expr: ExprId,
-    },
-    MismatchedArgCount {
-        call_expr: ExprId,
-        expected: usize,
-        found: usize,
     },
     MissingMatchArms {
         match_expr: ExprId,
@@ -119,18 +114,9 @@ impl ExprValidator {
             return;
         }
 
-        let is_method_call = matches!(expr, Expr::MethodCall { .. });
-        let (sig, mut arg_count) = match expr {
-            Expr::Call { callee, args } => {
-                let callee = &self.infer.type_of_expr[*callee];
-                let sig = match callee.callable_sig(db) {
-                    Some(sig) => sig,
-                    None => return,
-                };
-                (sig, args.len())
-            }
-            Expr::MethodCall { receiver, args, .. } => {
-                let (callee, subst) = match self.infer.method_resolution(call_id) {
+        match expr {
+            Expr::MethodCall { receiver, .. } => {
+                let (callee, _) = match self.infer.method_resolution(call_id) {
                     Some(it) => it,
                     None => return,
                 };
@@ -148,53 +134,9 @@ impl ExprValidator {
                         },
                     );
                 }
-                let receiver = &self.infer.type_of_expr[*receiver];
-                if receiver.strip_references().is_unknown() {
-                    // if the receiver is of unknown type, it's very likely we
-                    // don't know enough to correctly resolve the method call.
-                    // This is kind of a band-aid for #6975.
-                    return;
-                }
-
-                let sig = db.callable_item_signature(callee.into()).substitute(Interner, &subst);
-
-                (sig, args.len() + 1)
             }
             _ => return,
         };
-
-        if sig.is_varargs {
-            return;
-        }
-
-        if sig.legacy_const_generics_indices.is_empty() {
-            let mut param_count = sig.params().len();
-
-            if arg_count != param_count {
-                if is_method_call {
-                    param_count -= 1;
-                    arg_count -= 1;
-                }
-                self.diagnostics.push(BodyValidationDiagnostic::MismatchedArgCount {
-                    call_expr: call_id,
-                    expected: param_count,
-                    found: arg_count,
-                });
-            }
-        } else {
-            // With `#[rustc_legacy_const_generics]` there are basically two parameter counts that
-            // are allowed.
-            let count_non_legacy = sig.params().len();
-            let count_legacy = sig.params().len() + sig.legacy_const_generics_indices.len();
-            if arg_count != count_non_legacy && arg_count != count_legacy {
-                self.diagnostics.push(BodyValidationDiagnostic::MismatchedArgCount {
-                    call_expr: call_id,
-                    // Since most users will use the legacy way to call them, report against that.
-                    expected: count_legacy,
-                    found: arg_count,
-                });
-            }
-        }
     }
 
     fn validate_match(

@@ -143,6 +143,7 @@ pub(crate) type InferResult<T> = Result<InferOk<T>, TypeError>;
 pub enum InferenceDiagnostic {
     NoSuchField { expr: ExprId },
     BreakOutsideOfLoop { expr: ExprId },
+    MismatchedArgCount { call_expr: ExprId, expected: usize, found: usize },
 }
 
 /// A mismatch between an expected and an inferred type.
