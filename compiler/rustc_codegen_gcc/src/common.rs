@@ -1,7 +1,5 @@
-use std::convert::TryFrom;
-
 use gccjit::LValue;
-use gccjit::{Block, CType, RValue, Type, ToRValue};
+use gccjit::{RValue, Type, ToRValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BaseTypeMethods,
@@ -34,27 +32,6 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         global.global_set_initializer_rvalue(string);
         global
         // TODO(antoyo): set linkage.
-    }
-
-    pub fn inttoptr(&self, block: Block<'gcc>, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        let func = block.get_function();
-        let local = func.new_local(None, value.get_type(), "intLocal");
-        block.add_assignment(None, local, value);
-        let value_address = local.get_address(None);
-
-        let ptr = self.context.new_cast(None, value_address, dest_ty.make_pointer());
-        ptr.dereference(None).to_rvalue()
-    }
-
-    pub fn ptrtoint(&self, block: Block<'gcc>, value: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): when libgccjit allow casting from pointer to int, remove this.
-        let func = block.get_function();
-        let local = func.new_local(None, value.get_type(), "ptrLocal");
-        block.add_assignment(None, local, value);
-        let ptr_address = local.get_address(None);
-
-        let ptr = self.context.new_cast(None, ptr_address, dest_ty.make_pointer());
-        ptr.dereference(None).to_rvalue()
     }
 }
 
@@ -99,29 +76,15 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn const_int(&self, typ: Type<'gcc>, int: i64) -> RValue<'gcc> {
-        self.context.new_rvalue_from_long(typ, i64::try_from(int).expect("i64::try_from"))
+        self.gcc_int(typ, int)
     }
 
     fn const_uint(&self, typ: Type<'gcc>, int: u64) -> RValue<'gcc> {
-        self.context.new_rvalue_from_long(typ, u64::try_from(int).expect("u64::try_from") as i64)
+        self.gcc_uint(typ, int)
     }
 
     fn const_uint_big(&self, typ: Type<'gcc>, num: u128) -> RValue<'gcc> {
-        if num >> 64 != 0 {
-            // FIXME(antoyo): use a new function new_rvalue_from_unsigned_long()?
-            let low = self.context.new_rvalue_from_long(self.u64_type, num as u64 as i64);
-            let high = self.context.new_rvalue_from_long(typ, (num >> 64) as u64 as i64);
-
-            let sixty_four = self.context.new_rvalue_from_long(typ, 64);
-            (high << sixty_four) | self.context.new_cast(None, low, typ)
-        }
-        else if typ.is_i128(self) {
-            let num = self.context.new_rvalue_from_long(self.u64_type, num as u64 as i64);
-            self.context.new_cast(None, num, typ)
-        }
-        else {
-            self.context.new_rvalue_from_long(typ, num as u64 as i64)
-        }
+        self.gcc_uint_big(typ, num)
     }
 
     fn const_bool(&self, val: bool) -> RValue<'gcc> {
@@ -210,11 +173,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
 
                 let value = self.const_uint_big(self.type_ix(bitsize), data);
-                if layout.value == Pointer {
-                    self.inttoptr(self.current_block.borrow().expect("block"), value, ty)
-                } else {
-                    self.const_bitcast(value, ty)
-                }
+                // TODO(bjorn3): assert size is correct
+                self.const_bitcast(value, ty)
             }
             Scalar::Ptr(ptr, _size) => {
                 let (alloc_id, offset) = ptr.into_parts();
@@ -418,11 +378,11 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
     }
 
     fn is_i128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_c_type(CType::Int128t)
+        self.unqualified() == cx.i128_type.unqualified()
     }
 
     fn is_u128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_c_type(CType::UInt128t)
+        self.unqualified() == cx.u128_type.unqualified()
     }
 
     fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
