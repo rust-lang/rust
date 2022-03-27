@@ -3,3 +3,4 @@ target
 tex/*/out
 *.dot
 *.rs.bk
+.vscode
