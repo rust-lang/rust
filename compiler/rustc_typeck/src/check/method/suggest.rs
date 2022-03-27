@@ -1270,30 +1270,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         None
     }
 
+    fn get_trait_ref_self_type(&self, trait_pred: ty::TraitPredicate<'tcx>) -> Ty<'tcx> {
+        fn get_self_type<'a>(tcx: TyCtxt<'_>, ty: Ty<'a>) -> Ty<'a> {
+            match ty.kind() {
+                ty::Adt(def, subs) => {
+                    if tcx.is_diagnostic_item(sym::Vec, def.did()) {
+                        return get_self_type(tcx, subs.type_at(0));
+                    }
+                    ty
+                }
+                ty::Array(ty, _) => {
+                    return get_self_type(tcx, *ty);
+                }
+                _ => ty,
+            }
+        }
+
+        if Some(trait_pred.trait_ref.def_id) == self.tcx.lang_items().eq_trait() {
+            get_self_type(self.tcx, trait_pred.self_ty())
+        } else {
+            trait_pred.self_ty()
+        }
+    }
+
     crate fn note_unmet_impls_on_type(
         &self,
         err: &mut Diagnostic,
         errors: Vec<FulfillmentError<'tcx>>,
     ) {
-        let all_local_types_needing_impls =
-            errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(pred) => match pred.self_ty().kind() {
-                    ty::Adt(def, _) => def.did().is_local(),
-                    _ => false,
-                },
-                _ => false,
-            });
-        let mut preds: Vec<_> = errors
+        let mut preds_and_self_types: Vec<_> = errors
             .iter()
             .filter_map(|e| match e.obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(pred) => Some(pred),
+                ty::PredicateKind::Trait(pred) => Some((pred, self.get_trait_ref_self_type(pred))),
                 _ => None,
             })
             .collect();
-        preds.sort_by_key(|pred| (pred.def_id(), pred.self_ty()));
-        let def_ids = preds
+        preds_and_self_types.sort_by_key(|(pred, self_ty)| (pred.def_id(), *self_ty));
+        let def_ids = preds_and_self_types
             .iter()
-            .filter_map(|pred| match pred.self_ty().kind() {
+            .filter_map(|(_, ty)| match ty.kind() {
                 ty::Adt(def, _) => Some(def.did()),
                 _ => None,
             })
@@ -1308,8 +1323,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect::<Vec<_>>()
             .into();
 
-        for pred in &preds {
-            match pred.self_ty().kind() {
+        for (pred, ty) in &preds_and_self_types {
+            match ty.kind() {
                 ty::Adt(def, _) => {
                     spans.push_span_label(
                         sm.guess_head_span(self.tcx.def_span(def.did())),
@@ -1320,12 +1335,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if all_local_types_needing_impls && spans.primary_span().is_some() {
-            let msg = if preds.len() == 1 {
+        if def_ids.iter().all(|did| did.is_local()) && spans.primary_span().is_some() {
+            let msg = if preds_and_self_types.len() == 1 {
                 format!(
                     "an implementation of `{}` might be missing for `{}`",
-                    preds[0].trait_ref.print_only_trait_path(),
-                    preds[0].self_ty()
+                    preds_and_self_types[0].0.trait_ref.print_only_trait_path(),
+                    preds_and_self_types[0].1
                 )
             } else {
                 format!(
@@ -1333,7 +1348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                      operation to be valid",
                     pluralize!(def_ids.len()),
                     if def_ids.len() == 1 { "its" } else { "their" },
-                    pluralize!(preds.len()),
+                    pluralize!(preds_and_self_types.len()),
                 )
             };
             err.span_note(spans, &msg);
@@ -1359,7 +1374,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut traits = Vec::<Span>::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Trait(trait_pred) = pred.kind().skip_binder() else { continue };
-            let adt = match trait_pred.self_ty().ty_adt_def() {
+            let self_ty = self.get_trait_ref_self_type(trait_pred);
+            let adt = match self_ty.ty_adt_def() {
                 Some(adt) if adt.did().is_local() => adt,
                 _ => continue,
             };
@@ -1377,7 +1393,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => false,
                 };
                 if can_derive {
-                    let self_name = trait_pred.self_ty().to_string();
+                    let self_name = self_ty.to_string();
                     let self_span = self.tcx.def_span(adt.did());
                     if let Some(poly_trait_ref) = pred.to_opt_poly_trait_pred() {
                         for super_trait in supertraits(self.tcx, poly_trait_ref.to_poly_trait_ref())

@@ -1,0 +1,39 @@
+error[E0369]: binary operation `==` cannot be applied to type `[X; 3]`
+  --> $DIR/binop-on-array-and-vector.rs:4:9
+   |
+LL |     foo == [X, X, X];
+   |     --- ^^ --------- [X; 3]
+   |     |
+   |     [X; 3]
+   |
+note: an implementation of `PartialEq<_>` might be missing for `X`
+  --> $DIR/binop-on-array-and-vector.rs:2:5
+   |
+LL |     struct X;
+   |     ^^^^^^^^^ must implement `PartialEq<_>`
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL |     #[derive(PartialEq)]
+   |
+
+error[E0369]: binary operation `==` cannot be applied to type `Vec<X>`
+  --> $DIR/binop-on-array-and-vector.rs:7:9
+   |
+LL |     bar == [X, X, X];
+   |     --- ^^ --------- [X; 3]
+   |     |
+   |     Vec<X>
+   |
+note: an implementation of `PartialEq<_>` might be missing for `X`
+  --> $DIR/binop-on-array-and-vector.rs:2:5
+   |
+LL |     struct X;
+   |     ^^^^^^^^^ must implement `PartialEq<_>`
+help: consider annotating `X` with `#[derive(PartialEq)]`
+   |
+LL |     #[derive(PartialEq)]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0369`.
