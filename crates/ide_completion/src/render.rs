@@ -1468,6 +1468,43 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
     }
 
     #[test]
+    fn qualified_path_ref() {
+        // disabled right now because it doesn't render correctly, #8058
+        check_kinds(
+            r#"
+struct S;
+
+struct T;
+impl T {
+    fn foo() -> S {}
+}
+
+fn bar(s: &S) {}
+
+fn main() {
+    bar(T::$0);
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Function)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "foo()",
+                        source_range: 95..95,
+                        delete: 95..95,
+                        insert: "foo()$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "fn() -> S",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn generic_enum() {
         check_relevance(
             r#"
