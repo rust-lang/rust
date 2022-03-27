@@ -105,6 +105,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS),
     LintId::of(tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
     LintId::of(to_digit_is_some::TO_DIGIT_IS_SOME),
+    LintId::of(unit_like_struct_brackets::UNIT_LIKE_STRUCT_BRACKETS),
     LintId::of(unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
     LintId::of(unused_unit::UNUSED_UNIT),
     LintId::of(upper_case_acronyms::UPPER_CASE_ACRONYMS),

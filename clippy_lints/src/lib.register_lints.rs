@@ -512,6 +512,7 @@ store.register_lints(&[
     unicode::UNICODE_NOT_NFC,
     uninit_vec::UNINIT_VEC,
     unit_hash::UNIT_HASH,
+    unit_like_struct_brackets::UNIT_LIKE_STRUCT_BRACKETS,
     unit_return_expecting_ord::UNIT_RETURN_EXPECTING_ORD,
     unit_types::LET_UNIT_VALUE,
     unit_types::UNIT_ARG,

@@ -380,6 +380,7 @@ mod undropped_manually_drops;
 mod unicode;
 mod uninit_vec;
 mod unit_hash;
+mod unit_like_struct_brackets;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
@@ -869,6 +870,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
+    store.register_early_pass(|| Box::new(unit_like_struct_brackets::UnitLikeStructBrackets));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
