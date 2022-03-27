@@ -30,16 +30,6 @@ LL |     |x| String::from("x".as_ref());
    |      ^ consider giving this closure parameter a type
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:12:9
-   |
-LL |     |x| String::from("x".as_ref());
-   |         ^^^^^^^^^^^^ cannot infer type for reference `&_`
-   |
-   = note: multiple `impl`s satisfying `String: From<&_>` found in the `alloc` crate:
-           - impl<> From<&String> for String;
-           - impl<> From<&str> for String;
-
-error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:26
    |
 LL |     |x| String::from("x".as_ref());
@@ -55,7 +45,7 @@ LL |     |x| String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed for `&T`
-  --> $DIR/issue-72690.rs:18:17
+  --> $DIR/issue-72690.rs:17:17
    |
 LL |     let _ = "x".as_ref();
    |         -       ^^^^^^ cannot infer type for type parameter `T` declared on the trait `AsRef`
@@ -69,7 +59,7 @@ LL |     let _ = "x".as_ref();
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:22:5
+  --> $DIR/issue-72690.rs:21:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -79,7 +69,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:22:22
+  --> $DIR/issue-72690.rs:21:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -94,7 +84,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:29:5
+  --> $DIR/issue-72690.rs:28:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -104,7 +94,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:29:22
+  --> $DIR/issue-72690.rs:28:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -119,7 +109,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:38:5
+  --> $DIR/issue-72690.rs:37:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -129,7 +119,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:38:22
+  --> $DIR/issue-72690.rs:37:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -144,7 +134,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:47:5
+  --> $DIR/issue-72690.rs:46:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -154,7 +144,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:47:22
+  --> $DIR/issue-72690.rs:46:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -169,7 +159,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:54:5
+  --> $DIR/issue-72690.rs:53:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -179,7 +169,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:54:22
+  --> $DIR/issue-72690.rs:53:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -194,7 +184,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:63:5
+  --> $DIR/issue-72690.rs:62:5
    |
 LL |     String::from("x".as_ref());
    |     ^^^^^^^^^^^^ cannot infer type for reference `&_`
@@ -204,7 +194,7 @@ LL |     String::from("x".as_ref());
            - impl<> From<&str> for String;
 
 error[E0283]: type annotations needed
-  --> $DIR/issue-72690.rs:63:22
+  --> $DIR/issue-72690.rs:62:22
    |
 LL |     String::from("x".as_ref());
    |                  ----^^^^^^--
@@ -218,7 +208,7 @@ LL |     String::from("x".as_ref());
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 
-error: aborting due to 18 previous errors
+error: aborting due to 17 previous errors
 
 Some errors have detailed explanations: E0282, E0283.
 For more information about an error, try `rustc --explain E0282`.
