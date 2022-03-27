@@ -819,6 +819,11 @@ impl WrappingRange {
         debug_assert!(self.start <= max_value && self.end <= max_value);
         self.start == (self.end.wrapping_add(1) & max_value)
     }
+
+    #[inline]
+    pub fn wraps(&self) -> bool {
+        return self.start > self.end;
+    }
 }
 
 impl fmt::Debug for WrappingRange {

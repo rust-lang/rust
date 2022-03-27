@@ -9,8 +9,8 @@ use rustc_middle::mir;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::abi::{Abi, Align, FieldsShape, Int, TagEncoding};
-use rustc_target::abi::{VariantIdx, Variants};
+use rustc_target::abi::{Abi, Align, FieldsShape, Int, Integer, TagEncoding};
+use rustc_target::abi::{Primitive, Scalar, VariantIdx, Variants};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
@@ -265,9 +265,46 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
                 )
             }
+            // Handle other non-patological cases (= without niche wraparound, and with
+            // niche_variants.end fitting in the tag type).
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start }
+                if is_niche_after_nonniche(tag_scalar, niche_start, niche_variants, bx.cx()) =>
+            {
+                let is_untagged = bx.icmp(
+                    IntPredicate::IntULT,
+                    tag,
+                    bx.cx().const_uint_big(niche_llty, niche_start),
+                );
+
+                let first_niche_variant = niche_variants.start().as_u32() as u128;
+                let niche_discr = match first_niche_variant.cmp(&niche_start) {
+                    std::cmp::Ordering::Less => {
+                        let diff = niche_start - first_niche_variant;
+                        let diff = bx.cx().const_uint_big(niche_llty, diff);
+                        bx.unchecked_usub(tag, diff)
+                    }
+                    std::cmp::Ordering::Equal => tag,
+                    std::cmp::Ordering::Greater => {
+                        let diff = first_niche_variant as u64 - niche_start as u64;
+                        let diff = bx.cx().const_uint(niche_llty, diff);
+                        bx.unchecked_uadd(tag, diff)
+                    }
+                };
+
+                let niche_discr = bx.sub(tag, diff);
+                let discr = bx.select(
+                    is_untagged,
+                    bx.cx().const_uint(niche_llty, untagged_variant.as_u32() as u64),
+                    niche_discr,
+                );
+
+                bx.intcast(discr, cast_to, false)
+            }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
-                // Assumption: here, llty should not be pointer.
-                // FIXME(eddyb) check the actual primitive type here.
+                if matches!(tag_scalar.primitive(), Primitive::Pointer) {
+                    // arith and non-null constants won't work on pointers
+                    bug!("pointer with more than one niche variant")
+                }
 
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
@@ -551,4 +588,34 @@ fn round_up_const_value_to_alignment<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let neg_value = bx.neg(value);
     let offset = bx.and(neg_value, align_minus_1);
     bx.add(value, offset)
+}
+
+/// Are all niche variants encoded in tag greater than the actual untagged tag values (so that we
+/// can avoid the "relative discriminant" and we can simply `< niche_start` to ask whether it's
+/// untagged or not). Also check if last _variant_ value fits in the _tag_'s type.
+//  Perhaps we can store this as flag in TagEncoding::Niche instead of recomputing?
+fn is_niche_after_nonniche(
+    tag: Scalar,
+    niche_start: u128,
+    niche_variants: &std::ops::RangeInclusive<VariantIdx>,
+    cx: &impl rustc_target::abi::HasDataLayout,
+) -> bool {
+    let tag_range = tag.valid_range(cx);
+    if tag_range.wraps() {
+        return false;
+    }
+    let n_variants = niche_variants.end().as_u32() - niche_variants.start().as_u32();
+    match tag.primitive() {
+        Int(int, _) => {
+            if niche_start.checked_add(n_variants as u128) != Some(tag_range.end) {
+                return false;
+            }
+            match int {
+                Integer::I8 if niche_variants.end().as_u32() > u8::MAX as u32 => false,
+                Integer::I16 if niche_variants.end().as_u32() > u16::MAX as u32 => false,
+                _ => true,
+            }
+        }
+        _ => false,
+    }
 }
