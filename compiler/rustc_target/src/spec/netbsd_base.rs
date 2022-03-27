@@ -1,11 +1,13 @@
 use crate::spec::{RelroLevel, TargetOptions};
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "netbsd".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".into()],
+        families: cvs!["unix"],
         no_default_libraries: false,
         has_rpath: true,
         position_independent_executables: true,

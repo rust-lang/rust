@@ -1,5 +1,5 @@
 use super::crt_objects::CrtObjectsFallback;
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
+use super::{cvs, LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel};
 use std::collections::BTreeMap;
 
 pub fn options() -> TargetOptions {
@@ -61,7 +61,7 @@ pub fn options() -> TargetOptions {
 
     TargetOptions {
         is_like_wasm: true,
-        families: vec!["wasm".into()],
+        families: cvs!["wasm"],
 
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but

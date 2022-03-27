@@ -1,6 +1,8 @@
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, RelocModel};
 use crate::spec::{Target, TargetOptions};
 
+use super::cvs;
+
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
 
@@ -27,7 +29,7 @@ pub fn target() -> Target {
             features: "+single-float".into(),
 
             // PSP does not support trap-on-condition instructions.
-            llvm_args: vec!["-mno-check-zero-division".into()],
+            llvm_args: cvs!["-mno-check-zero-division"],
             pre_link_args,
             link_script: Some(LINKER_SCRIPT.into()),
             ..Default::default()

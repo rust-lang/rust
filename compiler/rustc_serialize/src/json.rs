@@ -2247,6 +2247,15 @@ impl<A: ToJson> ToJson for Vec<A> {
     }
 }
 
+impl<'a, A: ToJson> ToJson for Cow<'a, [A]>
+where
+    [A]: ToOwned,
+{
+    fn to_json(&self) -> Json {
+        Json::Array(self.iter().map(|elt| elt.to_json()).collect())
+    }
+}
+
 impl<T: ToString, A: ToJson> ToJson for BTreeMap<T, A> {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();

@@ -9,7 +9,7 @@ pub fn target() -> Target {
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::THREAD;
 
     base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-arch".into(), "arm64".into()]);
-    base.link_env_remove.extend(super::apple_base::macos_link_env_remove());
+    base.link_env_remove.to_mut().extend(super::apple_base::macos_link_env_remove());
 
     // Clang automatically chooses a more specific target based on
     // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work

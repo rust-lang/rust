@@ -2,6 +2,8 @@ use std::{borrow::Cow, env};
 
 use crate::spec::{FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
 
+use super::cvs;
+
 pub fn opts(os: &'static str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
     // either the linker will complain if it is used or the binary will end up
@@ -26,7 +28,7 @@ pub fn opts(os: &'static str) -> TargetOptions {
         dynamic_linking: true,
         linker_is_gnu: false,
         executables: true,
-        families: vec!["unix".into()],
+        families: cvs!["unix"],
         is_like_osx: true,
         dwarf_version: Some(2),
         frame_pointer: FramePointer::Always,
@@ -51,7 +53,7 @@ pub fn opts(os: &'static str) -> TargetOptions {
         // this environment variable too in recent versions.
         //
         // For some more info see the commentary on #47086
-        link_env: vec![("ZERO_AR_DATE".into(), "1".into())],
+        link_env: Cow::Borrowed(&[(Cow::Borrowed("ZERO_AR_DATE"), Cow::Borrowed("1"))]),
 
         ..Default::default()
     }

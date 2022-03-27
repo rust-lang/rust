@@ -1,6 +1,8 @@
 use crate::spec::{FramePointer, LinkArgs, LinkerFlavor, TargetOptions};
 use std::default::Default;
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     let mut late_link_args = LinkArgs::new();
     late_link_args.insert(
@@ -31,7 +33,7 @@ pub fn opts() -> TargetOptions {
         dynamic_linking: true,
         executables: true,
         has_rpath: true,
-        families: vec!["unix".into()],
+        families: cvs!["unix"],
         is_like_solaris: true,
         linker_is_gnu: false,
         limit_rdylib_exports: false, // Linker doesn't support this

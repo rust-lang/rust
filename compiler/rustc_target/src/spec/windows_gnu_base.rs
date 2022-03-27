@@ -1,6 +1,8 @@
 use crate::spec::crt_objects::{self, CrtObjectsFallback};
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(
@@ -71,7 +73,7 @@ pub fn opts() -> TargetOptions {
         dll_prefix: "".into(),
         dll_suffix: ".dll".into(),
         exe_suffix: ".exe".into(),
-        families: vec!["windows".into()],
+        families: cvs!["windows"],
         is_like_windows: true,
         allows_weak_linkage: false,
         pre_link_args,

@@ -1,5 +1,7 @@
 use crate::spec::TargetOptions;
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     let base = super::msvc_base::opts();
 
@@ -13,7 +15,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         staticlib_prefix: "".into(),
         staticlib_suffix: ".lib".into(),
-        families: vec!["windows".into()],
+        families: cvs!["windows"],
         crt_static_allows_dylibs: true,
         crt_static_respected: true,
         requires_uwtable: true,

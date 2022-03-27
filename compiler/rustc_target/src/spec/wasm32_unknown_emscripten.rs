@@ -1,4 +1,4 @@
-use super::wasm_base;
+use super::{cvs, wasm_base};
 use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -37,7 +37,7 @@ pub fn target() -> Target {
         is_like_emscripten: true,
         panic_strategy: PanicStrategy::Unwind,
         post_link_args,
-        families: vec!["unix".into(), "wasm".into()],
+        families: cvs!["unix", "wasm"],
         ..options
     };
     Target {

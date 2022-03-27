@@ -1,3 +1,4 @@
+use super::cvs;
 use crate::spec::{PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -15,7 +16,7 @@ pub fn target() -> Target {
             // workaround this LLVM generates assembly files which then we feed
             // to gcc to get object files. For this reason we have a hard
             // dependency on this specific gcc.
-            asm_args: vec!["-mcpu=msp430".into()],
+            asm_args: cvs!["-mcpu=msp430"],
             linker: Some("msp430-elf-gcc".into()),
             linker_is_gnu: false,
 

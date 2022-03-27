@@ -674,10 +674,10 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
     linker::disable_localization(&mut cmd);
 
-    for &(ref k, ref v) in &sess.target.link_env {
+    for &(ref k, ref v) in sess.target.link_env.iter() {
         cmd.env(k.as_ref(), v.as_ref());
     }
-    for k in &sess.target.link_env_remove {
+    for k in sess.target.link_env_remove.iter() {
         cmd.env_remove(k.as_ref());
     }
 

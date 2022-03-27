@@ -1,6 +1,8 @@
 use crate::spec::{LinkerFlavor, PanicStrategy, RelocModel};
 use crate::spec::{Target, TargetOptions};
 
+use super::cvs;
+
 pub fn target() -> Target {
     Target {
         data_layout: "e-m:e-p:32:32-i64:64-n32-S128".into(),
@@ -9,7 +11,7 @@ pub fn target() -> Target {
         arch: "riscv32".into(),
 
         options: TargetOptions {
-            families: vec!["unix".into()],
+            families: cvs!["unix"],
             os: "espidf".into(),
             env: "newlib".into(),
             vendor: "espressif".into(),

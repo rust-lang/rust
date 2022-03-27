@@ -1,5 +1,7 @@
 use crate::spec::{crt_objects, LinkArgs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions};
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(
@@ -25,7 +27,7 @@ pub fn opts() -> TargetOptions {
         linker: Some("rust-lld".into()),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".into()],
+        families: cvs!["unix"],
         is_like_fuchsia: true,
         pre_link_args,
         pre_link_objects: crt_objects::new(&[

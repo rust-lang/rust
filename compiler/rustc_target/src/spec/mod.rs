@@ -1027,6 +1027,25 @@ supported_targets! {
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 }
 
+/// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
+// FIXME(Urgau): Figure out why the obvious form `["".into()].into()` doesn't work.
+macro_rules! cvs {
+    () => {
+        ::std::borrow::Cow::Borrowed(&[])
+    };
+    ($($x:expr),+ $(,)?) => {
+        {
+            ::std::borrow::Cow::Borrowed(&[
+                $(
+                    ::std::borrow::Cow::Borrowed($x),
+                )*
+            ])
+        }
+    };
+}
+
+pub(crate) use cvs;
+
 /// Warnings encountered when parsing the target `json`.
 ///
 /// Includes fields that weren't recognized and fields that don't have the expected type.
@@ -1160,12 +1179,12 @@ pub struct TargetOptions {
     pub link_script: Option<Cow<'static, str>>,
 
     /// Environment variables to be set for the linker invocation.
-    pub link_env: Vec<(Cow<'static, str>, Cow<'static, str>)>,
+    pub link_env: Cow<'static, [(Cow<'static, str>, Cow<'static, str>)]>,
     /// Environment variables to be removed for the linker invocation.
-    pub link_env_remove: Vec<Cow<'static, str>>,
+    pub link_env_remove: Cow<'static, [Cow<'static, str>]>,
 
     /// Extra arguments to pass to the external assembler (when used)
-    pub asm_args: Vec<Cow<'static, str>>,
+    pub asm_args: Cow<'static, [Cow<'static, str>]>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
@@ -1211,7 +1230,7 @@ pub struct TargetOptions {
     /// Common options are: "unix", "windows". Defaults to no families.
     ///
     /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
-    pub families: Vec<Cow<'static, str>>,
+    pub families: Cow<'static, [Cow<'static, str>]>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -1371,7 +1390,7 @@ pub struct TargetOptions {
 
     /// If set, have the linker export exactly these symbols, instead of using
     /// the usual logic to figure this out from the crate itself.
-    pub override_export_symbols: Option<Vec<Cow<'static, str>>>,
+    pub override_export_symbols: Option<Cow<'static, [Cow<'static, str>]>>,
 
     /// Determines how or whether the MergeFunctions LLVM pass should run for
     /// this target. Either "disabled", "trampolines", or "aliases".
@@ -1391,7 +1410,7 @@ pub struct TargetOptions {
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
-    pub llvm_args: Vec<Cow<'static, str>>,
+    pub llvm_args: Cow<'static, [Cow<'static, str>]>,
 
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
@@ -1449,7 +1468,7 @@ impl Default for TargetOptions {
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             link_script: None,
-            asm_args: Vec::new(),
+            asm_args: Cow::Borrowed(&[]),
             cpu: "generic".into(),
             features: Cow::from(""),
             dynamic_linking: false,
@@ -1466,7 +1485,7 @@ impl Default for TargetOptions {
             exe_suffix: Cow::from(""),
             staticlib_prefix: "lib".into(),
             staticlib_suffix: ".a".into(),
-            families: Vec::new(),
+            families: cvs![],
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
@@ -1492,8 +1511,8 @@ impl Default for TargetOptions {
             late_link_args: LinkArgs::new(),
             late_link_args_dynamic: LinkArgs::new(),
             late_link_args_static: LinkArgs::new(),
-            link_env: Vec::new(),
-            link_env_remove: Vec::new(),
+            link_env: Cow::Borrowed(&[]),
+            link_env_remove: Cow::Borrowed(&[]),
             archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
@@ -1526,7 +1545,7 @@ impl Default for TargetOptions {
             mcount: "mcount".into(),
             llvm_abiname: "".into(),
             relax_elf_relocations: false,
-            llvm_args: vec![],
+            llvm_args: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
@@ -1978,7 +1997,7 @@ impl Target {
                                 if p.len() == 2 {
                                     let k = p[0].to_string();
                                     let v = p[1].to_string();
-                                    base.$key_name.push((k.into(), v.into()));
+                                    base.$key_name.to_mut().push((k.into(), v.into()));
                                 }
                             }
                         }
@@ -2004,7 +2023,7 @@ impl Target {
                             .map(|a| a.as_string().unwrap().to_string().into())
                             .collect();
                     } else if let Some(v) = Json::as_string(&value) {
-                        base.$key_name = vec![v.to_string().into()];
+                        base.$key_name = vec![v.to_string().into()].into();
                     }
                 }
             } );

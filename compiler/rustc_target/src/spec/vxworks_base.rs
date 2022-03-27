@@ -1,5 +1,7 @@
 use crate::spec::TargetOptions;
 
+use super::cvs;
+
 pub fn opts() -> TargetOptions {
     TargetOptions {
         os: "vxworks".into(),
@@ -9,7 +11,7 @@ pub fn opts() -> TargetOptions {
         exe_suffix: ".vxe".into(),
         dynamic_linking: true,
         executables: true,
-        families: vec!["unix".into()],
+        families: cvs!["unix"],
         has_rpath: true,
         has_thread_local: true,
         crt_static_default: true,

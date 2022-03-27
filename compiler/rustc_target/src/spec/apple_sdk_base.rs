@@ -1,4 +1,4 @@
-use crate::spec::TargetOptions;
+use crate::{spec::cvs, spec::TargetOptions};
 use std::borrow::Cow;
 
 use Arch::*;
@@ -36,12 +36,12 @@ fn target_cpu(arch: Arch) -> &'static str {
     }
 }
 
-fn link_env_remove(arch: Arch) -> Vec<Cow<'static, str>> {
+fn link_env_remove(arch: Arch) -> Cow<'static, [Cow<'static, str>]> {
     match arch {
         Armv7 | Armv7s | Arm64 | I386 | X86_64 | Arm64_sim => {
-            vec!["MACOSX_DEPLOYMENT_TARGET".into()]
+            cvs!["MACOSX_DEPLOYMENT_TARGET"]
         }
-        X86_64_macabi | Arm64_macabi => vec!["IPHONEOS_DEPLOYMENT_TARGET".into()],
+        X86_64_macabi | Arm64_macabi => cvs!["IPHONEOS_DEPLOYMENT_TARGET"],
     }
 }
 

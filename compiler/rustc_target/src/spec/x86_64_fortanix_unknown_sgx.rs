@@ -1,5 +1,7 @@
 use std::{borrow::Cow, iter};
 
+use crate::spec::cvs;
+
 use super::{LinkerFlavor, LldFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
@@ -62,7 +64,7 @@ pub fn target() -> Target {
         max_atomic_width: Some(64),
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed,+lvi-cfi,+lvi-load-hardening".into(),
-        llvm_args: vec!["--x86-experimental-lvi-inline-asm-hardening".into()],
+        llvm_args: cvs!["--x86-experimental-lvi-inline-asm-hardening"],
         position_independent_executables: true,
         pre_link_args: iter::once((
             LinkerFlavor::Lld(LldFlavor::Ld),
