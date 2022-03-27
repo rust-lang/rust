@@ -268,10 +268,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
     ) {
         if let ty::Adt(expected_adt, substs) = expected.kind() {
-            if !expected_adt.is_enum() {
-                return;
-            }
-
             // If the expression is of type () and it's the return expression of a block,
             // we suggest adding a separate return expression instead.
             // (To avoid things like suggesting `Ok(while .. { .. })`.)
