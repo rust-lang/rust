@@ -10,7 +10,6 @@ use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::collections::BTreeSet;
-use std::iter;
 
 impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
@@ -323,6 +322,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut suggestions = vec![];
         let mut types_count = 0;
         let mut where_constraints = vec![];
+        let mut already_has_generics_args_suggestion = false;
         for (span, assoc_items) in &associated_types {
             let mut names: FxHashMap<_, usize> = FxHashMap::default();
             for item in assoc_items {
@@ -343,16 +343,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             if potential_assoc_types.len() == assoc_items.len() {
-                // Only suggest when the amount of missing associated types equals the number of
-                // extra type arguments present, as that gives us a relatively high confidence
-                // that the user forgot to give the associated type's name. The canonical
-                // example would be trying to use `Iterator<isize>` instead of
-                // `Iterator<Item = isize>`.
-                for (potential, item) in iter::zip(&potential_assoc_types, assoc_items) {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*potential) {
-                        suggestions.push((*potential, format!("{} = {}", item.name, snippet)));
-                    }
-                }
+                // When the amount of missing associated types equals the number of
+                // extra type arguments present.  A suggesting to replace the generic args with
+                // associated types is already emitted.
+                already_has_generics_args_suggestion = true;
             } else if let (Ok(snippet), false) =
                 (tcx.sess.source_map().span_to_snippet(*span), dupes)
             {
@@ -382,7 +376,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // the same associated type name.
             err.help(where_msg);
         }
-        if suggestions.len() != 1 {
+        if suggestions.len() != 1 || already_has_generics_args_suggestion {
             // We don't need this label if there's an inline suggestion, show otherwise.
             for (span, assoc_items) in &associated_types {
                 let mut names: FxHashMap<_, usize> = FxHashMap::default();
