@@ -76,7 +76,7 @@ pub struct OwnedHandle {
 /// `NULL`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `NULL` first.
 ///
-/// This type concerns any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
+/// This type considers any value other than `NULL` to be valid, including `INVALID_HANDLE_VALUE`.
 /// This is because APIs that use `NULL` as their sentry value don't treat `INVALID_HANDLE_VALUE`
 /// as special.
 ///
@@ -96,7 +96,7 @@ pub struct HandleOrNull(OwnedHandle);
 /// `INVALID_HANDLE_VALUE`. This ensures that such FFI calls cannot start using the handle without
 /// checking for `INVALID_HANDLE_VALUE` first.
 ///
-/// This type concerns any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
+/// This type considers any value other than `INVALID_HANDLE_VALUE` to be valid, including `NULL`.
 /// This is because APIs that use `INVALID_HANDLE_VALUE` as their sentry value may return `NULL`
 /// under `windows_subsystem = "windows"` or other situations where I/O devices are detached.
 ///
