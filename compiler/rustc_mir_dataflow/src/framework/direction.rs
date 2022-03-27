@@ -279,9 +279,7 @@ impl Direction for Backward {
 
                     analysis.apply_switch_int_edge_effects(pred, discr, &mut applier);
 
-                    let BackwardSwitchIntEdgeEffectsApplier { effects_applied, .. } = applier;
-
-                    if !effects_applied {
+                    if !applier.effects_applied {
                         propagate(pred, exit_state)
                     }
                 }
