@@ -1036,7 +1036,7 @@ Having the result type specified up-front helps with understanding what the chai
 
 ## Helper Functions
 
-Avoid creating singe-use helper functions:
+Avoid creating single-use helper functions:
 
 ```rust
 // GOOD
