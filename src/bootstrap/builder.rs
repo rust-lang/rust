@@ -231,10 +231,10 @@ impl StepDescription {
         }
 
         if !builder.config.exclude.is_empty() {
-            eprintln!(
+            builder.verbose(&format!(
                 "{:?} not skipped for {:?} -- not in {:?}",
                 pathset, self.name, builder.config.exclude
-            );
+            ));
         }
         false
     }
