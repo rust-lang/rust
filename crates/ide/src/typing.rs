@@ -20,9 +20,9 @@ use ide_db::{
     RootDatabase,
 };
 use syntax::{
-    algo::find_node_at_offset,
+    algo::{ancestors_at_offset, find_node_at_offset},
     ast::{self, edit::IndentLevel, AstToken},
-    AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize,
+    AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize, T,
 };
 
 use text_edit::{Indel, TextEdit};
@@ -32,7 +32,7 @@ use crate::SourceChange;
 pub(crate) use on_enter::on_enter;
 
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
-pub(crate) const TRIGGER_CHARS: &str = ".=>{";
+pub(crate) const TRIGGER_CHARS: &str = ".=<>{";
 
 struct ExtendedTextEdit {
     edit: TextEdit,
@@ -92,7 +92,8 @@ fn on_char_typed_inner(
     match char_typed {
         '.' => conv(on_dot_typed(&file.tree(), offset)),
         '=' => conv(on_eq_typed(&file.tree(), offset)),
-        '>' => conv(on_arrow_typed(&file.tree(), offset)),
+        '<' => on_left_angle_typed(&file.tree(), offset),
+        '>' => conv(on_right_angle_typed(&file.tree(), offset)),
         '{' => conv(on_opening_brace_typed(file, offset)),
         _ => unreachable!(),
     }
@@ -312,8 +313,40 @@ fn on_dot_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     Some(TextEdit::replace(TextRange::new(offset - current_indent_len, offset), target_indent))
 }
 
+/// Add closing `>` for generic arguments/parameters.
+fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTextEdit> {
+    let file_text = file.syntax().text();
+    if !stdx::always!(file_text.char_at(offset) == Some('<')) {
+        return None;
+    }
+    let range = TextRange::at(offset, TextSize::of('<'));
+
+    if let Some(t) = file.syntax().token_at_offset(offset).left_biased() {
+        if T![impl] == t.kind() {
+            return Some(ExtendedTextEdit {
+                edit: TextEdit::replace(range, "<$0>".to_string()),
+                is_snippet: true,
+            });
+        }
+    }
+
+    if ancestors_at_offset(file.syntax(), offset)
+        .find(|n| {
+            ast::GenericParamList::can_cast(n.kind()) || ast::GenericArgList::can_cast(n.kind())
+        })
+        .is_some()
+    {
+        return Some(ExtendedTextEdit {
+            edit: TextEdit::replace(range, "<$0>".to_string()),
+            is_snippet: true,
+        });
+    }
+
+    None
+}
+
 /// Adds a space after an arrow when `fn foo() { ... }` is turned into `fn foo() -> { ... }`
-fn on_arrow_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     let file_text = file.syntax().text();
     if !stdx::always!(file_text.char_at(offset) == Some('>')) {
         return None;
@@ -334,6 +367,12 @@ mod tests {
     use test_utils::{assert_eq_text, extract_offset};
 
     use super::*;
+
+    impl ExtendedTextEdit {
+        fn apply(&self, text: &mut String) {
+            self.edit.apply(text);
+        }
+    }
 
     fn do_type_char(char_typed: char, before: &str) -> Option<String> {
         let (offset, mut before) = extract_offset(before);
@@ -875,6 +914,169 @@ use {Thing as _};
             '{',
             r#"
 use some::pa$0th::to::Item;
+            "#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_angle_bracket_for_generic_args() {
+        type_char(
+            '<',
+            r#"
+fn foo() {
+    bar::$0
+}
+            "#,
+            r#"
+fn foo() {
+    bar::<$0>
+}
+            "#,
+        );
+
+        type_char(
+            '<',
+            r#"
+fn foo(bar: &[u64]) {
+    bar.iter().collect::$0();
+}
+            "#,
+            r#"
+fn foo(bar: &[u64]) {
+    bar.iter().collect::<$0>();
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn adds_closing_angle_bracket_for_generic_params() {
+        type_char(
+            '<',
+            r#"
+fn foo$0() {}
+            "#,
+            r#"
+fn foo<$0>() {}
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+fn foo$0
+            "#,
+            r#"
+fn foo<$0>
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+struct Foo$0 {}
+            "#,
+            r#"
+struct Foo<$0> {}
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+struct Foo$0();
+            "#,
+            r#"
+struct Foo<$0>();
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+struct Foo$0
+            "#,
+            r#"
+struct Foo<$0>
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+enum Foo$0
+            "#,
+            r#"
+enum Foo<$0>
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+trait Foo$0
+            "#,
+            r#"
+trait Foo<$0>
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+type Foo$0 = Bar;
+            "#,
+            r#"
+type Foo<$0> = Bar;
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+impl$0 Foo {}
+            "#,
+            r#"
+impl<$0> Foo {}
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+impl<T> Foo$0 {}
+            "#,
+            r#"
+impl<T> Foo<$0> {}
+            "#,
+        );
+        type_char(
+            '<',
+            r#"
+impl Foo$0 {}
+            "#,
+            r#"
+impl Foo<$0> {}
+            "#,
+        );
+    }
+
+    #[test]
+    fn dont_add_closing_angle_bracket_for_comparison() {
+        type_char_noop(
+            '<',
+            r#"
+fn main() {
+    42$0
+}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+fn main() {
+    42 $0
+}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+fn main() {
+    let foo = 42;
+    foo $0
+}
             "#,
         );
     }
