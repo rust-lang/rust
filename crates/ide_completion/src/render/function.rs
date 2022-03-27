@@ -74,10 +74,10 @@ fn render(
     });
 
     if let Some(ref_match) = compute_ref_match(completion, &ret_type) {
-        // FIXME
-        // For now we don't properly calculate the edits for ref match
-        // completions on methods, so we've disabled them. See #8058.
-        if matches!(func_kind, FuncKind::Function) {
+        // FIXME For now we don't properly calculate the edits for ref match
+        // completions on methods or qualified paths, so we've disabled them.
+        // See #8058.
+        if matches!(func_kind, FuncKind::Function) && ctx.completion.path_qual().is_none() {
             item.ref_match(ref_match);
         }
     }
