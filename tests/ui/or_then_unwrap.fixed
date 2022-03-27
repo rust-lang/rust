@@ -3,7 +3,7 @@
 #![warn(clippy::or_then_unwrap)]
 #![allow(clippy::map_identity)]
 
-struct SomeStruct {}
+struct SomeStruct;
 impl SomeStruct {
     fn or(self, _: Option<Self>) -> Self {
         self
@@ -11,7 +11,7 @@ impl SomeStruct {
     fn unwrap(&self) {}
 }
 
-struct SomeOtherStruct {}
+struct SomeOtherStruct;
 impl SomeOtherStruct {
     fn or(self) -> Self {
         self

@@ -16,7 +16,7 @@ extern crate proc_macro_derive;
 fn main() {}
 
 mod use_self {
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         fn new() -> Foo {
@@ -35,7 +35,7 @@ mod use_self {
 }
 
 mod better {
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         fn new() -> Self {
@@ -123,7 +123,7 @@ mod macros {
         };
     }
 
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         use_self_expand!(); // Should not lint in local macros
@@ -134,7 +134,7 @@ mod macros {
 }
 
 mod nesting {
-    struct Foo {}
+    struct Foo;
     impl Foo {
         fn foo() {
             #[allow(unused_imports)]
@@ -209,7 +209,7 @@ mod issue3410 {
 #[allow(clippy::no_effect, path_statements)]
 mod rustfix {
     mod nested {
-        pub struct A {}
+        pub struct A;
     }
 
     impl nested::A {
@@ -227,7 +227,7 @@ mod rustfix {
 }
 
 mod issue3567 {
-    struct TestStruct {}
+    struct TestStruct;
     impl TestStruct {
         fn from_something() -> Self {
             Self {}
@@ -248,7 +248,7 @@ mod issue3567 {
 mod paths_created_by_lowering {
     use std::ops::Range;
 
-    struct S {}
+    struct S;
 
     impl S {
         const A: usize = 0;
@@ -382,7 +382,7 @@ mod issue4305 {
 }
 
 mod lint_at_item_level {
-    struct Foo {}
+    struct Foo;
 
     #[allow(clippy::use_self)]
     impl Foo {
@@ -400,7 +400,7 @@ mod lint_at_item_level {
 }
 
 mod lint_at_impl_item_level {
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         #[allow(clippy::use_self)]
@@ -433,8 +433,8 @@ mod issue4734 {
 mod nested_paths {
     use std::convert::Into;
     mod submod {
-        pub struct B {}
-        pub struct C {}
+        pub struct B;
+        pub struct C;
 
         impl Into<C> for B {
             fn into(self) -> C {

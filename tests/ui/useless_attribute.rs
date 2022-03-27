@@ -42,7 +42,7 @@ mod a {
     mod b {
         #[allow(dead_code)]
         #[allow(unreachable_pub)]
-        pub struct C {}
+        pub struct C;
     }
 
     #[allow(unreachable_pub)]

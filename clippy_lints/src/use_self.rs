@@ -34,7 +34,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Foo {
     ///         Foo {}
@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     /// could be
     /// ```rust
-    /// struct Foo {}
+    /// struct Foo;
     /// impl Foo {
     ///     fn new() -> Self {
     ///         Self {}
