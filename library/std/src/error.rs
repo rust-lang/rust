@@ -604,10 +604,6 @@ impl Error for alloc::collections::TryReserveError {}
 #[unstable(feature = "duration_checked_float", issue = "83400")]
 impl Error for time::FromFloatSecsError {}
 
-#[cfg(windows)]
-#[unstable(feature = "io_safety", issue = "87074")]
-impl Error for crate::os::windows::io::NotHandle {}
-
 // Copied from `any.rs`.
 impl dyn Error + 'static {
     /// Returns `true` if the inner type is the same as `T`.
