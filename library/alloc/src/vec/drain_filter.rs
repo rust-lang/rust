@@ -1,6 +1,7 @@
 use crate::alloc::{Allocator, Global};
-use core::ptr::{self};
-use core::slice::{self};
+use core::mem::{self, ManuallyDrop};
+use core::ptr;
+use core::slice;
 
 use super::Vec;
 
@@ -53,6 +54,42 @@ where
     #[inline]
     pub fn allocator(&self) -> &A {
         self.vec.allocator()
+    }
+
+    /// Keep unyielded elements in the source `Vec`.
+    #[unstable(feature = "drain_keep_rest", issue = "none")]
+    pub fn keep_rest(self) {
+        // At this moment layout looks like this:
+        //
+        //  _____________________/-- old_len
+        // /                     \
+        // [kept] [yielded] [tail]
+        //        \_______/ ^-- idx
+        //                \-- del
+        //
+        // Normally `Drop` impl would drop [tail] (via .for_each(drop), ie still calling `pred`)
+        //
+        // 1. Move [tail] after [kept]
+        // 2. Update length of the original vec to `old_len - del`
+        //    a. In case of ZST, this is the only thing we want to do
+        // 3. Do *not* drop self, as everything is put in a consistent state already, there is nothing to do
+        let mut this = ManuallyDrop::new(self);
+
+        unsafe {
+            // ZSTs have no identity, so we don't need to move them around.
+            let needs_move = mem::size_of::<T>() != 0;
+
+            if needs_move && this.idx < this.old_len && this.del > 0 {
+                let ptr = this.vec.as_mut_ptr();
+                let src = ptr.add(this.idx);
+                let dst = src.sub(this.del);
+                let tail_len = this.old_len - this.idx;
+                src.copy_to(dst, tail_len);
+            }
+
+            let new_len = this.old_len - this.del;
+            this.vec.set_len(new_len);
+        }
     }
 }
 
