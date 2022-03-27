@@ -1756,7 +1756,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         err: &mut Diagnostic,
     ) -> bool {
-        let report = |mut candidates: Vec<TraitRef<'_>>, err: &mut Diagnostic| {
+        let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             candidates.sort();
             candidates.dedup();
             let len = candidates.len();
@@ -1778,11 +1778,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
             let trait_ref = TraitRef::identity(self.tcx, candidates[0].def_id);
             // Check if the trait is the same in all cases. If so, we'll only show the type.
-            // FIXME: there *has* to be a better way!
-            let mut traits: Vec<_> = candidates
-                .iter()
-                .map(|c| format!("{}", c).split(" as ").last().unwrap().to_string())
-                .collect();
+            let mut traits: Vec<_> =
+                candidates.iter().map(|c| c.print_only_trait_path().to_string()).collect();
             traits.sort();
             traits.dedup();
 

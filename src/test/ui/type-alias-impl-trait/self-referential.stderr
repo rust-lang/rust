@@ -5,11 +5,15 @@ LL |     i
    |     ^ no implementation for `&i32 == Bar<'b, 'a>`
    |
    = help: the trait `PartialEq<Bar<'b, 'a>>` is not implemented for `&i32`
-   = help: the following implementations were found:
-             <i32 as PartialEq>
-             <f32 as PartialEq>
-             <f64 as PartialEq>
-             <i128 as PartialEq>
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
            and 6 others
 
 error[E0277]: can't compare `&i32` with `(i32, &i32)`
@@ -19,11 +23,15 @@ LL |     (42, i)
    |          ^ no implementation for `&i32 == (i32, &i32)`
    |
    = help: the trait `PartialEq<(i32, &i32)>` is not implemented for `&i32`
-   = help: the following implementations were found:
-             <i32 as PartialEq>
-             <f32 as PartialEq>
-             <f64 as PartialEq>
-             <i128 as PartialEq>
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
            and 6 others
 
 error[E0277]: can't compare `&i32` with `(i32, Moo<'b, 'a>::{opaque#0})`
@@ -33,11 +41,15 @@ LL |     (42, i)
    |          ^ no implementation for `&i32 == (i32, Moo<'b, 'a>::{opaque#0})`
    |
    = help: the trait `PartialEq<(i32, Moo<'b, 'a>::{opaque#0})>` is not implemented for `&i32`
-   = help: the following implementations were found:
-             <i32 as PartialEq>
-             <f32 as PartialEq>
-             <f64 as PartialEq>
-             <i128 as PartialEq>
+   = help: the following other types implement trait `PartialEq<Rhs>`:
+             f32
+             f64
+             i128
+             i16
+             i32
+             i64
+             i8
+             isize
            and 6 others
 
 error: aborting due to 3 previous errors
