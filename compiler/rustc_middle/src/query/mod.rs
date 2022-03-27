@@ -252,7 +252,9 @@ rustc_queries! {
     }
 
     /// Fetch the THIR for a given body. If typeck for that body failed, returns an empty `Thir`.
-    query thir_body(key: ty::WithOptConstParam<LocalDefId>) -> (&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId) {
+    query thir_body(key: ty::WithOptConstParam<LocalDefId>)
+        -> Result<(&'tcx Steal<thir::Thir<'tcx>>, thir::ExprId), ErrorGuaranteed>
+    {
         // Perf tests revealed that hashing THIR is inefficient (see #85729).
         no_hash
         desc { |tcx| "building THIR for `{}`", tcx.def_path_str(key.did.to_def_id()) }
@@ -329,12 +331,12 @@ rustc_queries! {
         }
     }
 
-    query try_unify_abstract_consts(key: (
-        ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>
-    )) -> bool {
+    query try_unify_abstract_consts(key:
+        ty::ParamEnvAnd<'tcx, (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>
+    )>) -> bool {
         desc {
             |tcx| "trying to unify the generic constants {} and {}",
-            tcx.def_path_str(key.0.def.did), tcx.def_path_str(key.1.def.did)
+            tcx.def_path_str(key.value.0.def.did), tcx.def_path_str(key.value.1.def.did)
         }
     }
 
@@ -547,7 +549,7 @@ rustc_queries! {
 
     query adt_dtorck_constraint(
         key: DefId
-    ) -> Result<&'tcx DtorckConstraint<'tcx>, NoSolution> {
+    ) -> Result<&'tcx DropckConstraint<'tcx>, NoSolution> {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
@@ -953,6 +955,7 @@ rustc_queries! {
         desc { "get a &core::panic::Location referring to a span" }
     }
 
+    // FIXME get rid of this with valtrees
     query lit_to_const(
         key: LitToConstInput<'tcx>
     ) -> Result<ty::Const<'tcx>, LitToConstError> {

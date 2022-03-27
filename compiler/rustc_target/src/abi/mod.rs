@@ -1105,7 +1105,7 @@ impl Niche {
 
         // Extend the range of valid values being reserved by moving either `v.start` or `v.end` bound.
         // Given an eventual `Option<T>`, we try to maximize the chance for `None` to occupy the niche of zero.
-        // This is accomplished by prefering enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
+        // This is accomplished by preferring enums with 2 variants(`count==1`) and always taking the shortest path to niche zero.
         // Having `None` in niche zero can enable some special optimizations.
         //
         // Bound selection criteria:

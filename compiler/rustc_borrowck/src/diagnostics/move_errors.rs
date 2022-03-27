@@ -218,18 +218,29 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
     fn report(&mut self, error: GroupedMoveError<'tcx>) {
         let (mut err, err_span) = {
-            let (span, use_spans, original_path, kind): (
+            let (span, use_spans, original_path, kind, has_complex_bindings): (
                 Span,
                 Option<UseSpans<'tcx>>,
                 Place<'tcx>,
                 &IllegalMoveOriginKind<'_>,
+                bool,
             ) = match error {
-                GroupedMoveError::MovesFromPlace { span, original_path, ref kind, .. }
-                | GroupedMoveError::MovesFromValue { span, original_path, ref kind, .. } => {
-                    (span, None, original_path, kind)
+                GroupedMoveError::MovesFromPlace {
+                    span,
+                    original_path,
+                    ref kind,
+                    ref binds_to,
+                    ..
                 }
+                | GroupedMoveError::MovesFromValue {
+                    span,
+                    original_path,
+                    ref kind,
+                    ref binds_to,
+                    ..
+                } => (span, None, original_path, kind, !binds_to.is_empty()),
                 GroupedMoveError::OtherIllegalMove { use_spans, original_path, ref kind } => {
-                    (use_spans.args_or_use(), Some(use_spans), original_path, kind)
+                    (use_spans.args_or_use(), Some(use_spans), original_path, kind, false)
                 }
             };
             debug!(
@@ -248,6 +259,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             target_place,
                             span,
                             use_spans,
+                            has_complex_bindings,
                         ),
                     &IllegalMoveOriginKind::InteriorOfTypeWithDestructor { container_ty: ty } => {
                         self.cannot_move_out_of_interior_of_drop(span, ty)
@@ -290,6 +302,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
+        has_complex_bindings: bool,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -399,6 +412,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let diag_name = self.infcx.tcx.get_diagnostic_name(def_id);
         if matches!(diag_name, Some(sym::Option | sym::Result))
             && use_spans.map_or(true, |v| !v.for_closure())
+            && !has_complex_bindings
         {
             err.span_suggestion_verbose(
                 span.shrink_to_hi(),

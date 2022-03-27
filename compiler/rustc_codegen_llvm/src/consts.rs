@@ -428,7 +428,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
 
-            debuginfo::create_global_var_metadata(self, def_id, g);
+            debuginfo::build_global_var_di_node(self, def_id, g);
 
             if attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
                 llvm::set_thread_local_mode(g, self.tls_model);

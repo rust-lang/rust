@@ -5,6 +5,7 @@ use super::{
     SemiColonMode, SeqSep, TokenExpectType, TokenType,
 };
 
+use crate::lexer::UnmatchedBrace;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Lit, LitKind, TokenKind};
@@ -21,6 +22,7 @@ use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
 
@@ -154,6 +156,28 @@ impl AttemptLocalParseRecovery {
     }
 }
 
+// SnapshotParser is used to create a snapshot of the parser
+// without causing duplicate errors being emitted when the `Parser`
+// is dropped.
+pub(super) struct SnapshotParser<'a> {
+    parser: Parser<'a>,
+    unclosed_delims: Vec<UnmatchedBrace>,
+}
+
+impl<'a> Deref for SnapshotParser<'a> {
+    type Target = Parser<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.parser
+    }
+}
+
+impl<'a> DerefMut for SnapshotParser<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.parser
+    }
+}
+
 impl<'a> Parser<'a> {
     pub(super) fn span_err<S: Into<MultiSpan>>(
         &self,
@@ -177,6 +201,25 @@ impl<'a> Parser<'a> {
 
     pub(super) fn diagnostic(&self) -> &'a Handler {
         &self.sess.span_diagnostic
+    }
+
+    /// Relace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
+    /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
+    pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
+        *self = snapshot.parser;
+        self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
+    }
+
+    /// Create a snapshot of the `Parser`.
+    pub(super) fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
+        let mut snapshot = self.clone();
+        let unclosed_delims = self.unclosed_delims.clone();
+        // Clear `unclosed_delims` in snapshot to avoid
+        // duplicate errors being emitted when the `Parser`
+        // is dropped (which may or may not happen, depending
+        // if the parsing the snapshot is created for is successful)
+        snapshot.unclosed_delims.clear();
+        SnapshotParser { parser: snapshot, unclosed_delims }
     }
 
     pub(super) fn span_to_snippet(&self, span: Span) -> Result<String, SpanSnippetError> {
@@ -327,8 +370,8 @@ impl<'a> Parser<'a> {
                 expect.clone()
             };
             (
-                format!("expected one of {}, found {}", expect, actual),
-                (self.prev_token.span.shrink_to_hi(), format!("expected one of {}", short_expect)),
+                format!("expected one of {expect}, found {actual}"),
+                (self.prev_token.span.shrink_to_hi(), format!("expected one of {short_expect}")),
             )
         } else if expected.is_empty() {
             (
@@ -337,8 +380,8 @@ impl<'a> Parser<'a> {
             )
         } else {
             (
-                format!("expected {}, found {}", expect, actual),
-                (self.prev_token.span.shrink_to_hi(), format!("expected {}", expect)),
+                format!("expected {expect}, found {actual}"),
+                (self.prev_token.span.shrink_to_hi(), format!("expected {expect}")),
             )
         };
         self.last_unexpected_token_span = Some(self.token.span);
@@ -421,7 +464,7 @@ impl<'a> Parser<'a> {
                     String::new(),
                     Applicability::MachineApplicable,
                 );
-                err.note(&format!("the raw string started with {} `#`s", n_hashes));
+                err.note(&format!("the raw string started with {n_hashes} `#`s"));
                 true
             }
             _ => false,
@@ -438,7 +481,7 @@ impl<'a> Parser<'a> {
             // fn foo() -> Foo {
             //     field: value,
             // }
-            let mut snapshot = self.clone();
+            let mut snapshot = self.create_snapshot_for_diagnostic();
             let path =
                 Path { segments: vec![], span: self.prev_token.span.shrink_to_lo(), tokens: None };
             let struct_expr = snapshot.parse_struct_expr(None, path, AttrVec::new(), false);
@@ -464,7 +507,7 @@ impl<'a> Parser<'a> {
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],
                         s,
@@ -678,7 +721,7 @@ impl<'a> Parser<'a> {
     /// angle brackets.
     pub(super) fn check_turbofish_missing_angle_brackets(&mut self, segment: &mut PathSegment) {
         if token::ModSep == self.token.kind && segment.args.is_none() {
-            let snapshot = self.clone();
+            let snapshot = self.create_snapshot_for_diagnostic();
             self.bump();
             let lo = self.token.span;
             match self.parse_angle_args(None) {
@@ -712,14 +755,14 @@ impl<'a> Parser<'a> {
                         .emit();
                     } else {
                         // This doesn't look like an invalid turbofish, can't recover parse state.
-                        *self = snapshot;
+                        self.restore_snapshot(snapshot);
                     }
                 }
                 Err(err) => {
                     // We couldn't parse generic parameters, unlikely to be a turbofish. Rely on
                     // generic parse error instead.
                     err.cancel();
-                    *self = snapshot;
+                    self.restore_snapshot(snapshot);
                 }
             }
         }
@@ -825,7 +868,7 @@ impl<'a> Parser<'a> {
                 // `x == y < z`
                 (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
                     // Consume `z`/outer-op-rhs.
-                    let snapshot = self.clone();
+                    let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_expr() {
                         Ok(r2) => {
                             // We are sure that outer-op-rhs could be consumed, the suggestion is
@@ -835,14 +878,14 @@ impl<'a> Parser<'a> {
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
-                            *self = snapshot;
+                            self.restore_snapshot(snapshot);
                             false
                         }
                     }
                 }
                 // `x > y == z`
                 (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
-                    let snapshot = self.clone();
+                    let snapshot = self.create_snapshot_for_diagnostic();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
                     match self.parse_expr() {
@@ -852,7 +895,7 @@ impl<'a> Parser<'a> {
                         }
                         Err(expr_err) => {
                             expr_err.cancel();
-                            *self = snapshot;
+                            self.restore_snapshot(snapshot);
                             false
                         }
                     }
@@ -917,7 +960,7 @@ impl<'a> Parser<'a> {
                     || outer_op.node == AssocOp::Greater
                 {
                     if outer_op.node == AssocOp::Less {
-                        let snapshot = self.clone();
+                        let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
                         let modifiers =
@@ -929,7 +972,7 @@ impl<'a> Parser<'a> {
                         {
                             // We don't have `foo< bar >(` or `foo< bar >::`, so we rewind the
                             // parser and bail out.
-                            *self = snapshot.clone();
+                            self.restore_snapshot(snapshot);
                         }
                     }
                     return if token::ModSep == self.token.kind {
@@ -937,7 +980,7 @@ impl<'a> Parser<'a> {
                         // `foo< bar >::`
                         suggest(&mut err);
 
-                        let snapshot = self.clone();
+                        let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump(); // `::`
 
                         // Consume the rest of the likely `foo<bar>::new()` or return at `foo<bar>`.
@@ -954,7 +997,7 @@ impl<'a> Parser<'a> {
                                 expr_err.cancel();
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
-                                *self = snapshot;
+                                self.restore_snapshot(snapshot);
                                 Err(err)
                             }
                         }
@@ -1008,7 +1051,7 @@ impl<'a> Parser<'a> {
     }
 
     fn consume_fn_args(&mut self) -> Result<(), ()> {
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         self.bump(); // `(`
 
         // Consume the fn call arguments.
@@ -1018,7 +1061,7 @@ impl<'a> Parser<'a> {
 
         if self.token.kind == token::Eof {
             // Not entirely sure that what we consumed were fn arguments, rollback.
-            *self = snapshot;
+            self.restore_snapshot(snapshot);
             Err(())
         } else {
             // 99% certain that the suggestion is correct, continue parsing.
@@ -1191,7 +1234,7 @@ impl<'a> Parser<'a> {
                     _ => None,
                 };
                 if let Some(name) = previous_item_kind_name {
-                    err.help(&format!("{} declarations are not followed by a semicolon", name));
+                    err.help(&format!("{name} declarations are not followed by a semicolon"));
                 }
             }
             err.emit();
@@ -1226,12 +1269,12 @@ impl<'a> Parser<'a> {
             "expected `{}`, found {}",
             token_str,
             match (&self.token.kind, self.subparser_name) {
-                (token::Eof, Some(origin)) => format!("end of {}", origin),
+                (token::Eof, Some(origin)) => format!("end of {origin}"),
                 _ => this_token_str,
             },
         );
         let mut err = self.struct_span_err(sp, &msg);
-        let label_exp = format!("expected `{}`", token_str);
+        let label_exp = format!("expected `{token_str}`");
         match self.recover_closing_delimiter(&[t.clone()], err) {
             Err(e) => err = e,
             Ok(recovered) => {
@@ -1368,7 +1411,7 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            err.span_suggestion(lo.shrink_to_lo(), &format!("{}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax", prefix), "r#".to_string(), Applicability::MachineApplicable);
+            err.span_suggestion(lo.shrink_to_lo(), &format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#".to_string(), Applicability::MachineApplicable);
             err.emit();
             Ok(self.mk_expr_err(lo.to(hi)))
         } else {
@@ -1504,7 +1547,7 @@ impl<'a> Parser<'a> {
                 delim.retain(|c| c != '`');
                 err.span_suggestion_short(
                     self.prev_token.span.shrink_to_hi(),
-                    &format!("`{}` may belong here", delim),
+                    &format!("`{delim}` may belong here"),
                     delim,
                     Applicability::MaybeIncorrect,
                 );
@@ -1698,7 +1741,7 @@ impl<'a> Parser<'a> {
                                 (
                                     ident,
                                     "self: ".to_string(),
-                                    format!("{}: &{}TypeName", ident, mutab),
+                                    format!("{ident}: &{mutab}TypeName"),
                                     "_: ".to_string(),
                                     pat.span.shrink_to_lo(),
                                     pat.span,
@@ -1826,7 +1869,7 @@ impl<'a> Parser<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.sess.source_map().next_point(self.prev_token.span);
-                (sp, format!("expected expression, found end of {}", origin))
+                (sp, format!("expected expression, found end of {origin}"))
             }
             _ => (
                 self.token.span,
@@ -1959,12 +2002,12 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_const_param_decl(&mut self, ty_generics: Option<&Generics>) -> Option<GenericArg> {
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         let param = match self.parse_const_param(vec![]) {
             Ok(param) => param,
             Err(err) => {
                 err.cancel();
-                *self = snapshot;
+                self.restore_snapshot(snapshot);
                 return None;
             }
         };
@@ -1975,8 +2018,8 @@ impl<'a> Parser<'a> {
             (ty_generics, self.sess.source_map().span_to_snippet(param.span()))
         {
             let (span, sugg) = match &generics.params[..] {
-                [] => (generics.span, format!("<{}>", snippet)),
-                [.., generic] => (generic.span().shrink_to_hi(), format!(", {}", snippet)),
+                [] => (generics.span, format!("<{snippet}>")),
+                [.., generic] => (generic.span().shrink_to_hi(), format!(", {snippet}")),
             };
             err.multipart_suggestion(
                 "`const` parameters must be declared for the `impl`",
@@ -2056,7 +2099,7 @@ impl<'a> Parser<'a> {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);
         }
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
         if is_op_or_dot {
             self.bump();
         }
@@ -2101,7 +2144,7 @@ impl<'a> Parser<'a> {
                 err.cancel();
             }
         }
-        *self = snapshot;
+        self.restore_snapshot(snapshot);
         Err(err)
     }
 
@@ -2161,7 +2204,7 @@ impl<'a> Parser<'a> {
         let span = self.token.span;
         // We only emit "unexpected `:`" error here if we can successfully parse the
         // whole pattern correctly in that case.
-        let snapshot = self.clone();
+        let snapshot = self.create_snapshot_for_diagnostic();
 
         // Create error for "unexpected `:`".
         match self.expected_one_of_not_found(&[], &[]) {
@@ -2173,7 +2216,7 @@ impl<'a> Parser<'a> {
                         // reasonable error.
                         inner_err.cancel();
                         err.cancel();
-                        *self = snapshot;
+                        self.restore_snapshot(snapshot);
                     }
                     Ok(mut pat) => {
                         // We've parsed the rest of the pattern.
@@ -2252,7 +2295,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 // Carry on as if we had not done anything. This should be unreachable.
-                *self = snapshot;
+                self.restore_snapshot(snapshot);
             }
         };
         first_pat

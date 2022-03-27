@@ -45,6 +45,7 @@ mod option_as_ref_deref;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
+mod or_then_unwrap;
 mod search_is_some;
 mod single_char_add_str;
 mod single_char_insert_string;
@@ -59,6 +60,7 @@ mod uninit_assumed_init;
 mod unnecessary_filter_map;
 mod unnecessary_fold;
 mod unnecessary_iter_cloned;
+mod unnecessary_join;
 mod unnecessary_lazy_eval;
 mod unnecessary_to_owned;
 mod unwrap_or_else_default;
@@ -780,6 +782,42 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for `.or(…).unwrap()` calls to Options and Results.
+    ///
+    /// ### Why is this bad?
+    /// You should use `.unwrap_or(…)` instead for clarity.
+    ///
+    /// ### Example
+    /// ```rust
+    /// # let fallback = "fallback";
+    /// // Result
+    /// # type Error = &'static str;
+    /// # let result: Result<&str, Error> = Err("error");
+    /// let value = result.or::<Error>(Ok(fallback)).unwrap();
+    ///
+    /// // Option
+    /// # let option: Option<&str> = None;
+    /// let value = option.or(Some(fallback)).unwrap();
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// # let fallback = "fallback";
+    /// // Result
+    /// # let result: Result<&str, &str> = Err("error");
+    /// let value = result.unwrap_or(fallback);
+    ///
+    /// // Option
+    /// # let option: Option<&str> = None;
+    /// let value = option.unwrap_or(fallback);
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub OR_THEN_UNWRAP,
+    complexity,
+    "checks for `.or(…).unwrap()` calls to Options and Results."
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for calls to `.expect(&format!(...))`, `.expect(foo(..))`,
     /// etc., and suggests to use `unwrap_or_else` instead
     ///
@@ -1140,7 +1178,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub ITER_WITH_DRAIN,
-    perf,
+    nursery,
     "replace `.drain(..)` with `.into_iter()`"
 }
 
@@ -2012,6 +2050,35 @@ declare_clippy_lint! {
     "unnecessary calls to `to_owned`-like functions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for use of `.collect::<Vec<String>>().join("")` on iterators.
+    ///
+    /// ### Why is this bad?
+    /// `.collect::<String>()` is more concise and usually more performant
+    ///
+    /// ### Example
+    /// ```rust
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<Vec<String>>().join("");
+    /// println!("{}", output);
+    /// ```
+    /// The correct use would be:
+    /// ```rust
+    /// let vector = vec!["hello",  "world"];
+    /// let output = vector.iter().map(|item| item.to_uppercase()).collect::<String>();
+    /// println!("{}", output);
+    /// ```
+    /// ### Known problems
+    /// While `.collect::<String>()` is more performant in most cases, there are cases where
+    /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
+    /// will prevent loop unrolling and will result in a negative performance impact.
+    #[clippy::version = "1.61.0"]
+    pub UNNECESSARY_JOIN,
+    pedantic,
+    "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2039,6 +2106,7 @@ impl_lint_pass!(Methods => [
     OPTION_MAP_OR_NONE,
     BIND_INSTEAD_OF_MAP,
     OR_FUN_CALL,
+    OR_THEN_UNWRAP,
     EXPECT_FUN_CALL,
     CHARS_NEXT_CMP,
     CHARS_LAST_CMP,
@@ -2096,6 +2164,7 @@ impl_lint_pass!(Methods => [
     MANUAL_SPLIT_ONCE,
     NEEDLESS_SPLITN,
     UNNECESSARY_TO_OWNED,
+    UNNECESSARY_JOIN,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2377,7 +2446,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 flat_map_option::check(cx, expr, arg, span);
             },
             (name @ "flatten", args @ []) => match method_call(recv) {
-                Some(("map", [recv, map_arg], _)) => map_flatten::check(cx, expr, recv, map_arg),
+                Some(("map", [recv, map_arg], map_span)) => map_flatten::check(cx, expr, recv, map_arg, map_span),
                 Some(("cloned", [recv2], _)) => iter_overeager_cloned::check(cx, expr, recv2, name, args),
                 _ => {},
             },
@@ -2391,6 +2460,11 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
+            ("join", [join_arg]) => {
+                if let Some(("collect", _, span)) = method_call(recv) {
+                    unnecessary_join::check(cx, expr, recv, join_arg, span);
+                }
+            },
             ("last", args @ []) | ("skip", args @ [_]) => {
                 if let Some((name2, [recv2, args2 @ ..], _span2)) = method_call(recv) {
                     if let ("cloned", []) = (name2, args2) {
@@ -2473,6 +2547,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     },
                     Some(("get_mut", [recv, get_arg], _)) => {
                         get_unwrap::check(cx, expr, recv, get_arg, true);
+                    },
+                    Some(("or", [recv, or_arg], or_span)) => {
+                        or_then_unwrap::check(cx, expr, recv, or_arg, or_span);
                     },
                     _ => {},
                 }

@@ -1,3 +1,4 @@
+mod cast_enum_constructor;
 mod cast_lossless;
 mod cast_possible_truncation;
 mod cast_possible_wrap;
@@ -454,6 +455,24 @@ declare_clippy_lint! {
     "casting using `as` between raw pointers to slices of types with different sizes"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for casts from an enum tuple constructor to an integer.
+    ///
+    /// ### Why is this bad?
+    /// The cast is easily confused with casting a c-like enum value to an integer.
+    ///
+    /// ### Example
+    /// ```rust
+    /// enum E { X(i32) };
+    /// let _ = E::X as usize;
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub CAST_ENUM_CONSTRUCTOR,
+    suspicious,
+    "casts from an enum tuple constructor to an integer"
+}
+
 pub struct Casts {
     msrv: Option<RustcVersion>,
 }
@@ -481,6 +500,7 @@ impl_lint_pass!(Casts => [
     CHAR_LIT_AS_U8,
     PTR_AS_PTR,
     CAST_ENUM_TRUNCATION,
+    CAST_ENUM_CONSTRUCTOR
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -518,6 +538,7 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_sign_loss::check(cx, expr, cast_expr, cast_from, cast_to);
                 }
                 cast_lossless::check(cx, expr, cast_expr, cast_from, cast_to, &self.msrv);
+                cast_enum_constructor::check(cx, expr, cast_expr, cast_from);
             }
         }
 

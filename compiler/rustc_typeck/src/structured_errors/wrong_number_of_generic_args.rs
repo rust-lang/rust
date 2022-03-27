@@ -323,7 +323,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             .skip(self.params_offset + self.num_provided_type_or_const_args())
             .take(num_params_to_take)
             .map(|param| match param.kind {
-                // This is being infered from the item's inputs, no need to set it.
+                // This is being inferred from the item's inputs, no need to set it.
                 ty::GenericParamDefKind::Type { .. } if is_used_in_input(param.def_id) => {
                     "_".to_string()
                 }
@@ -657,10 +657,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
 
             let num_redundant_lt_args = lt_arg_spans.len() - self.num_expected_lifetime_args();
             let msg_lifetimes = format!(
-                "remove {} {} argument{}",
-                if num_redundant_lt_args == 1 { "this" } else { "these" },
-                "lifetime",
-                pluralize!(num_redundant_lt_args),
+                "remove {these} lifetime argument{s}",
+                these = pluralize!("this", num_redundant_lt_args),
+                s = pluralize!(num_redundant_lt_args),
             );
 
             err.span_suggestion(
@@ -700,10 +699,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             let num_redundant_gen_args =
                 gen_arg_spans.len() - self.num_expected_type_or_const_args();
             let msg_types_or_consts = format!(
-                "remove {} {} argument{}",
-                if num_redundant_gen_args == 1 { "this" } else { "these" },
-                "generic",
-                pluralize!(num_redundant_type_or_const_args),
+                "remove {these} generic argument{s}",
+                these = pluralize!("this", num_redundant_gen_args),
+                s = pluralize!(num_redundant_gen_args),
             );
 
             err.span_suggestion(

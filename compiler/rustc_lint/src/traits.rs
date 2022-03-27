@@ -93,10 +93,6 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
             let Trait(trait_predicate) = predicate.kind().skip_binder() else {
                 continue
             };
-            if trait_predicate.is_const_if_const() {
-                // `~const Drop` definitely have meanings so avoid linting here.
-                continue;
-            }
             let def_id = trait_predicate.trait_ref.def_id;
             if cx.tcx.lang_items().drop_trait() == Some(def_id) {
                 // Explicitly allow `impl Drop`, a drop-guards-as-Voldemort-type pattern.
@@ -113,7 +109,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         predicate,
                         cx.tcx.def_path_str(needs_drop)
                     );
-                    lint.build(&msg).emit()
+                    lint.build(&msg).emit();
                 });
             }
         }
@@ -135,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                         instead using `{}` to detect whether a type is trivially dropped",
                         cx.tcx.def_path_str(needs_drop)
                     );
-                    lint.build(&msg).emit()
+                    lint.build(&msg).emit();
                 });
             }
         }

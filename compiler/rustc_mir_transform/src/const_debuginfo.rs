@@ -60,7 +60,7 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
         }
     }
 
-    let mut eligable_locals = Vec::new();
+    let mut eligible_locals = Vec::new();
     for (local, mutating_uses) in visitor.local_mutating_uses.drain_enumerated(..) {
         if mutating_uses != 1 || !locals_to_debuginfo.contains(local) {
             continue;
@@ -78,13 +78,13 @@ fn find_optimization_oportunities<'tcx>(body: &Body<'tcx>) -> Vec<(Local, Consta
                 &bb.statements[location.statement_index].kind
             {
                 if let Some(local) = p.as_local() {
-                    eligable_locals.push((local, *c));
+                    eligible_locals.push((local, *c));
                 }
             }
         }
     }
 
-    eligable_locals
+    eligible_locals
 }
 
 impl Visitor<'_> for LocalUseVisitor {

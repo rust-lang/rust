@@ -257,7 +257,7 @@ pub enum ObligationCauseCode<'tcx> {
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
 
-    ImplDerivedObligation(DerivedObligationCause<'tcx>),
+    ImplDerivedObligation(Box<ImplDerivedObligationCause<'tcx>>),
 
     DerivedObligation(DerivedObligationCause<'tcx>),
 
@@ -396,16 +396,29 @@ pub enum WellFormedLoc {
     },
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Lift)]
+pub struct ImplDerivedObligationCause<'tcx> {
+    pub derived: DerivedObligationCause<'tcx>,
+    pub impl_def_id: DefId,
+    pub span: Span,
+}
+
 impl ObligationCauseCode<'_> {
     // Return the base obligation, ignoring derived obligations.
     pub fn peel_derives(&self) -> &Self {
         let mut base_cause = self;
-        while let BuiltinDerivedObligation(DerivedObligationCause { parent_code, .. })
-        | ImplDerivedObligation(DerivedObligationCause { parent_code, .. })
-        | DerivedObligation(DerivedObligationCause { parent_code, .. })
-        | FunctionArgumentObligation { parent_code, .. } = base_cause
-        {
-            base_cause = &parent_code;
+        loop {
+            match base_cause {
+                BuiltinDerivedObligation(DerivedObligationCause { parent_code, .. })
+                | DerivedObligation(DerivedObligationCause { parent_code, .. })
+                | FunctionArgumentObligation { parent_code, .. } => {
+                    base_cause = &parent_code;
+                }
+                ImplDerivedObligation(obligation_cause) => {
+                    base_cause = &*obligation_cause.derived.parent_code;
+                }
+                _ => break,
+            }
         }
         base_cause
     }
@@ -478,7 +491,7 @@ pub enum SelectionError<'tcx> {
     /// A given constant couldn't be evaluated.
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
-    Overflow,
+    Overflow(OverflowError),
     /// Signaling that an error has already been emitted, to avoid
     /// multiple errors being shown.
     ErrorReporting,
@@ -577,7 +590,7 @@ pub enum ImplSource<'tcx, N> {
     TraitAlias(ImplSourceTraitAliasData<'tcx, N>),
 
     /// ImplSource for a `const Drop` implementation.
-    ConstDrop(ImplSourceConstDropData<N>),
+    ConstDestruct(ImplSourceConstDestructData<N>),
 }
 
 impl<'tcx, N> ImplSource<'tcx, N> {
@@ -595,7 +608,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             | ImplSource::Pointee(ImplSourcePointeeData) => Vec::new(),
             ImplSource::TraitAlias(d) => d.nested,
             ImplSource::TraitUpcasting(d) => d.nested,
-            ImplSource::ConstDrop(i) => i.nested,
+            ImplSource::ConstDestruct(i) => i.nested,
         }
     }
 
@@ -613,7 +626,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
             | ImplSource::Pointee(ImplSourcePointeeData) => &[],
             ImplSource::TraitAlias(d) => &d.nested,
             ImplSource::TraitUpcasting(d) => &d.nested,
-            ImplSource::ConstDrop(i) => &i.nested,
+            ImplSource::ConstDestruct(i) => &i.nested,
         }
     }
 
@@ -672,9 +685,11 @@ impl<'tcx, N> ImplSource<'tcx, N> {
                     nested: d.nested.into_iter().map(f).collect(),
                 })
             }
-            ImplSource::ConstDrop(i) => ImplSource::ConstDrop(ImplSourceConstDropData {
-                nested: i.nested.into_iter().map(f).collect(),
-            }),
+            ImplSource::ConstDestruct(i) => {
+                ImplSource::ConstDestruct(ImplSourceConstDestructData {
+                    nested: i.nested.into_iter().map(f).collect(),
+                })
+            }
         }
     }
 }
@@ -767,7 +782,7 @@ pub struct ImplSourceDiscriminantKindData;
 pub struct ImplSourcePointeeData;
 
 #[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, HashStable, TypeFoldable, Lift)]
-pub struct ImplSourceConstDropData<N> {
+pub struct ImplSourceConstDestructData<N> {
     pub nested: Vec<N>,
 }
 

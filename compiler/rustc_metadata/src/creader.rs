@@ -825,11 +825,13 @@ impl<'a> CrateLoader<'a> {
         for (_, data) in self.cstore.iter_crate_data() {
             if data.has_global_allocator() {
                 match global_allocator {
-                    Some(other_crate) => self.sess.err(&format!(
+                    Some(other_crate) => {
+                        self.sess.err(&format!(
                         "the `#[global_allocator]` in {} conflicts with global allocator in: {}",
                         other_crate,
                         data.name()
-                    )),
+                    ));
+                    }
                     None => global_allocator = Some(data.name()),
                 }
             }
@@ -864,7 +866,7 @@ impl<'a> CrateLoader<'a> {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
-        if self.sess.has_errors() {
+        if self.sess.has_errors().is_some() {
             return;
         }
 
@@ -899,7 +901,7 @@ impl<'a> CrateLoader<'a> {
 
     fn report_unused_deps(&mut self, krate: &ast::Crate) {
         // Make a point span rather than covering the whole file
-        let span = krate.span.shrink_to_lo();
+        let span = krate.spans.inner_span.shrink_to_lo();
         // Complain about anything left over
         for (name, entry) in self.sess.opts.externs.iter() {
             if let ExternLocation::FoundInLibrarySearchDirectories = entry.location {

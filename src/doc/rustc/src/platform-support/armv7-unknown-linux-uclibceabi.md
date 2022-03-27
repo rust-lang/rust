@@ -89,7 +89,7 @@ To cross compile, you'll need to:
     ```
 * Copy the binary to your target device and run.
 
-We specify `CC`, `CXX`, `AR`, `CFLAGS`, and `CXXFLAGS` environment variables because somtimes a project or a subproject requires the use of your `'C'` cross toolchain. Since Tomatoware has a modified sysroot we also pass via RUSTFLAGS the location of the dynamic-linker and rpath.
+We specify `CC`, `CXX`, `AR`, `CFLAGS`, and `CXXFLAGS` environment variables because sometimes a project or a subproject requires the use of your `'C'` cross toolchain. Since Tomatoware has a modified sysroot we also pass via RUSTFLAGS the location of the dynamic-linker and rpath.
 
 ### Test with QEMU
 

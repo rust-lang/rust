@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<impl Future<Output = [async output]> as Future>::Output == impl Stream<Item = Repr>`
+error[E0271]: type mismatch resolving `<impl Future as Future>::Output == impl Stream<Item = Repr>`
   --> $DIR/issue-89008.rs:39:43
    |
 LL |     type LineStream<'a, Repr> = impl Stream<Item = Repr>;

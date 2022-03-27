@@ -63,8 +63,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
             if name.as_str() != s {
                 let msg = format!(
                     "`--crate-name` and `#[crate_name]` are \
-                                   required to match, but `{}` != `{}`",
-                    s, name
+                                   required to match, but `{s}` != `{name}`"
                 );
                 sess.span_err(attr.span, &msg);
             }
@@ -80,8 +79,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute], input: &Input) 
             if s.starts_with('-') {
                 let msg = format!(
                     "crate names cannot start with a `-`, but \
-                                   `{}` has a leading hyphen",
-                    s
+                                   `{s}` has a leading hyphen"
                 );
                 sess.err(&msg);
             } else {
@@ -100,7 +98,7 @@ pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
             match sp {
                 Some(sp) => sess.span_err(sp, s),
                 None => sess.err(s),
-            }
+            };
             err_count += 1;
         };
         if s.is_empty() {
@@ -113,7 +111,7 @@ pub fn validate_crate_name(sess: &Session, s: &str, sp: Option<Span>) {
             if c == '_' {
                 continue;
             }
-            say(&format!("invalid character `{}` in crate name: `{}`", c, s));
+            say(&format!("invalid character `{c}` in crate name: `{s}`"));
         }
     }
 
@@ -137,7 +135,7 @@ pub fn filename_for_metadata(
     let out_filename = outputs
         .single_output_file
         .clone()
-        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{}.rmeta", libname)));
+        .unwrap_or_else(|| outputs.out_directory.join(&format!("lib{libname}.rmeta")));
 
     check_file_is_writeable(&out_filename, sess);
 
@@ -153,14 +151,14 @@ pub fn filename_for_input(
     let libname = format!("{}{}", crate_name, sess.opts.cg.extra_filename);
 
     match crate_type {
-        CrateType::Rlib => outputs.out_directory.join(&format!("lib{}.rlib", libname)),
+        CrateType::Rlib => outputs.out_directory.join(&format!("lib{libname}.rlib")),
         CrateType::Cdylib | CrateType::ProcMacro | CrateType::Dylib => {
             let (prefix, suffix) = (&sess.target.dll_prefix, &sess.target.dll_suffix);
-            outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
+            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
         }
         CrateType::Staticlib => {
             let (prefix, suffix) = (&sess.target.staticlib_prefix, &sess.target.staticlib_suffix);
-            outputs.out_directory.join(&format!("{}{}{}", prefix, libname, suffix))
+            outputs.out_directory.join(&format!("{prefix}{libname}{suffix}"))
         }
         CrateType::Executable => {
             let suffix = &sess.target.exe_suffix;
@@ -185,24 +183,18 @@ pub fn default_output_for_target(sess: &Session) -> CrateType {
 
 /// Checks if target supports crate_type as output
 pub fn invalid_output_for_target(sess: &Session, crate_type: CrateType) -> bool {
-    match crate_type {
-        CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro => {
-            if !sess.target.dynamic_linking {
-                return true;
-            }
-            if sess.crt_static(Some(crate_type)) && !sess.target.crt_static_allows_dylibs {
-                return true;
-            }
+    if let CrateType::Cdylib | CrateType::Dylib | CrateType::ProcMacro = crate_type {
+        if !sess.target.dynamic_linking {
+            return true;
         }
-        _ => {}
-    }
-    if sess.target.only_cdylib {
-        match crate_type {
-            CrateType::ProcMacro | CrateType::Dylib => return true,
-            _ => {}
+        if sess.crt_static(Some(crate_type)) && !sess.target.crt_static_allows_dylibs {
+            return true;
         }
     }
-    if !sess.target.executables && crate_type == CrateType::Executable {
+    if let CrateType::ProcMacro | CrateType::Dylib = crate_type && sess.target.only_cdylib {
+        return true;
+    }
+    if let CrateType::Executable = crate_type && !sess.target.executables {
         return true;
     }
 

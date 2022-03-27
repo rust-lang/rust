@@ -1,4 +1,4 @@
-use crate::sys::mutex as imp;
+use crate::sys::locks as imp;
 
 /// An OS-based mutual exclusion lock, meant for use in static variables.
 ///

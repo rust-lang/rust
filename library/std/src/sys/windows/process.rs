@@ -19,12 +19,12 @@ use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sys::c;
 use crate::sys::c::NonZeroDWORD;
+use crate::sys::cvt;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys::{cvt, to_u16s};
 use crate::sys_common::mutex::StaticMutex;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
 use crate::sys_common::{AsInner, IntoInner};
@@ -269,8 +269,13 @@ impl Command {
             None
         };
         let program = resolve_exe(&self.program, || env::var_os("PATH"), child_paths)?;
+        // Case insensitive "ends_with" of UTF-16 encoded ".bat" or ".cmd"
+        let is_batch_file = matches!(
+            program.len().checked_sub(5).and_then(|i| program.get(i..)),
+            Some([46, 98 | 66, 97 | 65, 116 | 84, 0] | [46, 99 | 67, 109 | 77, 100 | 68, 0])
+        );
         let mut cmd_str =
-            make_command_line(program.as_os_str(), &self.args, self.force_quotes_enabled)?;
+            make_command_line(&program, &self.args, self.force_quotes_enabled, is_batch_file)?;
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -309,7 +314,6 @@ impl Command {
         si.hStdOutput = stdout.as_raw_handle();
         si.hStdError = stderr.as_raw_handle();
 
-        let program = to_u16s(&program)?;
         unsafe {
             cvt(c::CreateProcessW(
                 program.as_ptr(),
@@ -366,7 +370,7 @@ fn resolve_exe<'a>(
     exe_path: &'a OsStr,
     parent_paths: impl FnOnce() -> Option<OsString>,
     child_paths: Option<&OsStr>,
-) -> io::Result<PathBuf> {
+) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
         return Err(io::const_io_error!(
@@ -388,19 +392,19 @@ fn resolve_exe<'a>(
         if has_exe_suffix {
             // The application name is a path to a `.exe` file.
             // Let `CreateProcessW` figure out if it exists or not.
-            return Ok(exe_path.into());
+            return path::maybe_verbatim(Path::new(exe_path));
         }
         let mut path = PathBuf::from(exe_path);
 
         // Append `.exe` if not already there.
         path = path::append_suffix(path, EXE_SUFFIX.as_ref());
-        if program_exists(&path) {
+        if let Some(path) = program_exists(&path) {
             return Ok(path);
         } else {
             // It's ok to use `set_extension` here because the intent is to
             // remove the extension that was just added.
             path.set_extension("");
-            return Ok(path);
+            return path::maybe_verbatim(&path);
         }
     } else {
         ensure_no_nuls(exe_path)?;
@@ -415,7 +419,7 @@ fn resolve_exe<'a>(
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }
-            if program_exists(&path) { Some(path) } else { None }
+            program_exists(&path)
         });
         if let Some(path) = result {
             return Ok(path);
@@ -431,10 +435,10 @@ fn search_paths<Paths, Exists>(
     parent_paths: Paths,
     child_paths: Option<&OsStr>,
     mut exists: Exists,
-) -> Option<PathBuf>
+) -> Option<Vec<u16>>
 where
     Paths: FnOnce() -> Option<OsString>,
-    Exists: FnMut(PathBuf) -> Option<PathBuf>,
+    Exists: FnMut(PathBuf) -> Option<Vec<u16>>,
 {
     // 1. Child paths
     // This is for consistency with Rust's historic behaviour.
@@ -486,17 +490,18 @@ where
 }
 
 /// Check if a file exists without following symlinks.
-fn program_exists(path: &Path) -> bool {
+fn program_exists(path: &Path) -> Option<Vec<u16>> {
     unsafe {
-        to_u16s(path)
-            .map(|path| {
-                // Getting attributes using `GetFileAttributesW` does not follow symlinks
-                // and it will almost always be successful if the link exists.
-                // There are some exceptions for special system files (e.g. the pagefile)
-                // but these are not executable.
-                c::GetFileAttributesW(path.as_ptr()) != c::INVALID_FILE_ATTRIBUTES
-            })
-            .unwrap_or(false)
+        let path = path::maybe_verbatim(path).ok()?;
+        // Getting attributes using `GetFileAttributesW` does not follow symlinks
+        // and it will almost always be successful if the link exists.
+        // There are some exceptions for special system files (e.g. the pagefile)
+        // but these are not executable.
+        if c::GetFileAttributesW(path.as_ptr()) == c::INVALID_FILE_ATTRIBUTES {
+            None
+        } else {
+            Some(path)
+        }
     }
 }
 
@@ -730,7 +735,12 @@ enum Quote {
 
 // Produces a wide string *without terminating null*; returns an error if
 // `prog` or any of the `args` contain a nul.
-fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Result<Vec<u16>> {
+fn make_command_line(
+    prog: &[u16],
+    args: &[Arg],
+    force_quotes: bool,
+    is_batch_file: bool,
+) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
@@ -739,17 +749,18 @@ fn make_command_line(prog: &OsStr, args: &[Arg], force_quotes: bool) -> io::Resu
     // need to add an extra pair of quotes surrounding the whole command line
     // so they are properly passed on to the script.
     // See issue #91991.
-    let is_batch_file = Path::new(prog)
-        .extension()
-        .map(|ext| ext.eq_ignore_ascii_case("cmd") || ext.eq_ignore_ascii_case("bat"))
-        .unwrap_or(false);
     if is_batch_file {
         cmd.push(b'"' as u16);
     }
 
-    // Always quote the program name so CreateProcess doesn't interpret args as
-    // part of the name if the binary wasn't found first time.
-    append_arg(&mut cmd, prog, Quote::Always)?;
+    // Always quote the program name so CreateProcess to avoid ambiguity when
+    // the child process parses its arguments.
+    // Note that quotes aren't escaped here because they can't be used in arg0.
+    // But that's ok because file paths can't contain quotes.
+    cmd.push(b'"' as u16);
+    cmd.extend_from_slice(prog.strip_suffix(&[0]).unwrap_or(prog));
+    cmd.push(b'"' as u16);
+
     for arg in args {
         cmd.push(' ' as u16);
         let (arg, quote) = match arg {

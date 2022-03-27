@@ -1570,7 +1570,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         type_str: &str,
         trait_str: &str,
         name: Symbol,
-    ) {
+    ) -> ErrorGuaranteed {
         let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
         if let (true, Ok(snippet)) = (
             self.tcx()
@@ -1594,7 +1594,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 Applicability::HasPlaceholders,
             );
         }
-        err.emit();
+        err.emit()
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -1661,13 +1661,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (Some(bound), _) => (bound, matching_candidates.next()),
             (None, Some(bound)) => (bound, const_candidates.next()),
             (None, None) => {
-                self.complain_about_assoc_type_not_found(
+                let reported = self.complain_about_assoc_type_not_found(
                     all_candidates,
                     &ty_param_name(),
                     assoc_name,
                     span,
                 );
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
         };
         debug!("one_bound_for_assoc_type: bound = {:?}", bound);
@@ -1752,9 +1752,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     where_bounds.join(",\n"),
                 ));
             }
-            err.emit();
+            let reported = err.emit();
             if !where_bounds.is_empty() {
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
         }
 
@@ -1811,7 +1811,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    return Err(ErrorGuaranteed);
+                    let guar = tcx.sess.delay_span_bug(span, "expected cycle error");
+                    return Err(guar);
                 };
 
                 self.one_bound_for_assoc_type(
@@ -1828,10 +1829,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 | Res::Def(DefKind::TyParam, param_did),
             ) => self.find_bound_for_assoc_item(param_did.expect_local(), assoc_ident, span)?,
             _ => {
-                if variant_resolution.is_some() {
+                let reported = if variant_resolution.is_some() {
                     // Variant in type position
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
-                    tcx.sess.span_err(span, &msg);
+                    tcx.sess.span_err(span, &msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_err!(
                         tcx.sess,
@@ -1870,17 +1871,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
-                    err.emit();
-                } else if !qself_ty.references_error() {
+                    err.emit()
+                } else if let Some(reported) = qself_ty.error_reported() {
+                    reported
+                } else {
                     // Don't print `TyErr` to the user.
                     self.report_ambiguous_associated_type(
                         span,
                         &qself_ty.to_string(),
                         "Trait",
                         assoc_ident.name,
-                    );
-                }
-                return Err(ErrorGuaranteed);
+                    )
+                };
+                return Err(reported);
             }
         };
 
@@ -1898,8 +1901,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // but it was used in a type position.
         let Some(item) = item else {
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
-            tcx.sess.struct_span_err(span, &msg).emit();
-            return Err(ErrorGuaranteed);
+            let guar = tcx.sess.struct_span_err(span, &msg).emit();
+            return Err(guar);
         };
 
         let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
@@ -2737,7 +2740,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 sugg,
                                 Applicability::MachineApplicable,
                             )
-                            .emit()
+                            .emit();
                     },
                 );
             }

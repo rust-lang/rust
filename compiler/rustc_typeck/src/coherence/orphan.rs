@@ -21,7 +21,7 @@ pub(super) fn orphan_check_crate(tcx: TyCtxt<'_>, (): ()) -> &[LocalDefId] {
         for &impl_of_trait in impls_of_trait {
             match orphan_check_impl(tcx, impl_of_trait) {
                 Ok(()) => {}
-                Err(ErrorGuaranteed) => errors.push(impl_of_trait),
+                Err(_) => errors.push(impl_of_trait),
             }
         }
 
@@ -135,17 +135,19 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
         };
 
         if let Some((msg, label)) = msg {
-            struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
-            return Err(ErrorGuaranteed);
+            let reported =
+                struct_span_err!(tcx.sess, sp, E0321, "{}", msg).span_label(sp, label).emit();
+            return Err(reported);
         }
     }
 
     if let ty::Opaque(def_id, _) = *trait_ref.self_ty().kind() {
-        tcx.sess
+        let reported = tcx
+            .sess
             .struct_span_err(sp, "cannot implement trait on type alias impl trait")
             .span_note(tcx.def_span(def_id), "type alias impl trait defined here")
             .emit();
-        return Err(ErrorGuaranteed);
+        return Err(reported);
     }
 
     Ok(())
@@ -297,17 +299,11 @@ impl<'tcx> TypeVisitor<'tcx> for AreUniqueParamsVisitor {
             _ => ControlFlow::Break(NotUniqueParam::NotParam(t.into())),
         }
     }
-    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match *r {
-            ty::ReEarlyBound(p) => {
-                if self.seen.insert(p.index) {
-                    ControlFlow::CONTINUE
-                } else {
-                    ControlFlow::Break(NotUniqueParam::DuplicateParam(r.into()))
-                }
-            }
-            _ => ControlFlow::Break(NotUniqueParam::NotParam(r.into())),
-        }
+    fn visit_region(&mut self, _: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // We don't drop candidates during candidate assembly because of region
+        // constraints, so the behavior for impls only constrained by regions
+        // will not change.
+        ControlFlow::CONTINUE
     }
     fn visit_const(&mut self, c: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
         match c.val() {

@@ -43,10 +43,8 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // FEAT_AdvSimd
+    // FEAT_AdvSimd & FEAT_FP
     ("neon", None),
-    // FEAT_FP
-    ("fp", None),
     // FEAT_FP16
     ("fp16", None),
     // FEAT_SVE
@@ -143,12 +141,11 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
 ];
 
 const AARCH64_TIED_FEATURES: &[&[&str]] = &[
-    &["fp", "neon"],   // Silicon always has both, so avoid needless complications
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("adx", Some(sym::adx_target_feature)),
+    ("adx", None),
     ("aes", None),
     ("avx", None),
     ("avx2", None),
@@ -223,6 +220,26 @@ const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("f", Some(sym::riscv_target_feature)),
     ("d", Some(sym::riscv_target_feature)),
     ("e", Some(sym::riscv_target_feature)),
+    ("v", Some(sym::riscv_target_feature)),
+    ("zfinx", Some(sym::riscv_target_feature)),
+    ("zdinx", Some(sym::riscv_target_feature)),
+    ("zhinx", Some(sym::riscv_target_feature)),
+    ("zhinxmin", Some(sym::riscv_target_feature)),
+    ("zfh", Some(sym::riscv_target_feature)),
+    ("zfhmin", Some(sym::riscv_target_feature)),
+    ("zbkb", Some(sym::riscv_target_feature)),
+    ("zbkc", Some(sym::riscv_target_feature)),
+    ("zbkx", Some(sym::riscv_target_feature)),
+    ("zknd", Some(sym::riscv_target_feature)),
+    ("zkne", Some(sym::riscv_target_feature)),
+    ("zknh", Some(sym::riscv_target_feature)),
+    ("zksed", Some(sym::riscv_target_feature)),
+    ("zksh", Some(sym::riscv_target_feature)),
+    ("zkr", Some(sym::riscv_target_feature)),
+    ("zkn", Some(sym::riscv_target_feature)),
+    ("zks", Some(sym::riscv_target_feature)),
+    ("zk", Some(sym::riscv_target_feature)),
+    ("zkt", Some(sym::riscv_target_feature)),
 ];
 
 const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[

@@ -9,8 +9,8 @@ use rustc_session::config::{
     rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
 };
 use rustc_session::config::{
-    BranchProtection, Externs, OutputType, OutputTypes, PAuthKey, PacRet, SymbolManglingVersion,
-    WasiExecModel,
+    BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
+    SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
 use rustc_session::lint::Level;
@@ -758,6 +758,7 @@ fn test_debugging_options_tracking_hash() {
     tracked!(no_link, true);
     tracked!(no_unique_section_names, true);
     tracked!(no_profiler_runtime, true);
+    tracked!(oom, OomStrategy::Panic);
     tracked!(osx_rpath_install_name, true);
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);

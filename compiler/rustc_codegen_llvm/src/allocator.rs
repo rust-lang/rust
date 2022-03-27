@@ -3,7 +3,7 @@ use libc::c_uint;
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::DebugInfo;
+use rustc_session::config::{DebugInfo, OomStrategy};
 use rustc_span::symbol::sym;
 
 use crate::debuginfo;
@@ -139,9 +139,19 @@ pub(crate) unsafe fn codegen(
     llvm::LLVMBuildRetVoid(llbuilder);
     llvm::LLVMDisposeBuilder(llbuilder);
 
+    // __rust_alloc_error_handler_should_panic
+    let name = OomStrategy::SYMBOL;
+    let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
+    if tcx.sess.target.default_hidden_visibility {
+        llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
+    }
+    let val = tcx.sess.opts.debugging_opts.oom.should_panic();
+    let llval = llvm::LLVMConstInt(i8, val as u64, False);
+    llvm::LLVMSetInitializer(ll_g, llval);
+
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CrateDebugContext::new(llmod);
-        debuginfo::metadata::compile_unit_metadata(tcx, module_name, &dbg_cx);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(llmod);
+        debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
 }

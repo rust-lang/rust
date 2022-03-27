@@ -58,6 +58,7 @@ This API is completely unstable and subject to change.
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(bool_to_option)]
+#![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
 #![feature(hash_drain_filter)]
@@ -537,7 +538,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 
-    if tcx.sess.err_count() == 0 { Ok(()) } else { Err(ErrorGuaranteed) }
+    if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

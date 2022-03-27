@@ -255,11 +255,11 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // "secondary" errors if they occurred.
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
-            for error in secondary_errors {
-                self.tcx.sess.diagnostic().emit_diagnostic(&error);
+            for mut error in secondary_errors {
+                self.tcx.sess.diagnostic().emit_diagnostic(&mut error);
             }
         } else {
-            assert!(self.tcx.sess.has_errors());
+            assert!(self.tcx.sess.has_errors().is_some());
         }
     }
 
@@ -327,8 +327,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         match op.importance() {
             ops::DiagnosticImportance::Primary => {
-                self.error_emitted = Some(ErrorGuaranteed);
-                err.emit();
+                let reported = err.emit();
+                self.error_emitted = Some(reported);
             }
 
             ops::DiagnosticImportance::Secondary => err.buffer(&mut self.secondary_errors),

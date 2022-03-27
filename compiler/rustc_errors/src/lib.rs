@@ -4,6 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(crate_visibility_modifier)]
+#![feature(drain_filter)]
 #![feature(backtrace)]
 #![feature(if_let_guard)]
 #![feature(let_else)]
@@ -399,7 +400,7 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic};
-pub use diagnostic_builder::DiagnosticBuilder;
+pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
 use std::backtrace::Backtrace;
 
 /// A handler deals with errors and other compiler output.
@@ -644,8 +645,8 @@ impl Handler {
     }
 
     /// Emit all stashed diagnostics.
-    pub fn emit_stashed_diagnostics(&self) {
-        self.inner.borrow_mut().emit_stashed_diagnostics();
+    pub fn emit_stashed_diagnostics(&self) -> Option<ErrorGuaranteed> {
+        self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
@@ -805,8 +806,8 @@ impl Handler {
         FatalError.raise()
     }
 
-    pub fn span_err(&self, span: impl Into<MultiSpan>, msg: &str) {
-        self.emit_diag_at_span(Diagnostic::new(Error { lint: false }, msg), span);
+    pub fn span_err(&self, span: impl Into<MultiSpan>, msg: &str) -> ErrorGuaranteed {
+        self.emit_diag_at_span(Diagnostic::new(Error { lint: false }, msg), span).unwrap()
     }
 
     pub fn span_err_with_code(&self, span: impl Into<MultiSpan>, msg: &str, code: DiagnosticId) {
@@ -829,7 +830,7 @@ impl Handler {
     }
 
     #[track_caller]
-    pub fn delay_span_bug(&self, span: impl Into<MultiSpan>, msg: &str) {
+    pub fn delay_span_bug(&self, span: impl Into<MultiSpan>, msg: &str) -> ErrorGuaranteed {
         self.inner.borrow_mut().delay_span_bug(span, msg)
     }
 
@@ -858,8 +859,8 @@ impl Handler {
         self.inner.borrow_mut().fatal(msg)
     }
 
-    pub fn err(&self, msg: &str) {
-        self.inner.borrow_mut().err(msg);
+    pub fn err(&self, msg: &str) -> ErrorGuaranteed {
+        self.inner.borrow_mut().err(msg)
     }
 
     pub fn warn(&self, msg: &str) {
@@ -880,11 +881,15 @@ impl Handler {
         self.inner.borrow().err_count()
     }
 
-    pub fn has_errors(&self) -> bool {
-        self.inner.borrow().has_errors()
+    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().has_errors() { Some(ErrorGuaranteed(())) } else { None }
     }
-    pub fn has_errors_or_lint_errors(&self) -> bool {
-        self.inner.borrow().has_errors_or_lint_errors()
+    pub fn has_errors_or_lint_errors(&self) -> Option<ErrorGuaranteed> {
+        if self.inner.borrow().has_errors_or_lint_errors() {
+            Some(ErrorGuaranteed(()))
+        } else {
+            None
+        }
     }
     pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
         self.inner.borrow().has_errors_or_delayed_span_bugs()
@@ -915,13 +920,17 @@ impl Handler {
         self.inner.borrow_mut().force_print_diagnostic(db)
     }
 
-    pub fn emit_diagnostic(&self, diagnostic: &Diagnostic) {
+    pub fn emit_diagnostic(&self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         self.inner.borrow_mut().emit_diagnostic(diagnostic)
     }
 
-    fn emit_diag_at_span(&self, mut diag: Diagnostic, sp: impl Into<MultiSpan>) {
+    fn emit_diag_at_span(
+        &self,
+        mut diag: Diagnostic,
+        sp: impl Into<MultiSpan>,
+    ) -> Option<ErrorGuaranteed> {
         let mut inner = self.inner.borrow_mut();
-        inner.emit_diagnostic(diag.set_span(sp));
+        inner.emit_diagnostic(diag.set_span(sp))
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -985,18 +994,25 @@ impl HandlerInner {
         self.taught_diagnostics.insert(code.clone())
     }
 
-    fn force_print_diagnostic(&mut self, db: Diagnostic) {
-        self.emitter.emit_diagnostic(&db);
+    fn force_print_diagnostic(&mut self, mut db: Diagnostic) {
+        self.emitter.emit_diagnostic(&mut db);
     }
 
     /// Emit all stashed diagnostics.
-    fn emit_stashed_diagnostics(&mut self) {
+    fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let diags = self.stashed_diagnostics.drain(..).map(|x| x.1).collect::<Vec<_>>();
-        diags.iter().for_each(|diag| self.emit_diagnostic(diag));
+        let mut reported = None;
+        for mut diag in diags {
+            if diag.is_error() {
+                reported = Some(ErrorGuaranteed(()));
+            }
+            self.emit_diagnostic(&mut diag);
+        }
+        reported
     }
 
     // FIXME(eddyb) this should ideally take `diagnostic` by value.
-    fn emit_diagnostic(&mut self, diagnostic: &Diagnostic) {
+    fn emit_diagnostic(&mut self, diagnostic: &mut Diagnostic) -> Option<ErrorGuaranteed> {
         if diagnostic.level == Level::DelayedBug {
             // FIXME(eddyb) this should check for `has_errors` and stop pushing
             // once *any* errors were emitted (and truncate `delayed_span_bugs`
@@ -1005,7 +1021,7 @@ impl HandlerInner {
             self.delayed_span_bugs.push(diagnostic.clone());
 
             if !self.flags.report_delayed_bugs {
-                return;
+                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             }
         }
 
@@ -1020,7 +1036,7 @@ impl HandlerInner {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTICS)(diagnostic);
             }
-            return;
+            return None;
         }
 
         // The `LintExpectationId` can be stable or unstable depending on when it was created.
@@ -1029,16 +1045,16 @@ impl HandlerInner {
         // a stable one by the `LintLevelsBuilder`.
         if let Level::Expect(LintExpectationId::Unstable { .. }) = diagnostic.level {
             self.unstable_expect_diagnostics.push(diagnostic.clone());
-            return;
+            return None;
         }
 
         (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if let Level::Expect(expectation_id) = diagnostic.level {
             self.fulfilled_expectations.insert(expectation_id);
-            return;
+            return None;
         } else if diagnostic.level == Allow {
-            return;
+            return None;
         }
 
         if let Some(ref code) = diagnostic.code {
@@ -1055,7 +1071,23 @@ impl HandlerInner {
         // Only emit the diagnostic if we've been asked to deduplicate and
         // haven't already emitted an equivalent diagnostic.
         if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            self.emitter.emit_diagnostic(diagnostic);
+            debug!(?diagnostic);
+            debug!(?self.emitted_diagnostics);
+            let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                debug!(?sub);
+                if sub.level != Level::OnceNote {
+                    return false;
+                }
+                let mut hasher = StableHasher::new();
+                sub.hash(&mut hasher);
+                let diagnostic_hash = hasher.finish();
+                debug!(?diagnostic_hash);
+                !self.emitted_diagnostics.insert(diagnostic_hash)
+            };
+
+            diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+
+            self.emitter.emit_diagnostic(&diagnostic);
             if diagnostic.is_error() {
                 self.deduplicated_err_count += 1;
             } else if diagnostic.level == Warning {
@@ -1068,8 +1100,12 @@ impl HandlerInner {
             } else {
                 self.bump_err_count();
             }
+
+            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
         } else {
             self.bump_warn_count();
+
+            None
         }
     }
 
@@ -1191,7 +1227,7 @@ impl HandlerInner {
     }
 
     #[track_caller]
-    fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) {
+    fn delay_span_bug(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> ErrorGuaranteed {
         // This is technically `self.treat_err_as_bug()` but `delay_span_bug` is called before
         // incrementing `err_count` by one, so we need to +1 the comparing.
         // FIXME: Would be nice to increment err_count in a more coherent way.
@@ -1202,43 +1238,43 @@ impl HandlerInner {
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp.into());
         diagnostic.note(&format!("delayed at {}", std::panic::Location::caller()));
-        self.emit_diagnostic(&diagnostic)
+        self.emit_diagnostic(&mut diagnostic).unwrap()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
     fn delay_good_path_bug(&mut self, msg: &str) {
-        let diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         if self.flags.report_delayed_bugs {
-            self.emit_diagnostic(&diagnostic);
+            self.emit_diagnostic(&mut diagnostic);
         }
         let backtrace = std::backtrace::Backtrace::force_capture();
         self.delayed_good_path_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
 
     fn failure(&mut self, msg: &str) {
-        self.emit_diagnostic(&Diagnostic::new(FailureNote, msg));
+        self.emit_diagnostic(&mut Diagnostic::new(FailureNote, msg));
     }
 
     fn fatal(&mut self, msg: &str) -> FatalError {
-        self.emit_error(Fatal, msg);
+        self.emit(Fatal, msg);
         FatalError
     }
 
-    fn err(&mut self, msg: &str) {
-        self.emit_error(Error { lint: false }, msg);
+    fn err(&mut self, msg: &str) -> ErrorGuaranteed {
+        self.emit(Error { lint: false }, msg)
     }
 
     /// Emit an error; level should be `Error` or `Fatal`.
-    fn emit_error(&mut self, level: Level, msg: &str) {
+    fn emit(&mut self, level: Level, msg: &str) -> ErrorGuaranteed {
         if self.treat_err_as_bug() {
             self.bug(msg);
         }
-        self.emit_diagnostic(&Diagnostic::new(level, msg));
+        self.emit_diagnostic(&mut Diagnostic::new(level, msg)).unwrap()
     }
 
     fn bug(&mut self, msg: &str) -> ! {
-        self.emit_diagnostic(&Diagnostic::new(Bug, msg));
+        self.emit_diagnostic(&mut Diagnostic::new(Bug, msg));
         panic::panic_any(ExplicitBug);
     }
 
@@ -1248,7 +1284,7 @@ impl HandlerInner {
             if no_bugs {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
-                self.emit_diagnostic(&Diagnostic::new(Bug, explanation));
+                self.emit_diagnostic(&mut Diagnostic::new(Bug, explanation));
                 no_bugs = false;
             }
 
@@ -1264,7 +1300,7 @@ impl HandlerInner {
             }
             bug.level = Level::Bug;
 
-            self.emit_diagnostic(&bug);
+            self.emit_diagnostic(&mut bug);
         }
 
         // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
@@ -1331,6 +1367,8 @@ pub enum Level {
     },
     Warning,
     Note,
+    /// A note that is only emitted once.
+    OnceNote,
     Help,
     FailureNote,
     Allow,
@@ -1353,7 +1391,7 @@ impl Level {
             Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
-            Note => {
+            Note | OnceNote => {
                 spec.set_fg(Some(Color::Green)).set_intense(true);
             }
             Help => {
@@ -1370,7 +1408,7 @@ impl Level {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error { .. } => "error",
             Warning => "warning",
-            Note => "note",
+            Note | OnceNote => "note",
             Help => "help",
             FailureNote => "failure-note",
             Allow => panic!("Shouldn't call on allowed error"),
@@ -1433,9 +1471,17 @@ pub fn add_elided_lifetime_in_path_suggestion(
     );
 }
 
-// Useful type to use with `Result<>` indicate that an error has already
-// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq)]
-pub struct ErrorGuaranteed;
+/// Useful type to use with `Result<>` indicate that an error has already
+/// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, Encodable, Decodable, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ErrorGuaranteed(());
+
+impl ErrorGuaranteed {
+    /// To be used only if you really know what you are doing... ideally, we would find a way to
+    /// eliminate all calls to this method.
+    pub fn unchecked_claim_error_was_emitted() -> Self {
+        ErrorGuaranteed(())
+    }
+}
 
 rustc_data_structures::impl_stable_hash_via_hash!(ErrorGuaranteed);

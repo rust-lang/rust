@@ -93,7 +93,7 @@
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]
 //
-// Library features for const fns:
+// Library features:
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
 #![feature(const_alloc_layout)]
@@ -146,6 +146,8 @@
 #![feature(ptr_metadata)]
 #![feature(slice_ptr_get)]
 #![feature(str_internals)]
+#![feature(utf16_extra)]
+#![feature(utf16_extra_const)]
 #![feature(variant_count)]
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
@@ -207,7 +209,6 @@
 //
 // Target features:
 #![cfg_attr(bootstrap, feature(aarch64_target_feature))]
-#![feature(adx_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(cmpxchg16b_target_feature)]
@@ -219,6 +220,7 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
+#![cfg_attr(bootstrap, feature(adx_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]

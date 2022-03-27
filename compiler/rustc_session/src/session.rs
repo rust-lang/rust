@@ -19,7 +19,7 @@ use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
-use rustc_errors::{Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
@@ -35,7 +35,6 @@ use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
-use std::num::NonZeroU32;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -88,7 +87,7 @@ impl From<usize> for Limit {
 
 impl fmt::Display for Limit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        self.0.fmt(f)
     }
 }
 
@@ -136,10 +135,6 @@ pub struct Session {
     /// `None` means that there is no source file.
     pub local_crate_source_file: Option<PathBuf>,
 
-    /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
-    /// (sub)diagnostics that have been set once, but should not be set again,
-    /// in order to avoid redundantly verbose output (Issue #24690, #44953).
-    pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     crate_types: OnceCell<Vec<CrateType>>,
     /// The `stable_crate_id` is constructed out of the crate name and all the
     /// `-C metadata` arguments passed to the compiler. Its value forms a unique
@@ -209,34 +204,12 @@ pub struct PerfStats {
     pub normalize_projection_ty: AtomicUsize,
 }
 
-/// Enum to support dispatch of one-time diagnostics (in `Session.diag_once`).
-enum DiagnosticBuilderMethod {
-    Note,
-    SpanNote,
-    // Add more variants as needed to support one-time diagnostics.
-}
-
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
 pub trait SessionDiagnostic<'a> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
     fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, ErrorGuaranteed>;
-}
-
-/// Diagnostic message ID, used by `Session.one_time_diagnostics` to avoid
-/// emitting the same message more than once.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum DiagnosticMessageId {
-    ErrorId(u16), // EXXXX error code as integer
-    LintId(lint::LintId),
-    StabilityId(Option<NonZeroU32>), // issue number
-}
-
-impl From<&'static lint::Lint> for DiagnosticMessageId {
-    fn from(lint: &'static lint::Lint) -> Self {
-        DiagnosticMessageId::LintId(lint::LintId::of(lint))
-    }
 }
 
 impl Session {
@@ -252,8 +225,8 @@ impl Session {
             let mut diag = self.struct_warn("skipping const checks");
             for &(span, feature_gate) in unleashed_features.iter() {
                 // FIXME: `span_label` doesn't do anything, so we use "help" as a hack.
-                if let Some(feature_gate) = feature_gate {
-                    diag.span_help(span, &format!("skipping check for `{}` feature", feature_gate));
+                if let Some(gate) = feature_gate {
+                    diag.span_help(span, &format!("skipping check for `{gate}` feature"));
                     // The unleash flag must *not* be used to just "hack around" feature gates.
                     must_err = true;
                 } else {
@@ -262,7 +235,7 @@ impl Session {
             }
             diag.emit();
             // If we should err, make sure we did.
-            if must_err && !self.has_errors() {
+            if must_err && !self.has_errors().is_some() {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
@@ -404,13 +377,13 @@ impl Session {
             self.span_err(sp, msg);
         }
     }
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().span_err(sp, msg)
     }
     pub fn span_err_with_code<S: Into<MultiSpan>>(&self, sp: S, msg: &str, code: DiagnosticId) {
         self.diagnostic().span_err_with_code(sp, &msg, code)
     }
-    pub fn err(&self, msg: &str) {
+    pub fn err(&self, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().err(msg)
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
@@ -420,7 +393,7 @@ impl Session {
     pub fn err_count(&self) -> usize {
         self.diagnostic().err_count()
     }
-    pub fn has_errors(&self) -> bool {
+    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
         self.diagnostic().has_errors()
     }
     pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
@@ -430,9 +403,9 @@ impl Session {
         self.diagnostic().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
-        if self.diagnostic().has_errors_or_lint_errors() {
-            self.diagnostic().emit_stashed_diagnostics();
-            Err(ErrorGuaranteed)
+        if let Some(reported) = self.diagnostic().has_errors_or_lint_errors() {
+            let _ = self.diagnostic().emit_stashed_diagnostics();
+            Err(reported)
         } else {
             Ok(())
         }
@@ -444,7 +417,11 @@ impl Session {
     {
         let old_count = self.err_count();
         let result = f();
-        if self.err_count() == old_count { Ok(result) } else { Err(ErrorGuaranteed) }
+        if self.err_count() == old_count {
+            Ok(result)
+        } else {
+            Err(ErrorGuaranteed::unchecked_claim_error_was_emitted())
+        }
     }
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().span_warn(sp, msg)
@@ -457,7 +434,7 @@ impl Session {
     }
     /// Delay a span_bug() call until abort_if_errors()
     #[track_caller]
-    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
+    pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ErrorGuaranteed {
         self.diagnostic().delay_span_bug(sp, msg)
     }
 
@@ -491,50 +468,6 @@ impl Session {
     #[inline]
     pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
-    }
-
-    /// Analogous to calling methods on the given `DiagnosticBuilder`, but
-    /// deduplicates on lint ID, span (if any), and message for this `Session`
-    fn diag_once(
-        &self,
-        diag: &mut Diagnostic,
-        method: DiagnosticBuilderMethod,
-        msg_id: DiagnosticMessageId,
-        message: &str,
-        span_maybe: Option<Span>,
-    ) {
-        let id_span_message = (msg_id, span_maybe, message.to_owned());
-        let fresh = self.one_time_diagnostics.borrow_mut().insert(id_span_message);
-        if fresh {
-            match method {
-                DiagnosticBuilderMethod::Note => {
-                    diag.note(message);
-                }
-                DiagnosticBuilderMethod::SpanNote => {
-                    let span = span_maybe.expect("`span_note` needs a span");
-                    diag.span_note(span, message);
-                }
-            }
-        }
-    }
-
-    pub fn diag_span_note_once(
-        &self,
-        diag: &mut Diagnostic,
-        msg_id: DiagnosticMessageId,
-        span: Span,
-        message: &str,
-    ) {
-        self.diag_once(diag, DiagnosticBuilderMethod::SpanNote, msg_id, message, Some(span));
-    }
-
-    pub fn diag_note_once(
-        &self,
-        diag: &mut Diagnostic,
-        msg_id: DiagnosticMessageId,
-        message: &str,
-    ) {
-        self.diag_once(diag, DiagnosticBuilderMethod::Note, msg_id, message, None);
     }
 
     #[inline]
@@ -1200,7 +1133,7 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_error(sopts.error_format, &format!("Error loading host specification: {}", e))
+        early_error(sopts.error_format, &format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
         early_warn(sopts.error_format, &warning)
@@ -1239,7 +1172,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                early_warn(sopts.error_format, &format!("failed to create profiler: {}", e));
+                early_warn(sopts.error_format, &format!("failed to create profiler: {e}"));
                 None
             }
         }
@@ -1302,7 +1235,6 @@ pub fn build_session(
         parse_sess,
         sysroot,
         local_crate_source_file,
-        one_time_diagnostics: Default::default(),
         crate_types: OnceCell::new(),
         stable_crate_id: OnceCell::new(),
         features: OnceCell::new(),
@@ -1387,17 +1319,23 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     let unsupported_sanitizers = sess.opts.debugging_opts.sanitizer - supported_sanitizers;
     match unsupported_sanitizers.into_iter().count() {
         0 => {}
-        1 => sess
-            .err(&format!("{} sanitizer is not supported for this target", unsupported_sanitizers)),
-        _ => sess.err(&format!(
-            "{} sanitizers are not supported for this target",
-            unsupported_sanitizers
-        )),
+        1 => {
+            sess.err(&format!(
+                "{} sanitizer is not supported for this target",
+                unsupported_sanitizers
+            ));
+        }
+        _ => {
+            sess.err(&format!(
+                "{} sanitizers are not supported for this target",
+                unsupported_sanitizers
+            ));
+        }
     }
     // Cannot mix and match sanitizers.
     let mut sanitizer_iter = sess.opts.debugging_opts.sanitizer.into_iter();
     if let (Some(first), Some(second)) = (sanitizer_iter.next(), sanitizer_iter.next()) {
-        sess.err(&format!("`-Zsanitizer={}` is incompatible with `-Zsanitizer={}`", first, second));
+        sess.err(&format!("`-Zsanitizer={first}` is incompatible with `-Zsanitizer={second}`"));
     }
 
     // Cannot enable crt-static with sanitizers on Linux
@@ -1446,7 +1384,7 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
+pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1457,7 +1395,8 @@ pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) {
         }
     };
     let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-    handler.struct_fatal(msg).emit();
+    let reported = handler.struct_fatal(msg).emit();
+    reported
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {

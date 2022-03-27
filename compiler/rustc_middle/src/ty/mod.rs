@@ -44,6 +44,7 @@ use rustc_span::symbol::{kw, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::abi::Align;
 
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 use std::{fmt, str};
@@ -170,6 +171,12 @@ pub struct ImplHeader<'tcx> {
     pub self_ty: Ty<'tcx>,
     pub trait_ref: Option<TraitRef<'tcx>>,
     pub predicates: Vec<Predicate<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug, TypeFoldable)]
+pub enum ImplSubject<'tcx> {
+    Trait(TraitRef<'tcx>),
+    Inherent(Ty<'tcx>),
 }
 
 #[derive(
@@ -748,6 +755,13 @@ pub struct TraitPredicate<'tcx> {
 
     pub constness: BoundConstness,
 
+    /// If polarity is Positive: we are proving that the trait is implemented.
+    ///
+    /// If polarity is Negative: we are proving that a negative impl of this trait
+    /// exists. (Note that coherence also checks whether negative impls of supertraits
+    /// exist via a series of predicates.)
+    ///
+    /// If polarity is Reserved: that's a bug.
     pub polarity: ImplPolarity,
 }
 
@@ -758,6 +772,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         if unlikely!(Some(self.trait_ref.def_id) == tcx.lang_items().drop_trait()) {
             // remap without changing constness of this predicate.
             // this is because `T: ~const Drop` has a different meaning to `T: Drop`
+            // FIXME(fee1-dead): remove this logic after beta bump
             param_env.remap_constness_with(self.constness)
         } else {
             *param_env = param_env.with_constness(self.constness.and(param_env.constness()))

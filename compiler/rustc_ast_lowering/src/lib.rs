@@ -452,7 +452,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         self.with_hir_id_owner(CRATE_NODE_ID, |lctx| {
-            let module = lctx.lower_mod(&c.items, c.span);
+            let module = lctx.lower_mod(&c.items, c.spans.inner_span);
             lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
             hir::OwnerNode::Crate(lctx.arena.alloc(module))
         });
@@ -952,7 +952,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 sess.diagnostic().delay_span_bug(
                                     span,
                                     "unexpected delimiter in key-value attribute's value",
-                                )
+                                );
                             }
                             unwrap_single_token(sess, tokens, span)
                         }

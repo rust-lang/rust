@@ -1,9 +1,10 @@
+use super::diagnostics::SnapshotParser;
 use super::pat::{CommaRecoveryMode, RecoverColon, RecoverComma, PARAM_EXPECTED};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{
-    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions, TokenType,
+    AttrWrapper, BlockMode, ClosureSpans, ForceCollect, Parser, PathStyle, Restrictions,
+    SemiColonMode, SeqSep, TokenExpectType, TokenType, TrailingToken,
 };
-use super::{SemiColonMode, SeqSep, TokenExpectType, TrailingToken};
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
 use ast::token::DelimToken;
@@ -223,7 +224,7 @@ impl<'a> Parser<'a> {
                     AssocOp::NotEqual => "!=",
                     _ => unreachable!(),
                 };
-                self.struct_span_err(sp, &format!("invalid comparison operator `{}=`", sugg))
+                self.struct_span_err(sp, &format!("invalid comparison operator `{sugg}=`"))
                     .span_suggestion_short(
                         sp,
                         &format!("`{s}=` is not a valid comparison operator, use `{s}`", s = sugg),
@@ -441,10 +442,10 @@ impl<'a> Parser<'a> {
 
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
     fn error_bad_logical_op(&self, bad: &str, good: &str, english: &str) {
-        self.struct_span_err(self.token.span, &format!("`{}` is not a logical operator", bad))
+        self.struct_span_err(self.token.span, &format!("`{bad}` is not a logical operator"))
             .span_suggestion_short(
                 self.token.span,
-                &format!("use `{}` to perform logical {}", good, english),
+                &format!("use `{good}` to perform logical {english}"),
                 good.to_string(),
                 Applicability::MachineApplicable,
             )
@@ -703,7 +704,7 @@ impl<'a> Parser<'a> {
                         ExprKind::Path(None, ast::Path { segments, .. }),
                         TokenKind::Ident(kw::For | kw::Loop | kw::While, false),
                     ) if segments.len() == 1 => {
-                        let snapshot = self.clone();
+                        let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
                             ident: Ident::from_str_and_span(
                                 &format!("'{}", segments[0].ident),
@@ -725,7 +726,7 @@ impl<'a> Parser<'a> {
                             }
                             Err(err) => {
                                 err.cancel();
-                                *self = snapshot;
+                                self.restore_snapshot(snapshot);
                             }
                         }
                     }
@@ -766,9 +767,9 @@ impl<'a> Parser<'a> {
                                 self.look_ahead(1, |t| t.span).to(span_after_type),
                                 "interpreted as generic arguments",
                             )
-                            .span_label(self.token.span, format!("not interpreted as {}", op_noun))
+                            .span_label(self.token.span, format!("not interpreted as {op_noun}"))
                             .multipart_suggestion(
-                                &format!("try {} the cast value", op_verb),
+                                &format!("try {op_verb} the cast value"),
                                 vec![
                                     (expr.span.shrink_to_lo(), "(".to_string()),
                                     (expr.span.shrink_to_hi(), ")".to_string()),
@@ -799,11 +800,17 @@ impl<'a> Parser<'a> {
         &mut self,
         cast_expr: P<Expr>,
     ) -> PResult<'a, P<Expr>> {
+        let span = cast_expr.span;
+        let maybe_ascription_span = if let ExprKind::Type(ascripted_expr, _) = &cast_expr.kind {
+            Some(ascripted_expr.span.shrink_to_hi().with_hi(span.hi()))
+        } else {
+            None
+        };
+
         // Save the memory location of expr before parsing any following postfix operators.
         // This will be compared with the memory location of the output expression.
         // If they different we can assume we parsed another expression because the existing expression is not reallocated.
         let addr_before = &*cast_expr as *const _ as usize;
-        let span = cast_expr.span;
         let with_postfix = self.parse_dot_or_call_expr_with_(cast_expr, span)?;
         let changed = addr_before != &*with_postfix as *const _ as usize;
 
@@ -824,11 +831,8 @@ impl<'a> Parser<'a> {
                 }
             );
             let mut err = self.struct_span_err(span, &msg);
-            // If type ascription is "likely an error", the user will already be getting a useful
-            // help message, and doesn't need a second.
-            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
-                self.maybe_annotate_with_ascription(&mut err, false);
-            } else {
+
+            let suggest_parens = |err: &mut DiagnosticBuilder<'_, _>| {
                 let suggestions = vec![
                     (span.shrink_to_lo(), "(".to_string()),
                     (span.shrink_to_hi(), ")".to_string()),
@@ -838,6 +842,32 @@ impl<'a> Parser<'a> {
                     suggestions,
                     Applicability::MachineApplicable,
                 );
+            };
+
+            // If type ascription is "likely an error", the user will already be getting a useful
+            // help message, and doesn't need a second.
+            if self.last_type_ascription.map_or(false, |last_ascription| last_ascription.1) {
+                self.maybe_annotate_with_ascription(&mut err, false);
+            } else if let Some(ascription_span) = maybe_ascription_span {
+                let is_nightly = self.sess.unstable_features.is_nightly_build();
+                if is_nightly {
+                    suggest_parens(&mut err);
+                }
+                err.span_suggestion(
+                    ascription_span,
+                    &format!(
+                        "{}remove the type ascription",
+                        if is_nightly { "alternatively, " } else { "" }
+                    ),
+                    String::new(),
+                    if is_nightly {
+                        Applicability::MaybeIncorrect
+                    } else {
+                        Applicability::MachineApplicable
+                    },
+                );
+            } else {
+                suggest_parens(&mut err);
             }
             err.emit();
         };
@@ -970,7 +1000,7 @@ impl<'a> Parser<'a> {
     fn error_unexpected_after_dot(&self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = pprust::token_to_string(&self.token);
-        self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
+        self.struct_span_err(self.token.span, &format!("unexpected token: `{actual}`")).emit();
     }
 
     // We need an identifier or integer, but the next token is a float.
@@ -1105,7 +1135,7 @@ impl<'a> Parser<'a> {
         let snapshot = if self.token.kind == token::OpenDelim(token::Paren)
             && self.look_ahead_type_ascription_as_field()
         {
-            Some((self.clone(), fun.kind.clone()))
+            Some((self.create_snapshot_for_diagnostic(), fun.kind.clone()))
         } else {
             None
         };
@@ -1130,7 +1160,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         open_paren: Span,
         seq: &mut PResult<'a, P<Expr>>,
-        snapshot: Option<(Self, ExprKind)>,
+        snapshot: Option<(SnapshotParser<'a>, ExprKind)>,
     ) -> Option<P<Expr>> {
         match (seq.as_mut(), snapshot) {
             (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
@@ -1140,7 +1170,7 @@ impl<'a> Parser<'a> {
                     Ok((fields, ..)) if snapshot.eat(&token::CloseDelim(token::Paren)) => {
                         // We are certain we have `Enum::Foo(a: 3, b: 4)`, suggest
                         // `Enum::Foo { a: 3, b: 4 }` or `Enum::Foo(3, 4)`.
-                        *self = snapshot;
+                        self.restore_snapshot(snapshot);
                         let close_paren = self.prev_token.span;
                         let span = lo.to(self.prev_token.span);
                         if !fields.is_empty() {
@@ -1151,7 +1181,7 @@ impl<'a> Parser<'a> {
                             mem::replace(err, replacement_err).cancel();
 
                             err.multipart_suggestion(
-                                &format!("if `{}` is a struct, use braces as delimiters", name),
+                                &format!("if `{name}` is a struct, use braces as delimiters"),
                                 vec![
                                     (open_paren, " { ".to_string()),
                                     (close_paren, " }".to_string()),
@@ -1159,7 +1189,7 @@ impl<'a> Parser<'a> {
                                 Applicability::MaybeIncorrect,
                             );
                             err.multipart_suggestion(
-                                &format!("if `{}` is a function, use the arguments directly", name),
+                                &format!("if `{name}` is a function, use the arguments directly"),
                                 fields
                                     .into_iter()
                                     .map(|field| (field.span.until(field.expr.span), String::new()))
@@ -1776,9 +1806,9 @@ impl<'a> Parser<'a> {
                         )
                         .emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for number literal", suf);
+                    let msg = format!("invalid suffix `{suf}` for number literal");
                     self.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .span_label(span, format!("invalid suffix `{suf}`"))
                         .help("the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)")
                         .emit();
                 }
@@ -1791,9 +1821,9 @@ impl<'a> Parser<'a> {
                     let msg = format!("invalid width `{}` for float literal", &suf[1..]);
                     self.struct_span_err(span, &msg).help("valid widths are 32 and 64").emit();
                 } else {
-                    let msg = format!("invalid suffix `{}` for float literal", suf);
+                    let msg = format!("invalid suffix `{suf}` for float literal");
                     self.struct_span_err(span, &msg)
-                        .span_label(span, format!("invalid suffix `{}`", suf))
+                        .span_label(span, format!("invalid suffix `{suf}`"))
                         .help("valid suffixes are `f32` and `f64`")
                         .emit();
                 }
@@ -1805,7 +1835,7 @@ impl<'a> Parser<'a> {
                     2 => "binary",
                     _ => unreachable!(),
                 };
-                self.struct_span_err(span, &format!("{} float literal is not supported", descr))
+                self.struct_span_err(span, &format!("{descr} float literal is not supported"))
                     .span_label(span, "not supported")
                     .emit();
             }
@@ -1825,7 +1855,7 @@ impl<'a> Parser<'a> {
                 let mut err = self
                     .sess
                     .span_diagnostic
-                    .struct_span_warn(sp, &format!("suffixes on {} are invalid", kind));
+                    .struct_span_warn(sp, &format!("suffixes on {kind} are invalid"));
                 err.note(&format!(
                     "`{}` is *temporarily* accepted on tuple index fields as it was \
                         incorrectly accepted on stable for a few releases",
@@ -1842,10 +1872,10 @@ impl<'a> Parser<'a> {
                 );
                 err
             } else {
-                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                self.struct_span_err(sp, &format!("suffixes on {kind} are invalid"))
                     .forget_guarantee()
             };
-            err.span_label(sp, format!("invalid suffix `{}`", suf));
+            err.span_label(sp, format!("invalid suffix `{suf}`"));
             err.emit();
         }
     }
@@ -1885,7 +1915,7 @@ impl<'a> Parser<'a> {
         lo: Span,
         attrs: AttrVec,
     ) -> Option<P<Expr>> {
-        let mut snapshot = self.clone();
+        let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_array_or_repeat_expr(attrs, token::Brace) {
             Ok(arr) => {
                 let hi = snapshot.prev_token.span;
@@ -1901,7 +1931,7 @@ impl<'a> Parser<'a> {
                 .note("to define an array, one would use square brackets instead of curly braces")
                 .emit();
 
-                *self = snapshot;
+                self.restore_snapshot(snapshot);
                 Some(self.mk_expr_err(arr.span))
             }
             Err(e) => {
@@ -2211,7 +2241,7 @@ impl<'a> Parser<'a> {
         let ctx = if is_ctx_else { "else" } else { "if" };
         self.struct_span_err(last, "outer attributes are not allowed on `if` and `else` branches")
             .span_label(branch_span, "the attributes are attached to this branch")
-            .span_label(ctx_span, format!("the branch belongs to this `{}`", ctx))
+            .span_label(ctx_span, format!("the branch belongs to this `{ctx}`"))
             .span_suggestion(
                 span,
                 "remove the attributes",
@@ -2369,7 +2399,7 @@ impl<'a> Parser<'a> {
         if self.token.kind != token::Semi {
             return None;
         }
-        let start_snapshot = self.clone();
+        let start_snapshot = self.create_snapshot_for_diagnostic();
         let semi_sp = self.token.span;
         self.bump(); // `;`
         let mut stmts =
@@ -2391,7 +2421,7 @@ impl<'a> Parser<'a> {
             err.span_label(arrow_span, "while parsing the `match` arm starting here");
             if stmts.len() > 1 {
                 err.multipart_suggestion(
-                    &format!("surround the statement{} with a body", s),
+                    &format!("surround the statement{s} with a body"),
                     vec![
                         (span.shrink_to_lo(), "{ ".to_string()),
                         (span.shrink_to_hi(), " }".to_string()),
@@ -2417,15 +2447,15 @@ impl<'a> Parser<'a> {
                 return Some(err(self, stmts));
             }
             if self.token.kind == token::Comma {
-                *self = start_snapshot;
+                self.restore_snapshot(start_snapshot);
                 return None;
             }
-            let pre_pat_snapshot = self.clone();
+            let pre_pat_snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_pat_no_top_alt(None) {
                 Ok(_pat) => {
                     if self.token.kind == token::FatArrow {
                         // Reached arm end.
-                        *self = pre_pat_snapshot;
+                        self.restore_snapshot(pre_pat_snapshot);
                         return Some(err(self, stmts));
                     }
                 }
@@ -2434,21 +2464,21 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            *self = pre_pat_snapshot;
+            self.restore_snapshot(pre_pat_snapshot);
             match self.parse_stmt_without_recovery(true, ForceCollect::No) {
                 // Consume statements for as long as possible.
                 Ok(Some(stmt)) => {
                     stmts.push(stmt);
                 }
                 Ok(None) => {
-                    *self = start_snapshot;
+                    self.restore_snapshot(start_snapshot);
                     break;
                 }
                 // We couldn't parse either yet another statement missing it's
                 // enclosing block nor the next arm's pattern or closing brace.
                 Err(stmt_err) => {
                     stmt_err.cancel();
-                    *self = start_snapshot;
+                    self.restore_snapshot(start_snapshot);
                     break;
                 }
             }

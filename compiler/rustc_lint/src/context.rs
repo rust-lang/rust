@@ -593,7 +593,7 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
         diagnostic: BuiltinLintDiagnostics,
     ) {
         self.lookup(lint, span, |lint| {
@@ -840,19 +840,23 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     );
 
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: S,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         self.lookup(lint, Some(span), decorate);
     }
     /// Emit a lint at the appropriate level, with no associated span.
-    fn lint(&self, lint: &'static Lint, decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>)) {
+    fn lint(
+        &self,
+        lint: &'static Lint,
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
+    ) {
         self.lookup(lint, None as Option<Span>, decorate);
     }
 }
@@ -893,7 +897,7 @@ impl LintContext for LateContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -920,7 +924,7 @@ impl LintContext for EarlyContext<'_> {
         &self,
         lint: &'static Lint,
         span: Option<S>,
-        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a>),
+        decorate: impl for<'a> FnOnce(LintDiagnosticBuilder<'a, ()>),
     ) {
         self.builder.struct_lint(lint, span.map(|s| s.into()), decorate)
     }

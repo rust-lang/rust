@@ -1,8 +1,8 @@
 use crate::base::ExtCtxt;
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedMatch};
+use crate::mbe::macro_parser::{MatchedNtNonTt, MatchedNtTt, MatchedSeq, NamedMatch};
 use crate::mbe::{self, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, NtTT, Token, TokenKind};
+use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree, TreeAndSpacing};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -10,7 +10,7 @@ use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -34,8 +34,14 @@ enum Frame {
 
 impl Frame {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(tts: Vec<mbe::TokenTree>) -> Frame {
-        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, tts });
+    fn new(mut tts: Vec<mbe::TokenTree>) -> Frame {
+        // Need to add empty delimeters.
+        let open_tt = mbe::TokenTree::token(token::OpenDelim(token::NoDelim), DUMMY_SP);
+        let close_tt = mbe::TokenTree::token(token::CloseDelim(token::NoDelim), DUMMY_SP);
+        tts.insert(0, open_tt);
+        tts.push(close_tt);
+
+        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, all_tts: tts });
         Frame::Delimited { forest, idx: 0, span: DelimSpan::dummy() }
     }
 }
@@ -46,12 +52,14 @@ impl Iterator for Frame {
     fn next(&mut self) -> Option<mbe::TokenTree> {
         match *self {
             Frame::Delimited { ref forest, ref mut idx, .. } => {
+                let res = forest.inner_tts().get(*idx).cloned();
                 *idx += 1;
-                forest.tts.get(*idx - 1).cloned()
+                res
             }
             Frame::Sequence { ref forest, ref mut idx, .. } => {
+                let res = forest.tts.get(*idx).cloned();
                 *idx += 1;
-                forest.tts.get(*idx - 1).cloned()
+                res
             }
         }
     }
@@ -225,25 +233,29 @@ pub(super) fn transcribe<'a>(
                 // the meta-var.
                 let ident = MacroRulesNormalizedIdent::new(orignal_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
-                    if let MatchedNonterminal(nt) = cur_matched {
-                        let token = if let NtTT(tt) = &**nt {
+                    match cur_matched {
+                        MatchedNtTt(ref tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            tt.clone()
-                        } else {
+                            let token = tt.clone();
+                            result.push(token.into());
+                        }
+                        MatchedNtNonTt(ref nt) => {
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::None` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
+                            debug_assert!(!matches!(**nt, Nonterminal::NtTT(_)));
                             marker.visit_span(&mut sp);
-                            TokenTree::token(token::Interpolated(nt.clone()), sp)
-                        };
-                        result.push(token.into());
-                    } else {
-                        // We were unable to descend far enough. This is an error.
-                        return Err(cx.struct_span_err(
-                            sp, /* blame the macro writer */
-                            &format!("variable '{}' is still repeating at this depth", ident),
-                        ));
+                            let token = TokenTree::token(token::Interpolated(nt.clone()), sp);
+                            result.push(token.into());
+                        }
+                        MatchedSeq(..) => {
+                            // We were unable to descend far enough. This is an error.
+                            return Err(cx.struct_span_err(
+                                sp, /* blame the macro writer */
+                                &format!("variable '{}' is still repeating at this depth", ident),
+                            ));
+                        }
                     }
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
@@ -257,7 +269,7 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, &sp)?;
+                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, &sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -300,7 +312,7 @@ fn lookup_cur_matched<'a>(
         let mut matched = matched;
         for &(idx, _) in repeats {
             match matched {
-                MatchedNonterminal(_) => break,
+                MatchedNtTt(_) | MatchedNtNonTt(_) => break,
                 MatchedSeq(ref ads) => matched = ads.get(idx).unwrap(),
             }
         }
@@ -376,8 +388,8 @@ fn lockstep_iter_size(
 ) -> LockstepIterSize {
     use mbe::TokenTree;
     match *tree {
-        TokenTree::Delimited(_, ref delimed) => {
-            delimed.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
+        TokenTree::Delimited(_, ref delimited) => {
+            delimited.inner_tts().iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })
         }
@@ -390,7 +402,7 @@ fn lockstep_iter_size(
             let name = MacroRulesNormalizedIdent::new(name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
-                    MatchedNonterminal(_) => LockstepIterSize::Unconstrained,
+                    MatchedNtTt(_) | MatchedNtNonTt(_) => LockstepIterSize::Unconstrained,
                     MatchedSeq(ref ads) => LockstepIterSize::Constraint(ads.len(), name),
                 },
                 _ => LockstepIterSize::Unconstrained,
@@ -437,7 +449,7 @@ fn count_repetitions<'a>(
         sp: &DelimSpan,
     ) -> PResult<'a, usize> {
         match matched {
-            MatchedNonterminal(_) => {
+            MatchedNtTt(_) | MatchedNtNonTt(_) => {
                 if declared_lhs_depth == 0 {
                     return Err(cx.struct_span_err(
                         sp.entire(),
@@ -513,17 +525,23 @@ fn transcribe_metavar_expr<'a>(
     cx: &ExtCtxt<'a>,
     expr: MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
+    marker: &mut Marker,
     repeats: &[(usize, usize)],
     result: &mut Vec<TreeAndSpacing>,
     sp: &DelimSpan,
 ) -> PResult<'a, ()> {
+    let mut visited_span = || {
+        let mut span = sp.entire();
+        marker.visit_span(&mut span);
+        span
+    };
     match expr {
         MetaVarExpr::Count(original_ident, depth_opt) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth_opt, matched, &repeats, sp)?;
             let tt = TokenTree::token(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
-                sp.entire(),
+                visited_span(),
             );
             result.push(tt.into());
         }
@@ -536,7 +554,7 @@ fn transcribe_metavar_expr<'a>(
                 result.push(
                     TokenTree::token(
                         TokenKind::lit(token::Integer, sym::integer(*index), None),
-                        sp.entire(),
+                        visited_span(),
                     )
                     .into(),
                 );
@@ -548,7 +566,7 @@ fn transcribe_metavar_expr<'a>(
                 result.push(
                     TokenTree::token(
                         TokenKind::lit(token::Integer, sym::integer(*length), None),
-                        sp.entire(),
+                        visited_span(),
                     )
                     .into(),
                 );

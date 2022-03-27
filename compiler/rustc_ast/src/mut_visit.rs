@@ -1009,8 +1009,9 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
         ItemKind::Mod(unsafety, mod_kind) => {
             visit_unsafety(unsafety, vis);
             match mod_kind {
-                ModKind::Loaded(items, _inline, inner_span) => {
+                ModKind::Loaded(items, _inline, ModSpans { inner_span, inject_use_span }) => {
                     vis.visit_span(inner_span);
+                    vis.visit_span(inject_use_span);
                     items.flat_map_in_place(|item| vis.flat_map_item(item));
                 }
                 ModKind::Unloaded => {}
@@ -1121,11 +1122,13 @@ pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
 }
 
 pub fn noop_visit_crate<T: MutVisitor>(krate: &mut Crate, vis: &mut T) {
-    let Crate { attrs, items, span, id, is_placeholder: _ } = krate;
+    let Crate { attrs, items, spans, id, is_placeholder: _ } = krate;
     vis.visit_id(id);
     visit_attrs(attrs, vis);
     items.flat_map_in_place(|item| vis.flat_map_item(item));
-    vis.visit_span(span);
+    let ModSpans { inner_span, inject_use_span } = spans;
+    vis.visit_span(inner_span);
+    vis.visit_span(inject_use_span);
 }
 
 // Mutates one item into possibly many items.
@@ -1558,7 +1561,7 @@ impl DummyAstNode for Crate {
         Crate {
             attrs: Default::default(),
             items: Default::default(),
-            span: Default::default(),
+            spans: Default::default(),
             id: DUMMY_NODE_ID,
             is_placeholder: Default::default(),
         }

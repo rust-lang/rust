@@ -5,7 +5,7 @@ LL | #[deprecated(suggestion = "foo")]
    |              ^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(deprecated_suggestion)]` to the crate root
-   = note: see #XXX for more details
+   = note: see #94785 for more details
 
 error: aborting due to previous error
 

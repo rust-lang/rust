@@ -83,11 +83,6 @@ error: item is named 'lintmetoo'
 LL |     fn lintmetoo() { }
    |     ^^^^^^^^^^^^^^^^^^
    |
-note: the lint level is defined here
-  --> $DIR/lint-tool-test.rs:14:9
-   |
-LL | #![deny(clippy_group)]
-   |         ^^^^^^^^^^^^
    = note: `#[deny(clippy::test_group)]` implied by `#[deny(clippy::group)]`
 
 warning: lint name `test_group` is deprecated and may not have an effect in the future.

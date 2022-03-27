@@ -94,6 +94,9 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
         let sig = Signature { params, returns, call_conv: self.target_config.default_call_conv };
         let func_id = self.module.declare_function(name, Linkage::Import, &sig).unwrap();
         let func_ref = self.module.declare_func_in_func(func_id, &mut self.bcx.func);
+        if self.clif_comments.enabled() {
+            self.add_comment(func_ref, format!("{:?}", name));
+        }
         let call_inst = self.bcx.ins().call(func_ref, args);
         if self.clif_comments.enabled() {
             self.add_comment(call_inst, format!("easy_call {}", name));
@@ -367,7 +370,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         .map(|inst| fx.tcx.codegen_fn_attrs(inst.def_id()).flags.contains(CodegenFnAttrFlags::COLD))
         .unwrap_or(false);
     if is_cold {
-        // FIXME Mark current_block block as cold once Cranelift supports it
+        fx.bcx.set_cold_block(fx.bcx.current_block().unwrap());
+        if let Some((_place, destination_block)) = destination {
+            fx.bcx.set_cold_block(fx.get_block(destination_block));
+        }
     }
 
     // Unpack arguments tuple for closures
@@ -501,7 +507,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         let ret_block = fx.get_block(dest);
         fx.bcx.ins().jump(ret_block, &[]);
     } else {
-        trap_unreachable(fx, "[corruption] Diverging function returned");
+        fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
     }
 }
 

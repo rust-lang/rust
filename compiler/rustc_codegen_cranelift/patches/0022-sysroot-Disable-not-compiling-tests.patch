@@ -18,7 +18,7 @@ new file mode 100644
 index 0000000..46fd999
 --- /dev/null
 +++ b/library/core/tests/Cargo.toml
-@@ -0,0 +1,8 @@
+@@ -0,0 +1,11 @@
 +[package]
 +name = "core"
 +version = "0.0.0"
@@ -27,57 +27,8 @@ index 0000000..46fd999
 +[lib]
 +name = "coretests"
 +path = "lib.rs"
-diff --git a/library/core/tests/num/flt2dec/mod.rs b/library/core/tests/num/flt2dec/mod.rs
-index a35897e..f0bf645 100644
---- a/library/core/tests/num/flt2dec/mod.rs
-+++ b/library/core/tests/num/flt2dec/mod.rs
-@@ -13,7 +13,6 @@ mod strategy {
-     mod dragon;
-     mod grisu;
- }
--mod random;
- 
- pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
-     match decode(v).1 {
-diff --git a/library/core/tests/ptr.rs b/library/core/tests/ptr.rs
-index 1a6be3a..42dbd59 100644
---- a/library/core/tests/ptr.rs
-+++ b/library/core/tests/ptr.rs
-@@ -250,6 +250,7 @@ fn test_unsized_nonnull() {
-     };
- }
- 
-+/*
- #[test]
- #[allow(warnings)]
- // Have a symbol for the test below. It doesn’t need to be an actual variadic function, match the
-@@ -277,6 +277,7 @@ pub fn test_variadic_fnptr() {
-     let mut s = SipHasher::new();
-     assert_eq!(p.hash(&mut s), q.hash(&mut s));
- }
-+*/
- 
- #[test]
- fn write_unaligned_drop() {
-diff --git a/library/core/tests/slice.rs b/library/core/tests/slice.rs
-index 6609bc3..241b497 100644
---- a/library/core/tests/slice.rs
-+++ b/library/core/tests/slice.rs
-@@ -1209,6 +1209,7 @@ fn brute_force_rotate_test_1() {
-     }
- }
- 
-+/*
- #[test]
- #[cfg(not(target_arch = "wasm32"))]
- fn sort_unstable() {
-@@ -1394,6 +1395,7 @@ fn partition_at_index() {
-     v.select_nth_unstable(0);
-     assert!(v == [0xDEADBEEF]);
- }
-+*/
- 
- #[test]
- #[should_panic(expected = "index 0 greater than length of slice")]
++
++[dependencies]
++rand = "0.7"
 --
 2.21.0 (Apple Git-122)

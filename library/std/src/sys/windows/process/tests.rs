@@ -3,11 +3,12 @@ use super::Arg;
 use crate::env;
 use crate::ffi::{OsStr, OsString};
 use crate::process::Command;
+use crate::sys::to_u16s;
 
 #[test]
 fn test_raw_args() {
     let command_line = &make_command_line(
-        OsStr::new("quoted exe"),
+        &to_u16s("quoted exe").unwrap(),
         &[
             Arg::Regular(OsString::from("quote me")),
             Arg::Raw(OsString::from("quote me *not*")),
@@ -15,6 +16,7 @@ fn test_raw_args() {
             Arg::Raw(OsString::from("internal \\\"backslash-\"quote")),
             Arg::Regular(OsString::from("optional-quotes")),
         ],
+        false,
         false,
     )
     .unwrap();
@@ -28,9 +30,10 @@ fn test_raw_args() {
 fn test_make_command_line() {
     fn test_wrapper(prog: &str, args: &[&str], force_quotes: bool) -> String {
         let command_line = &make_command_line(
-            OsStr::new(prog),
+            &to_u16s(prog).unwrap(),
             &args.iter().map(|a| Arg::Regular(OsString::from(a))).collect::<Vec<_>>(),
             force_quotes,
+            false,
         )
         .unwrap();
         String::from_utf16(command_line).unwrap()
@@ -183,8 +186,15 @@ fn windows_exe_resolver() {
     let temp = tmpdir();
     let mut exe_path = temp.path().to_owned();
     exe_path.push("exists.exe");
-    symlink("<DOES NOT EXIST>".as_ref(), &exe_path).unwrap();
 
     // A broken symlink should still be resolved.
-    assert!(resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok());
+    // Skip this check if not in CI and creating symlinks isn't possible.
+    let is_ci = env::var("CI").is_ok();
+    let result = symlink("<DOES NOT EXIST>".as_ref(), &exe_path);
+    if is_ci || result.is_ok() {
+        result.unwrap();
+        assert!(
+            resolve_exe(OsStr::new("exists.exe"), empty_paths, Some(temp.path().as_ref())).is_ok()
+        );
+    }
 }

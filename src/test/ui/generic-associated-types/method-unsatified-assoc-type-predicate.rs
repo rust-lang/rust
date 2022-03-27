@@ -12,7 +12,10 @@ trait M {
 }
 
 impl<T: X<Y<i32> = i32>> M for T {}
-//~^ NOTE the following trait bounds were not satisfied
+//~^ NOTE trait bound `<S as X>::Y<i32> = i32` was not satisfied
+//~| NOTE unsatisfied trait bound introduced here
+//~| NOTE
+//~| NOTE
 
 struct S;
 //~^ NOTE method `f` not found for this

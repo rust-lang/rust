@@ -31,7 +31,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // about the original obligation only.
         let code = match cause.code() {
             ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => &*parent_code,
-            _ => cause.code(),
+            code => code,
         };
         let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
             return None;
@@ -98,7 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let impl_span = self.tcx().def_span(*impl_def_id);
             err.span_note(impl_span, "...does not necessarily outlive the static lifetime introduced by the compatible `impl`");
         }
-        err.emit();
-        Some(ErrorGuaranteed)
+        let reported = err.emit();
+        Some(reported)
     }
 }

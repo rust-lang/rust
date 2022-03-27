@@ -400,7 +400,6 @@ nav.sub {
 .source .sidebar > *:not(#sidebar-toggle) {
 	opacity: 0;
 	visibility: hidden;
-	transition: opacity 0.5s;
 }
 
 .source .sidebar.expanded {
@@ -1675,12 +1674,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	search bar to have more space. */
 	.sidebar.expanded + main .width-limiter .sub-logo-container.rust-logo {
 		display: none;
-	}
-
-	/* It doesn't render well on mobile because of the layout, so better only have the transition
-	on desktop. */
-	.rustdoc.source .sidebar {
-		transition: width .5s;
 	}
 
 	.source .sidebar.expanded {

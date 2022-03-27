@@ -12,8 +12,7 @@ click: "#settings-menu"
 wait-for: ".settings"
 // We change the theme to "light".
 click: "#theme-light"
-wait-for: 250
-assert-css: ("body", { "background-color": "rgb(255, 255, 255)" })
+wait-for-css: ("body", { "background-color": "rgb(255, 255, 255)" })
 assert-local-storage: { "rustdoc-theme": "light" }
 
 // We go back in history.

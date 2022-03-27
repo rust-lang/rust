@@ -507,8 +507,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let body_id = obligation.cause.body_id;
         let span = obligation.cause.span;
         let real_trait_pred = match &*code {
-            ObligationCauseCode::ImplDerivedObligation(cause)
-            | ObligationCauseCode::DerivedObligation(cause)
+            ObligationCauseCode::ImplDerivedObligation(cause) => cause.derived.parent_trait_pred,
+            ObligationCauseCode::DerivedObligation(cause)
             | ObligationCauseCode::BuiltinDerivedObligation(cause) => cause.parent_trait_pred,
             _ => trait_pred,
         };
@@ -790,8 +790,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             return false;
         };
 
-        if let ObligationCauseCode::ImplDerivedObligation(obligation) = code {
-            try_borrowing(obligation.parent_trait_pred, &[])
+        if let ObligationCauseCode::ImplDerivedObligation(cause) = &*code {
+            try_borrowing(cause.derived.parent_trait_pred, &[])
         } else if let ObligationCauseCode::BindingObligation(_, _)
         | ObligationCauseCode::ItemObligation(_) = code
         {
@@ -1433,13 +1433,43 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
                     next_code = Some(parent_code.as_ref());
                 }
+                ObligationCauseCode::ImplDerivedObligation(cause) => {
+                    let ty = cause.derived.parent_trait_pred.skip_binder().self_ty();
+                    debug!(
+                        "maybe_note_obligation_cause_for_async_await: ImplDerived \
+                         parent_trait_ref={:?} self_ty.kind={:?}",
+                        cause.derived.parent_trait_pred,
+                        ty.kind()
+                    );
+
+                    match *ty.kind() {
+                        ty::Generator(did, ..) => {
+                            generator = generator.or(Some(did));
+                            outer_generator = Some(did);
+                        }
+                        ty::GeneratorWitness(..) => {}
+                        ty::Tuple(_) if !seen_upvar_tys_infer_tuple => {
+                            // By introducing a tuple of upvar types into the chain of obligations
+                            // of a generator, the first non-generator item is now the tuple itself,
+                            // we shall ignore this.
+
+                            seen_upvar_tys_infer_tuple = true;
+                        }
+                        _ if generator.is_none() => {
+                            trait_ref = Some(cause.derived.parent_trait_pred.skip_binder());
+                            target_ty = Some(ty);
+                        }
+                        _ => {}
+                    }
+
+                    next_code = Some(cause.derived.parent_code.as_ref());
+                }
                 ObligationCauseCode::DerivedObligation(derived_obligation)
-                | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation)
-                | ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
+                | ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) => {
                     let ty = derived_obligation.parent_trait_pred.skip_binder().self_ty();
                     debug!(
                         "maybe_note_obligation_cause_for_async_await: \
-                            parent_trait_ref={:?} self_ty.kind={:?}",
+                         parent_trait_ref={:?} self_ty.kind={:?}",
                         derived_obligation.parent_trait_pred,
                         ty.kind()
                     );
@@ -2166,7 +2196,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
-                let mut parent_trait_pred = self.resolve_vars_if_possible(data.parent_trait_pred);
+                let mut parent_trait_pred =
+                    self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
                 let msg = format!(
@@ -2174,51 +2205,63 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     parent_trait_pred.print_modifiers_and_trait_path(),
                     parent_trait_pred.skip_binder().self_ty()
                 );
-                let mut candidates = vec![];
-                self.tcx.for_each_relevant_impl(
-                    parent_def_id,
-                    parent_trait_pred.self_ty().skip_binder(),
-                    |impl_def_id| match self.tcx.hir().get_if_local(impl_def_id) {
-                        Some(Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { .. }),
-                            ..
-                        })) => {
-                            candidates.push(impl_def_id);
+                let mut is_auto_trait = false;
+                match self.tcx.hir().get_if_local(data.impl_def_id) {
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Trait(is_auto, ..),
+                        ident,
+                        ..
+                    })) => {
+                        // FIXME: we should do something else so that it works even on crate foreign
+                        // auto traits.
+                        is_auto_trait = matches!(is_auto, hir::IsAuto::Yes);
+                        err.span_note(ident.span, &msg)
+                    }
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
+                        ..
+                    })) => {
+                        let mut spans = Vec::with_capacity(2);
+                        if let Some(trait_ref) = of_trait {
+                            spans.push(trait_ref.path.span);
                         }
-                        _ => {}
-                    },
-                );
-                match &candidates[..] {
-                    [def_id] => match self.tcx.hir().get_if_local(*def_id) {
-                        Some(Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { of_trait, self_ty, .. }),
-                            ..
-                        })) => {
-                            let mut spans = Vec::with_capacity(2);
-                            if let Some(trait_ref) = of_trait {
-                                spans.push(trait_ref.path.span);
-                            }
-                            spans.push(self_ty.span);
-                            err.span_note(spans, &msg)
-                        }
-                        _ => err.note(&msg),
-                    },
+                        spans.push(self_ty.span);
+                        err.span_note(spans, &msg)
+                    }
                     _ => err.note(&msg),
                 };
 
                 let mut parent_predicate = parent_trait_pred.to_predicate(tcx);
-                let mut data = data;
+                let mut data = &data.derived;
                 let mut count = 0;
                 seen_requirements.insert(parent_def_id);
+                if is_auto_trait {
+                    // We don't want to point at the ADT saying "required because it appears within
+                    // the type `X`", like we would otherwise do in test `supertrait-auto-trait.rs`.
+                    while let ObligationCauseCode::BuiltinDerivedObligation(derived) =
+                        &*data.parent_code
+                    {
+                        let child_trait_ref =
+                            self.resolve_vars_if_possible(derived.parent_trait_pred);
+                        let child_def_id = child_trait_ref.def_id();
+                        if seen_requirements.insert(child_def_id) {
+                            break;
+                        }
+                        data = derived;
+                        parent_predicate = child_trait_ref.to_predicate(tcx);
+                        parent_trait_pred = child_trait_ref;
+                    }
+                }
                 while let ObligationCauseCode::ImplDerivedObligation(child) = &*data.parent_code {
                     // Skip redundant recursive obligation notes. See `ui/issue-20413.rs`.
-                    let child_trait_pred = self.resolve_vars_if_possible(child.parent_trait_pred);
+                    let child_trait_pred =
+                        self.resolve_vars_if_possible(child.derived.parent_trait_pred);
                     let child_def_id = child_trait_pred.def_id();
                     if seen_requirements.insert(child_def_id) {
                         break;
                     }
                     count += 1;
-                    data = child;
+                    data = &child.derived;
                     parent_predicate = child_trait_pred.to_predicate(tcx);
                     parent_trait_pred = child_trait_pred;
                 }

@@ -1,6 +1,6 @@
 use crate::astconv::AstConv;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{pluralize, struct_span_err, Applicability};
+use rustc_errors::{pluralize, struct_span_err, Applicability, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty;
@@ -126,7 +126,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "the precise format of `Fn`-family traits' type parameters is subject to change",
             );
             // Do not suggest the other syntax if we are in trait impl:
-            // the desugaring would contain an associated type constrait.
+            // the desugaring would contain an associated type constraint.
             if !is_impl {
                 let args = trait_segment
                     .args
@@ -195,7 +195,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         ty_param_name: &str,
         assoc_name: Ident,
         span: Span,
-    ) where
+    ) -> ErrorGuaranteed
+    where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
     {
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
@@ -231,7 +232,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.span_label(span, format!("associated type `{}` not found", assoc_name));
         }
 
-        err.emit();
+        err.emit()
     }
 
     /// When there are any missing associated types, emit an E0191 error and attempt to supply a

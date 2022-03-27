@@ -27,7 +27,10 @@ use crate::sys::weak::weak;
 use libc::RTP_ID as pid_t;
 
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, gid_t, pid_t, uid_t};
+use libc::{c_int, pid_t};
+
+#[cfg(not(any(target_os = "vxworks", target_os = "l4re")))]
+use libc::{gid_t, uid_t};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -317,6 +320,10 @@ impl Command {
             cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
+        if let Some(pgroup) = self.get_pgroup() {
+            cvt(libc::setpgid(0, pgroup))?;
+        }
+
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
@@ -456,6 +463,8 @@ impl Command {
             None => None,
         };
 
+        let pgroup = self.get_pgroup();
+
         // Safety: -1 indicates we don't have a pidfd.
         let mut p = unsafe { Process::new(0, -1) };
 
@@ -483,6 +492,8 @@ impl Command {
             let mut attrs = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawnattr_init(attrs.as_mut_ptr()))?;
             let attrs = PosixSpawnattr(&mut attrs);
+
+            let mut flags = 0;
 
             let mut file_actions = MaybeUninit::uninit();
             cvt_nz(libc::posix_spawn_file_actions_init(file_actions.as_mut_ptr()))?;
@@ -513,13 +524,18 @@ impl Command {
                 cvt_nz(f(file_actions.0.as_mut_ptr(), cwd.as_ptr()))?;
             }
 
+            if let Some(pgroup) = pgroup {
+                flags |= libc::POSIX_SPAWN_SETPGROUP;
+                cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
+            }
+
             let mut set = MaybeUninit::<libc::sigset_t>::uninit();
             cvt(sigemptyset(set.as_mut_ptr()))?;
             cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
             cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
             cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
 
-            let flags = libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
+            flags |= libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource
@@ -648,11 +664,11 @@ impl ExitStatus {
     }
 
     pub fn code(&self) -> Option<i32> {
-        if self.exited() { Some(libc::WEXITSTATUS(self.0)) } else { None }
+        self.exited().then(|| libc::WEXITSTATUS(self.0))
     }
 
     pub fn signal(&self) -> Option<i32> {
-        if libc::WIFSIGNALED(self.0) { Some(libc::WTERMSIG(self.0)) } else { None }
+        libc::WIFSIGNALED(self.0).then(|| libc::WTERMSIG(self.0))
     }
 
     pub fn core_dumped(&self) -> bool {
@@ -660,7 +676,7 @@ impl ExitStatus {
     }
 
     pub fn stopped_signal(&self) -> Option<i32> {
-        if libc::WIFSTOPPED(self.0) { Some(libc::WSTOPSIG(self.0)) } else { None }
+        libc::WIFSTOPPED(self.0).then(|| libc::WSTOPSIG(self.0))
     }
 
     pub fn continued(&self) -> bool {

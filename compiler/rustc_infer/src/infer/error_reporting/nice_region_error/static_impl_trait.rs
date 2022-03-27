@@ -84,8 +84,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         ),
                     );
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
-                        err.emit();
-                        return Some(ErrorGuaranteed);
+                        let reported = err.emit();
+                        return Some(reported);
                     } else {
                         err.cancel();
                     }
@@ -276,8 +276,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             Some((param.param_ty_span, param.param_ty.to_string())),
         );
 
-        err.emit();
-        Some(ErrorGuaranteed)
+        let reported = err.emit();
+        Some(reported)
     }
 }
 

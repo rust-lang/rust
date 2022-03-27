@@ -13,6 +13,7 @@
 #![feature(drain_filter)]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
+#![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
 #![feature(nll)]
@@ -54,9 +55,9 @@ use rustc_index::vec::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::middle::privacy::AccessLevels;
-use rustc_middle::span_bug;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, MainDefinition, RegisteredTools, ResolverOutputs};
+use rustc_middle::{bug, span_bug};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_session::cstore::{CrateStore, MetadataLoaderDyn};
 use rustc_session::lint;
@@ -71,8 +72,7 @@ use rustc_span::{Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::ops::ControlFlow;
-use std::{cmp, fmt, iter, mem, ptr};
+use std::{cmp, fmt, mem, ptr};
 use tracing::debug;
 
 use diagnostics::{extend_span_to_previous_binding, find_span_of_binding_until_next_binding};
@@ -315,74 +315,70 @@ impl<'a> From<&'a ast::PathSegment> for Segment {
     }
 }
 
+#[derive(Debug)]
 struct UsePlacementFinder {
     target_module: NodeId,
-    span: Option<Span>,
-    found_use: bool,
+    first_legal_span: Option<Span>,
+    first_use_span: Option<Span>,
 }
 
 impl UsePlacementFinder {
     fn check(krate: &Crate, target_module: NodeId) -> (Option<Span>, bool) {
-        let mut finder = UsePlacementFinder { target_module, span: None, found_use: false };
-        if let ControlFlow::Continue(..) = finder.check_mod(&krate.items, CRATE_NODE_ID) {
-            visit::walk_crate(&mut finder, krate);
+        let mut finder =
+            UsePlacementFinder { target_module, first_legal_span: None, first_use_span: None };
+        finder.visit_crate(krate);
+        if let Some(use_span) = finder.first_use_span {
+            (Some(use_span), true)
+        } else {
+            (finder.first_legal_span, false)
         }
-        (finder.span, finder.found_use)
-    }
-
-    fn check_mod(&mut self, items: &[P<ast::Item>], node_id: NodeId) -> ControlFlow<()> {
-        if self.span.is_some() {
-            return ControlFlow::Break(());
-        }
-        if node_id != self.target_module {
-            return ControlFlow::Continue(());
-        }
-        // find a use statement
-        for item in items {
-            match item.kind {
-                ItemKind::Use(..) => {
-                    // don't suggest placing a use before the prelude
-                    // import or other generated ones
-                    if !item.span.from_expansion() {
-                        self.span = Some(item.span.shrink_to_lo());
-                        self.found_use = true;
-                        return ControlFlow::Break(());
-                    }
-                }
-                // don't place use before extern crate
-                ItemKind::ExternCrate(_) => {}
-                // but place them before the first other item
-                _ => {
-                    if self.span.map_or(true, |span| item.span < span)
-                        && !item.span.from_expansion()
-                    {
-                        self.span = Some(item.span.shrink_to_lo());
-                        // don't insert between attributes and an item
-                        // find the first attribute on the item
-                        // FIXME: This is broken for active attributes.
-                        for attr in &item.attrs {
-                            if !attr.span.is_dummy()
-                                && self.span.map_or(true, |span| attr.span < span)
-                            {
-                                self.span = Some(attr.span.shrink_to_lo());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        ControlFlow::Continue(())
     }
 }
 
-impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
-    fn visit_item(&mut self, item: &'tcx ast::Item) {
-        if let ItemKind::Mod(_, ModKind::Loaded(items, ..)) = &item.kind {
-            if let ControlFlow::Break(..) = self.check_mod(items, item.id) {
-                return;
+fn is_span_suitable_for_use_injection(s: Span) -> bool {
+    // don't suggest placing a use before the prelude
+    // import or other generated ones
+    !s.from_expansion()
+}
+
+fn search_for_any_use_in_items(items: &[P<ast::Item>]) -> Option<Span> {
+    for item in items {
+        if let ItemKind::Use(..) = item.kind {
+            if is_span_suitable_for_use_injection(item.span) {
+                return Some(item.span.shrink_to_lo());
             }
         }
-        visit::walk_item(self, item);
+    }
+    return None;
+}
+
+impl<'tcx> Visitor<'tcx> for UsePlacementFinder {
+    fn visit_crate(&mut self, c: &Crate) {
+        if self.target_module == CRATE_NODE_ID {
+            let inject = c.spans.inject_use_span;
+            if is_span_suitable_for_use_injection(inject) {
+                self.first_legal_span = Some(inject);
+            }
+            self.first_use_span = search_for_any_use_in_items(&c.items);
+            return;
+        } else {
+            visit::walk_crate(self, c);
+        }
+    }
+
+    fn visit_item(&mut self, item: &'tcx ast::Item) {
+        if self.target_module == item.id {
+            if let ItemKind::Mod(_, ModKind::Loaded(items, _inline, mod_spans)) = &item.kind {
+                let inject = mod_spans.inject_use_span;
+                if is_span_suitable_for_use_injection(inject) {
+                    self.first_legal_span = Some(inject);
+                }
+                self.first_use_span = search_for_any_use_in_items(items);
+                return;
+            }
+        } else {
+            visit::walk_item(self, item);
+        }
     }
 }
 
@@ -452,6 +448,19 @@ enum PathResult<'a> {
         suggestion: Option<Suggestion>,
         is_error_from_last_segment: bool,
     },
+}
+
+impl<'a> PathResult<'a> {
+    fn failed(
+        span: Span,
+        is_error_from_last_segment: bool,
+        finalize: bool,
+        label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
+    ) -> PathResult<'a> {
+        let (label, suggestion) =
+            if finalize { label_and_suggestion() } else { (String::new(), None) };
+        PathResult::Failed { span, label, suggestion, is_error_from_last_segment }
+    }
 }
 
 #[derive(Debug)]
@@ -1282,7 +1291,7 @@ impl<'a> Resolver<'a> {
             None,
             ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
             ExpnId::root(),
-            krate.span,
+            krate.spans.inner_span,
             session.contains_name(&krate.attrs, sym::no_implicit_prelude),
             &mut module_map,
         );
@@ -1295,7 +1304,7 @@ impl<'a> Resolver<'a> {
             &mut FxHashMap::default(),
         );
 
-        let definitions = Definitions::new(session.local_stable_crate_id(), krate.span);
+        let definitions = Definitions::new(session.local_stable_crate_id(), krate.spans.inner_span);
         let root = definitions.get_root_def();
 
         let mut visibilities = FxHashMap::default();
@@ -1941,8 +1950,7 @@ impl<'a> Resolver<'a> {
         mut ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used_id: Option<NodeId>,
-        path_span: Span,
+        finalize_full: Finalize,
         ribs: &[Rib<'a>],
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
@@ -1964,7 +1972,7 @@ impl<'a> Resolver<'a> {
         let normalized_ident = Ident { span: normalized_span, ..ident };
 
         // Walk backwards up the ribs in scope.
-        let record_used = record_used_id.is_some();
+        let finalize = finalize_full.path_span();
         let mut module = self.graph_root;
         for i in (0..ribs.len()).rev() {
             debug!("walk rib\n{:?}", ribs[i].bindings);
@@ -1978,8 +1986,7 @@ impl<'a> Resolver<'a> {
                     i,
                     rib_ident,
                     *res,
-                    record_used,
-                    path_span,
+                    finalize,
                     *original_rib_ident_def,
                     ribs,
                 )));
@@ -2006,8 +2013,7 @@ impl<'a> Resolver<'a> {
                 ident,
                 ns,
                 parent_scope,
-                record_used,
-                path_span,
+                finalize,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -2016,11 +2022,10 @@ impl<'a> Resolver<'a> {
         }
         self.early_resolve_ident_in_lexical_scope(
             orig_ident,
-            ScopeSet::Late(ns, module, record_used_id),
+            ScopeSet::Late(ns, module, finalize_full.node_id()),
             parent_scope,
-            record_used,
-            record_used,
-            path_span,
+            finalize,
+            finalize.is_some(),
         )
         .ok()
         .map(LexicalScopeBinding::Item)
@@ -2080,10 +2085,9 @@ impl<'a> Resolver<'a> {
         ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
+        finalize: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, record_used, path_span)
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, finalize)
             .map_err(|(determinacy, _)| determinacy)
     }
 
@@ -2093,8 +2097,7 @@ impl<'a> Resolver<'a> {
         mut ident: Ident,
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
+        finalize: Option<Span>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
@@ -2119,8 +2122,7 @@ impl<'a> Resolver<'a> {
             ns,
             adjusted_parent_scope,
             false,
-            record_used,
-            path_span,
+            finalize,
         )
     }
 
@@ -2211,19 +2213,9 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
-        crate_lint: CrateLint,
+        finalize: Finalize,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(
-            path,
-            opt_ns,
-            parent_scope,
-            record_used,
-            path_span,
-            crate_lint,
-            None,
-        )
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None)
     }
 
     fn resolve_path_with_ribs(
@@ -2231,25 +2223,20 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
-        path_span: Span,
-        crate_lint: CrateLint,
+        finalize_full: Finalize,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
     ) -> PathResult<'a> {
+        debug!("resolve_path(path={:?}, opt_ns={:?}, finalize={:?})", path, opt_ns, finalize_full);
+
+        let finalize = finalize_full.path_span();
         let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
 
-        debug!(
-            "resolve_path(path={:?}, opt_ns={:?}, record_used={:?}, \
-             path_span={:?}, crate_lint={:?})",
-            path, opt_ns, record_used, path_span, crate_lint,
-        );
-
         for (i, &Segment { ident, id, has_generic_args: _ }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
             let record_segment_res = |this: &mut Self, res| {
-                if record_used {
+                if finalize.is_some() {
                     if let Some(id) = id {
                         if !this.partial_res_map.contains_key(&id) {
                             assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
@@ -2283,13 +2270,9 @@ impl<'a> Resolver<'a> {
                             continue;
                         }
                     }
-                    let msg = "there are too many leading `super` keywords".to_string();
-                    return PathResult::Failed {
-                        span: ident.span,
-                        label: msg,
-                        suggestion: None,
-                        is_error_from_last_segment: false,
-                    };
+                    return PathResult::failed(ident.span, false, finalize.is_some(), || {
+                        ("there are too many leading `super` keywords".to_string(), None)
+                    });
                 }
                 if i == 0 {
                     if name == kw::SelfLower {
@@ -2318,22 +2301,19 @@ impl<'a> Resolver<'a> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && i != 0 {
-                let name_str = if name == kw::PathRoot {
-                    "crate root".to_string()
-                } else {
-                    format!("`{}`", name)
-                };
-                let label = if i == 1 && path[0].ident.name == kw::PathRoot {
-                    format!("global paths cannot start with {}", name_str)
-                } else {
-                    format!("{} in paths can only be used in start position", name_str)
-                };
-                return PathResult::Failed {
-                    span: ident.span,
-                    label,
-                    suggestion: None,
-                    is_error_from_last_segment: false,
-                };
+                return PathResult::failed(ident.span, false, finalize.is_some(), || {
+                    let name_str = if name == kw::PathRoot {
+                        "crate root".to_string()
+                    } else {
+                        format!("`{}`", name)
+                    };
+                    let label = if i == 1 && path[0].ident.name == kw::PathRoot {
+                        format!("global paths cannot start with {}", name_str)
+                    } else {
+                        format!("{} in paths can only be used in start position", name_str)
+                    };
+                    (label, None)
+                });
             }
 
             enum FindBindingResult<'a> {
@@ -2342,36 +2322,22 @@ impl<'a> Resolver<'a> {
             }
             let find_binding_in_ns = |this: &mut Self, ns| {
                 let binding = if let Some(module) = module {
-                    this.resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns,
-                        parent_scope,
-                        record_used,
-                        path_span,
-                    )
+                    this.resolve_ident_in_module(module, ident, ns, parent_scope, finalize)
                 } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
                     let scopes = ScopeSet::All(ns, opt_ns.is_none());
                     this.early_resolve_ident_in_lexical_scope(
                         ident,
                         scopes,
                         parent_scope,
-                        record_used,
-                        record_used,
-                        path_span,
+                        finalize,
+                        finalize.is_some(),
                     )
                 } else {
-                    let record_used_id = if record_used {
-                        crate_lint.node_id().or(Some(CRATE_NODE_ID))
-                    } else {
-                        None
-                    };
                     match this.resolve_ident_in_lexical_scope(
                         ident,
                         ns,
                         parent_scope,
-                        record_used_id,
-                        path_span,
+                        finalize_full,
                         &ribs.unwrap()[ns],
                     ) {
                         // we found a locally-imported or available item/module
@@ -2385,7 +2351,7 @@ impl<'a> Resolver<'a> {
                                 PartialRes::with_unresolved_segments(res, path.len() - 1),
                             ));
                         }
-                        _ => Err(Determinacy::determined(record_used)),
+                        _ => Err(Determinacy::determined(finalize.is_some())),
                     }
                 };
                 FindBindingResult::Binding(binding)
@@ -2419,30 +2385,20 @@ impl<'a> Resolver<'a> {
                     } else if res == Res::Err {
                         return PathResult::NonModule(PartialRes::new(Res::Err));
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
-                        self.lint_if_path_starts_with_module(
-                            crate_lint,
-                            path,
-                            path_span,
-                            second_binding,
-                        );
+                        self.lint_if_path_starts_with_module(finalize_full, path, second_binding);
                         return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res,
                             path.len() - i - 1,
                         ));
                     } else {
-                        let label = format!(
-                            "`{}` is {} {}, not a module",
-                            ident,
-                            res.article(),
-                            res.descr(),
-                        );
-
-                        return PathResult::Failed {
-                            span: ident.span,
-                            label,
-                            suggestion: None,
-                            is_error_from_last_segment: is_last,
-                        };
+                        return PathResult::failed(ident.span, is_last, finalize.is_some(), || {
+                            let label = format!(
+                                "`{ident}` is {} {}, not a module",
+                                res.article(),
+                                res.descr()
+                            );
+                            (label, None)
+                        });
                     }
                 }
                 Err(Undetermined) => return PathResult::Indeterminate,
@@ -2455,196 +2411,192 @@ impl<'a> Resolver<'a> {
                             ));
                         }
                     }
-                    let module_res = match module {
-                        Some(ModuleOrUniformRoot::Module(module)) => module.res(),
-                        _ => None,
-                    };
-                    let (label, suggestion) = if module_res == self.graph_root.res() {
-                        let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
-                        // Don't look up import candidates if this is a speculative resolve
-                        let mut candidates = if record_used {
-                            self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod)
-                        } else {
-                            Vec::new()
+
+                    return PathResult::failed(ident.span, is_last, finalize.is_some(), || {
+                        let module_res = match module {
+                            Some(ModuleOrUniformRoot::Module(module)) => module.res(),
+                            _ => None,
                         };
-                        candidates.sort_by_cached_key(|c| {
-                            (c.path.segments.len(), pprust::path_to_string(&c.path))
-                        });
-                        if let Some(candidate) = candidates.get(0) {
-                            (
-                                String::from("unresolved import"),
-                                Some((
-                                    vec![(ident.span, pprust::path_to_string(&candidate.path))],
-                                    String::from("a similar path exists"),
-                                    Applicability::MaybeIncorrect,
-                                )),
-                            )
-                        } else if self.session.edition() == Edition::Edition2015 {
-                            (format!("maybe a missing crate `{}`?", ident), None)
-                        } else {
-                            (format!("could not find `{}` in the crate root", ident), None)
-                        }
-                    } else if i == 0 {
-                        if ident
-                            .name
-                            .as_str()
-                            .chars()
-                            .next()
-                            .map_or(false, |c| c.is_ascii_uppercase())
-                        {
-                            // Check whether the name refers to an item in the value namespace.
-                            let suggestion = if ribs.is_some() {
-                                let match_span = match self.resolve_ident_in_lexical_scope(
-                                    ident,
-                                    ValueNS,
-                                    parent_scope,
-                                    None,
-                                    path_span,
-                                    &ribs.unwrap()[ValueNS],
-                                ) {
-                                    // Name matches a local variable. For example:
-                                    // ```
-                                    // fn f() {
-                                    //     let Foo: &str = "";
-                                    //     println!("{}", Foo::Bar); // Name refers to local
-                                    //                               // variable `Foo`.
-                                    // }
-                                    // ```
-                                    Some(LexicalScopeBinding::Res(Res::Local(id))) => {
-                                        Some(*self.pat_span_map.get(&id).unwrap())
-                                    }
-
-                                    // Name matches item from a local name binding
-                                    // created by `use` declaration. For example:
-                                    // ```
-                                    // pub Foo: &str = "";
-                                    //
-                                    // mod submod {
-                                    //     use super::Foo;
-                                    //     println!("{}", Foo::Bar); // Name refers to local
-                                    //                               // binding `Foo`.
-                                    // }
-                                    // ```
-                                    Some(LexicalScopeBinding::Item(name_binding)) => {
-                                        Some(name_binding.span)
-                                    }
-                                    _ => None,
-                                };
-
-                                if let Some(span) = match_span {
+                        if module_res == self.graph_root.res() {
+                            let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
+                            let mut candidates =
+                                self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
+                            candidates.sort_by_cached_key(|c| {
+                                (c.path.segments.len(), pprust::path_to_string(&c.path))
+                            });
+                            if let Some(candidate) = candidates.get(0) {
+                                (
+                                    String::from("unresolved import"),
                                     Some((
-                                        vec![(span, String::from(""))],
-                                        format!("`{}` is defined here, but is not a type", ident),
+                                        vec![(ident.span, pprust::path_to_string(&candidate.path))],
+                                        String::from("a similar path exists"),
                                         Applicability::MaybeIncorrect,
-                                    ))
-                                } else {
-                                    None
-                                }
+                                    )),
+                                )
+                            } else if self.session.edition() == Edition::Edition2015 {
+                                (format!("maybe a missing crate `{}`?", ident), None)
                             } else {
-                                None
-                            };
+                                (format!("could not find `{}` in the crate root", ident), None)
+                            }
+                        } else if i == 0 {
+                            if ident
+                                .name
+                                .as_str()
+                                .chars()
+                                .next()
+                                .map_or(false, |c| c.is_ascii_uppercase())
+                            {
+                                // Check whether the name refers to an item in the value namespace.
+                                let suggestion = if ribs.is_some() {
+                                    let match_span = match self.resolve_ident_in_lexical_scope(
+                                        ident,
+                                        ValueNS,
+                                        parent_scope,
+                                        Finalize::No,
+                                        &ribs.unwrap()[ValueNS],
+                                    ) {
+                                        // Name matches a local variable. For example:
+                                        // ```
+                                        // fn f() {
+                                        //     let Foo: &str = "";
+                                        //     println!("{}", Foo::Bar); // Name refers to local
+                                        //                               // variable `Foo`.
+                                        // }
+                                        // ```
+                                        Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                                            Some(*self.pat_span_map.get(&id).unwrap())
+                                        }
 
-                            (format!("use of undeclared type `{}`", ident), suggestion)
-                        } else {
-                            (
-                                format!("use of undeclared crate or module `{}`", ident),
-                                if ident.name == sym::alloc {
-                                    Some((
-                                        vec![],
-                                        String::from(
-                                            "add `extern crate alloc` to use the `alloc` crate",
-                                        ),
-                                        Applicability::MaybeIncorrect,
-                                    ))
-                                } else {
-                                    self.find_similarly_named_module_or_crate(
-                                        ident.name,
-                                        &parent_scope.module,
-                                    )
-                                    .map(|sugg| {
-                                        (
-                                            vec![(ident.span, sugg.to_string())],
-                                            String::from(
-                                                "there is a crate or module with a similar name",
+                                        // Name matches item from a local name binding
+                                        // created by `use` declaration. For example:
+                                        // ```
+                                        // pub Foo: &str = "";
+                                        //
+                                        // mod submod {
+                                        //     use super::Foo;
+                                        //     println!("{}", Foo::Bar); // Name refers to local
+                                        //                               // binding `Foo`.
+                                        // }
+                                        // ```
+                                        Some(LexicalScopeBinding::Item(name_binding)) => {
+                                            Some(name_binding.span)
+                                        }
+                                        _ => None,
+                                    };
+
+                                    if let Some(span) = match_span {
+                                        Some((
+                                            vec![(span, String::from(""))],
+                                            format!(
+                                                "`{}` is defined here, but is not a type",
+                                                ident
                                             ),
                                             Applicability::MaybeIncorrect,
-                                        )
-                                    })
-                                },
-                            )
-                        }
-                    } else {
-                        let parent = path[i - 1].ident.name;
-                        let parent = match parent {
-                            // ::foo is mounted at the crate root for 2015, and is the extern
-                            // prelude for 2018+
-                            kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
-                                "the list of imported crates".to_owned()
-                            }
-                            kw::PathRoot | kw::Crate => "the crate root".to_owned(),
-                            _ => {
-                                format!("`{}`", parent)
-                            }
-                        };
-
-                        let mut msg = format!("could not find `{}` in {}", ident, parent);
-                        if ns == TypeNS || ns == ValueNS {
-                            let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
-                            if let FindBindingResult::Binding(Ok(binding)) =
-                                find_binding_in_ns(self, ns_to_try)
-                            {
-                                let mut found = |what| {
-                                    msg = format!(
-                                        "expected {}, found {} `{}` in {}",
-                                        ns.descr(),
-                                        what,
-                                        ident,
-                                        parent
-                                    )
-                                };
-                                if binding.module().is_some() {
-                                    found("module")
-                                } else {
-                                    match binding.res() {
-                                        def::Res::<NodeId>::Def(kind, id) => found(kind.descr(id)),
-                                        _ => found(ns_to_try.descr()),
+                                        ))
+                                    } else {
+                                        None
                                     }
+                                } else {
+                                    None
+                                };
+
+                                (format!("use of undeclared type `{}`", ident), suggestion)
+                            } else {
+                                (
+                                    format!("use of undeclared crate or module `{}`", ident),
+                                    if ident.name == sym::alloc {
+                                        Some((
+                                            vec![],
+                                            String::from(
+                                                "add `extern crate alloc` to use the `alloc` crate",
+                                            ),
+                                            Applicability::MaybeIncorrect,
+                                        ))
+                                    } else {
+                                        self.find_similarly_named_module_or_crate(
+                                            ident.name,
+                                            &parent_scope.module,
+                                        )
+                                        .map(|sugg| {
+                                            (
+                                                vec![(ident.span, sugg.to_string())],
+                                                String::from(
+                                                    "there is a crate or module with a similar name",
+                                                ),
+                                                Applicability::MaybeIncorrect,
+                                            )
+                                        })
+                                    },
+                                )
+                            }
+                        } else {
+                            let parent = path[i - 1].ident.name;
+                            let parent = match parent {
+                                // ::foo is mounted at the crate root for 2015, and is the extern
+                                // prelude for 2018+
+                                kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
+                                    "the list of imported crates".to_owned()
+                                }
+                                kw::PathRoot | kw::Crate => "the crate root".to_owned(),
+                                _ => {
+                                    format!("`{}`", parent)
                                 }
                             };
+
+                            let mut msg = format!("could not find `{}` in {}", ident, parent);
+                            if ns == TypeNS || ns == ValueNS {
+                                let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
+                                if let FindBindingResult::Binding(Ok(binding)) =
+                                    find_binding_in_ns(self, ns_to_try)
+                                {
+                                    let mut found = |what| {
+                                        msg = format!(
+                                            "expected {}, found {} `{}` in {}",
+                                            ns.descr(),
+                                            what,
+                                            ident,
+                                            parent
+                                        )
+                                    };
+                                    if binding.module().is_some() {
+                                        found("module")
+                                    } else {
+                                        match binding.res() {
+                                            def::Res::<NodeId>::Def(kind, id) => {
+                                                found(kind.descr(id))
+                                            }
+                                            _ => found(ns_to_try.descr()),
+                                        }
+                                    }
+                                };
+                            }
+                            (msg, None)
                         }
-                        (msg, None)
-                    };
-                    return PathResult::Failed {
-                        span: ident.span,
-                        label,
-                        suggestion,
-                        is_error_from_last_segment: is_last,
-                    };
+                    });
                 }
             }
         }
 
-        self.lint_if_path_starts_with_module(crate_lint, path, path_span, second_binding);
+        self.lint_if_path_starts_with_module(finalize_full, path, second_binding);
 
         PathResult::Module(match module {
             Some(module) => module,
             None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
-            _ => span_bug!(path_span, "resolve_path: non-empty path `{:?}` has no module", path),
+            _ => bug!("resolve_path: non-empty path `{:?}` has no module", path),
         })
     }
 
     fn lint_if_path_starts_with_module(
         &mut self,
-        crate_lint: CrateLint,
+        finalize: Finalize,
         path: &[Segment],
-        path_span: Span,
         second_binding: Option<&NameBinding<'_>>,
     ) {
-        let (diag_id, diag_span) = match crate_lint {
-            CrateLint::No => return,
-            CrateLint::SimplePath(id) => (id, path_span),
-            CrateLint::UsePath { root_id, root_span } => (root_id, root_span),
-            CrateLint::QPathTrait { qpath_id, qpath_span } => (qpath_id, qpath_span),
+        let (diag_id, diag_span) = match finalize {
+            Finalize::No => return,
+            Finalize::SimplePath(id, path_span) => (id, path_span),
+            Finalize::UsePath { root_id, root_span, .. } => (root_id, root_span),
+            Finalize::QPathTrait { qpath_id, qpath_span, .. } => (qpath_id, qpath_span),
         };
 
         let first_name = match path.get(0) {
@@ -2699,8 +2651,7 @@ impl<'a> Resolver<'a> {
         rib_index: usize,
         rib_ident: Ident,
         mut res: Res,
-        record_used: bool,
-        span: Span,
+        finalize: Option<Span>,
         original_rib_ident_def: Ident,
         all_ribs: &[Rib<'a>],
     ) -> Res {
@@ -2710,7 +2661,7 @@ impl<'a> Resolver<'a> {
 
         // An invalid forward use of a generic parameter from a previous default.
         if let ForwardGenericParamBanRibKind = all_ribs[rib_index].kind {
-            if record_used {
+            if let Some(span) = finalize {
                 let res_error = if rib_ident.name == kw::SelfUpper {
                     ResolutionError::SelfInGenericParamDefault
                 } else {
@@ -2740,17 +2691,17 @@ impl<'a> Resolver<'a> {
                             // This was an attempt to access an upvar inside a
                             // named function item. This is not allowed, so we
                             // report an error.
-                            if record_used {
+                            if let Some(span) = finalize {
                                 // We don't immediately trigger a resolve error, because
                                 // we want certain other resolution errors (namely those
                                 // emitted for `ConstantItemRibKind` below) to take
                                 // precedence.
-                                res_err = Some(CannotCaptureDynamicEnvironmentInFnItem);
+                                res_err = Some((span, CannotCaptureDynamicEnvironmentInFnItem));
                             }
                         }
                         ConstantItemRibKind(_, item) => {
                             // Still doesn't deal with upvars
-                            if record_used {
+                            if let Some(span) = finalize {
                                 let (span, resolution_error) =
                                     if let Some((ident, constant_item_kind)) = item {
                                         let kind_str = match constant_item_kind {
@@ -2778,14 +2729,14 @@ impl<'a> Resolver<'a> {
                             return Res::Err;
                         }
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = finalize {
                                 self.report_error(span, ParamInTyOfConstParam(rib_ident.name));
                             }
                             return Res::Err;
                         }
                     }
                 }
-                if let Some(res_err) = res_err {
+                if let Some((span, res_err)) = res_err {
                     self.report_error(span, res_err);
                     return Res::Err;
                 }
@@ -2813,7 +2764,7 @@ impl<'a> Resolver<'a> {
                                 if let Res::SelfTy { trait_, alias_to: Some((def, _)) } = res {
                                     res = Res::SelfTy { trait_, alias_to: Some((def, true)) }
                                 } else {
-                                    if record_used {
+                                    if let Some(span) = finalize {
                                         self.report_error(
                                             span,
                                             ResolutionError::ParamInNonTrivialAnonConst {
@@ -2821,9 +2772,9 @@ impl<'a> Resolver<'a> {
                                                 is_type: true,
                                             },
                                         );
+                                        self.session.delay_span_bug(span, CG_BUG_STR);
                                     }
 
-                                    self.session.delay_span_bug(span, CG_BUG_STR);
                                     return Res::Err;
                                 }
                             }
@@ -2835,7 +2786,7 @@ impl<'a> Resolver<'a> {
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = finalize {
                                 self.report_error(
                                     span,
                                     ResolutionError::ParamInTyOfConstParam(rib_ident.name),
@@ -2845,7 +2796,7 @@ impl<'a> Resolver<'a> {
                         }
                     };
 
-                    if record_used {
+                    if let Some(span) = finalize {
                         self.report_error(
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
@@ -2879,7 +2830,7 @@ impl<'a> Resolver<'a> {
                             let features = self.session.features_untracked();
                             // HACK(min_const_generics): We currently only allow `N` or `{ N }`.
                             if !(trivial || features.generic_const_exprs) {
-                                if record_used {
+                                if let Some(span) = finalize {
                                     self.report_error(
                                         span,
                                         ResolutionError::ParamInNonTrivialAnonConst {
@@ -2887,9 +2838,9 @@ impl<'a> Resolver<'a> {
                                             is_type: false,
                                         },
                                     );
+                                    self.session.delay_span_bug(span, CG_BUG_STR);
                                 }
 
-                                self.session.delay_span_bug(span, CG_BUG_STR);
                                 return Res::Err;
                             }
 
@@ -2899,7 +2850,7 @@ impl<'a> Resolver<'a> {
                         ItemRibKind(has_generic_params) => has_generic_params,
                         FnItemRibKind => HasGenericParams::Yes,
                         ConstParamTyRibKind => {
-                            if record_used {
+                            if let Some(span) = finalize {
                                 self.report_error(
                                     span,
                                     ResolutionError::ParamInTyOfConstParam(rib_ident.name),
@@ -2910,7 +2861,7 @@ impl<'a> Resolver<'a> {
                     };
 
                     // This was an attempt to use a const parameter outside its scope.
-                    if record_used {
+                    if let Some(span) = finalize {
                         self.report_error(
                             span,
                             ResolutionError::GenericParamsFromOuterFunction(
@@ -3298,23 +3249,19 @@ impl<'a> Resolver<'a> {
         err.span_suggestion(span, message, String::new(), Applicability::MachineApplicable);
     }
 
-    fn extern_prelude_get(
-        &mut self,
-        ident: Ident,
-        speculative: bool,
-    ) -> Option<&'a NameBinding<'a>> {
+    fn extern_prelude_get(&mut self, ident: Ident, finalize: bool) -> Option<&'a NameBinding<'a>> {
         if ident.is_path_segment_keyword() {
             // Make sure `self`, `super` etc produce an error when passed to here.
             return None;
         }
         self.extern_prelude.get(&ident.normalize_to_macros_2_0()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
-                if !speculative && entry.introduced_by_item {
+                if finalize && entry.introduced_by_item {
                     self.record_use(ident, binding, false);
                 }
                 Some(binding)
             } else {
-                let crate_id = if !speculative {
+                let crate_id = if finalize {
                     let Some(crate_id) =
                         self.crate_loader.process_path_extern(ident.name, ident.span) else { return Some(self.dummy_binding); };
                     crate_id
@@ -3330,81 +3277,36 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    /// Rustdoc uses this to resolve things in a recoverable way. `ResolutionError<'a>`
+    /// Rustdoc uses this to resolve doc link paths in a recoverable way. `PathResult<'a>`
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    // FIXME(Manishearth): intra-doc links won't get warned of epoch changes.
-    pub fn resolve_str_path_error(
+    pub fn resolve_rustdoc_path(
         &mut self,
-        span: Span,
         path_str: &str,
         ns: Namespace,
         module_id: DefId,
-    ) -> Result<(ast::Path, Res), ()> {
-        let path = if path_str.starts_with("::") {
-            ast::Path {
-                span,
-                segments: iter::once(Ident::with_dummy_span(kw::PathRoot))
-                    .chain(path_str.split("::").skip(1).map(Ident::from_str))
-                    .map(|i| self.new_ast_path_segment(i))
-                    .collect(),
-                tokens: None,
-            }
-        } else {
-            ast::Path {
-                span,
-                segments: path_str
-                    .split("::")
-                    .map(Ident::from_str)
-                    .map(|i| self.new_ast_path_segment(i))
-                    .collect(),
-                tokens: None,
-            }
-        };
-        let module = self.expect_module(module_id);
-        let parent_scope = &ParentScope::module(module, self);
-        let res = self.resolve_ast_path(&path, ns, parent_scope).map_err(|_| ())?;
-        Ok((path, res))
-    }
-
-    // Resolve a path passed from rustdoc or HIR lowering.
-    fn resolve_ast_path(
-        &mut self,
-        path: &ast::Path,
-        ns: Namespace,
-        parent_scope: &ParentScope<'a>,
-    ) -> Result<Res, (Span, ResolutionError<'a>)> {
-        match self.resolve_path(
-            &Segment::from_path(path),
-            Some(ns),
-            parent_scope,
-            false,
-            path.span,
-            CrateLint::No,
-        ) {
-            PathResult::Module(ModuleOrUniformRoot::Module(module)) => Ok(module.res().unwrap()),
-            PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                Ok(path_res.base_res())
-            }
-            PathResult::NonModule(..) => Err((
-                path.span,
-                ResolutionError::FailedToResolve {
-                    label: String::from("type-relative paths are not supported in this context"),
-                    suggestion: None,
-                },
-            )),
-            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
-            PathResult::Failed { span, label, suggestion, .. } => {
-                Err((span, ResolutionError::FailedToResolve { label, suggestion }))
-            }
+    ) -> Option<Res> {
+        let mut segments =
+            Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));
+        if path_str.starts_with("::") {
+            segments[0].ident.name = kw::PathRoot;
         }
-    }
 
-    fn new_ast_path_segment(&mut self, ident: Ident) -> ast::PathSegment {
-        let mut seg = ast::PathSegment::from_ident(ident);
-        seg.id = self.next_node_id();
-        seg
+        let module = self.expect_module(module_id);
+        match self.resolve_path(
+            &segments,
+            Some(ns),
+            &ParentScope::module(module, self),
+            Finalize::No,
+        ) {
+            PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
+            PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
+                Some(path_res.base_res())
+            }
+            PathResult::NonModule(..) | PathResult::Failed { .. } => None,
+            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
+        }
     }
 
     // For rustdoc.
@@ -3490,8 +3392,7 @@ impl<'a> Resolver<'a> {
             ident,
             ValueNS,
             parent_scope,
-            false,
-            DUMMY_SP,
+            None
         ) else {
             return;
         };
@@ -3549,34 +3450,42 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
 }
 
 #[derive(Copy, Clone, Debug)]
-enum CrateLint {
+enum Finalize {
     /// Do not issue the lint.
     No,
 
     /// This lint applies to some arbitrary path; e.g., `impl ::foo::Bar`.
     /// In this case, we can take the span of that path.
-    SimplePath(NodeId),
+    SimplePath(NodeId, Span),
 
     /// This lint comes from a `use` statement. In this case, what we
     /// care about really is the *root* `use` statement; e.g., if we
     /// have nested things like `use a::{b, c}`, we care about the
     /// `use a` part.
-    UsePath { root_id: NodeId, root_span: Span },
+    UsePath { root_id: NodeId, root_span: Span, path_span: Span },
 
     /// This is the "trait item" from a fully qualified path. For example,
     /// we might be resolving  `X::Y::Z` from a path like `<T as X::Y>::Z`.
     /// The `path_span` is the span of the to the trait itself (`X::Y`).
-    QPathTrait { qpath_id: NodeId, qpath_span: Span },
+    QPathTrait { qpath_id: NodeId, qpath_span: Span, path_span: Span },
 }
 
-impl CrateLint {
-    fn node_id(&self) -> Option<NodeId> {
+impl Finalize {
+    fn node_id_and_path_span(&self) -> Option<(NodeId, Span)> {
         match *self {
-            CrateLint::No => None,
-            CrateLint::SimplePath(id)
-            | CrateLint::UsePath { root_id: id, .. }
-            | CrateLint::QPathTrait { qpath_id: id, .. } => Some(id),
+            Finalize::No => None,
+            Finalize::SimplePath(id, path_span)
+            | Finalize::UsePath { root_id: id, path_span, .. }
+            | Finalize::QPathTrait { qpath_id: id, path_span, .. } => Some((id, path_span)),
         }
+    }
+
+    fn node_id(&self) -> Option<NodeId> {
+        self.node_id_and_path_span().map(|(id, _)| id)
+    }
+
+    fn path_span(&self) -> Option<Span> {
+        self.node_id_and_path_span().map(|(_, path_span)| path_span)
     }
 }
 

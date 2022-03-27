@@ -223,7 +223,7 @@ top_level_options!(
         /// `true` if we're emitting a JSON blob containing the unused externs
         json_unused_externs: bool [UNTRACKED],
 
-        /// `true` if we're emitting a JSON job containg a future-incompat report for lints
+        /// `true` if we're emitting a JSON job containing a future-incompat report for lints
         json_future_incompat: bool [TRACKED],
 
         pretty: Option<PpMode> [UNTRACKED],
@@ -345,14 +345,13 @@ fn build_options<O: Default>(
                         Some(value) => early_error(
                             error_format,
                             &format!(
-                                "incorrect value `{}` for {} option `{}` - {} was expected",
-                                value, outputname, key, type_desc
+                                "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
                         ),
                     }
                 }
             }
-            None => early_error(error_format, &format!("unknown {} option: `{}`", outputname, key)),
+            None => early_error(error_format, &format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;
@@ -375,6 +374,7 @@ mod desc {
     pub const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub const parse_panic_strategy: &str = "either `unwind` or `abort`";
     pub const parse_opt_panic_strategy: &str = parse_panic_strategy;
+    pub const parse_oom_strategy: &str = "either `panic` or `abort`";
     pub const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `hwaddress`, `leak`, `memory`, `memtag`, or `thread`";
     pub const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
@@ -394,7 +394,7 @@ mod desc {
     pub const parse_linker_plugin_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or the path to the linker plugin";
     pub const parse_location_detail: &str =
-        "comma seperated list of location details to track: `file`, `line`, or `column`";
+        "comma separated list of location details to track: `file`, `line`, or `column`";
     pub const parse_switch_with_opt_path: &str =
         "an optional path to the profiling data output directory";
     pub const parse_merge_functions: &str = "one of: `disabled`, `trampolines`, or `aliases`";
@@ -615,6 +615,15 @@ mod parse {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
+            _ => return false,
+        }
+        true
+    }
+
+    crate fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
+        match v {
+            Some("panic") => *slot = OomStrategy::Panic,
+            Some("abort") => *slot = OomStrategy::Abort,
             _ => return false,
         }
         true
@@ -1283,7 +1292,7 @@ options! {
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     location_detail: LocationDetail = (LocationDetail::all(), parse_location_detail, [TRACKED],
-        "comma seperated list of location details to be tracked when using caller_location \
+        "comma separated list of location details to be tracked when using caller_location \
         valid options are `file`, `line`, and `column` (default: all)"),
     ls: bool = (false, parse_bool, [UNTRACKED],
         "list the symbols defined by a library crate (default: no)"),
@@ -1329,6 +1338,8 @@ options! {
         "prevent automatic injection of the profiler_builtins crate"),
     normalize_docs: bool = (false, parse_bool, [TRACKED],
         "normalize associated items in rustdoc when generating documentation"),
+    oom: OomStrategy = (OomStrategy::Abort, parse_oom_strategy, [TRACKED],
+        "panic strategy for out-of-memory handling"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
         "pass `-install_name @rpath/...` to the macOS linker (default: no)"),
     panic_abort_tests: bool = (false, parse_bool, [TRACKED],

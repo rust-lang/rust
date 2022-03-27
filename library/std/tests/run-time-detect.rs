@@ -29,7 +29,6 @@ fn aarch64_linux() {
     println!("neon: {}", is_aarch64_feature_detected!("neon"));
     println!("asimd: {}", is_aarch64_feature_detected!("asimd"));
     println!("pmull: {}", is_aarch64_feature_detected!("pmull"));
-    println!("fp: {}", is_aarch64_feature_detected!("fp"));
     println!("fp16: {}", is_aarch64_feature_detected!("fp16"));
     println!("sve: {}", is_aarch64_feature_detected!("sve"));
     println!("crc: {}", is_aarch64_feature_detected!("crc"));

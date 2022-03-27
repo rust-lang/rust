@@ -1,7 +1,6 @@
 // Adapted from rustc run-pass test suite
 
 #![feature(arbitrary_self_types, unsize, coerce_unsized, dispatch_from_dyn)]
-#![feature(rustc_attrs)]
 
 use std::{
     ops::{Deref, CoerceUnsized, DispatchFromDyn},

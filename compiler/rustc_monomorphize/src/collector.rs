@@ -180,7 +180,7 @@
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{par_iter, MTLock, MTRef, ParallelIterator};
-use rustc_errors::{ErrorGuaranteed, FatalError};
+use rustc_errors::FatalError;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -716,9 +716,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     match self.tcx.const_eval_resolve(param_env, ct, None) {
                         // The `monomorphize` call should have evaluated that constant already.
                         Ok(val) => val,
-                        Err(ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted) => {
-                            return;
-                        }
+                        Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => return,
                         Err(ErrorHandled::TooGeneric) => span_bug!(
                             self.body.source_info(location).span,
                             "collection encountered polymorphic constant: {:?}",
@@ -750,7 +748,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         substituted_constant,
                         val
                     ),
-                    Err(ErrorHandled::Reported(ErrorGuaranteed) | ErrorHandled::Linted) => {}
+                    Err(ErrorHandled::Reported(_) | ErrorHandled::Linted) => {}
                     Err(ErrorHandled::TooGeneric) => span_bug!(
                         self.body.source_info(location).span,
                         "collection encountered polymorphic constant: {}",
@@ -864,7 +862,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     |lint| {
                         let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
                         err.span_label(source_info.span, "value moved from here");
-                        err.emit()
+                        err.emit();
                     },
                 );
             }

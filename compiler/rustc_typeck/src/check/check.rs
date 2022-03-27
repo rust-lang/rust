@@ -49,7 +49,7 @@ pub(super) fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Ab
         }
         None => {
             tcx.struct_span_lint_hir(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.build("use of calling convention not supported on this target").emit()
+                lint.build("use of calling convention not supported on this target").emit();
             });
         }
     }
@@ -136,7 +136,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             };
 
             if let Some(header) = item {
-                tcx.sess.span_err(header.span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple")
+                tcx.sess.span_err(header.span, "functions with the \"rust-call\" ABI must take a single non-self argument that is a tuple");
             }
         };
 
@@ -625,11 +625,11 @@ pub(super) fn check_opaque_for_cycles<'tcx>(
     origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.try_expand_impl_trait_type(def_id.to_def_id(), substs).is_err() {
-        match origin {
+        let reported = match origin {
             hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
             _ => opaque_type_cycle_error(tcx, def_id, span),
-        }
-        Err(ErrorGuaranteed)
+        };
+        Err(reported)
     } else {
         Ok(())
     }
@@ -680,13 +680,15 @@ fn check_opaque_meets_bounds<'tcx>(
             trace!(?hidden_type);
             match infcx.at(&misc_cause, param_env).eq(opaque_defn.concrete_ty, hidden_type) {
                 Ok(infer_ok) => inh.register_infer_ok_obligations(infer_ok),
-                Err(ty_err) => tcx.sess.delay_span_bug(
-                    span,
-                    &format!(
-                        "could not check bounds on revealed type `{}`:\n{}",
-                        hidden_type, ty_err,
-                    ),
-                ),
+                Err(ty_err) => {
+                    tcx.sess.delay_span_bug(
+                        span,
+                        &format!(
+                            "could not check bounds on revealed type `{}`:\n{}",
+                            hidden_type, ty_err,
+                        ),
+                    );
+                }
             }
         }
 
@@ -1422,7 +1424,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
     if ty.references_error() {
         // If there is already another error, do not emit
         // an error for not using a type parameter.
-        assert!(tcx.sess.has_errors());
+        assert!(tcx.sess.has_errors().is_some());
         return;
     }
 
@@ -1463,14 +1465,14 @@ pub(super) use wfcheck::check_trait_item as check_trait_item_well_formed;
 
 pub(super) use wfcheck::check_impl_item as check_impl_item_well_formed;
 
-fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) {
+fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed {
     struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing")
         .span_label(span, "recursive `async fn`")
         .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
         .note(
             "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
         )
-        .emit();
+        .emit()
 }
 
 /// Emit an error for recursive opaque types.
@@ -1481,7 +1483,7 @@ fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) {
 ///
 /// If all the return expressions evaluate to `!`, then we explain that the error will go away
 /// after changing it. This can happen when a user uses `panic!()` or similar as a placeholder.
-fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
+fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> ErrorGuaranteed {
     let mut err = struct_span_err!(tcx.sess, span, E0720, "cannot resolve opaque type");
 
     let mut label = false;
@@ -1550,5 +1552,5 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) {
     if !label {
         err.span_label(span, "cannot resolve opaque type");
     }
-    err.emit();
+    err.emit()
 }

@@ -27,8 +27,8 @@ use tracing::debug;
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
     pub fn parse_crate_mod(&mut self) -> PResult<'a, ast::Crate> {
-        let (attrs, items, span) = self.parse_mod(&token::Eof)?;
-        Ok(ast::Crate { attrs, items, span, id: DUMMY_NODE_ID, is_placeholder: false })
+        let (attrs, items, spans) = self.parse_mod(&token::Eof)?;
+        Ok(ast::Crate { attrs, items, spans, id: DUMMY_NODE_ID, is_placeholder: false })
     }
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
@@ -52,10 +52,11 @@ impl<'a> Parser<'a> {
     pub fn parse_mod(
         &mut self,
         term: &TokenKind,
-    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, Span)> {
+    ) -> PResult<'a, (Vec<Attribute>, Vec<P<Item>>, ModSpans)> {
         let lo = self.token.span;
         let attrs = self.parse_inner_attributes()?;
 
+        let post_attr_lo = self.token.span;
         let mut items = vec![];
         while let Some(item) = self.parse_item(ForceCollect::No)? {
             items.push(item);
@@ -65,14 +66,16 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
-                let msg = &format!("expected item, found {}", token_str);
+                let msg = &format!("expected item, found {token_str}");
                 let mut err = self.struct_span_err(self.token.span, msg);
                 err.span_label(self.token.span, "expected item");
                 return Err(err);
             }
         }
 
-        Ok((attrs, items, lo.to(self.prev_token.span)))
+        let inject_use_span = post_attr_lo.data().with_hi(post_attr_lo.lo());
+        let mod_spans = ModSpans { inner_span: lo.to(self.prev_token.span), inject_use_span };
+        Ok((attrs, items, mod_spans))
     }
 }
 
@@ -160,9 +163,9 @@ impl<'a> Parser<'a> {
         }
         let vs = pprust::vis_to_string(&vis);
         let vs = vs.trim_end();
-        self.struct_span_err(vis.span, &format!("visibility `{}` is not followed by an item", vs))
+        self.struct_span_err(vis.span, &format!("visibility `{vs}` is not followed by an item"))
             .span_label(vis.span, "the visibility")
-            .help(&format!("you likely meant to define an item, e.g., `{} fn foo() {{}}`", vs))
+            .help(&format!("you likely meant to define an item, e.g., `{vs} fn foo() {{}}`"))
             .emit();
     }
 
@@ -209,10 +212,10 @@ impl<'a> Parser<'a> {
             if let Err(mut e) = self.expect_semi() {
                 match tree.kind {
                     UseTreeKind::Glob => {
-                        e.note("the wildcard token must be last on the path").emit();
+                        e.note("the wildcard token must be last on the path");
                     }
                     UseTreeKind::Nested(..) => {
-                        e.note("glob-like brace syntax must be last on the path").emit();
+                        e.note("glob-like brace syntax must be last on the path");
                     }
                     _ => (),
                 }
@@ -324,7 +327,7 @@ impl<'a> Parser<'a> {
         if self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) {
             // possible public struct definition where `struct` was forgotten
             let ident = self.parse_ident().unwrap();
-            let msg = format!("add `struct` here to parse `{}` as a public struct", ident);
+            let msg = format!("add `struct` here to parse `{ident}` as a public struct");
             let mut err = self.struct_span_err(sp, "missing `struct` for struct definition");
             err.span_suggestion_short(
                 sp,
@@ -352,16 +355,16 @@ impl<'a> Parser<'a> {
                 ("fn` or `struct", "function or struct", true)
             };
 
-            let msg = format!("missing `{}` for {} definition", kw, kw_name);
+            let msg = format!("missing `{kw}` for {kw_name} definition");
             let mut err = self.struct_span_err(sp, &msg);
             if !ambiguous {
                 self.consume_block(token::Brace, ConsumeClosingDelim::Yes);
                 let suggestion =
-                    format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name);
+                    format!("add `{kw}` here to parse `{ident}` as a public {kw_name}");
                 err.span_suggestion_short(
                     sp,
                     &suggestion,
-                    format!(" {} ", kw),
+                    format!(" {kw} "),
                     Applicability::MachineApplicable,
                 );
             } else if let Ok(snippet) = self.span_to_snippet(ident_sp) {
@@ -390,12 +393,12 @@ impl<'a> Parser<'a> {
             } else {
                 ("fn` or `struct", "function or struct", true)
             };
-            let msg = format!("missing `{}` for {} definition", kw, kw_name);
+            let msg = format!("missing `{kw}` for {kw_name} definition");
             let mut err = self.struct_span_err(sp, &msg);
             if !ambiguous {
                 err.span_suggestion_short(
                     sp,
-                    &format!("add `{}` here to parse `{}` as a public {}", kw, ident, kw_name),
+                    &format!("add `{kw}` here to parse `{ident}` as a public {kw_name}"),
                     format!(" {} ", kw),
                     Applicability::MachineApplicable,
                 );
@@ -996,10 +999,32 @@ impl<'a> Parser<'a> {
         attrs: &mut Vec<Attribute>,
         unsafety: Unsafe,
     ) -> PResult<'a, ItemInfo> {
+        let sp_start = self.prev_token.span;
         let abi = self.parse_abi(); // ABI?
-        let items = self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No))?;
-        let module = ast::ForeignMod { unsafety, abi, items };
-        Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+        match self.parse_item_list(attrs, |p| p.parse_foreign_item(ForceCollect::No)) {
+            Ok(items) => {
+                let module = ast::ForeignMod { unsafety, abi, items };
+                Ok((Ident::empty(), ItemKind::ForeignMod(module)))
+            }
+            Err(mut err) => {
+                let current_qual_sp = self.prev_token.span;
+                let current_qual_sp = current_qual_sp.to(sp_start);
+                if let Ok(current_qual) = self.span_to_snippet(current_qual_sp) {
+                    if err.message() == "expected `{`, found keyword `unsafe`" {
+                        let invalid_qual_sp = self.token.uninterpolated_span();
+                        let invalid_qual = self.span_to_snippet(invalid_qual_sp).unwrap();
+
+                        err.span_suggestion(
+                                current_qual_sp.to(invalid_qual_sp),
+                                &format!("`{}` must come before `{}`", invalid_qual, current_qual),
+                                format!("{} {}", invalid_qual, current_qual),
+                                Applicability::MachineApplicable,
+                            ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
+                    }
+                }
+                Err(err)
+            }
+        }
     }
 
     /// Parses a foreign item (one in an `extern { ... }` block).
@@ -1028,8 +1053,8 @@ impl<'a> Parser<'a> {
     fn error_bad_item_kind<T>(&self, span: Span, kind: &ItemKind, ctx: &str) -> Option<T> {
         let span = self.sess.source_map().guess_head_span(span);
         let descr = kind.descr();
-        self.struct_span_err(span, &format!("{} is not supported in {}", descr, ctx))
-            .help(&format!("consider moving the {} out to a nearby module scope", descr))
+        self.struct_span_err(span, &format!("{descr} is not supported in {ctx}"))
+            .help(&format!("consider moving the {descr} out to a nearby module scope"))
             .emit();
         None
     }
@@ -1158,11 +1183,11 @@ impl<'a> Parser<'a> {
             Some(Mutability::Not) => "static",
             None => "const",
         };
-        let mut err = self.struct_span_err(id.span, &format!("missing type for `{}` item", kind));
+        let mut err = self.struct_span_err(id.span, &format!("missing type for `{kind}` item"));
         err.span_suggestion(
             id.span,
             "provide a type for the item",
-            format!("{}: <type>", id),
+            format!("{id}: <type>"),
             Applicability::HasPlaceholders,
         );
         err.stash(id.span, StashKey::ItemNoType);
@@ -1279,8 +1304,7 @@ impl<'a> Parser<'a> {
         } else {
             let token_str = super::token_descr(&self.token);
             let msg = &format!(
-                "expected `where`, `{{`, `(`, or `;` after struct name, found {}",
-                token_str
+                "expected `where`, `{{`, `(`, or `;` after struct name, found {token_str}"
             );
             let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where`, `{`, `(`, or `;` after struct name");
@@ -1307,7 +1331,7 @@ impl<'a> Parser<'a> {
             VariantData::Struct(fields, recovered)
         } else {
             let token_str = super::token_descr(&self.token);
-            let msg = &format!("expected `where` or `{{` after union name, found {}", token_str);
+            let msg = &format!("expected `where` or `{{` after union name, found {token_str}");
             let mut err = self.struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where` or `{` after union name");
             return Err(err);
@@ -1462,7 +1486,7 @@ impl<'a> Parser<'a> {
                             // `check_trailing_angle_brackets` already emitted a nicer error
                             // NOTE(eddyb) this was `.cancel()`, but `err`
                             // gets returned, so we can't fully defuse it.
-                            err.downgrade_to_delayed_bug();
+                            err.delay_as_bug();
                         }
                     }
                 }
@@ -1483,7 +1507,7 @@ impl<'a> Parser<'a> {
                     // Make sure an error was emitted (either by recovering an angle bracket,
                     // or by finding an identifier as the next token), since we're
                     // going to continue parsing
-                    assert!(self.sess.span_diagnostic.has_errors());
+                    assert!(self.sess.span_diagnostic.has_errors().is_some());
                 } else {
                     return Err(err);
                 }
@@ -1588,7 +1612,7 @@ impl<'a> Parser<'a> {
                 }
                 let mut err = self.struct_span_err(
                     lo.to(self.prev_token.span),
-                    &format!("functions are not allowed in {} definitions", adt_ty),
+                    &format!("functions are not allowed in {adt_ty} definitions"),
                 );
                 err.help("unlike in C++, Java, and C#, functions are declared in `impl` blocks");
                 err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
@@ -1703,7 +1727,7 @@ impl<'a> Parser<'a> {
         let vstr = pprust::vis_to_string(vis);
         let vstr = vstr.trim_end();
         if macro_rules {
-            let msg = format!("can't qualify macro_rules invocation with `{}`", vstr);
+            let msg = format!("can't qualify macro_rules invocation with `{vstr}`");
             self.struct_span_err(vis.span, &msg)
                 .span_suggestion(
                     vis.span,
@@ -1720,7 +1744,7 @@ impl<'a> Parser<'a> {
                     String::new(),
                     Applicability::MachineApplicable,
                 )
-                .help(&format!("try adjusting the macro to put `{}` inside the invocation", vstr))
+                .help(&format!("try adjusting the macro to put `{vstr}` inside the invocation"))
                 .emit();
         }
     }
@@ -1778,11 +1802,11 @@ impl<'a> Parser<'a> {
 
             self.struct_span_err(
                 kw_token.span,
-                &format!("`{}` definition cannot be nested inside `{}`", kw_str, keyword),
+                &format!("`{kw_str}` definition cannot be nested inside `{keyword}`"),
             )
             .span_suggestion(
                 item.unwrap().span,
-                &format!("consider creating a new `{}` definition instead of nesting", kw_str),
+                &format!("consider creating a new `{kw_str}` definition instead of nesting"),
                 String::new(),
                 Applicability::MaybeIncorrect,
             )
@@ -1946,7 +1970,7 @@ impl<'a> Parser<'a> {
         // We use an over-approximation here.
         // `const const`, `fn const` won't parse, but we're not stepping over other syntax either.
         // `pub` is added in case users got confused with the ordering like `async pub fn`,
-        // only if it wasn't preceeded by `default` as `default pub` is invalid.
+        // only if it wasn't preceded by `default` as `default pub` is invalid.
         let quals: &[Symbol] = if check_pub {
             &[kw::Pub, kw::Const, kw::Async, kw::Unsafe, kw::Extern]
         } else {
@@ -2042,11 +2066,11 @@ impl<'a> Parser<'a> {
 
                         err.span_suggestion(
                             self.token.uninterpolated_span(),
-                            &format!("`{}` already used earlier, remove this one", original_kw),
+                            &format!("`{original_kw}` already used earlier, remove this one"),
                             "".to_string(),
                             Applicability::MachineApplicable,
                         )
-                        .span_note(original_sp, &format!("`{}` first seen here", original_kw));
+                        .span_note(original_sp, &format!("`{original_kw}` first seen here"));
                     }
                     // The keyword has not been seen yet, suggest correct placement in the function front matter
                     else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
@@ -2057,8 +2081,8 @@ impl<'a> Parser<'a> {
 
                             err.span_suggestion(
                                     correct_pos_sp.to(misplaced_qual_sp),
-                                    &format!("`{}` must come before `{}`", misplaced_qual, current_qual),
-                                    format!("{} {}", misplaced_qual, current_qual),
+                                    &format!("`{misplaced_qual}` must come before `{current_qual}`"),
+                                    format!("{misplaced_qual} {current_qual}"),
                                     Applicability::MachineApplicable,
                                 ).note("keyword order for functions declaration is `default`, `pub`, `const`, `async`, `unsafe`, `extern`");
                         }
@@ -2081,8 +2105,8 @@ impl<'a> Parser<'a> {
                             if matches!(orig_vis.kind, VisibilityKind::Inherited) {
                                 err.span_suggestion(
                                     sp_start.to(self.prev_token.span),
-                                    &format!("visibility `{}` must come before `{}`", vs, snippet),
-                                    format!("{} {}", vs, snippet),
+                                    &format!("visibility `{vs}` must come before `{snippet}`"),
+                                    format!("{vs} {snippet}"),
                                     Applicability::MachineApplicable,
                                 );
                             }

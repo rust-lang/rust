@@ -67,7 +67,7 @@ const TEST_REPOS: &[Test] = &[
         sha: "91493fe47175076f330ce5fc518f0196c0476f56",
         lock: None,
         packages: &[],
-        // Test the embeded sqlite variant of diesel
+        // Test the embedded sqlite variant of diesel
         // This does not require any dependency to be present,
         // sqlite will be compiled as part of the build process
         features: Some(&["sqlite", "libsqlite3-sys/bundled"]),

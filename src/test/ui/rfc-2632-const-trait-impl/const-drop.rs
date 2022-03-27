@@ -5,6 +5,8 @@
 #![feature(never_type)]
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
+use std::marker::Destruct;
+
 struct S<'a>(&'a mut u8);
 
 impl<'a> const Drop for S<'a> {
@@ -13,7 +15,7 @@ impl<'a> const Drop for S<'a> {
     }
 }
 
-const fn a<T: ~const Drop>(_: T) {}
+const fn a<T: ~const Destruct>(_: T) {}
 
 const fn b() -> u8 {
     let mut c = 0;

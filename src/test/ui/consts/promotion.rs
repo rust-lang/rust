@@ -4,11 +4,13 @@
 //[opt_with_overflow_checks]compile-flags: -C overflow-checks=on -O
 
 // build-pass
-#[allow(arithmetic_overflow)]
 
 const fn assert_static<T>(_: &'static T) {}
 
-const fn fail() -> i32 { 1/0 }
+#[allow(unconditional_panic)]
+const fn fail() -> i32 {
+    1/0
+}
 const C: i32 = {
     // Promoted that fails to evaluate in dead code -- this must work
     // (for backwards compatibility reasons).

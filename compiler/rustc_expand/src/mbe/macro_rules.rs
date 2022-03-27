@@ -3,13 +3,12 @@ use crate::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
 use crate::mbe::macro_check;
-use crate::mbe::macro_parser::parse_tt;
-use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success};
-use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq};
+use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
+use crate::mbe::macro_parser::{MatchedNtTt, MatchedSeq};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, NonterminalKind, NtTT, Token, TokenKind::*};
+use rustc_ast::token::{self, NonterminalKind, Token, TokenKind::*};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
@@ -204,15 +203,15 @@ fn trace_macros_note(cx_expansions: &mut FxHashMap<Span, Vec<String>>, sp: Span,
 }
 
 /// Given `lhses` and `rhses`, this is the new macro we create
-fn generic_extension<'cx>(
+fn generic_extension<'cx, 'tt>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
     def_span: Span,
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    lhses: &[mbe::TokenTree],
-    rhses: &[mbe::TokenTree],
+    lhses: &'tt [mbe::TokenTree],
+    rhses: &'tt [mbe::TokenTree],
     is_local: bool,
 ) -> Box<dyn MacResult + 'cx> {
     let sess = &cx.sess.parse_sess;
@@ -246,30 +245,30 @@ fn generic_extension<'cx>(
     // this situation.)
     let parser = parser_from_cx(sess, arg.clone());
 
-    for (i, lhs) in lhses.iter().enumerate() {
-        // try each arm's matchers
-        let lhs_tt = match *lhs {
-            mbe::TokenTree::Delimited(_, ref delim) => &delim.tts,
+    // A matcher is always delimited, but the delimiters are ignored.
+    let delimited_inner_tts = |tt: &'tt mbe::TokenTree| -> &'tt [mbe::TokenTree] {
+        match tt {
+            mbe::TokenTree::Delimited(_, delimited) => delimited.inner_tts(),
             _ => cx.span_bug(sp, "malformed macro lhs"),
-        };
+        }
+    };
 
+    // Try each arm's matchers.
+    let mut tt_parser = TtParser::new(name);
+    for (i, lhs) in lhses.iter().enumerate() {
         // Take a snapshot of the state of pre-expansion gating at this point.
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match parse_tt(&mut Cow::Borrowed(&parser), lhs_tt, name) {
+        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), delimited_inner_tts(lhs)) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
-                let rhs = match rhses[i] {
-                    // ignore delimiters
-                    mbe::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
-                    _ => cx.span_bug(sp, "malformed macro rhs"),
-                };
+                let rhs = delimited_inner_tts(&rhses[i]).to_vec().clone();
                 let arm_span = rhses[i].span();
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
@@ -347,14 +346,10 @@ fn generic_extension<'cx>(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
-            // try each arm's matchers
-            let lhs_tt = match *lhs {
-                mbe::TokenTree::Delimited(_, ref delim) => &delim.tts,
-                _ => continue,
-            };
-            if let Success(_) =
-                parse_tt(&mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())), lhs_tt, name)
-            {
+            if let Success(_) = tt_parser.parse_tt(
+                &mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())),
+                delimited_inner_tts(lhs),
+            ) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
@@ -447,7 +442,8 @@ pub fn compile_declarative_macro(
     ];
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let argument_map = match parse_tt(&mut Cow::Borrowed(&parser), &argument_gram, def.ident) {
+    let mut tt_parser = TtParser::new(def.ident);
+    let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
@@ -474,21 +470,20 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNonterminal(ref nt) = *m {
-                    if let NtTT(ref tt) = **nt {
-                        let tt = mbe::quoted::parse(
-                            tt.clone().into(),
-                            true,
-                            &sess.parse_sess,
-                            def.id,
-                            features,
-                            edition,
-                        )
-                        .pop()
-                        .unwrap();
-                        valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
-                        return tt;
-                    }
+                if let MatchedNtTt(ref tt) = *m {
+                    let mut tts = vec![];
+                    mbe::quoted::parse(
+                        tt.clone().into(),
+                        true,
+                        &sess.parse_sess,
+                        def.id,
+                        features,
+                        edition,
+                        &mut tts,
+                    );
+                    let tt = tts.pop().unwrap();
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
+                    return tt;
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
@@ -500,19 +495,18 @@ pub fn compile_declarative_macro(
         MatchedSeq(ref s) => s
             .iter()
             .map(|m| {
-                if let MatchedNonterminal(ref nt) = *m {
-                    if let NtTT(ref tt) = **nt {
-                        return mbe::quoted::parse(
-                            tt.clone().into(),
-                            false,
-                            &sess.parse_sess,
-                            def.id,
-                            features,
-                            edition,
-                        )
-                        .pop()
-                        .unwrap();
-                    }
+                if let MatchedNtTt(ref tt) = *m {
+                    let mut tts = vec![];
+                    mbe::quoted::parse(
+                        tt.clone().into(),
+                        false,
+                        &sess.parse_sess,
+                        def.id,
+                        features,
+                        edition,
+                        &mut tts,
+                    );
+                    return tts.pop().unwrap();
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
@@ -534,10 +528,10 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, &format!("unknown macro transparency: `{}`", value))
+            diag.span_err(span, &format!("unknown macro transparency: `{}`", value));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes")
+            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
         }
         None => {}
     }
@@ -563,8 +557,8 @@ fn check_lhs_nt_follows(
 ) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
-    if let mbe::TokenTree::Delimited(_, ref tts) = *lhs {
-        check_matcher(sess, features, def, &tts.tts)
+    if let mbe::TokenTree::Delimited(_, delimited) = lhs {
+        check_matcher(sess, features, def, delimited.inner_tts())
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         sess.span_diagnostic.span_err(lhs.span(), msg);
@@ -585,7 +579,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(_, ref del) => {
-                if !check_lhs_no_empty_seq(sess, &del.tts) {
+                if !check_lhs_no_empty_seq(sess, del.inner_tts()) {
                     return false;
                 }
             }
@@ -617,7 +611,9 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
 fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     match *rhs {
         mbe::TokenTree::Delimited(..) => return true,
-        _ => sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited"),
+        _ => {
+            sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited");
+        }
     }
     false
 }
@@ -678,9 +674,9 @@ impl FirstSets {
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(tt.clone());
                     }
-                    TokenTree::Delimited(span, ref delimited) => {
-                        build_recur(sets, &delimited.tts);
-                        first.replace_with(delimited.open_tt(span));
+                    TokenTree::Delimited(_span, ref delimited) => {
+                        build_recur(sets, delimited.inner_tts());
+                        first.replace_with(delimited.open_tt().clone());
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts);
@@ -744,8 +740,8 @@ impl FirstSets {
                     first.add_one(tt.clone());
                     return first;
                 }
-                TokenTree::Delimited(span, ref delimited) => {
-                    first.add_one(delimited.open_tt(span));
+                TokenTree::Delimited(_span, ref delimited) => {
+                    first.add_one(delimited.open_tt().clone());
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
@@ -931,9 +927,9 @@ fn check_matcher_core(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt(span));
-                check_matcher_core(sess, features, def, first_sets, &d.tts, &my_suffix);
+            TokenTree::Delimited(_span, ref d) => {
+                let my_suffix = TokenSet::singleton(d.close_tt().clone());
+                check_matcher_core(sess, features, def, first_sets, d.inner_tts(), &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 

@@ -4,7 +4,7 @@
 use crate::imports::ImportResolver;
 use crate::Namespace::*;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BuiltinMacroState, Determinacy};
-use crate::{CrateLint, DeriveData, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
+use crate::{DeriveData, Finalize, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Weak};
 use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use rustc_ast::{self as ast, Inline, ItemKind, ModKind, NodeId};
 use rustc_ast_lowering::ResolverAstLowering;
@@ -415,7 +415,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         let mut indeterminate = false;
         for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
-            match self.resolve_path(path, Some(ns), &parent_scope, false, span, CrateLint::No) {
+            match self.resolve_path(path, Some(ns), &parent_scope, Finalize::No) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
@@ -575,14 +575,7 @@ impl<'a> Resolver<'a> {
         }
 
         let res = if path.len() > 1 {
-            let res = match self.resolve_path(
-                &path,
-                Some(MacroNS),
-                parent_scope,
-                false,
-                path_span,
-                CrateLint::No,
-            ) {
+            let res = match self.resolve_path(&path, Some(MacroNS), parent_scope, Finalize::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     Ok(path_res.base_res())
                 }
@@ -612,9 +605,8 @@ impl<'a> Resolver<'a> {
                 path[0].ident,
                 scope_set,
                 parent_scope,
-                false,
+                None,
                 force,
-                path_span,
             );
             if let Err(Determinacy::Undetermined) = binding {
                 return Err(Determinacy::Undetermined);
@@ -648,9 +640,8 @@ impl<'a> Resolver<'a> {
         orig_ident: Ident,
         scope_set: ScopeSet<'a>,
         parent_scope: &ParentScope<'a>,
-        record_used: bool,
+        finalize: Option<Span>,
         force: bool,
-        path_span: Span,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
             struct Flags: u8 {
@@ -662,7 +653,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        assert!(force || !record_used); // `record_used` implies `force`
+        assert!(force || !finalize.is_some()); // `finalize` implies `force`
 
         // Make sure `self`, `super` etc produce an error when passed to here.
         if orig_ident.is_path_segment_keyword() {
@@ -769,8 +760,7 @@ impl<'a> Resolver<'a> {
                             ident,
                             ns,
                             parent_scope,
-                            record_used,
-                            path_span,
+                            finalize,
                         );
                         match binding {
                             Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
@@ -791,8 +781,7 @@ impl<'a> Resolver<'a> {
                             ns,
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
-                            record_used,
-                            path_span,
+                            finalize,
                         );
                         match binding {
                             Ok(binding) => {
@@ -856,12 +845,14 @@ impl<'a> Resolver<'a> {
                             Err(Determinacy::Determined)
                         }
                     }
-                    Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
-                        Some(binding) => Ok((binding, Flags::empty())),
-                        None => Err(Determinacy::determined(
-                            this.graph_root.unexpanded_invocations.borrow().is_empty(),
-                        )),
-                    },
+                    Scope::ExternPrelude => {
+                        match this.extern_prelude_get(ident, finalize.is_some()) {
+                            Some(binding) => Ok((binding, Flags::empty())),
+                            None => Err(Determinacy::determined(
+                                this.graph_root.unexpanded_invocations.borrow().is_empty(),
+                            )),
+                        }
+                    }
                     Scope::ToolPrelude => match this.registered_tools.get(&ident).cloned() {
                         Some(ident) => ok(Res::ToolMod, ident.span, this.arenas),
                         None => Err(Determinacy::Determined),
@@ -874,8 +865,7 @@ impl<'a> Resolver<'a> {
                                 ident,
                                 ns,
                                 parent_scope,
-                                false,
-                                path_span,
+                                None,
                             ) {
                                 if use_prelude || this.is_builtin_macro(binding.res()) {
                                     result = Ok((binding, Flags::MISC_FROM_PRELUDE));
@@ -894,7 +884,7 @@ impl<'a> Resolver<'a> {
                     Ok((binding, flags))
                         if sub_namespace_match(binding.macro_kind(), macro_kind) =>
                     {
-                        if !record_used || matches!(scope_set, ScopeSet::Late(..)) {
+                        if finalize.is_none() || matches!(scope_set, ScopeSet::Late(..)) {
                             return Some(Ok(binding));
                         }
 
@@ -1033,9 +1023,7 @@ impl<'a> Resolver<'a> {
                 &path,
                 Some(MacroNS),
                 &parent_scope,
-                true,
-                path_span,
-                CrateLint::No,
+                Finalize::SimplePath(ast::CRATE_NODE_ID, path_span),
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     let res = path_res.base_res();
@@ -1069,9 +1057,8 @@ impl<'a> Resolver<'a> {
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
+                Some(ident.span),
                 true,
-                true,
-                ident.span,
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
@@ -1111,9 +1098,8 @@ impl<'a> Resolver<'a> {
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
+                Some(ident.span),
                 true,
-                true,
-                ident.span,
             );
         }
     }

@@ -452,6 +452,11 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`default_method_body_is_const` is a temporary placeholder for declaring default bodies \
         as `const`, which may be removed or renamed in the future."
     ),
+    // lang-team MCP 147
+    gated!(
+        deprecated_safe, Normal, template!(List: r#"since = "version", note = "...""#), ErrorFollowing,
+        experimental!(deprecated_safe),
+    ),
 
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:

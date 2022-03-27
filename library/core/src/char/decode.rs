@@ -91,7 +91,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             None => self.iter.next()?,
         };
 
-        if u < 0xD800 || 0xDFFF < u {
+        if !u.is_utf16_surrogate() {
             // SAFETY: not a surrogate
             Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
         } else if u >= 0xDC00 {
@@ -125,7 +125,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             // buf is empty, no additional elements from it.
             None => (0, 0),
             // `u` is a non surrogate, so it's always an additional character.
-            Some(u) if u < 0xD800 || 0xDFFF < u => (1, 1),
+            Some(u) if !u.is_utf16_surrogate() => (1, 1),
             // `u` is a leading surrogate (it can never be a trailing surrogate and
             // it's a surrogate due to the previous branch) and `self.iter` is empty.
             //

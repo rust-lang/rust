@@ -47,6 +47,14 @@ pub trait Delegate<'tcx> {
         bk: ty::BorrowKind,
     );
 
+    /// The value found at `place` is being copied.
+    /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId) {
+        // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
+        // we treat a copy of `x` as a borrow of `x`.
+        self.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
+    }
+
     /// The path at `assignee_place` is being assigned to.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn mutate(&mut self, assignee_place: &PlaceWithHirId<'tcx>, diag_expr_id: hir::HirId);
@@ -523,7 +531,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if !self.tcx().sess.has_errors() {
+                if !self.tcx().sess.has_errors().is_some() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }
@@ -836,9 +844,7 @@ fn delegate_consume<'a, 'tcx>(
 
     match mode {
         ConsumeMode::Move => delegate.consume(place_with_id, diag_expr_id),
-        ConsumeMode::Copy => {
-            delegate.borrow(place_with_id, diag_expr_id, ty::BorrowKind::ImmBorrow)
-        }
+        ConsumeMode::Copy => delegate.copy(place_with_id, diag_expr_id),
     }
 }
 

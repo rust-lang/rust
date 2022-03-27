@@ -7,7 +7,7 @@
 //! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
-use rustc_errors::struct_span_err;
+use rustc_errors::{pluralize, struct_span_err};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
@@ -410,7 +410,6 @@ impl<'tcx> InherentCollect<'tcx> {
                 let to_implement = if assoc_items.is_empty() {
                     String::new()
                 } else {
-                    let plural = assoc_items.len() > 1;
                     let assoc_items_kind = {
                         let item_types = assoc_items.iter().map(|x| x.kind);
                         if item_types.clone().all(|x| x == hir::AssocItemKind::Const) {
@@ -427,9 +426,9 @@ impl<'tcx> InherentCollect<'tcx> {
 
                     format!(
                         " to implement {} {}{}",
-                        if plural { "these" } else { "this" },
+                        pluralize!("this", assoc_items.len()),
                         assoc_items_kind,
-                        if plural { "s" } else { "" }
+                        pluralize!(assoc_items.len()),
                     )
                 };
 

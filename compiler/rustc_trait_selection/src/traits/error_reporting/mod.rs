@@ -22,12 +22,12 @@ use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
+use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
     self, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
-use rustc_session::DiagnosticMessageId;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
 use std::fmt;
@@ -63,7 +63,7 @@ pub trait InferCtxtExt<'tcx> {
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
         fallback_has_occurred: bool,
-    );
+    ) -> ErrorGuaranteed;
 
     fn report_overflow_error<T>(
         &self,
@@ -111,7 +111,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         errors: &[FulfillmentError<'tcx>],
         body_id: Option<hir::BodyId>,
         fallback_has_occurred: bool,
-    ) {
+    ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,
@@ -190,6 +190,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 self.report_fulfillment_error(error, body_id, fallback_has_occurred);
             }
         }
+
+        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -312,7 +314,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let predicate_is_const = ty::BoundConstness::ConstIfConst
                             == trait_predicate.skip_binder().constness;
 
-                        if self.tcx.sess.has_errors() && trait_predicate.references_error() {
+                        if self.tcx.sess.has_errors().is_some()
+                            && trait_predicate.references_error()
+                        {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
@@ -369,7 +373,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                         (true, Some(None)) => {
                                             Some(format!("{cannot_do_this} in const contexts"))
                                         }
-                                        // overriden post message
+                                        // overridden post message
                                         (true, Some(Some(post_message))) => {
                                             Some(format!("{cannot_do_this}{post_message}"))
                                         }
@@ -919,13 +923,17 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             // Already reported in the query.
-            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(ErrorGuaranteed)) => {
+            SelectionError::NotConstEvaluatable(NotConstEvaluatable::Error(_)) => {
                 // FIXME(eddyb) remove this once `ErrorGuaranteed` becomes a proof token.
                 self.tcx.sess.delay_span_bug(span, "`ErrorGuaranteed` without an error");
                 return;
             }
-
-            Overflow => {
+            // Already reported.
+            Overflow(OverflowError::Error(_)) => {
+                self.tcx.sess.delay_span_bug(span, "`OverflowError` has been reported");
+                return;
+            }
+            Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
             SelectionError::ErrorReporting => {
@@ -1397,60 +1405,49 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 }
             }
 
-            let msg = format!("type mismatch resolving `{}`", predicate);
-            let error_id = (DiagnosticMessageId::ErrorId(271), Some(obligation.cause.span), msg);
-            let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-            if fresh {
-                let mut diag = struct_span_err!(
-                    self.tcx.sess,
-                    obligation.cause.span,
-                    E0271,
-                    "type mismatch resolving `{}`",
-                    predicate
-                );
-                let secondary_span = match predicate.kind().skip_binder() {
-                    ty::PredicateKind::Projection(proj) => self
-                        .tcx
-                        .opt_associated_item(proj.projection_ty.item_def_id)
-                        .and_then(|trait_assoc_item| {
+            let mut diag = struct_span_err!(
+                self.tcx.sess,
+                obligation.cause.span,
+                E0271,
+                "type mismatch resolving `{}`",
+                predicate
+            );
+            let secondary_span = match predicate.kind().skip_binder() {
+                ty::PredicateKind::Projection(proj) => self
+                    .tcx
+                    .opt_associated_item(proj.projection_ty.item_def_id)
+                    .and_then(|trait_assoc_item| {
+                        self.tcx
+                            .trait_of_item(proj.projection_ty.item_def_id)
+                            .map(|id| (trait_assoc_item, id))
+                    })
+                    .and_then(|(trait_assoc_item, id)| {
+                        let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
+                        self.tcx.find_map_relevant_impl(id, proj.projection_ty.self_ty(), |did| {
                             self.tcx
-                                .trait_of_item(proj.projection_ty.item_def_id)
-                                .map(|id| (trait_assoc_item, id))
+                                .associated_items(did)
+                                .in_definition_order()
+                                .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
                         })
-                        .and_then(|(trait_assoc_item, id)| {
-                            let trait_assoc_ident = trait_assoc_item.ident(self.tcx);
-                            self.tcx.find_map_relevant_impl(
-                                id,
-                                proj.projection_ty.self_ty(),
-                                |did| {
-                                    self.tcx
-                                        .associated_items(did)
-                                        .in_definition_order()
-                                        .find(|assoc| assoc.ident(self.tcx) == trait_assoc_ident)
-                                },
-                            )
-                        })
-                        .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
-                            Some(
-                                hir::Node::TraitItem(hir::TraitItem {
-                                    kind: hir::TraitItemKind::Type(_, Some(ty)),
-                                    ..
-                                })
-                                | hir::Node::ImplItem(hir::ImplItem {
-                                    kind: hir::ImplItemKind::TyAlias(ty),
-                                    ..
-                                }),
-                            ) => {
-                                Some((ty.span, format!("type mismatch resolving `{}`", predicate)))
-                            }
-                            _ => None,
-                        }),
-                    _ => None,
-                };
-                self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
-                self.note_obligation_cause(&mut diag, obligation);
-                diag.emit();
-            }
+                    })
+                    .and_then(|item| match self.tcx.hir().get_if_local(item.def_id) {
+                        Some(
+                            hir::Node::TraitItem(hir::TraitItem {
+                                kind: hir::TraitItemKind::Type(_, Some(ty)),
+                                ..
+                            })
+                            | hir::Node::ImplItem(hir::ImplItem {
+                                kind: hir::ImplItemKind::TyAlias(ty),
+                                ..
+                            }),
+                        ) => Some((ty.span, format!("type mismatch resolving `{}`", predicate))),
+                        _ => None,
+                    }),
+                _ => None,
+            };
+            self.note_type_err(&mut diag, &obligation.cause, secondary_span, values, err, true);
+            self.note_obligation_cause(&mut diag, obligation);
+            diag.emit();
         });
     }
 
@@ -1857,7 +1854,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
-                    || self.tcx.sess.has_errors()
+                    || self.tcx.sess.has_errors().is_some()
                     || self.is_tainted_by_errors()
                 {
                     return;
@@ -1868,7 +1865,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
 
             ty::PredicateKind::Subtype(data) => {
                 if data.references_error()
-                    || self.tcx.sess.has_errors()
+                    || self.tcx.sess.has_errors().is_some()
                     || self.is_tainted_by_errors()
                 {
                     // no need to overload user in such cases
@@ -1910,7 +1907,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             }
 
             _ => {
-                if self.tcx.sess.has_errors() || self.is_tainted_by_errors() {
+                if self.tcx.sess.has_errors().is_some() || self.is_tainted_by_errors() {
                     return;
                 }
                 let mut err = struct_span_err!(

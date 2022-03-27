@@ -287,7 +287,7 @@ declare_features! (
     /// Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
     /// Allows additional const parameter types, such as `&'static str` or user defined types
-    (incomplete, adt_const_params, "1.56.0", Some(44580), None),
+    (incomplete, adt_const_params, "1.56.0", Some(95174), None),
     /// Allows defining an `#[alloc_error_handler]`.
     (active, alloc_error_handler, "1.29.0", Some(51540), None),
     /// Allows explicit discriminants on non-unit enum variants.
@@ -364,6 +364,8 @@ declare_features! (
     (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
+    /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
+    (active, deprecated_safe, "1.61.0", Some(94978), None),
     /// Allows having using `suggestion` in the `#[deprecated]` attribute.
     (active, deprecated_suggestion, "1.61.0", Some(94785), None),
     /// Allows `#[derive(Default)]` and `#[default]` on enums.

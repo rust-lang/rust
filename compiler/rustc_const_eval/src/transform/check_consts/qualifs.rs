@@ -3,6 +3,7 @@
 //! See the `Qualif` trait for more info.
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::LangItem;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::TraitEngine;
 use rustc_middle::mir::*;
@@ -152,18 +153,14 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        let Some(drop_trait) = cx.tcx.lang_items().drop_trait() else {
-            // there is no way to define a type that needs non-const drop
-            // without having the lang item present.
-            return false;
-        };
+        let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
 
         let obligation = Obligation::new(
             ObligationCause::dummy(),
             cx.param_env,
             ty::Binder::dummy(ty::TraitPredicate {
                 trait_ref: ty::TraitRef {
-                    def_id: drop_trait,
+                    def_id: destruct,
                     substs: cx.tcx.mk_substs_trait(ty, &[]),
                 },
                 constness: ty::BoundConstness::ConstIfConst,
@@ -174,15 +171,16 @@ impl Qualif for NeedsNonConstDrop {
         cx.tcx.infer_ctxt().enter(|infcx| {
             let mut selcx = SelectionContext::new(&infcx);
             let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
-                // If we couldn't select a const drop candidate, then it's bad
+                // If we couldn't select a const destruct candidate, then it's bad
                 return true;
             };
 
             if !matches!(
                 impl_src,
-                ImplSource::ConstDrop(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+                ImplSource::ConstDestruct(_)
+                    | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
             ) {
-                // If our const drop candidate is not ConstDrop or implied by the param env,
+                // If our const destruct candidate is not ConstDestruct or implied by the param env,
                 // then it's bad
                 return true;
             }

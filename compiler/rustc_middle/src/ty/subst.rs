@@ -61,7 +61,7 @@ pub fn ty_slice_as_generic_args<'a, 'tcx>(ts: &'a [Ty<'tcx>]) -> &'a [GenericArg
 }
 
 impl<'tcx> List<Ty<'tcx>> {
-    /// Allows to freely switch betwen `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
+    /// Allows to freely switch between `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>`.
     ///
     /// As lists are interned, `List<Ty<'tcx>>` and `List<GenericArg<'tcx>>` have
     /// be interned together, see `intern_type_list` for more details.

@@ -93,7 +93,7 @@ fn test_no_deps_ignores_path_deps_in_workspaces() {
         output
     };
 
-    // Trigger a sucessful build, so Cargo would like to cache the build result.
+    // Trigger a successful build, so Cargo would like to cache the build result.
     successful_build();
 
     // Make sure there's no spurious rebuild when nothing changes.

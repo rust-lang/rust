@@ -306,9 +306,9 @@ fn resolve_associated_item<'tcx>(
                         resolved_ty,
                     );
                     let span = tcx.def_span(leaf_def.item.def_id);
-                    tcx.sess.delay_span_bug(span, &msg);
+                    let reported = tcx.sess.delay_span_bug(span, &msg);
 
-                    return Err(ErrorGuaranteed);
+                    return Err(reported);
                 }
             }
 
@@ -378,7 +378,7 @@ fn resolve_associated_item<'tcx>(
         | traits::ImplSource::DiscriminantKind(..)
         | traits::ImplSource::Pointee(..)
         | traits::ImplSource::TraitUpcasting(_)
-        | traits::ImplSource::ConstDrop(_) => None,
+        | traits::ImplSource::ConstDestruct(_) => None,
     })
 }
 

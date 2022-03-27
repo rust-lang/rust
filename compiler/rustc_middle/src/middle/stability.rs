@@ -17,9 +17,9 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
 use rustc_session::lint::{BuiltinLintDiagnostics, Level, Lint, LintBuffer};
 use rustc_session::parse::feature_err_issue;
-use rustc_session::{DiagnosticMessageId, Session};
+use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 use std::num::NonZeroU32;
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -94,30 +94,15 @@ pub fn report_unstable(
         None => format!("use of unstable library feature '{}'", &feature),
     };
 
-    let msp: MultiSpan = span.into();
-    let sm = &sess.parse_sess.source_map();
-    let span_key = msp.primary_span().and_then(|sp: Span| {
-        if !sp.is_dummy() {
-            let file = sm.lookup_char_pos(sp.lo()).file;
-            if file.is_imported() { None } else { Some(span) }
-        } else {
-            None
+    if is_soft {
+        soft_handler(SOFT_UNSTABLE, span, &msg)
+    } else {
+        let mut err =
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
+        if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
+            err.span_suggestion(inner_types, msg, sugg, applicability);
         }
-    });
-
-    let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
-    let fresh = sess.one_time_diagnostics.borrow_mut().insert(error_id);
-    if fresh {
-        if is_soft {
-            soft_handler(SOFT_UNSTABLE, span, &msg)
-        } else {
-            let mut err =
-                feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg);
-            if let Some((inner_types, ref msg, sugg, applicability)) = suggestion {
-                err.span_suggestion(inner_types, msg, sugg, applicability);
-            }
-            err.emit();
-        }
+        err.emit();
     }
 }
 
@@ -258,7 +243,7 @@ fn late_report_deprecation(
             let kind = tcx.def_kind(def_id).descr(def_id);
             deprecation_suggestion(&mut diag, kind, suggestion, method_span);
         }
-        diag.emit()
+        diag.emit();
     });
 }
 
@@ -483,7 +468,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.build(msg).emit()
+                lint.build(msg).emit();
             })
         };
         match self.eval_stability(def_id, id, span, method_span) {

@@ -1,4 +1,3 @@
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
@@ -247,11 +246,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def.did) {
                     Ok(ecx.tcx.mir_for_ctfe_opt_const_arg(def))
                 } else if ecx.tcx.def_kind(def.did) == DefKind::AssocConst {
-                    ecx.tcx.sess.delay_span_bug(
+                    let guar = ecx.tcx.sess.delay_span_bug(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
-                    throw_inval!(AlreadyReported(ErrorGuaranteed {}));
+                    throw_inval!(AlreadyReported(guar));
                 } else {
                     let path = ecx.tcx.def_path_str(def.did);
                     Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))

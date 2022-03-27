@@ -1,11 +1,10 @@
-use crate::sys::condvar as imp;
-use crate::sys::mutex as mutex_imp;
+use crate::sys::locks as imp;
 use crate::sys_common::mutex::MovableMutex;
 use crate::time::Duration;
 
 mod check;
 
-type CondvarCheck = <mutex_imp::MovableMutex as check::CondvarCheck>::Check;
+type CondvarCheck = <imp::MovableMutex as check::CondvarCheck>::Check;
 
 /// An OS-based condition variable.
 pub struct Condvar {

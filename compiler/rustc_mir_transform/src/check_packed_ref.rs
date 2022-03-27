@@ -46,7 +46,7 @@ fn unsafe_derive_on_repr_packed(tcx: TyCtxt<'_>, def_id: LocalDefId) {
              does not derive Copy (error E0133)"
                 .to_string()
         };
-        lint.build(&message).emit()
+        lint.build(&message).emit();
     });
 }
 
@@ -110,7 +110,7 @@ impl<'tcx> Visitor<'tcx> for PackedRefChecker<'_, 'tcx> {
                                     reference with a raw pointer and use `read_unaligned`/`write_unaligned` \
                                     (loads and stores via `*p` must be properly aligned even when using raw pointers)"
                                 )
-                                .emit()
+                                .emit();
                         },
                     );
                 }

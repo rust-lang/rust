@@ -80,10 +80,12 @@
 //! * [`Box<U>`]
 //! * `&U`
 //! * `&mut U`
-//! * `fn`, `extern "C" fn`
+//! * `fn`, `extern "C" fn`[^extern_fn]
 //! * [`num::NonZero*`]
 //! * [`ptr::NonNull<U>`]
 //! * `#[repr(transparent)]` struct around one of the types in this list.
+//!
+//! [^extern_fn]: this remains true for any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num
@@ -501,6 +503,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::marker::Destruct;
 use crate::panicking::{panic, panic_str};
 use crate::pin::Pin;
 use crate::{
@@ -770,9 +773,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn unwrap_or(self, default: T) -> T
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => x,
@@ -792,10 +796,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn unwrap_or_else<F>(self, f: F) -> T
     where
         F: ~const FnOnce() -> T,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => x,
@@ -897,10 +902,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn map<U, F>(self, f: F) -> Option<U>
     where
         F: ~const FnOnce(T) -> U,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => Some(f(x)),
@@ -926,10 +932,11 @@ impl<T> Option<T> {
     #[inline]
     #[unstable(feature = "result_option_inspect", issue = "91345")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn inspect<F>(self, f: F) -> Self
     where
         F: ~const FnOnce(&T),
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         if let Some(ref x) = self {
             f(x);
@@ -959,11 +966,12 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn map_or<U, F>(self, default: U, f: F) -> U
     where
         F: ~const FnOnce(T) -> U,
-        F: ~const Drop,
-        U: ~const Drop,
+        F: ~const Drop + ~const Destruct,
+        U: ~const Drop + ~const Destruct,
     {
         match self {
             Some(t) => f(t),
@@ -988,12 +996,13 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn map_or_else<U, D, F>(self, default: D, f: F) -> U
     where
         D: ~const FnOnce() -> U,
-        D: ~const Drop,
+        D: ~const Drop + ~const Destruct,
         F: ~const FnOnce(T) -> U,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(t) => f(t),
@@ -1025,9 +1034,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn ok_or<E>(self, err: E) -> Result<T, E>
     where
-        E: ~const Drop,
+        E: ~const Drop + ~const Destruct,
     {
         match self {
             Some(v) => Ok(v),
@@ -1054,10 +1064,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
     where
         F: ~const FnOnce() -> E,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(v) => Ok(v),
@@ -1188,10 +1199,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn and<U>(self, optb: Option<U>) -> Option<U>
     where
-        T: ~const Drop,
-        U: ~const Drop,
+        T: ~const Drop + ~const Destruct,
+        U: ~const Drop + ~const Destruct,
     {
         match self {
             Some(_) => optb,
@@ -1230,10 +1242,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn and_then<U, F>(self, f: F) -> Option<U>
     where
         F: ~const FnOnce(T) -> Option<U>,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => f(x),
@@ -1268,11 +1281,12 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn filter<P>(self, predicate: P) -> Self
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
         P: ~const FnOnce(&T) -> bool,
-        P: ~const Drop,
+        P: ~const Drop + ~const Destruct,
     {
         if let Some(x) = self {
             if predicate(&x) {
@@ -1312,9 +1326,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn or(self, optb: Option<T>) -> Option<T>
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => Some(x),
@@ -1338,10 +1353,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn or_else<F>(self, f: F) -> Option<T>
     where
         F: ~const FnOnce() -> Option<T>,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         match self {
             Some(x) => Some(x),
@@ -1373,9 +1389,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_xor", since = "1.37.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn xor(self, optb: Option<T>) -> Option<T>
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         match (self, optb) {
             (Some(a), None) => Some(a),
@@ -1411,9 +1428,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_insert", since = "1.53.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn insert(&mut self, value: T) -> &mut T
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         *self = Some(value);
 
@@ -1444,9 +1462,10 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn get_or_insert(&mut self, value: T) -> &mut T
     where
-        T: ~const Drop,
+        T: ~const Drop + ~const Destruct,
     {
         if let None = *self {
             *self = Some(value);
@@ -1511,10 +1530,11 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn get_or_insert_with<F>(&mut self, f: F) -> &mut T
     where
         F: ~const FnOnce() -> T,
-        F: ~const Drop,
+        F: ~const Drop + ~const Destruct,
     {
         if let None = *self {
             // the compiler isn't smart enough to know that we are not dropping a `T`
@@ -1625,10 +1645,11 @@ impl<T> Option<T> {
     /// ```
     #[stable(feature = "option_zip_option", since = "1.46.0")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn zip<U>(self, other: Option<U>) -> Option<(T, U)>
     where
-        T: ~const Drop,
-        U: ~const Drop,
+        T: ~const Drop + ~const Destruct,
+        U: ~const Drop + ~const Destruct,
     {
         match (self, other) {
             (Some(a), Some(b)) => Some((a, b)),
@@ -1666,12 +1687,13 @@ impl<T> Option<T> {
     /// ```
     #[unstable(feature = "option_zip", issue = "70086")]
     #[rustc_const_unstable(feature = "const_option_ext", issue = "91930")]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn zip_with<U, F, R>(self, other: Option<U>, f: F) -> Option<R>
     where
         F: ~const FnOnce(T, U) -> R,
-        F: ~const Drop,
-        T: ~const Drop,
-        U: ~const Drop,
+        F: ~const Drop + ~const Destruct,
+        T: ~const Drop + ~const Destruct,
+        U: ~const Drop + ~const Destruct,
     {
         match (self, other) {
             (Some(a), Some(b)) => Some(f(a, b)),
@@ -1858,9 +1880,10 @@ const fn expect_failed(msg: &str) -> ! {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 impl<T> const Clone for Option<T>
 where
-    T: ~const Clone + ~const Drop,
+    T: ~const Clone + ~const Drop + ~const Destruct,
 {
     #[inline]
     fn clone(&self) -> Self {

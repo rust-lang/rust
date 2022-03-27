@@ -1,7 +1,6 @@
 use super::{
     Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
 };
-use rustc_middle::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn thir(&self) -> &'a Thir<'tcx>;
@@ -25,8 +24,6 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn visit_pat(&mut self, pat: &Pat<'tcx>) {
         walk_pat(self, pat);
     }
-
-    fn visit_const(&mut self, _cnst: Const<'tcx>) {}
 }
 
 pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {
@@ -93,10 +90,9 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
-        ConstBlock { value } => visitor.visit_const(value),
-        Repeat { value, count } => {
+        ConstBlock { did: _, substs: _ } => {}
+        Repeat { value, count: _ } => {
             visitor.visit_expr(&visitor.thir()[value]);
-            visitor.visit_const(count);
         }
         Array { ref fields } | Tuple { ref fields } => {
             for &field in &**fields {
@@ -122,7 +118,10 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
             visitor.visit_expr(&visitor.thir()[source])
         }
         Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
-        Literal { literal, user_ty: _, const_id: _ } => visitor.visit_const(literal),
+        Literal { lit: _, neg: _ } => {}
+        NonHirLiteral { lit: _, user_ty: _ } => {}
+        NamedConst { def_id: _, substs: _, user_ty: _ } => {}
+        ConstParam { param: _, def_id: _ } => {}
         StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
         InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
             for op in &**operands {
@@ -209,11 +208,8 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
                 visitor.visit_pat(&subpattern.pattern);
             }
         }
-        Constant { value } => visitor.visit_const(*value),
-        Range(range) => {
-            visitor.visit_const(range.lo);
-            visitor.visit_const(range.hi);
-        }
+        Constant { value: _ } => {}
+        Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
             for subpattern in prefix {
                 visitor.visit_pat(&subpattern);

@@ -27,6 +27,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
+use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
@@ -1139,7 +1140,9 @@ fn project<'cx, 'tcx>(
     if !selcx.tcx().recursion_limit().value_within_limit(obligation.recursion_depth) {
         // This should really be an immediate error, but some existing code
         // relies on being able to recover from this.
-        return Err(ProjectionError::TraitSelectionError(SelectionError::Overflow));
+        return Err(ProjectionError::TraitSelectionError(SelectionError::Overflow(
+            OverflowError::Canonical,
+        )));
     }
 
     if obligation.predicate.references_error() {
@@ -1396,7 +1399,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
                 let node_item =
                     assoc_def(selcx, impl_data.impl_def_id, obligation.predicate.item_def_id)
-                        .map_err(|ErrorGuaranteed| ())?;
+                        .map_err(|ErrorGuaranteed { .. }| ())?;
 
                 if node_item.is_final() {
                     // Non-specializable items are always projectable.
@@ -1569,7 +1572,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
             super::ImplSource::AutoImpl(..)
             | super::ImplSource::Builtin(..)
             | super::ImplSource::TraitUpcasting(_)
-            | super::ImplSource::ConstDrop(_) => {
+            | super::ImplSource::ConstDestruct(_) => {
                 // These traits have no associated types.
                 selcx.tcx().sess.delay_span_bug(
                     obligation.cause.span,
@@ -1644,7 +1647,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         | super::ImplSource::Builtin(..)
         | super::ImplSource::TraitUpcasting(_)
         | super::ImplSource::TraitAlias(..)
-        | super::ImplSource::ConstDrop(_) => {
+        | super::ImplSource::ConstDestruct(_) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,

@@ -147,7 +147,15 @@ impl TryFrom<HandleOrNull> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
         let owned_handle = handle_or_null.0;
-        if owned_handle.handle.is_null() { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle.is_null() {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(())
+        } else {
+            Ok(owned_handle)
+        }
     }
 }
 
@@ -164,12 +172,22 @@ impl OwnedHandle {
         inherit: bool,
         options: c::DWORD,
     ) -> io::Result<Self> {
+        let handle = self.as_raw_handle();
+
+        // `Stdin`, `Stdout`, and `Stderr` can all hold null handles, such as
+        // in a process with a detached console. `DuplicateHandle` would fail
+        // if we passed it a null handle, but we can treat null as a valid
+        // handle which doesn't do any I/O, and allow it to be duplicated.
+        if handle.is_null() {
+            return unsafe { Ok(Self::from_raw_handle(handle)) };
+        }
+
         let mut ret = 0 as c::HANDLE;
         cvt(unsafe {
             let cur_proc = c::GetCurrentProcess();
             c::DuplicateHandle(
                 cur_proc,
-                self.as_raw_handle(),
+                handle,
                 cur_proc,
                 &mut ret,
                 access,
@@ -187,7 +205,15 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
     #[inline]
     fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
         let owned_handle = handle_or_invalid.0;
-        if owned_handle.handle == c::INVALID_HANDLE_VALUE { Err(()) } else { Ok(owned_handle) }
+        if owned_handle.handle == c::INVALID_HANDLE_VALUE {
+            // Don't call `CloseHandle`; it'd be harmless, except that it could
+            // overwrite the `GetLastError` error.
+            forget(owned_handle);
+
+            Err(())
+        } else {
+            Ok(owned_handle)
+        }
     }
 }
 

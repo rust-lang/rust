@@ -36,6 +36,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use crate::marker::Destruct;
+
 /// A common trait for the ability to explicitly duplicate an object.
 ///
 /// Differs from [`Copy`] in that [`Copy`] is implicit and an inexpensive bit-wise copy, while
@@ -128,9 +130,10 @@ pub trait Clone: Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[default_method_body_is_const]
+    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     fn clone_from(&mut self, source: &Self)
     where
-        Self: ~const Drop,
+        Self: ~const Drop + ~const Destruct,
     {
         *self = source.clone()
     }

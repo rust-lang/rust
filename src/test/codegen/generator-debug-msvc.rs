@@ -20,8 +20,7 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 
 // FIXME: No way to reliably check the filename.
 
-// CHECK-DAG:  [[GEN_FN:!.*]] = !DINamespace(name: "generator_test"
-// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "generator_env$0"
+// CHECK-DAG:  [[GEN:!.*]] = !DICompositeType(tag: DW_TAG_union_type, name: "enum$<generator_debug_msvc::generator_test::generator_env$0>"
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "variant0", scope: [[GEN]],
 // For brevity, we only check the struct name and members of the last variant.
 // CHECK-SAME: file: [[FILE:![0-9]*]], line: 14,
@@ -44,10 +43,10 @@ fn generator_test() -> impl Generator<Yield = i32, Return = ()> {
 // CHECK-SAME: baseType: [[VARIANT:![0-9]*]]
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
-// CHECK:      [[S1:!.*]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend1", scope: [[GEN]],
+// CHECK:      [[VARIANT]] = !DICompositeType(tag: DW_TAG_structure_type, name: "Suspend1", scope: [[GEN]],
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
-// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[S1]]
+// CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "s", scope: [[VARIANT]]
 // CHECK-NOT:  flags: DIFlagArtificial
 // CHECK-SAME: )
 // CHECK:      {{!.*}} = !DIDerivedType(tag: DW_TAG_member, name: "discriminant", scope: [[GEN]],

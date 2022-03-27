@@ -26,7 +26,7 @@ pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
-/// to the where clause that is prefered, if it exists. Otherwise, it sets the span to the other where
+/// to the where clause that is preferred, if it exists. Otherwise, it sets the span to the other where
 /// clause if it exists.
 fn add_ty_alias_where_clause(
     generics: &mut ast::Generics,
@@ -291,7 +291,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             ItemKind::Mod(_, ref mod_kind) => match mod_kind {
-                ModKind::Loaded(items, _, inner_span) => {
+                ModKind::Loaded(items, _, ModSpans { inner_span, inject_use_span: _ }) => {
                     hir::ItemKind::Mod(self.lower_mod(items, *inner_span))
                 }
                 ModKind::Unloaded => panic!("`mod` items should have been loaded by now"),

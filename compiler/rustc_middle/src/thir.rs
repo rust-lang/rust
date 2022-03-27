@@ -369,7 +369,8 @@ pub enum ExprKind<'tcx> {
     },
     /// An inline `const` block, e.g. `const {}`.
     ConstBlock {
-        value: Const<'tcx>,
+        did: DefId,
+        substs: SubstsRef<'tcx>,
     },
     /// An array literal constructed from one repeated element, e.g. `[1; 5]`.
     Repeat {
@@ -408,13 +409,25 @@ pub enum ExprKind<'tcx> {
     },
     /// A literal.
     Literal {
-        literal: Const<'tcx>,
-        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
-        /// The `DefId` of the `const` item this literal
-        /// was produced from, if this is not a user-written
-        /// literal value.
-        const_id: Option<DefId>,
+        lit: &'tcx hir::Lit,
+        neg: bool,
     },
+    /// For literals that don't correspond to anything in the HIR
+    NonHirLiteral {
+        lit: ty::ScalarInt,
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
+    /// Associated constants and named constants
+    NamedConst {
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+        user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
+    ConstParam {
+        param: ty::ParamConst,
+        def_id: DefId,
+    },
+    // FIXME improve docs for `StaticRef` by distinguishing it from `NamedConst`
     /// A literal containing the address of a `static`.
     ///
     /// This is only distinguished from `Literal` so that we can register some
@@ -437,6 +450,12 @@ pub enum ExprKind<'tcx> {
     Yield {
         value: ExprId,
     },
+}
+
+impl<'tcx> ExprKind<'tcx> {
+    pub fn zero_sized_literal(user_ty: Option<Canonical<'tcx, UserType<'tcx>>>) -> Self {
+        ExprKind::NonHirLiteral { lit: ty::ScalarInt::ZST, user_ty }
+    }
 }
 
 /// Represents the association of a field identifier and an expression.

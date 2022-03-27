@@ -91,8 +91,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let t = self.resolve_vars_if_possible(t);
 
-        if t.references_error() {
-            return Err(ErrorGuaranteed);
+        if let Some(reported) = t.error_reported() {
+            return Err(reported);
         }
 
         if self.type_is_known_to_be_sized_modulo_regions(t, span) {
@@ -139,10 +139,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Adt(..)
             | ty::Never
             | ty::Error(_) => {
-                self.tcx
+                let reported = self
+                    .tcx
                     .sess
                     .delay_span_bug(span, &format!("`{:?}` should be sized but is not?", t));
-                return Err(ErrorGuaranteed);
+                return Err(reported);
             }
         })
     }
@@ -174,7 +175,7 @@ pub enum CastError {
 }
 
 impl From<ErrorGuaranteed> for CastError {
-    fn from(ErrorGuaranteed: ErrorGuaranteed) -> Self {
+    fn from(_: ErrorGuaranteed) -> Self {
         CastError::ErrorGuaranteed
     }
 }
@@ -213,8 +214,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         // inference is more completely known.
         match cast_ty.kind() {
             ty::Dynamic(..) | ty::Slice(..) => {
-                check.report_cast_to_unsized_type(fcx);
-                Err(ErrorGuaranteed)
+                let reported = check.report_cast_to_unsized_type(fcx);
+                Err(reported)
             }
             _ => Ok(check),
         }
@@ -588,9 +589,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'tcx>) {
-        if self.cast_ty.references_error() || self.expr_ty.references_error() {
-            return;
+    fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'tcx>) -> ErrorGuaranteed {
+        if let Some(reported) =
+            self.cast_ty.error_reported().or_else(|| self.expr_ty.error_reported())
+        {
+            return reported;
         }
 
         let tstr = fcx.ty_to_string(self.cast_ty);
@@ -651,7 +654,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.span_help(self.expr.span, "consider using a box or reference as appropriate");
             }
         }
-        err.emit();
+        err.emit()
     }
 
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {

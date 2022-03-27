@@ -7,6 +7,7 @@ use rustc_middle::ty::{self, ParamEnv, TyCtxt};
 use rustc_span::symbol::Symbol;
 use rustc_target::abi::Size;
 
+// FIXME Once valtrees are available, get rid of this function and the query
 crate fn lit_to_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     lit_input: LitToConstInput<'tcx>,
@@ -57,7 +58,12 @@ crate fn lit_to_const<'tcx>(
     Ok(ty::Const::from_value(tcx, lit, ty))
 }
 
-fn parse_float<'tcx>(num: Symbol, fty: ty::FloatTy, neg: bool) -> Option<ConstValue<'tcx>> {
+// FIXME move this to rustc_mir_build::build
+pub(crate) fn parse_float<'tcx>(
+    num: Symbol,
+    fty: ty::FloatTy,
+    neg: bool,
+) -> Option<ConstValue<'tcx>> {
     let num = num.as_str();
     use rustc_apfloat::ieee::{Double, Single};
     let scalar = match fty {

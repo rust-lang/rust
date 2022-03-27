@@ -603,10 +603,18 @@ pub fn eval_condition(
             match cfg.name_or_empty() {
                 sym::any => mis
                     .iter()
-                    .any(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
+                    // We don't use any() here, because we want to evaluate all cfg condition
+                    // as eval_condition can (and does) extra checks
+                    .fold(false, |res, mi| {
+                        res | eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    }),
                 sym::all => mis
                     .iter()
-                    .all(|mi| eval_condition(mi.meta_item().unwrap(), sess, features, eval)),
+                    // We don't use all() here, because we want to evaluate all cfg condition
+                    // as eval_condition can (and does) extra checks
+                    .fold(true, |res, mi| {
+                        res & eval_condition(mi.meta_item().unwrap(), sess, features, eval)
+                    }),
                 sym::not => {
                     if mis.len() != 1 {
                         struct_span_err!(
@@ -750,8 +758,7 @@ where
                                     if sess.is_nightly_build() {
                                         diag.help("add `#![feature(deprecated_suggestion)]` to the crate root");
                                     }
-                                    // FIXME(jhpratt) change this to an actual tracking issue
-                                    diag.note("see #XXX for more details").emit();
+                                    diag.note("see #94785 for more details").emit();
                                 }
 
                                 if !get(mi, &mut suggestion) {
@@ -764,10 +771,10 @@ where
                                     meta.span(),
                                     AttrError::UnknownMetaItem(
                                         pprust::path_to_string(&mi.path),
-                                        if attr.has_name(sym::deprecated) {
-                                            &["since", "note"]
-                                        } else {
+                                        if sess.features_untracked().deprecated_suggestion {
                                             &["since", "note", "suggestion"]
+                                        } else {
+                                            &["since", "note"]
                                         },
                                     ),
                                 );

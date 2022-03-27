@@ -13,15 +13,11 @@ use super::project::ProjectionTyObligation;
 use super::util;
 use super::util::{closure_trait_ref_and_return_type, predicate_for_trait_def};
 use super::wf;
-use super::DerivedObligationCause;
-use super::Normalized;
-use super::Obligation;
-use super::ObligationCauseCode;
-use super::Selection;
-use super::SelectionResult;
-use super::TraitQueryMode;
-use super::{ErrorReporting, Overflow, SelectionError};
-use super::{ObligationCause, PredicateObligation, TraitObligation};
+use super::{
+    DerivedObligationCause, ErrorReporting, ImplDerivedObligation, ImplDerivedObligationCause,
+    Normalized, Obligation, ObligationCause, ObligationCauseCode, Overflow, PredicateObligation,
+    Selection, SelectionError, SelectionResult, TraitObligation, TraitQueryMode,
+};
 
 use crate::infer::{InferCtxt, InferOk, TypeFreshener};
 use crate::traits::error_reporting::InferCtxtExt;
@@ -320,11 +316,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         let candidate = match self.select_from_obligation(obligation) {
-            Err(SelectionError::Overflow) => {
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 // In standard mode, overflow must have been caught and reported
                 // earlier.
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                return Err(SelectionError::Overflow);
+                return Err(SelectionError::Overflow(OverflowError::Canonical));
             }
             Err(SelectionError::Ambiguous(_)) => {
                 return Ok(None);
@@ -339,9 +335,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         match self.confirm_candidate(obligation, candidate) {
-            Err(SelectionError::Overflow) => {
+            Err(SelectionError::Overflow(OverflowError::Canonical)) => {
                 assert!(self.query_mode == TraitQueryMode::Canonical);
-                Err(SelectionError::Overflow)
+                Err(SelectionError::Overflow(OverflowError::Canonical))
             }
             Err(e) => Err(e),
             Ok(candidate) => {
@@ -553,7 +549,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match project::poly_project_and_unify_type(self, &project_obligation) {
                         Ok(Ok(Some(mut subobligations))) => {
                             'compute_res: {
-                                // If we've previously marked this projection as 'complete', thne
+                                // If we've previously marked this projection as 'complete', then
                                 // use the final cached result (either `EvaluatedToOk` or
                                 // `EvaluatedToOkModuloRegions`), and skip re-evaluating the
                                 // sub-obligations.
@@ -643,7 +639,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if let (ty::ConstKind::Unevaluated(a), ty::ConstKind::Unevaluated(b)) =
                             (c1.val(), c2.val())
                         {
-                            if self.infcx.try_unify_abstract_consts(a.shrink(), b.shrink()) {
+                            if self.infcx.try_unify_abstract_consts(
+                                a.shrink(),
+                                b.shrink(),
+                                obligation.param_env,
+                            ) {
                                 return Ok(EvaluatedToOk);
                             }
                         }
@@ -674,8 +674,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
-                        (Err(ErrorHandled::Reported(ErrorGuaranteed)), _)
-                        | (_, Err(ErrorHandled::Reported(ErrorGuaranteed))) => Ok(EvaluatedToErr),
+                        (Err(ErrorHandled::Reported(_)), _)
+                        | (_, Err(ErrorHandled::Reported(_))) => Ok(EvaluatedToErr),
                         (Err(ErrorHandled::Linted), _) | (_, Err(ErrorHandled::Linted)) => {
                             span_bug!(
                                 obligation.cause.span(self.tcx()),
@@ -958,7 +958,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(Some(c)) => self.evaluate_candidate(stack, &c),
             Err(SelectionError::Ambiguous(_)) => Ok(EvaluatedToAmbig),
             Ok(None) => Ok(EvaluatedToAmbig),
-            Err(Overflow) => Err(OverflowError::Canonical),
+            Err(Overflow(OverflowError::Canonical)) => Err(OverflowError::Canonical),
             Err(ErrorReporting) => Err(OverflowError::ErrorReporting),
             Err(..) => Ok(EvaluatedToErr),
         }
@@ -1117,7 +1117,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             match self.query_mode {
                 TraitQueryMode::Standard => {
                     if self.infcx.is_tainted_by_errors() {
-                        return Err(OverflowError::ErrorReporting);
+                        return Err(OverflowError::Error(
+                            ErrorGuaranteed::unchecked_claim_error_was_emitted(),
+                        ));
                     }
                     self.infcx.report_overflow_error(error_obligation, true);
                 }
@@ -1179,7 +1181,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     GeneratorCandidate => {}
                     // FnDef where the function is const
                     FnPointerCandidate { is_const: true } => {}
-                    ConstDropCandidate(_) => {}
+                    ConstDestructCandidate(_) => {}
                     _ => {
                         // reject all other types of candidates
                         continue;
@@ -1270,7 +1272,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // the master cache. Since coherence executes pretty quickly,
         // it's not worth going to more trouble to increase the
         // hit-rate, I don't think.
-        if self.intercrate {
+        if self.intercrate || self.allow_negative_impls {
             return false;
         }
 
@@ -1287,7 +1289,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // mode, so don't do any caching. In particular, we might
         // re-use the same `InferCtxt` with both an intercrate
         // and non-intercrate `SelectionContext`
-        if self.intercrate {
+        if self.intercrate || self.allow_negative_impls {
             return None;
         }
         let tcx = self.tcx();
@@ -1353,7 +1355,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if self.can_use_global_caches(param_env) {
-            if let Err(Overflow) = candidate {
+            if let Err(Overflow(OverflowError::Canonical)) = candidate {
                 // Don't cache overflow globally; we only produce this in certain modes.
             } else if !pred.needs_infer() {
                 if !candidate.needs_infer() {
@@ -1589,7 +1591,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         };
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
-        // `DiscriminantKindCandidate`, and `ConstDropCandidate` to anything else.
+        // `DiscriminantKindCandidate`, and `ConstDestructCandidate` to anything else.
         //
         // This is a fix for #53123 and prevents winnowing from accidentally extending the
         // lifetime of a variable.
@@ -1606,7 +1608,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDropCandidate(_),
+                | ConstDestructCandidate(_),
                 _,
             ) => true,
             (
@@ -1614,7 +1616,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinCandidate { has_nested: false }
                 | DiscriminantKindCandidate
                 | PointeeCandidate
-                | ConstDropCandidate(_),
+                | ConstDestructCandidate(_),
             ) => false,
 
             (ParamCandidate(other), ParamCandidate(victim)) => {
@@ -2333,11 +2335,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, cause, param_env))]
     fn impl_or_trait_obligations(
         &mut self,
-        cause: ObligationCause<'tcx>,
+        cause: &ObligationCause<'tcx>,
         recursion_depth: usize,
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,           // of impl or trait
         substs: SubstsRef<'tcx>, // for impl or trait
+        parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
     ) -> Vec<PredicateObligation<'tcx>> {
         let tcx = self.tcx();
 
@@ -2359,8 +2362,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?predicates);
         assert_eq!(predicates.parent, None);
         let mut obligations = Vec::with_capacity(predicates.predicates.len());
-        for (predicate, _) in predicates.predicates {
-            debug!(?predicate);
+        let parent_code = cause.clone_code();
+        for (predicate, span) in predicates.predicates {
+            let span = *span;
+            let derived =
+                DerivedObligationCause { parent_trait_pred, parent_code: parent_code.clone() };
+            let code = ImplDerivedObligation(Box::new(ImplDerivedObligationCause {
+                derived,
+                impl_def_id: def_id,
+                span,
+            }));
+            let cause = ObligationCause::new(cause.span, cause.body_id, code);
             let predicate = normalize_with_depth_to(
                 self,
                 param_env,
@@ -2369,12 +2381,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 predicate.subst(tcx, substs),
                 &mut obligations,
             );
-            obligations.push(Obligation {
-                cause: cause.clone(),
-                recursion_depth,
-                param_env,
-                predicate,
-            });
+            obligations.push(Obligation { cause, recursion_depth, param_env, predicate });
         }
 
         obligations

@@ -258,6 +258,7 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
     "mach",
     "memchr",
     "object",
+    "once_cell",
     "regalloc",
     "region",
     "rustc-hash",

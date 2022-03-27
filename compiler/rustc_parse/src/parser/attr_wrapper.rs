@@ -100,11 +100,12 @@ rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
 
 impl CreateTokenStream for LazyTokenStreamImpl {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
-        // The token produced by the final call to `next` or `next_desugared`
-        // was not actually consumed by the callback. The combination
-        // of chaining the initial token and using `take` produces the desired
-        // result - we produce an empty `TokenStream` if no calls were made,
-        // and omit the final token otherwise.
+        // The token produced by the final call to `{,inlined_}next` or
+        // `{,inlined_}next_desugared` was not actually consumed by the
+        // callback. The combination of chaining the initial token and using
+        // `take` produces the desired result - we produce an empty
+        // `TokenStream` if no calls were made, and omit the final token
+        // otherwise.
         let mut cursor_snapshot = self.cursor_snapshot.clone();
         let tokens =
             std::iter::once((FlatToken::Token(self.start_token.0.clone()), self.start_token.1))

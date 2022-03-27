@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.38.0"]
     pub TRY_ERR,
-    style,
+    restriction,
     "return errors explicitly rather than hiding them behind a `?`"
 }
 

@@ -79,27 +79,25 @@ impl<'tcx> ExprVisitor<'tcx> {
             // Special-case transmuting from `typeof(function)` and
             // `Option<typeof(function)>` to present a clearer error.
             let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) {
-                if size_to == Pointer.size(&self.tcx) {
-                    struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
-                        .note(&format!("source type: {}", from))
-                        .note(&format!("target type: {}", to))
-                        .help("cast with `as` to a pointer instead")
-                        .emit();
-                    return;
-                }
+            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&self.tcx) {
+                struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
+                    .note(&format!("source type: {from}"))
+                    .note(&format!("target type: {to}"))
+                    .help("cast with `as` to a pointer instead")
+                    .emit();
+                return;
             }
         }
 
         // Try to display a sensible error with as much information as possible.
         let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
             Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
-            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{}`", tail),
+            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
             Err(LayoutError::Unknown(bad)) => {
                 if bad == ty {
                     "this type does not have a fixed size".to_owned()
                 } else {
-                    format!("size can vary because of {}", bad)
+                    format!("size can vary because of {bad}")
                 }
             }
             Err(err) => err.to_string(),
@@ -113,7 +111,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                                         or dependently-sized types"
         );
         if from == to {
-            err.note(&format!("`{}` does not have a fixed size", from));
+            err.note(&format!("`{from}` does not have a fixed size"));
         } else {
             err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
@@ -201,7 +199,7 @@ impl<'tcx> ExprVisitor<'tcx> {
             _ => None,
         };
         let Some(asm_ty) = asm_ty else {
-            let msg = &format!("cannot use value of type `{}` for inline assembly", ty);
+            let msg = &format!("cannot use value of type `{ty}` for inline assembly");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(
                 "only integers, floats, SIMD vectors, pointers and function pointers \
@@ -216,7 +214,7 @@ impl<'tcx> ExprVisitor<'tcx> {
         if !ty.is_copy_modulo_regions(self.tcx.at(DUMMY_SP), self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
-            err.note(&format!("`{}` does not implement the Copy trait", ty));
+            err.note(&format!("`{ty}` does not implement the Copy trait"));
             err.emit();
         }
 
@@ -237,7 +235,7 @@ impl<'tcx> ExprVisitor<'tcx> {
                     in_expr.span,
                     &format!("type `{}`", self.typeck_results.expr_ty_adjusted(in_expr)),
                 );
-                err.span_label(expr.span, &format!("type `{}`", ty));
+                err.span_label(expr.span, &format!("type `{ty}`"));
                 err.note(
                     "asm inout arguments must have the same type, \
                     unless they are both pointers or integers of the same size",
@@ -256,7 +254,7 @@ impl<'tcx> ExprVisitor<'tcx> {
         let reg_class = reg.reg_class();
         let supported_tys = reg_class.supported_types(asm_arch);
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
-            let msg = &format!("type `{}` cannot be used with this register class", ty);
+            let msg = &format!("type `{ty}` cannot be used with this register class");
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             let supported_tys: Vec<_> =
                 supported_tys.iter().map(|(t, _)| t.to_string()).collect();
@@ -326,12 +324,10 @@ impl<'tcx> ExprVisitor<'tcx> {
                         let mut err = lint.build(msg);
                         err.span_label(expr.span, "for this argument");
                         err.help(&format!(
-                            "use the `{}` modifier to have the register formatted as `{}`",
-                            suggested_modifier, suggested_result,
+                            "use the `{suggested_modifier}` modifier to have the register formatted as `{suggested_result}`",
                         ));
                         err.help(&format!(
-                            "or use the `{}` modifier to keep the default formatting of `{}`",
-                            default_modifier, default_result,
+                            "or use the `{default_modifier}` modifier to keep the default formatting of `{default_result}`",
                         ));
                         err.emit();
                     },
@@ -509,14 +505,14 @@ impl<'tcx> Visitor<'tcx> for ExprVisitor<'tcx> {
         match expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 let res = self.typeck_results.qpath_res(qpath, expr.hir_id);
-                if let Res::Def(DefKind::Fn, did) = res {
-                    if self.def_id_is_transmute(did) {
-                        let typ = self.typeck_results.node_type(expr.hir_id);
-                        let sig = typ.fn_sig(self.tcx);
-                        let from = sig.inputs().skip_binder()[0];
-                        let to = sig.output().skip_binder();
-                        self.check_transmute(expr.span, from, to);
-                    }
+                if let Res::Def(DefKind::Fn, did) = res
+                    && self.def_id_is_transmute(did)
+                {
+                    let typ = self.typeck_results.node_type(expr.hir_id);
+                    let sig = typ.fn_sig(self.tcx);
+                    let from = sig.inputs().skip_binder()[0];
+                    let to = sig.output().skip_binder();
+                    self.check_transmute(expr.span, from, to);
                 }
             }
 

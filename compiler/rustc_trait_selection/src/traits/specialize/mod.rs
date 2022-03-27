@@ -16,16 +16,16 @@ use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, EmissionGuarantee};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::lint::LintDiagnosticBuilder;
 use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, TyCtxt};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
-use super::util::impl_trait_ref_and_oblig;
+use super::util;
 use super::{FulfillmentContext, SelectionContext};
 
 /// Information pertinent to an overlapping impl error.
@@ -186,18 +186,20 @@ fn fulfill_implication<'a, 'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
+    let source_trait = ImplSubject::Trait(source_trait_ref);
+
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, obligations) =
-        impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
+    let (target_trait, obligations) =
+        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs);
 
     // do the impls unify? If not, no specialization.
     let Ok(InferOk { obligations: more_obligations, .. }) =
-        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
+        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
     else {
         debug!(
             "fulfill_implication: {:?} does not unify with {:?}",
-            source_trait_ref, target_trait_ref
+            source_trait, target_trait
         );
         return Err(());
     };
@@ -225,7 +227,7 @@ fn fulfill_implication<'a, 'tcx>(
             [] => {
                 debug!(
                     "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait_ref, target_trait_ref
+                    source_trait, target_trait
                 );
 
                 // Now resolve the *substitution* we built for the target earlier, replacing
@@ -237,8 +239,8 @@ fn fulfill_implication<'a, 'tcx>(
                 debug!(
                     "fulfill_implication: for impls on {:?} and {:?}, \
                      could not fulfill: {:?} given {:?}",
-                    source_trait_ref,
-                    target_trait_ref,
+                    source_trait,
+                    target_trait,
                     errors,
                     param_env.caller_bounds()
                 );
@@ -377,8 +379,7 @@ fn report_negative_positive_conflict(
         }
     }
 
-    sg.has_errored = true;
-    err.emit();
+    sg.has_errored = Some(err.emit());
 }
 
 fn report_conflicting_impls(
@@ -394,7 +395,13 @@ fn report_conflicting_impls(
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
     // now because the struct_lint methods don't return back the DiagnosticBuilder
     // that's passed in.
-    let decorate = |err: LintDiagnosticBuilder<'_>| {
+    fn decorate<G: EmissionGuarantee>(
+        tcx: TyCtxt<'_>,
+        overlap: OverlapError,
+        used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
+        impl_span: Span,
+        err: LintDiagnosticBuilder<'_, G>,
+    ) -> G {
         let msg = format!(
             "conflicting implementations of trait `{}`{}{}",
             overlap.trait_desc,
@@ -440,17 +447,25 @@ fn report_conflicting_impls(
             coherence::add_placeholder_note(&mut err);
         }
         err.emit()
-    };
+    }
 
     match used_to_be_allowed {
         None => {
-            sg.has_errored = true;
-            if overlap.with_impl.is_local() || !tcx.orphan_check_crate(()).contains(&impl_def_id) {
+            let reported = if overlap.with_impl.is_local()
+                || !tcx.orphan_check_crate(()).contains(&impl_def_id)
+            {
                 let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-                decorate(LintDiagnosticBuilder::new(err.forget_guarantee()));
+                Some(decorate(
+                    tcx,
+                    overlap,
+                    used_to_be_allowed,
+                    impl_span,
+                    LintDiagnosticBuilder::new(err),
+                ))
             } else {
-                tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check");
-            }
+                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
+            };
+            sg.has_errored = reported;
         }
         Some(kind) => {
             let lint = match kind {
@@ -461,8 +476,10 @@ fn report_conflicting_impls(
                 lint,
                 tcx.hir().local_def_id_to_hir_id(impl_def_id),
                 impl_span,
-                decorate,
-            )
+                |ldb| {
+                    decorate(tcx, overlap, used_to_be_allowed, impl_span, ldb);
+                },
+            );
         }
     };
 }
