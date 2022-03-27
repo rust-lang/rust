@@ -299,7 +299,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
-#[rustc_const_stable(feature = "const_size_of", since = "1.24.0")]
+#[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
@@ -581,7 +581,7 @@ pub const unsafe fn align_of_val_raw<T: ?Sized>(val: *const T) -> usize {
 #[inline]
 #[must_use]
 #[stable(feature = "needs_drop", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_needs_drop", since = "1.36.0")]
+#[rustc_const_stable(feature = "const_mem_needs_drop", since = "1.36.0")]
 #[rustc_diagnostic_item = "needs_drop"]
 pub const fn needs_drop<T>() -> bool {
     intrinsics::needs_drop::<T>()

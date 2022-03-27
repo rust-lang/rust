@@ -905,7 +905,7 @@ impl<T> MaybeUninit<T> {
     /// };
     /// ```
     #[stable(feature = "maybe_uninit_ref", since = "1.55.0")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init_mut", issue = "none")]
     #[inline(always)]
     pub const unsafe fn assume_init_mut(&mut self) -> &mut T {
         // SAFETY: the caller must guarantee that `self` is initialized.
@@ -991,7 +991,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// [`assume_init_mut`]: MaybeUninit::assume_init_mut
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init", issue = "none")]
+    #[rustc_const_unstable(feature = "const_maybe_uninit_assume_init_mut", issue = "none")]
     #[inline(always)]
     pub const unsafe fn slice_assume_init_mut(slice: &mut [Self]) -> &mut [T] {
         // SAFETY: similar to safety notes for `slice_get_ref`, but we have a

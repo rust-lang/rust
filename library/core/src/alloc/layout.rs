@@ -56,7 +56,7 @@ impl Layout {
     ///    must not overflow (i.e., the rounded value must be less than
     ///    or equal to `usize::MAX`).
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[inline]
     pub const fn from_size_align(size: usize, align: usize) -> Result<Self, LayoutError> {
         if !align.is_power_of_two() {
@@ -93,7 +93,7 @@ impl Layout {
     /// This function is unsafe as it does not verify the preconditions from
     /// [`Layout::from_size_align`].
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "alloc_layout", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_unchecked", since = "1.36.0")]
     #[must_use]
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
@@ -103,7 +103,7 @@ impl Layout {
 
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[must_use]
     #[inline]
     pub const fn size(&self) -> usize {
@@ -112,7 +112,7 @@ impl Layout {
 
     /// The minimum byte alignment for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
-    #[rustc_const_stable(feature = "const_alloc_layout", since = "1.50.0")]
+    #[rustc_const_stable(feature = "const_alloc_layout_size_align", since = "1.50.0")]
     #[must_use = "this returns the minimum alignment, \
                   without modifying the layout"]
     #[inline]
