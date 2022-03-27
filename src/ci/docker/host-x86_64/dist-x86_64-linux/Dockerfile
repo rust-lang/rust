@@ -67,7 +67,7 @@ ENV PGO_HOST=x86_64-unknown-linux-gnu
 
 ENV HOSTS=x86_64-unknown-linux-gnu
 
-ENV RUSTFLAGS="-C target_cpu=x86-64-v2"
+ENV RUSTFLAGS="-C target_cpu=x86-64-v3"
 
 ENV RUST_CONFIGURE_ARGS \
       --enable-full-tools \
@@ -79,8 +79,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set target.x86_64-unknown-linux-gnu.ranlib=/rustroot/bin/llvm-ranlib \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
-      --set llvm.cxxflags=-march=x86-64-v2 \
-      --set llvm.cflags=-march=x86-64-v2 \
+      --set llvm.cxxflags=-march=x86-64-v3 \
+      --set llvm.cflags=-march=x86-64-v3 \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin
