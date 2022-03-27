@@ -1648,8 +1648,8 @@ impl crate::error::Error for ExitStatusError {}
 /// This type represents the status code the current process can return
 /// to its parent under normal termination.
 ///
-/// ExitCode is intended to be consumed only by the standard library (via
-/// `Termination::report()`), and intentionally does not provide accessors like
+/// `ExitCode` is intended to be consumed only by the standard library (via
+/// [`Termination::report()`]), and intentionally does not provide accessors like
 /// `PartialEq`, `Eq`, or `Hash`. Instead the standard library provides the
 /// canonical `SUCCESS` and `FAILURE` exit codes as well as `From<u8> for
 /// ExitCode` for constructing other arbitrary exit codes.
@@ -1673,13 +1673,31 @@ impl crate::error::Error for ExitStatusError {}
 /// compatibility differences and their expected usage; it is not generally
 /// possible to exactly reproduce an ExitStatus from a child for the current
 /// process after the fact.
+///
+/// # Examples
+///
+/// `ExitCode` can be returned from the `main` function of a crate, as it implements
+/// [`Termination`]:
+///
+/// ```
+/// use std::process::ExitCode;
+/// # fn check_foo() -> bool { true }
+///
+/// fn main() -> ExitCode {
+///     if !check_foo() {
+///         return ExitCode::from(42);
+///     }
+///
+///     ExitCode::SUCCESS
+/// }
+/// ```
 #[derive(Clone, Copy, Debug)]
 #[stable(feature = "process_exitcode", since = "1.60.0")]
 pub struct ExitCode(imp::ExitCode);
 
 #[stable(feature = "process_exitcode", since = "1.60.0")]
 impl ExitCode {
-    /// The canonical ExitCode for successful termination on this platform.
+    /// The canonical `ExitCode` for successful termination on this platform.
     ///
     /// Note that a `()`-returning `main` implicitly results in a successful
     /// termination, so there's no need to return this from `main` unless
@@ -1687,7 +1705,7 @@ impl ExitCode {
     #[stable(feature = "process_exitcode", since = "1.60.0")]
     pub const SUCCESS: ExitCode = ExitCode(imp::ExitCode::SUCCESS);
 
-    /// The canonical ExitCode for unsuccessful termination on this platform.
+    /// The canonical `ExitCode` for unsuccessful termination on this platform.
     ///
     /// If you're only returning this and `SUCCESS` from `main`, consider
     /// instead returning `Err(_)` and `Ok(())` respectively, which will
@@ -1697,19 +1715,20 @@ impl ExitCode {
 }
 
 impl ExitCode {
-    // This should not be stabilized when stabilizing ExitCode, we don't know that i32 will serve
+    // This is private/perma-unstable because ExitCode is opaque; we don't know that i32 will serve
     // all usecases, for example windows seems to use u32, unix uses the 8-15th bits of an i32, we
     // likely want to isolate users anything that could restrict the platform specific
     // representation of an ExitCode
     //
     // More info: https://internals.rust-lang.org/t/mini-pre-rfc-redesigning-process-exitstatus/5426
-    /// Convert an ExitCode into an i32
+    /// Convert an `ExitCode` into an i32
     #[unstable(
         feature = "process_exitcode_internals",
         reason = "exposed only for libstd",
         issue = "none"
     )]
     #[inline]
+    #[doc(hidden)]
     pub fn to_i32(self) -> i32 {
         self.0.as_i32()
     }
@@ -1717,7 +1736,7 @@ impl ExitCode {
 
 #[stable(feature = "process_exitcode", since = "1.60.0")]
 impl From<u8> for ExitCode {
-    /// Construct an exit code from an arbitrary u8 value.
+    /// Construct an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
         ExitCode(imp::ExitCode::from(code))
     }
