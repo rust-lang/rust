@@ -32,6 +32,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
 use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1556,7 +1557,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if inaccessible_remaining_fields {
                 self.report_inaccessible_fields(adt_ty, span);
             } else {
-                self.report_missing_fields(adt_ty, span, remaining_fields);
+                self.report_missing_fields(
+                    adt_ty,
+                    span,
+                    remaining_fields,
+                    variant,
+                    ast_fields,
+                    substs,
+                );
             }
         }
     }
@@ -1590,6 +1598,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         adt_ty: Ty<'tcx>,
         span: Span,
         remaining_fields: FxHashMap<Ident, (usize, &ty::FieldDef)>,
+        variant: &'tcx ty::VariantDef,
+        ast_fields: &'tcx [hir::ExprField<'tcx>],
+        substs: SubstsRef<'tcx>,
     ) {
         let len = remaining_fields.len();
 
@@ -1615,7 +1626,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        struct_span_err!(
+        let mut err = struct_span_err!(
             self.tcx.sess,
             span,
             E0063,
@@ -1624,9 +1635,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             remaining_fields_names,
             truncated_fields_error,
             adt_ty
-        )
-        .span_label(span, format!("missing {}{}", remaining_fields_names, truncated_fields_error))
-        .emit();
+        );
+        err.span_label(
+            span,
+            format!("missing {}{}", remaining_fields_names, truncated_fields_error),
+        );
+
+        // If the last field is a range literal, but it isn't supposed to be, then they probably
+        // meant to use functional update syntax.
+        //
+        // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
+        if let Some((
+            last,
+            ExprKind::Struct(
+                QPath::LangItem(LangItem::Range, ..),
+                &[ref range_start, ref range_end],
+                _,
+            ),
+        )) = ast_fields.last().map(|last| (last, &last.expr.kind)) &&
+        let variant_field =
+            variant.fields.iter().find(|field| field.ident(self.tcx) == last.ident) &&
+        let range_def_id = self.tcx.lang_items().range_struct() &&
+        variant_field
+            .and_then(|field| field.ty(self.tcx, substs).ty_adt_def())
+            .map(|adt| adt.did())
+            != range_def_id
+        {
+            let instead = self
+                .tcx
+                .sess
+                .source_map()
+                .span_to_snippet(range_end.expr.span)
+                .map(|s| format!(" from `{s}`"))
+                .unwrap_or(String::new());
+            err.span_suggestion(
+                range_start.span.shrink_to_hi(),
+                &format!("to set the remaining fields{instead}, separate the last named field with a comma"),
+                ",".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        err.emit();
     }
 
     /// Report an error for a struct field expression when there are invisible fields.
