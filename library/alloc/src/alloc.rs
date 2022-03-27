@@ -385,7 +385,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
 #[cfg(all(not(no_global_oom_handling), test))]
 pub use std::alloc::handle_alloc_error;
 
-#[cfg(all(not(no_global_oom_handling), not(any(target_os = "hermit", test))))]
+#[cfg(all(not(no_global_oom_handling), not(test)))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
