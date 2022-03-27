@@ -18,6 +18,11 @@ pub trait PointerArithmetic: HasDataLayout {
         self.data_layout().pointer_size
     }
 
+    #[inline(always)]
+    fn max_size_of_val(&self) -> Size {
+        Size::from_bytes(self.machine_isize_max())
+    }
+
     #[inline]
     fn machine_usize_max(&self) -> u64 {
         self.pointer_size().unsigned_int_max().try_into().unwrap()
