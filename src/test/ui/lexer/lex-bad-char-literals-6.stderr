@@ -38,7 +38,7 @@ LL |     if x == y {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `PartialEq<char>` is not implemented for `&str`
-   = help: the following other types implement trait `PartialEq<Cow<'a, str>>`:
+   = help: the following other types implement trait `PartialEq<Rhs>`:
              <&'a str as PartialEq<OsString>>
              <&'a str as PartialEq<String>>
              <&'b str as PartialEq<Cow<'a, str>>>
@@ -64,7 +64,7 @@ LL |     if x == z {}
    |          ^^ no implementation for `&str == char`
    |
    = help: the trait `PartialEq<char>` is not implemented for `&str`
-   = help: the following other types implement trait `PartialEq<Cow<'a, str>>`:
+   = help: the following other types implement trait `PartialEq<Rhs>`:
              <&'a str as PartialEq<OsString>>
              <&'a str as PartialEq<String>>
              <&'b str as PartialEq<Cow<'a, str>>>

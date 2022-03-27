@@ -5,7 +5,7 @@ LL |     1 +
    |       ^ no implementation for `{integer} + ()`
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Add`:
+   = help: the following other types implement trait `Add<Rhs>`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>
@@ -23,7 +23,7 @@ LL |     1 +
    |       ^ no implementation for `{integer} + ()`
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Add`:
+   = help: the following other types implement trait `Add<Rhs>`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>

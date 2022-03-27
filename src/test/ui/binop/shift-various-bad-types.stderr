@@ -5,7 +5,7 @@ LL |     22 >> p.char;
    |        ^^ no implementation for `{integer} >> char`
    |
    = help: the trait `Shr<char>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Shr`:
+   = help: the following other types implement trait `Shr<Rhs>`:
              <&'a i128 as Shr<i128>>
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>
@@ -23,7 +23,7 @@ LL |     22 >> p.str;
    |        ^^ no implementation for `{integer} >> &str`
    |
    = help: the trait `Shr<&str>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Shr`:
+   = help: the following other types implement trait `Shr<Rhs>`:
              <&'a i128 as Shr<i128>>
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>
@@ -41,7 +41,7 @@ LL |     22 >> p;
    |        ^^ no implementation for `{integer} >> &Panolpy`
    |
    = help: the trait `Shr<&Panolpy>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Shr`:
+   = help: the following other types implement trait `Shr<Rhs>`:
              <&'a i128 as Shr<i128>>
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>

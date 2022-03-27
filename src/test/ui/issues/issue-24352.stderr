@@ -5,7 +5,7 @@ LL |     1.0f64 - 1
    |            ^ no implementation for `f64 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
-   = help: the following other types implement trait `Sub`:
+   = help: the following other types implement trait `Sub<Rhs>`:
              <&'a f32 as Sub<f32>>
              <&'a f64 as Sub<f64>>
              <&'a i128 as Sub<i128>>

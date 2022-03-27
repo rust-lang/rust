@@ -5,7 +5,7 @@ LL |     x + 100
    |       ^ no implementation for `f32 + {integer}`
    |
    = help: the trait `Add<{integer}>` is not implemented for `f32`
-   = help: the following other types implement trait `Add`:
+   = help: the following other types implement trait `Add<Rhs>`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>
@@ -27,7 +27,7 @@ LL |     x + 100
    |       ^ no implementation for `f64 + {integer}`
    |
    = help: the trait `Add<{integer}>` is not implemented for `f64`
-   = help: the following other types implement trait `Add`:
+   = help: the following other types implement trait `Add<Rhs>`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>
@@ -49,7 +49,7 @@ LL |     x - 100
    |       ^ no implementation for `f32 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f32`
-   = help: the following other types implement trait `Sub`:
+   = help: the following other types implement trait `Sub<Rhs>`:
              <&'a f32 as Sub<f32>>
              <&'a f64 as Sub<f64>>
              <&'a i128 as Sub<i128>>
@@ -71,7 +71,7 @@ LL |     x - 100
    |       ^ no implementation for `f64 - {integer}`
    |
    = help: the trait `Sub<{integer}>` is not implemented for `f64`
-   = help: the following other types implement trait `Sub`:
+   = help: the following other types implement trait `Sub<Rhs>`:
              <&'a f32 as Sub<f32>>
              <&'a f64 as Sub<f64>>
              <&'a i128 as Sub<i128>>
@@ -93,7 +93,7 @@ LL |     x * 100
    |       ^ no implementation for `f32 * {integer}`
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f32`
-   = help: the following other types implement trait `Mul`:
+   = help: the following other types implement trait `Mul<Rhs>`:
              <&'a f32 as Mul<f32>>
              <&'a f64 as Mul<f64>>
              <&'a i128 as Mul<i128>>
@@ -115,7 +115,7 @@ LL |     x * 100
    |       ^ no implementation for `f64 * {integer}`
    |
    = help: the trait `Mul<{integer}>` is not implemented for `f64`
-   = help: the following other types implement trait `Mul`:
+   = help: the following other types implement trait `Mul<Rhs>`:
              <&'a f32 as Mul<f32>>
              <&'a f64 as Mul<f64>>
              <&'a i128 as Mul<i128>>
@@ -137,7 +137,7 @@ LL |     x / 100
    |       ^ no implementation for `f32 / {integer}`
    |
    = help: the trait `Div<{integer}>` is not implemented for `f32`
-   = help: the following other types implement trait `Div`:
+   = help: the following other types implement trait `Div<Rhs>`:
              <&'a f32 as Div<f32>>
              <&'a f64 as Div<f64>>
              <&'a i128 as Div<i128>>
@@ -159,7 +159,7 @@ LL |     x / 100
    |       ^ no implementation for `f64 / {integer}`
    |
    = help: the trait `Div<{integer}>` is not implemented for `f64`
-   = help: the following other types implement trait `Div`:
+   = help: the following other types implement trait `Div<Rhs>`:
              <&'a f32 as Div<f32>>
              <&'a f64 as Div<f64>>
              <&'a i128 as Div<i128>>

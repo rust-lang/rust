@@ -7,7 +7,7 @@ LL |     Ok(Err(123_i32)?)
    |                    ^ the trait `From<i32>` is not implemented for `u8`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = help: the following other types implement trait `From<bool>`:
+   = help: the following other types implement trait `From<T>`:
              <f32 as From<i16>>
              <f32 as From<i8>>
              <f32 as From<u16>>
