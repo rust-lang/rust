@@ -1,4 +1,4 @@
-use clippy_utils::{diagnostics::span_lint_and_sugg, source::snippet_opt};
+use clippy_utils::{diagnostics::span_lint_and_then, source::snippet_opt};
 use rustc_ast::ast::{Item, ItemKind, VariantData};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
@@ -33,14 +33,18 @@ impl EarlyLintPass for UnitLikeStructBrackets {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
         if let ItemKind::Struct(var_data, _) = &item.kind && has_no_fields(cx, var_data, span_after_ident) {
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 UNIT_LIKE_STRUCT_BRACKETS,
                 span_after_ident,
                 "found empty brackets on struct declaration",
-                "remove the brackets",
-                ";".to_string(),
-                Applicability::MachineApplicable
+                |diagnostic| {
+                    diagnostic.span_suggestion_hidden(
+                        span_after_ident,
+                        "remove the brackets",
+                        ";".to_string(),
+                        Applicability::MachineApplicable);
+                    },
             );
         }
     }
