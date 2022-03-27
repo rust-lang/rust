@@ -1038,7 +1038,7 @@ impl String {
     }
 
     /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `String`. After calling `reserve_exact`,
+    /// be inserted in the given `String`. After calling `try_reserve_exact`,
     /// capacity will be greater than or equal to `self.len() + additional`.
     /// Does nothing if the capacity is already sufficient.
     ///
