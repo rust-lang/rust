@@ -153,8 +153,8 @@
 //! integers is very useful, so what can we do?
 //!
 //! Strict Provenance attempts to square this circle by decoupling Rust's traditional conflation
-//! of pointers and `usize` (and `isize`), defining a pointer to semantically contain the following
-//! information:
+//! of pointers and `usize` (and `isize`), and defining a pointer to semantically contain the
+//! following information:
 //!
 //! * The **address-space** it is part of.
 //! * The **address** it points to, which can be represented by a `usize`.
@@ -235,6 +235,10 @@
 //! }
 //! ```
 //!
+//! (Yes, if you've been using AtomicUsize for pointers in concurrent datastructures, you should
+//! be using AtomicPtr instead. If that messes up the way you atomically manipulate pointers,
+//! we would like to know why, and what needs to be done to fix it.)
+//!
 //! Something more complicated and just generally *evil* like a XOR-List requires more significant
 //! changes like allocating all nodes in a pre-allocated Vec or Arena and using a pointer
 //! to the whole allocation to reconstitute the XORed addresses.
@@ -258,11 +262,13 @@
 //!
 //! * Create an invalid pointer from just an address (see [`ptr::invalid`][]). This can
 //!   be used for sentinel values like `null` *or* to represent a tagged pointer that will
-//!   never be dereferencable.
+//!   never be dereferencable. In general, it is always sound for an integer to pretend
+//!   to be a pointer "for fun" as long as you don't use operations on it which require
+//!   it to be valid (offset, read, write, etc).
 //!
 //! * Forge an allocation of size zero at any sufficiently aligned non-null address.
 //!   i.e. the usual "ZSTs are fake, do what you want" rules apply *but* this only applies
-//!   for actual forgery (integers cast to pointers). If you borrow some structs subfield
+//!   for actual forgery (integers cast to pointers). If you borrow some struct's field
 //!   that *happens* to be zero-sized, the resulting pointer will have provenance tied to
 //!   that allocation and it will still get invalidated if the allocation gets deallocated.
 //!   In the future we may introduce an API to make such a forged allocation explicit.
@@ -276,6 +282,16 @@
 //!   and using it to read/write will fault. The details of this are architecture-specific
 //!   and based on alignment, but the buffer on either side of the pointer's range is pretty
 //!   generous (think kilobytes, not bytes).
+//!
+//! * Compare arbitrary pointers by address. Addresses *are* just integers and so there is
+//!   always a coherent answer, even if the pointers are invalid or from different
+//!   address-spaces/provenances. Of course, comparing addresses from different address-spaces
+//!   is generally going to be *meaningless*, but so is comparing Kilograms to Meters, and Rust
+//!   doesn't prevent that either. Similarly, if you get "lucky" and notice that a pointer
+//!   one-past-the-end is the "same" address as the start of an unrelated allocation, anything
+//!   you do with that fact is *probably* going to be gibberish. The scope of that gibberish
+//!   is kept under control by the fact that the two pointers *still* aren't allowed to access
+//!   the other's allocation (bytes), because they still have different provenance.
 //!
 //! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
 //!   mentioning in more detail because of the limitations of [CHERI][]. Low-bit tagging
