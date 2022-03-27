@@ -6,6 +6,11 @@ LL |     let sr: Vec<(u32, _, _) = vec![];
    |         |                 |
    |         |                 maybe try to close unmatched angle bracket
    |         while parsing the type for `sr`
+   |
+help: you might have meant to end the type parameters here
+   |
+LL |     let sr: Vec<(u32, _, _)> = vec![];
+   |                            +
 
 error[E0277]: a value of type `Vec<(u32, _, _)>` cannot be built from an iterator over elements of type `()`
   --> $DIR/issue-34334.rs:5:87

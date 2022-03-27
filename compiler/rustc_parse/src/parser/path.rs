@@ -272,7 +272,23 @@ impl<'a> Parser<'a> {
                         lo,
                         ty_generics,
                     )?;
-                    self.expect_gt()?;
+                    self.expect_gt().map_err(|mut err| {
+                        // Attempt to find places where a missing `>` might belong.
+                        if let Some(arg) = args
+                            .iter()
+                            .rev()
+                            .skip_while(|arg| matches!(arg, AngleBracketedArg::Constraint(_)))
+                            .next()
+                        {
+                            err.span_suggestion_verbose(
+                                arg.span().shrink_to_hi(),
+                                "you might have meant to end the type parameters here",
+                                ">".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        err
+                    })?;
                     let span = lo.to(self.prev_token.span);
                     AngleBracketedArgs { args, span }.into()
                 } else {
@@ -462,6 +478,23 @@ impl<'a> Parser<'a> {
         while let Some(arg) = self.parse_angle_arg(ty_generics)? {
             args.push(arg);
             if !self.eat(&token::Comma) {
+                if self.token.kind == token::Semi
+                    && self.look_ahead(1, |t| t.is_ident() || t.is_lifetime())
+                {
+                    // Add `>` to the list of expected tokens.
+                    self.check(&token::Gt);
+                    // Handle `,` to `;` substitution
+                    let mut err = self.unexpected::<()>().unwrap_err();
+                    self.bump();
+                    err.span_suggestion_verbose(
+                        self.prev_token.span.until(self.token.span),
+                        "use a comma to separate type parameters",
+                        ", ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    err.emit();
+                    continue;
+                }
                 if !self.token.kind.should_end_const_arg() {
                     if self.handle_ambiguous_unbraced_const_arg(&mut args)? {
                         // We've managed to (partially) recover, so continue trying to parse
