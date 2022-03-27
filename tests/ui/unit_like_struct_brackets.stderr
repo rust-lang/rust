@@ -1,7 +1,7 @@
 error: found empty brackets on struct declaration
   --> $DIR/unit_like_struct_brackets.rs:5:25
    |
-LL | pub struct MyEmptyStruct {}             // should trigger lint
+LL | pub struct MyEmptyStruct {} // should trigger lint
    |                         ^^^ help: remove the brackets: `;`
    |
    = note: `-D clippy::unit-like-struct-brackets` implied by `-D warnings`
@@ -9,7 +9,7 @@ LL | pub struct MyEmptyStruct {}             // should trigger lint
 error: found empty brackets on struct declaration
   --> $DIR/unit_like_struct_brackets.rs:6:26
    |
-LL | struct MyEmptyTupleStruct();            // should trigger lint
+LL | struct MyEmptyTupleStruct(); // should trigger lint
    |                          ^^^ help: remove the brackets: `;`
 
 error: aborting due to 2 previous errors
