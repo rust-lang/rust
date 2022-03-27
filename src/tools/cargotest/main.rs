@@ -26,7 +26,7 @@ const TEST_REPOS: &[Test] = &[
     Test {
         name: "ripgrep",
         repo: "https://github.com/BurntSushi/ripgrep",
-        sha: "3de31f752729525d85a3d1575ac1978733b3f7e7",
+        sha: "ced5b92aa93eb47e892bd2fd26ab454008721730",
         lock: None,
         packages: &[],
         features: None,
