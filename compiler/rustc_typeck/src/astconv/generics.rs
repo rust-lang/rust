@@ -85,9 +85,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         let param_hir_id = tcx.hir().local_def_id_to_hir_id(param_local_id);
                         let param_name = tcx.hir().ty_param_name(param_hir_id);
                         let param_type = tcx.infer_ctxt().enter(|infcx| {
-                            infcx.resolve_numeric_literals_with_default(
-                                infcx.resolve_vars_if_possible(tcx.type_of(param.def_id)),
-                            )
+                            infcx.resolve_numeric_literals_with_default(tcx.type_of(param.def_id))
                         });
                         if param_type.is_suggestable() {
                             err.span_suggestion(

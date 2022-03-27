@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         if !value.needs_infer() {
             return value; // Avoid duplicated subst-folding.
         }
-        let mut r = InferenceLiteralEraser { infcx: self };
+        let mut r = InferenceLiteralEraser { tcx: self.tcx };
         value.fold_with(&mut r)
     }
 
@@ -1798,19 +1798,19 @@ impl<'tcx> TyOrConstInferVar<'tcx> {
 
 /// Replace `{integer}` with `i32` and `{float}` with `f64`.
 /// Used only for diagnostics.
-struct InferenceLiteralEraser<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+struct InferenceLiteralEraser<'tcx> {
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
+impl<'tcx> TypeFolder<'tcx> for InferenceLiteralEraser<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.kind() {
-            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx().types.i32,
-            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx().types.f64,
+            ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => self.tcx.types.i32,
+            ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => self.tcx.types.f64,
             _ => ty.super_fold_with(self),
         }
     }
