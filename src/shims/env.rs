@@ -440,7 +440,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         } else {
             // No `environ` allocated yet, let's do that.
             // This is memory backing an extern static, hence `ExternStatic`, not `Env`.
-            let layout = this.machine.layouts.usize;
+            let layout = this.machine.layouts.mut_raw_ptr;
             let place = this.allocate(layout, MiriMemoryKind::ExternStatic.into())?;
             this.machine.env_vars.environ = Some(place);
         }
@@ -452,8 +452,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         vars.push(Pointer::null());
         // Make an array with all these pointers inside Miri.
         let tcx = this.tcx;
-        let vars_layout =
-            this.layout_of(tcx.mk_array(tcx.types.usize, u64::try_from(vars.len()).unwrap()))?;
+        let vars_layout = this.layout_of(
+            tcx.mk_array(this.machine.layouts.mut_raw_ptr.ty, u64::try_from(vars.len()).unwrap()),
+        )?;
         let vars_place = this.allocate(vars_layout, MiriMemoryKind::Runtime.into())?;
         for (idx, var) in vars.into_iter().enumerate() {
             let place = this.mplace_field(&vars_place, idx)?;

@@ -1,4 +1,5 @@
 // ignore-windows: Concurrency on Windows is not supported yet.
+// compile-flags: -Zmiri-check-number-validity
 
 //! The main purpose of this test is to check that if we take a pointer to
 //! thread's `t1` thread-local `A` and send it to another thread `t2`,

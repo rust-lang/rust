@@ -10,13 +10,14 @@ use std::time::Instant;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
+use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::{
     mir,
     ty::{
         self,
         layout::{LayoutCx, LayoutError, LayoutOf, TyAndLayout},
-        Instance, TyCtxt,
+        Instance, TyCtxt, TypeAndMut,
     },
 };
 use rustc_span::def_id::{CrateNum, DefId};
@@ -269,19 +270,23 @@ pub struct PrimitiveLayouts<'tcx> {
     pub u32: TyAndLayout<'tcx>,
     pub usize: TyAndLayout<'tcx>,
     pub bool: TyAndLayout<'tcx>,
+    pub mut_raw_ptr: TyAndLayout<'tcx>,
 }
 
 impl<'mir, 'tcx: 'mir> PrimitiveLayouts<'tcx> {
     fn new(layout_cx: LayoutCx<'tcx, TyCtxt<'tcx>>) -> Result<Self, LayoutError<'tcx>> {
+        let tcx = layout_cx.tcx;
+        let mut_raw_ptr = tcx.mk_ptr(TypeAndMut { ty: tcx.types.unit, mutbl: Mutability::Mut });
         Ok(Self {
-            unit: layout_cx.layout_of(layout_cx.tcx.mk_unit())?,
-            i8: layout_cx.layout_of(layout_cx.tcx.types.i8)?,
-            i32: layout_cx.layout_of(layout_cx.tcx.types.i32)?,
-            isize: layout_cx.layout_of(layout_cx.tcx.types.isize)?,
-            u8: layout_cx.layout_of(layout_cx.tcx.types.u8)?,
-            u32: layout_cx.layout_of(layout_cx.tcx.types.u32)?,
-            usize: layout_cx.layout_of(layout_cx.tcx.types.usize)?,
-            bool: layout_cx.layout_of(layout_cx.tcx.types.bool)?,
+            unit: layout_cx.layout_of(tcx.mk_unit())?,
+            i8: layout_cx.layout_of(tcx.types.i8)?,
+            i32: layout_cx.layout_of(tcx.types.i32)?,
+            isize: layout_cx.layout_of(tcx.types.isize)?,
+            u8: layout_cx.layout_of(tcx.types.u8)?,
+            u32: layout_cx.layout_of(tcx.types.u32)?,
+            usize: layout_cx.layout_of(tcx.types.usize)?,
+            bool: layout_cx.layout_of(tcx.types.bool)?,
+            mut_raw_ptr: layout_cx.layout_of(mut_raw_ptr)?,
         })
     }
 }
