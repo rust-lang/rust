@@ -232,6 +232,9 @@ impl fmt::Display for NotHandle {
     }
 }
 
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for NotHandle {}
+
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
     fn as_raw_handle(&self) -> RawHandle {
