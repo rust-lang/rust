@@ -231,6 +231,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         let tag = self.project_field(bx, tag_field);
         let tag = bx.load_operand(tag);
 
+        let niche_llty = bx.cx().immediate_backend_type(tag.layout);
+        let tag = tag.immediate();
+
         // Decode the discriminant (specifically if it's niche-encoded).
         match *tag_encoding {
             TagEncoding::Direct => {
@@ -242,13 +245,32 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     Int(_, signed) => !tag_scalar.is_bool() && signed,
                     _ => false,
                 };
-                bx.intcast(tag.immediate(), cast_to, signed)
+                bx.intcast(tag, cast_to, signed)
+            }
+            // Handle single-variant-niche separately.
+            // Note: this also cover pointer-based niches.
+            TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start }
+                if niche_variants.end().as_u32() - niche_variants.start().as_u32() == 0 =>
+            {
+                let niche_start = if niche_start == 0 {
+                    // Avoid calling `const_uint`, which wouldn't work for pointers.
+                    bx.cx().const_null(niche_llty)
+                } else {
+                    bx.cx().const_uint_big(niche_llty, niche_start)
+                };
+                let is_niche = bx.icmp(IntPredicate::IntEQ, tag, niche_start);
+                bx.select(
+                    is_niche,
+                    bx.cx().const_uint(cast_to, niche_variants.start().as_u32() as u64),
+                    bx.cx().const_uint(cast_to, untagged_variant.as_u32() as u64),
+                )
             }
             TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start } => {
+                // Assumption: here, llty should not be pointer.
+                // FIXME(eddyb) check the actual primitive type here.
+
                 // Rebase from niche values to discriminants, and check
                 // whether the result is in range for the niche variants.
-                let niche_llty = bx.cx().immediate_backend_type(tag.layout);
-                let tag = tag.immediate();
 
                 // We first compute the "relative discriminant" (wrt `niche_variants`),
                 // that is, if `n = niche_variants.end() - niche_variants.start()`,
@@ -260,19 +282,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 // that might not fit in the same type, on top of needing an extra
                 // comparison (see also the comment on `let niche_discr`).
                 let relative_discr = if niche_start == 0 {
-                    // Avoid subtracting `0`, which wouldn't work for pointers.
-                    // FIXME(eddyb) check the actual primitive type here.
                     tag
                 } else {
+                    // Note: subtracting `0` wouldn't work for pointers.
                     bx.sub(tag, bx.cx().const_uint_big(niche_llty, niche_start))
                 };
                 let relative_max = niche_variants.end().as_u32() - niche_variants.start().as_u32();
-                let is_niche = if relative_max == 0 {
-                    // Avoid calling `const_uint`, which wouldn't work for pointers.
-                    // Also use canonical == 0 instead of non-canonical u<= 0.
-                    // FIXME(eddyb) check the actual primitive type here.
-                    bx.icmp(IntPredicate::IntEQ, relative_discr, bx.cx().const_null(niche_llty))
-                } else {
+                let is_niche = {
                     let relative_max = bx.cx().const_uint(niche_llty, relative_max as u64);
                     bx.icmp(IntPredicate::IntULE, relative_discr, relative_max)
                 };
