@@ -296,13 +296,18 @@ impl<'a> InferenceContext<'a> {
                         break;
                     }
                 }
+                // if the function is unresolved, we use is_varargs=true to
+                // suppress the arg count diagnostic here
+                let is_varargs =
+                    derefed_callee.callable_sig(self.db).map_or(false, |sig| sig.is_varargs)
+                        || res.is_none();
                 let (param_tys, ret_ty) = match res {
                     Some(res) => {
                         let adjustments = auto_deref_adjust_steps(&derefs);
                         self.write_expr_adj(*callee, adjustments);
                         res
                     }
-                    None => (Vec::new(), self.err_ty()),
+                    None => (Vec::new(), self.err_ty()), // FIXME diagnostic
                 };
                 let indices_to_skip = self.check_legacy_const_generics(derefed_callee, args);
                 self.register_obligations_for_call(&callee_ty);
@@ -313,7 +318,14 @@ impl<'a> InferenceContext<'a> {
                     param_tys.clone(),
                 );
 
-                self.check_call_arguments(args, &expected_inputs, &param_tys, &indices_to_skip);
+                self.check_call_arguments(
+                    tgt_expr,
+                    args,
+                    &expected_inputs,
+                    &param_tys,
+                    &indices_to_skip,
+                    is_varargs,
+                );
                 self.normalize_associated_types_in(ret_ty)
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => self
@@ -948,22 +960,28 @@ impl<'a> InferenceContext<'a> {
         };
         let method_ty = method_ty.substitute(Interner, &substs);
         self.register_obligations_for_call(&method_ty);
-        let (formal_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
-            Some(sig) => {
-                if !sig.params().is_empty() {
-                    (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
-                } else {
-                    (self.err_ty(), Vec::new(), sig.ret().clone())
+        let (formal_receiver_ty, param_tys, ret_ty, is_varargs) =
+            match method_ty.callable_sig(self.db) {
+                Some(sig) => {
+                    if !sig.params().is_empty() {
+                        (
+                            sig.params()[0].clone(),
+                            sig.params()[1..].to_vec(),
+                            sig.ret().clone(),
+                            sig.is_varargs,
+                        )
+                    } else {
+                        (self.err_ty(), Vec::new(), sig.ret().clone(), sig.is_varargs)
+                    }
                 }
-            }
-            None => (self.err_ty(), Vec::new(), self.err_ty()),
-        };
+                None => (self.err_ty(), Vec::new(), self.err_ty(), true),
+            };
         self.unify(&formal_receiver_ty, &receiver_ty);
 
         let expected_inputs =
             self.expected_inputs_for_expected_output(expected, ret_ty.clone(), param_tys.clone());
 
-        self.check_call_arguments(args, &expected_inputs, &param_tys, &[]);
+        self.check_call_arguments(tgt_expr, args, &expected_inputs, &param_tys, &[], is_varargs);
         self.normalize_associated_types_in(ret_ty)
     }
 
@@ -996,11 +1014,21 @@ impl<'a> InferenceContext<'a> {
 
     fn check_call_arguments(
         &mut self,
+        expr: ExprId,
         args: &[ExprId],
         expected_inputs: &[Ty],
         param_tys: &[Ty],
         skip_indices: &[u32],
+        is_varargs: bool,
     ) {
+        if args.len() != param_tys.len() + skip_indices.len() && !is_varargs {
+            self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
+                call_expr: expr,
+                expected: param_tys.len() + skip_indices.len(),
+                found: args.len(),
+            });
+        }
+
         // Quoting https://github.com/rust-lang/rust/blob/6ef275e6c3cb1384ec78128eceeb4963ff788dca/src/librustc_typeck/check/mod.rs#L3325 --
         // We do this in a pretty awful way: first we type-check any arguments
         // that are not closures, then we type-check the closures. This is so
@@ -1188,7 +1216,15 @@ impl<'a> InferenceContext<'a> {
 
         // only use legacy const generics if the param count matches with them
         if data.params.len() + data.legacy_const_generics_indices.len() != args.len() {
-            return Vec::new();
+            if args.len() <= data.params.len() {
+                return Vec::new();
+            } else {
+                // there are more parameters than there should be without legacy
+                // const params; use them
+                let mut indices = data.legacy_const_generics_indices.clone();
+                indices.sort();
+                return indices;
+            }
         }
 
         // check legacy const parameters
