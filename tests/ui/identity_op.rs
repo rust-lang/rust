@@ -69,7 +69,10 @@ fn main() {
 
     2 % 3;
     -2 % 3;
+    2 % -3 + x;
+    -2 % -3 + x;
     x + 1 % 3;
     (x + 1) % 3; // no error
     4 % 3; // no error
+    4 % -3; // no error
 }

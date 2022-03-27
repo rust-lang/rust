@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
                     check(cx, left, -1, e.span, right.span);
                     check(cx, right, -1, e.span, left.span);
                 },
-                BinOpKind::Rem => check_modulo(cx, left, right, e.span, left.span),
+                BinOpKind::Rem => check_remainder(cx, left, right, e.span, left.span),
                 _ => (),
             }
         }
@@ -71,11 +71,11 @@ fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_
             && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
 }
 
-fn check_modulo(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
+fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
     let lhs_const = constant_full_int(cx, cx.typeck_results(), left);
     let rhs_const = constant_full_int(cx, cx.typeck_results(), right);
     if match (lhs_const, rhs_const) {
-        (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv,
+        (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv.abs(),
         (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
         _ => return,
     } {
