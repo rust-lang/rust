@@ -150,8 +150,6 @@ declare_features! (
     (active, allow_internal_unstable, "1.0.0", None, None),
     /// Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
-    /// Allows generators to be cloned.
-    (active, generator_clone, "1.60.0", None, None),
     /// Allows using the `rust-intrinsic`'s "ABI".
     (active, intrinsics, "1.0.0", None, None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
@@ -396,6 +394,8 @@ declare_features! (
     (active, ffi_returns_twice, "1.34.0", Some(58314), None),
     /// Allows using `#[repr(align(...))]` on function items
     (active, fn_align, "1.53.0", Some(82232), None),
+    /// Allows generators to be cloned.
+    (active, generator_clone, "1.60.0", Some(95360), None),
     /// Allows defining generators.
     (active, generators, "1.21.0", Some(43122), None),
     /// Infer generic args for both consts and types.
