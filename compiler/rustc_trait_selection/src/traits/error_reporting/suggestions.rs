@@ -557,8 +557,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     }
                 } else if real_trait_pred != trait_pred {
                     // This branch addresses #87437.
-                    let obligation =
-                        self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred, base_ty);
+                    let obligation = self.mk_trait_obligation_with_new_self_ty(
+                        param_env,
+                        real_trait_pred,
+                        base_ty,
+                    );
                     if self.predicate_may_hold(&obligation) {
                         err.span_suggestion_verbose(
                             span.shrink_to_lo(),
