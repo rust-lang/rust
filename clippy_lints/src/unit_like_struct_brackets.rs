@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::*;
+use rustc_ast::ast::{Item, ItemKind, VariantData};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -46,8 +46,7 @@ impl EarlyLintPass for UnitLikeStructBrackets {
 
 fn has_no_fields(var_data: &VariantData) -> bool {
     match var_data {
-        VariantData::Struct(defs, _) => defs.is_empty(),
-        VariantData::Tuple(defs, _) => defs.is_empty(),
+        VariantData::Struct(defs, _) | VariantData::Tuple(defs, _) => defs.is_empty(),
         VariantData::Unit(_) => false,
     }
 }
