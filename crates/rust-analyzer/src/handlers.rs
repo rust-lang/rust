@@ -276,7 +276,7 @@ pub(crate) fn handle_on_enter(
 pub(crate) fn handle_on_type_formatting(
     snap: GlobalStateSnapshot,
     params: lsp_types::DocumentOnTypeFormattingParams,
-) -> Result<Option<Vec<lsp_types::TextEdit>>> {
+) -> Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = profile::span("handle_on_type_formatting");
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     let line_index = snap.file_line_index(position.file_id)?;
@@ -306,9 +306,9 @@ pub(crate) fn handle_on_type_formatting(
     };
 
     // This should be a single-file edit
-    let (_, edit) = edit.source_file_edits.into_iter().next().unwrap();
+    let (_, text_edit) = edit.source_file_edits.into_iter().next().unwrap();
 
-    let change = to_proto::text_edit_vec(&line_index, edit);
+    let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
     Ok(Some(change))
 }
 

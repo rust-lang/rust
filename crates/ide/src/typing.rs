@@ -34,6 +34,11 @@ pub(crate) use on_enter::on_enter;
 // Don't forget to add new trigger characters to `server_capabilities` in `caps.rs`.
 pub(crate) const TRIGGER_CHARS: &str = ".=>{";
 
+struct ExtendedTextEdit {
+    edit: TextEdit,
+    is_snippet: bool,
+}
+
 // Feature: On Typing Assists
 //
 // Some features trigger on typing certain characters:
@@ -68,22 +73,27 @@ pub(crate) fn on_char_typed(
         return None;
     }
     let edit = on_char_typed_inner(file, position.offset, char_typed)?;
-    Some(SourceChange::from_text_edit(position.file_id, edit))
+    let mut sc = SourceChange::from_text_edit(position.file_id, edit.edit);
+    sc.is_snippet = edit.is_snippet;
+    Some(sc)
 }
 
 fn on_char_typed_inner(
     file: &Parse<SourceFile>,
     offset: TextSize,
     char_typed: char,
-) -> Option<TextEdit> {
+) -> Option<ExtendedTextEdit> {
+    fn conv(text_edit: Option<TextEdit>) -> Option<ExtendedTextEdit> {
+        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
+    }
     if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
         return None;
     }
     match char_typed {
-        '.' => on_dot_typed(&file.tree(), offset),
-        '=' => on_eq_typed(&file.tree(), offset),
-        '>' => on_arrow_typed(&file.tree(), offset),
-        '{' => on_opening_brace_typed(file, offset),
+        '.' => conv(on_dot_typed(&file.tree(), offset)),
+        '=' => conv(on_eq_typed(&file.tree(), offset)),
+        '>' => conv(on_arrow_typed(&file.tree(), offset)),
+        '{' => conv(on_opening_brace_typed(file, offset)),
         _ => unreachable!(),
     }
 }

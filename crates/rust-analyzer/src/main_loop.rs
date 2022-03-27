@@ -605,7 +605,7 @@ impl GlobalState {
             .on::<lsp_ext::OpenCargoToml>(handlers::handle_open_cargo_toml)
             .on::<lsp_ext::MoveItem>(handlers::handle_move_item)
             .on::<lsp_ext::WorkspaceSymbol>(handlers::handle_workspace_symbol)
-            .on::<lsp_types::request::OnTypeFormatting>(handlers::handle_on_type_formatting)
+            .on::<lsp_ext::OnTypeFormatting>(handlers::handle_on_type_formatting)
             .on::<lsp_types::request::DocumentSymbolRequest>(handlers::handle_document_symbol)
             .on::<lsp_types::request::GotoDefinition>(handlers::handle_goto_definition)
             .on::<lsp_types::request::GotoDeclaration>(handlers::handle_goto_declaration)
