@@ -31,7 +31,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::stable_set::StableSet;
+use rustc_data_structures::stable_set::{FxHashSet, StableSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{self, Lock, Lrc, WorkerLocal};
 use rustc_data_structures::vec_map::VecMap;
@@ -2209,7 +2209,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to identify which traits may define a given associated type to help avoid cycle errors.
     /// Returns a `DefId` iterator.
     fn super_traits_of(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let mut set = StableSet::default();
+        let mut set = FxHashSet::default();
         let mut stack = vec![trait_def_id];
 
         set.insert(trait_def_id);

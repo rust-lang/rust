@@ -102,6 +102,22 @@ impl<T: Hash + Eq> StableSet<T> {
     pub fn contains(&self, value: &T) -> bool {
         self.base.contains(value)
     }
+
+    #[inline]
+    pub fn any<F>(&self, f: F) -> bool
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.base.iter().any(f)
+    }
+
+    #[inline]
+    pub fn all<F>(&self, f: F) -> bool
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.base.iter().all(f)
+    }
 }
 
 impl<T, HCX> HashStable<HCX> for StableSet<T>

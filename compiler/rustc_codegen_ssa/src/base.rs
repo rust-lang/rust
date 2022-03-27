@@ -910,17 +910,14 @@ pub fn provide(providers: &mut Providers) {
         };
 
         let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
-        for id in defids.sorted_vector() {
+        if defids.any(|x| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            match optimize {
-                attr::OptimizeAttr::None => continue,
-                attr::OptimizeAttr::Size => continue,
-                attr::OptimizeAttr::Speed => {
-                    return for_speed;
-                }
-            }
+            optimize == attr::OptimizeAttr::Speed
+        }) {
+            for_speed
+        } else {
+            tcx.sess.opts.optimize
         }
-        tcx.sess.opts.optimize
     };
 }
 
