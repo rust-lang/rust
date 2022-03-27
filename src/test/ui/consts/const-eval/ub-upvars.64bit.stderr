@@ -1,17 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-upvars.rs:6:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-upvars.rs:7:42
    |
-LL | / const BAD_UPVAR: &dyn FnOnce() = &{
-LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
-LL | |     let another_var = 13;
-LL | |     move || { let _ = bad_ref; let _ = another_var; }
-LL | | };
-   | |__^ type validation failed at .<deref>.<dyn-downcast>.<captured-var(bad_ref)>: encountered a null reference
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 16, align: 8) {
-               ╾───────alloc3────────╼ ╾───────alloc6────────╼ │ ╾──────╼╾──────╼
-           }
+LL |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null reference
 
 error: aborting due to previous error
 

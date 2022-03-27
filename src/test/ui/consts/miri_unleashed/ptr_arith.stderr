@@ -11,10 +11,10 @@ LL |     let x = &0 as *const _ as usize;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ "exposing pointers" needs an rfc before being allowed inside constants
 
 error[E0080]: could not evaluate static initializer
-  --> $DIR/ptr_arith.rs:23:14
+  --> $DIR/ptr_arith.rs:22:20
    |
-LL |     let _v = x + 0;
-   |              ^^^^^ unable to turn pointer into raw bytes
+LL |     let x: usize = std::mem::transmute(&0);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc9, but expected plain (non-pointer) bytes
 
 warning: skipping const checks
    |

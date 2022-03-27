@@ -63,11 +63,7 @@ const _: *const u8 =
 //~| out-of-bounds
 
 const _: usize = unsafe { std::mem::transmute::<*const usize, usize>(FOO) + 4 };
-//~^ ERROR any use of this value will cause an error
-//~| unable to turn pointer into raw bytes
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR evaluation of constant value failed
 
 const _: usize = unsafe { *std::mem::transmute::<&&usize, &usize>(&FOO) + 4 };
-//~^ ERROR any use of this value will cause an error
-//~| unable to turn pointer into raw bytes
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR evaluation of constant value failed

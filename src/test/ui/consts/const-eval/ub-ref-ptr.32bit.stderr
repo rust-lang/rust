@@ -1,134 +1,74 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:13:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:13:34
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned reference (required 2 byte alignment but found 1)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc3──╼                                     │ ╾──╼
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned reference (required 2 byte alignment but found 1)
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:17:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:17:42
    |
 LL | const UNALIGNED_BOX: Box<u16> = unsafe { mem::transmute(&[0u8; 4]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned box (required 2 byte alignment but found 1)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc7──╼                                     │ ╾──╼
-           }
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered an unaligned box (required 2 byte alignment but found 1)
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:21:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:21:29
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null reference
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
-           }
+   |                             ^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null reference
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:24:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:24:37
    |
 LL | const NULL_BOX: Box<u16> = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null box
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
-           }
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null box
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:31:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:31:38
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc15, but expected plain (non-pointer) bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc15─╼                                     │ ╾──╼
-           }
+   |                                      ^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc15, but expected plain (non-pointer) bytes
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:34:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:34:49
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc21─╼                                     │ ╾──╼
-           }
+   |                                                 ^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc19, but expected plain (non-pointer) bytes
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:37:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:37:87
    |
 LL | const REF_AS_USIZE_BOX_SLICE: Box<[usize]> = unsafe { mem::transmute::<&[usize], _>(&[mem::transmute(&0)]) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .<deref>: encountered a pointer, but expected plain (non-pointer) bytes
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc26─╼                                     │ ╾──╼
-           }
+   |                                                                                       ^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc23, but expected plain (non-pointer) bytes
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:40:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:40:44
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (address 0x539 is unallocated)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               39 05 00 00                                     │ 9...
-           }
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling reference (address 0x539 is unallocated)
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:43:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:43:40
    |
 LL | const USIZE_AS_BOX: Box<u8> = unsafe { mem::transmute(1337usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (address 0x539 is unallocated)
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               39 05 00 00                                     │ 9...
-           }
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a dangling box (address 0x539 is unallocated)
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:46:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:46:41
    |
 LL | const UNINIT_PTR: *const i32 = unsafe { MaybeUninit { uninit: () }.init };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized raw pointer
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               __ __ __ __                                     │ ░░░░
-           }
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized raw pointer
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:49:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:49:36
    |
 LL | const NULL_FN_PTR: fn() = unsafe { mem::transmute(0usize) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null function pointer
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               00 00 00 00                                     │ ....
-           }
+   |                                    ^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a null function pointer
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-ref-ptr.rs:51:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-ref-ptr.rs:51:38
    |
 LL | const UNINIT_FN_PTR: fn() = unsafe { MaybeUninit { uninit: () }.init };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a proper pointer or integer value
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 4, align: 4) {
-               __ __ __ __                                     │ ░░░░
-           }
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a proper pointer or integer value
 
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:53:1
@@ -145,11 +85,11 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:55:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc43, but expected a function pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered pointer to alloc41, but expected a function pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
-               ╾─alloc43─╼                                     │ ╾──╼
+               ╾─alloc41─╼                                     │ ╾──╼
            }
 
 error: aborting due to 14 previous errors

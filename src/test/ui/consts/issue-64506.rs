@@ -1,5 +1,3 @@
-// check-pass
-
 #[derive(Copy, Clone)]
 pub struct ChildStdin {
     inner: AnonPipe,
@@ -14,6 +12,7 @@ const FOO: () = {
         b: (),
     }
     let x = unsafe { Foo { b: () }.a };
+    //~^ ERROR evaluation of constant value failed
     let x = &x.inner;
 };
 

@@ -1,24 +1,40 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/alloc.rs:9:1
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/valid_align.rs:LL:COL
+   |
+LL |         unsafe { mem::transmute::<usize, ValidAlign>(align) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  type validation failed at .0.<enum-tag>: encountered 0x00000000, but expected a valid enum tag
+   |                  inside `mem::valid_align::ValidAlign::new_unchecked` at $SRC_DIR/core/src/mem/valid_align.rs:LL:COL
+   |
+  ::: $SRC_DIR/core/src/alloc/layout.rs:LL:COL
+   |
+LL |         Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
+   |                                        -------------------------------- inside `Layout::from_size_align_unchecked` at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
+   |
+  ::: $DIR/alloc.rs:9:46
    |
 LL | const LAYOUT_INVALID_ZERO: Layout = unsafe { Layout::from_size_align_unchecked(0x1000, 0x00) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .align.0.<enum-tag>: encountered 0x00000000, but expected a valid enum tag
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               00 10 00 00 00 00 00 00                         │ ........
-           }
+   |                                              ----------------------------------------------- inside `LAYOUT_INVALID_ZERO` at $DIR/alloc.rs:9:46
 
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/alloc.rs:13:1
+error[E0080]: evaluation of constant value failed
+  --> $SRC_DIR/core/src/mem/valid_align.rs:LL:COL
+   |
+LL |         unsafe { mem::transmute::<usize, ValidAlign>(align) }
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  |
+   |                  type validation failed at .0.<enum-tag>: encountered 0x00000003, but expected a valid enum tag
+   |                  inside `mem::valid_align::ValidAlign::new_unchecked` at $SRC_DIR/core/src/mem/valid_align.rs:LL:COL
+   |
+  ::: $SRC_DIR/core/src/alloc/layout.rs:LL:COL
+   |
+LL |         Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
+   |                                        -------------------------------- inside `Layout::from_size_align_unchecked` at $SRC_DIR/core/src/alloc/layout.rs:LL:COL
+   |
+  ::: $DIR/alloc.rs:12:47
    |
 LL | const LAYOUT_INVALID_THREE: Layout = unsafe { Layout::from_size_align_unchecked(9, 3) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed at .align.0.<enum-tag>: encountered 0x00000003, but expected a valid enum tag
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               09 00 00 00 03 00 00 00                         │ ........
-           }
+   |                                               --------------------------------------- inside `LAYOUT_INVALID_THREE` at $DIR/alloc.rs:12:47
 
 error: aborting due to 2 previous errors
 

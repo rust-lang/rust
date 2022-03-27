@@ -14,8 +14,8 @@ union SliceTransmute {
 }
 
 // bad slice: length too big to even exist anywhere
-const SLICE_WAY_TOO_LONG: &[u8] = unsafe { //~ ERROR: it is undefined behavior to use this value
-    SliceTransmute {
+const SLICE_WAY_TOO_LONG: &[u8] = unsafe {
+    SliceTransmute { //~ ERROR evaluation of constant value failed
         repr: SliceRepr {
             ptr: &42,
             len: usize::MAX,

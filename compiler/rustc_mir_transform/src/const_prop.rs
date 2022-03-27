@@ -184,6 +184,12 @@ impl ConstPropMachine<'_, '_> {
 
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+
+    #[inline(always)]
+    fn enforce_validity(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> bool {
+        false
+    }
+
     const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small (see `MAX_ALLOC_LIMIT`)
 
     type MemoryKind = !;

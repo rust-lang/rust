@@ -22,6 +22,6 @@ const fn helper2() -> Option<&'static mut i32> { unsafe {
     // This code never gets executed, because the static checks fail before that.
     Some(&mut *(&mut 42 as *mut i32))
 } }
-const B: Option<&mut i32> = helper2(); //~ ERROR encountered dangling pointer in final constant
+const B: Option<&mut i32> = helper2(); //~ ERROR evaluation of constant value failed
 
 fn main() {}

@@ -1,4 +1,4 @@
-error: encountered dangling pointer in final constant
+error[E0080]: evaluation of constant value failed
   --> $DIR/dangling-alloc-id-ice.rs:9:1
    |
 LL | / const FOO: &() = {
@@ -6,7 +6,8 @@ LL | |
 LL | |     let y = ();
 LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
 LL | | };
-   | |__^
+   | |__^ type validation failed: encountered a dangling reference (use-after-free)
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0080`.

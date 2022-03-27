@@ -18,12 +18,10 @@ trait Trait {}
 const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
 //~^ ERROR evaluation of constant value failed
-//~| invalid vtable: alignment `1000` is not a power of 2
 
 const INVALID_VTABLE_SIZE: &dyn Trait =
     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
 //~^ ERROR evaluation of constant value failed
-//~| invalid vtable: size is bigger than largest supported object
 
 #[repr(transparent)]
 struct W<T>(T);
@@ -33,12 +31,10 @@ fn drop_me(_: *mut usize) {}
 
 const INVALID_VTABLE_ALIGNMENT_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), 1usize, 1000usize))) };
-//~^^ ERROR it is undefined behavior to use this value
-//~| invalid vtable: alignment `1000` is not a power of 2
+//~^ ERROR evaluation of constant value failed
 
 const INVALID_VTABLE_SIZE_UB: W<&dyn Trait> =
     unsafe { std::mem::transmute((&92u8, &(drop_me as fn(*mut usize), usize::MAX, 1usize))) };
-//~^^ ERROR it is undefined behavior to use this value
-//~| invalid vtable: size is bigger than largest supported object
+//~^ ERROR evaluation of constant value failed
 
 fn main() {}

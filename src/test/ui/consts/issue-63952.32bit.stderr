@@ -1,19 +1,14 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/issue-63952.rs:17:1
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-63952.rs:18:5
    |
-LL | / const SLICE_WAY_TOO_LONG: &[u8] = unsafe {
-LL | |     SliceTransmute {
+LL | /     SliceTransmute {
 LL | |         repr: SliceRepr {
 LL | |             ptr: &42,
-...  |
+LL | |             len: usize::MAX,
+LL | |         },
+LL | |     }
 LL | |     .slice
-LL | | };
-   | |__^ type validation failed: encountered invalid reference metadata: slice is bigger than largest supported object
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 8, align: 4) {
-               ╾─alloc4──╼ ff ff ff ff                         │ ╾──╼....
-           }
+   | |__________^ type validation failed: encountered invalid reference metadata: slice is bigger than largest supported object
 
 error: aborting due to previous error
 

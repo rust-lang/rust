@@ -7,7 +7,7 @@ union Foo<'a> {
 }
 
 const FOO: &() = {
-//~^ ERROR encountered dangling pointer in final constant
+//~^ ERROR evaluation of constant value failed
     let y = ();
     unsafe { Foo { y: &y }.long_live_the_unit }
 };

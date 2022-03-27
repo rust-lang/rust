@@ -1,13 +1,8 @@
-error[E0080]: it is undefined behavior to use this value
-  --> $DIR/transmute-const.rs:4:1
+error[E0080]: could not evaluate static initializer
+  --> $DIR/transmute-const.rs:4:29
    |
 LL | static FOO: bool = unsafe { mem::transmute(3u8) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x03, but expected a boolean
-   |
-   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: 1, align: 1) {
-               03                                              │ .
-           }
+   |                             ^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0x03, but expected a boolean
 
 error: aborting due to previous error
 

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_discriminant.rs:31:32
+   |
+LL |         std::mem::discriminant(&*(&() as *const () as *const Void));
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a reference pointing to uninhabited type Void
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

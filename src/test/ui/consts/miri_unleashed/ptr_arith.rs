@@ -20,9 +20,8 @@ static PTR_INT_CAST: () = {
 
 static PTR_INT_TRANSMUTE: () = unsafe {
     let x: usize = std::mem::transmute(&0);
-    let _v = x + 0;
     //~^ ERROR could not evaluate static initializer
-    //~| unable to turn pointer into raw bytes
+    let _v = x + 0;
 };
 
 fn main() {}

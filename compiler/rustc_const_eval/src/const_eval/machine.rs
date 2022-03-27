@@ -2,6 +2,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::borrow::Borrow;
+use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
@@ -9,7 +10,9 @@ use rustc_data_structures::fx::FxHashMap;
 use std::fmt;
 
 use rustc_ast::Mutability;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::Node;
 use rustc_middle::mir::AssertMessage;
 use rustc_session::Limit;
 use rustc_span::symbol::{sym, Symbol};
@@ -18,7 +21,7 @@ use rustc_target::spec::abi::Abi;
 
 use crate::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, Frame, ImmTy, InterpCx, InterpResult,
-    OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
+    Machine, OpTy, PlaceTy, Pointer, Scalar, StackPopUnwind,
 };
 
 use super::error::*;
@@ -101,6 +104,8 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     /// * Pointers to allocations inside of statics can never leak outside, to a non-static global.
     /// This boolean here controls the second part.
     pub(super) can_access_statics: bool,
+
+    unsafe_detector: RefCell<UnsafeDetector>,
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
@@ -109,6 +114,7 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
             steps_remaining: const_eval_limit.0,
             stack: Vec::new(),
             can_access_statics,
+            unsafe_detector: RefCell::new(UnsafeDetector::default()),
         }
     }
 }
@@ -229,8 +235,101 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
     }
 }
 
+struct FindUnsafeVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    found_unsafe: bool,
+}
+
+impl<'tcx> Visitor<'tcx> for FindUnsafeVisitor<'tcx> {
+    type NestedFilter = rustc_middle::hir::nested_filter::All;
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
+    }
+
+    fn visit_block(&mut self, block: &'tcx rustc_hir::Block<'tcx>) {
+        rustc_hir::intravisit::walk_block(self, block);
+        if let rustc_hir::BlockCheckMode::UnsafeBlock(_) = block.rules {
+            self.found_unsafe = true;
+        }
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn may_contain_unsafe<'mir, 'tcx>(
+    ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+    def_id: DefId,
+) -> bool {
+    let hir = ecx.tcx.hir();
+    if let Some(Node::Item(item)) = hir.get_if_local(def_id) {
+        let mut visitor = FindUnsafeVisitor { tcx: *ecx.tcx, found_unsafe: false };
+        visitor.visit_item(&item);
+        visitor.found_unsafe
+    } else {
+        true
+    }
+}
+
+#[derive(Default)]
+struct UnsafeDetector {
+    loaded_mir_with_unsafe: Option<bool>,
+    known_safe_defs: FxHashMap<LocalDefId, bool>,
+}
+
+impl UnsafeDetector {
+    #[cold]
+    #[inline(never)]
+    fn analyze_def<'mir, 'tcx>(
+        &mut self,
+        ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
+        def_id: DefId,
+    ) {
+        if let Some(local_id) = def_id.as_local() {
+            let found_unsafe = *self
+                .known_safe_defs
+                .entry(local_id)
+                .or_insert_with(|| may_contain_unsafe(ecx, def_id));
+            self.loaded_mir_with_unsafe = Some(found_unsafe);
+        } else {
+            self.loaded_mir_with_unsafe = Some(true);
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn analyze_stack<'mir, 'tcx>(ecx: &InterpCx<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>) {
+        let mut this = ecx.machine.unsafe_detector.borrow_mut();
+        let stack = CompileTimeInterpreter::stack(ecx);
+        if stack.len() == 1 {
+            let frame = stack.last().unwrap();
+            this.analyze_def(ecx, frame.instance.def_id());
+        } else {
+            this.loaded_mir_with_unsafe = Some(true);
+        }
+    }
+
+    #[inline]
+    fn is_init(&self) -> bool {
+        self.loaded_mir_with_unsafe.is_some()
+    }
+
+    #[inline]
+    fn mir_needs_validation(&self) -> bool {
+        self.loaded_mir_with_unsafe == Some(true)
+    }
+}
+
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     compile_time_machine!(<'mir, 'tcx>);
+
+    fn enforce_validity(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> bool {
+        let unsafe_detector = ecx.machine.unsafe_detector.get_mut();
+        if !unsafe_detector.is_init() {
+            UnsafeDetector::analyze_stack(ecx);
+        }
+        ecx.machine.unsafe_detector.get_mut().mir_needs_validation()
+    }
 
     type MemoryKind = MemoryKind;
 
@@ -240,10 +339,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &InterpCx<'mir, 'tcx, Self>,
         instance: ty::InstanceDef<'tcx>,
     ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
-        match instance {
+        ecx.machine.unsafe_detector.borrow_mut().analyze_def(ecx, instance.def_id());
+
+        let mir = match instance {
             ty::InstanceDef::Item(def) => {
                 if ecx.tcx.is_ctfe_mir_available(def.did) {
-                    Ok(ecx.tcx.mir_for_ctfe_opt_const_arg(def))
+                    ecx.tcx.mir_for_ctfe_opt_const_arg(def)
                 } else if ecx.tcx.def_kind(def.did) == DefKind::AssocConst {
                     let guar = ecx.tcx.sess.delay_span_bug(
                         rustc_span::DUMMY_SP,
@@ -252,12 +353,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                     throw_inval!(AlreadyReported(guar));
                 } else {
                     let path = ecx.tcx.def_path_str(def.did);
-                    Err(ConstEvalErrKind::NeedsRfc(format!("calling extern function `{}`", path))
-                        .into())
+                    return Err(ConstEvalErrKind::NeedsRfc(format!(
+                        "calling extern function `{}`",
+                        path
+                    ))
+                    .into());
                 }
             }
-            _ => Ok(ecx.tcx.instance_mir(instance)),
-        }
+            _ => ecx.tcx.instance_mir(instance),
+        };
+        Ok(mir)
     }
 
     fn find_mir_or_eval_fn(
