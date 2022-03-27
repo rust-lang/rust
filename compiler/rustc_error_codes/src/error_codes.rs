@@ -394,6 +394,7 @@ E0663: include_str!("./error_codes/E0663.md"),
 E0664: include_str!("./error_codes/E0664.md"),
 E0665: include_str!("./error_codes/E0665.md"),
 E0666: include_str!("./error_codes/E0666.md"),
+E0667: include_str!("./error_codes/E0667.md"),
 E0668: include_str!("./error_codes/E0668.md"),
 E0669: include_str!("./error_codes/E0669.md"),
 E0670: include_str!("./error_codes/E0670.md"),
@@ -633,7 +634,6 @@ E0787: include_str!("./error_codes/E0787.md"),
            // attribute
     E0640, // infer outlives requirements
 //  E0645, // trait aliases not finished
-    E0667, // `impl Trait` in projections
 //  E0694, // an unknown tool name found in scoped attributes
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
