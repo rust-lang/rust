@@ -142,17 +142,17 @@ impl BorrowedHandle<'_> {
 }
 
 impl TryFrom<HandleOrNull> for OwnedHandle {
-    type Error = ();
+    type Error = NotHandle;
 
     #[inline]
-    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, ()> {
+    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NotHandle> {
         let owned_handle = handle_or_null.0;
         if owned_handle.handle.is_null() {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(())
+            Err(NotHandle(()))
         } else {
             Ok(owned_handle)
         }
@@ -200,20 +200,34 @@ impl OwnedHandle {
 }
 
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
-    type Error = ();
+    type Error = NotHandle;
 
     #[inline]
-    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, ()> {
+    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, NotHandle> {
         let owned_handle = handle_or_invalid.0;
         if owned_handle.handle == c::INVALID_HANDLE_VALUE {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(())
+            Err(NotHandle(()))
         } else {
             Ok(owned_handle)
         }
+    }
+}
+
+/// This is the error type used by [`HandleOrInvalid`] and
+/// [`HandleOrNull`] when attempting to convert into a handle,
+/// to indicate that the value is not a handle.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct NotHandle(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for NotHandle {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "the return value of a Windows API call indicated an error".fmt(fmt)
     }
 }
 
