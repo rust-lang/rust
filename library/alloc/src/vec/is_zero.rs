@@ -2,7 +2,7 @@ use crate::boxed::Box;
 
 #[rustc_specialization_trait]
 pub(super) unsafe trait IsZero {
-    /// Whether this value is zero
+    /// Whether this value's representation is all zeros
     fn is_zero(&self) -> bool;
 }
 
@@ -46,6 +46,13 @@ unsafe impl<T> IsZero for *mut T {
     #[inline]
     fn is_zero(&self) -> bool {
         (*self).is_null()
+    }
+}
+
+unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.iter().all(IsZero::is_zero)
     }
 }
 
