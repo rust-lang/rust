@@ -744,12 +744,10 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&String>,
 ) -> test::TestName {
-    // Convert a complete path to something like
-    //
-    //    ui/foo/bar/baz.rs
-    let path = PathBuf::from(config.src_base.file_name().unwrap())
-        .join(&testpaths.relative_dir)
-        .join(&testpaths.file.file_name().unwrap());
+    // Print the name of the file, relative to the repository root.
+    // `src_base` looks like `/path/to/rust/src/test/ui`
+    let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+    let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),
