@@ -37,6 +37,7 @@ pub fn target() -> Target {
             pre_link_args,
             exe_suffix: ".elf".to_string(),
             no_default_libraries: false,
+            has_thread_local: true,
             ..Default::default()
         },
     }

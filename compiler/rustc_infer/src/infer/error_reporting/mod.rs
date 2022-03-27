@@ -333,6 +333,9 @@ pub fn same_type_modulo_infer<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         )
         | (&ty::Infer(ty::InferTy::TyVar(_)), _)
         | (_, &ty::Infer(ty::InferTy::TyVar(_))) => true,
+        (&ty::Ref(reg_a, ty_a, mut_a), &ty::Ref(reg_b, ty_b, mut_b)) => {
+            reg_a == reg_b && mut_a == mut_b && same_type_modulo_infer(*ty_a, *ty_b)
+        }
         _ => a == b,
     }
 }
@@ -602,7 +605,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match *cause.code() {
             ObligationCauseCode::Pattern { origin_expr: true, span: Some(span), root_ty } => {
                 let ty = self.resolve_vars_if_possible(root_ty);
-                if ty.is_suggestable() {
+                if !matches!(ty.kind(), ty::Infer(ty::InferTy::TyVar(_) | ty::InferTy::FreshTy(_)))
+                {
                     // don't show type `_`
                     err.span_label(span, format!("this expression has type `{}`", ty));
                 }

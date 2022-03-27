@@ -10,7 +10,7 @@ use rustc_ast::{self as ast, AstLike, Attribute, Item, NodeId, PatKind};
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::BuiltinLintDiagnostics;
 use rustc_parse::{self, nt_to_tokenstream, parser, MACRO_ARGUMENTS};
@@ -20,7 +20,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{MultiSpan, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::default::Default;
@@ -1127,41 +1127,6 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
-    }
-
-    /// Resolves a `path` mentioned inside Rust code, returning an absolute path.
-    ///
-    /// This unifies the logic used for resolving `include_X!`.
-    ///
-    /// FIXME: move this to `rustc_builtin_macros` and make it private.
-    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PResult<'a, PathBuf> {
-        let path = path.into();
-
-        // Relative paths are resolved relative to the file in which they are found
-        // after macro expansion (that is, they are unhygienic).
-        if !path.is_absolute() {
-            let callsite = span.source_callsite();
-            let mut result = match self.source_map().span_to_filename(callsite) {
-                FileName::Real(name) => name
-                    .into_local_path()
-                    .expect("attempting to resolve a file path in an external file"),
-                FileName::DocTest(path, _) => path,
-                other => {
-                    return Err(self.struct_span_err(
-                        span,
-                        &format!(
-                            "cannot resolve relative path in non-file source `{}`",
-                            self.source_map().filename_for_diagnostics(&other)
-                        ),
-                    ));
-                }
-            };
-            result.pop();
-            result.push(path);
-            Ok(result)
-        } else {
-            Ok(path)
-        }
     }
 }
 

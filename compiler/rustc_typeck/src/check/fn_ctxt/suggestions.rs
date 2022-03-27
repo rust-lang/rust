@@ -521,6 +521,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         can_suggest: bool,
         fn_id: hir::HirId,
     ) -> bool {
+        let found =
+            self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(found));
         // Only suggest changing the return type for methods that
         // haven't set a return type at all (and aren't `fn main()` or an impl).
         match (&fn_decl.output, found.is_suggestable(), can_suggest, expected.is_unit()) {
@@ -528,13 +530,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     span,
                     "try adding a return type",
-                    format!("-> {} ", self.resolve_vars_with_obligations(found)),
+                    format!("-> {} ", found),
                     Applicability::MachineApplicable,
                 );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), false, true, true) => {
-                err.span_label(span, "possibly return type missing here?");
+                // FIXME: if `found` could be `impl Iterator` or `impl Fn*`, we should suggest
+                // that.
+                err.span_suggestion(
+                    span,
+                    "a return type might be missing here",
+                    "-> _ ".to_string(),
+                    Applicability::HasPlaceholders,
+                );
                 true
             }
             (&hir::FnRetTy::DefaultReturn(span), _, false, true) => {
