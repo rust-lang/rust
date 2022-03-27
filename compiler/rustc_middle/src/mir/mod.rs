@@ -1653,16 +1653,15 @@ pub enum StatementKind<'tcx> {
     /// statements are not required. If the entire MIR body contains no `StorageLive`/`StorageDead`
     /// statements for a particular local, the local is always considered live.
     ///
-    /// More precisely, the MIR validator currently does a `MaybeLiveLocals` analysis to check
-    /// validity of each use of a local. I believe this is equivalent to requiring for every use of
-    /// a local, there exist at least one path from the root to that use that contains a
+    /// More precisely, the MIR validator currently does a `MaybeStorageLiveLocals` analysis to
+    /// check validity of each use of a local. I believe this is equivalent to requiring for every
+    /// use of a local, there exist at least one path from the root to that use that contains a
     /// `StorageLive` more recently than a `StorageDead`.
     ///
-    /// **Needs clarification**: Is it permitted to `StorageLive` a local for which we previously
-    /// executed `StorageDead`? How about two `StorageLive`s without an intervening `StorageDead`?
-    /// Two `StorageDead`s without an intervening `StorageLive`? LLVM says yes, poison, yes. If the
-    /// answer to any of these is "no," is breaking that rule UB or is it an error to have a path in
-    /// the CFG that might do this?
+    /// **Needs clarification**: Is it permitted to have two `StorageLive`s without an intervening
+    /// `StorageDead`? Two `StorageDead`s without an intervening `StorageLive`? LLVM says poison,
+    /// yes. If the answer to any of these is "no," is breaking that rule UB or is it an error to
+    /// have a path in the CFG that might do this?
     StorageLive(Local),
 
     /// See `StorageLive` above.
@@ -1675,7 +1674,7 @@ pub enum StatementKind<'tcx> {
     /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
     /// more details.
     ///
-    /// For code that is not specific to stacked borrows, you should consider statements to read
+    /// For code that is not specific to stacked borrows, you should consider retags to read
     /// and modify the place in an opaque way.
     Retag(RetagKind, Box<Place<'tcx>>),
 
@@ -1704,7 +1703,7 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
-    /// Denotes a call to the intrinsic function `copy_overlapping`.
+    /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
     ///
     /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
     /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
@@ -1919,7 +1918,7 @@ pub struct CopyNonOverlapping<'tcx> {
 /// **Needs clarification**: What about metadata resulting from dereferencing wide pointers (and
 /// possibly from accessing unsized locals - not sure how those work)? That probably deserves to go
 /// on the list above and be discussed too. It is also probably necessary for making the indexing
-/// stuff lass hand-wavey.
+/// stuff less hand-wavey.
 ///
 /// **Needs clarification**: When it says "part of memory" what does that mean precisely, and how
 /// does it interact with the metadata?
@@ -2334,13 +2333,13 @@ pub struct SourceScopeLocalData {
 ///
 /// The most common way to create values is via a place to value conversion. A place to value
 /// conversion is an operation which reads the memory of the place and converts it to a value. This
-/// is a fundamentally *typed* operation. Different types will do different things. These are some
-/// possible examples of what Rust may - but will not necessarily - decide to do on place to value
-/// conversions:
+/// is a fundamentally *typed* operation. The nature of the value produced depends on the type of
+/// the conversion. Furthermore, there may be other effects: if the type has a validity constraint
+/// the place to value conversion might be UB if the validity constraint is not met.
 ///
-///  1. Types with validity constraints cause UB if the validity constraint is not met
-///  2. References/pointers may have their provenance change or cause other provenance related
-///     side-effects.
+/// **Needs clarification:** Ralf proposes that place to value conversions not have side-effects.
+/// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
+/// something we can even decide without knowing more about Rust's memory model?
 ///
 /// A place to value conversion on a place that has its variant index set is not well-formed.
 /// However, note that this rule only applies to places appearing in MIR bodies. Many functions,
@@ -2472,15 +2471,17 @@ impl<'tcx> Operand<'tcx> {
 ///
 /// Not all of these are allowed at every [`MirPhase`] - when this is the case, it's stated below.
 ///
-/// Computing any rvalue begins by evaluating the places and operands in the rvalue in the order in
-/// which they appear. These are then used to produce a "value" - the same kind of value that an
-/// [`Operand`] is.
+/// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
+/// clarification**: Which order?). These are then used to produce a "value" - the same kind of
+/// value that an [`Operand`] is.
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged
     Use(Operand<'tcx>),
 
-    /// Creates an array where each element is the value of the operand. This currently does not
-    /// drop the value even if the number of repetitions is zero, see [#74836].
+    /// Creates an array where each element is the value of the operand.
+    ///
+    /// This is the cause of a bug in the case where the repetition count is zero because the value
+    /// is not dropped, see [#74836].
     ///
     /// Corresponds to source code like `[x; 32]`.
     ///
@@ -2534,12 +2535,12 @@ pub enum Rvalue<'tcx> {
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
-    ///   paramter may be a `usize` as well.
+    ///   parameter may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
     ///   raw pointers, or function pointers and return a `bool`.
     /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
     ///   same type and return a value of the same type as their LHS. For all other operations, the
-    ///   types of the operands must match.
+    ///   types of the operands must match. Like in Rust, the RHS is truncated as needed.
     /// * The `Bit*` operations accept signed integers, unsigned integers, or bools and return a
     ///   value of that type.
     /// * The remaining operations accept signed integers, unsigned integers, or floats of any
@@ -2548,21 +2549,19 @@ pub enum Rvalue<'tcx> {
 
     /// Same as `BinaryOp`, but yields `(T, bool)` instead of `T`. In addition to performing the
     /// same computation as the matching `BinaryOp`, checks if the infinite precison result would be
-    /// unequal to the actual result and sets the `bool` if this is the case. `BinOp::Offset` is not
-    /// allowed here.
+    /// unequal to the actual result and sets the `bool` if this is the case.
     ///
-    /// **FIXME**: What about division/modulo? Are they allowed here at all? Are zero divisors still
-    /// UB? Also, which other combinations of types are disallowed?
+    /// This only supports addition, subtraction, multiplication, and shift operations.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
-    /// Yields the size or alignment of the type as a `usize`.
+    /// Computes a value as described by the operation.
     NullaryOp(NullOp, Ty<'tcx>),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
-    /// Also does two's-complement arithmetic. Negation requires a signed integer or a float; binary
-    /// not requires a signed integer, unsigned integer, or bool. Both operation kinds return a
-    /// value with the same type as their operand.
+    /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
+    /// bitwise not requires a signed integer, unsigned integer, or bool. Both operation kinds
+    /// return a value with the same type as their operand.
     UnaryOp(UnOp, Operand<'tcx>),
 
     /// Computes the discriminant of the place, returning it as an integer of type

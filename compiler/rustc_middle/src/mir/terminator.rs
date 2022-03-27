@@ -234,10 +234,12 @@ pub enum TerminatorKind<'tcx> {
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.
-    /// The return place type must exactly match the return type. The type of the `func` operand
-    /// must be callable, meaning either a function pointer, a function type, or a closure type.
+    /// The return place type must match the return type. The type of the `func` operand must be
+    /// callable, meaning either a function pointer, a function type, or a closure type.
     ///
-    /// **Needs clarification**: The exact semantics of this, see [#71117].
+    /// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
+    /// operands not aliasing the return place. It is unclear how this is justified in MIR, see
+    /// [#71117].
     ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {

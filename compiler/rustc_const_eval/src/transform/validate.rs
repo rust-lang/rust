@@ -697,7 +697,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             TerminatorKind::Resume | TerminatorKind::Abort => {
                 let bb = location.block;
                 if !self.body.basic_blocks()[bb].is_cleanup {
-                    self.fail(location, "Cannot `Resume` from non-cleanup basic block")
+                    self.fail(location, "Cannot `Resume` or `Abort` from non-cleanup basic block")
                 }
             }
             TerminatorKind::Return => {
