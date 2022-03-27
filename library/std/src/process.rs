@@ -1725,6 +1725,26 @@ impl ExitCode {
     /// return the same codes (but will also `eprintln!` the error).
     #[stable(feature = "process_exitcode", since = "1.60.0")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
+
+    /// Exit the current process with the given `ExitCode`.
+    ///
+    /// Note that this has the same caveats as [`process::exit()`][exit], namely that this function
+    /// terminates the process immediately, so no destructors on the current stack or any other
+    /// thread's stack will be run. If a clean shutdown is needed, it is recommended to simply
+    /// return this ExitCode from the `main` function, as demonstrated in the [type
+    /// documentation](#examples).
+    ///
+    /// # Differences from `process::exit()`
+    ///
+    /// `process::exit()` accepts any `i32` value as the exit code for the process; however, there
+    /// are platforms that only use a subset of that value (see [`process::exit` platform-specific
+    /// behavior][exit#platform-specific-behavior]). `ExitCode` exists because of this; only
+    /// `ExitCode`s that are valid on all platforms can be created, so those problems don't exist
+    /// with this method.
+    #[unstable(feature = "exitcode_exit_method", issue = "none")]
+    pub fn exit_process(self) -> ! {
+        exit(self.to_i32())
+    }
 }
 
 impl ExitCode {
