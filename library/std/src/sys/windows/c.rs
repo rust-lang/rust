@@ -316,14 +316,20 @@ impl Default for OBJECT_ATTRIBUTES {
     }
 }
 #[repr(C)]
-pub struct IO_STATUS_BLOCK {
-    pub Pointer: *mut c_void,
-    pub Information: usize,
+union IO_STATUS_BLOCK_union {
+    Status: NTSTATUS,
+    Pointer: *mut c_void,
 }
-impl Default for IO_STATUS_BLOCK {
+impl Default for IO_STATUS_BLOCK_union {
     fn default() -> Self {
-        Self { Pointer: ptr::null_mut(), Information: 0 }
+        Self { Pointer: ptr::null_mut() }
     }
+}
+#[repr(C)]
+#[derive(Default)]
+pub struct IO_STATUS_BLOCK {
+    u: IO_STATUS_BLOCK_union,
+    pub Information: usize,
 }
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
