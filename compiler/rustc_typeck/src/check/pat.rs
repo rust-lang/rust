@@ -10,7 +10,6 @@ use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
 use rustc_infer::infer;
-use rustc_infer::infer::error_reporting::same_type_modulo_infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeFoldable};
@@ -1518,7 +1517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else if inexistent_fields.len() == 1 {
                     match pat_field.pat.kind {
                         PatKind::Lit(expr)
-                            if !same_type_modulo_infer(
+                            if !self.can_coerce(
                                 self.typeck_results.borrow().expr_ty(expr),
                                 self.field_ty(
                                     unmentioned_fields[0].1.span,
