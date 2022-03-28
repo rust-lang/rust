@@ -1,9 +1,9 @@
 // run-rustfix
-#![warn(clippy::unit_like_struct_brackets)]
+#![warn(clippy::empty_structs_with_brackets)]
 #![allow(dead_code)]
 
-pub struct MyEmptyStruct {} // should trigger lint
-struct MyEmptyTupleStruct(); // should trigger lint
+pub struct MyEmptyStruct; // should trigger lint
+struct MyEmptyTupleStruct; // should trigger lint
 
 // should not trigger lint
 struct MyCfgStruct {

@@ -68,7 +68,7 @@ impl FnOnce<(&str,)> for GreetStruct1 {
     }
 }
 
-#[allow(clippy::unit_like_struct_brackets)]
+#[allow(clippy::empty_structs_with_brackets)]
 struct GreetStruct2();
 
 impl FnOnce<(&str,)> for GreetStruct2 {

@@ -209,6 +209,7 @@ mod drop_forget_ref;
 mod duration_subsec;
 mod else_if_without_else;
 mod empty_enum;
+mod empty_structs_with_brackets;
 mod entry;
 mod enum_clike;
 mod enum_variants;
@@ -380,7 +381,6 @@ mod undropped_manually_drops;
 mod unicode;
 mod uninit_vec;
 mod unit_hash;
-mod unit_like_struct_brackets;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
@@ -870,7 +870,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
         })
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
-    store.register_early_pass(|| Box::new(unit_like_struct_brackets::UnitLikeStructBrackets));
+    store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

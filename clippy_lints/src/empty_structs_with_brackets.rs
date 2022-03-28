@@ -22,13 +22,13 @@ declare_clippy_lint! {
     /// struct Cookie;
     /// ```
     #[clippy::version = "1.62.0"]
-    pub UNIT_LIKE_STRUCT_BRACKETS,
+    pub EMPTY_STRUCTS_WITH_BRACKETS,
     style,
     "finds struct declarations with empty brackets"
 }
-declare_lint_pass!(UnitLikeStructBrackets => [UNIT_LIKE_STRUCT_BRACKETS]);
+declare_lint_pass!(EmptyStructsWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS]);
 
-impl EarlyLintPass for UnitLikeStructBrackets {
+impl EarlyLintPass for EmptyStructsWithBrackets {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
@@ -37,7 +37,7 @@ impl EarlyLintPass for UnitLikeStructBrackets {
             && has_no_fields(cx, var_data, span_after_ident) {
             span_lint_and_then(
                 cx,
-                UNIT_LIKE_STRUCT_BRACKETS,
+                EMPTY_STRUCTS_WITH_BRACKETS,
                 span_after_ident,
                 "found empty brackets on struct declaration",
                 |diagnostic| {
