@@ -1562,6 +1562,9 @@ mod remove_dir_impl {
         }
 
         pub unsafe fn fdopendir(fd: c_int) -> *mut DIR {
+            #[cfg(all(target_os = "macos", target_arch = "x86"))]
+            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64$UNIX2003");
+            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
             weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
             fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
                 crate::sys::unix::os::set_errno(libc::ENOSYS);
