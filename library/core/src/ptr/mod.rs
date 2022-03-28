@@ -103,17 +103,17 @@
 //! they must have provenance.
 //!
 //! When an allocation is created, that allocation has a unique Original Pointer. For alloc
-//! APIs this is literally the pointer the call returns, and for variables declarations this
-//! is the name of the variable. This is mildly overloading the term "pointer" for the sake
-//! of brevity/exposition.
+//! APIs this is literally the pointer the call returns, and for local variables and statics,
+//! this is the name of the variable/static. This is mildly overloading the term "pointer"
+//! for the sake of brevity/exposition.
 //!
 //! The Original Pointer for an allocation is guaranteed to have unique access to the entire
 //! allocation and *only* that allocation. In this sense, an allocation can be thought of
 //! as a "sandbox" that cannot be broken into or out of. *Provenance* is the permission
 //! to access an allocation's sandbox and has both a *spatial* and *temporal* component:
 //!
-//! * Spatial: A range of bytes in the allocation that the pointer is allowed to access.
-//! * Temporal: Some kind of globally unique identifier tied to the allocation itself.
+//! * Spatial: A range of bytes that the pointer is allowed to access.
+//! * Temporal: The allocation that access to these bytes is tied to.
 //!
 //! Spatial provenance makes sure you don't go beyond your sandbox, while temporal provenance
 //! makes sure that you can't "get lucky" after your permission to access some memory
@@ -139,7 +139,8 @@
 //! formal [Stacked Borrows][] research project, which is what tools like [miri][] are based on.
 //! In particular, Stacked Borrows is necessary to properly describe what borrows are allowed
 //! to do and when they become invalidated. This necessarily involves much more complex
-//! *temporal* reasoning than simply identifying allocations.
+//! *temporal* reasoning than simply identifying allocations. Adjusting APIs and code
+//! for the strict provenance experiment will also greatly help Stacked Borrows.
 //!
 //!
 //! ## Pointer Vs Addresses
@@ -152,7 +153,13 @@
 //! to very complex and unreliable heuristics. But of course, converting between pointers and
 //! integers is very useful, so what can we do?
 //!
-//! Strict Provenance attempts to square this circle by decoupling Rust's traditional conflation
+//! Also did you know WASM is actually a "Harvard Architecture"? As in function pointers are
+//! handled completely differently from data pointers? And we kind of just shipped Rust on WASM
+//! without really addressing the fact that we let you freely convert between function pointers
+//! and data pointers, because it mostly Just Works? Let's just put that on the "pointer casts
+//! are dubious" pile.
+//!
+//! Strict Provenance attempts to square these circles by decoupling Rust's traditional conflation
 //! of pointers and `usize` (and `isize`), and defining a pointer to semantically contain the
 //! following information:
 //!
@@ -246,14 +253,15 @@
 //! Situations where a valid pointer *must* be created from just an address, such as baremetal code
 //! accessing a memory-mapped interface at a fixed address, are an open question on how to support.
 //! These situations *will* still be allowed, but we might require some kind of "I know what I'm
-//! doing" annotation to explain the situation to the compiler. Because those situations require
-//! `volatile` accesses anyway, it should be possible to carve out exceptions for them.
+//! doing" annotation to explain the situation to the compiler. It's also possible they need no
+//! special attention at all, because they're generally accessing memory outside the scope of
+//! "the abstract machine", or already using "I know what I'm doing" annotations like "volatile".
 //!
 //! Under [Strict Provenance] is is Undefined Behaviour to:
 //!
 //! * Access memory through a pointer that does not have provenance over that memory.
 //!
-//! * [`offset`] a pointer to an address it doesn't have provenance over.
+//! * [`offset`] a pointer to or from an address it doesn't have provenance over.
 //!   This means it's always UB to offset a pointer derived from something deallocated,
 //!   even if the offset is 0. Note that a pointer "one past the end" of its provenance
 //!   is not actually outside its provenance, it just has 0 bytes it can load/store.
@@ -295,7 +303,7 @@
 //!
 //! * Perform pointer tagging tricks. This falls out of [`wrapping_offset`] but is worth
 //!   mentioning in more detail because of the limitations of [CHERI][]. Low-bit tagging
-//!   is very robust, and often doesn't even go out of bounds because types have a
+//!   is very robust, and often doesn't even go out of bounds because types ensure
 //!   size >= align (and over-aligning actually gives CHERI more flexibility). Anything
 //!   more complex than this rapidly enters "extremely platform-specific" territory as
 //!   certain things may or may not be allowed based on specific supported operations.
