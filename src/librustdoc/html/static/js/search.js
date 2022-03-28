@@ -440,6 +440,9 @@ window.initSearch = function(rawSearchIndex) {
                 // Get returned elements.
                 getItemsBefore(query, parserState, query.returned, "");
                 // Nothing can come afterward!
+                if (query.returned.length === 0) {
+                    throw new Error("Expected at least one item after `->`");
+                }
                 break;
             } else {
                 parserState.pos += 1;

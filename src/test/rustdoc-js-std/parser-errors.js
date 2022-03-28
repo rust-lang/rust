@@ -21,6 +21,7 @@ const QUERY = [
     "a-bb",
     "a>bb",
     "ab'",
+    "a->",
 ];
 
 const PARSED = [
@@ -221,5 +222,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "ab'",
         error: "Unexpected `'`",
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: "a->",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "a->",
+        error: "Expected at least one item after `->`",
     },
 ];
