@@ -114,10 +114,12 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle();
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle()
+            .expect("failed to load fallback fluent bundle");
         Box::new(EmitterWriter::stderr(
             color_cfg,
             Some(source_map.clone()),
+            None,
             fallback_bundle,
             false,
             false,
