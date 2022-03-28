@@ -81,38 +81,34 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     }
 
     let mut module = extract_target(&node, ctx.selection_trimmed())?;
-    if module.body_items.len() == 0 {
+    if module.body_items.is_empty() {
         return None;
     }
 
     let old_item_indent = module.body_items[0].indent_level();
-
-    //This takes place in three steps:
-    //
-    //- Firstly, we will update the references(usages) e.g. converting a
-    //  function call bar() to modname::bar(), and similarly for other items
-    //
-    //- Secondly, changing the visibility of each item inside the newly selected module
-    //  i.e. making a fn a() {} to pub(crate) fn a() {}
-    //
-    //- Thirdly, resolving all the imports this includes removing paths from imports
-    //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
-    //  new import statemnts
-
-    //We are getting item usages and record_fields together, record_fields
-    //for change_visibility and usages for first point mentioned above in the process
-    let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
-
-    let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
-    if module.body_items.len() == 0 {
-        return None;
-    }
 
     acc.add(
         AssistId("extract_module", AssistKind::RefactorExtract),
         "Extract Module",
         module.text_range,
         |builder| {
+            //This takes place in three steps:
+            //
+            //- Firstly, we will update the references(usages) e.g. converting a
+            //  function call bar() to modname::bar(), and similarly for other items
+            //
+            //- Secondly, changing the visibility of each item inside the newly selected module
+            //  i.e. making a fn a() {} to pub(crate) fn a() {}
+            //
+            //- Thirdly, resolving all the imports this includes removing paths from imports
+            //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
+            //  new import statemnts
+
+            //We are getting item usages and record_fields together, record_fields
+            //for change_visibility and usages for first point mentioned above in the process
+            let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
+
+            let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
             module.change_visibility(record_fields);
 
             let mut body_items: Vec<String> = Vec::new();
@@ -221,19 +217,13 @@ fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Modul
 
     let mut body_items: Vec<ast::Item> = node
         .children()
-        .filter_map(|child| {
-            if selection_range.contains_range(child.text_range()) {
-                let child_kind = child.kind();
-                if let Some(item) = ast::Item::cast(child) {
-                    if ast::Use::can_cast(child_kind) {
-                        use_items.push(item);
-                    } else {
-                        return Some(item);
-                    }
-                }
-                return None;
+        .filter(|child| selection_range.contains_range(child.text_range()))
+        .filter_map(|child| match ast::Item::cast(child) {
+            Some(it @ ast::Item::Use(_)) => {
+                use_items.push(it);
+                None
             }
-            None
+            item => item,
         })
         .collect();
 
@@ -368,9 +358,7 @@ impl Module {
         source_file: &SourceFile,
         FileReference { range, name, .. }: FileReference,
     ) -> Option<(TextRange, String)> {
-        let path: Option<ast::Path> = find_node_at_range(source_file.syntax(), range);
-
-        let path = path?;
+        let path: ast::Path = find_node_at_range(source_file.syntax(), range)?;
 
         for desc in path.syntax().descendants() {
             if desc.to_string() == name.syntax().to_string()
@@ -609,9 +597,8 @@ impl Module {
 
             let use_ =
                 make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
-            if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-                self.use_items.insert(0, item);
-            }
+            let item = ast::Item::from(use_);
+            self.use_items.insert(0, item);
         }
 
         import_path_to_be_removed
@@ -825,7 +812,6 @@ fn get_replacements_for_visibilty_change(
     let mut impls = Vec::new();
 
     items.into_iter().for_each(|item| {
-        let item = item;
         if !is_clone_for_updated {
             *item = item.clone_for_update();
         }
