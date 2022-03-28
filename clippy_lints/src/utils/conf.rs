@@ -123,7 +123,7 @@ macro_rules! define_Conf {
 
         #[cfg(feature = "internal")]
         pub mod metadata {
-            use $crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
+            use crate::utils::internal_lints::metadata_collector::ClippyConfiguration;
 
             macro_rules! wrap_option {
                 () => (None);
