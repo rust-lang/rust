@@ -25,8 +25,10 @@ use crate::sys::os as os_imp;
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `getcwd` function on Unix
+/// This function [currently] corresponds to the `getcwd` function on Unix
 /// and the `GetCurrentDirectoryW` function on Windows.
+///
+/// [currently]: crate::io#platform-specific-behavior
 ///
 /// # Errors
 ///
@@ -56,10 +58,12 @@ pub fn current_dir() -> io::Result<PathBuf> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to the `chdir` function on Unix
+/// This function [currently] corresponds to the `chdir` function on Unix
 /// and the `SetCurrentDirectoryW` function on Windows.
 ///
 /// Returns an [`Err`] if the operation fails.
+///
+/// [currently]: crate::io#platform-specific-behavior
 ///
 /// # Examples
 ///

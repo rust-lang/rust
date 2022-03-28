@@ -729,12 +729,16 @@ impl Build {
 
     /// Gets the space-separated set of activated features for the compiler.
     fn rustc_features(&self, kind: Kind) -> String {
-        let mut features = String::new();
+        let mut features = vec![];
         if self.config.jemalloc {
-            features.push_str("jemalloc");
+            features.push("jemalloc");
         }
         if self.config.llvm_enabled() || kind == Kind::Check {
-            features.push_str(" llvm");
+            features.push("llvm");
+        }
+        // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
+        if self.config.rustc_parallel {
+            features.push("rustc_use_parallel_compiler");
         }
 
         // If debug logging is on, then we want the default for tracing:
@@ -743,10 +747,10 @@ impl Build {
         // if its unset, if debug_assertions is on, then debug_logging will also be on
         // as well as tracing *ignoring* this feature when debug_assertions is on
         if !self.config.rust_debug_logging {
-            features.push_str(" max_level_info");
+            features.push("max_level_info");
         }
 
-        features
+        features.join(" ")
     }
 
     /// Component directory that Cargo will produce output into (e.g.

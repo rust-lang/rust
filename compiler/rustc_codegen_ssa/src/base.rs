@@ -14,6 +14,8 @@ use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCode
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
+
+#[cfg(parallel_compiler)]
 use rustc_data_structures::sync::{par_iter, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
@@ -622,33 +624,33 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
+    #[cfg(parallel_compiler)]
     let pre_compile_cgus = |cgu_reuse: &[CguReuse]| {
-        if cfg!(parallel_compiler) {
-            tcx.sess.time("compile_first_CGU_batch", || {
-                // Try to find one CGU to compile per thread.
-                let cgus: Vec<_> = cgu_reuse
-                    .iter()
-                    .enumerate()
-                    .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                    .take(tcx.sess.threads())
-                    .collect();
+        tcx.sess.time("compile_first_CGU_batch", || {
+            // Try to find one CGU to compile per thread.
+            let cgus: Vec<_> = cgu_reuse
+                .iter()
+                .enumerate()
+                .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                .take(tcx.sess.threads())
+                .collect();
 
-                // Compile the found CGUs in parallel.
-                let start_time = Instant::now();
+            // Compile the found CGUs in parallel.
+            let start_time = Instant::now();
 
-                let pre_compiled_cgus = par_iter(cgus)
-                    .map(|(i, _)| {
-                        let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                        (i, module)
-                    })
-                    .collect();
+            let pre_compiled_cgus = par_iter(cgus)
+                .map(|(i, _)| {
+                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                    (i, module)
+                })
+                .collect();
 
-                (pre_compiled_cgus, start_time.elapsed())
-            })
-        } else {
-            (FxHashMap::default(), Duration::new(0, 0))
-        }
+            (pre_compiled_cgus, start_time.elapsed())
+        })
     };
+
+    #[cfg(not(parallel_compiler))]
+    let pre_compile_cgus = |_: &[CguReuse]| (FxHashMap::default(), Duration::new(0, 0));
 
     let mut cgu_reuse = Vec::new();
     let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;

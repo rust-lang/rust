@@ -1,0 +1,10 @@
+error: expected `:` followed by trait or lifetime
+  --> $DIR/issue-95208-ignore-qself.rs:6:88
+   |
+LL | impl<T: Iterator> Struct<T> where <T as std:: iter::Iterator>::Item:: std::fmt::Display {
+   |                                                                    ---                 ^
+   |                                                                    |
+   |                                                                    help: use single colon: `:`
+
+error: aborting due to previous error
+

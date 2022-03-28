@@ -10,8 +10,8 @@ doctest = false
 libc = "0.2"
 libloading = "0.7.1"
 tracing = "0.1"
-rustc-rayon-core = "0.3.2"
-rayon = { version = "0.3.2", package = "rustc-rayon" }
+rustc-rayon-core = { version = "0.3.2", optional = true }
+rayon = { version = "0.3.2", package = "rustc-rayon", optional = true }
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
@@ -57,3 +57,4 @@ rustc_target = { path = "../rustc_target" }
 
 [features]
 llvm = ['rustc_codegen_llvm']
+rustc_use_parallel_compiler = ['rayon', 'rustc-rayon-core', 'rustc_query_impl/rustc_use_parallel_compiler']

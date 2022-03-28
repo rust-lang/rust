@@ -441,11 +441,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .find(|elem| matches!(elem.1, mir::ProjectionElem::Deref))
                 {
                     base = elem.0 + 1;
-                    self.codegen_consume(
+                    let cg_base = self.codegen_consume(
                         bx,
                         mir::PlaceRef { projection: &place_ref.projection[..elem.0], ..place_ref },
-                    )
-                    .deref(bx.cx())
+                    );
+
+                    // a box with a non-zst allocator should not be directly dereferenced
+                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
+                        let ptr = cg_base.extract_field(bx, 0).extract_field(bx, 0);
+
+                        ptr.deref(bx.cx())
+                    } else {
+                        cg_base.deref(bx.cx())
+                    }
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
                 }
@@ -454,10 +462,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         for elem in place_ref.projection[base..].iter() {
             cg_base = match elem.clone() {
                 mir::ProjectionElem::Deref => {
-                    // custom allocators can change box's abi, making it unable to be derefed directly
-                    if cg_base.layout.ty.is_box()
-                        && matches!(cg_base.layout.abi, Abi::Aggregate { .. } | Abi::Uninhabited)
-                    {
+                    // a box with a non-zst allocator should not be directly dereferenced
+                    if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
                         let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
 
                         bx.load_operand(ptr).deref(bx.cx())

@@ -689,6 +689,8 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     if builder.config.rustc_parallel {
+        // keep in sync with `bootstrap/lib.rs:Build::rustc_features`
+        // `cfg` option for rustc, `features` option for cargo, for conditional compilation
         cargo.rustflag("--cfg=parallel_compiler");
         cargo.rustdocflag("--cfg=parallel_compiler");
     }
