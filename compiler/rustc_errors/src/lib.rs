@@ -32,7 +32,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, DiagnosticMessage, FluentBundle, MultiSpan, SpanLabel,
+    fallback_fluent_bundle, fluent_bundle, DiagnosticMessage, FluentBundle, LanguageIdentifier,
+    MultiSpan, SpanLabel,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
@@ -544,11 +545,13 @@ impl Handler {
         can_emit_warnings: bool,
         treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
             sm,
+            fluent_bundle,
             fallback_bundle,
             HandlerFlags { can_emit_warnings, treat_err_as_bug, ..Default::default() },
         )
@@ -557,12 +560,14 @@ impl Handler {
     pub fn with_tty_emitter_and_flags(
         color_config: ColorConfig,
         sm: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         flags: HandlerFlags,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(
             color_config,
             sm,
+            fluent_bundle,
             fallback_bundle,
             false,
             false,

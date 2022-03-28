@@ -1239,16 +1239,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fluent"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61f69378194459db76abd2ce3952b790db103ceb003008d3d50d97c41ff847a7"
-dependencies = [
- "fluent-bundle",
- "unic-langid",
-]
-
-[[package]]
 name = "fluent-bundle"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3719,7 +3709,8 @@ version = "0.0.0"
 name = "rustc_error_messages"
 version = "0.0.0"
 dependencies = [
- "fluent",
+ "fluent-bundle",
+ "fluent-syntax",
  "rustc_data_structures",
  "rustc_macros",
  "rustc_serialize",

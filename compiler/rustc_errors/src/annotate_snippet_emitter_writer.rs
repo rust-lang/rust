@@ -21,6 +21,7 @@ use rustc_span::SourceFile;
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {
     source_map: Option<Lrc<SourceMap>>,
+    fluent_bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: Lrc<FluentBundle>,
 
     /// If true, hides the longer explanation text
@@ -63,7 +64,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
     }
 
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        None
+        self.fluent_bundle.as_ref()
     }
 
     fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
@@ -99,11 +100,19 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
 impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         short_message: bool,
         macro_backtrace: bool,
     ) -> Self {
-        Self { source_map, fallback_bundle, short_message, ui_testing: false, macro_backtrace }
+        Self {
+            source_map,
+            fluent_bundle,
+            fallback_bundle,
+            short_message,
+            ui_testing: false,
+            macro_backtrace,
+        }
     }
 
     /// Allows to modify `Self` to enable or disable the `ui_testing` flag.

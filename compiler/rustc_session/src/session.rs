@@ -20,8 +20,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, ErrorGuaranteed,
-    FluentBundle, MultiSpan,
+    fallback_fluent_bundle, fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
+    ErrorGuaranteed, FluentBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -1069,6 +1069,7 @@ fn default_emitter(
     sopts: &config::Options,
     registry: rustc_errors::registry::Registry,
     source_map: Lrc<SourceMap>,
+    bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: Lrc<FluentBundle>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
@@ -1080,6 +1081,7 @@ fn default_emitter(
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
                 let emitter = AnnotateSnippetEmitterWriter::new(
                     Some(source_map),
+                    bundle,
                     fallback_bundle,
                     short,
                     macro_backtrace,
@@ -1090,6 +1092,7 @@ fn default_emitter(
                     None => EmitterWriter::stderr(
                         color_config,
                         Some(source_map),
+                        bundle,
                         fallback_bundle,
                         short,
                         sopts.debugging_opts.teach,
@@ -1099,6 +1102,7 @@ fn default_emitter(
                     Some(dst) => EmitterWriter::new(
                         dst,
                         Some(source_map),
+                        bundle,
                         fallback_bundle,
                         short,
                         false, // no teach messages when writing to a buffer
@@ -1114,6 +1118,7 @@ fn default_emitter(
             JsonEmitter::stderr(
                 Some(registry),
                 source_map,
+                bundle,
                 fallback_bundle,
                 pretty,
                 json_rendered,
@@ -1127,6 +1132,7 @@ fn default_emitter(
                 dst,
                 Some(registry),
                 source_map,
+                bundle,
                 fallback_bundle,
                 pretty,
                 json_rendered,
@@ -1198,9 +1204,15 @@ pub fn build_session(
         hash_kind,
     ));
 
-    let fallback_bundle = fallback_fluent_bundle();
+    let bundle = fluent_bundle(
+        &sysroot,
+        sopts.debugging_opts.translate_lang.clone(),
+        sopts.debugging_opts.translate_additional_ftl.as_deref(),
+    )
+    .expect("failed to load fluent bundle");
+    let fallback_bundle = fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
     let emitter =
-        default_emitter(&sopts, registry, source_map.clone(), fallback_bundle.clone(), write_dest);
+        default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
 
     let span_diagnostic = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1433,12 +1445,13 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle = fallback_fluent_bundle();
+    let fallback_bundle = fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(EmitterWriter::stderr(
                 color_config,
+                None,
                 None,
                 fallback_bundle,
                 short,
@@ -1448,7 +1461,7 @@ fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler
             ))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, fallback_bundle, None, false))
+            Box::new(JsonEmitter::basic(pretty, json_rendered, None, fallback_bundle, None, false))
         }
     };
     rustc_errors::Handler::with_emitter(true, None, emitter)

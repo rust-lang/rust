@@ -59,6 +59,7 @@ impl HumanReadableErrorType {
         self,
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMap>>,
+        bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         teach: bool,
         terminal_width: Option<usize>,
@@ -69,6 +70,7 @@ impl HumanReadableErrorType {
         EmitterWriter::new(
             dst,
             source_map,
+            bundle,
             fallback_bundle,
             short,
             teach,
@@ -568,7 +570,7 @@ impl Emitter for EmitterWriter {
     }
 
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        None
+        self.fluent_bundle.as_ref()
     }
 
     fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
@@ -686,6 +688,7 @@ impl ColorConfig {
 pub struct EmitterWriter {
     dst: Destination,
     sm: Option<Lrc<SourceMap>>,
+    fluent_bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: Lrc<FluentBundle>,
     short_message: bool,
     teach: bool,
@@ -706,6 +709,7 @@ impl EmitterWriter {
     pub fn stderr(
         color_config: ColorConfig,
         source_map: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         short_message: bool,
         teach: bool,
@@ -716,6 +720,7 @@ impl EmitterWriter {
         EmitterWriter {
             dst,
             sm: source_map,
+            fluent_bundle,
             fallback_bundle,
             short_message,
             teach,
@@ -728,6 +733,7 @@ impl EmitterWriter {
     pub fn new(
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         short_message: bool,
         teach: bool,
@@ -738,6 +744,7 @@ impl EmitterWriter {
         EmitterWriter {
             dst: Raw(dst, colored),
             sm: source_map,
+            fluent_bundle,
             fallback_bundle,
             short_message,
             teach,

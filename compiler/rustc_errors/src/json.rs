@@ -37,6 +37,7 @@ pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
     sm: Lrc<SourceMap>,
+    fluent_bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: Lrc<FluentBundle>,
     pretty: bool,
     ui_testing: bool,
@@ -49,6 +50,7 @@ impl JsonEmitter {
     pub fn stderr(
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
@@ -59,6 +61,7 @@ impl JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
             registry,
             sm: source_map,
+            fluent_bundle,
             fallback_bundle,
             pretty,
             ui_testing: false,
@@ -71,6 +74,7 @@ impl JsonEmitter {
     pub fn basic(
         pretty: bool,
         json_rendered: HumanReadableErrorType,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         terminal_width: Option<usize>,
         macro_backtrace: bool,
@@ -79,6 +83,7 @@ impl JsonEmitter {
         JsonEmitter::stderr(
             None,
             Lrc::new(SourceMap::new(file_path_mapping)),
+            fluent_bundle,
             fallback_bundle,
             pretty,
             json_rendered,
@@ -91,6 +96,7 @@ impl JsonEmitter {
         dst: Box<dyn Write + Send>,
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
         fallback_bundle: Lrc<FluentBundle>,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
@@ -101,6 +107,7 @@ impl JsonEmitter {
             dst,
             registry,
             sm: source_map,
+            fluent_bundle,
             fallback_bundle,
             pretty,
             ui_testing: false,
@@ -182,7 +189,7 @@ impl Emitter for JsonEmitter {
     }
 
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
-        None
+        self.fluent_bundle.as_ref()
     }
 
     fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
@@ -395,6 +402,7 @@ impl Diagnostic {
             .new_emitter(
                 Box::new(buf),
                 Some(je.sm.clone()),
+                je.fluent_bundle.clone(),
                 je.fallback_bundle.clone(),
                 false,
                 je.terminal_width,

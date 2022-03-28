@@ -1,24 +1,169 @@
+#![feature(path_try_exists)]
+
+use fluent_bundle::FluentResource;
+use fluent_syntax::parser::ParserError;
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use std::borrow::Cow;
-use tracing::debug;
+use std::error::Error;
+use std::fmt;
+use std::fs;
+use std::io;
+use std::path::Path;
+use tracing::{instrument, trace};
 
-pub use fluent::{FluentArgs, FluentValue};
+pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
+pub use unic_langid::{langid, LanguageIdentifier};
 
 static FALLBACK_FLUENT_RESOURCE: &'static str = include_str!("../locales/en-US/diagnostics.ftl");
 
-pub type FluentBundle = fluent::FluentBundle<fluent::FluentResource>;
+pub type FluentBundle = fluent_bundle::FluentBundle<FluentResource>;
 
-/// Return the default `FluentBundle` with standard en-US diagnostic messages.
-pub fn fallback_fluent_bundle() -> Lrc<FluentBundle> {
-    let fallback_resource = fluent::FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
-        .expect("failed to parse ftl resource");
-    debug!(?fallback_resource);
-    let mut fallback_bundle = FluentBundle::new(vec![unic_langid::langid!("en-US")]);
-    fallback_bundle.add_resource(fallback_resource).expect("failed to add resource to bundle");
+#[derive(Debug)]
+pub enum TranslationBundleError {
+    /// Failed to read from `.ftl` file.
+    ReadFtl(io::Error),
+    /// Failed to parse contents of `.ftl` file.
+    ParseFtl(ParserError),
+    /// Failed to add `FluentResource` to `FluentBundle`.
+    AddResource(FluentError),
+    /// `$sysroot/share/locale/$locale` does not exist.
+    MissingLocale(io::Error),
+    /// Cannot read directory entries of `$sysroot/share/locale/$locale`.
+    ReadLocalesDir(io::Error),
+    /// Cannot read directory entry of `$sysroot/share/locale/$locale`.
+    ReadLocalesDirEntry(io::Error),
+    /// `$sysroot/share/locale/$locale` is not a directory.
+    LocaleIsNotDir,
+}
+
+impl fmt::Display for TranslationBundleError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TranslationBundleError::ReadFtl(e) => write!(f, "could not read ftl file: {}", e),
+            TranslationBundleError::ParseFtl(e) => {
+                write!(f, "could not parse ftl file: {}", e)
+            }
+            TranslationBundleError::AddResource(e) => write!(f, "failed to add resource: {}", e),
+            TranslationBundleError::MissingLocale(e) => {
+                write!(f, "missing locale directory: {}", e)
+            }
+            TranslationBundleError::ReadLocalesDir(e) => {
+                write!(f, "could not read locales dir: {}", e)
+            }
+            TranslationBundleError::ReadLocalesDirEntry(e) => {
+                write!(f, "could not read locales dir entry: {}", e)
+            }
+            TranslationBundleError::LocaleIsNotDir => {
+                write!(f, "`$sysroot/share/locales/$locale` is not a directory")
+            }
+        }
+    }
+}
+
+impl Error for TranslationBundleError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            TranslationBundleError::ReadFtl(e) => Some(e),
+            TranslationBundleError::ParseFtl(e) => Some(e),
+            TranslationBundleError::AddResource(e) => Some(e),
+            TranslationBundleError::MissingLocale(e) => Some(e),
+            TranslationBundleError::ReadLocalesDir(e) => Some(e),
+            TranslationBundleError::ReadLocalesDirEntry(e) => Some(e),
+            TranslationBundleError::LocaleIsNotDir => None,
+        }
+    }
+}
+
+impl From<(FluentResource, Vec<ParserError>)> for TranslationBundleError {
+    fn from((_, mut errs): (FluentResource, Vec<ParserError>)) -> Self {
+        TranslationBundleError::ParseFtl(errs.pop().expect("failed ftl parse with no errors"))
+    }
+}
+
+impl From<Vec<FluentError>> for TranslationBundleError {
+    fn from(mut errs: Vec<FluentError>) -> Self {
+        TranslationBundleError::AddResource(
+            errs.pop().expect("failed adding resource to bundle with no errors"),
+        )
+    }
+}
+
+/// Returns Fluent bundle with the user's locale resources from
+/// `$sysroot/share/locale/$requested_locale/*.ftl`.
+///
+/// If `-Z additional-ftl-path` was provided, load that resource and add it  to the bundle
+/// (overriding any conflicting messages).
+#[instrument(level = "trace")]
+pub fn fluent_bundle(
+    sysroot: &Path,
+    requested_locale: Option<LanguageIdentifier>,
+    additional_ftl_path: Option<&Path>,
+) -> Result<Option<Lrc<FluentBundle>>, TranslationBundleError> {
+    if requested_locale.is_none() && additional_ftl_path.is_none() {
+        return Ok(None);
+    }
+
+    // If there is only `-Z additional-ftl-path`, assume locale is "en-US", otherwise use user
+    // provided locale.
+    let locale = requested_locale.clone().unwrap_or_else(|| langid!("en-US"));
+    trace!(?locale);
+    let mut bundle = FluentBundle::new(vec![locale]);
+
+    if let Some(requested_locale) = requested_locale {
+        let mut sysroot = sysroot.to_path_buf();
+        sysroot.push("share");
+        sysroot.push("locale");
+        sysroot.push(requested_locale.to_string());
+        trace!(?sysroot);
+
+        let _ = sysroot.try_exists().map_err(TranslationBundleError::MissingLocale)?;
+
+        if !sysroot.is_dir() {
+            return Err(TranslationBundleError::LocaleIsNotDir);
+        }
+
+        for entry in sysroot.read_dir().map_err(TranslationBundleError::ReadLocalesDir)? {
+            let entry = entry.map_err(TranslationBundleError::ReadLocalesDirEntry)?;
+            let path = entry.path();
+            trace!(?path);
+            if path.extension().and_then(|s| s.to_str()) != Some("ftl") {
+                trace!("skipping");
+                continue;
+            }
+
+            let resource_str = fs::read_to_string(path).map_err(TranslationBundleError::ReadFtl)?;
+            let resource =
+                FluentResource::try_new(resource_str).map_err(TranslationBundleError::from)?;
+            trace!(?resource);
+            bundle.add_resource(resource).map_err(TranslationBundleError::from)?;
+        }
+    }
+
+    if let Some(additional_ftl_path) = additional_ftl_path {
+        let resource_str =
+            fs::read_to_string(additional_ftl_path).map_err(TranslationBundleError::ReadFtl)?;
+        let resource =
+            FluentResource::try_new(resource_str).map_err(TranslationBundleError::from)?;
+        trace!(?resource);
+        bundle.add_resource_overriding(resource);
+    }
+
+    let bundle = Lrc::new(bundle);
+    Ok(Some(bundle))
+}
+
+/// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
+#[instrument(level = "trace")]
+pub fn fallback_fluent_bundle() -> Result<Lrc<FluentBundle>, TranslationBundleError> {
+    let fallback_resource = FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
+        .map_err(TranslationBundleError::from)?;
+    trace!(?fallback_resource);
+    let mut fallback_bundle = FluentBundle::new(vec![langid!("en-US")]);
+    fallback_bundle.add_resource(fallback_resource).map_err(TranslationBundleError::from)?;
     let fallback_bundle = Lrc::new(fallback_bundle);
-    fallback_bundle
+    Ok(fallback_bundle)
 }
 
 /// Identifier for the Fluent message/attribute corresponding to a diagnostic message.

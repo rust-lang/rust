@@ -7,7 +7,8 @@ edition = "2021"
 doctest = false
 
 [dependencies]
-fluent = "0.16.0"
+fluent-bundle = "0.15.2"
+fluent-syntax = "0.11"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }

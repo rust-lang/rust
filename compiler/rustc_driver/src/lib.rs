@@ -1172,9 +1172,11 @@ static DEFAULT_HOOK: SyncLazy<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
 /// When `install_ice_hook` is called, this function will be called as the panic
 /// hook.
 pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle();
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
+        None,
         None,
         fallback_bundle,
         false,
