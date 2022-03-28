@@ -341,7 +341,7 @@ impl Session {
         &self,
         sp: S,
         msg: &str,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_span_fatal(sp, msg)
     }
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
@@ -349,10 +349,10 @@ impl Session {
         sp: S,
         msg: &str,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
     }
-    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_, !> {
         self.diagnostic().struct_fatal(msg)
     }
 
@@ -1384,7 +1384,7 @@ pub enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
+fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -1394,26 +1394,17 @@ pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> Error
             Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
         }
     };
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-    let reported = handler.struct_fatal(msg).emit();
-    reported
+    rustc_errors::Handler::with_emitter(true, None, emitter)
+}
+
+pub fn early_error_no_abort(output: config::ErrorOutputType, msg: &str) -> ErrorGuaranteed {
+    early_error_handler(output).struct_err(msg).emit()
 }
 
 pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
-    early_error_no_abort(output, msg);
-    rustc_errors::FatalError.raise();
+    early_error_handler(output).struct_fatal(msg).emit()
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
-    let emitter: Box<dyn Emitter + sync::Send> = match output {
-        config::ErrorOutputType::HumanReadable(kind) => {
-            let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, None, short, false, None, false))
-        }
-        config::ErrorOutputType::Json { pretty, json_rendered } => {
-            Box::new(JsonEmitter::basic(pretty, json_rendered, None, false))
-        }
-    };
-    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
-    handler.struct_warn(msg).emit();
+    early_error_handler(output).struct_warn(msg).emit()
 }

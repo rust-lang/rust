@@ -168,8 +168,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
                 "#![feature(generic_const_exprs)]\n".to_string(),
                 rustc_errors::Applicability::MaybeIncorrect,
             )
-            .emit();
-        rustc_errors::FatalError.raise();
+            .emit()
     }
 
     debug!(?concrete, "is_const_evaluatable");
