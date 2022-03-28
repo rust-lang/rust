@@ -143,17 +143,17 @@ impl BorrowedHandle<'_> {
 }
 
 impl TryFrom<HandleOrNull> for OwnedHandle {
-    type Error = NotHandle;
+    type Error = NullHandleError;
 
     #[inline]
-    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NotHandle> {
+    fn try_from(handle_or_null: HandleOrNull) -> Result<Self, NullHandleError> {
         let owned_handle = handle_or_null.0;
         if owned_handle.handle.is_null() {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(NotHandle(()))
+            Err(NullHandleError(()))
         } else {
             Ok(owned_handle)
         }
@@ -201,39 +201,56 @@ impl OwnedHandle {
 }
 
 impl TryFrom<HandleOrInvalid> for OwnedHandle {
-    type Error = NotHandle;
+    type Error = InvalidHandleError;
 
     #[inline]
-    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, NotHandle> {
+    fn try_from(handle_or_invalid: HandleOrInvalid) -> Result<Self, InvalidHandleError> {
         let owned_handle = handle_or_invalid.0;
         if owned_handle.handle == c::INVALID_HANDLE_VALUE {
             // Don't call `CloseHandle`; it'd be harmless, except that it could
             // overwrite the `GetLastError` error.
             forget(owned_handle);
 
-            Err(NotHandle(()))
+            Err(InvalidHandleError(()))
         } else {
             Ok(owned_handle)
         }
     }
 }
 
-/// This is the error type used by [`HandleOrInvalid`] and
-/// [`HandleOrNull`] when attempting to convert into a handle,
-/// to indicate that the value is not a handle.
+/// This is the error type used by [`HandleOrNull`] when attempting to convert
+/// into a handle, to indicate that the value is null.
 #[unstable(feature = "io_safety", issue = "87074")]
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct NotHandle(());
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NullHandleError(());
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl fmt::Display for NotHandle {
+impl fmt::Display for NullHandleError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        "the return value of a Windows API call indicated an error".fmt(fmt)
+        "A HandleOrNull could not be converted to a handle because it was null".fmt(fmt)
     }
 }
 
 #[unstable(feature = "io_safety", issue = "87074")]
-impl crate::error::Error for NotHandle {}
+impl crate::error::Error for NullHandleError {}
+
+/// This is the error type used by [`HandleOrInvalid`] when attempting to
+/// convert into a handle, to indicate that the value is
+/// `INVALID_HANDLE_VALUE`.
+#[unstable(feature = "io_safety", issue = "87074")]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InvalidHandleError(());
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl fmt::Display for InvalidHandleError {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        "A HandleOrInvalid could not be converted to a handle because it was INVALID_HANDLE_VALUE"
+            .fmt(fmt)
+    }
+}
+
+#[unstable(feature = "io_safety", issue = "87074")]
+impl crate::error::Error for InvalidHandleError {}
 
 impl AsRawHandle for BorrowedHandle<'_> {
     #[inline]
