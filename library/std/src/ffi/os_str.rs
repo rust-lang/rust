@@ -280,7 +280,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
@@ -297,7 +296,7 @@ impl OsString {
     /// }
     /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve(additional)
@@ -348,7 +347,6 @@ impl OsString {
     /// # Examples
     ///
     /// ```
-    /// #![feature(try_reserve_2)]
     /// use std::ffi::{OsStr, OsString};
     /// use std::collections::TryReserveError;
     ///
@@ -365,7 +363,7 @@ impl OsString {
     /// }
     /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
     /// ```
-    #[unstable(feature = "try_reserve_2", issue = "91789")]
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
     #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
         self.inner.try_reserve_exact(additional)
