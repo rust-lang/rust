@@ -87,11 +87,29 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let trait_pred = ty::Binder::dummy(trait_ref);
 
         let bail_out = tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::with_negative(&infcx, true);
+            let mut selcx = SelectionContext::new(&infcx);
             let result = selcx.select(&Obligation::new(
                 ObligationCause::dummy(),
                 orig_env,
                 trait_pred.to_poly_trait_predicate(),
+            ));
+
+            match result {
+                Ok(Some(ImplSource::UserDefined(_))) => {
+                    debug!(
+                        "find_auto_trait_generics({:?}): \
+                         manual impl found, bailing out",
+                        trait_ref
+                    );
+                    return true;
+                }
+                _ => {}
+            }
+
+            let result = selcx.select(&Obligation::new(
+                ObligationCause::dummy(),
+                orig_env,
+                trait_pred.to_poly_trait_predicate_negative_polarity(),
             ));
 
             match result {
@@ -277,7 +295,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             fresh_preds.insert(self.clean_pred(infcx, predicate));
         }
 
-        let mut select = SelectionContext::with_negative(&infcx, true);
+        let mut select = SelectionContext::new(&infcx);
 
         let mut already_visited = FxHashSet::default();
         let mut predicates = VecDeque::new();
