@@ -58,7 +58,7 @@
           _14 = &mut (*_8);                // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
           _7 = <std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next(move _14) -> bb4; // scope 5 at $SRC_DIR/core/src/iter/range.rs:LL:COL
                                            // mir::Constant
-                                           // + span: $DIR/remove_storage_markers.rs:8:14: 8:19
+                                           // + span: $SRC_DIR/core/src/iter/range.rs:LL:COL
                                            // + literal: Const { ty: for<'r> fn(&'r mut std::ops::Range<i32>) -> Option<<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::Item> {<std::ops::Range<i32> as iter::range::RangeIteratorImpl>::spec_next}, val: Value(Scalar(<ZST>)) }
       }
   
