@@ -172,7 +172,7 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("`\"` cannot be used in generics");
         } else if (query.literalSearch) {
             throw new Error("Cannot have more than one literal search element");
-        } else if (parserState.totalElems !== 0) {
+        } else if (parserState.totalElems - parserState.genericsElems > 0) {
             throw new Error("Cannot use literal search when there is more than one element");
         }
         parserState.pos += 1;
@@ -234,11 +234,11 @@ window.initSearch = function(rawSearchIndex) {
      *
      * @return {QueryElement}                - The newly created `QueryElement`.
      */
-    function createQueryElement(query, parserState, name, generics) {
+    function createQueryElement(query, parserState, name, generics, isInGenerics) {
         if (name === '*' || (name.length === 0 && generics.length === 0)) {
             return;
         }
-        if (query.literalSearch && parserState.totalElems > 0) {
+        if (query.literalSearch && parserState.totalElems - parserState.genericsElems > 0) {
             throw new Error("You cannot have more than one element if you use quotes");
         }
         var pathSegments = name.split("::");
@@ -261,6 +261,9 @@ window.initSearch = function(rawSearchIndex) {
             throw new Error("Found generics without a path");
         }
         parserState.totalElems += 1;
+        if (isInGenerics) {
+            parserState.genericsElems += 1;
+        }
         return {
             name: name,
             fullPath: pathSegments,
@@ -315,6 +318,8 @@ window.initSearch = function(rawSearchIndex) {
         {
             if (isInGenerics) {
                 throw new Error("Unexpected `<` after `<`");
+            } else if (start >= end) {
+                throw new Error("Found generics without a path");
             }
             parserState.pos += 1;
             getItemsBefore(query, parserState, generics, ">");
@@ -327,7 +332,8 @@ window.initSearch = function(rawSearchIndex) {
                 query,
                 parserState,
                 parserState.userQuery.slice(start, end),
-                generics
+                generics,
+                isInGenerics
             )
         );
     }
@@ -346,13 +352,15 @@ window.initSearch = function(rawSearchIndex) {
      *                                      character.
      */
     function getItemsBefore(query, parserState, elems, endChar) {
-        var turns = 0;
+        var foundStopChar = true;
+
         while (parserState.pos < parserState.length) {
             var c = parserState.userQuery[parserState.pos];
             if (c === endChar) {
                 break;
-            } else if (c === "," && endChar !== "" && turns > 0) {
+            } else if (c === "," || c === " ") {
                 parserState.pos += 1;
+                foundStopChar = true;
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw new Error("Unexpected `::`: paths cannot start with `::`");
@@ -365,15 +373,21 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 throw new Error("Unexpected `" + c + "` after " + extra);
             }
+            if (!foundStopChar) {
+                if (endChar !== "") {
+                    throw new Error(`Expected \`,\`, \` \` or \`${endChar}\`, found \`${c}\``);
+                }
+                throw new Error(`Expected \`,\` or \` \`, found \`${c}\``);
+            }
             var posBefore = parserState.pos;
             getNextElem(query, parserState, elems, endChar === ">");
-            turns += 1;
             // This case can be encountered if `getNextElem` encounted a "stop character" right from
-            // the start. For example if you have `,,`. In this case, we simply move up the current
-            // position to continue the parsing.
+            // the start. For example if you have `,,` or `<>`. In this case, we simply move up the
+            // current position to continue the parsing.
             if (posBefore === parserState.pos) {
                 parserState.pos += 1;
             }
+            foundStopChar = false;
         }
         // We are either at the end of the string or on the `endChar`` character, let's move forward
         // in any case.
@@ -389,10 +403,12 @@ window.initSearch = function(rawSearchIndex) {
      */
     function parseInput(query, parserState) {
         var c, before;
+        var foundStopChar = true;
 
         while (parserState.pos < parserState.length) {
             c = parserState.userQuery[parserState.pos];
             if (isStopCharacter(c)) {
+                foundStopChar = true;
                 if (c === "," || c === " ") {
                     parserState.pos += 1;
                     continue;
@@ -402,6 +418,7 @@ window.initSearch = function(rawSearchIndex) {
                     }
                     throw new Error(`Unexpected \`${c}\` (did you mean \`->\`?)`);
                 }
+                throw new Error(`Unexpected \`${c}\``);
             } else if (c === ":" &&
                 parserState.typeFilter === null &&
                 !isPathStart(parserState))
@@ -419,7 +436,14 @@ window.initSearch = function(rawSearchIndex) {
                 parserState.pos += 1;
                 parserState.totalElems = 0;
                 query.literalSearch = false;
+                foundStopChar = true;
                 continue;
+            }
+            if (!foundStopChar) {
+                if (parserState.typeFilter !== null) {
+                    throw new Error(`Expected \`,\`, \` \` or \`->\`, found \`${c}\``);
+                }
+                throw new Error(`Expected \`,\`, \` \`, \`:\` or \`->\`, found \`${c}\``);
             }
             before = query.elems.length;
             getNextElem(query, parserState, query.elems, false);
@@ -432,6 +456,7 @@ window.initSearch = function(rawSearchIndex) {
                 }
                 parserState.pos += 1;
             }
+            foundStopChar = false;
         }
         while (parserState.pos < parserState.length) {
             c = parserState.userQuery[parserState.pos];
@@ -515,17 +540,17 @@ window.initSearch = function(rawSearchIndex) {
      * arg = path [generics]
      * arg-without-generic = path
      * type-sep = COMMA/WS *(COMMA/WS)
-     * nonempty-arg-list = arg *(type-sep arg) *(COMMA/WS)
-     * nonempty-arg-list-without-generics = arg-without-generic *(type-sep arg-without-generic)
-     *                                      *(COMMA/WS)
-     * generics = OPEN-ANGLE-BRACKET *WS [ nonempty-arg-list-without-generics ] *WS
+     * nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
+     * nonempty-arg-list-without-generics = *(type-sep) arg-without-generic
+     *                                      *(type-sep arg-without-generic) *(type-sep)
+     * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list-without-generics ] *(type-sep)
      *            CLOSE-ANGLE-BRACKET
-     * return-args = RETURN-ARROW *WS nonempty-arg-list
+     * return-args = RETURN-ARROW *(type-sep) nonempty-arg-list
      *
-     * exact-search = [type-filter *WS COLON] *WS QUOTE ident QUOTE *WS [generics]
-     * type-search = [type-filter *WS COLON] *WS path *WS nonempty-arg-list
+     * exact-search = [type-filter *WS COLON] [ RETURN-ARROW ] *WS QUOTE ident QUOTE [ generics ]
+     * type-search = [type-filter *WS COLON] [ nonempty-arg-list ] [ return-args ]
      *
-     * query = *WS (exact-search / type-search / return-args) *WS
+     * query = *WS (exact-search / type-search) *WS
      *
      * type-filter = (
      *     "mod" /
@@ -578,6 +603,7 @@ window.initSearch = function(rawSearchIndex) {
             pos: 0,
             // Total number of elements (includes generics).
             totalElems: 0,
+            genericsElems: 0,
             typeFilter: null,
             userQuery: userQuery.toLowerCase(),
         };
@@ -606,7 +632,7 @@ window.initSearch = function(rawSearchIndex) {
         query.foundElems = query.elems.length + query.returned.length;
         if (query.foundElems === 0 && parserState.length !== 0) {
             // In this case, we'll simply keep whatever was entered by the user...
-            query.elems.push(createQueryElement(query, parserState, userQuery, []));
+            query.elems.push(createQueryElement(query, parserState, userQuery, [], false));
             query.foundElems += 1;
         }
         return query;

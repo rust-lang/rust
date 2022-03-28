@@ -1,7 +1,7 @@
 // This test is mostly to check that the parser still kinda outputs something
 // (and doesn't enter an infinite loop!) even though the query is completely
 // invalid.
-const QUERY = ['a b', 'a   b', 'a,b(c)'];
+const QUERY = ['a b', 'a   b', 'a,b(c)', 'aaa,a'];
 
 const PARSED = [
     {
@@ -60,5 +60,29 @@ const PARSED = [
         typeFilter: -1,
         userQuery: "a,b(c)",
         error: "Unexpected `(`",
+    },
+    {
+        elems: [
+            {
+                name: "aaa",
+                fullPath: ["aaa"],
+                pathWithoutLast: [],
+                pathLast: "aaa",
+                generics: [],
+            },
+            {
+                name: "a",
+                fullPath: ["a"],
+                pathWithoutLast: [],
+                pathLast: "a",
+                generics: [],
+            },
+        ],
+        foundElems: 2,
+        original: "aaa,a",
+        returned: [],
+        typeFilter: -1,
+        userQuery: "aaa,a",
+        error: null,
     },
 ];
