@@ -125,32 +125,22 @@ struct MatcherPos<'tt> {
     /// The "dot" position within the current submatcher, i.e. the index into `tts`.
     idx: usize,
 
-    /// This boxed slice has one element per metavar in the *top-level* matcher, even when this
+    /// This vector ends up with one element per metavar in the *top-level* matcher, even when this
     /// `MatcherPos` is for a submatcher. Each element records token trees matched against the
-    /// relevant metavar by the black box parser.
-    ///
-    /// In a top-level `MatcherPos` each `NamedMatchVec` will have zero elements before processing
-    /// and one element after processing; the one element will be a `MatchedSeq` if the
+    /// relevant metavar by the black box parser. The element will be a `MatchedSeq` if the
     /// corresponding metavar is within a sequence.
-    ///
-    /// In a sequence submatcher each `NamedMatchVec` will have zero elements before processing and
-    /// any number of elements after processing (as allowed by the sequence's Kleene op, i.e.
-    /// zero-or-one, zero-or-more, one-or-more). After processing these elements will be merged
-    /// into the parent `MatcherPos`'s matches (within a `MatchedSeq`).
-    matches: Box<[Lrc<NamedMatchVec>]>,
+    matches: Lrc<NamedMatchVec>,
+
+    /// The number of sequences this mp is within.
+    seq_depth: usize,
 
     /// The position in `matches` of the first metavar in this (sub)matcher. Zero if there are
     /// no metavars.
     match_lo: usize,
 
     /// The position in `matches` of the next metavar to be matched against the source token
-    /// stream. `match_lo <= match_cur <= match_hi`. Should not be used if there are no metavars,
-    /// i.e. `match_lo == match_hi`.
+    /// stream. Should not be used if there are no metavars.
     match_cur: usize,
-
-    /// The position in `matches` one past the last metavar in this (sub)matcher. Equal to
-    /// `match_lo` if there are not metavars.
-    match_hi: usize,
 
     /// This field is only used if we are matching a sequence.
     sequence: Option<MatcherPosSequence<'tt>>,
@@ -162,50 +152,73 @@ struct MatcherPos<'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 112);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 104);
 
 impl<'tt> MatcherPos<'tt> {
-    fn empty_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
-        if len == 0 {
-            vec![]
-        } else {
-            let empty_matches = Lrc::new(SmallVec::new());
-            vec![empty_matches; len]
-        }
-        .into_boxed_slice()
-    }
-
     fn top_level(matcher: &'tt [TokenTree]) -> Self {
-        let match_idx_hi = count_metavar_decls(matcher);
         MatcherPos {
             tts: matcher,
             idx: 0,
-            matches: Self::empty_matches(match_idx_hi),
+            matches: Lrc::new(smallvec![]),
+            seq_depth: 0,
             match_lo: 0,
             match_cur: 0,
-            match_hi: match_idx_hi,
             stack: smallvec![],
             sequence: None,
         }
     }
 
     fn sequence(parent: Box<MatcherPos<'tt>>, seq: &'tt SequenceRepetition) -> Self {
-        MatcherPos {
+        let mut mp = MatcherPos {
             tts: &seq.tts,
             idx: 0,
-            matches: Self::empty_matches(parent.matches.len()),
+            matches: parent.matches.clone(),
+            seq_depth: parent.seq_depth,
             match_lo: parent.match_cur,
             match_cur: parent.match_cur,
-            match_hi: parent.match_cur + seq.num_captures,
             sequence: Some(MatcherPosSequence { parent, seq }),
             stack: smallvec![],
+        };
+        // Start with an empty vec for each metavar within the sequence. Note that `mp.seq_depth`
+        // must have the parent's depth at this point for these `push_match` calls to work.
+        for idx in mp.match_lo..mp.match_lo + seq.num_captures {
+            mp.push_match(idx, MatchedSeq(Lrc::new(smallvec![])));
         }
+        mp.seq_depth += 1;
+        mp
     }
 
     /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
-        let matches = Lrc::make_mut(&mut self.matches[idx]);
-        matches.push(m);
+        let matches = Lrc::make_mut(&mut self.matches);
+        match self.seq_depth {
+            0 => {
+                // We are not within a sequence. Just append `m`.
+                assert_eq!(idx, matches.len());
+                matches.push(m);
+            }
+            _ => {
+                // We are within a sequence. Find the final `MatchedSeq` at the appropriate depth
+                // and append `m` to its vector.
+                let mut curr = &mut matches[idx];
+                for _ in 0..self.seq_depth - 1 {
+                    match curr {
+                        MatchedSeq(seq) => {
+                            let seq = Lrc::make_mut(seq);
+                            curr = seq.last_mut().unwrap();
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                match curr {
+                    MatchedSeq(seq) => {
+                        let seq = Lrc::make_mut(seq);
+                        seq.push(m);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
     }
 }
 
@@ -528,11 +541,8 @@ impl<'tt> TtParser<'tt> {
                     // sequence in `parent`. This allows for the case where the sequence matching
                     // is finished.
                     let mut new_mp = sequence.parent.clone();
-                    for idx in mp.match_lo..mp.match_hi {
-                        let sub = mp.matches[idx].clone();
-                        new_mp.push_match(idx, MatchedSeq(sub));
-                    }
-                    new_mp.match_cur = mp.match_hi;
+                    new_mp.matches = mp.matches.clone();
+                    new_mp.match_cur = mp.match_lo + sequence.seq.num_captures;
                     new_mp.idx += 1;
                     self.cur_mps.push(new_mp);
                 }
@@ -577,13 +587,10 @@ impl<'tt> TtParser<'tt> {
         if *token == token::Eof {
             Some(match eof_mps {
                 EofMatcherPositions::One(mut eof_mp) => {
-                    let matches = eof_mp.matches.iter_mut().map(|dv| {
-                        // Top-level metavars only ever get one match. (Sub-matchers can get
-                        // multiple matches, which get aggregated into a `MatcherSeq` before being
-                        // put into the top-level.)
-                        debug_assert_eq!(dv.len(), 1);
-                        Lrc::make_mut(dv).pop().unwrap()
-                    });
+                    assert_eq!(eof_mp.matches.len(), count_metavar_decls(matcher));
+                    // Need to take ownership of the matches from within the `Lrc`.
+                    Lrc::make_mut(&mut eof_mp.matches);
+                    let matches = Lrc::try_unwrap(eof_mp.matches).unwrap().into_iter();
                     nameize(sess, matcher, matches)
                 }
                 EofMatcherPositions::Multiple => {
