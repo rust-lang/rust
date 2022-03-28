@@ -192,15 +192,22 @@ where
             return;
         }
 
-        assert!(
-            enclosing_item_span.contains(call_span),
-            "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call.",
-        );
+        // If the enclosing item doesn't actually enclose the call, this means we probably have a weird
+        // macro issue even though the spans aren't tagged as being from an expansion.
+        if !enclosing_item_span.contains(call_span) {
+            warn!(
+                "Attempted to scrape call at [{call_span:?}] whose enclosing item [{enclosing_item_span:?}] doesn't contain the span of the call."
+            );
+            return;
+        }
 
-        assert!(
-            call_span.contains(ident_span),
-            "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
-        );
+        // Similarly for the call w/ the function ident.
+        if !call_span.contains(ident_span) {
+            warn!(
+                "Attempted to scrape call at [{call_span:?}] whose identifier [{ident_span:?}] was not contained in the span of the call."
+            );
+            return;
+        }
 
         // Save call site if the function resolves to a concrete definition
         if let ty::FnDef(def_id, _) = ty.kind() {
