@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.field_ty(span, f, substs)
                         })
                         .unwrap_or_else(|| {
-                            inexistent_fields.push(field.ident);
+                            inexistent_fields.push(field);
                             no_field_errors = false;
                             tcx.ty_error()
                         })
@@ -1276,13 +1276,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect::<Vec<_>>();
 
         let inexistent_fields_err = if !(inexistent_fields.is_empty() || variant.is_recovered())
-            && !inexistent_fields.iter().any(|field| field.name == kw::Underscore)
+            && !inexistent_fields.iter().any(|field| field.ident.name == kw::Underscore)
         {
             Some(self.error_inexistent_fields(
                 adt.variant_descr(),
                 &inexistent_fields,
                 &mut unmentioned_fields,
                 variant,
+                substs,
             ))
         } else {
             None
@@ -1448,20 +1449,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn error_inexistent_fields(
         &self,
         kind_name: &str,
-        inexistent_fields: &[Ident],
-        unmentioned_fields: &mut Vec<(&ty::FieldDef, Ident)>,
+        inexistent_fields: &[&hir::PatField<'tcx>],
+        unmentioned_fields: &mut Vec<(&'tcx ty::FieldDef, Ident)>,
         variant: &ty::VariantDef,
+        substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let tcx = self.tcx;
         let (field_names, t, plural) = if inexistent_fields.len() == 1 {
-            (format!("a field named `{}`", inexistent_fields[0]), "this", "")
+            (format!("a field named `{}`", inexistent_fields[0].ident), "this", "")
         } else {
             (
                 format!(
                     "fields named {}",
                     inexistent_fields
                         .iter()
-                        .map(|ident| format!("`{}`", ident))
+                        .map(|field| format!("`{}`", field.ident))
                         .collect::<Vec<String>>()
                         .join(", ")
                 ),
@@ -1469,7 +1471,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 "s",
             )
         };
-        let spans = inexistent_fields.iter().map(|ident| ident.span).collect::<Vec<_>>();
+        let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
         let mut err = struct_span_err!(
             tcx.sess,
             spans,
@@ -1479,9 +1481,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.def_path_str(variant.def_id),
             field_names
         );
-        if let Some(ident) = inexistent_fields.last() {
+        if let Some(pat_field) = inexistent_fields.last() {
             err.span_label(
-                ident.span,
+                pat_field.ident.span,
                 format!(
                     "{} `{}` does not have {} field{}",
                     kind_name,
@@ -1494,10 +1496,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if unmentioned_fields.len() == 1 {
                 let input =
                     unmentioned_fields.iter().map(|(_, field)| field.name).collect::<Vec<_>>();
-                let suggested_name = find_best_match_for_name(&input, ident.name, None);
+                let suggested_name = find_best_match_for_name(&input, pat_field.ident.name, None);
                 if let Some(suggested_name) = suggested_name {
                     err.span_suggestion(
-                        ident.span,
+                        pat_field.ident.span,
                         "a field with a similar name exists",
                         suggested_name.to_string(),
                         Applicability::MaybeIncorrect,
@@ -1513,17 +1515,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         unmentioned_fields.retain(|&(_, x)| x.name != suggested_name);
                     }
                 } else if inexistent_fields.len() == 1 {
-                    let unmentioned_field = unmentioned_fields[0].1.name;
-                    err.span_suggestion_short(
-                        ident.span,
-                        &format!(
-                            "`{}` has a field named `{}`",
-                            tcx.def_path_str(variant.def_id),
-                            unmentioned_field
-                        ),
-                        unmentioned_field.to_string(),
-                        Applicability::MaybeIncorrect,
-                    );
+                    match pat_field.pat.kind {
+                        PatKind::Lit(expr)
+                            if !self.can_coerce(
+                                self.typeck_results.borrow().expr_ty(expr),
+                                self.field_ty(
+                                    unmentioned_fields[0].1.span,
+                                    unmentioned_fields[0].0,
+                                    substs,
+                                ),
+                            ) => {}
+                        _ => {
+                            let unmentioned_field = unmentioned_fields[0].1.name;
+                            err.span_suggestion_short(
+                                pat_field.ident.span,
+                                &format!(
+                                    "`{}` has a field named `{}`",
+                                    tcx.def_path_str(variant.def_id),
+                                    unmentioned_field
+                                ),
+                                unmentioned_field.to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                    }
                 }
             }
         }
