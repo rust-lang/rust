@@ -376,17 +376,26 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 let stab = myitem.stability_class(cx.tcx());
                 let add = if stab.is_some() { " " } else { "" };
 
+                let visibility_emoji = match myitem.visibility {
+                    clean::Visibility::Restricted(_) => {
+                        "<span title=\"Restricted Visibility\">&nbsp;🔒</span> "
+                    }
+                    _ => "",
+                };
+
                 let doc_value = myitem.doc_value().unwrap_or_default();
                 w.write_str(ITEM_TABLE_ROW_OPEN);
                 write!(
                     w,
                     "<div class=\"item-left {stab}{add}module-item\">\
-                         <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
-                             {unsafety_flag}\
-                             {stab_tags}\
+                            <a class=\"{class}\" href=\"{href}\" title=\"{title}\">{name}</a>\
+                            {visibility_emoji}\
+                            {unsafety_flag}\
+                            {stab_tags}\
                      </div>\
                      <div class=\"item-right docblock-short\">{docs}</div>",
                     name = myitem.name.unwrap(),
+                    visibility_emoji = visibility_emoji,
                     stab_tags = extra_info_tags(myitem, item, cx.tcx()),
                     docs = MarkdownSummaryLine(&doc_value, &myitem.links(cx)).into_string(),
                     class = myitem.type_(),
