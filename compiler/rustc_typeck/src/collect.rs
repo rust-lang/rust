@@ -160,6 +160,33 @@ crate fn placeholder_type_error<'tcx>(
         return;
     }
 
+    placeholder_type_error_diag(
+        tcx,
+        span,
+        generics,
+        placeholder_types,
+        vec![],
+        suggest,
+        hir_ty,
+        kind,
+    )
+    .emit();
+}
+
+crate fn placeholder_type_error_diag<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    span: Option<Span>,
+    generics: &[hir::GenericParam<'_>],
+    placeholder_types: Vec<Span>,
+    additional_spans: Vec<Span>,
+    suggest: bool,
+    hir_ty: Option<&hir::Ty<'_>>,
+    kind: &'static str,
+) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    if placeholder_types.is_empty() {
+        return bad_placeholder(tcx, additional_spans, kind);
+    }
+
     let type_name = generics.next_type_param_name(None);
     let mut sugg: Vec<_> =
         placeholder_types.iter().map(|sp| (*sp, (*type_name).to_string())).collect();
@@ -182,7 +209,8 @@ crate fn placeholder_type_error<'tcx>(
         sugg.push((span, format!(", {}", type_name)));
     }
 
-    let mut err = bad_placeholder(tcx, placeholder_types, kind);
+    let mut err =
+        bad_placeholder(tcx, placeholder_types.into_iter().chain(additional_spans).collect(), kind);
 
     // Suggest, but only if it is not a function in const or static
     if suggest {
@@ -218,7 +246,8 @@ crate fn placeholder_type_error<'tcx>(
             );
         }
     }
-    err.emit();
+
+    err
 }
 
 fn reject_placeholder_type_signatures_in_item<'tcx>(
