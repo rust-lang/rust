@@ -2574,7 +2574,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .map(|(i, a)| {
                 if let hir::TyKind::Infer = a.kind && !self.allow_ty_infer() {
                     if let Some(suggested_ty) =
-                      self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, i) {
+                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
+                    {
                         infer_replacements.push((a.span, suggested_ty.to_string()));
                         return suggested_ty;
                     }
@@ -2588,8 +2589,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let output_ty = match decl.output {
             hir::FnRetTy::Return(output) => {
-                visitor.visit_ty(output);
-                self.ast_ty_to_ty(output)
+                if let hir::TyKind::Infer = output.kind
+                    && !self.allow_ty_infer()
+                    && let Some(suggested_ty) =
+                        self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
+                {
+                    infer_replacements.push((output.span, suggested_ty.to_string()));
+                    suggested_ty
+                } else {
+                    visitor.visit_ty(output);
+                    self.ast_ty_to_ty(output)
+                }
             }
             hir::FnRetTy::DefaultReturn(..) => tcx.mk_unit(),
         };
@@ -2619,7 +2629,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if !infer_replacements.is_empty() {
                 diag.multipart_suggestion(&format!(
                     "try replacing `_` with the type{} in the corresponding trait method signature",
-                    if infer_replacements.len() > 1 { "s" } else { "" }
+                    rustc_errors::pluralize!(infer_replacements.len()),
                 ), infer_replacements, Applicability::MachineApplicable);
             }
 
@@ -2653,10 +2663,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Given a fn_hir_id for a impl function, suggest the type that is found on the
     /// corresponding function in the trait that the impl implements, if it exists.
+    /// If arg_idx is Some, then it corresponds to an input type index, otherwise it
+    /// corresponds to the return type.
     fn suggest_trait_fn_ty_for_impl_fn_infer(
         &self,
         fn_hir_id: hir::HirId,
-        arg_idx: usize,
+        arg_idx: Option<usize>,
     ) -> Option<Ty<'tcx>> {
         let tcx = self.tcx();
         let hir = tcx.hir();
@@ -2664,7 +2676,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
             hir.get(fn_hir_id) else { return None };
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
-                hir.get(hir.get_parent_node(fn_hir_id)) else { return None };
+                hir.get(hir.get_parent_node(fn_hir_id)) else { bug!("ImplItem should have Impl parent") };
 
         let trait_ref =
             self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
@@ -2681,7 +2693,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_ref.substs.extend_to(tcx, x.def_id, |param, _| tcx.mk_param_from_def(param)),
         );
 
-        Some(tcx.erase_late_bound_regions(fn_sig.input(arg_idx)))
+        let ty = if let Some(arg_idx) = arg_idx { fn_sig.input(arg_idx) } else { fn_sig.output() };
+
+        Some(tcx.erase_late_bound_regions(ty))
     }
 
     fn validate_late_bound_regions(
