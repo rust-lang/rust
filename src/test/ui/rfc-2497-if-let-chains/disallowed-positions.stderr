@@ -62,7 +62,7 @@ LL |     if true || let 0 = 0 {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:47:13
    |
 LL |     if true || let 0 = 0 {}
@@ -76,7 +76,7 @@ LL |     if (true || let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:48:14
    |
 LL |     if (true || let 0 = 0) {}
@@ -90,7 +90,7 @@ LL |     if true && (true || let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:49:22
    |
 LL |     if true && (true || let 0 = 0) {}
@@ -104,7 +104,7 @@ LL |     if true || (true && let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:50:13
    |
 LL |     if true || (true && let 0 = 0) {}
@@ -244,7 +244,7 @@ LL |     while true || let 0 = 0 {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:111:16
    |
 LL |     while true || let 0 = 0 {}
@@ -258,7 +258,7 @@ LL |     while (true || let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:112:17
    |
 LL |     while (true || let 0 = 0) {}
@@ -272,7 +272,7 @@ LL |     while true && (true || let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:113:25
    |
 LL |     while true && (true || let 0 = 0) {}
@@ -286,7 +286,7 @@ LL |     while true || (true && let 0 = 0) {}
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:114:16
    |
 LL |     while true || (true && let 0 = 0) {}
@@ -426,7 +426,7 @@ LL |     true || let 0 = 0;
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:184:10
    |
 LL |     true || let 0 = 0;
@@ -440,7 +440,7 @@ LL |     (true || let 0 = 0);
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:185:11
    |
 LL |     (true || let 0 = 0);
@@ -454,7 +454,7 @@ LL |     true && (true || let 0 = 0);
    |
    = note: only supported directly in conditions of `if` and `while` expressions
    = note: as well as when nested within `&&` and parentheses in those conditions
-note: `||` operators are not allowed in let chain expressions
+note: `||` operators are not currently supported in let chain expressions
   --> $DIR/disallowed-positions.rs:186:19
    |
 LL |     true && (true || let 0 = 0);
