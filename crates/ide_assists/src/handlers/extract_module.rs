@@ -104,7 +104,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
 
     let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
-    module.body_items = module.change_visibility(record_fields)?;
+    module.body_items = module.change_visibility(record_fields);
     if module.body_items.len() == 0 {
         return None;
     }
@@ -114,6 +114,8 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         "Extract Module",
         module.text_range,
         |builder| {
+            module.body_items = module.change_visibility(record_fields);
+
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
             let mut new_item_indent = old_item_indent + 1;
@@ -393,7 +395,7 @@ impl Module {
         None
     }
 
-    fn change_visibility(&self, record_fields: Vec<SyntaxNode>) -> Option<Vec<ast::Item>> {
+    fn change_visibility(&self, record_fields: Vec<SyntaxNode>) -> Vec<ast::Item> {
         let (body_items, mut replacements, record_field_parents, impls) =
             get_replacements_for_visibilty_change(self.body_items.clone(), false);
 
@@ -428,7 +430,7 @@ impl Module {
             add_change_vis(vis, syntax.first_child_or_token());
         });
 
-        Some(body_items)
+        body_items
     }
 
     fn resolve_imports(
@@ -890,23 +892,13 @@ fn get_use_tree_paths_from_path(
     Some(use_tree_str)
 }
 
-fn add_change_vis(
-    vis: Option<ast::Visibility>,
-    node_or_token_opt: Option<syntax::SyntaxElement>,
-) -> Option<()> {
-    if let None = vis {
+fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax::SyntaxElement>) {
+    if vis.is_none() {
         if let Some(node_or_token) = node_or_token_opt {
             let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
-            if let Some(node) = node_or_token.as_node() {
-                ted::insert(ted::Position::before(node), pub_crate_vis.syntax());
-            }
-            if let Some(token) = node_or_token.as_token() {
-                ted::insert(ted::Position::before(token), pub_crate_vis.syntax());
-            }
+            ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
         }
     }
-
-    Some(())
 }
 
 fn compare_hir_and_ast_module(
