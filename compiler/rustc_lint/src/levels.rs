@@ -371,7 +371,12 @@ impl<'s> LintLevelsBuilder<'s> {
                             };
                             self.lint_expectations.push((
                                 expect_id,
-                                LintExpectation::new(reason, sp, is_unfulfilled_lint_expectations),
+                                LintExpectation::new(
+                                    reason,
+                                    sp,
+                                    is_unfulfilled_lint_expectations,
+                                    tool_name,
+                                ),
                             ));
                         }
                         let src = LintLevelSource::Node(
@@ -400,8 +405,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                     self.insert_spec(*id, (level, src));
                                 }
                                 if let Level::Expect(expect_id) = level {
-                                    self.lint_expectations
-                                        .push((expect_id, LintExpectation::new(reason, sp, false)));
+                                    self.lint_expectations.push((
+                                        expect_id,
+                                        LintExpectation::new(reason, sp, false, tool_name),
+                                    ));
                                 }
                             }
                             Err((Some(ids), ref new_lint_name)) => {
@@ -444,8 +451,10 @@ impl<'s> LintLevelsBuilder<'s> {
                                     self.insert_spec(*id, (level, src));
                                 }
                                 if let Level::Expect(expect_id) = level {
-                                    self.lint_expectations
-                                        .push((expect_id, LintExpectation::new(reason, sp, false)));
+                                    self.lint_expectations.push((
+                                        expect_id,
+                                        LintExpectation::new(reason, sp, false, tool_name),
+                                    ));
                                 }
                             }
                             Err((None, _)) => {
@@ -550,8 +559,10 @@ impl<'s> LintLevelsBuilder<'s> {
                             }
                         }
                         if let Level::Expect(expect_id) = level {
-                            self.lint_expectations
-                                .push((expect_id, LintExpectation::new(reason, sp, false)));
+                            self.lint_expectations.push((
+                                expect_id,
+                                LintExpectation::new(reason, sp, false, tool_name),
+                            ));
                         }
                     } else {
                         panic!("renamed lint does not exist: {}", new_name);

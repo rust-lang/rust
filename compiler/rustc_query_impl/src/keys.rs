@@ -435,6 +435,16 @@ impl Key for Symbol {
     }
 }
 
+impl Key for Option<Symbol> {
+    #[inline(always)]
+    fn query_crate_is_local(&self) -> bool {
+        true
+    }
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T> Key for Canonical<'tcx, T> {
