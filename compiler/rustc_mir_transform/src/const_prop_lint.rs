@@ -24,7 +24,6 @@ use rustc_session::lint;
 use rustc_span::{def_id::DefId, Span};
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi;
-use rustc_trait_selection::traits;
 
 use crate::MirLint;
 use rustc_const_eval::const_eval::ConstEvalErr;
@@ -111,15 +110,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
         // the normalization code (leading to cycle errors), since
         // it's usually never invoked in this way.
-        let predicates = tcx
-            .predicates_of(def_id.to_def_id())
-            .predicates
-            .iter()
-            .filter_map(|(p, _)| if p.is_global() { Some(*p) } else { None });
-        if traits::impossible_predicates(
-            tcx,
-            traits::elaborate_predicates(tcx, predicates).map(|o| o.predicate).collect(),
-        ) {
+        if tcx.item_has_impossible_predicates(def_id) {
             trace!("ConstProp skipped for {:?}: found unsatisfiable predicates", def_id);
             return;
         }

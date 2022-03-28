@@ -425,17 +425,21 @@ where
 /// Normalizes the predicates and checks whether they hold in an empty environment. If this
 /// returns true, then either normalize encountered an error or one of the predicates did not
 /// hold. Used when creating vtables to check for unsatisfiable methods.
-pub fn impossible_predicates<'tcx>(
+fn has_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: Vec<ty::Predicate<'tcx>>,
+    predicates: impl Iterator<Item = ty::Predicate<'tcx>>,
 ) -> bool {
-    debug!("impossible_predicates(predicates={:?})", predicates);
+    let predicates = elaborate_predicates(tcx, predicates)
+        .map(|o| tcx.erase_regions(o.predicate))
+        .filter(|p| p.is_global())
+        .collect::<Vec<_>>();
 
-    let result = tcx.infer_ctxt().enter(|infcx| {
+    tcx.infer_ctxt().enter(|infcx| {
         let param_env = ty::ParamEnv::reveal_all();
         let mut selcx = SelectionContext::new(&infcx);
         let mut fulfill_cx = FulfillmentContext::new();
         let cause = ObligationCause::dummy();
+
         let Normalized { value: predicates, obligations } =
             normalize(&mut selcx, param_env, cause.clone(), predicates);
         for obligation in obligations {
@@ -447,24 +451,26 @@ pub fn impossible_predicates<'tcx>(
         }
 
         let errors = fulfill_cx.select_all_or_error(&infcx);
-
         !errors.is_empty()
-    });
-    debug!("impossible_predicates = {:?}", result);
-    result
+    })
 }
 
-fn subst_and_check_impossible_predicates<'tcx>(
+fn instantiated_item_has_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
+    debug!("instantiated_item_has_impossible_predicates(key={:?})", key);
+    let predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    let result = has_impossible_predicates(tcx, predicates.into_iter());
+    debug!("instantiated_item_has_impossible_predicates(key={:?}) = {:?}", key, result);
+    result
+}
 
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
-    predicates.retain(|predicate| !predicate.needs_subst());
-    let result = impossible_predicates(tcx, predicates);
-
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+fn item_has_impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, key: DefId) -> bool {
+    debug!("item_has_impossible_predicates(key={:?})", key);
+    let predicates = tcx.predicates_of(key).instantiate_identity(tcx).predicates;
+    let result = has_impossible_predicates(tcx, predicates.into_iter());
+    debug!("item_has_impossible_predicates(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -715,8 +721,7 @@ fn vtable_entries<'tcx>(
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-                    if impossible_predicates(tcx, predicates.predicates) {
+                    if tcx.instantiated_item_has_impossible_predicates((def_id, substs)) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;
                     }
@@ -847,7 +852,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
-        subst_and_check_impossible_predicates,
+        instantiated_item_has_impossible_predicates,
+        item_has_impossible_predicates,
         thir_abstract_const: |tcx, def_id| {
             let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {
