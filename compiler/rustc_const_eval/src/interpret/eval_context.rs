@@ -694,7 +694,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0);
 
                 // Make sure the slice is not too big.
-                let size = elem.size * len;
+                let size = elem.size.bytes().saturating_mul(len); // we rely on `max_size_of_val` being smaller than `u64::MAX`.
+                let size = Size::from_bytes(size);
                 if size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta("slice is bigger than largest supported object"));
                 }
