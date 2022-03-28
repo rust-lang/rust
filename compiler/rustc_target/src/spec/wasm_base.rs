@@ -5,9 +5,9 @@ use std::collections::BTreeMap;
 pub fn options() -> TargetOptions {
     let mut lld_args = Vec::new();
     let mut clang_args = Vec::new();
-    let mut arg = |arg: &str| {
+    let mut arg = |arg: &'static str| {
         lld_args.push(arg.into());
-        clang_args.push(format!("-Wl,{}", arg));
+        clang_args.push(format!("-Wl,{}", arg).into());
     };
 
     // By default LLD only gives us one page of stack (64k) which is a

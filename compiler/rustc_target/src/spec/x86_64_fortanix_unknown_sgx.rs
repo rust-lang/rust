@@ -68,7 +68,7 @@ pub fn target() -> Target {
         position_independent_executables: true,
         pre_link_args: iter::once((
             LinkerFlavor::Lld(LldFlavor::Ld),
-            PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
+            PRE_LINK_ARGS.iter().cloned().map(Cow::from).collect(),
         ))
         .collect(),
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(Cow::from).collect()),

@@ -40,6 +40,7 @@ use std::ffi::OsString;
 use std::fs::{File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::lazy::OnceCell;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{ascii, char, env, fmt, fs, io, mem, str};
@@ -1586,7 +1587,7 @@ fn add_post_link_objects(
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
-        cmd.args(args);
+        cmd.args(args.iter().map(Deref::deref));
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_args);
 }
@@ -1634,15 +1635,15 @@ fn add_late_link_args(
         });
     if any_dynamic_crate {
         if let Some(args) = sess.target.late_link_args_dynamic.get(&flavor) {
-            cmd.args(args);
+            cmd.args(args.iter().map(Deref::deref));
         }
     } else {
         if let Some(args) = sess.target.late_link_args_static.get(&flavor) {
-            cmd.args(args);
+            cmd.args(args.iter().map(Deref::deref));
         }
     }
     if let Some(args) = sess.target.late_link_args.get(&flavor) {
-        cmd.args(args);
+        cmd.args(args.iter().map(Deref::deref));
     }
 }
 
@@ -1650,7 +1651,7 @@ fn add_late_link_args(
 /// FIXME: Determine where exactly these args need to be inserted.
 fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
     if let Some(args) = sess.target.post_link_args.get(&flavor) {
-        cmd.args(args);
+        cmd.args(args.iter().map(Deref::deref));
     }
 }
 

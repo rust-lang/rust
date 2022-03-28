@@ -459,7 +459,7 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
+pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<Cow<'static, str>>>;
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum SplitDebuginfo {
@@ -1978,7 +1978,7 @@ impl Target {
                             .map(|(i,s)| {
                                 let s = s.as_string().ok_or_else(||
                                     format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.into())
+                                Ok(s.to_string().into())
                             })
                             .collect::<Result<Vec<_>, String>>()?;
 
