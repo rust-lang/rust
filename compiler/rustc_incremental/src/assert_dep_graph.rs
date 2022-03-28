@@ -241,7 +241,7 @@ fn dump_graph(query: &DepGraphQuery) {
             let targets = node_set(&query, &edge_filter.target);
             filter_nodes(&query, &sources, &targets)
         }
-        Err(_) => query.nodes().into_iter().collect(),
+        Err(_) => query.nodes().into_iter().map(|n| n.kind).collect(),
     };
     let edges = filter_edges(&query, &nodes);
 
@@ -264,33 +264,33 @@ fn dump_graph(query: &DepGraphQuery) {
 }
 
 #[allow(missing_docs)]
-pub struct GraphvizDepGraph<'q>(FxHashSet<&'q DepNode>, Vec<(&'q DepNode, &'q DepNode)>);
+pub struct GraphvizDepGraph(FxHashSet<DepKind>, Vec<(DepKind, DepKind)>);
 
-impl<'a, 'q> dot::GraphWalk<'a> for GraphvizDepGraph<'q> {
-    type Node = &'q DepNode;
-    type Edge = (&'q DepNode, &'q DepNode);
-    fn nodes(&self) -> dot::Nodes<'_, &'q DepNode> {
+impl<'a> dot::GraphWalk<'a> for GraphvizDepGraph {
+    type Node = DepKind;
+    type Edge = (DepKind, DepKind);
+    fn nodes(&self) -> dot::Nodes<'_, DepKind> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into()
     }
-    fn edges(&self) -> dot::Edges<'_, (&'q DepNode, &'q DepNode)> {
+    fn edges(&self) -> dot::Edges<'_, (DepKind, DepKind)> {
         self.1[..].into()
     }
-    fn source(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
+    fn source(&self, edge: &(DepKind, DepKind)) -> DepKind {
         edge.0
     }
-    fn target(&self, edge: &(&'q DepNode, &'q DepNode)) -> &'q DepNode {
+    fn target(&self, edge: &(DepKind, DepKind)) -> DepKind {
         edge.1
     }
 }
 
-impl<'a, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
-    type Node = &'q DepNode;
-    type Edge = (&'q DepNode, &'q DepNode);
+impl<'a> dot::Labeller<'a> for GraphvizDepGraph {
+    type Node = DepKind;
+    type Edge = (DepKind, DepKind);
     fn graph_id(&self) -> dot::Id<'_> {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &&'q DepNode) -> dot::Id<'_> {
+    fn node_id(&self, n: &DepKind) -> dot::Id<'_> {
         let s: String = format!("{:?}", n)
             .chars()
             .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -298,7 +298,7 @@ impl<'a, 'q> dot::Labeller<'a> for GraphvizDepGraph<'q> {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &&'q DepNode) -> dot::LabelText<'_> {
+    fn node_label(&self, n: &DepKind) -> dot::LabelText<'_> {
         dot::LabelText::label(format!("{:?}", n))
     }
 }
@@ -323,7 +323,7 @@ fn filter_nodes<'q>(
     query: &'q DepGraphQuery,
     sources: &Option<FxHashSet<&'q DepNode>>,
     targets: &Option<FxHashSet<&'q DepNode>>,
-) -> FxHashSet<&'q DepNode> {
+) -> FxHashSet<DepKind> {
     if let Some(sources) = sources {
         if let Some(targets) = targets {
             walk_between(query, sources, targets)
@@ -333,7 +333,7 @@ fn filter_nodes<'q>(
     } else if let Some(targets) = targets {
         walk_nodes(query, targets, INCOMING)
     } else {
-        query.nodes().into_iter().collect()
+        query.nodes().into_iter().map(|n| n.kind).collect()
     }
 }
 
@@ -341,17 +341,17 @@ fn walk_nodes<'q>(
     query: &'q DepGraphQuery,
     starts: &FxHashSet<&'q DepNode>,
     direction: Direction,
-) -> FxHashSet<&'q DepNode> {
+) -> FxHashSet<DepKind> {
     let mut set = FxHashSet::default();
     for &start in starts {
         debug!("walk_nodes: start={:?} outgoing?={:?}", start, direction == OUTGOING);
-        if set.insert(start) {
+        if set.insert(start.kind) {
             let mut stack = vec![query.indices[start]];
             while let Some(index) = stack.pop() {
                 for (_, edge) in query.graph.adjacent_edges(index, direction) {
                     let neighbor_index = edge.source_or_target(direction);
                     let neighbor = query.graph.node_data(neighbor_index);
-                    if set.insert(neighbor) {
+                    if set.insert(neighbor.kind) {
                         stack.push(neighbor_index);
                     }
                 }
@@ -365,7 +365,7 @@ fn walk_between<'q>(
     query: &'q DepGraphQuery,
     sources: &FxHashSet<&'q DepNode>,
     targets: &FxHashSet<&'q DepNode>,
-) -> FxHashSet<&'q DepNode> {
+) -> FxHashSet<DepKind> {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
     // have to be careful about cycles etc.  Luckily efficiency is not
@@ -396,6 +396,7 @@ fn walk_between<'q>(
             let index = query.indices[n];
             node_states[index.0] == State::Included
         })
+        .map(|n| n.kind)
         .collect();
 
     fn recurse(query: &DepGraphQuery, node_states: &mut [State], node: NodeIndex) -> bool {
@@ -433,11 +434,13 @@ fn walk_between<'q>(
 
 fn filter_edges<'q>(
     query: &'q DepGraphQuery,
-    nodes: &FxHashSet<&'q DepNode>,
-) -> Vec<(&'q DepNode, &'q DepNode)> {
-    query
+    nodes: &FxHashSet<DepKind>,
+) -> Vec<(DepKind, DepKind)> {
+    let uniq: FxHashSet<_> = query
         .edges()
         .into_iter()
-        .filter(|&(source, target)| nodes.contains(source) && nodes.contains(target))
-        .collect()
+        .map(|(s, t)| (s.kind, t.kind))
+        .filter(|(source, target)| nodes.contains(source) && nodes.contains(target))
+        .collect();
+    uniq.into_iter().collect()
 }
