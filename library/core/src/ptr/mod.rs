@@ -113,7 +113,7 @@
 //! to access an allocation's sandbox and has both a *spatial* and *temporal* component:
 //!
 //! * Spatial: A range of bytes that the pointer is allowed to access.
-//! * Temporal: The allocation that access to these bytes is tied to.
+//! * Temporal: The lifetime (of the allocation) that access to these bytes is tied to.
 //!
 //! Spatial provenance makes sure you don't go beyond your sandbox, while temporal provenance
 //! makes sure that you can't "get lucky" after your permission to access some memory
