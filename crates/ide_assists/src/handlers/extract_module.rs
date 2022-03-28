@@ -104,7 +104,6 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
 
     let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
-    module.body_items = module.change_visibility(record_fields);
     if module.body_items.len() == 0 {
         return None;
     }
@@ -114,7 +113,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
         "Extract Module",
         module.text_range,
         |builder| {
-            module.body_items = module.change_visibility(record_fields);
+            module.change_visibility(record_fields);
 
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
@@ -151,17 +150,11 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                     body = impl_body_def;
 
                     // Add the import for enum/struct corresponding to given impl block
-                    if let Some(_) = module.make_use_stmt_of_node_with_super(self_ty.syntax()) {
-                        for item in module.use_items {
-                            let mut indented_item = String::new();
-                            format_to!(
-                                indented_item,
-                                "{}{}",
-                                old_item_indent + 1,
-                                item.to_string()
-                            );
-                            body = format!("{}\n\n{}", indented_item, body);
-                        }
+                    module.make_use_stmt_of_node_with_super(self_ty.syntax());
+                    for item in module.use_items {
+                        let mut indented_item = String::new();
+                        format_to!(indented_item, "{}{}", old_item_indent + 1, item.to_string());
+                        body = format!("{}\n\n{}", indented_item, body);
                     }
                 }
             }
@@ -395,9 +388,9 @@ impl Module {
         None
     }
 
-    fn change_visibility(&self, record_fields: Vec<SyntaxNode>) -> Vec<ast::Item> {
-        let (body_items, mut replacements, record_field_parents, impls) =
-            get_replacements_for_visibilty_change(self.body_items.clone(), false);
+    fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>) {
+        let (mut replacements, record_field_parents, impls) =
+            get_replacements_for_visibilty_change(&mut self.body_items, false);
 
         let mut impl_items = Vec::new();
         for impl_ in impls {
@@ -411,8 +404,8 @@ impl Module {
             impl_items.append(&mut this_impl_items);
         }
 
-        let (_, mut impl_item_replacements, _, _) =
-            get_replacements_for_visibilty_change(impl_items, true);
+        let (mut impl_item_replacements, _, _) =
+            get_replacements_for_visibilty_change(&mut impl_items, true);
 
         replacements.append(&mut impl_item_replacements);
 
@@ -429,8 +422,6 @@ impl Module {
         replacements.into_iter().for_each(|(vis, syntax)| {
             add_change_vis(vis, syntax.first_child_or_token());
         });
-
-        body_items
     }
 
     fn resolve_imports(
@@ -626,7 +617,7 @@ impl Module {
         import_path_to_be_removed
     }
 
-    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> Option<ast::Item> {
+    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> ast::Item {
         let super_path = make::ext::ident_path("super");
         let node_path = make::ext::ident_path(&node_syntax.to_string());
         let use_ = make::use_(
@@ -634,12 +625,9 @@ impl Module {
             make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
         );
 
-        if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-            self.use_items.insert(0, item.clone());
-            return Some(item);
-        }
-
-        None
+        let item = ast::Item::from(use_);
+        self.use_items.insert(0, item.clone());
+        item
     }
 
     fn process_use_stmt_for_import_resolve(
@@ -825,10 +813,9 @@ fn does_source_exists_outside_sel_in_same_mod(
 }
 
 fn get_replacements_for_visibilty_change(
-    items: Vec<ast::Item>,
+    items: &mut [ast::Item],
     is_clone_for_updated: bool,
 ) -> (
-    Vec<ast::Item>,
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
     Vec<ast::Impl>,
@@ -836,14 +823,12 @@ fn get_replacements_for_visibilty_change(
     let mut replacements = Vec::new();
     let mut record_field_parents = Vec::new();
     let mut impls = Vec::new();
-    let mut body_items = Vec::new();
 
     items.into_iter().for_each(|item| {
-        let mut item = item;
+        let item = item;
         if !is_clone_for_updated {
-            item = item.clone_for_update();
+            *item = item.clone_for_update();
         }
-        body_items.push(item.clone());
         //Use stmts are ignored
         match item {
             ast::Item::Const(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -851,7 +836,7 @@ fn get_replacements_for_visibilty_change(
             ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
             //Associated item's visibility should not be changed
-            ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it),
+            ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it.clone()),
             ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Static(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -869,7 +854,7 @@ fn get_replacements_for_visibilty_change(
         }
     });
 
-    (body_items, replacements, record_field_parents, impls)
+    (replacements, record_field_parents, impls)
 }
 
 fn get_use_tree_paths_from_path(
