@@ -1,12 +1,12 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Nonterminal, NonterminalKind, Token};
+use rustc_ast::token::{self, NonterminalKind, Token};
 use rustc_ast::AstLike;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::parser::{FollowedByType, ForceCollect, Parser, PathStyle};
+use crate::parser::{FollowedByType, ForceCollect, NtOrTt, Parser, PathStyle};
 
 impl<'a> Parser<'a> {
     /// Checks whether a non-terminal may begin with a particular token.
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => match token.kind {
                 token::Lifetime(_) => true,
                 token::Interpolated(ref nt) => {
-                    matches!(**nt, token::NtLifetime(_) | token::NtTT(_))
+                    matches!(**nt, token::NtLifetime(_))
                 }
                 _ => false,
             },
@@ -96,7 +96,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a non-terminal (e.g. MBE `:pat` or `:ident`).
-    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, Nonterminal> {
+    pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, NtOrTt> {
         // Any `Nonterminal` which stores its tokens (currently `NtItem` and `NtExpr`)
         // needs to have them force-captured here.
         // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
@@ -104,6 +104,8 @@ impl<'a> Parser<'a> {
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
         let mut nt = match kind {
+            // Note that TT is treated differently to all the others.
+            NonterminalKind::TT => return Ok(NtOrTt::Tt(self.parse_token_tree())),
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
@@ -124,9 +126,12 @@ impl<'a> Parser<'a> {
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
                 token::NtPat(self.collect_tokens_no_attrs(|this| match kind {
                     NonterminalKind::PatParam { .. } => this.parse_pat_no_top_alt(None),
-                    NonterminalKind::PatWithOr { .. } => {
-                        this.parse_pat_allow_top_alt(None, RecoverComma::No, RecoverColon::No, CommaRecoveryMode::EitherTupleOrPipe)
-                    }
+                    NonterminalKind::PatWithOr { .. } => this.parse_pat_allow_top_alt(
+                        None,
+                        RecoverComma::No,
+                        RecoverColon::No,
+                        CommaRecoveryMode::EitherTupleOrPipe,
+                    ),
                     _ => unreachable!(),
                 })?)
             }
@@ -139,9 +144,10 @@ impl<'a> Parser<'a> {
                 )
             }
 
-            NonterminalKind::Ty => {
-                token::NtTy(self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?)
-            }
+            NonterminalKind::Ty => token::NtTy(
+                self.collect_tokens_no_attrs(|this| this.parse_no_question_mark_recover())?,
+            ),
+
             // this could be handled like a token, since it is one
             NonterminalKind::Ident
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) =>
@@ -158,7 +164,6 @@ impl<'a> Parser<'a> {
                 self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?,
             ),
             NonterminalKind::Meta => token::NtMeta(P(self.parse_attr_item(true)?)),
-            NonterminalKind::TT => token::NtTT(self.parse_token_tree()),
             NonterminalKind::Vis => token::NtVis(
                 self.collect_tokens_no_attrs(|this| this.parse_visibility(FollowedByType::Yes))?,
             ),
@@ -183,7 +188,7 @@ impl<'a> Parser<'a> {
             );
         }
 
-        Ok(nt)
+        Ok(NtOrTt::Nt(nt))
     }
 }
 

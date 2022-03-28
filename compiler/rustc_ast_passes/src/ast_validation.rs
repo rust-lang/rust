@@ -122,7 +122,10 @@ impl<'a> AstValidator<'a> {
             diag.note("only supported directly in conditions of `if` and `while` expressions");
             diag.note("as well as when nested within `&&` and parentheses in those conditions");
             if let ForbiddenLetReason::ForbiddenWithOr(span) = forbidden_let_reason {
-                diag.span_note(span, "`||` operators are not allowed in let chain expressions");
+                diag.span_note(
+                    span,
+                    "`||` operators are not currently supported in let chain expressions",
+                );
             }
             diag.emit();
         } else {
