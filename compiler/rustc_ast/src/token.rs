@@ -6,7 +6,6 @@ pub use TokenKind::*;
 
 use crate::ast;
 use crate::ptr::P;
-use crate::tokenstream::TokenTree;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
@@ -680,7 +679,6 @@ pub enum Nonterminal {
     NtMeta(P<ast::AttrItem>),
     NtPath(ast::Path),
     NtVis(ast::Visibility),
-    NtTT(TokenTree),
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -778,7 +776,6 @@ impl Nonterminal {
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
             NtVis(vis) => vis.span,
-            NtTT(tt) => tt.span(),
         }
     }
 }
@@ -790,7 +787,6 @@ impl PartialEq for Nonterminal {
                 ident_lhs == ident_rhs && is_raw_lhs == is_raw_rhs
             }
             (NtLifetime(ident_lhs), NtLifetime(ident_rhs)) => ident_lhs == ident_rhs,
-            (NtTT(tt_lhs), NtTT(tt_rhs)) => tt_lhs == tt_rhs,
             // FIXME: Assume that all "complex" nonterminal are not equal, we can't compare them
             // correctly based on data from AST. This will prevent them from matching each other
             // in macros. The comparison will become possible only when each nonterminal has an
@@ -813,7 +809,6 @@ impl fmt::Debug for Nonterminal {
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
-            NtTT(..) => f.pad("NtTT(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }

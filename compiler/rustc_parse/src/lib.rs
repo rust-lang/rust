@@ -290,7 +290,6 @@ pub fn nt_to_tokenstream(
         Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.as_ref()),
         Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
         Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
-        Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
         Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
             prepend_attrs(&expr.attrs, expr.tokens.as_ref())
         }
