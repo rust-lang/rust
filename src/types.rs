@@ -251,7 +251,7 @@ fn rewrite_segment(
         match **args {
             ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
                 // HACK: squeeze out the span between the identifier and the parameters.
-                // The hack is requried so that we don't remove the separator inside macro calls.
+                // The hack is required so that we don't remove the separator inside macro calls.
                 // This does not work in the presence of comment, hoping that people are
                 // sane about where to put their comment.
                 let separator_snippet = context
