@@ -2472,7 +2472,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     }
                 }
             },
-            ("map", [m_arg]) => {
+            (name @ ("map" | "map_err"), [m_arg]) => {
                 if let Some((name, [recv2, args @ ..], span2)) = method_call(recv) {
                     match (name, args) {
                         ("as_mut", []) => option_as_ref_deref::check(cx, expr, recv2, m_arg, true, msrv),
@@ -2484,7 +2484,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                         _ => {},
                     }
                 }
-                map_identity::check(cx, expr, recv, m_arg, span);
+                map_identity::check(cx, expr, recv, m_arg, name, span);
             },
             ("map_or", [def, map]) => option_map_or_none::check(cx, expr, recv, def, map),
             (name @ "next", args @ []) => {
