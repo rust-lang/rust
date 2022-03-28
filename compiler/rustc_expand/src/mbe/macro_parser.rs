@@ -516,13 +516,14 @@ impl<'tt> TtParser<'tt> {
                     }
 
                     TokenTree::Token(t) => {
-                        // Doc comments cannot appear in a matcher.
-                        debug_assert!(!matches!(t, Token { kind: DocComment(..), .. }));
-
-                        // If the token matches, we can just advance the parser. Otherwise, this
-                        // match hash failed, there is nothing to do, and hopefully another item in
-                        // `cur_items` will match.
-                        if token_name_eq(&t, token) {
+                        // If it's a doc comment, we just ignore it and move on to the next tt in
+                        // the matcher. If the token matches, we can just advance the parser.
+                        // Otherwise, this match has failed, there is nothing to do, and hopefully
+                        // another item in `cur_items` will match.
+                        if matches!(t, Token { kind: DocComment(..), .. }) {
+                            item.idx += 1;
+                            self.cur_items.push(item);
+                        } else if token_name_eq(&t, token) {
                             item.idx += 1;
                             self.next_items.push(item);
                         }
