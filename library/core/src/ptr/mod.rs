@@ -317,7 +317,7 @@
 //! [zst]: ../../nomicon/exotic-sizes.html#zero-sized-types-zsts
 //! [atomic operations]: crate::sync::atomic
 //! [`offset`]: pointer::offset
-//! [`wrapping_offset`]: pointer::offset
+//! [`wrapping_offset`]: pointer::wrapping_offset
 //! [`with_addr`]: pointer::with_addr
 //! [`map_addr`]: pointer::map_addr
 //! [`addr`]: pointer::addr
