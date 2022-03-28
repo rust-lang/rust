@@ -163,7 +163,7 @@
 //! of pointers and `usize` (and `isize`), and defining a pointer to semantically contain the
 //! following information:
 //!
-//! * The **address-space** it is part of.
+//! * The **address-space** it is part of (i.e. "data" vs "code" in WASM).
 //! * The **address** it points to, which can be represented by a `usize`.
 //! * The **provenance** it has, defining the memory it has permission to access.
 //!
