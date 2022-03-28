@@ -113,17 +113,10 @@ impl Spanned for ast::Param {
 
 impl Spanned for ast::GenericParam {
     fn span(&self) -> Span {
-        let lo = if let ast::GenericParamKind::Const {
-            ty: _,
-            kw_span,
-            default: _,
-        } = self.kind
-        {
-            kw_span.lo()
-        } else if self.attrs.is_empty() {
-            self.ident.span.lo()
-        } else {
-            self.attrs[0].span.lo()
+        let lo = match self.kind {
+            _ if !self.attrs.is_empty() => self.attrs[0].span.lo(),
+            ast::GenericParamKind::Const { kw_span, .. } => kw_span.lo(),
+            _ => self.ident.span.lo(),
         };
         let hi = if self.bounds.is_empty() {
             self.ident.span.hi()
