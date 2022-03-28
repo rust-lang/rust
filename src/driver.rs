@@ -165,9 +165,11 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Separate the output with an empty line
     eprintln!();
 
-    let fallback_bundle = rustc_errors::fallback_fluent_bundle();
+    let fallback_bundle = rustc_errors::fallback_fluent_bundle()
+        .expect("failed to load fallback fluent bundle");
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
+        None,
         None,
         fallback_bundle,
         false,
