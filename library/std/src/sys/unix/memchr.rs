@@ -26,6 +26,8 @@ pub fn memrchr(needle: u8, haystack: &[u8]) -> Option<usize> {
                 haystack.len(),
             )
         };
+        // FIXME: this should *likely* use `offset_from`, but more
+        // investigation is needed (including running tests in miri).
         if p.is_null() { None } else { Some(p.addr() - haystack.as_ptr().addr()) }
     }
 

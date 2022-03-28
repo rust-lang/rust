@@ -217,6 +217,8 @@ impl<T> TypedArena<T> {
 
     #[inline]
     fn can_allocate(&self, additional: usize) -> bool {
+        // FIXME: this should *likely* use `offset_from`, but more
+        // investigation is needed (including running tests in miri).
         let available_bytes = self.end.get().addr() - self.ptr.get().addr();
         let additional_bytes = additional.checked_mul(mem::size_of::<T>()).unwrap();
         available_bytes >= additional_bytes
@@ -263,6 +265,8 @@ impl<T> TypedArena<T> {
                 // If a type is `!needs_drop`, we don't need to keep track of how many elements
                 // the chunk stores - the field will be ignored anyway.
                 if mem::needs_drop::<T>() {
+                    // FIXME: this should *likely* use `offset_from`, but more
+                    // investigation is needed (including running tests in miri).
                     let used_bytes = self.ptr.get().addr() - last_chunk.start().addr();
                     last_chunk.entries = used_bytes / mem::size_of::<T>();
                 }
@@ -300,6 +304,8 @@ impl<T> TypedArena<T> {
             // Recall that `end` was incremented for each allocated value.
             end - start
         } else {
+            // FIXME: this should *likely* use `offset_from`, but more
+            // investigation is needed (including running tests in miri).
             (end - start) / mem::size_of::<T>()
         };
         // Pass that to the `destroy` method.
