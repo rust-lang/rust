@@ -45,6 +45,11 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// values, encoded in a less-strict variant of UTF-8. This is useful to
 /// understand when handling capacity and length values.
 ///
+/// # Capacity of OsString
+///
+/// Capacity means UTF-8 byte size for OS strings which created from
+/// valid unicode, and not otherwise specified for other contents.
+///
 /// # Creating an `OsString`
 ///
 /// **From a Rust string**: `OsString` implements
@@ -188,6 +193,11 @@ impl OsString {
     ///
     /// See main `OsString` documentation information about encoding.
     ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
+    ///
     /// # Examples
     ///
     /// ```
@@ -231,6 +241,11 @@ impl OsString {
     ///
     /// See `OsString` introduction for information about encoding.
     ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
+    ///
     /// # Examples
     ///
     /// ```
@@ -271,6 +286,11 @@ impl OsString {
     /// frequent reallocations. After calling `try_reserve`, capacity will be
     /// greater than or equal to `self.len() + additional`. Does nothing if
     /// capacity is already sufficient.
+    ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
     ///
     /// # Errors
     ///
@@ -313,6 +333,11 @@ impl OsString {
     ///
     /// [`reserve`]: OsString::reserve
     ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
+    ///
     /// # Examples
     ///
     /// ```
@@ -339,6 +364,11 @@ impl OsString {
     /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
     /// [`try_reserve`]: OsString::try_reserve
+    ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
     ///
     /// # Errors
     ///
@@ -398,6 +428,11 @@ impl OsString {
     /// and the supplied value.
     ///
     /// If the current capacity is less than the lower limit, this is a no-op.
+    ///
+    /// # Notes
+    ///
+    /// Capacity means UTF-8 byte size for OS strings which created from
+    /// valid unicode, and not otherwise specified for other contents.
     ///
     /// # Examples
     ///
