@@ -454,17 +454,38 @@ pub fn impossible_predicates<'tcx>(
     result
 }
 
-fn subst_and_check_impossible_predicates<'tcx>(
+fn instantiated_item_has_impossible_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, SubstsRef<'tcx>),
 ) -> bool {
-    debug!("subst_and_check_impossible_predicates(key={:?})", key);
+    debug!("instantiated_item_has_impossible_predicates(key={:?})", key);
 
     let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
     predicates.retain(|predicate| !predicate.needs_subst());
     let result = impossible_predicates(tcx, predicates);
 
-    debug!("subst_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!("instantiated_item_has_impossible_predicates(key={:?}) = {:?}", key, result);
+    result
+}
+
+fn item_has_impossible_predicates_for_item<'tcx>(tcx: TyCtxt<'tcx>, key: DefId) -> bool {
+    debug!("item_has_impossible_predicates_for_item(key={:?})", key);
+
+    let result = impossible_predicates(
+        tcx,
+        elaborate_predicates_with_span(
+            tcx,
+            tcx.predicates_of(key)
+                .predicates
+                .iter()
+                .filter(|predicate| predicate.is_global())
+                .copied(),
+        )
+        .map(|o| o.predicate)
+        .collect(),
+    );
+
+    debug!("item_has_impossible_predicates_for_item(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -847,7 +868,8 @@ pub fn provide(providers: &mut ty::query::Providers) {
         own_existential_vtable_entries,
         vtable_entries,
         vtable_trait_upcasting_coercion_new_vptr_slot,
-        subst_and_check_impossible_predicates,
+        instantiated_item_has_impossible_predicates,
+        item_has_impossible_predicates_for_item,
         thir_abstract_const: |tcx, def_id| {
             let def_id = def_id.expect_local();
             if let Some(def) = ty::WithOptConstParam::try_lookup(def_id, tcx) {

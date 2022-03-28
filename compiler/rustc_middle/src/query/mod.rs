@@ -1870,10 +1870,38 @@ rustc_queries! {
         remap_env_constness
     }
 
-    query subst_and_check_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
+    query instantiated_item_has_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
         desc { |tcx|
-            "impossible substituted predicates:`{}`",
-            tcx.def_path_str(key.0)
+            "`{}` has impossible predicates after substituting `{:?}`",
+            tcx.def_path_str(key.0), key.1
+        }
+    }
+
+    // Check if it's even possible to satisfy the 'where' clauses
+    // for this item, without substitutions.
+    //
+    // We don't usually need to worry about this kind of case,
+    // since we would get a compilation error if the user tried
+    // to call it. However, since we can do certain mir optimizations
+    // and lints even without any calls to the function, we need to
+    // make sure that it even makes sense to try to evaluate predicates
+    // dependent on the where-clause of this function.
+    //
+    // We manually filter the predicates, skipping anything that's not
+    // "global". We are in a potentially generic context
+    // (e.g. we are evaluating a function without substituting generic
+    // parameters), so this filtering serves two purposes:
+    //
+    // 1. We skip evaluating any predicates that we would
+    // never be able prove are unsatisfiable (e.g. `<T as Foo>`
+    // 2. We avoid trying to normalize predicates involving generic
+    // parameters (e.g. `<T as Foo>::MyItem`). This can confuse
+    // the normalization code (leading to cycle errors), since
+    // it's usually never invoked in this way.
+    query item_has_impossible_predicates_for_item(key: DefId) -> bool {
+        desc { |tcx|
+            "`{}` has impossible predicates",
+            tcx.def_path_str(key)
         }
     }
 

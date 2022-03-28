@@ -67,10 +67,16 @@ impl<'tcx> LateLintPass<'tcx> for NoopMethodCall {
             // we need to perform substitution.
             return;
         }
+
+        if cx.tcx.instantiated_item_has_impossible_predicates((did, substs)) {
+            tracing::trace!("NoopMethodCall skipped for {:?}: found unsatisfiable predicates", did);
+            return;
+        }
+
         let param_env = cx.tcx.param_env(trait_id);
         // Resolve the trait method instance.
         let Ok(Some(i)) = ty::Instance::resolve(cx.tcx, param_env, did, substs) else {
-            return
+            return;
         };
         // (Re)check that it implements the noop diagnostic.
         let Some(name) = cx.tcx.get_diagnostic_name(i.def_id()) else { return };
