@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.62.0"]
     pub EMPTY_STRUCTS_WITH_BRACKETS,
-    style,
+    pedantic,
     "finds struct declarations with empty brackets"
 }
 declare_lint_pass!(EmptyStructsWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS]);

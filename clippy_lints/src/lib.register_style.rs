@@ -20,7 +20,6 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(disallowed_types::DISALLOWED_TYPES),
     LintId::of(doc::MISSING_SAFETY_DOC),
     LintId::of(doc::NEEDLESS_DOCTEST_MAIN),
-    LintId::of(empty_structs_with_brackets::EMPTY_STRUCTS_WITH_BRACKETS),
     LintId::of(enum_variants::ENUM_VARIANT_NAMES),
     LintId::of(enum_variants::MODULE_INCEPTION),
     LintId::of(eq_op::OP_REF),
