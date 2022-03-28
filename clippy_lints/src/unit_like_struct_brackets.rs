@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// ```rust
     /// struct Cookie;
     /// ```
-    #[clippy::version = "1.61.0"]
+    #[clippy::version = "1.62.0"]
     pub UNIT_LIKE_STRUCT_BRACKETS,
     style,
     "finds struct declarations with empty brackets"
@@ -32,7 +32,9 @@ impl EarlyLintPass for UnitLikeStructBrackets {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
-        if let ItemKind::Struct(var_data, _) = &item.kind && has_no_fields(cx, var_data, span_after_ident) {
+        if let ItemKind::Struct(var_data, _) = &item.kind
+            && !is_unit_like_struct(var_data)
+            && has_no_fields(cx, var_data, span_after_ident) {
             span_lint_and_then(
                 cx,
                 UNIT_LIKE_STRUCT_BRACKETS,
@@ -50,23 +52,20 @@ impl EarlyLintPass for UnitLikeStructBrackets {
     }
 }
 
-fn has_fields_in_hir(var_data: &VariantData) -> bool {
-    match var_data {
-        VariantData::Struct(defs, _) | VariantData::Tuple(defs, _) => !defs.is_empty(),
-        VariantData::Unit(_) => true,
-    }
-}
-
 fn has_no_ident_token(braces_span_str: &str) -> bool {
     !rustc_lexer::tokenize(braces_span_str).any(|t| t.kind == TokenKind::Ident)
 }
 
+fn is_unit_like_struct(var_data: &VariantData) -> bool {
+    matches!(var_data, VariantData::Unit(_))
+}
+
 fn has_no_fields(cx: &EarlyContext<'_>, var_data: &VariantData, braces_span: Span) -> bool {
-    if has_fields_in_hir(var_data) {
+    if !var_data.fields().is_empty() {
         return false;
     }
 
-    // there might still be field declarations hidden from HIR
+    // there might still be field declarations hidden from the AST
     // (conditionaly compiled code using #[cfg(..)])
 
     let Some(braces_span_str) = snippet_opt(cx, braces_span) else {

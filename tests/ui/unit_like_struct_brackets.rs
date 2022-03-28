@@ -19,5 +19,7 @@ struct MyStruct {
     field: u8,
 }
 struct MyTupleStruct(usize, String); // should not trigger lint
+struct MySingleTupleStruct(usize); // should not trigger lint
+struct MyUnitLikeStruct; // should not trigger lint
 
 fn main() {}
