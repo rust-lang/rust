@@ -168,25 +168,6 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for AllocId {
     }
 }
 
-macro_rules! encodable_via_deref {
-    ($($t:ty),+) => {
-        $(impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for $t {
-            fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                (**self).encode(e)
-            }
-        })*
-    }
-}
-
-encodable_via_deref! {
-    &'tcx ty::TypeckResults<'tcx>,
-    &'tcx traits::ImplSource<'tcx, ()>,
-    &'tcx mir::Body<'tcx>,
-    &'tcx mir::UnsafetyCheckResult,
-    &'tcx mir::BorrowCheckResult<'tcx>,
-    &'tcx mir::coverage::CodeRegion
-}
-
 pub trait TyDecoder<'tcx>: Decoder {
     const CLEAR_CROSS_CRATE: bool;
 
@@ -465,6 +446,33 @@ macro_rules! impl_arena_allocatable_decoders {
 
 rustc_hir::arena_types!(impl_arena_allocatable_decoders);
 arena_types!(impl_arena_allocatable_decoders);
+
+macro_rules! impl_arena_copy_decoder {
+    (<$tcx:tt> $($ty:ty,)*) => {
+        $(impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+            #[inline]
+            fn decode(decoder: &mut D) -> &'tcx Self {
+                decoder.tcx().arena.alloc(Decodable::decode(decoder))
+            }
+        }
+
+        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+            #[inline]
+            fn decode(decoder: &mut D) -> &'tcx Self {
+                decoder.tcx().arena.alloc_from_iter(<Vec<_> as Decodable<D>>::decode(decoder))
+            }
+        })*
+    };
+}
+
+impl_arena_copy_decoder! {<'tcx>
+    Span,
+    rustc_span::symbol::Ident,
+    ty::Variance,
+    rustc_span::def_id::DefId,
+    rustc_span::def_id::LocalDefId,
+    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
+}
 
 #[macro_export]
 macro_rules! implement_ty_decoder {

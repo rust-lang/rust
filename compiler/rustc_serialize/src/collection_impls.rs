@@ -171,16 +171,6 @@ where
     }
 }
 
-impl<E: Encoder, T, S> Encodable<E> for &HashSet<T, S>
-where
-    T: Encodable<E> + Eq,
-    S: BuildHasher,
-{
-    fn encode(&self, s: &mut E) -> Result<(), E::Error> {
-        (**self).encode(s)
-    }
-}
-
 impl<D: Decoder, T, S> Decodable<D> for HashSet<T, S>
 where
     T: Decodable<D> + Hash + Eq,

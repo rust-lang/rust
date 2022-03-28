@@ -788,10 +788,24 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsm
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Span] {
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        RefDecodable::decode(d)
-    }
+macro_rules! impl_ref_decoder {
+    (<$tcx:tt> $($ty:ty,)*) => {
+        $(impl<'a, $tcx> Decodable<CacheDecoder<'a, $tcx>> for &$tcx [$ty] {
+            fn decode(d: &mut CacheDecoder<'a, $tcx>) -> Self {
+                RefDecodable::decode(d)
+            }
+        })*
+    };
+}
+
+impl_ref_decoder! {<'tcx>
+    Span,
+    rustc_ast::Attribute,
+    rustc_span::symbol::Ident,
+    ty::Variance,
+    rustc_span::def_id::DefId,
+    rustc_span::def_id::LocalDefId,
+    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
 }
 
 //- ENCODING -------------------------------------------------------------------

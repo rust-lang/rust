@@ -29,7 +29,7 @@ pub enum StabilityLevel {
 }
 
 /// An entry in the `depr_map`.
-#[derive(Copy, Clone, HashStable, Debug)]
+#[derive(Copy, Clone, HashStable, Debug, Encodable, Decodable)]
 pub struct DeprecationEntry {
     /// The metadata of the attribute associated with this entry.
     pub attr: Deprecation,
