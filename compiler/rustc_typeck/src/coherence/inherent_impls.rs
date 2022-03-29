@@ -86,8 +86,7 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
             | ty::Ref(..)
             | ty::Never
             | ty::Tuple(..) => self.check_primitive_impl(item.def_id, self_ty, items, ty.span),
-            ty::Error(_) => {}
-            _ => {
+            ty::FnPtr(_) | ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     ty.span,
@@ -98,16 +97,18 @@ impl<'tcx> ItemLikeVisitor<'_> for InherentCollect<'tcx> {
                 err.span_label(ty.span, "impl requires a nominal type")
                     .note("either implement a trait on it or create a newtype to wrap it instead");
 
-                if let ty::Ref(_, subty, _) = self_ty.kind() {
-                    err.note(&format!(
-                        "you could also try moving the reference to \
-                            uses of `{}` (such as `self`) within the implementation",
-                        subty
-                    ));
-                }
-
                 err.emit();
             }
+            ty::FnDef(..)
+            | ty::Closure(..)
+            | ty::Generator(..)
+            | ty::GeneratorWitness(..)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Infer(_) => {
+                bug!("unexpected impl self type of impl: {:?} {:?}", item.def_id, self_ty);
+            }
+            ty::Error(_) => {}
         }
     }
 
@@ -170,21 +171,29 @@ impl<'tcx> InherentCollect<'tcx> {
                     }
                 }
             } else {
-                struct_span_err!(
+                let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
                     E0390,
                     "cannot define inherent `impl` for primitive types",
-                )
-                .help("consider using an extension trait instead")
-                .emit();
+                );
+                err.help("consider using an extension trait instead");
+                if let ty::Ref(_, subty, _) = ty.kind() {
+                    err.note(&format!(
+                        "you could also try moving the reference to \
+                            uses of `{}` (such as `self`) within the implementation",
+                        subty
+                    ));
+                }
+                err.emit();
+                return;
             }
         }
 
-        let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsPlaceholders) else {
+        if let Some(simp) = simplify_type(self.tcx, ty, TreatParams::AsPlaceholders) {
+            self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
+        } else {
             bug!("unexpected primitive type: {:?}", ty);
-        };
-        self.impls_map.incoherent_impls.entry(simp).or_default().push(impl_def_id);
-        return;
+        }
     }
 }

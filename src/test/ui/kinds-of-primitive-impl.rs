@@ -17,4 +17,10 @@ impl char {
     fn bar(self) {}
 }
 
+struct MyType;
+impl &MyType {
+//~^ error: cannot define inherent `impl` for primitive types
+    pub fn for_ref(self) {}
+}
+
 fn main() {}
