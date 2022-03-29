@@ -118,7 +118,7 @@ impl ConsoleTestState {
                     TestResult::TrIgnored => {
                         #[cfg(not(bootstrap))]
                         if let Some(msg) = ignore_message {
-                            format!("ignored, {msg}")
+                            format!("ignored: {msg}")
                         } else {
                             "ignored".to_owned()
                         }
