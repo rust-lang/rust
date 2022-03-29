@@ -73,6 +73,7 @@ fn rustfmt_help() {
     assert_that!(&["--", "--help=config"], contains("Configuration Options:"));
 }
 
+#[ignore]
 #[test]
 fn cargo_fmt_out_of_line_test_modules() {
     // See also https://github.com/rust-lang/rustfmt/issues/5119
