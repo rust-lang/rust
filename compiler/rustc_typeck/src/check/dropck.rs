@@ -86,7 +86,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     err.span_note(
         item_span,
         &format!(
-            "use the same sequence of generic type, lifetime and const parameters \
+            "use the same sequence of generic lifetime, type and const parameters \
                      as the {self_descr} definition",
         ),
     );

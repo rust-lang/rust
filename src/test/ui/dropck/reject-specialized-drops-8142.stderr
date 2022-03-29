@@ -29,7 +29,7 @@ LL | impl                    Drop for N<'static>     { fn drop(&mut self) { } } 
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `'static` is not a generic parameter
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:7:1
    |
 LL | struct N<'n> { x: &'n i8 }
@@ -42,7 +42,7 @@ LL | impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJ
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `i8` is not a generic parameter
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:9:1
    |
 LL | struct P<Tp> { x: *const Tp }
@@ -79,7 +79,7 @@ LL | impl<One>         Drop for V<One,One>     { fn drop(&mut self) { } } // REJ
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `One` is mentioned multiple times
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:15:1
    |
 LL | struct V<Tva, Tvb> { x: *const Tva, y: *const Tvb }
@@ -92,7 +92,7 @@ LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJ
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `'lw` is mentioned multiple times
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:16:1
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
@@ -105,7 +105,7 @@ LL | impl              Drop for X<3>           { fn drop(&mut self) { } } // REJ
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `3_usize` is not a generic parameter
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:17:1
    |
 LL | struct X<const Ca: usize>;
@@ -118,7 +118,7 @@ LL | impl<const Ca: usize> Drop for Y<Ca, Ca>     { fn drop(&mut self) { } } // 
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `Ca` is mentioned multiple times
-note: use the same sequence of generic type, lifetime and const parameters as the struct definition
+note: use the same sequence of generic lifetime, type and const parameters as the struct definition
   --> $DIR/reject-specialized-drops-8142.rs:18:1
    |
 LL | struct Y<const Ca: usize, const Cb: usize>;
