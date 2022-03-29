@@ -367,7 +367,7 @@ fn bug_1030() {
         }
         "#,
         expect![[r#"
-            143..145 '{}': ()
+            143..145 '{}': HashSet<T, H>
             168..197 '{     ...t(); }': ()
             174..192 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<{unknown}, FxHasher>
             174..194 'FxHash...ault()': HashSet<{unknown}, FxHasher>
@@ -831,7 +831,7 @@ fn issue_4966() {
         "#,
         expect![[r#"
             225..229 'iter': T
-            244..246 '{}': ()
+            244..246 '{}': Vec<A>
             258..402 '{     ...r(); }': ()
             268..273 'inner': Map<|&f64| -> f64>
             276..300 'Map { ... 0.0 }': Map<|&f64| -> f64>
@@ -914,7 +914,7 @@ fn flush(&self) {
 "#,
         expect![[r#"
             123..127 'self': &Mutex<T>
-            150..152 '{}': ()
+            150..152 '{}': MutexGuard<T>
             234..238 'self': &{unknown}
             240..290 '{     ...()); }': ()
             250..251 'w': &Mutex<BufWriter>
@@ -1039,18 +1039,18 @@ fn cfg_tail() {
         }
         "#,
         expect![[r#"
-            14..53 '{     ...)] 9 }': &str
-            20..31 '{ "first" }': &str
+            14..53 '{     ...)] 9 }': ()
+            20..31 '{ "first" }': ()
             22..29 '"first"': &str
-            72..190 '{     ...] 13 }': &str
+            72..190 '{     ...] 13 }': ()
             78..88 '{ "fake" }': &str
             80..86 '"fake"': &str
             93..103 '{ "fake" }': &str
             95..101 '"fake"': &str
-            108..120 '{ "second" }': &str
+            108..120 '{ "second" }': ()
             110..118 '"second"': &str
-            210..273 '{     ... 15; }': &str
-            216..227 '{ "third" }': &str
+            210..273 '{     ... 15; }': ()
+            216..227 '{ "third" }': ()
             218..225 '"third"': &str
             293..357 '{     ...] 15 }': ()
             299..311 '{ "fourth" }': &str

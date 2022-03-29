@@ -2,12 +2,10 @@ use super::{check, check_no_mismatches, check_types};
 
 #[test]
 fn block_expr_type_mismatch() {
-    // FIXME fix double type mismatch
     check(
         r"
 fn test() {
     let a: i32 = { 1i64 };
-              // ^^^^^^^^ expected i32, got i64
                 // ^^^^ expected i32, got i64
 }
         ",

@@ -8,6 +8,7 @@ mod method_resolution;
 mod macros;
 mod display_source_code;
 mod incremental;
+mod diagnostics;
 
 use std::{collections::HashMap, env, sync::Arc};
 

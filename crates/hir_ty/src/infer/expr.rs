@@ -69,12 +69,11 @@ impl<'a> InferenceContext<'a> {
             match self.coerce(Some(expr), &ty, &target) {
                 Ok(res) => res,
                 Err(_) => {
-                    self.result
-                        .type_mismatches
-                        .insert(expr.into(), TypeMismatch { expected: target, actual: ty.clone() });
-                    // Return actual type when type mismatch.
-                    // This is needed for diagnostic when return type mismatch.
-                    ty
+                    self.result.type_mismatches.insert(
+                        expr.into(),
+                        TypeMismatch { expected: target.clone(), actual: ty.clone() },
+                    );
+                    target
                 }
             }
         } else {
@@ -914,9 +913,16 @@ impl<'a> InferenceContext<'a> {
                 self.table.new_maybe_never_var()
             } else {
                 if let Some(t) = expected.only_has_type(&mut self.table) {
-                    let _ = self.coerce(Some(expr), &TyBuilder::unit(), &t);
+                    if self.coerce(Some(expr), &TyBuilder::unit(), &t).is_err() {
+                        self.result.type_mismatches.insert(
+                            expr.into(),
+                            TypeMismatch { expected: t.clone(), actual: TyBuilder::unit() },
+                        );
+                    }
+                    t
+                } else {
+                    TyBuilder::unit()
                 }
-                TyBuilder::unit()
             }
         }
     }
