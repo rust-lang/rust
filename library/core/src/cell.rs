@@ -1990,9 +1990,106 @@ impl<T> const From<T> for UnsafeCell<T> {
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 
+/// [`UnsafeCell`], but [`Sync`].
+///
+/// This is just an `UnsafeCell`, except it implements `Sync`
+/// if `T` implements `Sync`.
+///
+/// `UnsafeCell` doesn't implement `Sync`, to prevent accidental mis-use.
+/// You can use `SyncUnsafeCell` instead of `UnsafeCell` to allow it to be
+/// shared between threads, if that's intentional.
+/// Providing proper synchronization is still the task of the user,
+/// making this type just as unsafe to use.
+///
+/// See [`UnsafeCell`] for details.
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[repr(transparent)]
+pub struct SyncUnsafeCell<T: ?Sized> {
+    value: UnsafeCell<T>,
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+unsafe impl<T: ?Sized + Sync> Sync for SyncUnsafeCell<T> {}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+impl<T> SyncUnsafeCell<T> {
+    /// Constructs a new instance of `SyncUnsafeCell` which will wrap the specified value.
+    #[inline]
+    pub const fn new(value: T) -> Self {
+        Self { value: UnsafeCell { value } }
+    }
+
+    /// Unwraps the value.
+    #[inline]
+    pub const fn into_inner(self) -> T {
+        self.value.into_inner()
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+impl<T: ?Sized> SyncUnsafeCell<T> {
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// This can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`
+    #[inline]
+    pub const fn get(&self) -> *mut T {
+        self.value.get()
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows the `SyncUnsafeCell` mutably (at compile-time) which
+    /// guarantees that we possess the only reference.
+    #[inline]
+    pub const fn get_mut(&mut self) -> &mut T {
+        self.value.get_mut()
+    }
+
+    /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// See [`UnsafeCell::get`] for details.
+    #[inline]
+    pub const fn raw_get(this: *const Self) -> *mut T {
+        // We can just cast the pointer from `SyncUnsafeCell<T>` to `T` because
+        // of #[repr(transparent)] on both SyncUnsafeCell and UnsafeCell.
+        // See UnsafeCell::raw_get.
+        this as *const T as *mut T
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+impl<T: Default> Default for SyncUnsafeCell<T> {
+    /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
+    fn default() -> SyncUnsafeCell<T> {
+        SyncUnsafeCell::new(Default::default())
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T> const From<T> for SyncUnsafeCell<T> {
+    /// Creates a new `SyncUnsafeCell<T>` containing the given value.
+    fn from(t: T) -> SyncUnsafeCell<T> {
+        SyncUnsafeCell::new(t)
+    }
+}
+
+#[unstable(feature = "coerce_unsized", issue = "27732")]
+//#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
+
 #[allow(unused)]
-fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {
+fn assert_coerce_unsized(
+    a: UnsafeCell<&i32>,
+    b: SyncUnsafeCell<&i32>,
+    c: Cell<&i32>,
+    d: RefCell<&i32>,
+) {
     let _: UnsafeCell<&dyn Send> = a;
-    let _: Cell<&dyn Send> = b;
-    let _: RefCell<&dyn Send> = c;
+    let _: SyncUnsafeCell<&dyn Send> = b;
+    let _: Cell<&dyn Send> = c;
+    let _: RefCell<&dyn Send> = d;
 }
