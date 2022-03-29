@@ -45,10 +45,6 @@ use super::{
 impl<'a> InferenceContext<'a> {
     pub(crate) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         let ty = self.infer_expr_inner(tgt_expr, expected);
-        if self.resolve_ty_shallow(&ty).is_never() {
-            // Any expression that produces a value of type `!` must have diverged
-            self.diverges = Diverges::Always;
-        }
         if let Some(expected_ty) = expected.only_has_type(&mut self.table) {
             let could_unify = self.unify(&ty, &expected_ty);
             if !could_unify {
@@ -800,6 +796,10 @@ impl<'a> InferenceContext<'a> {
         // use a new type variable if we got unknown here
         let ty = self.insert_type_vars_shallow(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
+        if self.resolve_ty_shallow(&ty).is_never() {
+            // Any expression that produces a value of type `!` must have diverged
+            self.diverges = Diverges::Always;
+        }
         ty
     }
 

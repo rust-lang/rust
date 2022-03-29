@@ -1,6 +1,6 @@
 use expect_test::expect;
 
-use super::{check_infer_with_mismatches, check_types};
+use super::{check_infer_with_mismatches, check_no_mismatches, check_types};
 
 #[test]
 fn infer_never1() {
@@ -439,5 +439,47 @@ fn let_else_must_diverge() {
             28..30 '{}': !
             28..30: expected !, got ()
         "#]],
+    );
+}
+
+#[test]
+fn issue_11837() {
+    check_no_mismatches(
+        r#"
+//- minicore: result
+enum MyErr {
+    Err1,
+    Err2,
+}
+
+fn example_ng() {
+    let value: Result<i32, MyErr> = Ok(3);
+
+    loop {
+        let ret = match value {
+            Ok(value) => value,
+            Err(ref err) => {
+                match err {
+                    MyErr::Err1 => break,
+                    MyErr::Err2 => continue,
+                };
+            }
+        };
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn issue_11814() {
+    check_no_mismatches(
+        r#"
+fn example() -> bool {
+    match 1 {
+        _ => return true,
+    };
+}
+"#,
     );
 }
