@@ -54,13 +54,13 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         actual
     };
 
-    assert_eq_text!(&after, &actual);
     assert!(
         fix.target.contains_inclusive(file_position.offset),
         "diagnostic fix range {:?} does not touch cursor position {:?}",
         fix.target,
         file_position.offset
     );
+    assert_eq_text!(&after, &actual);
 }
 
 /// Checks that there's a diagnostic *without* fix at `$0`.

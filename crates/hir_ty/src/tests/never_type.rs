@@ -314,11 +314,10 @@ fn diverging_expression_2() {
         expect![[r#"
             11..84 '{     ..." }; }': ()
             54..55 'x': u32
-            63..81 '{ loop...foo" }': &str
+            63..81 '{ loop...foo" }': u32
             65..72 'loop {}': !
             70..72 '{}': ()
             74..79 '"foo"': &str
-            63..81: expected u32, got &str
             74..79: expected u32, got &str
         "#]],
     );
@@ -350,31 +349,30 @@ fn diverging_expression_3_break() {
             let x: u32 = { while true { return; }; };
         }
         ",
-        expect![[r"
+        expect![[r#"
             11..85 '{     ...} }; }': ()
             54..55 'x': u32
-            63..82 '{ loop...k; } }': ()
+            63..82 '{ loop...k; } }': u32
             65..80 'loop { break; }': ()
             70..80 '{ break; }': ()
             72..77 'break': !
-            63..82: expected u32, got ()
             65..80: expected u32, got ()
             97..343 '{     ...; }; }': ()
             140..141 'x': u32
-            149..175 '{ for ...; }; }': ()
+            149..175 '{ for ...; }; }': u32
             151..172 'for a ...eak; }': ()
             155..156 'a': {unknown}
             160..161 'b': {unknown}
             162..172 '{ break; }': ()
             164..169 'break': !
             226..227 'x': u32
-            235..253 '{ for ... {}; }': ()
+            235..253 '{ for ... {}; }': u32
             237..250 'for a in b {}': ()
             241..242 'a': {unknown}
             246..247 'b': {unknown}
             248..250 '{}': ()
             304..305 'x': u32
-            313..340 '{ for ...; }; }': ()
+            313..340 '{ for ...; }; }': u32
             315..337 'for a ...urn; }': ()
             319..320 'a': {unknown}
             324..325 'b': {unknown}
@@ -385,18 +383,18 @@ fn diverging_expression_3_break() {
             313..340: expected u32, got ()
             355..654 '{     ...; }; }': ()
             398..399 'x': u32
-            407..433 '{ whil...; }; }': ()
+            407..433 '{ whil...; }; }': u32
             409..430 'while ...eak; }': ()
             415..419 'true': bool
             420..430 '{ break; }': ()
             422..427 'break': !
             537..538 'x': u32
-            546..564 '{ whil... {}; }': ()
+            546..564 '{ whil... {}; }': u32
             548..561 'while true {}': ()
             554..558 'true': bool
             559..561 '{}': ()
             615..616 'x': u32
-            624..651 '{ whil...; }; }': ()
+            624..651 '{ whil...; }; }': u32
             626..648 'while ...urn; }': ()
             632..636 'true': bool
             637..648 '{ return; }': ()
@@ -404,7 +402,7 @@ fn diverging_expression_3_break() {
             407..433: expected u32, got ()
             546..564: expected u32, got ()
             624..651: expected u32, got ()
-        "]],
+        "#]],
     );
 }
 
@@ -438,7 +436,7 @@ fn let_else_must_diverge() {
             17..18 '1': i32
             17..18 '1': i32
             21..22 '2': i32
-            28..30 '{}': ()
+            28..30 '{}': !
             28..30: expected !, got ()
         "#]],
     );
