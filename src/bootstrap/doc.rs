@@ -432,6 +432,12 @@ impl Step for Std {
         let stage = self.stage;
         let target = self.target;
         builder.info(&format!("Documenting stage{} std ({})", stage, target));
+        if builder.no_std(target) == Some(true) {
+            panic!(
+                "building std documentation for no_std target {target} is not supported\n\
+                 Set `docs = false` in the config to disable documentation."
+            );
+        }
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
