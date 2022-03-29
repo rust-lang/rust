@@ -135,7 +135,7 @@ pub fn dot_prod_simd_5(a: &[f32], b: &[f32]) -> f32 {
     a.array_chunks::<4>()
         .map(|&a| f32x4::from_array(a))
         .zip(b.array_chunks::<4>().map(|&b| f32x4::from_array(b)))
-        .fold(f32x4::splat(0.), |acc, (a, b)| acc.mul_add(a, b))
+        .fold(f32x4::splat(0.), |acc, (a, b)| a.mul_add(b, acc))
         .reduce_sum()
 }
 
@@ -160,6 +160,8 @@ mod tests {
         assert_eq!(0.0, dot_prod_simd_1(&a, &b));
         assert_eq!(0.0, dot_prod_simd_2(&a, &b));
         assert_eq!(0.0, dot_prod_simd_3(&a, &b));
+        assert_eq!(0.0, dot_prod_simd_4(&a, &b));
+        assert_eq!(0.0, dot_prod_simd_5(&a, &b));
 
         // We can handle vectors that are non-multiples of 4
         assert_eq!(1003.0, dot_prod_simd_3(&x, &y));
