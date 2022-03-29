@@ -1100,7 +1100,6 @@ rustc_queries! {
 
     query item_attrs(def_id: DefId) -> &'tcx [ast::Attribute] {
         desc { |tcx| "collecting attributes of `{}`", tcx.def_path_str(def_id) }
-        cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
     }
 
