@@ -151,6 +151,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .args_or_use()
                 })
                 .collect::<Vec<Span>>();
+
             let reinits = maybe_reinitialized_locations.len();
             if reinits == 1 {
                 err.span_label(reinit_spans[0], "this reinitialization might get skipped");
@@ -282,69 +283,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 Some(ref name) => format!("`{}`", name),
                 None => "value".to_owned(),
             };
-
-            let tcx = self.infcx.tcx;
-            let generics = tcx.generics_of(self.mir_def_id());
-
             if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg) {
                 // Suppress the next note, since we don't want to put more `Fn`-like bounds onto something that already has them
             } else if needs_note {
-                if let Some(hir_generics) = tcx
-                    .typeck_root_def_id(self.mir_def_id().to_def_id())
-                    .as_local()
-                    .and_then(|def_id| tcx.hir().get_generics(def_id))
-                {
-                    // Try to find predicates on *generic params* that would allow copying `ty`
-                    let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
-                        let mut fulfill_cx =
-                            <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
-                        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
-                        let cause = ObligationCause::new(
-                            span,
-                            self.mir_hir_id(),
-                            rustc_infer::traits::ObligationCauseCode::MiscObligation,
-                        );
-                        fulfill_cx.register_bound(
-                            &infcx,
-                            self.param_env,
-                            // Erase any region vids from the type, which may not be resolved
-                            infcx.tcx.erase_regions(ty),
-                            copy_did,
-                            cause,
-                        );
-                        // Select all, including ambiguous predicates
-                        let errors = fulfill_cx.select_all_or_error(&infcx);
-
-                        // Only emit suggestion if all required predicates are on generic
-                        errors
-                            .into_iter()
-                            .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                                PredicateKind::Trait(predicate) => {
-                                    match predicate.self_ty().kind() {
-                                        ty::Param(param_ty) => Ok((
-                                            generics.type_param(param_ty, tcx),
-                                            predicate.trait_ref.print_only_trait_path().to_string(),
-                                        )),
-                                        _ => Err(()),
-                                    }
-                                }
-                                _ => Err(()),
-                            })
-                            .collect()
-                    });
-
-                    if let Ok(predicates) = predicates {
-                        suggest_constraining_type_params(
-                            tcx,
-                            hir_generics,
-                            &mut err,
-                            predicates.iter().map(|(param, constraint)| {
-                                (param.name.as_str(), &**constraint, None)
-                            }),
-                        );
-                    }
-                }
+                self.suggest_adding_copy_bounds(&mut err, ty, span);
 
                 let span = if let Some(local) = place.as_local() {
                     Some(self.body.local_decls[local].source_info.span)
@@ -448,6 +390,69 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Applicability::MaybeIncorrect,
         );
         true
+    }
+
+    fn suggest_adding_copy_bounds(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        let tcx = self.infcx.tcx;
+        let generics = tcx.generics_of(self.mir_def_id());
+
+        let Some(hir_generics) = tcx
+            .typeck_root_def_id(self.mir_def_id().to_def_id())
+            .as_local()
+            .and_then(|def_id| tcx.hir().get_generics(def_id))
+        else { return; };
+        // Try to find predicates on *generic params* that would allow copying `ty`
+        let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
+            let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
+
+            let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+            let cause = ObligationCause::new(
+                span,
+                self.mir_hir_id(),
+                rustc_infer::traits::ObligationCauseCode::MiscObligation,
+            );
+            fulfill_cx.register_bound(
+                &infcx,
+                self.param_env,
+                // Erase any region vids from the type, which may not be resolved
+                infcx.tcx.erase_regions(ty),
+                copy_did,
+                cause,
+            );
+            // Select all, including ambiguous predicates
+            let errors = fulfill_cx.select_all_or_error(&infcx);
+
+            // Only emit suggestion if all required predicates are on generic
+            errors
+                .into_iter()
+                .map(|err| match err.obligation.predicate.kind().skip_binder() {
+                    PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
+                        ty::Param(param_ty) => Ok((
+                            generics.type_param(param_ty, tcx),
+                            predicate.trait_ref.print_only_trait_path().to_string(),
+                        )),
+                        _ => Err(()),
+                    },
+                    _ => Err(()),
+                })
+                .collect()
+        });
+
+        if let Ok(predicates) = predicates {
+            suggest_constraining_type_params(
+                tcx,
+                hir_generics,
+                err,
+                predicates
+                    .iter()
+                    .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+            );
+        }
     }
 
     pub(crate) fn report_move_out_while_borrowed(
