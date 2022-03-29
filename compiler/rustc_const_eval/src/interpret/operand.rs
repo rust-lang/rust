@@ -14,9 +14,9 @@ use rustc_target::abi::{Abi, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
 use super::{
-    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, ConstValue, GlobalId,
-    InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy, Pointer, Provenance,
-    Scalar, ScalarMaybeUninit,
+    alloc_range, from_known_layout, mir_assign_valid_types, AllocId, AllocRange, Allocation,
+    ConstValue, GlobalId, InterpCx, InterpResult, MPlaceTy, Machine, MemPlace, Place, PlaceTy,
+    Pointer, Provenance, Scalar, ScalarMaybeUninit,
 };
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
@@ -248,7 +248,7 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
-    fn try_read_immediate_from_mplace(
+    pub(crate) fn try_read_immediate_from_mplace(
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {
@@ -775,5 +775,34 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (Scalar::from_uint(variant.as_u32(), discr_layout.size), variant)
             }
         })
+    }
+}
+
+impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx, PointerTag = AllocId>> InterpCx<'mir, 'tcx, M> {
+    pub fn get_alloc_from_imm_scalar_pair(
+        &self,
+        imm: ImmTy<'tcx, M::PointerTag>,
+    ) -> (&Allocation, AllocRange) {
+        match imm.imm {
+            Immediate::ScalarPair(a, b) => {
+                // We know `offset` is relative to the allocation, so we can use `into_parts`.
+                let (data, start) = match self.scalar_to_ptr(a.check_init().unwrap()).into_parts() {
+                    (Some(alloc_id), offset) => {
+                        (self.tcx.global_alloc(alloc_id).unwrap_memory(), offset.bytes())
+                    }
+                    (None, _offset) => (
+                        self.tcx.intern_const_alloc(Allocation::from_bytes_byte_aligned_immutable(
+                            b"" as &[u8],
+                        )),
+                        0,
+                    ),
+                };
+                let len = b.to_machine_usize(self).unwrap();
+                let size = Size::from_bytes(len);
+                let start = Size::from_bytes(start);
+                (data.inner(), AllocRange { start, size })
+            }
+            _ => bug!("{:?} not a ScalarPair", imm),
+        }
     }
 }

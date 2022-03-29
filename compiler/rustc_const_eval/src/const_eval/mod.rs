@@ -6,9 +6,10 @@ use rustc_hir::Mutability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{
     mir::{self, interpret::ConstAlloc},
-    ty::ScalarInt,
+    ty::{ScalarInt, Ty},
 };
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{
     intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
@@ -55,28 +56,43 @@ pub(crate) fn const_to_valtree<'tcx>(
     const_to_valtree_inner(&ecx, &place)
 }
 
+#[instrument(skip(ecx), level = "debug")]
+fn branches<'tcx>(
+    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    place: &MPlaceTy<'tcx>,
+    n: usize,
+    variant: Option<VariantIdx>,
+) -> Option<ty::ValTree<'tcx>> {
+    let place = match variant {
+        Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
+        None => *place,
+    };
+    let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
+    debug!(?place, ?variant);
+
+    let fields = (0..n).map(|i| {
+        let field = ecx.mplace_field(&place, i).unwrap();
+        const_to_valtree_inner(ecx, &field)
+    });
+    // For enums, we preped their variant index before the variant's fields so we can figure out
+    // the variant again when just seeing a valtree.
+    let branches = variant.into_iter().chain(fields);
+    Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
+}
+
+#[instrument(skip(ecx), level = "debug")]
 fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
 ) -> Option<ty::ValTree<'tcx>> {
-    let branches = |n, variant| {
-        let place = match variant {
-            Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
-            None => *place,
-        };
-        let variant =
-            variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
-        let fields = (0..n).map(|i| {
-            let field = ecx.mplace_field(&place, i).unwrap();
-            const_to_valtree_inner(ecx, &field)
-        });
-        // For enums, we preped their variant index before the variant's fields so we can figure out
-        // the variant again when just seeing a valtree.
-        let branches = variant.into_iter().chain(fields);
-        Some(ty::ValTree::Branch(
-            ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?),
-        ))
+    // We only want to use raw bytes in ValTrees for string slices or &[<integer_ty>]
+    let use_bytes_for_ref = |ty: Ty<'tcx>| -> bool {
+        match ty.kind() {
+            ty::Str | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Bool => true,
+            _ => false,
+        }
     };
+
     match place.layout.ty.kind() {
         ty::FnDef(..) => Some(ty::ValTree::zst()),
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
@@ -90,7 +106,82 @@ fn const_to_valtree_inner<'tcx>(
         // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
         // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => None,
-        ty::Ref(..) => unimplemented!("need to use deref_const"),
+
+        ty::Ref(_, ref_ty, _) if place.layout.ty.is_slice() => {
+            match ecx.try_read_immediate_from_mplace(&place) {
+                Ok(Some(imm)) => {
+                    // `imm` is a ScalarPair. We try to get the underlying bytes behind that
+                    // fat pointer for string slices and slices of integer types. For any other
+                    // slice types we use `branches` to recursively construct the Valtree.
+
+                    if use_bytes_for_ref(*ref_ty) {
+                        let (alloc, range) = ecx.get_alloc_from_imm_scalar_pair(imm);
+                        let alloc_bytes = match alloc.get_bytes(&ecx.tcx, range) {
+                            Ok(bytes) => bytes,
+                            Err(_e) => return None,
+                        };
+                        debug!(?alloc_bytes);
+
+                        let bytes = ecx.tcx.arena.alloc_slice(alloc_bytes);
+                        let len = bytes.len();
+                        debug!(?bytes, ?len);
+
+                        let slice = ty::ValSlice { bytes};
+
+                        Some(ty::ValTree::SliceOrStr(slice))
+                    } else {
+                        let derefd = ecx.deref_operand(&imm.into()).expect(&format!("couldnt deref {:?}", imm));
+                        debug!("derefd: {:?}", derefd);
+
+                        let derefd_imm = match ecx.try_read_immediate_from_mplace(&derefd) {
+                            Ok(Some(imm)) => imm,
+                            _ => return None,
+                        };
+                        debug!(?derefd_imm);
+
+                        let tcx = ecx.tcx.tcx;
+                        let scalar_len= derefd.meta.unwrap_meta();
+                        let len = match scalar_len {
+                            Scalar::Int(int) => {
+                                int.try_to_machine_usize(tcx).expect(&format!("Expected a valid ScalarInt in {:?}", scalar_len))
+                            }
+                            _ => bug!("expected a ScalarInt in meta data for {:?}", place),
+                        };
+                        debug!(?len);
+
+                        let valtree = branches(ecx, place, len.try_into().expect("BLA"), None);
+                        debug!(?valtree);
+
+                        valtree
+                    }
+                }
+                _ => {
+                    None
+                }
+            }
+        }
+
+        ty::Ref(_, inner_ty, _) => {
+            debug!("Ref with inner_ty: {:?}", inner_ty);
+            let imm = ecx.try_read_immediate_from_mplace(&place).unwrap_or_else(|e| bug!("couldnt read immediate from {:?}, error: {:?}", place, e));
+            match imm {
+                Some(imm) => {
+                    debug!(?imm);
+
+                    let derefd_place = ecx.deref_mplace(place).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
+                    debug!(?derefd_place);
+
+                    const_to_valtree_inner(ecx, &derefd_place)
+                }
+                None => None,
+            }
+        }
+        ty::Str => {
+            bug!("ty::Str should have been handled in ty::Ref branch that uses raw bytes");
+        }
+        ty::Slice(_) => {
+            bug!("should have been handled in the Ref arm");
+        }
 
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
@@ -98,11 +189,8 @@ fn const_to_valtree_inner<'tcx>(
         // but it is unclear if this is useful.
         ty::Dynamic(..) => None,
 
-        ty::Slice(_) | ty::Str => {
-            unimplemented!("need to find the backing data of the slice/str and recurse on that")
-        }
-        ty::Tuple(substs) => branches(substs.len(), None),
-        ty::Array(_, len) => branches(usize::try_from(len.eval_usize(ecx.tcx.tcx, ecx.param_env)).unwrap(), None),
+        ty::Tuple(substs) => branches(ecx, place, substs.len(), None),
+        ty::Array(_, len) => branches(ecx, place, usize::try_from(len.eval_usize(ecx.tcx.tcx, ecx.param_env)).unwrap(), None),
 
         ty::Adt(def, _) => {
             if def.variants().is_empty() {
@@ -111,7 +199,7 @@ fn const_to_valtree_inner<'tcx>(
 
             let variant = ecx.read_discriminant(&place.into()).unwrap().1;
 
-            branches(def.variant(variant).fields.len(), def.is_enum().then_some(variant))
+            branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant))
         }
 
         ty::Never
