@@ -65,6 +65,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
 use rustc_middle::dep_graph::DepContext;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self,
     error::TypeError,
@@ -1736,6 +1737,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
 
             if should_suggest_fixes {
+                self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_as_ref_where_appropriate(span, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
@@ -1764,6 +1766,73 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // It reads better to have the error origin as the final
         // thing.
         self.note_error_origin(diag, cause, exp_found, terr);
+    }
+
+    fn suggest_tuple_pattern(
+        &self,
+        cause: &ObligationCause<'tcx>,
+        exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
+        diag: &mut Diagnostic,
+    ) {
+        // Heavily inspired by `FnCtxt::suggest_compatible_variants`, with
+        // some modifications due to that being in typeck and this being in infer.
+        if let ObligationCauseCode::Pattern { .. } = cause.code() {
+            if let ty::Adt(expected_adt, substs) = exp_found.expected.kind() {
+                let compatible_variants: Vec<_> = expected_adt
+                    .variants()
+                    .iter()
+                    .filter(|variant| {
+                        variant.fields.len() == 1 && variant.ctor_kind == hir::def::CtorKind::Fn
+                    })
+                    .filter_map(|variant| {
+                        let sole_field = &variant.fields[0];
+                        let sole_field_ty = sole_field.ty(self.tcx, substs);
+                        if same_type_modulo_infer(sole_field_ty, exp_found.found) {
+                            let variant_path =
+                                with_no_trimmed_paths!(self.tcx.def_path_str(variant.def_id));
+                            // FIXME #56861: DRYer prelude filtering
+                            if let Some(path) = variant_path.strip_prefix("std::prelude::") {
+                                if let Some((_, path)) = path.split_once("::") {
+                                    return Some(path.to_string());
+                                }
+                            }
+                            Some(variant_path)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                match &compatible_variants[..] {
+                    [] => {}
+                    [variant] => {
+                        diag.multipart_suggestion_verbose(
+                            &format!("try wrapping the pattern in `{}`", variant),
+                            vec![
+                                (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                (cause.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    _ => {
+                        // More than one matching variant.
+                        diag.multipart_suggestions(
+                            &format!(
+                                "try wrapping the pattern in a variant of `{}`",
+                                self.tcx.def_path_str(expected_adt.did())
+                            ),
+                            compatible_variants.into_iter().map(|variant| {
+                                vec![
+                                    (cause.span.shrink_to_lo(), format!("{}(", variant)),
+                                    (cause.span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            }),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+        }
     }
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Binder<'tcx, Ty<'tcx>>> {
