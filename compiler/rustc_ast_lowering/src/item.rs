@@ -5,7 +5,7 @@ use crate::{Arena, FnDeclKind};
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -340,12 +340,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 //
                 // type Foo = Foo1
                 // opaque type Foo1: Trait
-                let ty = self.lower_ty(
-                    ty,
-                    ImplTraitContext::TypeAliasesOpaqueTy {
-                        capturable_lifetimes: &mut FxHashSet::default(),
-                    },
-                );
+                let ty = self.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy);
                 let mut generics = generics.clone();
                 add_ty_alias_where_clause(&mut generics, where_clauses, true);
                 let generics = self.lower_generics(
@@ -982,12 +977,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         hir::ImplItemKind::TyAlias(ty)
                     }
                     Some(ty) => {
-                        let ty = self.lower_ty(
-                            ty,
-                            ImplTraitContext::TypeAliasesOpaqueTy {
-                                capturable_lifetimes: &mut FxHashSet::default(),
-                            },
-                        );
+                        let ty = self.lower_ty(ty, ImplTraitContext::TypeAliasesOpaqueTy);
                         hir::ImplItemKind::TyAlias(ty)
                     }
                 };
