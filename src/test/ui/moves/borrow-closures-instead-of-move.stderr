@@ -29,6 +29,25 @@ help: consider mutably borrowing `m`
 LL |         takes_fnonce(&mut m);
    |                      ++++
 
-error: aborting due to 2 previous errors
+error[E0382]: borrow of moved value: `closure`
+  --> $DIR/borrow-closures-instead-of-move.rs:25:5
+   |
+LL |     takes_fnonce(closure);
+   |                  ------- value moved here
+LL |
+LL |     closure();
+   |     ^^^^^^^ value borrowed here after move
+   |
+note: closure cannot be moved more than once as it is not `Copy` due to moving the variable `x` out of its environment
+  --> $DIR/borrow-closures-instead-of-move.rs:21:9
+   |
+LL |         x += 1;
+   |         ^
+help: consider mutably borrowing `closure`
+   |
+LL |     takes_fnonce(&mut closure);
+   |                  ++++
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

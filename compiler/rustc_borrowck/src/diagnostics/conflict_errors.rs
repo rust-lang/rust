@@ -284,10 +284,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 None => "value".to_owned(),
             };
             if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg) {
-                // Suppress the next note, since we don't want to put more `Fn`-like bounds onto something that already has them
-            } else if needs_note {
+                // Suppress the next suggestion since we don't want to put more bounds onto
+                // something that already has `Fn`-like bounds (or is a closure), so we can't
+                // restrict anyways.
+            } else {
                 self.suggest_adding_copy_bounds(&mut err, ty, span);
+            }
 
+            if needs_note {
                 let span = if let Some(local) = place.as_local() {
                     Some(self.body.local_decls[local].source_info.span)
                 } else {

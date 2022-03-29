@@ -17,11 +17,13 @@ fn takes_fn_mut(m: impl FnMut()) {
 
 fn has_closure() {
     let mut x = 0;
-    let closure = || {
+    let mut closure = || {
         x += 1;
     };
     takes_fnonce(closure);
+    //~^ HELP consider mutably borrowing
     closure();
+    //~^ ERROR borrow of moved value
 }
 
 fn maybe() -> bool {
