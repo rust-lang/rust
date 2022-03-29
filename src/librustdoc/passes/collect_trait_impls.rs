@@ -93,7 +93,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
                 let target = items
                     .iter()
                     .find_map(|item| match *item.kind {
-                        TypedefItem(ref t, true) => Some(&t.type_),
+                        AssocTypeItem(ref t, _) => Some(&t.type_),
                         _ => None,
                     })
                     .expect("Deref impl without Target type");

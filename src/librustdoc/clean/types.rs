@@ -577,10 +577,16 @@ impl Item {
         self.type_() == ItemType::Variant
     }
     crate fn is_associated_type(&self) -> bool {
-        self.type_() == ItemType::AssocType
+        matches!(&*self.kind, AssocTypeItem(..) | StrippedItem(box AssocTypeItem(..)))
+    }
+    crate fn is_ty_associated_type(&self) -> bool {
+        matches!(&*self.kind, TyAssocTypeItem(..) | StrippedItem(box TyAssocTypeItem(..)))
     }
     crate fn is_associated_const(&self) -> bool {
-        self.type_() == ItemType::AssocConst
+        matches!(&*self.kind, AssocConstItem(..) | StrippedItem(box AssocConstItem(..)))
+    }
+    crate fn is_ty_associated_const(&self) -> bool {
+        matches!(&*self.kind, TyAssocConstItem(..) | StrippedItem(box TyAssocConstItem(..)))
     }
     crate fn is_method(&self) -> bool {
         self.type_() == ItemType::Method
@@ -726,17 +732,18 @@ crate enum ItemKind {
     EnumItem(Enum),
     FunctionItem(Function),
     ModuleItem(Module),
-    TypedefItem(Typedef, bool /* is associated type */),
+    TypedefItem(Typedef),
     OpaqueTyItem(OpaqueTy),
     StaticItem(Static),
     ConstantItem(Constant),
     TraitItem(Trait),
     TraitAliasItem(TraitAlias),
     ImplItem(Impl),
-    /// A method signature only. Used for required methods in traits (ie,
-    /// non-default-methods).
+    /// A required method in a trait declaration meaning it's only a function signature.
     TyMethodItem(Function),
-    /// A method with a body.
+    /// A method in a trait impl or a provided method in a trait declaration.
+    ///
+    /// Compared to [TyMethodItem], it also contains a method body.
     MethodItem(Function, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
@@ -749,12 +756,16 @@ crate enum ItemKind {
     MacroItem(Macro),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
-    AssocConstItem(Type, Option<ConstantKind>),
-    /// An associated item in a trait or trait impl.
+    /// A required associated constant in a trait declaration.
+    TyAssocConstItem(Type),
+    /// An associated associated constant in a trait impl or a provided one in a trait declaration.
+    AssocConstItem(Type, ConstantKind),
+    /// A required associated type in a trait declaration.
     ///
     /// The bounds may be non-empty if there is a `where` clause.
-    /// The `Option<Type>` is the default concrete type (e.g. `trait Trait { type Target = usize; }`)
-    AssocTypeItem(Box<Generics>, Vec<GenericBound>, Option<Type>),
+    TyAssocTypeItem(Box<Generics>, Vec<GenericBound>),
+    /// An associated type in a trait impl or a provided one in a trait declaration.
+    AssocTypeItem(Typedef, Vec<GenericBound>),
     /// An item that has been stripped by a rustdoc pass
     StrippedItem(Box<ItemKind>),
     KeywordItem(Symbol),
@@ -776,7 +787,7 @@ impl ItemKind {
             ExternCrateItem { .. }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypedefItem(_, _)
+            | TypedefItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
@@ -791,7 +802,9 @@ impl ItemKind {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
+            | TyAssocConstItem(_)
             | AssocConstItem(_, _)
+            | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | StrippedItem(_)
             | KeywordItem(_) => [].iter(),

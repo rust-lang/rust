@@ -219,20 +219,23 @@ fn from_clean_item(item: clean::Item, tcx: TyCtxt<'_>) -> ItemEnum {
         StaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignStaticItem(s) => ItemEnum::Static(s.into_tcx(tcx)),
         ForeignTypeItem => ItemEnum::ForeignType,
-        TypedefItem(t, _) => ItemEnum::Typedef(t.into_tcx(tcx)),
+        TypedefItem(t) => ItemEnum::Typedef(t.into_tcx(tcx)),
         OpaqueTyItem(t) => ItemEnum::OpaqueTy(t.into_tcx(tcx)),
         ConstantItem(c) => ItemEnum::Constant(c.into_tcx(tcx)),
         MacroItem(m) => ItemEnum::Macro(m.source),
         ProcMacroItem(m) => ItemEnum::ProcMacro(m.into_tcx(tcx)),
         PrimitiveItem(p) => ItemEnum::PrimitiveType(p.as_sym().to_string()),
+        TyAssocConstItem(ty) => ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: None },
         AssocConstItem(ty, default) => {
-            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: default.map(|c| c.expr(tcx)) }
+            ItemEnum::AssocConst { type_: ty.into_tcx(tcx), default: Some(default.expr(tcx)) }
         }
-        AssocTypeItem(g, b, t) => ItemEnum::AssocType {
+        TyAssocTypeItem(g, b) => ItemEnum::AssocType {
             generics: (*g).into_tcx(tcx),
             bounds: b.into_iter().map(|x| x.into_tcx(tcx)).collect(),
-            default: t.map(|x| x.into_tcx(tcx)),
+            default: None,
         },
+        // FIXME: do not map to Typedef but to a custom variant
+        AssocTypeItem(t, _) => ItemEnum::Typedef(t.into_tcx(tcx)),
         // `convert_item` early returns `None` for striped items
         StrippedItem(_) => unreachable!(),
         KeywordItem(_) => {
