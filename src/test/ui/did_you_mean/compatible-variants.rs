@@ -64,3 +64,27 @@ fn main() {
     //~^ ERROR mismatched types
     //~| HELP try wrapping
 }
+
+enum A {
+    B { b: B},
+}
+
+struct A2(B);
+
+enum B {
+    Fst,
+    Snd,
+}
+
+fn foo() {
+    // We don't want to suggest `A::B(B::Fst)` here.
+    let a: A = B::Fst;
+    //~^ ERROR mismatched types
+}
+
+fn bar() {
+    // But we _do_ want to suggest `A2(B::Fst)` here!
+    let a: A2 = B::Fst;
+    //~^ ERROR mismatched types
+    //~| HELP try wrapping
+}
