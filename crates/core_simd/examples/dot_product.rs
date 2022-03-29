@@ -108,6 +108,37 @@ pub fn dot_prod_simd_3(a: &[f32], b: &[f32]) -> f32 {
 
     sums.reduce_sum()
 }
+
+// Finally, we present an iterator version for handling remainders in a scalar fashion at the end of the loop.
+// Unfortunately, this is allocating 1 `XMM` register on the order of `~len(a)` - we'll see how we can get around it in the
+// next example.
+pub fn dot_prod_simd_4(a: &[f32], b: &[f32]) -> f32 {
+    let mut sum = a
+        .array_chunks::<4>()
+        .map(|&a| f32x4::from_array(a))
+        .zip(b.array_chunks::<4>().map(|&b| f32x4::from_array(b)))
+        .map(|(a, b)| a * b)
+        .fold(f32x4::splat(0.0), std::ops::Add::add)
+        .reduce_sum();
+    let remain = a.len() - (a.len() % 4);
+    sum += a[remain..]
+        .iter()
+        .zip(&b[remain..])
+        .map(|(a, b)| a * b)
+        .sum::<f32>();
+    sum
+}
+
+// This version allocates a single `XMM` register for accumulation, and the folds don't allocate on top of that.
+// Notice the the use of `mul_add`, which can do a multiply and an add operation ber iteration.
+pub fn dot_prod_simd_5(a: &[f32], b: &[f32]) -> f32 {
+    a.array_chunks::<4>()
+        .map(|&a| f32x4::from_array(a))
+        .zip(b.array_chunks::<4>().map(|&b| f32x4::from_array(b)))
+        .fold(f32x4::splat(0.), |acc, (a, b)| acc.mul_add(a, b))
+        .reduce_sum()
+}
+
 fn main() {
     // Empty main to make cargo happy
 }
