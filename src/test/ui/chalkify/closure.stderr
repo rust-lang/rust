@@ -12,6 +12,10 @@ note: closure cannot be moved more than once as it is not `Copy` due to moving t
    |
 LL |         a = 1;
    |         ^
+help: consider mutably borrowing `b`
+   |
+LL |     let mut c = &mut b;
+   |                 ++++
 
 error: aborting due to previous error
 

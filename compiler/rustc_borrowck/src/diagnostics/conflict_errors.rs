@@ -12,7 +12,7 @@ use rustc_middle::mir::{
     FakeReadCause, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind, VarBindingForm,
 };
-use rustc_middle::ty::{self, suggest_constraining_type_params, PredicateKind, Ty};
+use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, MultiSpan, Span};
@@ -151,6 +151,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         .args_or_use()
                 })
                 .collect::<Vec<Span>>();
+
             let reinits = maybe_reinitialized_locations.len();
             if reinits == 1 {
                 err.span_label(reinit_spans[0], "this reinitialization might get skipped");
@@ -276,76 +277,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
             }
 
+            let opt_name =
+                self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
+            let note_msg = match opt_name {
+                Some(ref name) => format!("`{}`", name),
+                None => "value".to_owned(),
+            };
+            if self.suggest_borrow_fn_like(&mut err, ty, &move_site_vec, &note_msg) {
+                // Suppress the next suggestion since we don't want to put more bounds onto
+                // something that already has `Fn`-like bounds (or is a closure), so we can't
+                // restrict anyways.
+            } else {
+                self.suggest_adding_copy_bounds(&mut err, ty, span);
+            }
+
             if needs_note {
-                let opt_name =
-                    self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
-                let note_msg = match opt_name {
-                    Some(ref name) => format!("`{}`", name),
-                    None => "value".to_owned(),
-                };
-
-                // Try to find predicates on *generic params* that would allow copying `ty`
-                let tcx = self.infcx.tcx;
-                let generics = tcx.generics_of(self.mir_def_id());
-                if let Some(hir_generics) = tcx
-                    .typeck_root_def_id(self.mir_def_id().to_def_id())
-                    .as_local()
-                    .and_then(|def_id| tcx.hir().get_generics(def_id))
-                {
-                    let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
-                        let mut fulfill_cx =
-                            <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
-
-                        let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
-                        let cause = ObligationCause::new(
-                            span,
-                            self.mir_hir_id(),
-                            rustc_infer::traits::ObligationCauseCode::MiscObligation,
-                        );
-                        fulfill_cx.register_bound(
-                            &infcx,
-                            self.param_env,
-                            // Erase any region vids from the type, which may not be resolved
-                            infcx.tcx.erase_regions(ty),
-                            copy_did,
-                            cause,
-                        );
-                        // Select all, including ambiguous predicates
-                        let errors = fulfill_cx.select_all_or_error(&infcx);
-
-                        // Only emit suggestion if all required predicates are on generic
-                        errors
-                            .into_iter()
-                            .map(|err| match err.obligation.predicate.kind().skip_binder() {
-                                PredicateKind::Trait(predicate) => {
-                                    match predicate.self_ty().kind() {
-                                        ty::Param(param_ty) => Ok((
-                                            generics.type_param(param_ty, tcx),
-                                            predicate.trait_ref.print_only_trait_path().to_string(),
-                                        )),
-                                        _ => Err(()),
-                                    }
-                                }
-                                _ => Err(()),
-                            })
-                            .collect()
-                    });
-
-                    if let Ok(predicates) = predicates {
-                        suggest_constraining_type_params(
-                            tcx,
-                            hir_generics,
-                            &mut err,
-                            predicates.iter().map(|(param, constraint)| {
-                                (param.name.as_str(), &**constraint, None)
-                            }),
-                        );
-                    }
-                }
-
                 let span = if let Some(local) = place.as_local() {
-                    let decl = &self.body.local_decls[local];
-                    Some(decl.source_info.span)
+                    Some(self.body.local_decls[local].source_info.span)
                 } else {
                     None
                 };
@@ -370,6 +318,144 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             self.buffer_move_error(move_out_indices, (used_place, err));
+        }
+    }
+
+    fn suggest_borrow_fn_like(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        ty: Ty<'tcx>,
+        move_sites: &[MoveSite],
+        value_name: &str,
+    ) -> bool {
+        let tcx = self.infcx.tcx;
+
+        // Find out if the predicates show that the type is a Fn or FnMut
+        let find_fn_kind_from_did = |predicates: &[(ty::Predicate<'tcx>, Span)], substs| {
+            predicates.iter().find_map(|(pred, _)| {
+                let pred = if let Some(substs) = substs {
+                    pred.subst(tcx, substs).kind().skip_binder()
+                } else {
+                    pred.kind().skip_binder()
+                };
+                if let ty::PredicateKind::Trait(pred) = pred && pred.self_ty() == ty {
+                    if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
+                        return Some(hir::Mutability::Not);
+                    } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
+                        return Some(hir::Mutability::Mut);
+                    }
+                }
+                None
+            })
+        };
+
+        // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
+        // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
+        // These types seem reasonably opaque enough that they could be substituted with their
+        // borrowed variants in a function body when we see a move error.
+        let borrow_level = match ty.kind() {
+            ty::Param(_) => find_fn_kind_from_did(
+                tcx.explicit_predicates_of(self.mir_def_id().to_def_id()).predicates,
+                None,
+            ),
+            ty::Opaque(did, substs) => {
+                find_fn_kind_from_did(tcx.explicit_item_bounds(*did), Some(*substs))
+            }
+            ty::Closure(_, substs) => match substs.as_closure().kind() {
+                ty::ClosureKind::Fn => Some(hir::Mutability::Not),
+                ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),
+                _ => None,
+            },
+            _ => None,
+        };
+
+        let Some(borrow_level) = borrow_level else { return false; };
+        let sugg = move_sites
+            .iter()
+            .map(|move_site| {
+                let move_out = self.move_data.moves[(*move_site).moi];
+                let moved_place = &self.move_data.move_paths[move_out.path].place;
+                let move_spans = self.move_spans(moved_place.as_ref(), move_out.source);
+                let move_span = move_spans.args_or_use();
+                let suggestion = if borrow_level == hir::Mutability::Mut {
+                    "&mut ".to_string()
+                } else {
+                    "&".to_string()
+                };
+                (move_span.shrink_to_lo(), suggestion)
+            })
+            .collect();
+        err.multipart_suggestion_verbose(
+            &format!(
+                "consider {}borrowing {value_name}",
+                if borrow_level == hir::Mutability::Mut { "mutably " } else { "" }
+            ),
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+        true
+    }
+
+    fn suggest_adding_copy_bounds(
+        &self,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        let tcx = self.infcx.tcx;
+        let generics = tcx.generics_of(self.mir_def_id());
+
+        let Some(hir_generics) = tcx
+            .typeck_root_def_id(self.mir_def_id().to_def_id())
+            .as_local()
+            .and_then(|def_id| tcx.hir().get_generics(def_id))
+        else { return; };
+        // Try to find predicates on *generic params* that would allow copying `ty`
+        let predicates: Result<Vec<_>, _> = tcx.infer_ctxt().enter(|infcx| {
+            let mut fulfill_cx = <dyn rustc_infer::traits::TraitEngine<'_>>::new(infcx.tcx);
+
+            let copy_did = infcx.tcx.lang_items().copy_trait().unwrap();
+            let cause = ObligationCause::new(
+                span,
+                self.mir_hir_id(),
+                rustc_infer::traits::ObligationCauseCode::MiscObligation,
+            );
+            fulfill_cx.register_bound(
+                &infcx,
+                self.param_env,
+                // Erase any region vids from the type, which may not be resolved
+                infcx.tcx.erase_regions(ty),
+                copy_did,
+                cause,
+            );
+            // Select all, including ambiguous predicates
+            let errors = fulfill_cx.select_all_or_error(&infcx);
+
+            // Only emit suggestion if all required predicates are on generic
+            errors
+                .into_iter()
+                .map(|err| match err.obligation.predicate.kind().skip_binder() {
+                    PredicateKind::Trait(predicate) => match predicate.self_ty().kind() {
+                        ty::Param(param_ty) => Ok((
+                            generics.type_param(param_ty, tcx),
+                            predicate.trait_ref.print_only_trait_path().to_string(),
+                        )),
+                        _ => Err(()),
+                    },
+                    _ => Err(()),
+                })
+                .collect()
+        });
+
+        if let Ok(predicates) = predicates {
+            suggest_constraining_type_params(
+                tcx,
+                hir_generics,
+                err,
+                predicates
+                    .iter()
+                    .map(|(param, constraint)| (param.name.as_str(), &**constraint, None)),
+            );
         }
     }
 
