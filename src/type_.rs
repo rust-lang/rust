@@ -115,7 +115,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
 
-    fn type_struct(&self, fields: &[Type<'gcc>], _packed: bool) -> Type<'gcc> {
+    fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
         let types = fields.to_vec();
         if let Some(typ) = self.struct_types.borrow().get(fields) {
             return typ.clone();
@@ -123,8 +123,10 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let fields: Vec<_> = fields.iter().enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field{}_TODO", index)))
             .collect();
-        // TODO(antoyo): use packed.
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
+        if packed {
+            typ.set_packed();
+        }
         self.struct_types.borrow_mut().insert(types, typ);
         typ
     }
@@ -209,12 +211,14 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 
-    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], _packed: bool) {
-        // TODO(antoyo): use packed.
+    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
         let fields: Vec<_> = fields.iter().enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
             .collect();
         typ.set_fields(None, &fields);
+        if packed {
+            typ.as_type().set_packed();
+        }
     }
 
     pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
