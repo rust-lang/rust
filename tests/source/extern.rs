@@ -77,3 +77,16 @@ libc::c_long;
 extern {
 
 }
+
+macro_rules! x {
+    ($tt:tt) => {};
+}
+
+extern "macros" {
+    x!(ident);
+    // x!(#); FIXME
+    x![ident];
+    // x![#]; FIXME
+    x! {ident}
+    x! {#}
+}

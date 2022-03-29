@@ -82,3 +82,16 @@ extern "C" {
 }
 
 extern "C" {}
+
+macro_rules! x {
+    ($tt:tt) => {};
+}
+
+extern "macros" {
+    x!(ident);
+    // x!(#); FIXME
+    x![ident];
+    // x![#]; FIXME
+    x! {ident}
+    x! {#}
+}
