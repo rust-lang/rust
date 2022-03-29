@@ -223,6 +223,14 @@ impl DefKind {
             | DefKind::Impl => None,
         }
     }
+
+    #[inline]
+    pub fn is_fn_like(self) -> bool {
+        match self {
+            DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator => true,
+            _ => false,
+        }
+    }
 }
 
 /// The resolution of a path or export.
