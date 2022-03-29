@@ -787,7 +787,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                                         _,
                                                         [
                                                             Expr {
-                                                                kind: MethodCall(path_segment, ..),
+                                                                kind:
+                                                                    MethodCall(
+                                                                        path_segment,
+                                                                        _args,
+                                                                        span,
+                                                                    ),
                                                                 hir_id,
                                                                 ..
                                                             },
@@ -831,7 +836,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(mut suggestions) = opt_suggestions {
                     if suggestions.peek().is_some() {
                         err.span_suggestions(
-                            path_segment.ident.span,
+                            *span,
                             "use mutable method",
                             suggestions,
                             Applicability::MaybeIncorrect,
