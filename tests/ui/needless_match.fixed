@@ -182,4 +182,16 @@ mod issue8551 {
     }
 }
 
+trait Tr {
+    fn as_mut(&mut self) -> Result<&mut i32, &mut i32>;
+}
+impl Tr for Result<i32, i32> {
+    fn as_mut(&mut self) -> Result<&mut i32, &mut i32> {
+        match self {
+            Ok(x) => Ok(x),
+            Err(e) => Err(e),
+        }
+    }
+}
+
 fn main() {}

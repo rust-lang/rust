@@ -14,7 +14,7 @@ use rustc_span::sym;
 use rustc_typeck::hir_ty_to_ty;
 
 pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr: &Expr<'_>) {
-    if arms.len() > 1 && !is_coercion_casting(cx, ex, expr) && check_all_arms(cx, ex, arms) {
+    if arms.len() > 1 && expr_ty_matches_p_ty(cx, ex, expr) && check_all_arms(cx, ex, arms) {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
@@ -49,7 +49,7 @@ pub(crate) fn check_match(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>],
 /// ```
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>) {
     if let Some(ref if_let) = higher::IfLet::hir(cx, ex) {
-        if !is_else_clause(cx.tcx, ex) && !is_coercion_casting(cx, if_let.let_expr, ex) && check_if_let(cx, if_let) {
+        if !is_else_clause(cx.tcx, ex) && expr_ty_matches_p_ty(cx, if_let.let_expr, ex) && check_if_let(cx, if_let) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -119,39 +119,35 @@ fn strip_return<'hir>(expr: &'hir Expr<'hir>) -> &'hir Expr<'hir> {
 
 /// Manually check for coercion casting by checking if the type of the match operand or let expr
 /// differs with the assigned local variable or the funtion return type.
-fn is_coercion_casting(cx: &LateContext<'_>, match_expr: &Expr<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(p_node) = get_parent_node(cx.tcx, expr.hir_id) {
+fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>) -> bool {
+    if let Some(p_node) = get_parent_node(cx.tcx, p_expr.hir_id) {
         match p_node {
             // Compare match_expr ty with local in `let local = match match_expr {..}`
             Node::Local(local) => {
                 let results = cx.typeck_results();
-                return !same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(match_expr));
+                return same_type_and_consts(results.node_type(local.hir_id), results.expr_ty(expr));
             },
             // compare match_expr ty with RetTy in `fn foo() -> RetTy`
             Node::Item(..) => {
                 if let Some(fn_decl) = p_node.fn_decl() {
                     if let FnRetTy::Return(ret_ty) = fn_decl.output {
-                        return !same_type_and_consts(
-                            hir_ty_to_ty(cx.tcx, ret_ty),
-                            cx.typeck_results().expr_ty(match_expr),
-                        );
+                        return same_type_and_consts(hir_ty_to_ty(cx.tcx, ret_ty), cx.typeck_results().expr_ty(expr));
                     }
                 }
             },
             // check the parent expr for this whole block `{ match match_expr {..} }`
             Node::Block(block) => {
                 if let Some(block_parent_expr) = get_parent_expr_for_hir(cx, block.hir_id) {
-                    return is_coercion_casting(cx, match_expr, block_parent_expr);
+                    return expr_ty_matches_p_ty(cx, expr, block_parent_expr);
                 }
             },
             // recursively call on `if xxx {..}` etc.
             Node::Expr(p_expr) => {
-                return is_coercion_casting(cx, match_expr, p_expr);
+                return expr_ty_matches_p_ty(cx, expr, p_expr);
             },
             _ => {},
         }
     }
-
     false
 }
 
