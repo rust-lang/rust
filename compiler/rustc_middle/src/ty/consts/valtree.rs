@@ -1,5 +1,7 @@
 use super::ScalarInt;
-use rustc_macros::HashStable;
+use crate::ty::codec::TyDecoder;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_serialize::{Decodable, Encodable, Encoder};
 
 #[derive(Copy, Clone, Debug, Hash, TyEncodable, TyDecodable, Eq, PartialEq, Ord, PartialOrd)]
 #[derive(HashStable)]
@@ -20,6 +22,7 @@ pub enum ValTree<'tcx> {
     /// See the `ScalarInt` documentation for how `ScalarInt` guarantees that equal values
     /// of these types have the same representation.
     Leaf(ScalarInt),
+    SliceOrStr(ValSlice<'tcx>),
     /// The fields of any kind of aggregate. Structs, tuples and arrays are represented by
     /// listing their fields' values in order.
     /// Enums are represented by storing their discriminant as a field, followed by all
@@ -30,5 +33,30 @@ pub enum ValTree<'tcx> {
 impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])
+    }
+}
+
+#[derive(Copy, Clone, Debug, HashStable, Hash, Eq, PartialEq, PartialOrd, Ord)]
+pub struct ValSlice<'tcx> {
+    pub bytes: &'tcx [u8],
+}
+
+impl<'tcx, S: Encoder> Encodable<S> for ValSlice<'tcx> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_usize(self.bytes.len())?;
+        s.emit_raw_bytes(self.bytes)?;
+
+        Ok(())
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ValSlice<'tcx> {
+    fn decode(d: &mut D) -> Self {
+        let tcx = d.tcx();
+        let len = d.read_usize();
+        let bytes_raw = d.read_raw_bytes(len);
+        let bytes = tcx.arena.alloc_slice(&bytes_raw[..]);
+
+        ValSlice { bytes }
     }
 }
