@@ -646,6 +646,20 @@ impl Item {
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
     crate fn fn_header(&self, tcx: TyCtxt<'_>) -> Option<hir::FnHeader> {
+        fn build_fn_header(
+            def_id: DefId,
+            tcx: TyCtxt<'_>,
+            asyncness: hir::IsAsync,
+        ) -> hir::FnHeader {
+            let sig = tcx.fn_sig(def_id);
+            let constness =
+                if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
+                };
+            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+        }
         let header = match *self.kind {
             ItemKind::ForeignFunctionItem(_) => {
                 let abi = tcx.fn_sig(self.def_id.as_def_id().unwrap()).abi();
@@ -662,24 +676,10 @@ impl Item {
             }
             ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) => {
                 let def_id = self.def_id.as_def_id().unwrap();
-                let sig = tcx.fn_sig(def_id);
-                let constness =
-                    if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
-                        hir::Constness::Const
-                    } else {
-                        hir::Constness::NotConst
-                    };
-                let asyncness = tcx.asyncness(def_id);
-                hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+                build_fn_header(def_id, tcx, tcx.asyncness(def_id))
             }
             ItemKind::TyMethodItem(_) => {
-                let sig = tcx.fn_sig(self.def_id.as_def_id().unwrap());
-                hir::FnHeader {
-                    unsafety: sig.unsafety(),
-                    abi: sig.abi(),
-                    constness: hir::Constness::NotConst,
-                    asyncness: hir::IsAsync::NotAsync,
-                }
+                build_fn_header(self.def_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
             }
             _ => return None,
         };
