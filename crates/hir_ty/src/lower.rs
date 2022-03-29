@@ -205,7 +205,7 @@ impl<'a> TyLoweringContext<'a> {
                     len,
                     self.type_param_mode,
                     || self.generics(),
-                    DebruijnIndex::INNERMOST,
+                    self.in_binders,
                 );
 
                 TyKind::Array(inner_ty, const_len).intern(Interner)
@@ -728,7 +728,7 @@ impl<'a> TyLoweringContext<'a> {
                             c,
                             self.type_param_mode,
                             || self.generics(),
-                            DebruijnIndex::INNERMOST,
+                            self.in_binders,
                         )
                     },
                 ) {
