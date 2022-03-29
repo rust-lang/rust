@@ -517,7 +517,12 @@ impl<'tt> TtParser<'tt> {
 
                     TokenTree::Token(t) => {
                         // If it's a doc comment, we just ignore it and move on to the next tt in
-                        // the matcher. If the token matches, we can just advance the parser.
+                        // the matcher. This is a bug, but #95267 showed that existing programs
+                        // rely on this behaviour, and changing it would require some care and a
+                        // transition period.
+                        //
+                        // If the token matches, we can just advance the parser.
+                        //
                         // Otherwise, this match has failed, there is nothing to do, and hopefully
                         // another item in `cur_items` will match.
                         if matches!(t, Token { kind: DocComment(..), .. }) {
