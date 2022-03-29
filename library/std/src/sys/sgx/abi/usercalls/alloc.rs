@@ -225,13 +225,9 @@ where
     /// Copies `val` into freshly allocated space in user memory.
     pub fn new_from_enclave(val: &T) -> Self {
         unsafe {
-            let ret = Self::new_uninit_bytes(mem::size_of_val(val));
-            ptr::copy(
-                val as *const T as *const u8,
-                ret.0.as_ptr() as *mut u8,
-                mem::size_of_val(val),
-            );
-            ret
+            let mut user = Self::new_uninit_bytes(mem::size_of_val(val));
+            user.copy_from_enclave(val);
+            user
         }
     }
 
