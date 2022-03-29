@@ -13,6 +13,7 @@ use rustc_ast::attr;
 use rustc_ast::util::comments::beautify_doc_string;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_attr::{ConstStability, Deprecation, Stability, StabilityLevel};
+use rustc_const_eval::const_eval::is_unstable_const_fn;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
@@ -29,6 +30,7 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{self, FileName, Loc};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
+use rustc_typeck::check::intrinsic::intrinsic_operation_unsafety;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::external_path;
@@ -640,6 +642,48 @@ impl Item {
             }
             _ => false,
         }
+    }
+
+    /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
+    crate fn fn_header(&self, tcx: TyCtxt<'_>) -> Option<hir::FnHeader> {
+        fn build_fn_header(
+            def_id: DefId,
+            tcx: TyCtxt<'_>,
+            asyncness: hir::IsAsync,
+        ) -> hir::FnHeader {
+            let sig = tcx.fn_sig(def_id);
+            let constness =
+                if tcx.is_const_fn(def_id) && is_unstable_const_fn(tcx, def_id).is_none() {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
+                };
+            hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness }
+        }
+        let header = match *self.kind {
+            ItemKind::ForeignFunctionItem(_) => {
+                let abi = tcx.fn_sig(self.def_id.as_def_id().unwrap()).abi();
+                hir::FnHeader {
+                    unsafety: if abi == Abi::RustIntrinsic {
+                        intrinsic_operation_unsafety(self.name.unwrap())
+                    } else {
+                        hir::Unsafety::Unsafe
+                    },
+                    abi,
+                    constness: hir::Constness::NotConst,
+                    asyncness: hir::IsAsync::NotAsync,
+                }
+            }
+            ItemKind::FunctionItem(_) | ItemKind::MethodItem(_, _) => {
+                let def_id = self.def_id.as_def_id().unwrap();
+                build_fn_header(def_id, tcx, tcx.asyncness(def_id))
+            }
+            ItemKind::TyMethodItem(_) => {
+                build_fn_header(self.def_id.as_def_id().unwrap(), tcx, hir::IsAsync::NotAsync)
+            }
+            _ => return None,
+        };
+        Some(header)
     }
 }
 
@@ -1253,7 +1297,6 @@ crate struct Generics {
 crate struct Function {
     crate decl: FnDecl,
     crate generics: Generics,
-    crate header: hir::FnHeader,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

@@ -221,9 +221,6 @@ crate fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean::Tra
 fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
-    let constness =
-        if cx.tcx.is_const_fn_raw(did) { hir::Constness::Const } else { hir::Constness::NotConst };
-    let asyncness = cx.tcx.asyncness(did);
     let predicates = cx.tcx.predicates_of(did);
     let (generics, decl) = clean::enter_impl_trait(cx, |cx| {
         // NOTE: generics need to be cleaned before the decl!
@@ -231,11 +228,7 @@ fn build_external_function(cx: &mut DocContext<'_>, did: DefId) -> clean::Functi
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
-    clean::Function {
-        decl,
-        generics,
-        header: hir::FnHeader { unsafety: sig.unsafety(), abi: sig.abi(), constness, asyncness },
-    }
+    clean::Function { decl, generics }
 }
 
 fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {

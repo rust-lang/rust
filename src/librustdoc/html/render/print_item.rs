@@ -365,8 +365,9 @@ fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[cl
                 }
 
                 let unsafety_flag = match *myitem.kind {
-                    clean::FunctionItem(ref func) | clean::ForeignFunctionItem(ref func)
-                        if func.header.unsafety == hir::Unsafety::Unsafe =>
+                    clean::FunctionItem(_) | clean::ForeignFunctionItem(_)
+                        if myitem.fn_header(cx.tcx()).unwrap().unsafety
+                            == hir::Unsafety::Unsafe =>
                     {
                         "<a title=\"unsafe function\" href=\"#\"><sup>⚠</sup></a>"
                     }
@@ -462,16 +463,17 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 }
 
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
-    let vis = it.visibility.print_with_space(it.def_id, cx).to_string();
-    let constness = print_constness_with_space(&f.header.constness, it.const_stability(cx.tcx()));
-    let asyncness = f.header.asyncness.print_with_space();
-    let unsafety = f.header.unsafety.print_with_space();
-    let abi = print_abi_with_space(f.header.abi).to_string();
+    let header = it.fn_header(cx.tcx()).expect("printing a function which isn't a function");
+    let constness = print_constness_with_space(&header.constness, it.const_stability(cx.tcx()));
+    let unsafety = header.unsafety.print_with_space().to_string();
+    let abi = print_abi_with_space(header.abi).to_string();
+    let asyncness = header.asyncness.print_with_space();
+    let visibility = it.visibility.print_with_space(it.def_id, cx).to_string();
     let name = it.name.unwrap();
 
     let generics_len = format!("{:#}", f.generics.print(cx)).len();
     let header_len = "fn ".len()
-        + vis.len()
+        + visibility.len()
         + constness.len()
         + asyncness.len()
         + unsafety.len()
@@ -487,7 +489,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 w,
                 "{vis}{constness}{asyncness}{unsafety}{abi}fn \
                  {name}{generics}{decl}{notable_traits}{where_clause}",
-                vis = vis,
+                vis = visibility,
                 constness = constness,
                 asyncness = asyncness,
                 unsafety = unsafety,
@@ -495,7 +497,7 @@ fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 name = name,
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, true),
-                decl = f.decl.full_print(header_len, 0, f.header.asyncness, cx),
+                decl = f.decl.full_print(header_len, 0, header.asyncness, cx),
                 notable_traits = notable_traits_decl(&f.decl, cx),
             );
         });
