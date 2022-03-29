@@ -2002,16 +2002,16 @@ impl<T: CoerceUnsized<U>, U> CoerceUnsized<UnsafeCell<U>> for UnsafeCell<T> {}
 /// making this type just as unsafe to use.
 ///
 /// See [`UnsafeCell`] for details.
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[repr(transparent)]
 pub struct SyncUnsafeCell<T: ?Sized> {
     value: UnsafeCell<T>,
 }
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 unsafe impl<T: ?Sized + Sync> Sync for SyncUnsafeCell<T> {}
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T> SyncUnsafeCell<T> {
     /// Constructs a new instance of `SyncUnsafeCell` which will wrap the specified value.
     #[inline]
@@ -2026,7 +2026,7 @@ impl<T> SyncUnsafeCell<T> {
     }
 }
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: ?Sized> SyncUnsafeCell<T> {
     /// Gets a mutable pointer to the wrapped value.
     ///
@@ -2060,7 +2060,7 @@ impl<T: ?Sized> SyncUnsafeCell<T> {
     }
 }
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: Default> Default for SyncUnsafeCell<T> {
     /// Creates an `SyncUnsafeCell`, with the `Default` value for T.
     fn default() -> SyncUnsafeCell<T> {
@@ -2068,7 +2068,7 @@ impl<T: Default> Default for SyncUnsafeCell<T> {
     }
 }
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for SyncUnsafeCell<T> {
     /// Creates a new `SyncUnsafeCell<T>` containing the given value.
@@ -2078,7 +2078,7 @@ impl<T> const From<T> for SyncUnsafeCell<T> {
 }
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-//#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+//#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<SyncUnsafeCell<U>> for SyncUnsafeCell<T> {}
 
 #[allow(unused)]

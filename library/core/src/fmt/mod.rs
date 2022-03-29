@@ -2396,7 +2396,7 @@ impl<T: ?Sized> Debug for UnsafeCell<T> {
     }
 }
 
-#[unstable(feature = "sync_unsafe_cell", issue = "none")]
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
 impl<T: ?Sized> Debug for SyncUnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.debug_struct("SyncUnsafeCell").finish_non_exhaustive()
