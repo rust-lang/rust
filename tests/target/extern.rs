@@ -89,9 +89,9 @@ macro_rules! x {
 
 extern "macros" {
     x!(ident);
-    // x!(#); FIXME
+    x!(#);
     x![ident];
-    // x![#]; FIXME
+    x![#];
     x! {ident}
     x! {#}
 }

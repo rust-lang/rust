@@ -112,6 +112,7 @@ fn rewrite_macro_name(
 fn return_macro_parse_failure_fallback(
     context: &RewriteContext<'_>,
     indent: Indent,
+    position: MacroPosition,
     span: Span,
 ) -> Option<String> {
     // Mark this as a failure however we format it
@@ -140,7 +141,11 @@ fn return_macro_parse_failure_fallback(
     ));
 
     // Return the snippet unmodified if the macro is not block-like
-    Some(context.snippet(span).to_owned())
+    let mut snippet = context.snippet(span).to_owned();
+    if position == MacroPosition::Item {
+        snippet.push(';');
+    }
+    Some(snippet)
 }
 
 pub(crate) fn rewrite_macro(
@@ -233,7 +238,12 @@ fn rewrite_macro_inner(
     } = match parse_macro_args(context, ts, style, is_forced_bracket) {
         Some(args) => args,
         None => {
-            return return_macro_parse_failure_fallback(context, shape.indent, mac.span());
+            return return_macro_parse_failure_fallback(
+                context,
+                shape.indent,
+                position,
+                mac.span(),
+            );
         }
     };
 
