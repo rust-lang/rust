@@ -45,8 +45,8 @@ impl<T: Write> PrettyFormatter<T> {
         self.write_short_result("FAILED", term::color::RED)
     }
 
-    pub fn write_ignored(&mut self, may_message: Option<&'static str>) -> io::Result<()> {
-        if let Some(message) = may_message {
+    pub fn write_ignored(&mut self, message: Option<&'static str>) -> io::Result<()> {
+        if let Some(message) = message {
             self.write_short_result(&format!("ignored, {}", message), term::color::YELLOW)
         } else {
             self.write_short_result("ignored", term::color::YELLOW)
@@ -63,7 +63,7 @@ impl<T: Write> PrettyFormatter<T> {
 
     pub fn write_short_result(
         &mut self,
-        result: impl AsRef<str>,
+        result: &str,
         color: term::color::Color,
     ) -> io::Result<()> {
         self.write_pretty(result.as_ref(), color)

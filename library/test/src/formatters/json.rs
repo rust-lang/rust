@@ -122,25 +122,17 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 
             TestResult::TrIgnored => {
                 #[cfg(not(bootstrap))]
-                if let Some(msg) = desc.ignore_message {
-                    self.write_event(
-                        "test",
-                        desc.name.as_slice(),
-                        "ignored",
-                        exec_time,
-                        stdout,
-                        Some(&*format!(r#""message": "{}""#, EscapedString(msg))),
-                    )
-                } else {
-                    self.write_event(
-                        "test",
-                        desc.name.as_slice(),
-                        "ignored",
-                        exec_time,
-                        stdout,
-                        None,
-                    )
-                }
+                return self.write_event(
+                    "test",
+                    desc.name.as_slice(),
+                    "ignored",
+                    exec_time,
+                    stdout,
+                    desc.ignore_message
+                        .map(|msg| format!(r#""message": "{}""#, EscapedString(msg)))
+                        .as_deref(),
+                );
+
                 #[cfg(bootstrap)]
                 self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
             }
