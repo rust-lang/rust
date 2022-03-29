@@ -1998,7 +1998,6 @@ impl Step for Crate {
                 compile::std_cargo(builder, target, compiler.stage, &mut cargo);
             }
             Mode::Rustc => {
-                builder.ensure(compile::Rustc { compiler, target });
                 compile::rustc_cargo(builder, &mut cargo, target);
             }
             _ => panic!("can only test libraries"),
