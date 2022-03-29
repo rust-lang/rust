@@ -66,7 +66,7 @@ impl<T: Write> PrettyFormatter<T> {
         result: &str,
         color: term::color::Color,
     ) -> io::Result<()> {
-        self.write_pretty(result.as_ref(), color)
+        self.write_pretty(result, color)
     }
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
