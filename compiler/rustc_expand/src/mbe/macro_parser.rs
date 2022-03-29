@@ -155,11 +155,11 @@ struct MatcherPos<'tt> {
 rustc_data_structures::static_assert_size!(MatcherPos<'_>, 104);
 
 impl<'tt> MatcherPos<'tt> {
-    fn top_level(matcher: &'tt [TokenTree]) -> Self {
+    fn top_level(matcher: &'tt [TokenTree], empty_matches: Lrc<NamedMatchVec>) -> Self {
         MatcherPos {
             tts: matcher,
             idx: 0,
-            matches: Lrc::new(smallvec![]),
+            matches: empty_matches,
             seq_depth: 0,
             match_lo: 0,
             match_cur: 0,
@@ -168,7 +168,11 @@ impl<'tt> MatcherPos<'tt> {
         }
     }
 
-    fn sequence(parent: Box<MatcherPos<'tt>>, seq: &'tt SequenceRepetition) -> Self {
+    fn sequence(
+        parent: Box<MatcherPos<'tt>>,
+        seq: &'tt SequenceRepetition,
+        empty_matches: Lrc<NamedMatchVec>,
+    ) -> Self {
         let mut mp = MatcherPos {
             tts: &seq.tts,
             idx: 0,
@@ -182,7 +186,7 @@ impl<'tt> MatcherPos<'tt> {
         // Start with an empty vec for each metavar within the sequence. Note that `mp.seq_depth`
         // must have the parent's depth at this point for these `push_match` calls to work.
         for idx in mp.match_lo..mp.match_lo + seq.num_captures {
-            mp.push_match(idx, MatchedSeq(Lrc::new(smallvec![])));
+            mp.push_match(idx, MatchedSeq(empty_matches.clone()));
         }
         mp.seq_depth += 1;
         mp
@@ -415,11 +419,21 @@ pub struct TtParser<'tt> {
 
     /// The set of mps that are waiting for the black-box parser.
     bb_mps: Vec<Box<MatcherPos<'tt>>>,
+
+    /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
+    /// that have no metavars.
+    empty_matches: Lrc<NamedMatchVec>,
 }
 
 impl<'tt> TtParser<'tt> {
     pub(super) fn new(macro_name: Ident) -> TtParser<'tt> {
-        TtParser { macro_name, cur_mps: vec![], next_mps: vec![], bb_mps: vec![] }
+        TtParser {
+            macro_name,
+            cur_mps: vec![],
+            next_mps: vec![],
+            bb_mps: vec![],
+            empty_matches: Lrc::new(smallvec![]),
+        }
     }
 
     /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will
@@ -469,13 +483,17 @@ impl<'tt> TtParser<'tt> {
                             new_mp.match_cur += seq.num_captures;
                             new_mp.idx += 1;
                             for idx in mp.match_cur..mp.match_cur + seq.num_captures {
-                                new_mp.push_match(idx, MatchedSeq(Lrc::new(smallvec![])));
+                                new_mp.push_match(idx, MatchedSeq(self.empty_matches.clone()));
                             }
                             self.cur_mps.push(new_mp);
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
-                        self.cur_mps.push(box MatcherPos::sequence(mp, &seq));
+                        self.cur_mps.push(box MatcherPos::sequence(
+                            mp,
+                            &seq,
+                            self.empty_matches.clone(),
+                        ));
                     }
 
                     &TokenTree::MetaVarDecl(span, _, None) => {
@@ -621,7 +639,7 @@ impl<'tt> TtParser<'tt> {
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
         self.cur_mps.clear();
-        self.cur_mps.push(box MatcherPos::top_level(matcher));
+        self.cur_mps.push(box MatcherPos::top_level(matcher, self.empty_matches.clone()));
 
         loop {
             self.next_mps.clear();
