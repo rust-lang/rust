@@ -120,7 +120,7 @@ const TAG_SIMPLE: usize = 0b11;
 /// See the module docs for more, this is just a way to hack in a check that we
 /// indeed are not unwind-safe.
 ///
-/// ```compile_fail
+/// ```compile_fail,E0277
 /// fn is_unwind_safe<T: core::panic::UnwindSafe>() {}
 /// is_unwind_safe::<std::io::Error>();
 /// ```
