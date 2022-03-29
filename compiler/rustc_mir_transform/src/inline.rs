@@ -59,11 +59,10 @@ impl<'tcx> MirPass<'tcx> for Inline {
 }
 
 fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
-    let def_id = body.source.def_id();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
+    let def_id = body.source.def_id().expect_local();
 
     // Only do inlining into fn bodies.
-    if !tcx.hir().body_owner_kind(hir_id).is_fn_or_closure() {
+    if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
         return false;
     }
     if body.source.promoted.is_some() {
@@ -77,9 +76,10 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
     }
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let param_env = rustc_trait_selection::traits::normalize_param_env_or_error(
         tcx,
-        def_id,
+        def_id.to_def_id(),
         param_env,
         ObligationCause::misc(body.span, hir_id),
     );

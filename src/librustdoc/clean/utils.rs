@@ -397,7 +397,7 @@ crate fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         // These should be added to the cache using `record_extern_fqn`.
         Res::Def(
             kind @ (AssocTy | AssocFn | AssocConst | Variant | Fn | TyAlias | Enum | Trait | Struct
-            | Union | Mod | ForeignTy | Const | Static | Macro(..) | TraitAlias),
+            | Union | Mod | ForeignTy | Const | Static(_) | Macro(..) | TraitAlias),
             i,
         ) => (i, kind.into()),
         // This is part of a trait definition or trait impl; document the trait.

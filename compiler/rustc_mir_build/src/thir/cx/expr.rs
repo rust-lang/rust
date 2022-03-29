@@ -523,7 +523,7 @@ impl<'tcx> Cx<'tcx> {
                                         }
                                     }
 
-                                    Res::Def(DefKind::Static, def_id) => {
+                                    Res::Def(DefKind::Static(_), def_id) => {
                                         InlineAsmOperand::SymStatic { def_id }
                                     }
 
@@ -901,7 +901,7 @@ impl<'tcx> Cx<'tcx> {
 
             // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
             // a constant reference (or constant raw pointer for `static mut`) in MIR
-            Res::Def(DefKind::Static, id) => {
+            Res::Def(DefKind::Static(_), id) => {
                 let ty = self.tcx.static_ptr_ty(id);
                 let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {

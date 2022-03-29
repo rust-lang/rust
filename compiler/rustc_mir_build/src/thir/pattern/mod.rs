@@ -420,7 +420,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => {
                 let pattern_error = match res {
                     Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
-                    Res::Def(DefKind::Static, _) => PatternError::StaticInPattern(span),
+                    Res::Def(DefKind::Static(_), _) => PatternError::StaticInPattern(span),
                     _ => PatternError::NonConstPath(span),
                 };
                 self.errors.push(pattern_error);

@@ -792,7 +792,7 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static
+        | DefKind::Static(..)
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -826,7 +826,7 @@ fn should_encode_stability(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Static
+        | DefKind::Static(..)
         | DefKind::Const
         | DefKind::Fn
         | DefKind::ForeignMod
@@ -870,7 +870,7 @@ fn should_encode_mir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> (bool, bool) {
         DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::AssocConst
-        | DefKind::Static
+        | DefKind::Static(..)
         | DefKind::Const => (true, false),
         // Full-fledged functions
         DefKind::AssocFn | DefKind::Fn => {
@@ -915,7 +915,7 @@ fn should_encode_variances(def_kind: DefKind) -> bool {
         | DefKind::AssocConst
         | DefKind::TyParam
         | DefKind::ConstParam
-        | DefKind::Static
+        | DefKind::Static(..)
         | DefKind::Const
         | DefKind::ForeignMod
         | DefKind::TyAlias
@@ -949,7 +949,7 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
         | DefKind::AssocTy
         | DefKind::Fn
         | DefKind::Const
-        | DefKind::Static
+        | DefKind::Static(..)
         | DefKind::Ctor(..)
         | DefKind::AssocFn
         | DefKind::AssocConst
@@ -1385,8 +1385,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_ident_span(def_id, item.ident);
 
         let entry_kind = match item.kind {
-            hir::ItemKind::Static(_, hir::Mutability::Mut, _) => EntryKind::MutStatic,
-            hir::ItemKind::Static(_, hir::Mutability::Not, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Static(..) => EntryKind::Static,
             hir::ItemKind::Const(_, body_id) => {
                 let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
                 let const_data = self.encode_rendered_const_for_body(body_id);
@@ -1874,11 +1873,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignFn(self.lazy(data)));
             }
-            hir::ForeignItemKind::Static(_, hir::Mutability::Mut) => {
-                record!(self.tables.kind[def_id] <- EntryKind::ForeignMutStatic);
-            }
-            hir::ForeignItemKind::Static(_, hir::Mutability::Not) => {
-                record!(self.tables.kind[def_id] <- EntryKind::ForeignImmStatic);
+            hir::ForeignItemKind::Static(..) => {
+                record!(self.tables.kind[def_id] <- EntryKind::ForeignStatic);
             }
             hir::ForeignItemKind::Type => {
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignType);

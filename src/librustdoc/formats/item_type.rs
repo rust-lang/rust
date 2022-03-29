@@ -111,7 +111,7 @@ impl From<DefKind> for ItemType {
             DefKind::Fn => Self::Function,
             DefKind::Mod => Self::Module,
             DefKind::Const => Self::Constant,
-            DefKind::Static => Self::Static,
+            DefKind::Static(_) => Self::Static,
             DefKind::Struct => Self::Struct,
             DefKind::Union => Self::Union,
             DefKind::Trait => Self::Trait,

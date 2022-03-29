@@ -85,7 +85,6 @@ pub fn provide(providers: &mut Providers) {
         impl_trait_ref,
         impl_polarity,
         is_foreign_item,
-        static_mutability,
         generator_kind,
         codegen_fn_attrs,
         asm_target_features,
@@ -2599,20 +2598,6 @@ fn is_foreign_item(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         Some(Node::ForeignItem(..)) => true,
         Some(_) => false,
         _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id),
-    }
-}
-
-fn static_mutability(tcx: TyCtxt<'_>, def_id: DefId) -> Option<hir::Mutability> {
-    match tcx.hir().get_if_local(def_id) {
-        Some(
-            Node::Item(&hir::Item { kind: hir::ItemKind::Static(_, mutbl, _), .. })
-            | Node::ForeignItem(&hir::ForeignItem {
-                kind: hir::ForeignItemKind::Static(_, mutbl),
-                ..
-            }),
-        ) => Some(mutbl),
-        Some(_) => None,
-        _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
     }
 }
 
