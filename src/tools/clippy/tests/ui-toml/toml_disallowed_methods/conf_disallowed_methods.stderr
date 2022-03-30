@@ -20,5 +20,17 @@ error: use of a disallowed method `std::iter::Iterator::sum`
 LL |     a.iter().sum::<i32>();
    |     ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: use of a disallowed method `slice::sort_unstable`
+  --> $DIR/conf_disallowed_methods.rs:13:5
+   |
+LL |     a.sort_unstable();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: use of a disallowed method `f32::clamp`
+  --> $DIR/conf_disallowed_methods.rs:15:13
+   |
+LL |     let _ = 2.0f32.clamp(3.0f32, 4.0f32);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
