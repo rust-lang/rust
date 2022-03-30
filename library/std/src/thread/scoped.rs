@@ -316,7 +316,6 @@ impl<'scope, T> ScopedJoinHandle<'scope, T> {
     ///
     /// This function does not block. To block while waiting on the thread to finish,
     /// use [`join`][Self::join].
-    #[stable(feature = "thread_is_running", since = "1.61.0")]
     pub fn is_finished(&self) -> bool {
         Arc::strong_count(&self.0.packet) == 1
     }
