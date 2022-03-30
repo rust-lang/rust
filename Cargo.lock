@@ -41,7 +41,7 @@ dependencies = [
 [[package]]
 name = "gccjit"
 version = "1.0.0"
-source = "git+https://github.com/antoyo/gccjit.rs#bdecdecfb8a02ec861a39a350f990faa33bd31c3"
+source = "git+https://github.com/antoyo/gccjit.rs#f24e1f49d99430941d8a747275b41c9a7930e049"
 dependencies = [
  "gccjit_sys",
 ]
@@ -49,7 +49,7 @@ dependencies = [
 [[package]]
 name = "gccjit_sys"
 version = "0.0.1"
-source = "git+https://github.com/antoyo/gccjit.rs#bdecdecfb8a02ec861a39a350f990faa33bd31c3"
+source = "git+https://github.com/antoyo/gccjit.rs#f24e1f49d99430941d8a747275b41c9a7930e049"
 dependencies = [
  "libc 0.1.12",
 ]

@@ -322,6 +322,8 @@ pub trait TypeReflection<'gcc, 'tcx>  {
 
     fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
+
+    fn is_vector(&self) -> bool;
 }
 
 impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
@@ -391,5 +393,22 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.context.new_type::<f64>()
+    }
+
+    fn is_vector(&self) -> bool {
+        let mut typ = self.clone();
+        loop {
+            if typ.dyncast_vector().is_some() {
+                return true;
+            }
+
+            let old_type = typ;
+            typ = typ.unqualified();
+            if old_type == typ {
+                break;
+            }
+        }
+
+        false
     }
 }
