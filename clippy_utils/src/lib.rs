@@ -87,6 +87,8 @@ use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
+use rustc_middle::ty::{IntTy, UintTy, FloatTy};
+use rustc_middle::ty::fast_reject::SimplifiedTypeGen::*;
 use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
@@ -455,14 +457,6 @@ pub fn path_def_id<'tcx>(cx: &LateContext<'_>, maybe_path: &impl MaybePath<'tcx>
 /// Resolves a def path like `std::vec::Vec`.
 /// This function is expensive and should be used sparingly.
 pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
-    macro_rules! try_res {
-        ($e:expr) => {
-            match $e {
-                Some(e) => e,
-                None => return Res::Err,
-            }
-        };
-    }
     fn item_child_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Option<Res> {
         match tcx.def_kind(def_id) {
             DefKind::Mod | DefKind::Enum | DefKind::Trait => tcx
@@ -479,10 +473,36 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
             _ => None,
         }
     }
-    fn find_primitive(_tcx: TyCtxt<'_>, _name: &str) -> Option<DefId> {
-        // FIXME: Deal with this without relying on lang items or by only
-        // looking at a single impl.
-        None
+    fn find_primitive<'tcx>(tcx: TyCtxt<'tcx>, name: &str) -> impl Iterator<Item = DefId> + 'tcx {
+        let single = |ty| tcx.incoherent_impls(ty).iter().copied();
+        let empty = || [].iter().copied();
+        match name {
+            "bool" => single(BoolSimplifiedType),
+            "char" => single(CharSimplifiedType),
+            "str" => single(StrSimplifiedType),
+            "array" => single(ArraySimplifiedType),
+            "slice" => single(SliceSimplifiedType),
+            // FIXME: rustdoc documents these two using just `pointer`.
+            //
+            // Maybe this is something we should do here too.
+            "const_ptr" => single(PtrSimplifiedType(Mutability::Not)),
+            "mut_ptr" => single(PtrSimplifiedType(Mutability::Mut)),
+            "isize" => single(IntSimplifiedType(IntTy::Isize)),
+            "i8" => single(IntSimplifiedType(IntTy::I8)),
+            "i16" => single(IntSimplifiedType(IntTy::I16)),
+            "i32" => single(IntSimplifiedType(IntTy::I32)),
+            "i64" => single(IntSimplifiedType(IntTy::I64)),
+            "i128" => single(IntSimplifiedType(IntTy::I128)),
+            "usize" => single(UintSimplifiedType(UintTy::Usize)),
+            "u8" => single(UintSimplifiedType(UintTy::U8)),
+            "u16" => single(UintSimplifiedType(UintTy::U16)),
+            "u32" => single(UintSimplifiedType(UintTy::U32)),
+            "u64" => single(UintSimplifiedType(UintTy::U64)),
+            "u128" => single(UintSimplifiedType(UintTy::U128)),
+            "f32" => single(FloatSimplifiedType(FloatTy::F32)),
+            "f64" => single(FloatSimplifiedType(FloatTy::F64)),
+            _ => empty(),
+        }
     }
     fn find_crate(tcx: TyCtxt<'_>, name: &str) -> Option<DefId> {
         tcx.crates(())
@@ -500,30 +520,35 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
         _ => return Res::Err,
     };
     let tcx = cx.tcx;
-    let first = try_res!(
-        find_primitive(tcx, base)
-            .or_else(|| find_crate(tcx, base))
-            .and_then(|id| item_child_by_name(tcx, id, first))
-    );
+    let starts = find_primitive(tcx, base)
+        .chain(find_crate(tcx, base))
+        .flat_map(|id| item_child_by_name(tcx, id, first));
 
-    let last = path
-        .iter()
-        .copied()
-        // for each segment, find the child item
-        .try_fold(first, |res, segment| {
-            let def_id = res.def_id();
-            if let Some(item) = item_child_by_name(tcx, def_id, segment) {
-                Some(item)
-            } else if matches!(res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
-                // it is not a child item so check inherent impl items
-                tcx.inherent_impls(def_id)
-                    .iter()
-                    .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment))
-            } else {
-                None
-            }
-        });
-    try_res!(last).expect_non_local()
+    for first in starts {
+        let last = path
+            .iter()
+            .copied()
+            // for each segment, find the child item
+            .try_fold(first, |res, segment| {
+                let def_id = res.def_id();
+                if let Some(item) = item_child_by_name(tcx, def_id, segment) {
+                    Some(item)
+                } else if matches!(res, Res::Def(DefKind::Enum | DefKind::Struct, _)) {
+                    // it is not a child item so check inherent impl items
+                    tcx.inherent_impls(def_id)
+                        .iter()
+                        .find_map(|&impl_def_id| item_child_by_name(tcx, impl_def_id, segment))
+                } else {
+                    None
+                }
+            });
+
+        if let Some(last) = last {
+            return last;
+        }
+    }
+
+    Res::Err
 }
 
 /// Convenience function to get the `DefId` of a trait by path.

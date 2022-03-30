@@ -10,8 +10,8 @@ fn main() {
     let mut a = vec![1, 2, 3, 4];
     a.iter().sum::<i32>();
 
-    a.sort_unstable(); // FIXME: Warn here
+    a.sort_unstable();
 
-    let _ = 2.0f32.clamp(3.0f32, 4.0f32); // FIXME: Warn here
+    let _ = 2.0f32.clamp(3.0f32, 4.0f32);
     let _ = 2.0f64.clamp(3.0f64, 4.0f64);
 }
