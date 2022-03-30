@@ -21,7 +21,6 @@ use crate::native;
 use crate::tool::{self, SourceType, Tool};
 use crate::toolstate::ToolState;
 use crate::util::{self, add_link_lib_path, dylib_path, dylib_path_var, output, t};
-use crate::Crate as CargoCrate;
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
 
 const ADB_TEST_DIR: &str = "/data/tmp/work";
@@ -1901,19 +1900,10 @@ impl Step for CrateLibrustc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.build_triple());
+        let krate = builder.crate_paths[&run.path];
+        let test_kind = builder.kind.into();
 
-        for krate in builder.in_tree_crates("rustc-main", Some(run.target)) {
-            if krate.path.ends_with(&run.path) {
-                let test_kind = builder.kind.into();
-
-                builder.ensure(CrateLibrustc {
-                    compiler,
-                    target: run.target,
-                    test_kind,
-                    krate: krate.name,
-                });
-            }
-        }
+        builder.ensure(CrateLibrustc { compiler, target: run.target, test_kind, krate });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1947,24 +1937,10 @@ impl Step for Crate {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
         let compiler = builder.compiler(builder.top_stage, run.build_triple());
+        let test_kind = builder.kind.into();
+        let krate = builder.crate_paths[&run.path];
 
-        let make = |mode: Mode, krate: &CargoCrate| {
-            let test_kind = builder.kind.into();
-
-            builder.ensure(Crate {
-                compiler,
-                target: run.target,
-                mode,
-                test_kind,
-                krate: krate.name,
-            });
-        };
-
-        for krate in builder.in_tree_crates("test", Some(run.target)) {
-            if krate.path.ends_with(&run.path) {
-                make(Mode::Std, krate);
-            }
-        }
+        builder.ensure(Crate { compiler, target: run.target, mode: Mode::Std, test_kind, krate });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
