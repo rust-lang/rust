@@ -1,8 +1,10 @@
+use crate::diagnostic::DiagnosticArgValue;
 use crate::{Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed};
 use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 
 use rustc_span::Span;
+use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -536,6 +538,11 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
     forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
+    forward!(pub fn set_arg(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+        arg: DiagnosticArgValue<'static>,
+    ) -> &mut Self);
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {

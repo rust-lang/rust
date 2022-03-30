@@ -11,8 +11,8 @@
 #![crate_type = "lib"]
 
 extern crate rustc_span;
-use rustc_span::Span;
 use rustc_span::symbol::Ident;
+use rustc_span::Span;
 
 extern crate rustc_macros;
 use rustc_macros::SessionDiagnostic;
@@ -108,7 +108,7 @@ struct ErrorWithMessageAppliedToField {
 #[message = "This error has a field, and references {name}"]
 //~^ ERROR `name` doesn't refer to a field on this type
 struct ErrorWithNonexistentField {
-    span: Span
+    descr: String,
 }
 
 #[derive(SessionDiagnostic)]
@@ -117,7 +117,7 @@ struct ErrorWithNonexistentField {
 //~^ ERROR invalid format string: expected `'}'`
 struct ErrorMissingClosingBrace {
     name: String,
-    span: Span
+    val: usize,
 }
 
 #[derive(SessionDiagnostic)]
@@ -126,7 +126,7 @@ struct ErrorMissingClosingBrace {
 //~^ ERROR invalid format string: unmatched `}`
 struct ErrorMissingOpeningBrace {
     name: String,
-    span: Span
+    val: usize,
 }
 
 #[derive(SessionDiagnostic)]

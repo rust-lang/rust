@@ -8,11 +8,17 @@ use crate::ty::{
 };
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{Applicability, Diagnostic};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{QPath, TyKind, WhereBoundPredicate, WherePredicate};
 use rustc_span::Span;
+
+impl<'tcx> IntoDiagnosticArg for Ty<'tcx> {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        format!("{}", self).into_diagnostic_arg()
+    }
+}
 
 impl<'tcx> Ty<'tcx> {
     /// Similar to `Ty::is_primitive`, but also considers inferred numeric values to be primitive.

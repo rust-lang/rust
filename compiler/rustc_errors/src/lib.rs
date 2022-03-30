@@ -406,7 +406,8 @@ impl fmt::Display for ExplicitBug {
 impl error::Error for ExplicitBug {}
 
 pub use diagnostic::{
-    Diagnostic, DiagnosticArg, DiagnosticId, DiagnosticStyledString, SubDiagnostic,
+    Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId, DiagnosticStyledString,
+    IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee};
 use std::backtrace::Backtrace;

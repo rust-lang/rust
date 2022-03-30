@@ -8,6 +8,7 @@ use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
 use rustc_serialize::json::Json;
 use rustc_span::edition::LATEST_STABLE_EDITION;
+use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
 use std::fmt;
@@ -29,6 +30,44 @@ pub type DiagnosticArg<'source> = (Cow<'source, str>, DiagnosticArgValue<'source
 pub enum DiagnosticArgValue<'source> {
     Str(Cow<'source, str>),
     Number(usize),
+}
+
+/// Converts a value of a type into a `DiagnosticArg` (typically a field of a `SessionDiagnostic`
+/// struct). Implemented as a custom trait rather than `From` so that it is implemented on the type
+/// being converted rather than on `DiagnosticArgValue`, which enables types from other `rustc_*`
+/// crates to implement this.
+pub trait IntoDiagnosticArg {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static>;
+}
+
+impl IntoDiagnosticArg for String {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Str(Cow::Owned(self))
+    }
+}
+
+impl IntoDiagnosticArg for Symbol {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_ident_string().into_diagnostic_arg()
+    }
+}
+
+impl IntoDiagnosticArg for Ident {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
+impl<'a> IntoDiagnosticArg for &'a str {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        self.to_string().into_diagnostic_arg()
+    }
+}
+
+impl IntoDiagnosticArg for usize {
+    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
+        DiagnosticArgValue::Number(self)
+    }
 }
 
 impl<'source> Into<FluentValue<'source>> for DiagnosticArgValue<'source> {
@@ -786,6 +825,15 @@ impl Diagnostic {
 
     pub fn args(&self) -> &[DiagnosticArg<'static>] {
         &self.args
+    }
+
+    pub fn set_arg(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+        arg: DiagnosticArgValue<'static>,
+    ) -> &mut Self {
+        self.args.push((name.into(), arg.into()));
+        self
     }
 
     pub fn styled_message(&self) -> &Vec<(DiagnosticMessage, Style)> {

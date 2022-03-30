@@ -157,7 +157,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
         }
     }
     fn into_tokens(self) -> proc_macro2::TokenStream {
-        let SessionDiagnosticDerive { structure, mut builder } = self;
+        let SessionDiagnosticDerive { mut structure, mut builder } = self;
 
         let ast = structure.ast();
         let attrs = &ast.attrs;
@@ -175,11 +175,17 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     }
                 };
 
-                let body = structure.each(|field_binding| {
+                // Generates calls to `span_label` and similar functions based on the attributes
+                // on fields. Code for suggestions uses formatting machinery and the value of
+                // other fields - because any given field can be referenced multiple times, it
+                // should be accessed through a borrow. When passing fields to `set_arg` (which
+                // happens below) for Fluent, we want to move the data, so that has to happen
+                // in a separate pass over the fields.
+                let attrs = structure.each(|field_binding| {
                     let field = field_binding.ast();
                     let result = field.attrs.iter().map(|attr| {
                         builder
-                            .generate_field_code(
+                            .generate_field_attr_code(
                                 attr,
                                 FieldInfo {
                                     vis: &field.vis,
@@ -190,10 +196,30 @@ impl<'a> SessionDiagnosticDerive<'a> {
                             )
                             .unwrap_or_else(|v| v.to_compile_error())
                     });
-                    return quote! {
-                        #(#result);*
-                    };
+
+                    quote! { #(#result);* }
                 });
+
+                // When generating `set_arg` calls, move data rather than borrow it to avoid
+                // requiring clones - this must therefore be the last use of each field (for
+                // example, any formatting machinery that might refer to a field should be
+                // generated already).
+                structure.bind_with(|_| synstructure::BindStyle::Move);
+                let args = structure.each(|field_binding| {
+                    let field = field_binding.ast();
+                    // When a field has attributes like `#[label]` or `#[note]` then it doesn't
+                    // need to be passed as an argument to the diagnostic. But when a field has no
+                    // attributes then it must be passed as an argument to the diagnostic so that
+                    // it can be referred to by Fluent messages.
+                    if field.attrs.is_empty() {
+                        let diag = &builder.diag;
+                        let ident = &field_binding.binding;
+                        quote! { #diag.set_arg(stringify!(#ident), #field_binding.into_diagnostic_arg()); }
+                    } else {
+                        quote! {}
+                    }
+                });
+
                 // Finally, putting it altogether.
                 match builder.kind {
                     None => {
@@ -210,7 +236,10 @@ impl<'a> SessionDiagnosticDerive<'a> {
                                 let mut #diag = #sess.struct_err_with_code("", rustc_errors::DiagnosticId::Error(#code));
                                 #preamble
                                 match self {
-                                    #body
+                                    #attrs
+                                }
+                                match self {
+                                    #args
                                 }
                                 #diag
                             }
@@ -236,6 +265,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     self,
                     #sess: &'__session_diagnostic_sess rustc_session::Session
                 ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, rustc_errors::ErrorGuaranteed> {
+                    use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
             }
@@ -345,15 +375,13 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         }
     }
 
-    fn generate_field_code(
+    fn generate_field_attr_code(
         &mut self,
         attr: &syn::Attribute,
         info: FieldInfo<'_>,
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
         let field_binding = &info.binding.binding;
-
         let option_ty = option_inner_ty(&info.ty);
-
         let generated_code = self.generate_non_option_field_code(
             attr,
             FieldInfo {
@@ -363,15 +391,16 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 span: info.span,
             },
         )?;
-        Ok(if option_ty.is_none() {
-            quote! { #generated_code }
+
+        if option_ty.is_none() {
+            Ok(quote! { #generated_code })
         } else {
-            quote! {
+            Ok(quote! {
                 if let Some(#field_binding) = #field_binding {
                     #generated_code
                 }
-            }
-        })
+            })
+        }
     }
 
     fn generate_non_option_field_code(
@@ -383,19 +412,20 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         let field_binding = &info.binding.binding;
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
+
         // At this point, we need to dispatch based on the attribute key + the
         // type.
         let meta = attr.parse_meta()?;
-        Ok(match meta {
+        match meta {
             syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
                 let formatted_str = self.build_format(&s.value(), attr.span());
                 match name {
                     "message" => {
                         if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                            quote! {
+                            return Ok(quote! {
                                 #diag.set_span(*#field_binding);
                                 #diag.set_primary_message(#formatted_str);
-                            }
+                            });
                         } else {
                             throw_span_err!(
                                 attr.span().unwrap(),
@@ -405,9 +435,9 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     }
                     "label" => {
                         if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                            quote! {
+                            return Ok(quote! {
                                 #diag.span_label(*#field_binding, #formatted_str);
-                            }
+                            });
                         } else {
                             throw_span_err!(
                                 attr.span().unwrap(),
@@ -480,11 +510,11 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                             );
                         };
                         let code = code.unwrap_or_else(|| quote! { String::new() });
-                        // Now build it out:
+
                         let suggestion_method = format_ident!("span_{}", suggestion_kind);
-                        quote! {
+                        return Ok(quote! {
                             #diag.#suggestion_method(#span, #msg, #code, #applicability);
-                        }
+                        });
                     }
                     other => throw_span_err!(
                         list.span().unwrap(),
@@ -493,7 +523,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 }
             }
             _ => panic!("unhandled meta kind"),
-        })
+        }
     }
 
     fn span_and_applicability_of_ty(
