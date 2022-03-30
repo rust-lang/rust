@@ -859,6 +859,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     |lint| {
                         let mut err = lint.build(&format!("moving {} bytes", layout.size.bytes()));
                         err.span_label(source_info.span, "value moved from here");
+                        err.note(&format!(r#"The current maximum size is {}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`"#, limit.bytes()));
                         err.emit();
                     },
                 );
