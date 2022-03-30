@@ -1705,17 +1705,17 @@ impl crate::error::Error for ExitStatusError {}
 /// }
 /// ```
 #[derive(Clone, Copy, Debug)]
-#[stable(feature = "process_exitcode", since = "1.60.0")]
+#[stable(feature = "process_exitcode", since = "1.61.0")]
 pub struct ExitCode(imp::ExitCode);
 
-#[stable(feature = "process_exitcode", since = "1.60.0")]
+#[stable(feature = "process_exitcode", since = "1.61.0")]
 impl ExitCode {
     /// The canonical `ExitCode` for successful termination on this platform.
     ///
     /// Note that a `()`-returning `main` implicitly results in a successful
     /// termination, so there's no need to return this from `main` unless
     /// you're also returning other possible codes.
-    #[stable(feature = "process_exitcode", since = "1.60.0")]
+    #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const SUCCESS: ExitCode = ExitCode(imp::ExitCode::SUCCESS);
 
     /// The canonical `ExitCode` for unsuccessful termination on this platform.
@@ -1723,7 +1723,7 @@ impl ExitCode {
     /// If you're only returning this and `SUCCESS` from `main`, consider
     /// instead returning `Err(_)` and `Ok(())` respectively, which will
     /// return the same codes (but will also `eprintln!` the error).
-    #[stable(feature = "process_exitcode", since = "1.60.0")]
+    #[stable(feature = "process_exitcode", since = "1.61.0")]
     pub const FAILURE: ExitCode = ExitCode(imp::ExitCode::FAILURE);
 }
 
@@ -1747,7 +1747,7 @@ impl ExitCode {
     }
 }
 
-#[stable(feature = "process_exitcode", since = "1.60.0")]
+#[stable(feature = "process_exitcode", since = "1.61.0")]
 impl From<u8> for ExitCode {
     /// Construct an `ExitCode` from an arbitrary u8 value.
     fn from(code: u8) -> Self {
@@ -2092,7 +2092,7 @@ pub fn id() -> u32 {
 /// standard library's runtime for convenience. Other runtimes are not required
 /// to provide similar functionality.
 #[cfg_attr(not(test), lang = "termination")]
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(
     message = "`main` has invalid return type `{Self}`",
     label = "`main` can only return types that implement `{Termination}`"
@@ -2100,11 +2100,11 @@ pub fn id() -> u32 {
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
     /// This status code is returned to the operating system.
-    #[stable(feature = "termination_trait_lib", since = "1.60.0")]
+    #[stable(feature = "termination_trait_lib", since = "1.61.0")]
     fn report(self) -> ExitCode;
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for () {
     #[inline]
     fn report(self) -> ExitCode {
@@ -2112,7 +2112,7 @@ impl Termination for () {
     }
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<(), E> {
     fn report(self) -> ExitCode {
         match self {
@@ -2122,14 +2122,14 @@ impl<E: fmt::Debug> Termination for Result<(), E> {
     }
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ! {
     fn report(self) -> ExitCode {
         self
     }
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<!, E> {
     fn report(self) -> ExitCode {
         let Err(err) = self;
@@ -2138,7 +2138,7 @@ impl<E: fmt::Debug> Termination for Result<!, E> {
     }
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl<E: fmt::Debug> Termination for Result<Infallible, E> {
     fn report(self) -> ExitCode {
         let Err(err) = self;
@@ -2146,7 +2146,7 @@ impl<E: fmt::Debug> Termination for Result<Infallible, E> {
     }
 }
 
-#[stable(feature = "termination_trait_lib", since = "1.60.0")]
+#[stable(feature = "termination_trait_lib", since = "1.61.0")]
 impl Termination for ExitCode {
     #[inline]
     fn report(self) -> ExitCode {
