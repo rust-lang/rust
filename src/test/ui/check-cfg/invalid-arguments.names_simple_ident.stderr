@@ -1,2 +1,2 @@
-error: invalid `--check-cfg` argument: `names("NOT_IDENT")` (`names()` arguments must be simple identifers)
+error: invalid `--check-cfg` argument: `names("NOT_IDENT")` (`names()` arguments must be simple identifiers)
 
