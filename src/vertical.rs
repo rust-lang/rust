@@ -160,8 +160,18 @@ pub(crate) fn rewrite_with_alignment<T: AlignedItem>(
     };
     let init_span = mk_sp(span.lo(), init_last_pos);
     let one_line_width = if rest.is_empty() { one_line_width } else { 0 };
-    let result =
-        rewrite_aligned_items_inner(context, init, init_span, shape.indent, one_line_width)?;
+
+    // if another group follows, we must force a separator
+    let force_separator = !rest.is_empty();
+
+    let result = rewrite_aligned_items_inner(
+        context,
+        init,
+        init_span,
+        shape.indent,
+        one_line_width,
+        force_separator,
+    )?;
     if rest.is_empty() {
         Some(result + spaces)
     } else {
@@ -201,6 +211,7 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     span: Span,
     offset: Indent,
     one_line_width: usize,
+    force_trailing_separator: bool,
 ) -> Option<String> {
     // 1 = ","
     let item_shape = Shape::indented(offset, context.config).sub_width(1)?;
@@ -246,9 +257,15 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
             });
     }
 
+    let separator_tactic = if force_trailing_separator {
+        SeparatorTactic::Always
+    } else {
+        context.config.trailing_comma()
+    };
+
     let fmt = ListFormatting::new(item_shape, context.config)
         .tactic(tactic)
-        .trailing_separator(context.config.trailing_comma())
+        .trailing_separator(separator_tactic)
         .preserve_newline(true);
     write_list(&items, &fmt)
 }
