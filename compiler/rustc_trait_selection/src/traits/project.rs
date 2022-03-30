@@ -214,10 +214,21 @@ fn project_and_unify_type<'cx, 'tcx>(
         Err(InProgress) => return Ok(Err(InProgress)),
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
-    match infcx
-        .at(&obligation.cause, obligation.param_env)
-        .eq(normalized, obligation.predicate.term)
-    {
+    let actual = obligation.predicate.term;
+    // HACK: lazy TAIT would regress src/test/ui/impl-trait/nested-return-type2.rs, so we add
+    // a back-compat hack hat converts the RPITs into inference vars, just like they were before
+    // lazy TAIT.
+    // This does not affect TAITs in general, as tested in the nested-return-type-tait* tests.
+    let InferOk { value: actual, obligations: new } =
+        selcx.infcx().replace_opaque_types_with_inference_vars(
+            actual,
+            obligation.cause.body_id,
+            obligation.cause.span,
+            obligation.param_env,
+        );
+    obligations.extend(new);
+
+    match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
             Ok(Ok(Some(obligations)))

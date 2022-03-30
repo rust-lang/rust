@@ -1,10 +1,9 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
 use rustc_hir::OpaqueTyOrigin;
-use rustc_infer::infer::opaque_types::OpaqueTypeDecl;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::opaque_types::InferCtxtExt;
 
@@ -54,27 +53,41 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     pub(crate) fn infer_opaque_types(
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
-        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, OpaqueTypeDecl<'tcx>>,
-        span: Span,
-    ) -> VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>> {
+        opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
+    ) -> VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> {
         opaque_ty_decls
             .into_iter()
-            .filter_map(|(opaque_type_key, decl)| {
+            .map(|(opaque_type_key, (concrete_type, origin))| {
                 let substs = opaque_type_key.substs;
-                let concrete_type = decl.concrete_ty;
                 debug!(?concrete_type, ?substs);
 
                 let mut subst_regions = vec![self.universal_regions.fr_static];
                 let universal_substs = infcx.tcx.fold_regions(substs, &mut false, |region, _| {
-                    let vid = self.universal_regions.to_region_vid(region);
-                    subst_regions.push(vid);
-                    self.definitions[vid].external_name.unwrap_or_else(|| {
-                        infcx
-                            .tcx
-                            .sess
-                            .delay_span_bug(span, "opaque type with non-universal region substs");
-                        infcx.tcx.lifetimes.re_static
-                    })
+                    if let ty::RePlaceholder(..) = region.kind() {
+                        // Higher kinded regions don't need remapping, they don't refer to anything outside of this the substs.
+                        return region;
+                    }
+                    let vid = self.to_region_vid(region);
+                    trace!(?vid);
+                    let scc = self.constraint_sccs.scc(vid);
+                    trace!(?scc);
+                    match self.scc_values.universal_regions_outlived_by(scc).find_map(|lb| {
+                        self.eval_equal(vid, lb).then_some(self.definitions[lb].external_name?)
+                    }) {
+                        Some(region) => {
+                            let vid = self.universal_regions.to_region_vid(region);
+                            subst_regions.push(vid);
+                            region
+                        }
+                        None => {
+                            subst_regions.push(vid);
+                            infcx.tcx.sess.delay_span_bug(
+                                concrete_type.span,
+                                "opaque type with non-universal region substs",
+                            );
+                            infcx.tcx.lifetimes.re_static
+                        }
+                    }
                 });
 
                 subst_regions.sort();
@@ -97,15 +110,18 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 let remapped_type = infcx.infer_opaque_definition_from_instantiation(
                     opaque_type_key,
                     universal_concrete_type,
-                    span,
                 );
-
-                check_opaque_type_parameter_valid(
+                let ty = if check_opaque_type_parameter_valid(
                     infcx.tcx,
                     opaque_type_key,
-                    OpaqueTypeDecl { concrete_ty: remapped_type, ..decl },
-                )
-                .then_some((opaque_type_key, remapped_type))
+                    origin,
+                    concrete_type.span,
+                ) {
+                    remapped_type
+                } else {
+                    infcx.tcx.ty_error()
+                };
+                (opaque_type_key, OpaqueHiddenType { ty, span: concrete_type.span })
             })
             .collect()
     }
@@ -149,9 +165,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 fn check_opaque_type_parameter_valid(
     tcx: TyCtxt<'_>,
     opaque_type_key: OpaqueTypeKey<'_>,
-    decl: OpaqueTypeDecl<'_>,
+    origin: OpaqueTyOrigin,
+    span: Span,
 ) -> bool {
-    match decl.origin {
+    match origin {
         // No need to check return position impl trait (RPIT)
         // because for type and const parameters they are correct
         // by construction: we convert
@@ -177,7 +194,6 @@ fn check_opaque_type_parameter_valid(
         // Check these
         OpaqueTyOrigin::TyAlias => {}
     }
-    let span = decl.definition_span;
     let opaque_generics = tcx.generics_of(opaque_type_key.def_id);
     let mut seen_params: FxHashMap<_, Vec<_>> = FxHashMap::default();
     for (i, arg) in opaque_type_key.substs.iter().enumerate() {

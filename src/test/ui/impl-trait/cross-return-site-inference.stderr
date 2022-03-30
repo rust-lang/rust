@@ -1,0 +1,26 @@
+error[E0277]: `?` couldn't convert the error to `impl Debug`
+  --> $DIR/cross-return-site-inference.rs:32:18
+   |
+LL | fn muh() -> Result<(), impl std::fmt::Debug> {
+   |             -------------------------------- expected `impl Debug` because of this
+LL |     Err("whoops")?;
+   |                  ^ the trait `From<&str>` is not implemented for `impl Debug`
+   |
+   = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, &str>>` for `Result<(), impl Debug>`
+
+error[E0277]: the trait bound `impl Debug: From<&str>` is not satisfied
+  --> $DIR/cross-return-site-inference.rs:37:16
+   |
+LL |     return Err(From::from("foo"));
+   |                ^^^^^^^^^^ the trait `From<&str>` is not implemented for `impl Debug`
+
+error[E0277]: the trait bound `impl Debug: From<&str>` is not satisfied
+  --> $DIR/cross-return-site-inference.rs:42:9
+   |
+LL |     Err(From::from("foo"))
+   |         ^^^^^^^^^^ the trait `From<&str>` is not implemented for `impl Debug`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

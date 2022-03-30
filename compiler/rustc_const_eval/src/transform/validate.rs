@@ -79,7 +79,6 @@ pub fn equal_up_to_regions<'tcx>(
     }
 
     // Normalize lifetimes away on both sides, then compare.
-    let param_env = param_env.with_reveal_all_normalized(tcx);
     let normalize = |ty: Ty<'tcx>| {
         tcx.normalize_erasing_regions(
             param_env,
@@ -170,9 +169,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // Equal types, all is good.
             return true;
         }
+        // Normalization reveals opaque types, but we may be validating MIR while computing
+        // said opaque types, causing cycles.
+        if (src, dest).has_opaque_types() {
+            return true;
+        }
         // Normalize projections and things like that.
-        // FIXME: We need to reveal_all, as some optimizations change types in ways
-        // that require unfolding opaque types.
         let param_env = self.param_env.with_reveal_all_normalized(self.tcx);
         let src = self.tcx.normalize_erasing_regions(param_env, src);
         let dest = self.tcx.normalize_erasing_regions(param_env, dest);

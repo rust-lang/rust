@@ -1,12 +1,8 @@
 error: type parameter `impl Deref<Target = Self>` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-  --> $DIR/issue-57700.rs:15:58
+  --> $DIR/issue-57700.rs:16:9
    |
-LL |       fn foo(self: impl Deref<Target = Self>) -> Self::Bar {
-   |  __________________________________________________________^
-LL | |
-LL | |         self
-LL | |     }
-   | |_____^
+LL |         self
+   |         ^^^^
 
 error: aborting due to previous error
 

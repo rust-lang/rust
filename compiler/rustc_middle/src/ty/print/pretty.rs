@@ -647,20 +647,23 @@ pub trait PrettyPrinter<'tcx>:
                     return Ok(self);
                 }
 
-                return with_no_queries!({
-                    let def_key = self.tcx().def_key(def_id);
-                    if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                        p!(write("{}", name));
-                        // FIXME(eddyb) print this with `print_def_path`.
-                        if !substs.is_empty() {
-                            p!("::");
-                            p!(generic_delimiters(|cx| cx.comma_sep(substs.iter())));
+                let parent = self.tcx().parent(def_id).expect("opaque types always have a parent");
+                match self.tcx().def_kind(parent) {
+                    DefKind::TyAlias | DefKind::AssocTy => {
+                        if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {
+                            if d == def_id {
+                                // If the type alias directly starts with the `impl` of the
+                                // opaque type we're printing, then skip the `::{opaque#1}`.
+                                p!(print_def_path(parent, substs));
+                                return Ok(self);
+                            }
                         }
+                        // Complex opaque type, e.g. `type Foo = (i32, impl Debug);`
+                        p!(print_def_path(def_id, substs));
                         return Ok(self);
                     }
-
-                    self.pretty_print_opaque_impl_type(def_id, substs)
-                });
+                    _ => return self.pretty_print_opaque_impl_type(def_id, substs),
+                }
             }
             ty::Str => p!("str"),
             ty::Generator(did, substs, movability) => {

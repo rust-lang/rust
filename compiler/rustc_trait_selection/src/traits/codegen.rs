@@ -92,6 +92,12 @@ pub fn codegen_fulfill_obligation<'tcx>(
         });
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
+        // There should be no opaque types during codegen, they all get revealed.
+        let opaque_types = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
+        if !opaque_types.is_empty() {
+            bug!("{:#?}", opaque_types);
+        }
+
         debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
         Ok(&*tcx.arena.alloc(impl_source))
     })

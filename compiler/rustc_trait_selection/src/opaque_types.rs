@@ -5,15 +5,14 @@ use rustc_infer::infer::error_reporting::unexpected_hidden_region_diagnostic;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts};
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt};
+use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt};
 use rustc_span::Span;
 
 pub trait InferCtxtExt<'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
     ) -> Ty<'tcx>;
 }
 
@@ -33,7 +32,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// purpose of this function is to do that translation.
     ///
     /// (*) C1 and C2 were introduced in the comments on
-    /// `constrain_opaque_type`. Read that comment for more context.
+    /// `register_member_constraints`. Read that comment for more context.
     ///
     /// # Parameters
     ///
@@ -45,9 +44,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn infer_opaque_definition_from_instantiation(
         &self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
-        instantiated_ty: Ty<'tcx>,
-        span: Span,
+        instantiated_ty: OpaqueHiddenType<'tcx>,
     ) -> Ty<'tcx> {
+        if self.is_tainted_by_errors() {
+            return self.tcx.ty_error();
+        }
+
         let OpaqueTypeKey { def_id, substs } = opaque_type_key;
 
         // Use substs to build up a reverse map from regions to their
@@ -65,13 +67,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        let definition_ty = instantiated_ty.fold_with(&mut ReverseMapper::new(
+        let definition_ty = instantiated_ty.ty.fold_with(&mut ReverseMapper::new(
             self.tcx,
-            self.is_tainted_by_errors(),
             def_id,
             map,
-            instantiated_ty,
-            span,
+            instantiated_ty.ty,
+            instantiated_ty.span,
         ));
         debug!(?definition_ty);
 
@@ -81,10 +82,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
 struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
-
-    /// If errors have already been reported in this fn, we suppress
-    /// our own errors because they are sometimes derivative.
-    tainted_by_errors: bool,
 
     opaque_type_def_id: DefId,
     map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
@@ -100,7 +97,6 @@ struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     fn new(
         tcx: TyCtxt<'tcx>,
-        tainted_by_errors: bool,
         opaque_type_def_id: DefId,
         map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
         hidden_ty: Ty<'tcx>,
@@ -108,7 +104,6 @@ impl<'tcx> ReverseMapper<'tcx> {
     ) -> Self {
         Self {
             tcx,
-            tainted_by_errors,
             opaque_type_def_id,
             map,
             map_missing_regions_to_empty: false,
@@ -167,9 +162,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         match self.map.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {:?}", u),
-            None if self.map_missing_regions_to_empty || self.tainted_by_errors => {
-                self.tcx.lifetimes.re_root_empty
-            }
+            None if self.map_missing_regions_to_empty => self.tcx.lifetimes.re_root_empty,
             None if generics.parent.is_some() => {
                 if let Some(hidden_ty) = self.hidden_ty.take() {
                     unexpected_hidden_region_diagnostic(

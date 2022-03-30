@@ -17,8 +17,8 @@ impl Foo for X {
     type Bar = impl Baz<Self, Self>;
 
     fn bar(&self) -> Self::Bar {
-        //~^ ERROR implementation of `FnOnce` is not general enough
         |x| x
+        //~^ ERROR implementation of `FnOnce` is not general enough
     }
 }
 

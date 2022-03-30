@@ -14,7 +14,7 @@ fn a<T: ?Sized>() {
     //~^ ERROR type mismatch resolving `<T as Pointee>::Metadata == ()`
 
     is_thin::<Opaque>();
-    //~^ ERROR type mismatch resolving `<impl Debug + ?Sized as Pointee>::Metadata == ()`
+    //~^ ERROR type mismatch resolving `<Opaque as Pointee>::Metadata == ()`
 }
 
 fn is_thin<T: std::ptr::Pointee<Metadata = ()> + ?Sized>() {}

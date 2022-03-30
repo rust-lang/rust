@@ -6,6 +6,16 @@ LL | fn foo() -> impl Bar {
 LL |     5;
    |      - consider removing this semicolon
 
-error: aborting due to previous error
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:22
+   |
+LL |   fn foo() -> impl Bar {
+   |  ______________________^
+LL | |     5;
+LL | |
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `()`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
