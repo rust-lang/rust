@@ -41,14 +41,14 @@ enum SessionDiagnosticOnEnum {
 #[derive(SessionDiagnostic)]
 #[error = "E0123"]
 #[label = "This is in the wrong place"]
-//~^ ERROR `#[label = ...]` is not a valid SessionDiagnostic struct attribute
+//~^ ERROR `#[label = ...]` is not a valid `SessionDiagnostic` struct attribute
 struct WrongPlace {}
 
 #[derive(SessionDiagnostic)]
 #[error = "E0123"]
 struct WrongPlaceField {
     #[suggestion = "this is the wrong kind of attribute"]
-//~^ ERROR `#[suggestion = ...]` is not a valid SessionDiagnostic field attribute
+    //~^ ERROR `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
     sp: Span,
 }
 
@@ -92,14 +92,14 @@ struct ErrorSpecifiedAfterLint {}
 struct ErrorWithField {
     name: String,
     #[message = "This error has a field, and references {name}"]
-    span: Span
+    span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error = "E0123"]
 struct ErrorWithMessageAppliedToField {
     #[message = "this message is applied to a String field"]
-    //~^ ERROR the `#[message = "..."]` attribute can only be applied to fields of type Span
+    //~^ ERROR the `#[message = "..."]` attribute can only be applied to fields of type `Span`
     name: String,
 }
 
@@ -134,7 +134,7 @@ struct ErrorMissingOpeningBrace {
 #[message = "Something something"]
 struct LabelOnSpan {
     #[label = "See here"]
-    sp: Span
+    sp: Span,
 }
 
 #[derive(SessionDiagnostic)]
@@ -142,7 +142,7 @@ struct LabelOnSpan {
 #[message = "Something something"]
 struct LabelOnNonSpan {
     #[label = "See here"]
-    //~^ ERROR The `#[label = ...]` attribute can only be applied to fields of type Span
+    //~^ ERROR The `#[label = ...]` attribute can only be applied to fields of type `Span`
     id: u32,
 }
 
@@ -204,7 +204,7 @@ struct SuggestWithWrongTypeApplicabilityOnly {
 
 #[derive(SessionDiagnostic)]
 #[error = "E0123"]
-struct SuggestWithSpanOnly{
+struct SuggestWithSpanOnly {
     #[suggestion(message = "This is a message", code = "This is suggested code")]
     suggestion: Span,
 }
@@ -213,7 +213,7 @@ struct SuggestWithSpanOnly{
 #[error = "E0123"]
 struct SuggestWithDuplicateSpanAndApplicability {
     #[suggestion(message = "This is a message", code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one Span
+    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
     suggestion: (Span, Span, Applicability),
 }
 

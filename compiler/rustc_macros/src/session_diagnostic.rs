@@ -224,7 +224,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                 match builder.kind {
                     None => {
                         span_err(ast.span().unwrap(), "`code` not specified")
-                        .help("use the [code = \"...\"] attribute to set this diagnostic's error code ")
+                        .help("use the `#[code = \"...\"]` attribute to set this diagnostic's error code ")
                         .emit();
                         SessionDiagnosticDeriveError::ErrorHandled.to_compile_error()
                     }
@@ -338,7 +338,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     other => throw_span_err!(
                         attr.span().unwrap(),
                         &format!(
-                            "`#[{} = ...]` is not a valid SessionDiagnostic struct attribute",
+                            "`#[{} = ...]` is not a valid `SessionDiagnostic` struct attribute",
                             other
                         )
                     ),
@@ -429,7 +429,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         } else {
                             throw_span_err!(
                                 attr.span().unwrap(),
-                                "the `#[message = \"...\"]` attribute can only be applied to fields of type Span"
+                                "the `#[message = \"...\"]` attribute can only be applied to fields of type `Span`"
                             );
                         }
                     }
@@ -441,14 +441,14 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         } else {
                             throw_span_err!(
                                 attr.span().unwrap(),
-                                "The `#[label = ...]` attribute can only be applied to fields of type Span"
+                                "The `#[label = ...]` attribute can only be applied to fields of type `Span`"
                             );
                         }
                     }
                     other => throw_span_err!(
                         attr.span().unwrap(),
                         &format!(
-                            "`#[{} = ...]` is not a valid SessionDiagnostic field attribute",
+                            "`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute",
                             other
                         )
                     ),
@@ -505,7 +505,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                                 list.span().unwrap(),
                                 "missing suggestion message",
                                 |diag| {
-                                    diag.help("provide a suggestion message using #[suggestion(message = \"...\")]")
+                                    diag.help("provide a suggestion message using `#[suggestion(message = \"...\")]`")
                                 }
                             );
                         };
@@ -549,7 +549,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         } else {
                             throw_span_err!(
                                 info.span.unwrap(),
-                                "type of field annotated with `#[suggestion(...)]` contains more than one Span"
+                                "type of field annotated with `#[suggestion(...)]` contains more than one `Span`"
                             );
                         }
                     } else if type_matches_path(elem, &["rustc_errors", "Applicability"]) {
@@ -575,12 +575,12 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 }
 
                 throw_span_err!(info.span.unwrap(), "wrong types for suggestion", |diag| {
-                    diag.help("#[suggestion(...)] on a tuple field must be applied to fields of type `(Span, Applicability)`")
+                    diag.help("`#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`")
                 });
             }
             // If `ty` isn't a `Span` or `(Span, Applicability)` then emit an error.
             _ => throw_span_err!(info.span.unwrap(), "wrong field type for suggestion", |diag| {
-                diag.help("#[suggestion(...)] should be applied to fields of type `Span` or `(Span, Applicability)`")
+                diag.help("`#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`")
             }),
         }
     }
