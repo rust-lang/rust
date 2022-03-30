@@ -417,6 +417,15 @@ impl f64 {
     pub const MAX_10_EXP: i32 = 308;
 
     /// Not a Number (NaN).
+    ///
+    /// Note that IEEE-745 doesn't define just a single NaN value;
+    /// a plethora of bit patterns are considered to be NaN.
+    /// Furthermore, the standard makes a difference
+    /// between a "signaling" and a "quiet" NaN,
+    /// and allows inspecting its "payload" (the unspecified bits in the bit pattern).
+    /// This constant isn't guaranteed to equal to any specific NaN bitpattern,
+    /// and the stability of its representation over Rust versions
+    /// and target platforms isn't guaranteed.
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NAN: f64 = 0.0_f64 / 0.0_f64;
     /// Infinity (∞).
@@ -426,7 +435,7 @@ impl f64 {
     #[stable(feature = "assoc_int_consts", since = "1.43.0")]
     pub const NEG_INFINITY: f64 = -1.0_f64 / 0.0_f64;
 
-    /// Returns `true` if this value is `NaN`.
+    /// Returns `true` if this value is NaN.
     ///
     /// ```
     /// let nan = f64::NAN;
@@ -475,7 +484,7 @@ impl f64 {
         self.abs_private() == Self::INFINITY
     }
 
-    /// Returns `true` if this number is neither infinite nor `NaN`.
+    /// Returns `true` if this number is neither infinite nor NaN.
     ///
     /// ```
     /// let f = 7.0f64;
@@ -526,7 +535,7 @@ impl f64 {
     }
 
     /// Returns `true` if the number is neither zero, infinite,
-    /// [subnormal], or `NaN`.
+    /// [subnormal], or NaN.
     ///
     /// ```
     /// let min = f64::MIN_POSITIVE; // 2.2250738585072014e-308f64
@@ -581,8 +590,12 @@ impl f64 {
         }
     }
 
-    /// Returns `true` if `self` has a positive sign, including `+0.0`, `NaN`s with
-    /// positive sign bit and positive infinity.
+    /// Returns `true` if `self` has a positive sign, including `+0.0`, NaNs with
+    /// positive sign bit and positive infinity. Note that IEEE-745 doesn't assign any
+    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
+    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
+    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
+    /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -608,8 +621,12 @@ impl f64 {
         self.is_sign_positive()
     }
 
-    /// Returns `true` if `self` has a negative sign, including `-0.0`, `NaN`s with
-    /// negative sign bit and negative infinity.
+    /// Returns `true` if `self` has a negative sign, including `-0.0`, NaNs with
+    /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
+    /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
+    /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
+    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
+    /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
     /// let f = 7.0_f64;
@@ -690,8 +707,10 @@ impl f64 {
 
     /// Returns the maximum of the two numbers.
     ///
-    /// Follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmax.
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmax.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -699,8 +718,6 @@ impl f64 {
     ///
     /// assert_eq!(x.max(y), y);
     /// ```
-    ///
-    /// If one of the arguments is NaN, then the other argument is returned.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -710,8 +727,10 @@ impl f64 {
 
     /// Returns the minimum of the two numbers.
     ///
-    /// Follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs.
-    /// This matches the behavior of libm’s fmin.
+    /// If one of the arguments is NaN, then the other argument is returned.
+    /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
+    /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
+    /// This also matches the behavior of libm’s fmin.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -719,8 +738,6 @@ impl f64 {
     ///
     /// assert_eq!(x.min(y), x);
     /// ```
-    ///
-    /// If one of the arguments is NaN, then the other argument is returned.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -728,7 +745,7 @@ impl f64 {
         intrinsics::minnumf64(self, other)
     }
 
-    /// Returns the maximum of the two numbers, propagating NaNs.
+    /// Returns the maximum of the two numbers.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::max`] which only returns NaN when *both* arguments are NaN.
@@ -760,7 +777,7 @@ impl f64 {
         }
     }
 
-    /// Returns the minimum of the two numbers, propagating NaNs.
+    /// Returns the minimum of the two numbers.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f64::min`] which only returns NaN when *both* arguments are NaN.
