@@ -1,3 +1,6 @@
+use core::alloc::{Allocator, Layout};
+use core::ptr::NonNull;
+use std::alloc::System;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -989,6 +992,31 @@ fn test_into_iter_advance_by() {
     i.advance_back_by(0).unwrap();
 
     assert_eq!(i.len(), 0);
+}
+
+#[test]
+fn test_into_iter_drop_allocator() {
+    struct ReferenceCountedAllocator<'a>(DropCounter<'a>);
+
+    unsafe impl Allocator for ReferenceCountedAllocator<'_> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
+            System.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+            System.deallocate(ptr, layout)
+        }
+    }
+
+    let mut drop_count = 0;
+
+    let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
+    let _ = Vec::<u32, _>::new_in(allocator);
+    assert_eq!(drop_count, 1);
+
+    let allocator = ReferenceCountedAllocator(DropCounter { count: &mut drop_count });
+    let _ = Vec::<u32, _>::new_in(allocator).into_iter();
+    assert_eq!(drop_count, 2);
 }
 
 #[test]
