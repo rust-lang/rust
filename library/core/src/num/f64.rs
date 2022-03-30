@@ -918,6 +918,9 @@ impl f64 {
     /// Return the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -935,6 +938,9 @@ impl f64 {
 
     /// Return the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -960,6 +966,9 @@ impl f64 {
     /// [`to_be_bytes`]: f64::to_be_bytes
     /// [`to_le_bytes`]: f64::to_le_bytes
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -984,6 +993,9 @@ impl f64 {
 
     /// Create a floating point value from its representation as a byte array in big endian.
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -999,6 +1011,9 @@ impl f64 {
     }
 
     /// Create a floating point value from its representation as a byte array in little endian.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -1022,6 +1037,9 @@ impl f64 {
     ///
     /// [`from_be_bytes`]: f64::from_be_bytes
     /// [`from_le_bytes`]: f64::from_le_bytes
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///

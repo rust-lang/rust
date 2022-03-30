@@ -902,6 +902,9 @@ impl f32 {
     /// Return the memory representation of this floating point number as a byte array in
     /// big-endian (network) byte order.
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -919,6 +922,9 @@ impl f32 {
 
     /// Return the memory representation of this floating point number as a byte array in
     /// little-endian byte order.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -944,6 +950,9 @@ impl f32 {
     /// [`to_be_bytes`]: f32::to_be_bytes
     /// [`to_le_bytes`]: f32::to_le_bytes
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -968,6 +977,9 @@ impl f32 {
 
     /// Create a floating point value from its representation as a byte array in big endian.
     ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
+    ///
     /// # Examples
     ///
     /// ```
@@ -983,6 +995,9 @@ impl f32 {
     }
 
     /// Create a floating point value from its representation as a byte array in little endian.
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
@@ -1006,6 +1021,9 @@ impl f32 {
     ///
     /// [`from_be_bytes`]: f32::from_be_bytes
     /// [`from_le_bytes`]: f32::from_le_bytes
+    ///
+    /// See [`from_bits`](Self::from_bits) for some discussion of the
+    /// portability of this operation (there are almost no issues).
     ///
     /// # Examples
     ///
