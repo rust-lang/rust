@@ -28,7 +28,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_middle::ty::fold::{MaxUniverse, TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::Subst;
 use rustc_middle::ty::{self, Term, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::sym;
@@ -144,6 +144,18 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
     }
 }
 
+/// Takes the place of a
+/// Result<
+///     Result<Option<Vec<PredicateObligation<'tcx>>>, InProgress>,
+///     MismatchedProjectionTypes<'tcx>,
+/// >
+pub(super) enum ProjectAndUnifyResult<'tcx> {
+    Holds(Vec<PredicateObligation<'tcx>>),
+    FailedNormalization,
+    Recursive,
+    MismatchedProjectionTypes(MismatchedProjectionTypes<'tcx>),
+}
+
 /// Evaluates constraints of the form:
 ///
 ///     for<...> <T as Trait>::U == V
@@ -167,19 +179,47 @@ impl<'tcx> ProjectionCandidateSet<'tcx> {
 pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &PolyProjectionObligation<'tcx>,
-) -> Result<
-    Result<Option<Vec<PredicateObligation<'tcx>>>, InProgress>,
-    MismatchedProjectionTypes<'tcx>,
-> {
+) -> ProjectAndUnifyResult<'tcx> {
     let infcx = selcx.infcx();
-    infcx.commit_if_ok(|_snapshot| {
+    let r = infcx.commit_if_ok(|_snapshot| {
+        let old_universe = infcx.universe();
         let placeholder_predicate =
             infcx.replace_bound_vars_with_placeholders(obligation.predicate);
+        let new_universe = infcx.universe();
 
         let placeholder_obligation = obligation.with(placeholder_predicate);
-        let result = project_and_unify_type(selcx, &placeholder_obligation)?;
-        Ok(result)
-    })
+        match project_and_unify_type(selcx, &placeholder_obligation) {
+            ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
+            ProjectAndUnifyResult::Holds(obligations)
+                if old_universe != new_universe
+                    && selcx.tcx().features().generic_associated_types_extended =>
+            {
+                // If the `generic_associated_types_extended` feature is active, then we ignore any
+                // obligations references lifetimes from any universe greater than or equal to the
+                // universe just created. Otherwise, we can end up with something like `for<'a> I: 'a`,
+                // which isn't quite what we want. Ideally, we want either an implied
+                // `for<'a where I: 'a> I: 'a` or we want to "lazily" check these hold when we
+                // substitute concrete regions. There is design work to be done here; until then,
+                // however, this allows experimenting potential GAT features without running into
+                // well-formedness issues.
+                let new_obligations = obligations
+                    .into_iter()
+                    .filter(|obligation| {
+                        let mut visitor = MaxUniverse::new();
+                        obligation.predicate.visit_with(&mut visitor);
+                        visitor.max_universe() < new_universe
+                    })
+                    .collect();
+                Ok(ProjectAndUnifyResult::Holds(new_obligations))
+            }
+            other => Ok(other),
+        }
+    });
+
+    match r {
+        Ok(inner) => inner,
+        Err(err) => ProjectAndUnifyResult::MismatchedProjectionTypes(err),
+    }
 }
 
 /// Evaluates constraints of the form:
@@ -189,15 +229,11 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
 /// If successful, this may result in additional obligations.
 ///
 /// See [poly_project_and_unify_type] for an explanation of the return value.
+#[tracing::instrument(level = "debug", skip(selcx))]
 fn project_and_unify_type<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionObligation<'tcx>,
-) -> Result<
-    Result<Option<Vec<PredicateObligation<'tcx>>>, InProgress>,
-    MismatchedProjectionTypes<'tcx>,
-> {
-    debug!(?obligation, "project_and_unify_type");
-
+) -> ProjectAndUnifyResult<'tcx> {
     let mut obligations = vec![];
 
     let infcx = selcx.infcx();
@@ -210,8 +246,8 @@ fn project_and_unify_type<'cx, 'tcx>(
         &mut obligations,
     ) {
         Ok(Some(n)) => n,
-        Ok(None) => return Ok(Ok(None)),
-        Err(InProgress) => return Ok(Err(InProgress)),
+        Ok(None) => return ProjectAndUnifyResult::FailedNormalization,
+        Err(InProgress) => return ProjectAndUnifyResult::Recursive,
     };
     debug!(?normalized, ?obligations, "project_and_unify_type result");
     let actual = obligation.predicate.term;
@@ -231,11 +267,11 @@ fn project_and_unify_type<'cx, 'tcx>(
     match infcx.at(&obligation.cause, obligation.param_env).eq(normalized, actual) {
         Ok(InferOk { obligations: inferred_obligations, value: () }) => {
             obligations.extend(inferred_obligations);
-            Ok(Ok(Some(obligations)))
+            ProjectAndUnifyResult::Holds(obligations)
         }
         Err(err) => {
-            debug!("project_and_unify_type: equating types encountered error {:?}", err);
-            Err(MismatchedProjectionTypes { err })
+            debug!("equating types encountered error {:?}", err);
+            ProjectAndUnifyResult::MismatchedProjectionTypes(MismatchedProjectionTypes { err })
         }
     }
 }
