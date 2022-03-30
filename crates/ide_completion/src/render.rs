@@ -615,6 +615,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_op_method: false,
                             is_private_editable: false,
                             exact_postfix_snippet_match: false,
+                            is_postfix: false,
                         },
                     },
                     CompletionItem {
@@ -636,6 +637,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_op_method: false,
                             is_private_editable: false,
                             exact_postfix_snippet_match: false,
+                            is_postfix: false,
                         },
                     },
                 ]
@@ -723,6 +725,7 @@ fn foo() { A { the$0 } }
                             is_op_method: false,
                             is_private_editable: false,
                             exact_postfix_snippet_match: false,
+                            is_postfix: false,
                         },
                     },
                 ]

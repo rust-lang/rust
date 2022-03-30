@@ -152,6 +152,8 @@ pub struct CompletionRelevance {
     /// Basically, we want to guarantee that postfix snippets always takes
     /// precedence over everything else.
     pub exact_postfix_snippet_match: bool,
+    /// Set in cases when item is postfix, but not exact
+    pub is_postfix: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -179,7 +181,7 @@ pub enum CompletionRelevanceTypeMatch {
 }
 
 impl CompletionRelevance {
-    const BASE_LINE: u32 = 2;
+    const BASE_LINE: u32 = 3;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -199,6 +201,9 @@ impl CompletionRelevance {
         if self.is_private_editable {
             score -= 1;
         }
+        if self.is_postfix {
+            score -= 3;
+        }
 
         // score increases
         if self.exact_name_match {
@@ -215,6 +220,7 @@ impl CompletionRelevance {
         if self.exact_postfix_snippet_match {
             score += 100;
         }
+
         score
     }
 
@@ -573,6 +579,10 @@ mod tests {
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
+            vec![CompletionRelevance {
+                is_postfix: true,
+                ..CompletionRelevance::default()
+            }],
             vec![CompletionRelevance {
                 is_op_method: true,
                 is_private_editable: true,

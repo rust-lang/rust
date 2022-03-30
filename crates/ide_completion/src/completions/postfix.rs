@@ -240,12 +240,12 @@ fn build_postfix_snippet_builder<'ctx>(
             let mut item =
                 CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
             item.detail(detail).snippet_edit(cap, edit);
-            if ctx.original_token.text() == label {
-                let relevance =
-                    CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() };
-                item.set_relevance(relevance);
-            }
-
+            let relevance = if ctx.original_token.text() == label {
+                CompletionRelevance { exact_postfix_snippet_match: true, ..Default::default() }
+            } else {
+                CompletionRelevance { is_postfix: true, ..Default::default() }
+            };
+            item.set_relevance(relevance);
             item
         }
     }
