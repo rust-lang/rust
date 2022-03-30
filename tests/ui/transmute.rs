@@ -73,6 +73,10 @@ fn crosspointer() {
 fn int_to_char() {
     let _: char = unsafe { std::mem::transmute(0_u32) };
     let _: char = unsafe { std::mem::transmute(0_i32) };
+
+    // These shouldn't warn
+    const _: char = unsafe { std::mem::transmute(0_u32) };
+    const _: char = unsafe { std::mem::transmute(0_i32) };
 }
 
 #[warn(clippy::transmute_int_to_bool)]
