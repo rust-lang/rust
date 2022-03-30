@@ -110,7 +110,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     /// NOTE: a hack is used because the rustc API is not suitable to libgccjit and as such,
     /// `const_undef()` returns struct as pointer so that they can later be assigned a value.
     /// As such, this set remembers which of these pointers were returned by this function so that
-    /// they can be deferenced later.
+    /// they can be dereferenced later.
     /// FIXME(antoyo): fix the rustc API to avoid having this hack.
     pub structs_as_pointer: RefCell<FxHashSet<RValue<'gcc>>>,
 }
