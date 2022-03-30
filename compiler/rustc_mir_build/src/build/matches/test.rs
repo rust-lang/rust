@@ -234,7 +234,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     };
                     TerminatorKind::if_(self.tcx, Operand::Copy(place), true_bb, false_bb)
                 } else {
-                    // The switch may be inexhaustible so we have a catch all block
+                    // The switch may be inexhaustive so we have a catch all block
                     debug_assert_eq!(options.len() + 1, target_blocks.len());
                     let otherwise_block = *target_blocks.last().unwrap();
                     let switch_targets = SwitchTargets::new(

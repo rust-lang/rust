@@ -234,7 +234,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     },
     /// Something was divided by 0 (x / 0).
     DivisionByZero,
-    /// Something was "remaineded" by 0 (x % 0).
+    /// Something was "remainded" by 0 (x % 0).
     RemainderByZero,
     /// Signed division overflowed (INT_MIN / -1).
     DivisionOverflow,

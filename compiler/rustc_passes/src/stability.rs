@@ -144,7 +144,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         if !self.tcx.features().staged_api {
-            // Propagate instability.  This can happen even for non-staged-api crates in case
+            // Propagate unstability.  This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
                 if inherit_deprecation.yes() && stab.level.is_unstable() {

@@ -243,7 +243,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             // Update minimum universe of scc1.
             self.scc_universes[scc1] = scc1_universe;
 
-            // At this point, `scc_placeholder[scc1]` stores the placeholder that
+            // At this point, `scc_placeholders[scc1]` stores the placeholder that
             // `scc1` must be equal to, if any.
             if let Some(scc1_placeholder) = self.scc_placeholders[scc1] {
                 debug!(
