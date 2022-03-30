@@ -5,6 +5,7 @@ use super::*;
 
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxt;
+use crate::traits::project::ProjectAndUnifyResult;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{Region, RegionVid, Term};
 
@@ -751,7 +752,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     debug!("Projecting and unifying projection predicate {:?}", predicate);
 
                     match project::poly_project_and_unify_type(select, &obligation.with(p)) {
-                        Err(e) => {
+                        ProjectAndUnifyResult::MismatchedProjectionTypes(e) => {
                             debug!(
                                 "evaluate_nested_obligations: Unable to unify predicate \
                                  '{:?}' '{:?}', bailing out",
@@ -759,11 +760,11 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             );
                             return false;
                         }
-                        Ok(Err(project::InProgress)) => {
+                        ProjectAndUnifyResult::Recursive => {
                             debug!("evaluate_nested_obligations: recursive projection predicate");
                             return false;
                         }
-                        Ok(Ok(Some(v))) => {
+                        ProjectAndUnifyResult::Holds(v) => {
                             // We only care about sub-obligations
                             // when we started out trying to unify
                             // some inference variables. See the comment above
@@ -782,7 +783,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                 }
                             }
                         }
-                        Ok(Ok(None)) => {
+                        ProjectAndUnifyResult::FailedNormalization => {
                             // It's ok not to make progress when have no inference variables -
                             // in that case, we were only performing unification to check if an
                             // error occurred (which would indicate that it's impossible for our
