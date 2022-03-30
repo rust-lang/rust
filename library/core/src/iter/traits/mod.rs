@@ -15,6 +15,8 @@ pub use self::{
     marker::{FusedIterator, TrustedLen},
 };
 
+#[unstable(feature = "checked_sum_product", issue = "95484")]
+pub use self::accum::{CheckedProduct, CheckedSum};
 #[unstable(issue = "none", feature = "inplace_iteration")]
 pub use self::marker::InPlaceIterable;
 #[unstable(feature = "trusted_step", issue = "85731")]

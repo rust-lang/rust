@@ -385,6 +385,8 @@ pub use self::traits::InPlaceIterable;
 pub use self::traits::TrustedLen;
 #[unstable(feature = "trusted_step", issue = "85731")]
 pub use self::traits::TrustedStep;
+#[unstable(feature = "checked_sum_product", issue = "95484")]
+pub use self::traits::{CheckedProduct, CheckedSum};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{
     DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator, Product, Sum,

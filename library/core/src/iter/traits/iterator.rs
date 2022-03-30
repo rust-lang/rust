@@ -5,8 +5,10 @@ use super::super::try_process;
 use super::super::ByRefSized;
 use super::super::TrustedRandomAccessNoCoerce;
 use super::super::{Chain, Cloned, Copied, Cycle, Enumerate, Filter, FilterMap, Fuse};
+use super::super::{
+    CheckedProduct, CheckedSum, FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip,
+};
 use super::super::{FlatMap, Flatten};
-use super::super::{FromIterator, Intersperse, IntersperseWith, Product, Sum, Zip};
 use super::super::{
     Inspect, Map, MapWhile, Peekable, Rev, Scan, Skip, SkipWhile, StepBy, Take, TakeWhile,
 };
@@ -3322,6 +3324,57 @@ pub trait Iterator {
         P: Product<Self::Item>,
     {
         Product::product(self)
+    }
+
+    /// Sums the elements of an iterator, returning `None` if overflow occored.
+    ///
+    /// An empty iterator returns the zero value of the type.
+    ///
+    /// The sum is computed left to right, so the order of the elements may
+    /// effect the sum for signed numbers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(checked_sum_product)]
+    /// assert_eq!([1, 2, 3].iter().checked_sum::<i8>(), Some(6));
+    /// assert_eq!([100, 20, 30].iter().checked_sum::<i8>(), None);
+    /// assert_eq!([100, -100, 100].iter().checked_sum::<i8>(), Some(100));
+    /// assert_eq!([100, 100, -100].iter().checked_sum::<i8>(), None);
+    /// ```
+    #[unstable(feature = "checked_sum_product", issue = "95484")]
+    fn checked_sum<S>(self) -> Option<S>
+    where
+        Self: Sized,
+        S: CheckedSum<Self::Item>,
+    {
+        CheckedSum::checked_sum(self)
+    }
+
+    /// Iterates over the entire iterator, multiplying all the elements,
+    /// returning `None` if overflow occored.
+    ///
+    /// An empty iterator returns the one value of the type.
+    ///
+    /// The product is computed left to right, so the order of the elements may
+    /// effect the sum for if their is a zero after overflow occors.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(checked_sum_product)]
+    /// assert_eq!([1, 2, 3].iter().checked_product::<i8>(), Some(6));
+    /// assert_eq!([100, 20, 30].iter().checked_product::<i8>(), None);
+    /// assert_eq!([100, 0, 100].iter().checked_product::<i8>(), Some(0));
+    /// assert_eq!([100, 100, 0].iter().checked_product::<i8>(), None);
+    /// ```
+    #[unstable(feature = "checked_sum_product", issue = "95484")]
+    fn checked_product<S>(self) -> Option<S>
+    where
+        Self: Sized,
+        S: CheckedProduct<Self::Item>,
+    {
+        CheckedProduct::checked_product(self)
     }
 
     /// [Lexicographically](Ord#lexicographical-comparison) compares the elements of this [`Iterator`] with those

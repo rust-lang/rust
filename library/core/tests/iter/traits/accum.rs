@@ -64,3 +64,41 @@ fn test_iterator_product_option() {
     let v: &[Option<i32>] = &[Some(1), None, Some(3), Some(4)];
     assert_eq!(v.iter().cloned().product::<Option<i32>>(), None);
 }
+
+#[test]
+fn test_iterator_checked_sum() {
+    let v: &[i8] = &[1, 2, 3, 4, 5];
+    assert_eq!(v.iter().checked_sum(), Some(15));
+    assert_eq!(v.iter().copied().checked_sum(), Some(15));
+    let v: &[i8] = &[10, 20, 30, 40, 50];
+    assert_eq!(v.iter().checked_sum::<i8>(), None);
+    assert_eq!(v.iter().copied().checked_sum::<i8>(), None);
+    let v: &[i8] = &[100, -100, 100, -100];
+    assert_eq!(v.iter().checked_sum(), Some(0));
+    assert_eq!(v.iter().copied().checked_sum(), Some(0));
+    let v: &[i8] = &[100, 100, -100, -100];
+    assert_eq!(v.iter().checked_sum::<i8>(), None);
+    assert_eq!(v.iter().copied().checked_sum::<i8>(), None);
+    let v: &[i8] = &[];
+    assert_eq!(v.iter().checked_sum::<i8>(), Some(0));
+    assert_eq!(v.iter().copied().checked_sum::<i8>(), Some(0));
+}
+
+#[test]
+fn test_iterator_checked_product() {
+    let v: &[i8] = &[1, 2, 3, 4, 5];
+    assert_eq!(v.iter().checked_product(), Some(120));
+    assert_eq!(v.iter().copied().checked_product(), Some(120));
+    let v: &[i8] = &[10, 20, 30, 40, 50];
+    assert_eq!(v.iter().checked_product::<i8>(), None);
+    assert_eq!(v.iter().copied().checked_product::<i8>(), None);
+    let v: &[i8] = &[100, 0, -100, 0, 10];
+    assert_eq!(v.iter().checked_product(), Some(0));
+    assert_eq!(v.iter().copied().checked_product(), Some(0));
+    let v: &[i8] = &[100, -100, 0, 10, 0];
+    assert_eq!(v.iter().checked_product::<i8>(), None);
+    assert_eq!(v.iter().copied().checked_product::<i8>(), None);
+    let v: &[i8] = &[];
+    assert_eq!(v.iter().checked_product::<i8>(), Some(1));
+    assert_eq!(v.iter().copied().checked_product::<i8>(), Some(1));
+}

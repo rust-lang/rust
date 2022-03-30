@@ -6,6 +6,7 @@
 #![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(cell_update)]
+#![feature(checked_sum_product)]
 #![feature(const_assume)]
 #![feature(const_black_box)]
 #![feature(const_bool_to_option)]
