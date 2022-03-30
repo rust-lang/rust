@@ -554,13 +554,9 @@ impl Step for Rustc {
         let paths = builder
             .paths
             .iter()
-            .map(components_simplified)
-            .filter_map(|path| {
-                if path.get(0) == Some(&"compiler") {
-                    path.get(1).map(|p| p.to_owned())
-                } else {
-                    None
-                }
+            .filter(|path| {
+                let components = components_simplified(path);
+                components.len() >= 2 && components[0] == "compiler"
             })
             .collect::<Vec<_>>();
 
@@ -621,16 +617,17 @@ impl Step for Rustc {
                 );
             }
         } else {
-            for root_crate in paths {
-                if !builder.src.join("compiler").join(&root_crate).exists() {
+            for root_crate_path in paths {
+                if !root_crate_path.exists() {
                     builder.info(&format!(
-                        "\tskipping - compiler/{} (unknown compiler crate)",
-                        root_crate
+                        "\tskipping - {} (unknown compiler crate)",
+                        root_crate_path.display()
                     ));
                 } else {
+                    let root_crate = builder.crate_paths[root_crate_path];
                     compiler_crates.extend(
                         builder
-                            .in_tree_crates(root_crate, Some(target))
+                            .in_tree_crates(&root_crate, Some(target))
                             .into_iter()
                             .map(|krate| krate.name),
                     );
