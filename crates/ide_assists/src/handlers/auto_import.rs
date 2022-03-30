@@ -54,9 +54,9 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // The style of imports in the same crate is configurable through the `importPrefix` setting.
 // It has the following configurations:
 //
-// - `by_crate`: This setting will force paths to be always absolute, starting with the `crate`
+// - `crate`: This setting will force paths to be always absolute, starting with the `crate`
 //  prefix, unless the item is defined outside of the current crate.
-// - `by_self`: This setting will force paths that are relative to the current module to always
+// - `self`: This setting will force paths that are relative to the current module to always
 //  start with `self`. This will result in paths that always start with either `crate`, `self`,
 //  `super` or an extern crate identifier.
 // - `plain`: This setting does not impose any restrictions in imports.

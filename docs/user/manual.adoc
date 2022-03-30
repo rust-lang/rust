@@ -310,7 +310,7 @@ nvim_lsp.rust_analyzer.setup({
         ["rust-analyzer"] = {
             assist = {
                 importGranularity = "module",
-                importPrefix = "by_self",
+                importPrefix = "self",
             },
             cargo = {
                 loadOutDirsFromCheck = true
