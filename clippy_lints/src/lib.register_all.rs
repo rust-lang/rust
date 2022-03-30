@@ -37,6 +37,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(comparison_chain::COMPARISON_CHAIN),
     LintId::of(copies::IFS_SAME_COND),
     LintId::of(copies::IF_SAME_THEN_ELSE),
+    LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(default::FIELD_REASSIGN_WITH_DEFAULT),
     LintId::of(dereference::NEEDLESS_BORROW),
     LintId::of(derivable_impls::DERIVABLE_IMPLS),
