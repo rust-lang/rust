@@ -191,7 +191,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fullfillment errors")
+        self.tcx.sess.delay_span_bug(DUMMY_SP, "expected fulfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We

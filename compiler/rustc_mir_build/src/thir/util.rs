@@ -15,7 +15,7 @@ crate trait UserAnnotatedTyHelpers<'tcx> {
     ) -> Option<CanonicalUserType<'tcx>> {
         let user_provided_types = self.typeck_results().user_provided_types();
         let mut user_ty = *user_provided_types.get(hir_id)?;
-        debug!("user_subts_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
+        debug!("user_substs_applied_to_ty_of_hir_id: user_ty={:?}", user_ty);
         let ty = self.typeck_results().node_type(hir_id);
         match ty.kind() {
             ty::Adt(adt_def, ..) => {

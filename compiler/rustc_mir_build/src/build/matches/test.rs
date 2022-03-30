@@ -184,7 +184,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_ne!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "no canididates for tested discriminant: {:?}",
+                                "no candidates for tested discriminant: {:?}",
                                 discr,
                             );
                             Some((discr.val, target_blocks[idx.index()]))
@@ -192,7 +192,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             debug_assert_eq!(
                                 target_blocks[idx.index()],
                                 otherwise_block,
-                                "found canididates for untested discriminant: {:?}",
+                                "found candidates for untested discriminant: {:?}",
                                 discr,
                             );
                             None
@@ -757,7 +757,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        span_bug!(match_pair.pattern.span, "simplifyable pattern found: {:?}", match_pair.pattern)
+        span_bug!(match_pair.pattern.span, "simplifiable pattern found: {:?}", match_pair.pattern)
     }
 
     fn const_range_contains(&self, range: PatRange<'tcx>, value: ty::Const<'tcx>) -> Option<bool> {

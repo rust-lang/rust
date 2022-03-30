@@ -13,7 +13,7 @@ crate fn dump_closure_profile<'tcx>(tcx: TyCtxt<'tcx>, closure_instance: Instanc
         .append(true)
         .open(&format!("closure_profile_{}.csv", std::process::id()))
     else {
-        eprintln!("Cound't open file for writing closure profile");
+        eprintln!("Couldn't open file for writing closure profile");
         return;
     };
 

@@ -983,7 +983,7 @@ where
             ty::Placeholder(placeholder) => {
                 if self.universe.cannot_name(placeholder.universe) {
                     debug!(
-                        "TypeGeneralizer::tys: root universe {:?} cannot name\
+                        "TypeGeneralizer::tys: root universe {:?} cannot name \
                          placeholder in universe {:?}",
                         self.universe, placeholder.universe
                     );

@@ -332,7 +332,7 @@ impl UnsafeCode {
         self.report_unsafe(cx, span, |lint| {
             lint.build(msg)
                 .note(
-                    "the linker's behavior with multiple libraries exporting duplicate symbol \
+                    "the linker behavior with multiple libraries exporting duplicate symbol \
                     names is undefined and Rust cannot provide guarantees when you manually \
                     override them",
                 )

@@ -834,7 +834,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         borrow_region: ty::Region<'tcx>,
         upvar_id: ty::UpvarId,
     ) {
-        debug!("link_upvar_region(borrorw_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
+        debug!("link_upvar_region(borrow_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
         // A by-reference upvar can't be borrowed for longer than the
         // upvar is borrowed from the environment.
         let closure_local_def_id = upvar_id.closure_expr_id;

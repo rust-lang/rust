@@ -2145,7 +2145,7 @@ impl Target {
                 load_builtin(target_triple).expect("built-in target")
             }
             TargetTriple::TargetPath(..) => {
-                panic!("built-in targets doens't support target-paths")
+                panic!("built-in targets do not support target-paths")
             }
         }
     }

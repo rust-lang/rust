@@ -124,7 +124,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             self.error(|| {
                 format!(
                     "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
+                Max ItemLocalId = {}, missing IDs = {:?}; seen IDs = {:?}",
                     self.hir_map.def_path(owner).to_string_no_crate_verbose(),
                     max,
                     missing_items,

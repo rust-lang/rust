@@ -874,7 +874,7 @@ rustc_queries! {
     /// which impls fail it. If all impls are correct, the returned slice is empty.
     query orphan_check_crate(_: ()) -> &'tcx [LocalDefId] {
         desc {
-            "checking whether the immpl in the this crate follow the orphan rules",
+            "checking whether the impl in the this crate follow the orphan rules",
         }
     }
 
@@ -1070,7 +1070,7 @@ rustc_queries! {
     /// Used by rustdoc.
     query rendered_const(def_id: DefId) -> String {
         storage(ArenaCacheSelector<'tcx>)
-        desc { |tcx| "rendering constant intializer of `{}`", tcx.def_path_str(def_id) }
+        desc { |tcx| "rendering constant initializer of `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
     query impl_parent(def_id: DefId) -> Option<DefId> {
