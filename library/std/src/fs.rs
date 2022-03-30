@@ -1739,7 +1739,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// On MacOS, this function corresponds to `fclonefileat` and `fcopyfile`.
 ///
-/// Note that, this [may change in the future][changes].
+/// Note that platform-specific behavior [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 ///
