@@ -597,15 +597,13 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Note: It was decided to not add a test case, because it would be too big.
-    /// <https://github.com/rust-lang/rust/pull/50296#issuecomment-392135180>
     fn report_too_many_hashes(&self, start: BytePos, found: usize) -> ! {
         self.fatal_span_(
             start,
             self.pos,
             &format!(
                 "too many `#` symbols: raw strings may be delimited \
-                by up to 65535 `#` symbols, but found {}",
+                by up to 255 `#` symbols, but found {}",
                 found
             ),
         )

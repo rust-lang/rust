@@ -59,9 +59,9 @@ pub enum LitKind {
     Integer,
     Float,
     Str,
-    StrRaw(u16), // raw string delimited by `n` hash symbols
+    StrRaw(u8), // raw string delimited by `n` hash symbols
     ByteStr,
-    ByteStrRaw(u16), // raw byte string delimited by `n` hash symbols
+    ByteStrRaw(u8), // raw byte string delimited by `n` hash symbols
     Err,
 }
 
