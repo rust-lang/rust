@@ -87,17 +87,6 @@ use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::mem;
-
-/// This is used by `parse_tt_inner` to keep track of delimited submatchers that we have
-/// descended into.
-#[derive(Clone)]
-struct MatcherPosFrame<'tt> {
-    /// The "parent" matcher that we have descended from.
-    tts: &'tt [TokenTree],
-    /// The position of the "dot" in `tt` at the time we descended.
-    idx: usize,
-}
 
 // One element is enough to cover 95-99% of vectors for most benchmarks. Also,
 // vectors longer than one frequently have many elements, not just two or
@@ -107,6 +96,33 @@ type NamedMatchVec = SmallVec<[NamedMatch; 1]>;
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
+
+#[derive(Clone)]
+enum MatcherKind<'tt> {
+    TopLevel,
+    Delimited(Box<DelimitedSubmatcher<'tt>>),
+    Sequence(Box<SequenceSubmatcher<'tt>>),
+}
+
+#[derive(Clone)]
+struct DelimitedSubmatcher<'tt> {
+    parent: Parent<'tt>,
+}
+
+#[derive(Clone)]
+struct SequenceSubmatcher<'tt> {
+    parent: Parent<'tt>,
+    seq: &'tt SequenceRepetition,
+}
+
+/// Data used to ascend from a submatcher back to its parent matcher. A subset of the fields from
+/// `MathcherPos`.
+#[derive(Clone)]
+struct Parent<'tt> {
+    tts: &'tt [TokenTree],
+    idx: usize,
+    kind: MatcherKind<'tt>,
+}
 
 /// A single matcher position, which could be within the top-level matcher, a submatcher, a
 /// subsubmatcher, etc. For example:
@@ -140,17 +156,14 @@ struct MatcherPos<'tt> {
     /// stream. Should not be used if there are no metavars.
     match_cur: usize,
 
-    /// This field is only used if we are matching a sequence.
-    sequence: Option<MatcherPosSequence<'tt>>,
-
-    /// When we are within a `Delimited` submatcher (or subsubmatcher), this tracks the parent
-    /// matcher(s). The bottom of the stack is the top-level matcher.
-    stack: SmallVec<[MatcherPosFrame<'tt>; 1]>,
+    /// What kind of matcher we are in. For submatchers, this contains enough information to
+    /// reconstitute a `MatcherPos` within the parent once we ascend out of the submatcher.
+    kind: MatcherKind<'tt>,
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 96);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 64);
 
 impl<'tt> MatcherPos<'tt> {
     fn top_level(matcher: &'tt [TokenTree], empty_matches: Lrc<NamedMatchVec>) -> Self {
@@ -160,24 +173,26 @@ impl<'tt> MatcherPos<'tt> {
             matches: empty_matches,
             seq_depth: 0,
             match_cur: 0,
-            stack: smallvec![],
-            sequence: None,
+            kind: MatcherKind::TopLevel,
         }
     }
 
     fn sequence(
-        parent: Box<MatcherPos<'tt>>,
+        parent_mp: Box<MatcherPos<'tt>>,
         seq: &'tt SequenceRepetition,
         empty_matches: Lrc<NamedMatchVec>,
     ) -> Self {
+        let seq_kind = box SequenceSubmatcher {
+            parent: Parent { tts: parent_mp.tts, idx: parent_mp.idx, kind: parent_mp.kind },
+            seq,
+        };
         let mut mp = MatcherPos {
             tts: &seq.tts,
             idx: 0,
-            matches: parent.matches.clone(),
-            seq_depth: parent.seq_depth,
-            match_cur: parent.match_cur,
-            sequence: Some(MatcherPosSequence { parent, seq }),
-            stack: smallvec![],
+            matches: parent_mp.matches,
+            seq_depth: parent_mp.seq_depth,
+            match_cur: parent_mp.match_cur,
+            kind: MatcherKind::Sequence(seq_kind),
         };
         // Start with an empty vec for each metavar within the sequence. Note that `mp.seq_depth`
         // must have the parent's depth at this point for these `push_match` calls to work.
@@ -220,16 +235,6 @@ impl<'tt> MatcherPos<'tt> {
             }
         }
     }
-}
-
-#[derive(Clone)]
-struct MatcherPosSequence<'tt> {
-    /// The parent matcher position. Effectively gives a linked list of matches all the way to the
-    /// top-level matcher.
-    parent: Box<MatcherPos<'tt>>,
-
-    /// The sequence itself.
-    seq: &'tt SequenceRepetition,
 }
 
 enum EofMatcherPositions<'tt> {
@@ -499,15 +504,17 @@ impl<'tt> TtParser<'tt> {
                     }
 
                     TokenTree::Delimited(_, delimited) => {
-                        // To descend into a delimited submatcher, we push the current matcher onto
-                        // a stack and push a new mp containing the submatcher onto `cur_mps`. When
-                        // we reach the closing delimiter, we will pop the stack to backtrack out
-                        // of the descent. Note that we use `all_tts` to include the open and close
-                        // delimiter tokens.
-                        let tts = mem::replace(&mut mp.tts, &delimited.all_tts);
-                        let idx = mp.idx;
-                        mp.stack.push(MatcherPosFrame { tts, idx });
+                        // To descend into a delimited submatcher, we update `mp` appropriately,
+                        // including enough information to re-ascend afterwards, and push it onto
+                        // `cur_mps`. Later, when we reach the closing delimiter, we will recover
+                        // the parent matcher position to ascend. Note that we use `all_tts` to
+                        // include the open and close delimiter tokens.
+                        let kind = MatcherKind::Delimited(box DelimitedSubmatcher {
+                            parent: Parent { tts: mp.tts, idx: mp.idx, kind: mp.kind },
+                        });
+                        mp.tts = &delimited.all_tts;
                         mp.idx = 0;
+                        mp.kind = kind;
                         self.cur_mps.push(mp);
                     }
 
@@ -528,9 +535,14 @@ impl<'tt> TtParser<'tt> {
                             if let TokenKind::CloseDelim(_) = token.kind {
                                 // Ascend out of the delimited submatcher.
                                 debug_assert_eq!(idx, len - 1);
-                                let frame = mp.stack.pop().unwrap();
-                                mp.tts = frame.tts;
-                                mp.idx = frame.idx;
+                                match mp.kind {
+                                    MatcherKind::Delimited(submatcher) => {
+                                        mp.tts = submatcher.parent.tts;
+                                        mp.idx = submatcher.parent.idx;
+                                        mp.kind = submatcher.parent.kind;
+                                    }
+                                    _ => unreachable!(),
+                                }
                             }
                             mp.idx += 1;
                             self.next_mps.push(mp);
@@ -540,45 +552,44 @@ impl<'tt> TtParser<'tt> {
                     // These cannot appear in a matcher.
                     TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
                 }
-            } else if let Some(sequence) = &mp.sequence {
+            } else if let MatcherKind::Sequence(box SequenceSubmatcher { parent, seq }) = &mp.kind {
                 // We are past the end of a sequence.
                 // - If it has no separator, we must be only one past the end.
                 // - If it has a separator, we may be one past the end, in which case we must
                 //   look for a separator. Or we may be two past the end, in which case we have
                 //   already dealt with the separator.
-                debug_assert!(idx == len || idx == len + 1 && sequence.seq.separator.is_some());
+                debug_assert!(idx == len || idx == len + 1 && seq.separator.is_some());
 
                 if idx == len {
                     // Sequence matching may have finished: move the "dot" past the sequence in
                     // `parent`. This applies whether a separator is used or not. If sequence
                     // matching hasn't finished, this `new_mp` will fail quietly when it is
                     // processed next time around the loop.
-                    let mut new_mp = sequence.parent.clone();
-                    new_mp.matches = mp.matches.clone();
-                    new_mp.match_cur = mp.match_cur;
-                    new_mp.idx += 1;
+                    let new_mp = box MatcherPos {
+                        tts: parent.tts,
+                        idx: parent.idx + 1,
+                        matches: mp.matches.clone(), // a cheap clone
+                        seq_depth: mp.seq_depth - 1,
+                        match_cur: mp.match_cur,
+                        kind: parent.kind.clone(), // an expensive clone
+                    };
                     self.cur_mps.push(new_mp);
                 }
 
-                if sequence.seq.separator.is_some() && idx == len {
+                if seq.separator.is_some() && idx == len {
                     // Look for the separator.
-                    if sequence
-                        .seq
-                        .separator
-                        .as_ref()
-                        .map_or(false, |sep| token_name_eq(token, sep))
-                    {
+                    if seq.separator.as_ref().map_or(false, |sep| token_name_eq(token, sep)) {
                         // The matcher has a separator, and it matches the current token. We can
                         // advance past the separator token.
                         mp.idx += 1;
                         self.next_mps.push(mp);
                     }
-                } else if sequence.seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
+                } else if seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
                     // We don't need to look for a separator: either this sequence doesn't have
                     // one, or it does and we've already handled it. Also, we are allowed to have
                     // more than one repetition. Move the "dot" back to the beginning of the
                     // matcher and try to match again.
-                    mp.match_cur -= sequence.seq.num_captures;
+                    mp.match_cur -= seq.num_captures;
                     mp.idx = 0;
                     self.cur_mps.push(mp);
                 }
