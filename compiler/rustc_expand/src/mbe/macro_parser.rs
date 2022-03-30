@@ -75,7 +75,7 @@ crate use ParseResult::*;
 
 use crate::mbe::{self, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, DocComment, Nonterminal, Token};
+use rustc_ast::token::{self, DocComment, Nonterminal, Token, TokenKind};
 use rustc_parse::parser::{NtOrTt, Parser};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
@@ -454,18 +454,6 @@ impl<'tt> TtParser<'tt> {
         let mut eof_mps = EofMatcherPositions::None;
 
         while let Some(mut mp) = self.cur_mps.pop() {
-            // Backtrack out of delimited submatcher when necessary. When backtracking out again,
-            // we need to advance the "dot" past the delimiters in the parent matcher(s).
-            while mp.idx >= mp.tts.len() {
-                match mp.stack.pop() {
-                    Some(MatcherPosFrame { tts, idx }) => {
-                        mp.tts = tts;
-                        mp.idx = idx + 1;
-                    }
-                    None => break,
-                }
-            }
-
             // Get the current position of the "dot" (`idx`) in `mp` and the number of token
             // trees in the matcher (`len`).
             let idx = mp.idx;
@@ -516,11 +504,10 @@ impl<'tt> TtParser<'tt> {
 
                     TokenTree::Delimited(_, delimited) => {
                         // To descend into a delimited submatcher, we push the current matcher onto
-                        // a stack and push a new mp containing the submatcher onto `cur_mps`.
-                        //
-                        // At the beginning of the loop, if we reach the end of the delimited
-                        // submatcher, we pop the stack to backtrack out of the descent. Note that
-                        // we use `all_tts` to include the open and close delimiter tokens.
+                        // a stack and push a new mp containing the submatcher onto `cur_mps`. When
+                        // we reach the closing delimiter, we will pop the stack to backtrack out
+                        // of the descent. Note that we use `all_tts` to include the open and close
+                        // delimiter tokens.
                         let tts = mem::replace(&mut mp.tts, &delimited.all_tts);
                         let idx = mp.idx;
                         mp.stack.push(MatcherPosFrame { tts, idx });
@@ -542,6 +529,13 @@ impl<'tt> TtParser<'tt> {
                             mp.idx += 1;
                             self.cur_mps.push(mp);
                         } else if token_name_eq(&t, token) {
+                            if let TokenKind::CloseDelim(_) = token.kind {
+                                // Ascend out of the delimited submatcher.
+                                debug_assert_eq!(idx, len - 1);
+                                let frame = mp.stack.pop().unwrap();
+                                mp.tts = frame.tts;
+                                mp.idx = frame.idx;
+                            }
                             mp.idx += 1;
                             self.next_mps.push(mp);
                         }
