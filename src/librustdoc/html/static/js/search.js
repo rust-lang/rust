@@ -227,6 +227,17 @@ window.initSearch = function(rawSearchIndex) {
     }
 
     /**
+     * Returns `true` if the given `c` character is a separator.
+     *
+     * @param {string} c
+     *
+     * @return {boolean}
+     */
+    function isSeparatorCharacter(c) {
+        return ", \t".indexOf(c) !== -1;
+    }
+
+    /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
      * @param {string} name                  - Name of the query element.
@@ -295,7 +306,11 @@ window.initSearch = function(rawSearchIndex) {
                 if (!isIdentCharacter(c)) {
                     if (isErrorCharacter(c)) {
                         throw new Error(`Unexpected \`${c}\``);
-                    } else if (isStopCharacter(c) || isSpecialStartCharacter(c)) {
+                    } else if (
+                        isStopCharacter(c) ||
+                        isSpecialStartCharacter(c) ||
+                        isSeparatorCharacter(c))
+                    {
                         break;
                     }
                     // If we allow paths ("str::string" for example).
@@ -358,7 +373,7 @@ window.initSearch = function(rawSearchIndex) {
             var c = parserState.userQuery[parserState.pos];
             if (c === endChar) {
                 break;
-            } else if (c === "," || c === " ") {
+            } else if (isSeparatorCharacter(c)) {
                 parserState.pos += 1;
                 foundStopChar = true;
                 continue;
@@ -409,7 +424,7 @@ window.initSearch = function(rawSearchIndex) {
             c = parserState.userQuery[parserState.pos];
             if (isStopCharacter(c)) {
                 foundStopChar = true;
-                if (c === "," || c === " ") {
+                if (isSeparatorCharacter(c)) {
                     parserState.pos += 1;
                     continue;
                 } else if (c === "-" || c === ">") {

@@ -27,6 +27,7 @@ const QUERY = [
     "aaaaa<>b",
     "fn:aaaaa<>b",
     "->a<>b",
+    "a<->",
 ];
 
 const PARSED = [
@@ -281,5 +282,14 @@ const PARSED = [
         typeFilter: -1,
         userQuery: '->a<>b',
         error: 'Expected `,` or ` `, found `b`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: 'a<->',
+        returned: [],
+        typeFilter: -1,
+        userQuery: 'a<->',
+        error: 'Unexpected `-` after `<`',
     },
 ];
