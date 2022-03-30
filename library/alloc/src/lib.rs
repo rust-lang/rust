@@ -127,6 +127,7 @@
 #![feature(slice_ptr_len)]
 #![feature(slice_range)]
 #![feature(str_internals)]
+#![feature(strict_provenance)]
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_trait_v2)]

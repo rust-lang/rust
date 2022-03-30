@@ -159,7 +159,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let exact = if mem::size_of::<T>() == 0 {
-            (self.end as usize).wrapping_sub(self.ptr as usize)
+            self.end.addr().wrapping_sub(self.ptr.addr())
         } else {
             unsafe { self.end.offset_from(self.ptr) as usize }
         };

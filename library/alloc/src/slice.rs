@@ -1043,9 +1043,9 @@ where
 
     impl<T> Drop for MergeHole<T> {
         fn drop(&mut self) {
-            // `T` is not a zero-sized type, so it's okay to divide by its size.
-            let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
+            // `T` is not a zero-sized type, and these are pointers into a slice's elements.
             unsafe {
+                let len = self.end.offset_from(self.start) as usize;
                 ptr::copy_nonoverlapping(self.start, self.dest, len);
             }
         }

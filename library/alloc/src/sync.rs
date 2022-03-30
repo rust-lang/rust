@@ -1746,7 +1746,7 @@ impl<T> Weak<T> {
     #[rustc_const_unstable(feature = "const_weak_new", issue = "95091", reason = "recently added")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak { ptr: unsafe { NonNull::new_unchecked(usize::MAX as *mut ArcInner<T>) } }
+        Weak { ptr: unsafe { NonNull::new_unchecked(ptr::invalid_mut::<ArcInner<T>>(usize::MAX)) } }
     }
 }
 

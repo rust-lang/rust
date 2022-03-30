@@ -150,6 +150,79 @@ impl<T: ?Sized> *const T {
         bits as Self
     }
 
+    /// Gets the "address" portion of the pointer.
+    ///
+    /// This is equivalent to `self as usize`, which semantically discards
+    /// *provenance* and *address-space* information. To properly restore that information,
+    /// use [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    ///
+    /// On most platforms this will produce a value with the same bytes as the original
+    /// pointer, because all the bytes are dedicated to describing the address.
+    /// Platforms which need to store additional information in the pointer may
+    /// perform a change of representation to produce a value containing only the address
+    /// portion of the pointer. What that means is up to the platform to define.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn addr(self) -> usize
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        self as usize
+    }
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// This performs the same operation as an `addr as ptr` cast, but copies
+    /// the *address-space* and *provenance* of `self` to the new pointer.
+    /// This allows us to dynamically preserve and propagate this important
+    /// information in a way that is otherwise impossible with a unary cast.
+    ///
+    /// This is equivalent to using [`wrapping_offset`][pointer::wrapping_offset] to offset
+    /// `self` to the given address, and therefore has all the same capabilities and restrictions.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn with_addr(self, addr: usize) -> Self
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        //
+        // In the mean-time, this operation is defined to be "as if" it was
+        // a wrapping_offset, so we can emulate it as such. This should properly
+        // restore pointer provenance even under today's compiler.
+        let self_addr = self.addr() as isize;
+        let dest_addr = addr as isize;
+        let offset = dest_addr.wrapping_sub(self_addr);
+
+        // This is the canonical desugarring of this operation
+        self.cast::<u8>().wrapping_offset(offset).cast::<T>()
+    }
+
+    /// Creates a new pointer by mapping `self`'s address to a new one.
+    ///
+    /// This is a convenience for [`with_addr`][pointer::with_addr], see that method for details.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn map_addr(self, f: impl FnOnce(usize) -> usize) -> Self
+    where
+        T: Sized,
+    {
+        self.with_addr(f(self.addr()))
+    }
+
     /// Decompose a (possibly wide) pointer into its address and metadata components.
     ///
     /// The pointer can be later reconstructed with [`from_raw_parts`].
@@ -1006,7 +1079,7 @@ impl<T> *const [T] {
     /// use std::ptr;
     ///
     /// let slice: *const [i8] = ptr::slice_from_raw_parts(ptr::null(), 3);
-    /// assert_eq!(slice.as_ptr(), 0 as *const i8);
+    /// assert_eq!(slice.as_ptr(), ptr::null());
     /// ```
     #[inline]
     #[unstable(feature = "slice_ptr_get", issue = "74265")]

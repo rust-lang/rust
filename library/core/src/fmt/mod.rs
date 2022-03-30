@@ -352,6 +352,10 @@ impl<'a> ArgumentV1<'a> {
     }
 
     fn as_usize(&self) -> Option<usize> {
+        // We are type punning a bit here: USIZE_MARKER only takes an &usize but
+        // formatter takes an &Opaque. Rust understandably doesn't think we should compare
+        // the function pointers if they don't have the same signature, so we cast to
+        // usizes to tell it that we just want to compare addresses.
         if self.formatter as usize == USIZE_MARKER as usize {
             // SAFETY: The `formatter` field is only set to USIZE_MARKER if
             // the value is a usize, so this is safe
@@ -2246,7 +2250,7 @@ impl<T: ?Sized> Pointer for *const T {
             }
             f.flags |= 1 << (FlagV1::Alternate as u32);
 
-            let ret = LowerHex::fmt(&(ptr as usize), f);
+            let ret = LowerHex::fmt(&(ptr.addr()), f);
 
             f.width = old_width;
             f.flags = old_flags;

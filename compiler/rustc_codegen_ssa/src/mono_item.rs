@@ -116,7 +116,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
     fn to_raw_string(&self) -> String {
         match *self {
             MonoItem::Fn(instance) => {
-                format!("Fn({:?}, {})", instance.def, instance.substs.as_ptr() as usize)
+                format!("Fn({:?}, {})", instance.def, instance.substs.as_ptr().addr())
             }
             MonoItem::Static(id) => format!("Static({:?})", id),
             MonoItem::GlobalAsm(id) => format!("GlobalAsm({:?})", id),
