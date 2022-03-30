@@ -446,16 +446,12 @@ declare_features! (
     (active, must_not_suspend, "1.57.0", Some(83310), None),
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
-    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
-    (active, native_link_modifiers, "1.53.0", Some(81490), None),
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (active, native_link_modifiers_bundle, "1.53.0", Some(81490), None),
     /// Allows specifying the verbatim link modifier
     (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
-    /// Allows specifying the whole-archive link modifier
-    (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.

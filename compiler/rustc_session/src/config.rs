@@ -1948,9 +1948,6 @@ fn parse_native_lib_kind(
     kind: &str,
     error_format: ErrorOutputType,
 ) -> (NativeLibKind, Option<bool>) {
-    let is_nightly = nightly_options::match_is_nightly_build(matches);
-    let enable_unstable = nightly_options::is_unstable_enabled(matches);
-
     let (kind, modifiers) = match kind.split_once(':') {
         None => (kind, None),
         Some((kind, modifiers)) => (kind, Some(modifiers)),
@@ -1972,7 +1969,7 @@ fn parse_native_lib_kind(
                     "linking modifier can't be used with library kind `static-nobundle`",
                 )
             }
-            if !is_nightly {
+            if !nightly_options::match_is_nightly_build(matches) {
                 early_error(
                     error_format,
                     "library kind `static-nobundle` are currently unstable and only accepted on \
@@ -1988,23 +1985,7 @@ fn parse_native_lib_kind(
     };
     match modifiers {
         None => (kind, None),
-        Some(modifiers) => {
-            if !is_nightly {
-                early_error(
-                    error_format,
-                    "linking modifiers are currently unstable and only accepted on \
-                the nightly compiler",
-                );
-            }
-            if !enable_unstable {
-                early_error(
-                    error_format,
-                    "linking modifiers are currently unstable, \
-                the `-Z unstable-options` flag must also be passed to use it",
-                )
-            }
-            parse_native_lib_modifiers(kind, modifiers, error_format)
-        }
+        Some(modifiers) => parse_native_lib_modifiers(kind, modifiers, error_format, matches),
     }
 }
 
@@ -2012,7 +1993,23 @@ fn parse_native_lib_modifiers(
     mut kind: NativeLibKind,
     modifiers: &str,
     error_format: ErrorOutputType,
+    matches: &getopts::Matches,
 ) -> (NativeLibKind, Option<bool>) {
+    let report_unstable_modifier = |modifier| {
+        if !nightly_options::is_unstable_enabled(matches) {
+            let why = if nightly_options::match_is_nightly_build(matches) {
+                " and only accepted on the nightly compiler"
+            } else {
+                ", the `-Z unstable-options` flag must also be passed to use it"
+            };
+            early_error(
+                error_format,
+                &format!("{modifier} linking modifier is currently unstable{why}"),
+            )
+        }
+    };
+
+    let mut has_duplicate_modifiers = false;
     let mut verbatim = None;
     for modifier in modifiers.split(',') {
         let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
@@ -2026,6 +2023,10 @@ fn parse_native_lib_modifiers(
 
         match (modifier, &mut kind) {
             ("bundle", NativeLibKind::Static { bundle, .. }) => {
+                report_unstable_modifier(modifier);
+                if bundle.is_some() {
+                    has_duplicate_modifiers = true;
+                }
                 *bundle = Some(value);
             }
             ("bundle", _) => early_error(
@@ -2034,9 +2035,18 @@ fn parse_native_lib_modifiers(
                     `static` linking kind",
             ),
 
-            ("verbatim", _) => verbatim = Some(value),
+            ("verbatim", _) => {
+                report_unstable_modifier(modifier);
+                if verbatim.is_some() {
+                    has_duplicate_modifiers = true;
+                }
+                verbatim = Some(value);
+            }
 
             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
+                if whole_archive.is_some() {
+                    has_duplicate_modifiers = true;
+                }
                 *whole_archive = Some(value);
             }
             ("whole-archive", _) => early_error(
@@ -2047,6 +2057,10 @@ fn parse_native_lib_modifiers(
 
             ("as-needed", NativeLibKind::Dylib { as_needed })
             | ("as-needed", NativeLibKind::Framework { as_needed }) => {
+                report_unstable_modifier(modifier);
+                if as_needed.is_some() {
+                    has_duplicate_modifiers = true;
+                }
                 *as_needed = Some(value);
             }
             ("as-needed", _) => early_error(
@@ -2055,6 +2069,8 @@ fn parse_native_lib_modifiers(
                     `dylib` and `framework` linking kinds",
             ),
 
+            // Note: this error also excludes the case with empty modifier
+            // string, like `modifiers = ""`.
             _ => early_error(
                 error_format,
                 &format!(
@@ -2063,6 +2079,9 @@ fn parse_native_lib_modifiers(
                 ),
             ),
         }
+    }
+    if has_duplicate_modifiers {
+        report_unstable_modifier("duplicating")
     }
 
     (kind, verbatim)

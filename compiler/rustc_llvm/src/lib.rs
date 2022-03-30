@@ -1,5 +1,5 @@
 #![feature(nll)]
-#![feature(native_link_modifiers)]
+#![cfg_attr(bootstrap, feature(native_link_modifiers))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 
 // NOTE: This crate only exists to allow linking on mingw targets.

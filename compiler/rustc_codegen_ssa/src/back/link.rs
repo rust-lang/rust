@@ -1844,7 +1844,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // This change is somewhat breaking in practice due to local static libraries being linked
     // as whole-archive (#85144), so removing whole-archive may be a pre-requisite.
     if sess.opts.debugging_opts.link_native_libraries {
-        add_local_native_libraries(cmd, sess, codegen_results);
+        add_local_native_libraries(cmd, sess, codegen_results, crate_type);
     }
 
     // Upstream rust libraries and their nobundle static libraries
@@ -2016,6 +2016,16 @@ fn add_order_independent_options(
     add_rpath_args(cmd, sess, codegen_results, out_filename);
 }
 
+// A dylib may reexport symbols from the linked rlib or native static library.
+// Even if some symbol is reexported it's still not necessarily counted as used and may be
+// dropped, at least with `ld`-like ELF linkers. So we have to link some rlibs and static
+// libraries as whole-archive to avoid losing reexported symbols.
+// FIXME: Find a way to mark reexported symbols as used and avoid this use of whole-archive.
+fn default_to_whole_archive(sess: &Session, crate_type: CrateType, cmd: &dyn Linker) -> bool {
+    crate_type == CrateType::Dylib
+        && !(sess.target.limit_rdylib_exports && cmd.exported_symbol_means_used_symbol())
+}
+
 /// # Native library linking
 ///
 /// User-supplied library search paths (-L on the command line). These are the same paths used to
@@ -2029,6 +2039,7 @@ fn add_local_native_libraries(
     cmd: &mut dyn Linker,
     sess: &Session,
     codegen_results: &CodegenResults,
+    crate_type: CrateType,
 ) {
     let filesearch = sess.target_filesearch(PathKind::All);
     for search_path in filesearch.search_paths() {
@@ -2046,14 +2057,18 @@ fn add_local_native_libraries(
         codegen_results.crate_info.used_libraries.iter().filter(|l| relevant_lib(sess, l));
 
     let search_path = OnceCell::new();
-    let mut last = (NativeLibKind::Unspecified, None);
+    let mut last = (None, NativeLibKind::Unspecified, None);
     for lib in relevant_libs {
         let Some(name) = lib.name else {
             continue;
         };
 
         // Skip if this library is the same as the last.
-        last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+        last = if (lib.name, lib.kind, lib.verbatim) == last {
+            continue;
+        } else {
+            (lib.name, lib.kind, lib.verbatim)
+        };
 
         let verbatim = lib.verbatim.unwrap_or(false);
         match lib.kind {
@@ -2064,15 +2079,19 @@ fn add_local_native_libraries(
             NativeLibKind::Framework { as_needed } => {
                 cmd.link_framework(name, as_needed.unwrap_or(true))
             }
-            NativeLibKind::Static { bundle: None | Some(true), .. }
-            | NativeLibKind::Static { whole_archive: Some(true), .. } => {
-                cmd.link_whole_staticlib(
-                    name,
-                    verbatim,
-                    &search_path.get_or_init(|| archive_search_paths(sess)),
-                );
+            NativeLibKind::Static { whole_archive, .. } => {
+                if whole_archive == Some(true)
+                    || (whole_archive == None && default_to_whole_archive(sess, crate_type, cmd))
+                {
+                    cmd.link_whole_staticlib(
+                        name,
+                        verbatim,
+                        &search_path.get_or_init(|| archive_search_paths(sess)),
+                    );
+                } else {
+                    cmd.link_staticlib(name, verbatim)
+                }
             }
-            NativeLibKind::Static { .. } => cmd.link_staticlib(name, verbatim),
             NativeLibKind::RawDylib => {
                 // FIXME(#58713): Proper handling for raw dylibs.
                 bug!("raw_dylib feature not yet implemented");
@@ -2197,34 +2216,37 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
                 // external build system already has the native dependencies defined, and it
                 // will provide them to the linker itself.
                 if sess.opts.debugging_opts.link_native_libraries {
-                    let mut last = None;
+                    let mut last = (None, NativeLibKind::Unspecified, None);
                     for lib in &codegen_results.crate_info.native_libraries[&cnum] {
+                        let Some(name) = lib.name else {
+                            continue;
+                        };
                         if !relevant_lib(sess, lib) {
-                            // Skip libraries if they are disabled by `#[link(cfg=...)]`
                             continue;
                         }
 
                         // Skip if this library is the same as the last.
-                        if last == lib.name {
+                        last = if (lib.name, lib.kind, lib.verbatim) == last {
                             continue;
-                        }
+                        } else {
+                            (lib.name, lib.kind, lib.verbatim)
+                        };
 
-                        if let Some(static_lib_name) = lib.name {
-                            if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
-                                lib.kind
+                        if let NativeLibKind::Static { bundle: Some(false), whole_archive } =
+                            lib.kind
+                        {
+                            let verbatim = lib.verbatim.unwrap_or(false);
+                            if whole_archive == Some(true)
+                                || (whole_archive == None
+                                    && default_to_whole_archive(sess, crate_type, cmd))
                             {
-                                let verbatim = lib.verbatim.unwrap_or(false);
-                                if whole_archive == Some(true) {
-                                    cmd.link_whole_staticlib(
-                                        static_lib_name,
-                                        verbatim,
-                                        search_path.get_or_init(|| archive_search_paths(sess)),
-                                    );
-                                } else {
-                                    cmd.link_staticlib(static_lib_name, verbatim);
-                                }
-
-                                last = lib.name;
+                                cmd.link_whole_staticlib(
+                                    name,
+                                    verbatim,
+                                    search_path.get_or_init(|| archive_search_paths(sess)),
+                                );
+                            } else {
+                                cmd.link_staticlib(name, verbatim);
                             }
                         }
                     }
@@ -2282,15 +2304,10 @@ fn add_upstream_rust_crates<'a, B: ArchiveBuilder<'a>>(
         let cratepath = &src.rlib.as_ref().unwrap().0;
 
         let mut link_upstream = |path: &Path| {
-            // If we're creating a dylib, then we need to include the
-            // whole of each object in our archive into that artifact. This is
-            // because a `dylib` can be reused as an intermediate artifact.
-            //
-            // Note, though, that we don't want to include the whole of a
-            // compiler-builtins crate (e.g., compiler-rt) because it'll get
-            // repeatedly linked anyway.
+            // We don't want to include the whole compiler-builtins crate (e.g., compiler-rt)
+            // regardless of the default because it'll get repeatedly linked anyway.
             let path = fix_windows_verbatim_for_gcc(path);
-            if crate_type == CrateType::Dylib
+            if default_to_whole_archive(sess, crate_type, cmd)
                 && codegen_results.crate_info.compiler_builtins != Some(cnum)
             {
                 cmd.link_whole_rlib(&path);
@@ -2401,7 +2418,7 @@ fn add_upstream_native_libraries(
     sess: &Session,
     codegen_results: &CodegenResults,
 ) {
-    let mut last = (NativeLibKind::Unspecified, None);
+    let mut last = (None, NativeLibKind::Unspecified, None);
     for &cnum in &codegen_results.crate_info.used_crates {
         for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
             let Some(name) = lib.name else {
@@ -2412,7 +2429,11 @@ fn add_upstream_native_libraries(
             }
 
             // Skip if this library is the same as the last.
-            last = if (lib.kind, lib.name) == last { continue } else { (lib.kind, lib.name) };
+            last = if (lib.name, lib.kind, lib.verbatim) == last {
+                continue;
+            } else {
+                (lib.name, lib.kind, lib.verbatim)
+            };
 
             let verbatim = lib.verbatim.unwrap_or(false);
             match lib.kind {
