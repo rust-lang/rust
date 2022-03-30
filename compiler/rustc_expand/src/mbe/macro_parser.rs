@@ -122,7 +122,9 @@ struct MatcherPos<'tt> {
     /// submatcher, this is just the contents of that submatcher.
     tts: &'tt [TokenTree],
 
-    /// The "dot" position within the current submatcher, i.e. the index into `tts`.
+    /// The "dot" position within the current submatcher, i.e. the index into `tts`. Can go one or
+    /// two positions past the final elements in `tts` when dealing with sequences, see
+    /// `parse_tt_inner` for details.
     idx: usize,
 
     /// This vector ends up with one element per metavar in the *top-level* matcher, even when this
@@ -540,12 +542,17 @@ impl<'tt> TtParser<'tt> {
                 }
             } else if let Some(sequence) = &mp.sequence {
                 // We are past the end of a sequence.
-                debug_assert!(idx <= len + 1);
+                // - If it has no separator, we must be only one past the end.
+                // - If it has a separator, we may be one past the end, in which case we must
+                //   look for a separator. Or we may be two past the end, in which case we have
+                //   already dealt with the separator.
+                debug_assert!(idx == len || idx == len + 1 && sequence.seq.separator.is_some());
 
                 if idx == len {
-                    // Add all matches from the sequence to `parent`, and move the "dot" past the
-                    // sequence in `parent`. This allows for the case where the sequence matching
-                    // is finished.
+                    // Sequence matching may have finished: move the "dot" past the sequence in
+                    // `parent`. This applies whether a separator is used or not. If sequence
+                    // matching hasn't finished, this `new_mp` will fail quietly when it is
+                    // processed next time around the loop.
                     let mut new_mp = sequence.parent.clone();
                     new_mp.matches = mp.matches.clone();
                     new_mp.match_cur = mp.match_cur;
@@ -553,7 +560,8 @@ impl<'tt> TtParser<'tt> {
                     self.cur_mps.push(new_mp);
                 }
 
-                if idx == len && sequence.seq.separator.is_some() {
+                if sequence.seq.separator.is_some() && idx == len {
+                    // Look for the separator.
                     if sequence
                         .seq
                         .separator
@@ -566,9 +574,10 @@ impl<'tt> TtParser<'tt> {
                         self.next_mps.push(mp);
                     }
                 } else if sequence.seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
-                    // We don't need a separator. Move the "dot" back to the beginning of the
-                    // matcher and try to match again UNLESS we are only allowed to have _one_
-                    // repetition.
+                    // We don't need to look for a separator: either this sequence doesn't have
+                    // one, or it does and we've already handled it. Also, we are allowed to have
+                    // more than one repetition. Move the "dot" back to the beginning of the
+                    // matcher and try to match again.
                     mp.match_cur -= sequence.seq.num_captures;
                     mp.idx = 0;
                     self.cur_mps.push(mp);
