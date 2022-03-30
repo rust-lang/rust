@@ -45,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub CRATE_IN_MACRO_DEF,
-    correctness,
+    suspicious,
     "using `crate` in a macro definition"
 }
 declare_lint_pass!(CrateInMacroDef => [CRATE_IN_MACRO_DEF]);

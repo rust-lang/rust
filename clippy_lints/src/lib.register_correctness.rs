@@ -16,7 +16,6 @@ store.register_group(true, "clippy::correctness", Some("clippy_correctness"), ve
     LintId::of(casts::CAST_SLICE_DIFFERENT_SIZES),
     LintId::of(copies::IFS_SAME_COND),
     LintId::of(copies::IF_SAME_THEN_ELSE),
-    LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
     LintId::of(derive::DERIVE_HASH_XOR_EQ),
     LintId::of(derive::DERIVE_ORD_XOR_PARTIAL_ORD),
     LintId::of(drop_forget_ref::DROP_COPY),
