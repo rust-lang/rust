@@ -62,7 +62,7 @@ impl EarlyLintPass for CrateInMacroDef {
                     cx,
                     CRATE_IN_MACRO_DEF,
                     span,
-                    "reference to the macro call's crate, which is rarely intended",
+                    "`crate` references the macro call's crate",
                     "if reference to the macro definition's crate is intended, use",
                     String::from("$crate"),
                     Applicability::MachineApplicable,
