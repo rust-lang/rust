@@ -618,9 +618,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Desugar `<expr>.await` into:
     /// ```rust
     /// match ::std::future::IntoFuture::into_future(<expr>) {
-    ///     mut pinned => loop {
+    ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
-    ///             <::std::pin::Pin>::new_unchecked(&mut pinned),
+    ///             <::std::pin::Pin>::new_unchecked(&mut __awaitee),
     ///             ::std::future::get_context(task_context),
     ///         ) } {
     ///             ::std::task::Poll::Ready(result) => break result,
@@ -657,21 +657,24 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let expr = self.lower_expr_mut(expr);
         let expr_hir_id = expr.hir_id;
 
-        let pinned_ident = Ident::with_dummy_span(sym::pinned);
-        let (pinned_pat, pinned_pat_hid) =
-            self.pat_ident_binding_mode(span, pinned_ident, hir::BindingAnnotation::Mutable);
+        // Note that the name of this binding must not be changed to something else because
+        // debuggers and debugger extensions expect it to be called `__awaitee`. They use
+        // this name to identify what is being awaited by a suspended async functions.
+        let awaitee_ident = Ident::with_dummy_span(sym::__awaitee);
+        let (awaitee_pat, awaitee_pat_hid) =
+            self.pat_ident_binding_mode(span, awaitee_ident, hir::BindingAnnotation::Mutable);
 
         let task_context_ident = Ident::with_dummy_span(sym::_task_context);
 
         // unsafe {
         //     ::std::future::Future::poll(
-        //         ::std::pin::Pin::new_unchecked(&mut pinned),
+        //         ::std::pin::Pin::new_unchecked(&mut __awaitee),
         //         ::std::future::get_context(task_context),
         //     )
         // }
         let poll_expr = {
-            let pinned = self.expr_ident(span, pinned_ident, pinned_pat_hid);
-            let ref_mut_pinned = self.expr_mut_addr_of(span, pinned);
+            let awaitee = self.expr_ident(span, awaitee_ident, awaitee_pat_hid);
+            let ref_mut_awaitee = self.expr_mut_addr_of(span, awaitee);
             let task_context = if let Some(task_context_hid) = self.task_context {
                 self.expr_ident_mut(span, task_context_ident, task_context_hid)
             } else {
@@ -681,7 +684,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
-                arena_vec![self; ref_mut_pinned],
+                arena_vec![self; ref_mut_awaitee],
                 Some(expr_hir_id),
             );
             let get_context = self.expr_call_lang_item_fn_mut(
@@ -782,8 +785,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: self.lower_span(span),
         });
 
-        // mut pinned => loop { ... }
-        let pinned_arm = self.arm(pinned_pat, loop_expr);
+        // mut __awaitee => loop { ... }
+        let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
         let into_future_span = self.mark_span_with_reason(
@@ -799,11 +802,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         );
 
         // match <into_future_expr> {
-        //     mut pinned => loop { .. }
+        //     mut __awaitee => loop { .. }
         // }
         hir::ExprKind::Match(
             into_future_expr,
-            arena_vec![self; pinned_arm],
+            arena_vec![self; awaitee_arm],
             hir::MatchSource::AwaitDesugar,
         )
     }
