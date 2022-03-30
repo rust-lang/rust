@@ -74,20 +74,10 @@ impl FromRawHandle for Handle {
 
 impl Handle {
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut read = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
-        let res = cvt(unsafe {
-            c::ReadFile(
-                self.as_handle(),
-                buf.as_mut_ptr() as c::LPVOID,
-                len,
-                &mut read,
-                ptr::null_mut(),
-            )
-        });
+        let res = unsafe { self.synchronous_read(buf.as_mut_ptr().cast(), buf.len(), None) };
 
         match res {
-            Ok(_) => Ok(read as usize),
+            Ok(read) => Ok(read as usize),
 
             // The special treatment of BrokenPipe is to deal with Windows
             // pipe semantics, which yields this error when *reading* from
@@ -109,42 +99,23 @@ impl Handle {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        let mut read = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
-        let res = unsafe {
-            let mut overlapped: c::OVERLAPPED = mem::zeroed();
-            overlapped.Offset = offset as u32;
-            overlapped.OffsetHigh = (offset >> 32) as u32;
-            cvt(c::ReadFile(
-                self.as_handle(),
-                buf.as_mut_ptr() as c::LPVOID,
-                len,
-                &mut read,
-                &mut overlapped,
-            ))
-        };
+        let res =
+            unsafe { self.synchronous_read(buf.as_mut_ptr().cast(), buf.len(), Some(offset)) };
+
         match res {
-            Ok(_) => Ok(read as usize),
+            Ok(read) => Ok(read as usize),
             Err(ref e) if e.raw_os_error() == Some(c::ERROR_HANDLE_EOF as i32) => Ok(0),
             Err(e) => Err(e),
         }
     }
 
     pub fn read_buf(&self, buf: &mut ReadBuf<'_>) -> io::Result<()> {
-        let mut read = 0;
-        let len = cmp::min(buf.remaining(), <c::DWORD>::MAX as usize) as c::DWORD;
-        let res = cvt(unsafe {
-            c::ReadFile(
-                self.as_handle(),
-                buf.unfilled_mut().as_mut_ptr() as c::LPVOID,
-                len,
-                &mut read,
-                ptr::null_mut(),
-            )
-        });
+        let res = unsafe {
+            self.synchronous_read(buf.unfilled_mut().as_mut_ptr(), buf.remaining(), None)
+        };
 
         match res {
-            Ok(_) => {
+            Ok(read) => {
                 // Safety: `read` bytes were written to the initialized portion of the buffer
                 unsafe {
                     buf.assume_init(read as usize);
@@ -221,18 +192,7 @@ impl Handle {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let mut amt = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
-        cvt(unsafe {
-            c::WriteFile(
-                self.as_handle(),
-                buf.as_ptr() as c::LPVOID,
-                len,
-                &mut amt,
-                ptr::null_mut(),
-            )
-        })?;
-        Ok(amt as usize)
+        unsafe { self.synchronous_write(&buf, None) }
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -245,21 +205,7 @@ impl Handle {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        let mut written = 0;
-        let len = cmp::min(buf.len(), <c::DWORD>::MAX as usize) as c::DWORD;
-        unsafe {
-            let mut overlapped: c::OVERLAPPED = mem::zeroed();
-            overlapped.Offset = offset as u32;
-            overlapped.OffsetHigh = (offset >> 32) as u32;
-            cvt(c::WriteFile(
-                self.as_handle(),
-                buf.as_ptr() as c::LPVOID,
-                len,
-                &mut written,
-                &mut overlapped,
-            ))?;
-        }
-        Ok(written as usize)
+        unsafe { self.synchronous_write(&buf, Some(offset)) }
     }
 
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -273,6 +219,96 @@ impl Handle {
         options: c::DWORD,
     ) -> io::Result<Self> {
         Ok(Self(self.0.duplicate(access, inherit, options)?))
+    }
+
+    /// Performs a synchronous read.
+    ///
+    /// If the handle is opened for asynchronous I/O then this abort the process.
+    /// See #81357.
+    ///
+    /// If `offset` is `None` then the current file position is used.
+    unsafe fn synchronous_read(
+        &self,
+        buf: *mut mem::MaybeUninit<u8>,
+        len: usize,
+        offset: Option<u64>,
+    ) -> io::Result<usize> {
+        let mut io_status = c::IO_STATUS_BLOCK::default();
+
+        // The length is clamped at u32::MAX.
+        let len = cmp::min(len, c::DWORD::MAX as usize) as c::DWORD;
+        let status = c::NtReadFile(
+            self.as_handle(),
+            ptr::null_mut(),
+            None,
+            ptr::null_mut(),
+            &mut io_status,
+            buf,
+            len,
+            offset.map(|n| n as _).as_ref(),
+            None,
+        );
+        match status {
+            // If the operation has not completed then abort the process.
+            // Doing otherwise means that the buffer and stack may be written to
+            // after this function returns.
+            c::STATUS_PENDING => {
+                eprintln!("I/O error: operation failed to complete synchronously");
+                crate::process::abort();
+            }
+
+            // Return `Ok(0)` when there's nothing more to read.
+            c::STATUS_END_OF_FILE => Ok(0),
+
+            // Success!
+            status if c::nt_success(status) => Ok(io_status.Information),
+
+            status => {
+                let error = c::RtlNtStatusToDosError(status);
+                Err(io::Error::from_raw_os_error(error as _))
+            }
+        }
+    }
+
+    /// Performs a synchronous write.
+    ///
+    /// If the handle is opened for asynchronous I/O then this abort the process.
+    /// See #81357.
+    ///
+    /// If `offset` is `None` then the current file position is used.
+    unsafe fn synchronous_write(&self, buf: &[u8], offset: Option<u64>) -> io::Result<usize> {
+        let mut io_status = c::IO_STATUS_BLOCK::default();
+
+        // The length is clamped at u32::MAX.
+        let len = cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
+        let status = c::NtWriteFile(
+            self.as_handle(),
+            ptr::null_mut(),
+            None,
+            ptr::null_mut(),
+            &mut io_status,
+            buf.as_ptr(),
+            len,
+            offset.map(|n| n as _).as_ref(),
+            None,
+        );
+        match status {
+            // If the operation has not completed then abort the process.
+            // Doing otherwise means that the buffer maybe read and the stack
+            // written to after this function returns.
+            c::STATUS_PENDING => {
+                eprintln!("I/O error: operation failed to complete synchronously");
+                crate::process::abort();
+            }
+
+            // Success!
+            status if c::nt_success(status) => Ok(io_status.Information),
+
+            status => {
+                let error = c::RtlNtStatusToDosError(status);
+                Err(io::Error::from_raw_os_error(error as _))
+            }
+        }
     }
 }
 
