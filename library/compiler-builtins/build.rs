@@ -489,6 +489,16 @@ mod c {
             sources.remove(&["__aeabi_cdcmp", "__aeabi_cfcmp"]);
         }
 
+        // Android uses emulated TLS so we need a runtime support function.
+        if target_os == "android" {
+            sources.extend(&[("__emutls_get_address", "emutls.c")]);
+
+            // Work around a bug in the NDK headers (fixed in
+            // https://r.android.com/2038949 which will be released in a future
+            // NDK version) by providing a definition of LONG_BIT.
+            cfg.define("LONG_BIT", "(8 * sizeof(long))");
+        }
+
         // When compiling the C code we require the user to tell us where the
         // source code is, and this is largely done so when we're compiling as
         // part of rust-lang/rust we can use the same llvm-project repository as
