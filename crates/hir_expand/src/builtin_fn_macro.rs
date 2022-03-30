@@ -295,7 +295,7 @@ fn asm_expand(
 
     let expanded = quote! {{
         ##literals
-        ()
+        loop {}
     }};
     ExpandResult::ok(expanded)
 }
