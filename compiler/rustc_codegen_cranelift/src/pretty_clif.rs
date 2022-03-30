@@ -23,7 +23,7 @@
 //!     ss2 = explicit_slot 8 ; _4: (&&[u16],) size=8 align=8,8
 //!     sig0 = (i64, i64, i64) system_v
 //!     sig1 = (i64, i64, i64) system_v
-//!     fn0 = colocated u0:6 sig1 ; Instance { def: Item(DefId(0/0:31 ~ example[8787]::{{impl}}[1]::call_mut[0])), substs: [ReErased, ReErased] }
+//!     fn0 = collocated u0:6 sig1 ; Instance { def: Item(DefId(0/0:31 ~ example[8787]::{{impl}}[1]::call_mut[0])), substs: [ReErased, ReErased] }
 //!
 //! block0(v0: i64, v1: i64, v2: i64):
 //!     v3 = stack_addr.i64 ss0

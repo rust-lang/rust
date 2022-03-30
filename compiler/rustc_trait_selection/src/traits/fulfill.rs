@@ -61,7 +61,7 @@ pub struct FulfillmentContext<'tcx> {
     // Should this fulfillment context register type-lives-for-region
     // obligations on its parent infcx? In some cases, region
     // obligations are either already known to hold (normalization) or
-    // hopefully verifed elsewhere (type-impls-bound), and therefore
+    // hopefully verified elsewhere (type-impls-bound), and therefore
     // should not be checked.
     //
     // Note that if we are normalizing a type that we already

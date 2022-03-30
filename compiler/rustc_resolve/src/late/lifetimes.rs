@@ -261,7 +261,7 @@ enum Scope<'a> {
         s: ScopeRef<'a>,
     },
 
-    /// When we have nested trait refs, we concanetate late bound vars for inner
+    /// When we have nested trait refs, we concatenate late bound vars for inner
     /// trait refs from outer ones. But we also need to include any HRTB
     /// lifetimes encountered when identifying the trait that an associated type
     /// is declared on.
@@ -282,8 +282,8 @@ enum BinderScopeType {
     /// Any non-concatenating binder scopes.
     Normal,
     /// Within a syntactic trait ref, there may be multiple poly trait refs that
-    /// are nested (under the `associcated_type_bounds` feature). The binders of
-    /// the innner poly trait refs are extended from the outer poly trait refs
+    /// are nested (under the `associated_type_bounds` feature). The binders of
+    /// the inner poly trait refs are extended from the outer poly trait refs
     /// and don't increase the late bound depth. If you had
     /// `T: for<'a>  Foo<Bar: for<'b> Baz<'a, 'b>>`, then the `for<'b>` scope
     /// would be `Concatenating`. This also used in trait refs in where clauses
@@ -2930,7 +2930,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 path_span: Span,
                 generic_args: &'v hir::GenericArgs<'v>,
             ) {
-                // parenthesized args enter a new elison scope
+                // parenthesized args enter a new elision scope
                 if generic_args.parenthesized {
                     return;
                 }

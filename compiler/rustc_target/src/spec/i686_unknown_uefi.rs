@@ -49,7 +49,7 @@ pub fn target() -> Target {
     //        setLibcallCallingConv(RTLIB::UREM_I64, CallingConv::X86_StdCall);
     //        setLibcallCallingConv(RTLIB::MUL_I64, CallingConv::X86_StdCall);
     //      }
-    //   The compiler intrisics should be implemented by compiler-builtins.
+    //   The compiler intrinsics should be implemented by compiler-builtins.
     //   Unfortunately, compiler-builtins has not provided those intrinsics yet. Such as:
     //      i386/divdi3.S
     //      i386/lshrdi3.S
@@ -64,7 +64,7 @@ pub fn target() -> Target {
     //   2. Implement Intrinsics.
     //   We evaluated all options.
     //   #2 is hard because we need implement the intrinsics (_aulldiv) generated
-    //   from the other intrinscis (__udivdi3) implementation with the same
+    //   from the other intrinsics (__udivdi3) implementation with the same
     //   functionality (udivmod_inner). If we let _aulldiv() call udivmod_inner!(),
     //   then we are in loop. We may have to find another way to implement udivmod_inner!().
     //   #1.2 may break the existing usage.
@@ -73,7 +73,7 @@ pub fn target() -> Target {
     //   It uses cdecl, EAX/ECX/EDX as volatile register, and EAX/EDX as return value.
     //   We also checked the LLVM X86TargetLowering, the differences between -gnu and -msvc
     //   is fmodf(f32), longjmp() and TLS. None of them impacts the UEFI code.
-    // As a result, we choose -gnu for i686 version before those intrisics are implemented in
+    // As a result, we choose -gnu for i686 version before those intrinsics are implemented in
     // compiler-builtins. After compiler-builtins implements all required intrinsics, we may
     // remove -gnu and use the default one.
     Target {

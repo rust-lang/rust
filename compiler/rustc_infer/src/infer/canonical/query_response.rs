@@ -2,7 +2,7 @@
 //! in particular to extract out the resulting region obligations and
 //! encode them therein.
 //!
-//! For an overview of what canonicaliation is and how it fits into
+//! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc dev guide][c].
 //!
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html

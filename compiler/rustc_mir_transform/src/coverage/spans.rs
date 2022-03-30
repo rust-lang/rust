@@ -694,7 +694,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
     /// If prev.span() was split off to the right of a closure, prev.span().lo() will be
     /// greater than prev_original_span.lo(). The actual span of `prev_original_span` is
     /// not as important as knowing that `prev()` **used to have the same span** as `curr(),
-    /// which means their sort order is still meaningful for determinating the dominator
+    /// which means their sort order is still meaningful for determining the dominator
     /// relationship.
     ///
     /// When two `CoverageSpan`s have the same `Span`, dominated spans can be discarded; but if
@@ -726,7 +726,7 @@ impl<'a, 'tcx> CoverageSpans<'a, 'tcx> {
                 self.prev()
             );
             self.cutoff_prev_at_overlapping_curr();
-        // If one span dominates the other, assocate the span with the code from the dominated
+        // If one span dominates the other, associate the span with the code from the dominated
         // block only (`curr`), and discard the overlapping portion of the `prev` span. (Note
         // that if `prev.span` is wider than `prev_original_span`, a `CoverageSpan` will still
         // be created for `prev`s block, for the non-overlapping portion, left of `curr.span`.)

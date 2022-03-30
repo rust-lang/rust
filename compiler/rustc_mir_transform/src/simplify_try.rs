@@ -72,7 +72,7 @@ struct ArmIdentityInfo<'tcx> {
     /// (StorageLive index,, StorageDead index, Local)
     storage_stmts: Vec<(usize, usize, Local)>,
 
-    /// The statements that should be removed (turned into nops)
+    /// The statements that should be removed (turned into noops)
     stmts_to_remove: Vec<usize>,
 
     /// Indices of debug variables that need to be adjusted to point to

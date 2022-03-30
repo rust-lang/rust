@@ -150,7 +150,7 @@ pub struct Parser<'a> {
     pub current_closure: Option<ClosureSpans>,
 }
 
-/// Stores span informations about a closure.
+/// Stores span information about a closure.
 #[derive(Clone)]
 pub struct ClosureSpans {
     pub whole_closure: Span,

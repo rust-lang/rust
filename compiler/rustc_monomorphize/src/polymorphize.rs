@@ -65,7 +65,7 @@ fn unused_generic_params<'tcx>(
     mark_used_by_default_parameters(tcx, def_id, generics, &mut unused_parameters);
     debug!(?unused_parameters, "(after default)");
 
-    // Visit MIR and accumululate used generic parameters.
+    // Visit MIR and accumulate used generic parameters.
     let body = match tcx.hir().body_const_context(def_id.expect_local()) {
         // Const functions are actually called and should thus be considered for polymorphization
         // via their runtime MIR.

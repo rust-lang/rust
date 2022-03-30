@@ -1603,7 +1603,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 // Remove the `removal_span`.
                 corrections.push((removal_span, "".to_string()));
 
-                // Find the span after the crate name and if it has nested imports immediatately
+                // Find the span after the crate name and if it has nested imports immediately
                 // after the crate name already.
                 //   ie. `use a::b::{c, d};`
                 //               ^^^^^^^^^

@@ -93,7 +93,7 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         &self.region_bound_pairs_map
     }
 
-    /// This is a hack to support the old-skool regionck, which
+    /// This is a hack to support the old-school regionck, which
     /// processes region constraints from the main function and the
     /// closure together. In that context, when we enter a closure, we
     /// want to be able to "save" the state of the surrounding a

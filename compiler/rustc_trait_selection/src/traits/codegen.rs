@@ -46,8 +46,8 @@ pub fn codegen_fulfill_obligation<'tcx>(
             Ok(Some(selection)) => selection,
             Ok(None) => {
                 // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
+                // expands to some humongous type that never occurred
+                // statically -- this humongous type can then overflow,
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.

@@ -721,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         }
 
-        // The `Future` trait has only one associted item, `Output`,
+        // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(future_trait)[0];
         if output_assoc_item != predicate.projection_ty.item_def_id {

@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (None, true) => "variant",
                     }
                 };
-                // FIXME(eddyb) this intendation is probably unnecessary.
+                // FIXME(eddyb) this indentation is probably unnecessary.
                 let mut err = {
                     // Suggest clamping down the type if the method that is being attempted to
                     // be used exists at all, and the type is an ambiguous numeric type
@@ -279,7 +279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .into_iter()
                         .filter_map(|info| self.associated_value(info.def_id, item_name));
                     // There are methods that are defined on the primitive types and won't be
-                    // found when exploring `all_traits`, but we also need them to be acurate on
+                    // found when exploring `all_traits`, but we also need them to be accurate on
                     // our suggestions (#47759).
                     let found_assoc = |ty: Ty<'tcx>| {
                         simplify_type(tcx, ty, TreatParams::AsPlaceholders)

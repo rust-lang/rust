@@ -1177,7 +1177,7 @@ pub struct HygieneEncodeContext {
     /// that we don't accidentally try to encode any more `SyntaxContexts`
     serialized_ctxts: Lock<FxHashSet<SyntaxContext>>,
     /// The `SyntaxContexts` that we have serialized (e.g. as a result of encoding `Spans`)
-    /// in the most recent 'round' of serializnig. Serializing `SyntaxContextData`
+    /// in the most recent 'round' of serializing. Serializing `SyntaxContextData`
     /// may cause us to serialize more `SyntaxContext`s, so serialize in a loop
     /// until we reach a fixed point.
     latest_ctxts: Lock<FxHashSet<SyntaxContext>>,

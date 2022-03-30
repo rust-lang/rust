@@ -1147,7 +1147,7 @@ pub struct TargetOptions {
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
     pub late_link_args_dynamic: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if aall Rust
+    /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
     pub late_link_args_static: LinkArgs,
     /// Linker arguments that are unconditionally passed *after* any
@@ -1255,7 +1255,7 @@ pub struct TargetOptions {
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
     /// number sections that easily exceeds the given limit for larger
-    /// codebases. Consequently we want a way to disallow weak linkage on some
+    /// codebase. Consequently we want a way to disallow weak linkage on some
     /// platforms.
     pub allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.

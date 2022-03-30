@@ -50,7 +50,7 @@ pub(super) fn build_control_flow_graph<'tcx>(
 ///
 /// 1. Moving a variable `a` counts as a move of the whole variable.
 /// 2. Moving a partial path like `a.b.c` is ignored.
-/// 3. Reinitializing through a field (e.g. `a.b.c = 5`) counds as a reinitialization of all of
+/// 3. Reinitializing through a field (e.g. `a.b.c = 5`) counts as a reinitialization of all of
 ///    `a`.
 ///
 /// Some examples:

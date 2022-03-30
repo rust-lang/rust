@@ -860,7 +860,7 @@ where
             // and this is ok because `open_drop` here can only be reached
             // within that own generator's resume function.
             // This should only happen for the self argument on the resume function.
-            // It effetively only contains upvars until the generator transformation runs.
+            // It effectively only contains upvars until the generator transformation runs.
             // See librustc_body/transform/generator.rs for more details.
             ty::Generator(_, substs, _) => {
                 let tys: Vec<_> = substs.as_generator().upvar_tys().collect();

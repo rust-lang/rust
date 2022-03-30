@@ -144,7 +144,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }
 
         if !self.tcx.features().staged_api {
-            // Propagate unstability.  This can happen even for non-staged-api crates in case
+            // Propagate instability.  This can happen even for non-staged-api crates in case
             // -Zforce-unstable-if-unmarked is set.
             if let Some(stab) = self.parent_stab {
                 if inherit_deprecation.yes() && stab.level.is_unstable() {
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
-            // and propagate this unstability to children, but this annotation is completely
+            // and propagate this instability to children, but this annotation is completely
             // optional. They inherit stability from their parents when unannotated.
             hir::ItemKind::Impl(hir::Impl { of_trait: None, .. })
             | hir::ItemKind::ForeignMod { .. } => {
@@ -557,7 +557,7 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
         // Inherent impls and foreign modules serve only as containers for other items,
         // they don't have their own stability. They still can be annotated as unstable
-        // and propagate this unstability to children, but this annotation is completely
+        // and propagate this instability to children, but this annotation is completely
         // optional. They inherit stability from their parents when unannotated.
         if !matches!(
             i.kind,

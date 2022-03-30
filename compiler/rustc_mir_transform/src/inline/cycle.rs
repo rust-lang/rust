@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
 use rustc_session::Limit;
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
-// this query riddiculously often.
+// this query ridiculously often.
 #[instrument(level = "debug", skip(tcx, root, target))]
 crate fn mir_callgraph_reachable<'tcx>(
     tcx: TyCtxt<'tcx>,

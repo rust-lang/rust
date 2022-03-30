@@ -62,7 +62,7 @@
 //!
 //! Note: we will often abbreviate "constructor" as "ctor".
 //!
-//! The idea that powers everything that is done in this file is the following: a (matcheable)
+//! The idea that powers everything that is done in this file is the following: a (matchable)
 //! value is made from a constructor applied to a number of subvalues. Examples of constructors are
 //! `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for a struct
 //! `Foo`), and `2` (the constructor for the number `2`). This is natural when we think of
@@ -71,7 +71,7 @@
 //! Some of the ctors listed above might feel weird: `None` and `2` don't take any arguments.
 //! That's ok: those are ctors that take a list of 0 arguments; they are the simplest case of
 //! ctors. We treat `2` as a ctor because `u64` and other number types behave exactly like a huge
-//! `enum`, with one variant for each number. This allows us to see any matcheable value as made up
+//! `enum`, with one variant for each number. This allows us to see any matchable value as made up
 //! from a tree of ctors, each having a set number of children. For example: `Foo { bar: None,
 //! baz: Ok(0) }` is made from 4 different ctors, namely `Foo{..}`, `None`, `Ok` and `0`.
 //!
@@ -342,7 +342,7 @@ pub(super) struct PatCtxt<'a, 'p, 'tcx> {
     /// Whether the current pattern is the whole pattern as found in a match arm, or if it's a
     /// subpattern.
     pub(super) is_top_level: bool,
-    /// Wether the current pattern is from a `non_exhaustive` enum.
+    /// Whether the current pattern is from a `non_exhaustive` enum.
     pub(super) is_non_exhaustive: bool,
 }
 

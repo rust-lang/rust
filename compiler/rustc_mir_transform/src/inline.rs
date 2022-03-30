@@ -698,7 +698,7 @@ impl<'tcx> Inliner<'tcx> {
             // The `closure_ref` in our example above.
             let closure_ref_arg = iter::once(self_);
 
-            // The `tmp0`, `tmp1`, and `tmp2` in our example abonve.
+            // The `tmp0`, `tmp1`, and `tmp2` in our example above.
             let tuple_tmp_args = tuple_tys.iter().enumerate().map(|(i, ty)| {
                 // This is e.g., `tuple_tmp.0` in our example above.
                 let tuple_field = Operand::Move(tcx.mk_place_field(tuple, Field::new(i), ty));

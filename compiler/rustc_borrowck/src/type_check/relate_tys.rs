@@ -158,7 +158,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                         .infcx
                         .handle_opaque_type(a, b, a_is_expected, &cause, param_env)?
                         .obligations,
-                    // These fields are filled in during exectuion of the operation
+                    // These fields are filled in during execution of the operation
                     base_universe: None,
                     region_constraints: None,
                 },

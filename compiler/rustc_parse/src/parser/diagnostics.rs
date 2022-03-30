@@ -203,7 +203,7 @@ impl<'a> Parser<'a> {
         &self.sess.span_diagnostic
     }
 
-    /// Relace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
+    /// Replace `self` with `snapshot.parser` and extend `unclosed_delims` with `snapshot.unclosed_delims`.
     /// This is to avoid losing unclosed delims errors `create_snapshot_for_diagnostic` clears.
     pub(super) fn restore_snapshot(&mut self, snapshot: SnapshotParser<'a>) {
         *self = snapshot.parser;
