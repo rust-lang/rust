@@ -2,7 +2,6 @@ use self::xml::XmlEscaped;
 use super::*;
 use crate::rustfmt_diff::{make_diff, DiffLine, Mismatch};
 use std::io::{self, Write};
-use std::path::Path;
 
 mod xml;
 
@@ -30,7 +29,6 @@ impl Emitter for CheckstyleEmitter {
         }: FormattedFile<'_>,
     ) -> Result<EmitterResult, io::Error> {
         const CONTEXT_SIZE: usize = 0;
-        let filename = ensure_real_path(filename);
         let diff = make_diff(original_text, formatted_text, CONTEXT_SIZE);
         output_checkstyle_file(output, filename, diff)?;
         Ok(EmitterResult::default())
@@ -39,13 +37,13 @@ impl Emitter for CheckstyleEmitter {
 
 pub(crate) fn output_checkstyle_file<T>(
     mut writer: T,
-    filename: &Path,
+    filename: &FileName,
     diff: Vec<Mismatch>,
 ) -> Result<(), io::Error>
 where
     T: Write,
 {
-    write!(writer, r#"<file name="{}">"#, filename.display())?;
+    write!(writer, r#"<file name="{}">"#, filename)?;
     for mismatch in diff {
         let begin_line = mismatch.line_number;
         let mut current_line;
@@ -77,7 +75,11 @@ mod tests {
     fn emits_empty_record_on_file_with_no_mismatches() {
         let file_name = "src/well_formatted.rs";
         let mut writer = Vec::new();
-        let _ = output_checkstyle_file(&mut writer, &PathBuf::from(file_name), vec![]);
+        let _ = output_checkstyle_file(
+            &mut writer,
+            &FileName::Real(PathBuf::from(file_name)),
+            vec![],
+        );
         assert_eq!(
             &writer[..],
             format!(r#"<file name="{}"></file>"#, file_name).as_bytes()
