@@ -8,7 +8,7 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Finds structs without fields ("unit-like structs") that are declared with brackets.
+    /// Finds structs without fields (a so-called "empty struct") that are declared with brackets.
     ///
     /// ### Why is this bad?
     /// Empty brackets after a struct declaration can be omitted.
