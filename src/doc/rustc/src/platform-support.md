@@ -94,7 +94,7 @@ target | notes
 `powerpc64-unknown-linux-gnu` | PPC64 Linux (kernel 3.2, glibc 2.17)
 `powerpc64le-unknown-linux-gnu` | PPC64LE Linux (kernel 3.10, glibc 2.17)
 `riscv64gc-unknown-linux-gnu` | RISC-V Linux (kernel 4.20, glibc 2.29)
-`s390x-unknown-linux-gnu` | S390x Linux (kernel 3.2, glibc 2.11)
+`s390x-unknown-linux-gnu` | S390x Linux (kernel 3.2, glibc 2.17)
 `x86_64-unknown-freebsd` | 64-bit FreeBSD
 `x86_64-unknown-illumos` | illumos
 `x86_64-unknown-linux-musl` | 64-bit Linux with MUSL
