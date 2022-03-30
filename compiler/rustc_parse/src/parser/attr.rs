@@ -304,7 +304,7 @@ impl<'a> Parser<'a> {
                 // this replace range with it, removing the inner attribute from the final
                 // `AttrAnnotatedTokenStream`. Inner attributes are stored in the parsed AST note.
                 // During macro expansion, they are selectively inserted back into the
-                // token stream (the first inner attribute is remoevd each time we invoke the
+                // token stream (the first inner attribute is removed each time we invoke the
                 // corresponding macro).
                 let range = start_pos..end_pos;
                 if let Capturing::Yes = self.capture_state.capturing {

@@ -622,7 +622,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-varadic type unless the function is foreign,
+    /// Reject C-variadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
     fn check_c_varadic_type(&self, fk: FnKind<'a>) {
         match (fk.ctxt(), fk.header()) {

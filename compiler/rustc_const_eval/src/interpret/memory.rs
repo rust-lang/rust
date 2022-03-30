@@ -1011,7 +1011,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let src_parts = self.get_ptr_access(src, size, src_align)?;
         let dest_parts = self.get_ptr_access(dest, size * num_copies, dest_align)?; // `Size` multiplication
 
-        // FIXME: we look up both allocations twice here, once ebfore for the `check_ptr_access`
+        // FIXME: we look up both allocations twice here, once before for the `check_ptr_access`
         // and once below to get the underlying `&[mut] Allocation`.
 
         // Source alloc preparations and access hooks.

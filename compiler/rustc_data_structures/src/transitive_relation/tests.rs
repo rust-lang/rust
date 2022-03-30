@@ -96,7 +96,7 @@ fn mubs_best_choice2() {
     //
     // mubs(0,3) = [2]
 
-    // Like the precedecing test, but in this case intersection is [2,
+    // Like the preceding test, but in this case intersection is [2,
     // 1], and hence we rely on the first pare down call.
 
     let mut relation = TransitiveRelation::default();

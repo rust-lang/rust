@@ -137,7 +137,7 @@ impl CfgEval<'_, '_> {
         }
 
         // The majority of parsed attribute targets will never need to have early cfg-expansion
-        // run (e.g. they are not part of a `#[derive]` or `#[cfg_eval]` macro inoput).
+        // run (e.g. they are not part of a `#[derive]` or `#[cfg_eval]` macro input).
         // Therefore, we normally do not capture the necessary information about `#[cfg]`
         // and `#[cfg_attr]` attributes during parsing.
         //

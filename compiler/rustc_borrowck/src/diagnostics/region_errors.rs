@@ -176,7 +176,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // FIXME. We should handle this case better. It
                         // indicates that we have e.g., some region variable
                         // whose value is like `'a+'b` where `'a` and `'b` are
-                        // distinct unrelated univesal regions that are not
+                        // distinct unrelated universal regions that are not
                         // known to outlive one another. It'd be nice to have
                         // some examples where this arises to decide how best
                         // to report it; we could probably handle it by
