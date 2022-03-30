@@ -2,10 +2,10 @@
 // comments. The doc link points to an associated item, so we check that traits in scope for that
 // link are populated.
 
-// aux-build:extern-lang-item-impl-dep.rs
+// aux-build:extern-builtin-type-impl-dep.rs
 
 #![no_std]
 
-extern crate extern_lang_item_impl_dep;
+extern crate extern_builtin_type_impl_dep;
 
-pub use extern_lang_item_impl_dep::DerefsToF64;
+pub use extern_builtin_type_impl_dep::DerefsToF64;

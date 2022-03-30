@@ -6,7 +6,7 @@ use crate::iter;
 use crate::mem;
 use crate::ops;
 
-#[lang = "slice_u8"]
+#[cfg_attr(bootstrap, lang = "slice_u8")]
 #[cfg(not(test))]
 impl [u8] {
     /// Checks if all bytes in this slice are within the ASCII range.

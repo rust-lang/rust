@@ -2,8 +2,9 @@ use crate::rmeta::def_path_hash_map::DefPathHashMapRef;
 use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 use crate::rmeta::*;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_iter, Lrc, ParallelIterator};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -578,6 +579,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
+        let tcx = self.tcx;
         let mut i = self.position();
 
         // Encode the crate deps
@@ -623,8 +625,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let impls = self.encode_impls();
         let impls_bytes = self.position() - i;
 
-        let tcx = self.tcx;
-
+        i = self.position();
+        let incoherent_impls = self.encode_incoherent_impls();
+        let incoherent_impls_bytes = self.position() - i;
         // Encode MIR.
         i = self.position();
         self.encode_mir();
@@ -734,6 +737,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             source_map,
             traits,
             impls,
+            incoherent_impls,
             exported_symbols,
             interpret_alloc_index,
             tables,
@@ -762,6 +766,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             eprintln!("      source_map bytes: {}", source_map_bytes);
             eprintln!("          traits bytes: {}", traits_bytes);
             eprintln!("           impls bytes: {}", impls_bytes);
+            eprintln!("incoherent_impls bytes: {}", incoherent_impls_bytes);
             eprintln!("    exp. symbols bytes: {}", exported_symbols_bytes);
             eprintln!("  def-path table bytes: {}", def_path_table_bytes);
             eprintln!(" def-path hashes bytes: {}", def_path_hash_map_bytes);
@@ -1807,6 +1812,33 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     trait_id: (trait_def_id.krate.as_u32(), trait_def_id.index),
                     impls: self.lazy(&impls),
                 }
+            })
+            .collect();
+
+        self.lazy(&all_impls)
+    }
+
+    fn encode_incoherent_impls(&mut self) -> Lazy<[IncoherentImpls]> {
+        debug!("EncodeContext::encode_traits_and_impls()");
+        empty_proc_macro!(self);
+        let tcx = self.tcx;
+        let mut ctx = tcx.create_stable_hashing_context();
+        let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
+        all_impls.sort_by_cached_key(|&(&simp, _)| {
+            let mut hasher = StableHasher::new();
+            simp.hash_stable(&mut ctx, &mut hasher);
+            hasher.finish::<Fingerprint>();
+        });
+        let all_impls: Vec<_> = all_impls
+            .into_iter()
+            .map(|(&simp, impls)| {
+                let mut impls: Vec<_> =
+                    impls.into_iter().map(|def_id| def_id.local_def_index).collect();
+                impls.sort_by_cached_key(|&local_def_index| {
+                    tcx.hir().def_path_hash(LocalDefId { local_def_index })
+                });
+
+                IncoherentImpls { self_ty: simp, impls: self.lazy(impls) }
             })
             .collect();
 

@@ -281,25 +281,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // There are methods that are defined on the primitive types and won't be
                     // found when exploring `all_traits`, but we also need them to be acurate on
                     // our suggestions (#47759).
-                    let fund_assoc = |opt_def_id: Option<DefId>| {
-                        opt_def_id.and_then(|id| self.associated_value(id, item_name)).is_some()
+                    let found_assoc = |ty: Ty<'tcx>| {
+                        simplify_type(tcx, ty, TreatParams::AsPlaceholders)
+                            .and_then(|simp| {
+                                tcx.incoherent_impls(simp)
+                                    .iter()
+                                    .find_map(|&id| self.associated_value(id, item_name))
+                            })
+                            .is_some()
                     };
-                    let lang_items = tcx.lang_items();
                     let found_candidate = candidates.next().is_some()
-                        || fund_assoc(lang_items.i8_impl())
-                        || fund_assoc(lang_items.i16_impl())
-                        || fund_assoc(lang_items.i32_impl())
-                        || fund_assoc(lang_items.i64_impl())
-                        || fund_assoc(lang_items.i128_impl())
-                        || fund_assoc(lang_items.u8_impl())
-                        || fund_assoc(lang_items.u16_impl())
-                        || fund_assoc(lang_items.u32_impl())
-                        || fund_assoc(lang_items.u64_impl())
-                        || fund_assoc(lang_items.u128_impl())
-                        || fund_assoc(lang_items.f32_impl())
-                        || fund_assoc(lang_items.f32_runtime_impl())
-                        || fund_assoc(lang_items.f64_impl())
-                        || fund_assoc(lang_items.f64_runtime_impl());
+                        || found_assoc(tcx.types.i8)
+                        || found_assoc(tcx.types.i16)
+                        || found_assoc(tcx.types.i32)
+                        || found_assoc(tcx.types.i64)
+                        || found_assoc(tcx.types.i128)
+                        || found_assoc(tcx.types.u8)
+                        || found_assoc(tcx.types.u16)
+                        || found_assoc(tcx.types.u32)
+                        || found_assoc(tcx.types.u64)
+                        || found_assoc(tcx.types.u128)
+                        || found_assoc(tcx.types.f32)
+                        || found_assoc(tcx.types.f32);
                     if let (true, false, SelfSource::MethodCall(expr), true) = (
                         actual.is_numeric(),
                         actual.has_concrete_skeleton(),

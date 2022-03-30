@@ -95,6 +95,11 @@ crate struct CrateMetadata {
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
     trait_impls: FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<SimplifiedType>)]>>,
+    /// Inherent impls which do not follow the normal coherence rules.
+    ///
+    /// These can be introduced using either `#![rustc_coherence_is_core]`
+    /// or `#[rustc_allow_incoherent_impl]`.
+    incoherent_impls: FxHashMap<SimplifiedType, Lazy<[DefIndex]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
@@ -1028,11 +1033,13 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over the language items in the given crate.
-    fn get_lang_items(self) -> impl Iterator<Item = (DefId, usize)> + 'a {
-        self.root
-            .lang_items
-            .decode(self)
-            .map(move |(def_index, index)| (self.local_def_id(def_index), index))
+    fn get_lang_items(self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
+        tcx.arena.alloc_from_iter(
+            self.root
+                .lang_items
+                .decode(self)
+                .map(move |(def_index, index)| (self.local_def_id(def_index), index)),
+        )
     }
 
     /// Iterates over the diagnostic items in the given crate.
@@ -1327,15 +1334,30 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     /// Decodes all trait impls in the crate (for rustdoc).
     fn get_trait_impls(self) -> impl Iterator<Item = (DefId, DefId, Option<SimplifiedType>)> + 'a {
-        self.cdata.trait_impls.iter().flat_map(move |((trait_cnum_raw, trait_index), impls)| {
+        self.cdata.trait_impls.iter().flat_map(move |(&(trait_cnum_raw, trait_index), impls)| {
             let trait_def_id = DefId {
-                krate: self.cnum_map[CrateNum::from_u32(*trait_cnum_raw)],
-                index: *trait_index,
+                krate: self.cnum_map[CrateNum::from_u32(trait_cnum_raw)],
+                index: trait_index,
             };
             impls.decode(self).map(move |(impl_index, simplified_self_ty)| {
                 (trait_def_id, self.local_def_id(impl_index), simplified_self_ty)
             })
         })
+    }
+
+    fn get_all_incoherent_impls(self) -> impl Iterator<Item = DefId> + 'a {
+        self.cdata
+            .incoherent_impls
+            .values()
+            .flat_map(move |impls| impls.decode(self).map(move |idx| self.local_def_id(idx)))
+    }
+
+    fn get_incoherent_impls(self, tcx: TyCtxt<'tcx>, simp: SimplifiedType) -> &'tcx [DefId] {
+        if let Some(impls) = self.cdata.incoherent_impls.get(&simp) {
+            tcx.arena.alloc_from_iter(impls.decode(self).map(|idx| self.local_def_id(idx)))
+        } else {
+            &[]
+        }
     }
 
     fn get_implementations_of_trait(
@@ -1754,6 +1776,11 @@ impl CrateMetadata {
             .decode((&blob, sess))
             .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
             .collect();
+        let incoherent_impls = root
+            .incoherent_impls
+            .decode((&blob, sess))
+            .map(|incoherent_impls| (incoherent_impls.self_ty, incoherent_impls.impls))
+            .collect();
         let alloc_decoding_state =
             AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
         let dependencies = Lock::new(cnum_map.iter().cloned().collect());
@@ -1766,6 +1793,7 @@ impl CrateMetadata {
             blob,
             root,
             trait_impls,
+            incoherent_impls,
             raw_proc_macros,
             source_map_import_info: OnceCell::new(),
             def_path_hash_map,

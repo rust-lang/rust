@@ -130,7 +130,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     );
 }
 
-#[lang = "str"]
+#[cfg_attr(bootstrap, lang = "str")]
 #[cfg(not(test))]
 impl str {
     /// Returns the length of `self`.

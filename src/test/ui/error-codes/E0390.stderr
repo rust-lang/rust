@@ -1,10 +1,10 @@
-error[E0390]: only a single inherent implementation marked with `#[lang = "mut_ptr"]` is allowed for the `*mut T` primitive
-  --> $DIR/E0390.rs:5:1
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/E0390.rs:5:6
    |
 LL | impl *mut Foo {}
-   | ^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^
    |
-   = help: consider using a trait
+   = help: consider using an extension trait instead
 
 error: aborting due to previous error
 

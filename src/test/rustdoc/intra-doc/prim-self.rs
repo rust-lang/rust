@@ -1,12 +1,12 @@
 #![deny(rustdoc::broken_intra_doc_links)]
+#![rustc_coherence_is_core]
 #![allow(incomplete_features)] // inherent_associated_types
-#![feature(lang_items)]
+#![feature(rustc_attrs)]
 #![feature(no_core)]
 #![feature(rustdoc_internals)]
 #![feature(inherent_associated_types)]
 #![no_core]
 
-#[lang = "usize"]
 /// [Self::f]
 /// [Self::MAX]
 // @has prim_self/primitive.usize.html

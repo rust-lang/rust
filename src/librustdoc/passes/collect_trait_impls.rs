@@ -45,7 +45,7 @@ crate fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate
 
     // Also try to inline primitive impls from other crates.
     cx.tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for &def_id in PrimitiveType::all_impls(cx.tcx).values().flatten() {
+        for def_id in PrimitiveType::all_impls(cx.tcx) {
             if !def_id.is_local() {
                 inline::build_impl(cx, None, def_id, None, &mut new_items);
 
