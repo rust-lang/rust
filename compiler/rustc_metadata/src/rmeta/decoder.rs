@@ -1464,18 +1464,8 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn is_foreign_item(self, id: DefIndex) -> bool {
         match self.kind(id) {
-            EntryKind::ForeignImmStatic | EntryKind::ForeignMutStatic | EntryKind::ForeignFn(_) => {
-                true
-            }
+            EntryKind::ForeignStatic | EntryKind::ForeignFn(_) => true,
             _ => false,
-        }
-    }
-
-    fn static_mutability(self, id: DefIndex) -> Option<hir::Mutability> {
-        match self.kind(id) {
-            EntryKind::ImmStatic | EntryKind::ForeignImmStatic => Some(hir::Mutability::Not),
-            EntryKind::MutStatic | EntryKind::ForeignMutStatic => Some(hir::Mutability::Mut),
-            _ => None,
         }
     }
 

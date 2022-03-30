@@ -10,6 +10,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CrateNum, DefId, CRATE_DEF_ID};
+use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_session::lint::Lint;
@@ -130,7 +131,7 @@ impl Res {
             DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
                 "const"
             }
-            DefKind::Static => "static",
+            DefKind::Static(_) => "static",
             DefKind::Macro(MacroKind::Derive) => "derive",
             // Now handle things that don't have a specific disambiguator
             _ => match kind
@@ -1737,7 +1738,7 @@ impl Disambiguator {
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
                 "const" | "constant" => Kind(DefKind::Const),
-                "static" => Kind(DefKind::Static),
+                "static" => Kind(DefKind::Static(Mutability::Not)),
                 "function" | "fn" | "method" => Kind(DefKind::Fn),
                 "derive" => Kind(DefKind::Macro(MacroKind::Derive)),
                 "type" => NS(Namespace::TypeNS),
@@ -2091,7 +2092,7 @@ fn resolution_failure(
                                 return;
                             }
                             Trait | TyAlias | ForeignTy | OpaqueTy | TraitAlias | TyParam
-                            | Static => "associated item",
+                            | Static(_) => "associated item",
                             Impl | GlobalAsm => unreachable!("not a path"),
                         }
                     } else {

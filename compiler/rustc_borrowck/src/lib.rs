@@ -156,7 +156,6 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let tcx = infcx.tcx;
     let param_env = tcx.param_env(def.did);
-    let id = tcx.hir().local_def_id_to_hir_id(def.did);
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
     for var_debug_info in &input_body.var_debug_info {
@@ -226,7 +225,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
 
-    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
+    let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(def.did).is_fn_or_closure();
     let borrow_set =
         Rc::new(BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
@@ -289,8 +288,9 @@ fn do_mir_borrowck<'a, 'tcx>(
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
+    let def_hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
     let movable_generator = !matches!(
-        tcx.hir().get(id),
+        tcx.hir().get(def_hir_id),
         Node::Expr(&hir::Expr {
             kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
             ..
@@ -385,7 +385,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
-            _ => id,
+            _ => def_hir_id,
         };
 
         // Span and message don't matter; we overwrite them below anyway

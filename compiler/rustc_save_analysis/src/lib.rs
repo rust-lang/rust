@@ -701,7 +701,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let parent_def_id = self.tcx.parent(def_id).unwrap();
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(HirDefKind::Static | HirDefKind::Const | HirDefKind::AssocConst, _) => {
+            Res::Def(HirDefKind::Static(_) | HirDefKind::Const | HirDefKind::AssocConst, _) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
             }
             Res::Def(HirDefKind::AssocFn, decl_id) => {

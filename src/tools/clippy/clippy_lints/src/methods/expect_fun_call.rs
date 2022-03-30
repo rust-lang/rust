@@ -93,7 +93,7 @@ pub(super) fn check<'tcx>(
             },
             hir::ExprKind::Path(ref p) => matches!(
                 cx.qpath_res(p, arg.hir_id),
-                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _)
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static(_), _)
             ),
             _ => false,
         }

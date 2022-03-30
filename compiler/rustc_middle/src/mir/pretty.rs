@@ -950,9 +950,8 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn Write) -> io::Res
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
-        (DefKind::Static, _) => {
-            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?
-        }
+        (DefKind::Static(hir::Mutability::Not), _) => write!(w, "static ")?,
+        (DefKind::Static(hir::Mutability::Mut), _) => write!(w, "static mut ")?,
         (_, _) if is_function => write!(w, "fn ")?,
         (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),

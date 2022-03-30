@@ -52,7 +52,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
-        match self.tcx.hir().body_owner_kind(item_id) {
+        match self.tcx.hir().body_owner_kind(item_def_id) {
             hir::BodyOwnerKind::Const | hir::BodyOwnerKind::Static(_) => {
                 wbcx.visit_node_id(body.value.span, item_id);
             }

@@ -338,10 +338,8 @@ define_tables! {
 enum EntryKind {
     AnonConst,
     Const,
-    ImmStatic,
-    MutStatic,
-    ForeignImmStatic,
-    ForeignMutStatic,
+    Static,
+    ForeignStatic,
     ForeignMod,
     ForeignType,
     GlobalAsm,

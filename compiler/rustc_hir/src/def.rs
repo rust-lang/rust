@@ -78,7 +78,7 @@ pub enum DefKind {
     Const,
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
-    Static,
+    Static(ast::Mutability),
     /// Refers to the struct or enum variant's constructor.
     ///
     /// The reason `Ctor` exists in addition to [`DefKind::Struct`] and
@@ -128,7 +128,7 @@ impl DefKind {
                 "crate"
             }
             DefKind::Mod => "module",
-            DefKind::Static => "static",
+            DefKind::Static(..) => "static",
             DefKind::Enum => "enum",
             DefKind::Variant => "variant",
             DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
@@ -202,7 +202,7 @@ impl DefKind {
             DefKind::Fn
             | DefKind::Const
             | DefKind::ConstParam
-            | DefKind::Static
+            | DefKind::Static(..)
             | DefKind::Ctor(..)
             | DefKind::AssocFn
             | DefKind::AssocConst => Some(Namespace::ValueNS),

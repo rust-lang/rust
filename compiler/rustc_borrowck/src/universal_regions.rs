@@ -524,7 +524,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.did.to_def_id());
 
-        match tcx.hir().body_owner_kind(self.mir_hir_id) {
+        match tcx.hir().body_owner_kind(self.mir_def.did) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = if self.mir_def.did.to_def_id() == typeck_root_def_id {
                     tcx.type_of(typeck_root_def_id)

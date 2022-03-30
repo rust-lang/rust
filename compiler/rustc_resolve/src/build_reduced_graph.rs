@@ -701,8 +701,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the value namespace.
-            ItemKind::Static(..) => {
-                let res = Res::Def(DefKind::Static, def_id);
+            ItemKind::Static(_, mt, _) => {
+                let res = Res::Def(DefKind::Static(mt), def_id);
                 self.r.define(parent, ident, ValueNS, (res, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -907,7 +907,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         let def_id = local_def_id.to_def_id();
         let (def_kind, ns) = match item.kind {
             ForeignItemKind::Fn(..) => (DefKind::Fn, ValueNS),
-            ForeignItemKind::Static(..) => (DefKind::Static, ValueNS),
+            ForeignItemKind::Static(_, mt, _) => (DefKind::Static(mt), ValueNS),
             ForeignItemKind::TyAlias(..) => (DefKind::ForeignTy, TypeNS),
             ForeignItemKind::MacCall(_) => unreachable!(),
         };
@@ -963,7 +963,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(
                 DefKind::Fn
                 | DefKind::AssocFn
-                | DefKind::Static
+                | DefKind::Static(_)
                 | DefKind::Const
                 | DefKind::AssocConst
                 | DefKind::Ctor(..),

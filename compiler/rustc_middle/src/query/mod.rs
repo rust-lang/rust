@@ -586,12 +586,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
-    query static_mutability(def_id: DefId) -> Option<hir::Mutability> {
-        desc { |tcx| "looking up static mutability of `{}`", tcx.def_path_str(def_id) }
-        separate_provide_extern
-    }
-
     /// Returns `Some(generator_kind)` if the node pointed to by `def_id` is a generator.
     query generator_kind(def_id: DefId) -> Option<hir::GeneratorKind> {
         desc { |tcx| "looking up generator kind of `{}`", tcx.def_path_str(def_id) }

@@ -553,7 +553,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         }
         match def_kind {
             // No type privacy, so can be directly marked as reachable.
-            DefKind::Const | DefKind::Static | DefKind::TraitAlias | DefKind::TyAlias => {
+            DefKind::Const | DefKind::Static(_) | DefKind::TraitAlias | DefKind::TyAlias => {
                 if vis.is_accessible_from(module.to_def_id(), self.tcx) {
                     self.update(def_id, level);
                 }
@@ -1243,12 +1243,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
         let def = def.filter(|(kind, _)| {
             matches!(
                 kind,
-                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static
+                DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Static(_)
             )
         });
         if let Some((kind, def_id)) = def {
             let is_local_static =
-                if let DefKind::Static = kind { def_id.is_local() } else { false };
+                if let DefKind::Static(_) = kind { def_id.is_local() } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let sess = self.tcx.sess;
                 let sm = sess.source_map();

@@ -2147,7 +2147,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match instance {
             ty::InstanceDef::Item(def) => match self.def_kind(def.did) {
                 DefKind::Const
-                | DefKind::Static
+                | DefKind::Static(..)
                 | DefKind::AssocConst
                 | DefKind::Ctor(..)
                 | DefKind::AnonConst

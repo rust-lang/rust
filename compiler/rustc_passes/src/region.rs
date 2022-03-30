@@ -734,7 +734,7 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
 
     fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         let body_id = body.id();
-        let owner_id = self.tcx.hir().body_owner(body_id);
+        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
 
         debug!(
             "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",

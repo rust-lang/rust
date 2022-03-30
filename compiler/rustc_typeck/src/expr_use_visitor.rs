@@ -723,10 +723,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
-        let body_owner_is_closure = matches!(
-            tcx.hir().body_owner_kind(tcx.hir().local_def_id_to_hir_id(self.body_owner)),
-            hir::BodyOwnerKind::Closure,
-        );
+        let body_owner_is_closure =
+            matches!(tcx.hir().body_owner_kind(self.body_owner), hir::BodyOwnerKind::Closure,);
 
         // If we have a nested closure, we want to include the fake reads present in the nested closure.
         if let Some(fake_reads) = self.mc.typeck_results.closure_fake_reads.get(&closure_def_id) {
