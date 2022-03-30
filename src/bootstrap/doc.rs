@@ -618,20 +618,13 @@ impl Step for Rustc {
             }
         } else {
             for root_crate_path in paths {
-                if !root_crate_path.exists() {
-                    builder.info(&format!(
-                        "\tskipping - {} (unknown compiler crate)",
-                        root_crate_path.display()
-                    ));
-                } else {
-                    let root_crate = builder.crate_paths[root_crate_path];
-                    compiler_crates.extend(
-                        builder
-                            .in_tree_crates(&root_crate, Some(target))
-                            .into_iter()
-                            .map(|krate| krate.name),
-                    );
-                }
+                let root_crate = builder.crate_paths[root_crate_path];
+                compiler_crates.extend(
+                    builder
+                        .in_tree_crates(&root_crate, Some(target))
+                        .into_iter()
+                        .map(|krate| krate.name),
+                );
             }
         }
 
