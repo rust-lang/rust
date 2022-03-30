@@ -1273,7 +1273,13 @@ pub(crate) fn format_struct_struct(
     result.push_str(&header_str);
 
     let header_hi = struct_parts.ident.span.hi();
-    let body_lo = context.snippet_provider.span_after(span, "{");
+    let body_lo = if let Some(generics) = struct_parts.generics {
+        // Adjust the span to start at the end of the generic arguments before searching for the '{'
+        let span = span.with_lo(generics.span.hi());
+        context.snippet_provider.span_after(span, "{")
+    } else {
+        context.snippet_provider.span_after(span, "{")
+    };
 
     let generics_str = match struct_parts.generics {
         Some(g) => format_generics(
@@ -1377,17 +1383,21 @@ fn format_empty_struct_or_tuple(
         result.push_str(&offset.to_string_with_newline(context.config))
     }
     result.push_str(opener);
-    match rewrite_missing_comment(span, Shape::indented(offset, context.config), context) {
+
+    // indented shape for proper indenting of multi-line comments
+    let shape = Shape::indented(offset.block_indent(context.config), context.config);
+    match rewrite_missing_comment(span, shape, context) {
         Some(ref s) if s.is_empty() => (),
         Some(ref s) => {
-            if !is_single_line(s) || first_line_contains_single_line_comment(s) {
+            let is_multi_line = !is_single_line(s);
+            if is_multi_line || first_line_contains_single_line_comment(s) {
                 let nested_indent_str = offset
                     .block_indent(context.config)
                     .to_string_with_newline(context.config);
                 result.push_str(&nested_indent_str);
             }
             result.push_str(s);
-            if last_line_contains_single_line_comment(s) {
+            if is_multi_line || last_line_contains_single_line_comment(s) {
                 result.push_str(&offset.to_string_with_newline(context.config));
             }
         }
@@ -2046,9 +2056,15 @@ impl Rewrite for ast::Param {
                 {
                     result.push_str(&ty_str);
                 } else {
+                    let prev_str = if param_attrs_result.is_empty() {
+                        param_attrs_result
+                    } else {
+                        param_attrs_result + &shape.to_string_with_newline(context.config)
+                    };
+
                     result = combine_strs_with_missing_comments(
                         context,
-                        &(param_attrs_result + &shape.to_string_with_newline(context.config)),
+                        &prev_str,
                         param_name,
                         span,
                         shape,

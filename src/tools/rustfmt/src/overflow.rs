@@ -26,8 +26,6 @@ use crate::spanned::Spanned;
 use crate::types::{can_be_overflowed_type, SegmentParam};
 use crate::utils::{count_newlines, extra_offset, first_line_width, last_line_width, mk_sp};
 
-const SHORT_ITEM_THRESHOLD: usize = 10;
-
 /// A list of `format!`-like macros, that take a long format string and a list of arguments to
 /// format.
 ///
@@ -572,7 +570,12 @@ impl<'a> Context<'a> {
                             if one_line {
                                 tactic = DefinitiveListTactic::SpecialMacro(num_args_before);
                             };
-                        } else if is_every_expr_simple(&self.items) && no_long_items(list_items) {
+                        } else if is_every_expr_simple(&self.items)
+                            && no_long_items(
+                                list_items,
+                                self.context.config.short_array_element_width_threshold(),
+                            )
+                        {
                             tactic = DefinitiveListTactic::Mixed;
                         }
                     }
@@ -755,9 +758,9 @@ fn shape_from_indent_style(
     }
 }
 
-fn no_long_items(list: &[ListItem]) -> bool {
+fn no_long_items(list: &[ListItem], short_array_element_width_threshold: usize) -> bool {
     list.iter()
-        .all(|item| item.inner_as_ref().len() <= SHORT_ITEM_THRESHOLD)
+        .all(|item| item.inner_as_ref().len() <= short_array_element_width_threshold)
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
