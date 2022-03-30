@@ -22,6 +22,7 @@ impl<F: Future> IntoFuture for F {
     type Output = F::Output;
     type IntoFuture = F;
 
+    #[inline]
     fn into_future(self) -> Self::IntoFuture {
         self
     }
