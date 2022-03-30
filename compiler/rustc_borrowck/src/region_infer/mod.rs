@@ -789,7 +789,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let universe_a = self.scc_universes[scc_a];
 
         // Quick check: if scc_b's declared universe is a subset of
-        // scc_a's declared univese (typically, both are ROOT), then
+        // scc_a's declared universe (typically, both are ROOT), then
         // it cannot contain any problematic universe elements.
         if universe_a.can_name(self.scc_universes[scc_b]) {
             return true;
@@ -1993,7 +1993,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             .iter()
             .find_map(|constraint| {
                 if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
-                    // We currentl'y doesn't store the `DefId` in the `ConstraintCategory`
+                    // We currently do not store the `DefId` in the `ConstraintCategory`
                     // for performances reasons. The error reporting code used by NLL only
                     // uses the span, so this doesn't cause any problems at the moment.
                     Some(ObligationCauseCode::BindingObligation(

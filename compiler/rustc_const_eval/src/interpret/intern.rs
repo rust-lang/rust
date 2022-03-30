@@ -73,7 +73,7 @@ struct IsStaticOrFn;
 
 /// Intern an allocation without looking at its children.
 /// `mode` is the mode of the environment where we found this pointer.
-/// `mutablity` is the mutability of the place to be interned; even if that says
+/// `mutability` is the mutability of the place to be interned; even if that says
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).

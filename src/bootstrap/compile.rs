@@ -703,7 +703,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     //
     // Note that this is disabled if LLVM itself is disabled or we're in a check
     // build. If we are in a check build we still go ahead here presuming we've
-    // detected that LLVM is alreay built and good to go which helps prevent
+    // detected that LLVM is already built and good to go which helps prevent
     // busting caches (e.g. like #71152).
     if builder.config.llvm_enabled()
         && (builder.kind != Kind::Check

@@ -55,7 +55,7 @@ impl OutlivesSuggestionBuilder {
             | RegionNameSource::NamedFreeRegion(..)
             | RegionNameSource::Static => true,
 
-            // Don't give suggestions for upvars, closure return types, or other unnamable
+            // Don't give suggestions for upvars, closure return types, or other unnameable
             // regions.
             RegionNameSource::SynthesizedFreeEnvRegion(..)
             | RegionNameSource::AnonRegionFromArgument(..)

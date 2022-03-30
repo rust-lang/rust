@@ -594,7 +594,7 @@ impl<'a> Builder<'a> {
                 dist::RustDev,
                 dist::Extended,
                 // It seems that PlainSourceTarball somehow changes how some of the tools
-                // perceive their dependencies (see #93033) which would invaliate fingerprints
+                // perceive their dependencies (see #93033) which would invalidate fingerprints
                 // and force us to rebuild tools after vendoring dependencies.
                 // To work around this, create the Tarball after building all the tools.
                 dist::PlainSourceTarball,

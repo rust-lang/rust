@@ -2507,7 +2507,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // we have to solve them here where we instantiate the
             // closure.
             //
-            // Despite the opacity of the previous parapgrah, this is
+            // Despite the opacity of the previous paragraph, this is
             // actually relatively easy to understand in terms of the
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where

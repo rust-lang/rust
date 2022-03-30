@@ -709,7 +709,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
         let out = String::from_utf8_lossy(&out);
 
         // Check to see if the link failed with an error message that indicates it
-        // doesn't recognize the -no-pie option. If so, reperform the link step
+        // doesn't recognize the -no-pie option. If so, re-perform the link step
         // without it. This is safe because if the linker doesn't support -no-pie
         // then it should not default to linking executables as pie. Different
         // versions of gcc seem to use different quotes in the error message so
@@ -1049,7 +1049,7 @@ fn escape_string(s: &[u8]) -> String {
 fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
     // On macOS the runtimes are distributed as dylibs which should be linked to
     // both executables and dynamic shared objects. Everywhere else the runtimes
-    // are currently distributed as static liraries which should be linked to
+    // are currently distributed as static libraries which should be linked to
     // executables only.
     let needs_runtime = match crate_type {
         CrateType::Executable => true,
@@ -1850,7 +1850,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
     // Upstream rust libraries and their nobundle static libraries
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
 
-    // Upstream dymamic native libraries linked with `#[link]` attributes at and `-l`
+    // Upstream dynamic native libraries linked with `#[link]` attributes at and `-l`
     // command line options.
     // If -Zlink-native-libraries=false is set, then the assumption is that an
     // external build system already has the native dependencies defined, and it

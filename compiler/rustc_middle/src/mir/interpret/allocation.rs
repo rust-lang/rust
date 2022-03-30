@@ -164,14 +164,14 @@ impl<Tag> Allocation<Tag> {
         let bytes = Box::<[u8]>::try_new_zeroed_slice(size.bytes_usize()).map_err(|_| {
             // This results in an error that can happen non-deterministically, since the memory
             // available to the compiler can change between runs. Normally queries are always
-            // deterministic. However, we can be non-determinstic here because all uses of const
+            // deterministic. However, we can be non-deterministic here because all uses of const
             // evaluation (including ConstProp!) will make compilation fail (via hard error
             // or ICE) upon encountering a `MemoryExhausted` error.
             if panic_on_fail {
                 panic!("Allocation::uninit called with panic_on_fail had allocation failure")
             }
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpreation")
+                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted)
         })?;

@@ -288,7 +288,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
-        // Don't try to proess any nested obligations involving predicates
+        // Don't try to process any nested obligations involving predicates
         // that are already in the `ParamEnv` (modulo regions): we already
         // know that they must hold.
         for predicate in param_env.caller_bounds() {
@@ -683,12 +683,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         && is_new_pred
                     {
                         debug!(
-                            "evaluate_nested_obligations: adding projection predicate\
+                            "evaluate_nested_obligations: adding projection predicate \
                             to computed_preds: {:?}",
                             predicate
                         );
 
-                        // Under unusual circumstances, we can end up with a self-refeential
+                        // Under unusual circumstances, we can end up with a self-referential
                         // projection predicate. For example:
                         // <T as MyType>::Value == <T as MyType>::Value
                         // Not only is displaying this to the user pointless,
@@ -767,7 +767,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                             // We only care about sub-obligations
                             // when we started out trying to unify
                             // some inference variables. See the comment above
-                            // for more infomration
+                            // for more information
                             if p.term().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
@@ -784,7 +784,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         }
                         Ok(Ok(None)) => {
                             // It's ok not to make progress when have no inference variables -
-                            // in that case, we were only performing unifcation to check if an
+                            // in that case, we were only performing unification to check if an
                             // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
                             // However, we should always make progress (either by generating

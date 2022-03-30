@@ -1847,7 +1847,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         if node.is_expr() {
             // The only way that we can end up with a `MacCall` expression statement,
             // (as opposed to a `StmtKind::MacCall`) is if we have a macro as the
-            // traiing expression in a block (e.g. `fn foo() { my_macro!() }`).
+            // trailing expression in a block (e.g. `fn foo() { my_macro!() }`).
             // Record this information, so that we can report a more specific
             // `SEMICOLON_IN_EXPRESSIONS_FROM_MACROS` lint if needed.
             // See #78991 for an investigation of treating macros in this position

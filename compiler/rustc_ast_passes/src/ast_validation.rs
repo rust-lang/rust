@@ -622,9 +622,9 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// Reject C-varadic type unless the function is foreign,
+    /// Reject C-variadic type unless the function is foreign,
     /// or free and `unsafe extern "C"` semantically.
-    fn check_c_varadic_type(&self, fk: FnKind<'a>) {
+    fn check_c_variadic_type(&self, fk: FnKind<'a>) {
         match (fk.ctxt(), fk.header()) {
             (Some(FnCtxt::Foreign), _) => return,
             (Some(FnCtxt::Free), Some(header)) => match header.ext {
@@ -1504,7 +1504,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         };
         self.check_fn_decl(fk.decl(), self_semantic);
 
-        self.check_c_varadic_type(fk);
+        self.check_c_variadic_type(fk);
 
         // Functions cannot both be `const async`
         if let Some(FnHeader {

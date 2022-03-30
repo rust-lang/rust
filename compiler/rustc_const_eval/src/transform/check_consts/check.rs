@@ -953,7 +953,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 if callee_is_unstable_unmarked {
                     trace!("callee_is_unstable_unmarked");
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
-                    // `extern` funtions, and these have no way to get marked `const`. So instead we
+                    // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
                     if self.ccx.is_const_stable_const_fn() || is_intrinsic {
                         self.check_op(ops::FnCallUnstable(callee, None));

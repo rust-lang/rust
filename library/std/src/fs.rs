@@ -1729,11 +1729,17 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// This function currently corresponds to the `open` function in Unix
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
+///
+/// On Linux (including Android), this function attempts to use `copy_file_range(2)`,
+/// and falls back to reading and writing if that is not possible.
+///
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by
-/// this function. On MacOS, this function corresponds to `fclonefileat` and
-/// `fcopyfile`.
-/// Note that, this [may change in the future][changes].
+/// this function.
+///
+/// On MacOS, this function corresponds to `fclonefileat` and `fcopyfile`.
+///
+/// Note that platform-specific behavior [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 ///

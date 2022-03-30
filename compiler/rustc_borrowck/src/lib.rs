@@ -1048,7 +1048,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // borrow); so don't check if they interfere.
                 //
                 // NOTE: *reservations* do conflict with themselves;
-                // thus aren't injecting unsoundenss w/ this check.)
+                // thus aren't injecting unsoundness w/ this check.)
                 (Activation(_, activating), _) if activating == borrow_index => {
                     debug!(
                         "check_access_for_conflict place_span: {:?} sd: {:?} rw: {:?} \
@@ -1107,7 +1107,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                     // rust-lang/rust#56254 - This was previously permitted on
                     // the 2018 edition so we emit it as a warning. We buffer
-                    // these sepately so that we only emit a warning if borrow
+                    // these separately so that we only emit a warning if borrow
                     // checking was otherwise successful.
                     this.reservation_warnings
                         .insert(bi, (place_span.0, place_span.1, location, bk, borrow.clone()));
@@ -1588,7 +1588,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         debug!("check_if_reassignment_to_immutable_state({:?})", local);
 
-        // Check if any of the initializiations of `local` have happened yet:
+        // Check if any of the initializations of `local` have happened yet:
         if let Some(init_index) = self.is_local_ever_initialized(local, flow_state) {
             // And, if so, report an error.
             let init = &self.move_data.inits[init_index];

@@ -634,7 +634,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // This can happen when trying to lower the return type `x` in erroneous code like
         //   async fn foo(x: u8) -> x {}
         // In that case, `x` is lowered as a function parameter, and the return type is lowered as
-        // an opaque type as a synthetized HIR owner.
+        // an opaque type as a synthesized HIR owner.
         res.unwrap_or(Res::Err)
     }
 
