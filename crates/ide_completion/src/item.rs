@@ -579,10 +579,7 @@ mod tests {
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
-            vec![CompletionRelevance {
-                is_postfix: true,
-                ..CompletionRelevance::default()
-            }],
+            vec![CompletionRelevance { is_postfix: true, ..CompletionRelevance::default() }],
             vec![CompletionRelevance {
                 is_op_method: true,
                 is_private_editable: true,
