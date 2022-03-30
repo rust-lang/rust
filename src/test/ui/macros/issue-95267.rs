@@ -1,7 +1,8 @@
 // check-pass
 
-// This is a valid macro. Commit 4 in #95159 broke things such that it failed
-// with a "missing tokens in macro arguments" error, as reported in #95267.
+// The doc comment here is ignored. This is a bug, but #95267 showed that
+// existing programs rely on this behaviour, and changing it would require some
+// care and a transition period.
 macro_rules! f {
     (
         /// ab

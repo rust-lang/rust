@@ -6,7 +6,7 @@
 //!
 //! (In order to prevent the pathological case, we'd need to lazily construct the resulting
 //! `NamedMatch`es at the very end. It'd be a pain, and require more memory to keep around old
-//! items, but it would also save overhead)
+//! matcher positions, but it would also save overhead)
 //!
 //! We don't say this parser uses the Earley algorithm, because it's unnecessarily inaccurate.
 //! The macro parser restricts itself to the features of finite state automata. Earley parsers
@@ -14,19 +14,19 @@
 //!
 //! Quick intro to how the parser works:
 //!
-//! A 'position' is a dot in the middle of a matcher, usually represented as a
-//! dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
+//! A "matcher position" (a.k.a. "position" or "mp") is a dot in the middle of a matcher, usually
+//! written as a `·`. For example `· a $( a )* a b` is one, as is `a $( · a )* a b`.
 //!
 //! The parser walks through the input a character at a time, maintaining a list
-//! of threads consistent with the current position in the input string: `cur_items`.
+//! of threads consistent with the current position in the input string: `cur_mps`.
 //!
-//! As it processes them, it fills up `eof_items` with threads that would be valid if
-//! the macro invocation is now over, `bb_items` with threads that are waiting on
-//! a Rust non-terminal like `$e:expr`, and `next_items` with threads that are waiting
+//! As it processes them, it fills up `eof_mps` with threads that would be valid if
+//! the macro invocation is now over, `bb_mps` with threads that are waiting on
+//! a Rust non-terminal like `$e:expr`, and `next_mps` with threads that are waiting
 //! on a particular token. Most of the logic concerns moving the · through the
 //! repetitions indicated by Kleene stars. The rules for moving the · without
 //! consuming any input are called epsilon transitions. It only advances or calls
-//! out to the real Rust parser when no `cur_items` threads remain.
+//! out to the real Rust parser when no `cur_mps` threads remain.
 //!
 //! Example:
 //!
@@ -40,28 +40,28 @@
 //!
 //! Remaining input: a a a b
 //! cur: [a · $( a )* a b]
-//! Descend/Skip (first item).
+//! Descend/Skip (first position).
 //! next: [a $( · a )* a b]  [a $( a )* · a b].
 //!
 //! - - - Advance over an a. - - -
 //!
 //! Remaining input: a a b
 //! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first item)
+//! Follow epsilon transition: Finish/Repeat (first position)
 //! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: a b
 //! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first item)
+//! Follow epsilon transition: Finish/Repeat (first position)
 //! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over an a. - - - (this looks exactly like the last step)
 //!
 //! Remaining input: b
 //! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first item)
+//! Follow epsilon transition: Finish/Repeat (first position)
 //! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
 //!
 //! - - - Advance over a b. - - -
@@ -89,15 +89,13 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem;
 
-/// An unzipping of `TokenTree`s... see the `stack` field of `MatcherPos`.
-///
 /// This is used by `parse_tt_inner` to keep track of delimited submatchers that we have
 /// descended into.
 #[derive(Clone)]
-struct MatcherTtFrame<'tt> {
-    /// The "parent" matcher that we are descending into.
-    elts: &'tt [TokenTree],
-    /// The position of the "dot" in `elts` at the time we descended.
+struct MatcherPosFrame<'tt> {
+    /// The "parent" matcher that we have descended from.
+    tts: &'tt [TokenTree],
+    /// The position of the "dot" in `tt` at the time we descended.
     idx: usize,
 }
 
@@ -110,128 +108,135 @@ type NamedMatchVec = SmallVec<[NamedMatch; 1]>;
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
 
-/// Represents a single "position" (aka "matcher position", aka "item"), as
-/// described in the module documentation.
+/// A single matcher position, which could be within the top-level matcher, a submatcher, a
+/// subsubmatcher, etc. For example:
+/// ```text
+/// macro_rules! m { $id:ident ( $($e:expr),* ) } => { ... }
+///                              <---------->     second submatcher; one tt, one metavar
+///                            <-------------->   first submatcher; three tts, zero metavars
+///                  <--------------------------> top-level matcher; two tts, one metavar
+/// ```
 #[derive(Clone)]
 struct MatcherPos<'tt> {
-    /// The token or slice of tokens that make up the matcher. `elts` is short for "elements".
-    top_elts: &'tt [TokenTree],
+    /// The tokens that make up the current matcher. When we are within a `Sequence` or `Delimited`
+    /// submatcher, this is just the contents of that submatcher.
+    tts: &'tt [TokenTree],
 
-    /// The position of the "dot" in this matcher
+    /// The "dot" position within the current submatcher, i.e. the index into `tts`.
     idx: usize,
 
-    /// For each named metavar in the matcher, we keep track of token trees matched against the
-    /// metavar by the black box parser. In particular, there may be more than one match per
-    /// metavar if we are in a repetition (each repetition matches each of the variables).
-    /// Moreover, matchers and repetitions can be nested; the `matches` field is shared (hence the
-    /// `Rc`) among all "nested" matchers. `match_lo`, `match_cur`, and `match_hi` keep track of
-    /// the current position of the `self` matcher position in the shared `matches` list.
-    ///
-    /// Also, note that while we are descending into a sequence, matchers are given their own
-    /// `matches` vector. Only once we reach the end of a full repetition of the sequence do we add
-    /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
-    /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
-    /// wants the shared `matches`, one should use `up.matches`.
-    matches: Box<[Lrc<NamedMatchVec>]>,
-    /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
-    /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
-    /// to `matches[match_lo]`.
+    /// This vector ends up with one element per metavar in the *top-level* matcher, even when this
+    /// `MatcherPos` is for a submatcher. Each element records token trees matched against the
+    /// relevant metavar by the black box parser. The element will be a `MatchedSeq` if the
+    /// corresponding metavar is within a sequence.
+    matches: Lrc<NamedMatchVec>,
+
+    /// The number of sequences this mp is within.
+    seq_depth: usize,
+
+    /// The position in `matches` of the first metavar in this (sub)matcher. Zero if there are
+    /// no metavars.
     match_lo: usize,
-    /// The position in `matches` corresponding to the metavar we are currently trying to match
-    /// against the source token stream. `match_lo <= match_cur <= match_hi`.
+
+    /// The position in `matches` of the next metavar to be matched against the source token
+    /// stream. Should not be used if there are no metavars.
     match_cur: usize,
-    /// Similar to `match_lo` except `match_hi` is the position in `matches` of the _last_ metavar
-    /// in this matcher.
-    match_hi: usize,
 
-    /// This field is only used if we are matching a repetition.
-    repetition: Option<MatcherPosRepetition<'tt>>,
+    /// This field is only used if we are matching a sequence.
+    sequence: Option<MatcherPosSequence<'tt>>,
 
-    /// Specifically used to "unzip" token trees. By "unzip", we mean to unwrap the delimiters from
-    /// a delimited token tree (e.g., something wrapped in `(` `)`) or to get the contents of a doc
-    /// comment...
-    ///
-    /// When matching against matchers with nested delimited submatchers (e.g., `pat ( pat ( .. )
-    /// pat ) pat`), we need to keep track of the matchers we are descending into. This stack does
-    /// that where the bottom of the stack is the outermost matcher.
-    /// Also, throughout the comments, this "descent" is often referred to as "unzipping"...
-    stack: SmallVec<[MatcherTtFrame<'tt>; 1]>,
+    /// When we are within a `Delimited` submatcher (or subsubmatcher), this tracks the parent
+    /// matcher(s). The bottom of the stack is the top-level matcher.
+    stack: SmallVec<[MatcherPosFrame<'tt>; 1]>,
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 112);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 104);
 
 impl<'tt> MatcherPos<'tt> {
-    /// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
-    fn create_matches(len: usize) -> Box<[Lrc<NamedMatchVec>]> {
-        if len == 0 {
-            vec![]
-        } else {
-            let empty_matches = Lrc::new(SmallVec::new());
-            vec![empty_matches; len]
-        }
-        .into_boxed_slice()
-    }
-
-    /// Generates the top-level matcher position in which the "dot" is before the first token of
-    /// the matcher `ms`.
-    fn new(ms: &'tt [TokenTree]) -> Self {
-        let match_idx_hi = count_names(ms);
+    fn top_level(matcher: &'tt [TokenTree], empty_matches: Lrc<NamedMatchVec>) -> Self {
         MatcherPos {
-            // Start with the top level matcher given to us.
-            top_elts: ms,
-
-            // The "dot" is before the first token of the matcher.
+            tts: matcher,
             idx: 0,
-
-            // Initialize `matches` to a bunch of empty `Vec`s -- one for each metavar in
-            // `top_elts`. `match_lo` for `top_elts` is 0 and `match_hi` is `match_idx_hi`.
-            // `match_cur` is 0 since we haven't actually matched anything yet.
-            matches: Self::create_matches(match_idx_hi),
+            matches: empty_matches,
+            seq_depth: 0,
             match_lo: 0,
             match_cur: 0,
-            match_hi: match_idx_hi,
-
-            // Haven't descended into any delimiters, so this is empty.
             stack: smallvec![],
-
-            // Haven't descended into any sequences, so this is `None`.
-            repetition: None,
+            sequence: None,
         }
     }
 
-    fn repetition(up: Box<MatcherPos<'tt>>, seq: &'tt SequenceRepetition) -> Self {
-        MatcherPos {
-            top_elts: &seq.tts,
+    fn sequence(
+        parent: Box<MatcherPos<'tt>>,
+        seq: &'tt SequenceRepetition,
+        empty_matches: Lrc<NamedMatchVec>,
+    ) -> Self {
+        let mut mp = MatcherPos {
+            tts: &seq.tts,
             idx: 0,
-            matches: Self::create_matches(up.matches.len()),
-            match_lo: up.match_cur,
-            match_cur: up.match_cur,
-            match_hi: up.match_cur + seq.num_captures,
-            repetition: Some(MatcherPosRepetition { up, seq }),
+            matches: parent.matches.clone(),
+            seq_depth: parent.seq_depth,
+            match_lo: parent.match_cur,
+            match_cur: parent.match_cur,
+            sequence: Some(MatcherPosSequence { parent, seq }),
             stack: smallvec![],
+        };
+        // Start with an empty vec for each metavar within the sequence. Note that `mp.seq_depth`
+        // must have the parent's depth at this point for these `push_match` calls to work.
+        for idx in mp.match_lo..mp.match_lo + seq.num_captures {
+            mp.push_match(idx, MatchedSeq(empty_matches.clone()));
         }
+        mp.seq_depth += 1;
+        mp
     }
 
     /// Adds `m` as a named match for the `idx`-th metavar.
     fn push_match(&mut self, idx: usize, m: NamedMatch) {
-        let matches = Lrc::make_mut(&mut self.matches[idx]);
-        matches.push(m);
+        let matches = Lrc::make_mut(&mut self.matches);
+        match self.seq_depth {
+            0 => {
+                // We are not within a sequence. Just append `m`.
+                assert_eq!(idx, matches.len());
+                matches.push(m);
+            }
+            _ => {
+                // We are within a sequence. Find the final `MatchedSeq` at the appropriate depth
+                // and append `m` to its vector.
+                let mut curr = &mut matches[idx];
+                for _ in 0..self.seq_depth - 1 {
+                    match curr {
+                        MatchedSeq(seq) => {
+                            let seq = Lrc::make_mut(seq);
+                            curr = seq.last_mut().unwrap();
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                match curr {
+                    MatchedSeq(seq) => {
+                        let seq = Lrc::make_mut(seq);
+                        seq.push(m);
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
     }
 }
 
 #[derive(Clone)]
-struct MatcherPosRepetition<'tt> {
-    /// The "parent" matcher position. That is, the matcher position just before we enter the
-    /// sequence.
-    up: Box<MatcherPos<'tt>>,
+struct MatcherPosSequence<'tt> {
+    /// The parent matcher position. Effectively gives a linked list of matches all the way to the
+    /// top-level matcher.
+    parent: Box<MatcherPos<'tt>>,
 
     /// The sequence itself.
     seq: &'tt SequenceRepetition,
 }
 
-enum EofItems<'tt> {
+enum EofMatcherPositions<'tt> {
     None,
     One(Box<MatcherPos<'tt>>),
     Multiple,
@@ -254,24 +259,24 @@ crate enum ParseResult<T> {
 /// of metavars to the token trees they bind to.
 crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, NamedMatch>>;
 
-/// Count how many metavars are named in the given matcher `ms`.
-pub(super) fn count_names(ms: &[TokenTree]) -> usize {
-    ms.iter().fold(0, |count, elt| {
-        count
-            + match elt {
-                TokenTree::Delimited(_, delim) => count_names(delim.inner_tts()),
+/// Count how many metavars declarations are in `matcher`.
+pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
+    matcher
+        .iter()
+        .map(|tt| {
+            match tt {
+                TokenTree::Delimited(_, delim) => count_metavar_decls(delim.inner_tts()),
                 TokenTree::MetaVar(..) => 0,
                 TokenTree::MetaVarDecl(..) => 1,
-                // Panicking here would abort execution because `parse_tree` makes use of this
-                // function. In other words, RHS meta-variable expressions eventually end-up here.
-                //
-                // `0` is still returned to inform that no meta-variable was found. `Meta-variables
-                // != Meta-variable expressions`
+                // RHS meta-variable expressions eventually end-up here. `0` is returned to inform
+                // that no meta-variable was found, because "meta-variables" != "meta-variable
+                // expressions".
                 TokenTree::MetaVarExpr(..) => 0,
                 TokenTree::Sequence(_, seq) => seq.num_captures,
                 TokenTree::Token(..) => 0,
             }
-    })
+        })
+        .sum()
 }
 
 /// `NamedMatch` is a pattern-match result for a single metavar. All
@@ -331,11 +336,9 @@ crate enum NamedMatch {
     MatchedNonterminal(Lrc<Nonterminal>),
 }
 
-/// Takes a slice of token trees `ms` representing a matcher which successfully matched input
-/// and an iterator of items that matched input and produces a `NamedParseResult`.
 fn nameize<I: Iterator<Item = NamedMatch>>(
     sess: &ParseSess,
-    ms: &[TokenTree],
+    matcher: &[TokenTree],
     mut res: I,
 ) -> NamedParseResult {
     // Recursively descend into each type of matcher (e.g., sequences, delimited, metavars) and make
@@ -344,11 +347,11 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     // `NamedParseResult`.
     fn n_rec<I: Iterator<Item = NamedMatch>>(
         sess: &ParseSess,
-        m: &TokenTree,
+        tt: &TokenTree,
         res: &mut I,
         ret_val: &mut FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
     ) -> Result<(), (rustc_span::Span, String)> {
-        match *m {
+        match *tt {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
                     n_rec(sess, next_m, res.by_ref(), ret_val)?
@@ -380,8 +383,8 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
     }
 
     let mut ret_val = FxHashMap::default();
-    for m in ms {
-        match n_rec(sess, m, res.by_ref(), &mut ret_val) {
+    for tt in matcher {
+        match n_rec(sess, tt, res.by_ref(), &mut ret_val) {
             Ok(_) => {}
             Err((sp, msg)) => return Error(sp, msg),
         }
@@ -401,86 +404,96 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
     }
 }
 
-// Note: the item vectors could be created and dropped within `parse_tt`, but to avoid excess
+// Note: the position vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector fo each kind that is cleared and reused repeatedly.
 pub struct TtParser<'tt> {
     macro_name: Ident,
 
-    /// The set of current items to be processed. This should be empty by the end of a successful
+    /// The set of current mps to be processed. This should be empty by the end of a successful
     /// execution of `parse_tt_inner`.
-    cur_items: Vec<Box<MatcherPos<'tt>>>,
+    cur_mps: Vec<Box<MatcherPos<'tt>>>,
 
-    /// The set of newly generated items. These are used to replenish `cur_items` in the function
+    /// The set of newly generated mps. These are used to replenish `cur_mps` in the function
     /// `parse_tt`.
-    next_items: Vec<Box<MatcherPos<'tt>>>,
+    next_mps: Vec<Box<MatcherPos<'tt>>>,
 
-    /// The set of items that are waiting for the black-box parser.
-    bb_items: Vec<Box<MatcherPos<'tt>>>,
+    /// The set of mps that are waiting for the black-box parser.
+    bb_mps: Vec<Box<MatcherPos<'tt>>>,
+
+    /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
+    /// that have no metavars.
+    empty_matches: Lrc<NamedMatchVec>,
 }
 
 impl<'tt> TtParser<'tt> {
     pub(super) fn new(macro_name: Ident) -> TtParser<'tt> {
-        TtParser { macro_name, cur_items: vec![], next_items: vec![], bb_items: vec![] }
+        TtParser {
+            macro_name,
+            cur_mps: vec![],
+            next_mps: vec![],
+            bb_mps: vec![],
+            empty_matches: Lrc::new(smallvec![]),
+        }
     }
 
-    /// Process the matcher positions of `cur_items` until it is empty. In the process, this will
-    /// produce more items in `next_items` and `bb_items`.
-    ///
-    /// For more info about the how this happens, see the module-level doc comments and the inline
-    /// comments of this function.
+    /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will
+    /// produce more mps in `next_mps` and `bb_mps`.
     ///
     /// # Returns
     ///
     /// `Some(result)` if everything is finished, `None` otherwise. Note that matches are kept
-    /// track of through the items generated.
+    /// track of through the mps generated.
     fn parse_tt_inner(
         &mut self,
         sess: &ParseSess,
-        ms: &[TokenTree],
+        matcher: &[TokenTree],
         token: &Token,
     ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
-        let mut eof_items = EofItems::None;
+        let mut eof_mps = EofMatcherPositions::None;
 
-        while let Some(mut item) = self.cur_items.pop() {
-            // When unzipped trees end, remove them. This corresponds to backtracking out of a
-            // delimited submatcher into which we already descended. When backtracking out again, we
-            // need to advance the "dot" past the delimiters in the outer matcher.
-            while item.idx >= item.top_elts.len() {
-                match item.stack.pop() {
-                    Some(MatcherTtFrame { elts, idx }) => {
-                        item.top_elts = elts;
-                        item.idx = idx + 1;
+        while let Some(mut mp) = self.cur_mps.pop() {
+            // Backtrack out of delimited submatcher when necessary. When backtracking out again,
+            // we need to advance the "dot" past the delimiters in the parent matcher(s).
+            while mp.idx >= mp.tts.len() {
+                match mp.stack.pop() {
+                    Some(MatcherPosFrame { tts, idx }) => {
+                        mp.tts = tts;
+                        mp.idx = idx + 1;
                     }
                     None => break,
                 }
             }
 
-            // Get the current position of the "dot" (`idx`) in `item` and the number of token
+            // Get the current position of the "dot" (`idx`) in `mp` and the number of token
             // trees in the matcher (`len`).
-            let idx = item.idx;
-            let len = item.top_elts.len();
+            let idx = mp.idx;
+            let len = mp.tts.len();
 
             if idx < len {
                 // We are in the middle of a matcher. Compare the matcher's current tt against
                 // `token`.
-                match &item.top_elts[idx] {
+                match &mp.tts[idx] {
                     TokenTree::Sequence(_sp, seq) => {
                         let op = seq.kleene.op;
                         if op == mbe::KleeneOp::ZeroOrMore || op == mbe::KleeneOp::ZeroOrOne {
                             // Allow for the possibility of zero matches of this sequence.
-                            let mut new_item = item.clone();
-                            new_item.match_cur += seq.num_captures;
-                            new_item.idx += 1;
-                            for idx in item.match_cur..item.match_cur + seq.num_captures {
-                                new_item.push_match(idx, MatchedSeq(Lrc::new(smallvec![])));
+                            let mut new_mp = mp.clone();
+                            new_mp.match_cur += seq.num_captures;
+                            new_mp.idx += 1;
+                            for idx in mp.match_cur..mp.match_cur + seq.num_captures {
+                                new_mp.push_match(idx, MatchedSeq(self.empty_matches.clone()));
                             }
-                            self.cur_items.push(new_item);
+                            self.cur_mps.push(new_mp);
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
-                        self.cur_items.push(box MatcherPos::repetition(item, &seq));
+                        self.cur_mps.push(box MatcherPos::sequence(
+                            mp,
+                            &seq,
+                            self.empty_matches.clone(),
+                        ));
                     }
 
                     &TokenTree::MetaVarDecl(span, _, None) => {
@@ -497,61 +510,63 @@ impl<'tt> TtParser<'tt> {
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
                         if Parser::nonterminal_may_begin_with(kind, token) {
-                            self.bb_items.push(item);
+                            self.bb_mps.push(mp);
                         }
                     }
 
                     TokenTree::Delimited(_, delimited) => {
                         // To descend into a delimited submatcher, we push the current matcher onto
-                        // a stack and push a new item containing the submatcher onto `cur_items`.
+                        // a stack and push a new mp containing the submatcher onto `cur_mps`.
                         //
                         // At the beginning of the loop, if we reach the end of the delimited
                         // submatcher, we pop the stack to backtrack out of the descent. Note that
                         // we use `all_tts` to include the open and close delimiter tokens.
-                        let lower_elts = mem::replace(&mut item.top_elts, &delimited.all_tts);
-                        let idx = item.idx;
-                        item.stack.push(MatcherTtFrame { elts: lower_elts, idx });
-                        item.idx = 0;
-                        self.cur_items.push(item);
+                        let tts = mem::replace(&mut mp.tts, &delimited.all_tts);
+                        let idx = mp.idx;
+                        mp.stack.push(MatcherPosFrame { tts, idx });
+                        mp.idx = 0;
+                        self.cur_mps.push(mp);
                     }
 
                     TokenTree::Token(t) => {
                         // If it's a doc comment, we just ignore it and move on to the next tt in
-                        // the matcher. If the token matches, we can just advance the parser.
+                        // the matcher. This is a bug, but #95267 showed that existing programs
+                        // rely on this behaviour, and changing it would require some care and a
+                        // transition period.
+                        //
+                        // If the token matches, we can just advance the parser.
+                        //
                         // Otherwise, this match has failed, there is nothing to do, and hopefully
-                        // another item in `cur_items` will match.
+                        // another mp in `cur_mps` will match.
                         if matches!(t, Token { kind: DocComment(..), .. }) {
-                            item.idx += 1;
-                            self.cur_items.push(item);
+                            mp.idx += 1;
+                            self.cur_mps.push(mp);
                         } else if token_name_eq(&t, token) {
-                            item.idx += 1;
-                            self.next_items.push(item);
+                            mp.idx += 1;
+                            self.next_mps.push(mp);
                         }
                     }
 
                     // These cannot appear in a matcher.
                     TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
                 }
-            } else if let Some(repetition) = &item.repetition {
-                // We are past the end of a repetition.
+            } else if let Some(sequence) = &mp.sequence {
+                // We are past the end of a sequence.
                 debug_assert!(idx <= len + 1);
 
                 if idx == len {
-                    // Add all matches from the sequence to `up`, and move the "dot" past the
-                    // repetition in `up`. This allows for the case where the sequence matching is
-                    // finished.
-                    let mut new_pos = repetition.up.clone();
-                    for idx in item.match_lo..item.match_hi {
-                        let sub = item.matches[idx].clone();
-                        new_pos.push_match(idx, MatchedSeq(sub));
-                    }
-                    new_pos.match_cur = item.match_hi;
-                    new_pos.idx += 1;
-                    self.cur_items.push(new_pos);
+                    // Add all matches from the sequence to `parent`, and move the "dot" past the
+                    // sequence in `parent`. This allows for the case where the sequence matching
+                    // is finished.
+                    let mut new_mp = sequence.parent.clone();
+                    new_mp.matches = mp.matches.clone();
+                    new_mp.match_cur = mp.match_lo + sequence.seq.num_captures;
+                    new_mp.idx += 1;
+                    self.cur_mps.push(new_mp);
                 }
 
-                if idx == len && repetition.seq.separator.is_some() {
-                    if repetition
+                if idx == len && sequence.seq.separator.is_some() {
+                    if sequence
                         .seq
                         .separator
                         .as_ref()
@@ -559,25 +574,27 @@ impl<'tt> TtParser<'tt> {
                     {
                         // The matcher has a separator, and it matches the current token. We can
                         // advance past the separator token.
-                        item.idx += 1;
-                        self.next_items.push(item);
+                        mp.idx += 1;
+                        self.next_mps.push(mp);
                     }
-                } else if repetition.seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
+                } else if sequence.seq.kleene.op != mbe::KleeneOp::ZeroOrOne {
                     // We don't need a separator. Move the "dot" back to the beginning of the
                     // matcher and try to match again UNLESS we are only allowed to have _one_
                     // repetition.
-                    item.match_cur = item.match_lo;
-                    item.idx = 0;
-                    self.cur_items.push(item);
+                    mp.match_cur = mp.match_lo;
+                    mp.idx = 0;
+                    self.cur_mps.push(mp);
                 }
             } else {
-                // We are past the end of the matcher, and not in a repetition. Look for end of
+                // We are past the end of the matcher, and not in a sequence. Look for end of
                 // input.
                 debug_assert_eq!(idx, len);
                 if *token == token::Eof {
-                    eof_items = match eof_items {
-                        EofItems::None => EofItems::One(item),
-                        EofItems::One(_) | EofItems::Multiple => EofItems::Multiple,
+                    eof_mps = match eof_mps {
+                        EofMatcherPositions::None => EofMatcherPositions::One(mp),
+                        EofMatcherPositions::One(_) | EofMatcherPositions::Multiple => {
+                            EofMatcherPositions::Multiple
+                        }
                     }
                 }
             }
@@ -586,16 +603,18 @@ impl<'tt> TtParser<'tt> {
         // If we reached the end of input, check that there is EXACTLY ONE possible matcher.
         // Otherwise, either the parse is ambiguous (which is an error) or there is a syntax error.
         if *token == token::Eof {
-            Some(match eof_items {
-                EofItems::One(mut eof_item) => {
-                    let matches =
-                        eof_item.matches.iter_mut().map(|dv| Lrc::make_mut(dv).pop().unwrap());
-                    nameize(sess, ms, matches)
+            Some(match eof_mps {
+                EofMatcherPositions::One(mut eof_mp) => {
+                    assert_eq!(eof_mp.matches.len(), count_metavar_decls(matcher));
+                    // Need to take ownership of the matches from within the `Lrc`.
+                    Lrc::make_mut(&mut eof_mp.matches);
+                    let matches = Lrc::try_unwrap(eof_mp.matches).unwrap().into_iter();
+                    nameize(sess, matcher, matches)
                 }
-                EofItems::Multiple => {
+                EofMatcherPositions::Multiple => {
                     Error(token.span, "ambiguity: multiple successful parses".to_string())
                 }
-                EofItems::None => Failure(
+                EofMatcherPositions::None => Failure(
                     Token::new(
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
@@ -608,36 +627,35 @@ impl<'tt> TtParser<'tt> {
         }
     }
 
-    /// Use the given slice of token trees (`ms`) as a matcher. Match the token stream from the
-    /// given `parser` against it and return the match.
+    /// Match the token stream from `parser` against `matcher`.
     pub(super) fn parse_tt(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
-        ms: &'tt [TokenTree],
+        matcher: &'tt [TokenTree],
     ) -> NamedParseResult {
         // A queue of possible matcher positions. We initialize it with the matcher position in
-        // which the "dot" is before the first token of the first token tree in `ms`.
+        // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
-        // possible next positions into `next_items`. After some post-processing, the contents of
-        // `next_items` replenish `cur_items` and we start over again.
-        self.cur_items.clear();
-        self.cur_items.push(box MatcherPos::new(ms));
+        // possible next positions into `next_mps`. After some post-processing, the contents of
+        // `next_mps` replenish `cur_mps` and we start over again.
+        self.cur_mps.clear();
+        self.cur_mps.push(box MatcherPos::top_level(matcher, self.empty_matches.clone()));
 
         loop {
-            self.next_items.clear();
-            self.bb_items.clear();
+            self.next_mps.clear();
+            self.bb_mps.clear();
 
-            // Process `cur_items` until either we have finished the input or we need to get some
+            // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            if let Some(result) = self.parse_tt_inner(parser.sess, ms, &parser.token) {
+            if let Some(result) = self.parse_tt_inner(parser.sess, matcher, &parser.token) {
                 return result;
             }
 
-            // `parse_tt_inner` handled all cur_items, so it's empty.
-            assert!(self.cur_items.is_empty());
+            // `parse_tt_inner` handled all of `cur_mps`, so it's empty.
+            assert!(self.cur_mps.is_empty());
 
             // Error messages here could be improved with links to original rules.
-            match (self.next_items.len(), self.bb_items.len()) {
+            match (self.next_mps.len(), self.bb_mps.len()) {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
@@ -648,17 +666,17 @@ impl<'tt> TtParser<'tt> {
                 }
 
                 (_, 0) => {
-                    // Dump all possible `next_items` into `cur_items` for the next iteration. Then
+                    // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
                     // process the next token.
-                    self.cur_items.extend(self.next_items.drain(..));
+                    self.cur_mps.extend(self.next_mps.drain(..));
                     parser.to_mut().bump();
                 }
 
                 (0, 1) => {
                     // We need to call the black-box parser to get some nonterminal.
-                    let mut item = self.bb_items.pop().unwrap();
-                    if let TokenTree::MetaVarDecl(span, _, Some(kind)) = item.top_elts[item.idx] {
-                        let match_cur = item.match_cur;
+                    let mut mp = self.bb_mps.pop().unwrap();
+                    if let TokenTree::MetaVarDecl(span, _, Some(kind)) = mp.tts[mp.idx] {
+                        let match_cur = mp.match_cur;
                         // We use the span of the metavariable declaration to determine any
                         // edition-specific matching behavior for non-terminals.
                         let nt = match parser.to_mut().parse_nonterminal(kind) {
@@ -678,13 +696,13 @@ impl<'tt> TtParser<'tt> {
                             NtOrTt::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
                             NtOrTt::Tt(tt) => MatchedTokenTree(tt),
                         };
-                        item.push_match(match_cur, m);
-                        item.idx += 1;
-                        item.match_cur += 1;
+                        mp.push_match(match_cur, m);
+                        mp.idx += 1;
+                        mp.match_cur += 1;
                     } else {
                         unreachable!()
                     }
-                    self.cur_items.push(item);
+                    self.cur_mps.push(mp);
                 }
 
                 (_, _) => {
@@ -693,15 +711,15 @@ impl<'tt> TtParser<'tt> {
                 }
             }
 
-            assert!(!self.cur_items.is_empty());
+            assert!(!self.cur_mps.is_empty());
         }
     }
 
     fn ambiguity_error(&self, token_span: rustc_span::Span) -> NamedParseResult {
         let nts = self
-            .bb_items
+            .bb_mps
             .iter()
-            .map(|item| match item.top_elts[item.idx] {
+            .map(|mp| match mp.tts[mp.idx] {
                 TokenTree::MetaVarDecl(_, bind, Some(kind)) => {
                     format!("{} ('{}')", kind, bind)
                 }
@@ -715,7 +733,7 @@ impl<'tt> TtParser<'tt> {
             format!(
                 "local ambiguity when calling macro `{}`: multiple parsing options: {}",
                 self.macro_name,
-                match self.next_items.len() {
+                match self.next_mps.len() {
                     0 => format!("built-in NTs {}.", nts),
                     1 => format!("built-in NTs {} or 1 other option.", nts),
                     n => format!("built-in NTs {} or {} other options.", nts, n),

@@ -211,7 +211,7 @@ fn parse_tree(
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
-                    let name_captures = macro_parser::count_names(&sequence);
+                    let name_captures = macro_parser::count_metavar_decls(&sequence);
                     TokenTree::Sequence(
                         delim_span,
                         Lrc::new(SequenceRepetition {
