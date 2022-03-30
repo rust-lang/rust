@@ -5,8 +5,9 @@ use syn::spanned::Spanned;
 
 use std::collections::{BTreeSet, HashMap};
 
-/// Implements #[derive(SessionDiagnostic)], which allows for errors to be specified as a struct, independent
-/// from the actual diagnostics emitting code.
+/// Implements `#[derive(SessionDiagnostic)]`, which allows for errors to be specified as a struct,
+/// independent from the actual diagnostics emitting code.
+///
 /// ```ignore (pseudo-rust)
 /// # extern crate rustc_errors;
 /// # use rustc_errors::Applicability;
@@ -28,6 +29,7 @@ use std::collections::{BTreeSet, HashMap};
 ///     pub opt_sugg: Option<(Span, Applicability)>
 /// }
 /// ```
+///
 /// Then, later, to emit the error:
 ///
 /// ```ignore (pseudo-rust)
@@ -47,10 +49,10 @@ pub fn session_diagnostic_derive(s: synstructure::Structure<'_>) -> proc_macro2:
     SessionDiagnosticDerive::new(diag, sess, s).into_tokens()
 }
 
-// Checks whether the type name of `ty` matches `name`.
-//
-// Given some struct at a::b::c::Foo, this will return true for c::Foo, b::c::Foo, or
-// a::b::c::Foo. This reasonably allows qualified names to be used in the macro.
+/// Checks whether the type name of `ty` matches `name`.
+///
+/// Given some struct at `a::b::c::Foo`, this will return true for `c::Foo`, `b::c::Foo`, or
+/// `a::b::c::Foo`. This reasonably allows qualified names to be used in the macro.
 fn type_matches_path(ty: &syn::Type, name: &[&str]) -> bool {
     if let syn::Type::Path(ty) = ty {
         ty.path
@@ -65,7 +67,7 @@ fn type_matches_path(ty: &syn::Type, name: &[&str]) -> bool {
     }
 }
 
-/// The central struct for constructing the as_error method from an annotated struct.
+/// The central struct for constructing the `as_error` method from an annotated struct.
 struct SessionDiagnosticDerive<'a> {
     structure: synstructure::Structure<'a>,
     builder: SessionDiagnosticDeriveBuilder<'a>,
@@ -77,7 +79,7 @@ impl std::convert::From<syn::Error> for SessionDiagnosticDeriveError {
     }
 }
 
-/// Equivalent to rustc:errors::diagnostic::DiagnosticId, except stores the quoted expression to
+/// Equivalent to `rustc:errors::diagnostic::DiagnosticId`, except stores the quoted expression to
 /// initialise the code with.
 enum DiagnosticId {
     Error(proc_macro2::TokenStream),
@@ -109,9 +111,10 @@ fn span_err(span: impl proc_macro::MultiSpan, msg: &str) -> proc_macro::Diagnost
     Diagnostic::spanned(span, proc_macro::Level::Error, msg)
 }
 
-/// For methods that return a Result<_, SessionDiagnosticDeriveError>: emit a diagnostic on
-/// span $span with msg $msg (and, optionally, perform additional decoration using the FnOnce
-/// passed in `diag`). Then, return Err(ErrorHandled).
+/// For methods that return a `Result<_, SessionDiagnosticDeriveError>`:
+///
+/// Emit a diagnostic on span `$span` with msg `$msg` (optionally performing additional decoration
+/// using the `FnOnce` passed in `diag`) and return `Err(ErrorHandled)`.
 macro_rules! throw_span_err {
     ($span:expr, $msg:expr) => {{ throw_span_err!($span, $msg, |diag| diag) }};
     ($span:expr, $msg:expr, $f:expr) => {{
@@ -119,8 +122,8 @@ macro_rules! throw_span_err {
     }};
 }
 
-/// When possible, prefer using throw_span_err! over using this function directly. This only exists
-/// as a function to constrain `f` to an impl FnOnce.
+/// When possible, prefer using `throw_span_err!` over using this function directly. This only
+/// exists as a function to constrain `f` to an `impl FnOnce`.
 fn _throw_span_err(
     span: impl proc_macro::MultiSpan,
     msg: &str,
@@ -240,8 +243,8 @@ impl<'a> SessionDiagnosticDerive<'a> {
     }
 }
 
-/// Field information passed to the builder. Deliberately omits attrs to discourage the generate_*
-/// methods from walking the attributes themselves.
+/// Field information passed to the builder. Deliberately omits attrs to discourage the
+/// `generate_*` methods from walking the attributes themselves.
 struct FieldInfo<'a> {
     vis: &'a syn::Visibility,
     binding: &'a synstructure::BindingInfo<'a>,
@@ -250,22 +253,22 @@ struct FieldInfo<'a> {
 }
 
 /// Tracks persistent information required for building up the individual calls to diagnostic
-/// methods for the final generated method. This is a separate struct to SessionDerive only to be
-/// able to destructure and split self.builder and the self.structure up to avoid a double mut
-/// borrow later on.
+/// methods for the final generated method. This is a separate struct to `SessionDiagnosticDerive`
+/// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
+/// double mut borrow later on.
 struct SessionDiagnosticDeriveBuilder<'a> {
-    /// Name of the session parameter that's passed in to the as_error method.
+    /// Name of the session parameter that's passed in to the `as_error` method.
     sess: syn::Ident,
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
     fields: HashMap<String, &'a syn::Field>,
 
-    /// The identifier to use for the generated DiagnosticBuilder instance.
+    /// The identifier to use for the generated `DiagnosticBuilder` instance.
     diag: syn::Ident,
 
-    /// Whether this is a lint or an error. This dictates how the diag will be initialised. Span
-    /// stores at what Span the kind was first set at (for error reporting purposes, if the kind
+    /// Whether this is a lint or an error. This dictates how the diag will be initialised. `Span`
+    /// stores at what `Span` the kind was first set at (for error reporting purposes, if the kind
     /// was multiply specified).
     kind: Option<(DiagnosticId, proc_macro2::Span)>,
 }
@@ -560,7 +563,8 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     }
 
     /// In the strings in the attributes supplied to this macro, we want callers to be able to
-    /// reference fields in the format string. Take this, for example:
+    /// reference fields in the format string. For example:
+    ///
     /// ```ignore (not-usage-example)
     /// struct Point {
     ///     #[error = "Expected a point greater than ({x}, {y})"]
@@ -568,12 +572,15 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     ///     y: i32,
     /// }
     /// ```
-    /// We want to automatically pick up that {x} refers `self.x` and {y} refers to `self.y`, then
-    /// generate this call to format!:
+    ///
+    /// We want to automatically pick up that `{x}` refers `self.x` and `{y}` refers to `self.y`,
+    /// then generate this call to `format!`:
+    ///
     /// ```ignore (not-usage-example)
     /// format!("Expected a point greater than ({x}, {y})", x = self.x, y = self.y)
     /// ```
-    /// This function builds the entire call to format!.
+    ///
+    /// This function builds the entire call to `format!`.
     fn build_format(&self, input: &str, span: proc_macro2::Span) -> proc_macro2::TokenStream {
         // This set is used later to generate the final format string. To keep builds reproducible,
         // the iteration order needs to be deterministic, hence why we use a BTreeSet here instead
@@ -646,7 +653,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     }
 }
 
-/// If `ty` is an Option, returns Some(inner type). Else, returns None.
+/// If `ty` is an Option, returns `Some(inner type)`, otherwise returns `None`.
 fn option_inner_ty(ty: &syn::Type) -> Option<&syn::Type> {
     if type_matches_path(ty, &["std", "option", "Option"]) {
         if let syn::Type::Path(ty_path) = ty {
