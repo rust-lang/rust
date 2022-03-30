@@ -117,6 +117,7 @@ use std::os::unix::fs::symlink as symlink_file;
 use std::os::windows::fs::symlink_file;
 
 use filetime::FileTime;
+use once_cell::sync::OnceCell;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
@@ -904,7 +905,12 @@ impl Build {
 
     /// Returns the sysroot of the snapshot compiler.
     fn rustc_snapshot_sysroot(&self) -> &Path {
-        self.initial_rustc.parent().unwrap().parent().unwrap()
+        static SYSROOT_CACHE: OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+        SYSROOT_CACHE.get_or_init(|| {
+            let mut rustc = Command::new(&self.initial_rustc);
+            rustc.args(&["--print", "sysroot"]);
+            output(&mut rustc).trim().into()
+        })
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
