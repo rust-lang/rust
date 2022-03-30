@@ -97,7 +97,7 @@ crate struct CrateMetadata {
     trait_impls: FxHashMap<(u32, DefIndex), Lazy<[(DefIndex, Option<SimplifiedType>)]>>,
     /// Inherent impls which do not follow the normal coherence rules.
     ///
-    /// These can be introduces using either `#![rustc_coherence_is_core]`
+    /// These can be introduced using either `#![rustc_coherence_is_core]`
     /// or `#[rustc_allow_incoherent_impl]`.
     incoherent_impls: FxHashMap<SimplifiedType, Lazy<[DefIndex]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
