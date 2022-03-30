@@ -134,10 +134,6 @@ struct MatcherPos<'tt> {
     /// The number of sequences this mp is within.
     seq_depth: usize,
 
-    /// The position in `matches` of the first metavar in this (sub)matcher. Zero if there are
-    /// no metavars.
-    match_lo: usize,
-
     /// The position in `matches` of the next metavar to be matched against the source token
     /// stream. Should not be used if there are no metavars.
     match_cur: usize,
@@ -152,7 +148,7 @@ struct MatcherPos<'tt> {
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(MatcherPos<'_>, 104);
+rustc_data_structures::static_assert_size!(MatcherPos<'_>, 96);
 
 impl<'tt> MatcherPos<'tt> {
     fn top_level(matcher: &'tt [TokenTree], empty_matches: Lrc<NamedMatchVec>) -> Self {
@@ -161,7 +157,6 @@ impl<'tt> MatcherPos<'tt> {
             idx: 0,
             matches: empty_matches,
             seq_depth: 0,
-            match_lo: 0,
             match_cur: 0,
             stack: smallvec![],
             sequence: None,
@@ -178,14 +173,13 @@ impl<'tt> MatcherPos<'tt> {
             idx: 0,
             matches: parent.matches.clone(),
             seq_depth: parent.seq_depth,
-            match_lo: parent.match_cur,
             match_cur: parent.match_cur,
             sequence: Some(MatcherPosSequence { parent, seq }),
             stack: smallvec![],
         };
         // Start with an empty vec for each metavar within the sequence. Note that `mp.seq_depth`
         // must have the parent's depth at this point for these `push_match` calls to work.
-        for idx in mp.match_lo..mp.match_lo + seq.num_captures {
+        for idx in mp.match_cur..mp.match_cur + seq.num_captures {
             mp.push_match(idx, MatchedSeq(empty_matches.clone()));
         }
         mp.seq_depth += 1;
@@ -554,7 +548,7 @@ impl<'tt> TtParser<'tt> {
                     // is finished.
                     let mut new_mp = sequence.parent.clone();
                     new_mp.matches = mp.matches.clone();
-                    new_mp.match_cur = mp.match_lo + sequence.seq.num_captures;
+                    new_mp.match_cur = mp.match_cur;
                     new_mp.idx += 1;
                     self.cur_mps.push(new_mp);
                 }
@@ -575,7 +569,7 @@ impl<'tt> TtParser<'tt> {
                     // We don't need a separator. Move the "dot" back to the beginning of the
                     // matcher and try to match again UNLESS we are only allowed to have _one_
                     // repetition.
-                    mp.match_cur = mp.match_lo;
+                    mp.match_cur -= sequence.seq.num_captures;
                     mp.idx = 0;
                     self.cur_mps.push(mp);
                 }
