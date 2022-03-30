@@ -617,7 +617,7 @@ impl f32 {
     /// negative sign bit and negative infinity. Note that IEEE-745 doesn't assign any
     /// meaning to the sign bit in case of a NaN, and as Rust doesn't guarantee that
     /// the bit pattern of NaNs are conserved over arithmetic operations, the result of
-    /// `is_sign_positive` on a NaN might produce an unexpected result in some cases.
+    /// `is_sign_negative` on a NaN might produce an unexpected result in some cases.
     /// See [explanation of NaN as a special value](f32) for more info.
     ///
     /// ```
