@@ -13,7 +13,7 @@ use core_simd::*;
 // go along the resulting array and add up the result.
 // In the next example we will see if there
 //  is any difference to adding and multiplying in tandem.
-pub fn dot_prod_0(a: &[f32], b: &[f32]) -> f32 {
+pub fn dot_prod_scalar_0(a: &[f32], b: &[f32]) -> f32 {
     assert_eq!(a.len(), b.len());
 
     a.iter().zip(b.iter()).map(|(a, b)| a * b).sum()
@@ -26,7 +26,7 @@ pub fn dot_prod_0(a: &[f32], b: &[f32]) -> f32 {
 // hypothesis and benchmarks - we will mention them later on.
 // With the use of `fold`, we're doing a multiplication,
 // and then adding it to the sum, one element from both vectors at a time.
-pub fn dot_prod_1(a: &[f32], b: &[f32]) -> f32 {
+pub fn dot_prod_scalar_1(a: &[f32], b: &[f32]) -> f32 {
     assert_eq!(a.len(), b.len());
     a.iter()
         .zip(b.iter())
@@ -154,8 +154,8 @@ mod tests {
         let y: Vec<f32> = [2.0; 1003].to_vec();
 
         // Basic check
-        assert_eq!(0.0, dot_prod_0(&a, &b));
-        assert_eq!(0.0, dot_prod_1(&a, &b));
+        assert_eq!(0.0, dot_prod_scalar_0(&a, &b));
+        assert_eq!(0.0, dot_prod_scalar_1(&a, &b));
         assert_eq!(0.0, dot_prod_simd_0(&a, &b));
         assert_eq!(0.0, dot_prod_simd_1(&a, &b));
         assert_eq!(0.0, dot_prod_simd_2(&a, &b));
