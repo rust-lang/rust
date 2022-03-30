@@ -284,7 +284,7 @@ static_assert_size!(TyKind<'_>, 32);
 /// - 'l0...'li and T0...Tj are the generic parameters
 ///   in scope on the function that defined the closure,
 /// - CK represents the *closure kind* (Fn vs FnMut vs FnOnce). This
-///   is rather hacky encoded via a scalar type. See
+///   is rather hackily encoded via a scalar type. See
 ///   `Ty::to_opt_closure_kind` for details.
 /// - CS represents the *closure signature*, representing as a `fn()`
 ///   type. For example, `fn(u32, u32) -> u32` would mean that the closure

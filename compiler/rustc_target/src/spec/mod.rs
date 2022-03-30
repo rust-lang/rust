@@ -1255,7 +1255,7 @@ pub struct TargetOptions {
     /// handling COFF object files with more than 2<sup>15</sup> sections. Since each weak
     /// symbol needs its own COMDAT section, weak linkage implies a large
     /// number sections that easily exceeds the given limit for larger
-    /// codebase. Consequently we want a way to disallow weak linkage on some
+    /// codebases. Consequently we want a way to disallow weak linkage on some
     /// platforms.
     pub allows_weak_linkage: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
