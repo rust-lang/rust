@@ -203,12 +203,14 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         let param1_type = builtin.get_param(0).to_rvalue().get_type();
         let vector =
             if vector.get_type() != param1_type {
+                // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                 bx.context.new_bitcast(None, vector, param1_type)
             }
             else {
                 vector
             };
         let result = bx.context.new_call(None, builtin, &[vector, value, bx.context.new_cast(None, index, bx.int_type)]);
+        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
     }
     if name == sym::simd_extract {
@@ -277,6 +279,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
             let vector_type = bx.context.new_vector_type(out_type, 8);
             let vector = args[0].immediate();
             let array_type = bx.context.new_array_type(None, in_type, 8);
+            // TODO(antoyo): switch to using new_vector_access or __builtin_convertvector for vector casting.
             let array = bx.context.new_bitcast(None, vector, array_type);
 
             let cast_vec_element = |index| {
@@ -533,6 +536,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
 
         let func = bx.context.get_target_builtin_function(builtin_name);
         let result = bx.context.new_call(None, func, &[lhs, rhs]);
+        // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vec_ty));
     }
 

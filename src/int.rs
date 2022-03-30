@@ -156,6 +156,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             if a_type != b_type {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
+                    // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
                     b = self.context.new_bitcast(None, b, a.get_type());
                 }
                 else {
@@ -649,8 +650,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             // Since u128 and i128 are the only types that can be unsupported, we know the type of
             // value and the destination type have the same size, so a bitcast is fine.
 
-            // TODO(antoyo): perhaps use __builtin_convertvector for vector casting. (This is elsewhere,
-            // though.)
+            // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
             self.context.new_bitcast(None, value, dest_typ)
         }
     }
