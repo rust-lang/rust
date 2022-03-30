@@ -41,7 +41,7 @@ impl Delimited {
     }
 
     /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter. Panics if
-    /// the delimeter is `NoDelim`.
+    /// the delimiter is `NoDelim`.
     fn close_tt(&self) -> &TokenTree {
         let tt = self.all_tts.last().unwrap();
         debug_assert!(matches!(

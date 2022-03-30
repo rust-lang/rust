@@ -329,7 +329,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Compute callee information using the `instance` returned by
                 // `find_mir_or_eval_fn`.
-                // FIXME: for variadic support, do we have to somehow determine calle's extra_args?
+                // FIXME: for variadic support, do we have to somehow determine callee's extra_args?
                 let callee_fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
 
                 if callee_fn_abi.c_variadic != caller_fn_abi.c_variadic {

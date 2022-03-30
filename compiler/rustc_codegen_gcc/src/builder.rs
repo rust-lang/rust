@@ -508,7 +508,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn exactsdiv(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): posion if not exact.
+        // TODO(antoyo): poison if not exact.
         // FIXME(antoyo): rustc_codegen_ssa::mir::intrinsic uses different types for a and b but they
         // should be the same.
         let typ = a.get_type().to_signed(self);
@@ -1252,7 +1252,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn do_not_inline(&mut self, _llret: RValue<'gcc>) {
-        // FIMXE(bjorn3): implement
+        // FIXME(bjorn3): implement
     }
 
     fn set_span(&mut self, _span: Span) {}

@@ -56,7 +56,7 @@ pub trait Qualif {
     /// Returns `true` if *any* value of the given type could possibly have this `Qualif`.
     ///
     /// This function determines `Qualif`s when we cannot do a value-based analysis. Since qualif
-    /// propagation is context-insenstive, this includes function arguments and values returned
+    /// propagation is context-insensitive, this includes function arguments and values returned
     /// from a call to another function.
     ///
     /// It also determines the `Qualif`s for primitive types.

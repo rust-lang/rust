@@ -876,7 +876,7 @@ where
         if src.layout.size != dest.layout.size {
             // FIXME: This should be an assert instead of an error, but if we transmute within an
             // array length computation, `typeck` may not have yet been run and errored out. In fact
-            // most likey we *are* running `typeck` right now. Investigate whether we can bail out
+            // most likely we *are* running `typeck` right now. Investigate whether we can bail out
             // on `typeck_results().has_errors` at all const eval entry points.
             debug!("Size mismatch when transmuting!\nsrc: {:#?}\ndest: {:#?}", src, dest);
             self.tcx.sess.delay_span_bug(

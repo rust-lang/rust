@@ -623,7 +623,7 @@ pub enum NodeIdHashingMode {
 /// result, it needs to include `HashingControls` as part
 /// of the key, to ensure that is does not produce an incorrect
 /// result (for example, using a `Fingerprint` produced while
-/// hashing `Span`s when a `Fingeprint` without `Span`s is
+/// hashing `Span`s when a `Fingerprint` without `Span`s is
 /// being requested)
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct HashingControls {

@@ -1118,7 +1118,7 @@ pub type BinOp = Spanned<BinOpKind>;
 
 #[derive(Copy, Clone, PartialEq, Encodable, Debug, HashStable_Generic)]
 pub enum UnOp {
-    /// The `*` operator (deferencing).
+    /// The `*` operator (dereferencing).
     Deref,
     /// The `!` operator (logical negation).
     Not,
@@ -1611,7 +1611,7 @@ impl Expr<'_> {
             | ExprKind::Index(base, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _) => {
-                // This isn't exactly true for `Index` and all `Unnary`, but we are using this
+                // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
                 // them being used only for its side-effects.
                 base.can_have_side_effects()

@@ -1113,7 +1113,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
                         == Some(expected_bytes) =>
             {
-                // Zero-extend iN to the array lengh:
+                // Zero-extend iN to the array length:
                 let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
 
                 // Convert the integer to a byte array
