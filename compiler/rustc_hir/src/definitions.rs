@@ -56,7 +56,7 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collsion between {:?} and {:?}. \
+                "found DefPathHash collision between {:?} and {:?}. \
                     Compilation cannot continue.",
                 def_path1, def_path2
             );

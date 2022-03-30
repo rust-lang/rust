@@ -407,10 +407,10 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
     fn terminator_effect(
         &self,
         trans: &mut impl GenKill<Self::Idx>,
-        teminator: &mir::Terminator<'tcx>,
+        terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
-        if let mir::TerminatorKind::InlineAsm { operands, .. } = &teminator.kind {
+        if let mir::TerminatorKind::InlineAsm { operands, .. } = &terminator.kind {
             for op in operands {
                 if let mir::InlineAsmOperand::Out { place: Some(place), .. }
                 | mir::InlineAsmOperand::InOut { out_place: Some(place), .. } = *op
