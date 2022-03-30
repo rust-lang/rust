@@ -7,7 +7,6 @@
 //! Everything here is basically just a shim around calling either `rustbook` or
 //! `rustdoc`.
 
-use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -604,32 +603,22 @@ impl Step for Rustc {
         cargo.rustdocflag("--extern-html-root-url");
         cargo.rustdocflag("ena=https://docs.rs/ena/latest/");
 
-        let mut compiler_crates = HashSet::new();
-
-        if paths.is_empty() {
-            // Find dependencies for top level crates.
-            for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
-                compiler_crates.extend(
-                    builder
-                        .in_tree_crates(root_crate, Some(target))
-                        .into_iter()
-                        .map(|krate| krate.name),
-                );
-            }
+        let root_crates = if paths.is_empty() {
+            vec![
+                INTERNER.intern_str("rustc_driver"),
+                INTERNER.intern_str("rustc_codegen_llvm"),
+                INTERNER.intern_str("rustc_codegen_ssa"),
+            ]
         } else {
-            for root_crate_path in paths {
-                let root_crate = builder.crate_paths[root_crate_path];
-                compiler_crates.extend(
-                    builder
-                        .in_tree_crates(&root_crate, Some(target))
-                        .into_iter()
-                        .map(|krate| krate.name),
-                );
-            }
-        }
+            paths.into_iter().map(|p| builder.crate_paths[p]).collect()
+        };
+        // Find dependencies for top level crates.
+        let compiler_crates = root_crates.iter().flat_map(|krate| {
+            builder.in_tree_crates(krate, Some(target)).into_iter().map(|krate| krate.name)
+        });
 
         let mut to_open = None;
-        for krate in &compiler_crates {
+        for krate in compiler_crates {
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
             // FIXME: Cargo should probably do this itself.
