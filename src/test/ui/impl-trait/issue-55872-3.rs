@@ -13,7 +13,7 @@ impl<S> Bar for S {
     type E = impl std::marker::Copy;
     fn foo<T>() -> Self::E {
         async {}
-        //~^ ERROR the trait bound `impl Future: Copy` is not satisfied [E0277]
+        //~^ ERROR the trait bound `impl Future<Output = ()>: Copy` is not satisfied [E0277]
     }
 }
 
