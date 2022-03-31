@@ -1061,7 +1061,6 @@ pub struct Resolver<'a> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, (LocalDefId, ImplTraitContext)>,
 
-    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
     /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
     /// FIXME: Replace with a more general AST map (together with some other fields).
     trait_impl_items: FxHashSet<LocalDefId>,
@@ -1160,9 +1159,9 @@ impl<'a, 'b> DefIdTree for &'a Resolver<'b> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl ResolverAstLowering for Resolver<'_> {
-    fn def_key(&mut self, id: DefId) -> DefKey {
+    fn def_key(&self, id: DefId) -> DefKey {
         if let Some(id) = id.as_local() {
-            self.definitions().def_key(id)
+            self.definitions.def_key(id)
         } else {
             self.cstore().def_key(id)
         }
@@ -1189,24 +1188,20 @@ impl ResolverAstLowering for Resolver<'_> {
         self.partial_res_map.get(&id).cloned()
     }
 
-    fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res>> {
+    fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res>> {
         self.import_res_map.get(&id).cloned().unwrap_or_default()
     }
 
-    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId> {
+    fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
         self.label_res_map.get(&id).cloned()
-    }
-
-    fn definitions(&mut self) -> &mut Definitions {
-        &mut self.definitions
     }
 
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
     }
 
-    fn lint_buffer(&mut self) -> &mut LintBuffer {
-        &mut self.lint_buffer
+    fn definitions(&self) -> &Definitions {
+        &self.definitions
     }
 
     fn next_node_id(&mut self) -> NodeId {
@@ -1249,16 +1244,7 @@ impl ResolverAstLowering for Resolver<'_> {
             self.definitions.def_key(self.node_id_to_def_id[&node_id]),
         );
 
-        // Find the next free disambiguator for this key.
-        let next_disambiguator = &mut self.next_disambiguator;
-        let next_disambiguator = |parent, data| {
-            let next_disamb = next_disambiguator.entry((parent, data)).or_insert(0);
-            let disambiguator = *next_disamb;
-            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
-            disambiguator
-        };
-
-        let def_id = self.definitions.create_def(parent, data, expn_id, next_disambiguator, span);
+        let def_id = self.definitions.create_def(parent, data, expn_id, span);
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
@@ -1430,7 +1416,6 @@ impl<'a> Resolver<'a> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            next_disambiguator: Default::default(),
             trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
