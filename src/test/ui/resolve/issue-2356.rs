@@ -13,7 +13,7 @@ pub enum MaybeDog {
 
 impl MaybeDog {
   fn bark() {
-    // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Groom
+    // If this provides a suggestion, it's a bug as MaybeDog doesn't impl Newlywed
     shave();
     //~^ ERROR cannot find function `shave`
   }

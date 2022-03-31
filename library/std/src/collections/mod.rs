@@ -296,7 +296,7 @@
 //! use std::collections::btree_map::BTreeMap;
 //!
 //! let mut count = BTreeMap::new();
-//! let message = "she sells sea shells by the sea shore";
+//! let message = "they sells sea shells by the sea shore";
 //!
 //! for c in message.chars() {
 //!     *count.entry(c).or_insert(0) += 1;

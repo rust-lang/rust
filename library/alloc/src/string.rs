@@ -1193,7 +1193,7 @@ impl String {
     ///
     /// s.truncate(2);
     ///
-    /// assert_eq!("he", s);
+    /// assert_eq!("they", s);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
