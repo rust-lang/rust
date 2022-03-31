@@ -16,7 +16,7 @@ LL |         let f: F = async { 1 };
 LL |     }],
    |     - value is dropped here
 
-error[E0271]: type mismatch resolving `<impl Future as Future>::Output == u8`
+error[E0271]: type mismatch resolving `<impl Future<Output = ()> as Future>::Output == u8`
   --> $DIR/issue-78722.rs:10:13
    |
 LL |             async {}

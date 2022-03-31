@@ -912,12 +912,25 @@ pub trait PrettyPrinter<'tcx>:
                 }
 
                 for (assoc_item_def_id, term) in assoc_items {
-                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks
-                    if let Some(ty) = term.skip_binder().ty() &&
-                       let ty::Projection(ty::ProjectionTy { item_def_id, .. }) = ty.kind() &&
-                       Some(*item_def_id) == self.tcx().lang_items().generator_return() {
-                        continue;
-                    }
+                    // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
+                    // unless we can find out what generator return type it comes from.
+                    let term = if let Some(ty) = term.skip_binder().ty()
+                        && let ty::Projection(ty::ProjectionTy { item_def_id, substs }) = ty.kind()
+                        && Some(*item_def_id) == self.tcx().lang_items().generator_return()
+                    {
+                        if let ty::Generator(_, substs, _) = substs.type_at(0).kind() {
+                            let return_ty = substs.as_generator().return_ty();
+                            if !return_ty.is_ty_infer() {
+                                return_ty.into()
+                            } else {
+                                continue;
+                            }
+                        } else {
+                            continue;
+                        }
+                    } else {
+                        term.skip_binder()
+                    };
 
                     if first {
                         p!("<");
@@ -928,7 +941,7 @@ pub trait PrettyPrinter<'tcx>:
 
                     p!(write("{} = ", self.tcx().associated_item(assoc_item_def_id).name));
 
-                    match term.skip_binder() {
+                    match term {
                         Term::Ty(ty) => {
                             p!(print(ty))
                         }
