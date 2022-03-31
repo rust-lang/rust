@@ -522,7 +522,7 @@ pub mod guard {
             // new thread
             stack_ptr.addr() - current_stack.ss_size
         };
-        Some(stack_ptr.with_addr(stack_addr))
+        Some(stack_ptr.with_addr(stackaddr))
     }
 
     #[cfg(any(

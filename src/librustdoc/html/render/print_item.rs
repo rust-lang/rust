@@ -465,7 +465,7 @@ fn extra_info_tags(item: &clean::Item, parent: &clean::Item, tcx: TyCtxt<'_>) ->
 fn item_function(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, f: &clean::Function) {
     let header = it.fn_header(cx.tcx()).expect("printing a function which isn't a function");
     let constness = print_constness_with_space(&header.constness, it.const_stability(cx.tcx()));
-    let unsafety = header.unsafety.print_with_space().to_string();
+    let unsafety = header.unsafety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
     let asyncness = header.asyncness.print_with_space();
     let visibility = it.visibility.print_with_space(it.def_id, cx).to_string();
