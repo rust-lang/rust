@@ -1899,7 +1899,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                     ObligationCause::new(
                                         span,
                                         self.tcx().hir().local_def_id_to_hir_id(def_id),
-                                        traits::ObligationCauseCode::RepeatVec(is_const_fn),
+                                        traits::ObligationCauseCode::RepeatElementCopy {
+                                            is_const_fn,
+                                        },
                                     ),
                                     self.param_env,
                                     ty::Binder::dummy(ty::TraitRef::new(
