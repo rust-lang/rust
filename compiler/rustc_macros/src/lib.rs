@@ -66,11 +66,8 @@ decl_derive!(
         // struct attributes
         warning,
         error,
-        // nested parts of struct attributes
-        code,
-        slug,
         // field attributes
-        message,
+        primary_span,
         label,
         suggestion,
         suggestion_short,

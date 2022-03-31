@@ -5,7 +5,7 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 #[derive(SessionDiagnostic)]
 #[error(code = "E0062", slug = "typeck-field-multiply-specified-in-initializer")]
 pub struct FieldMultiplySpecifiedInInitializer {
-    #[message]
+    #[primary_span]
     #[label = "used more than once"]
     pub span: Span,
     #[label = "first use of `{ident}`"]
@@ -16,7 +16,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0092", slug = "typeck-unrecognized-atomic-operation")]
 pub struct UnrecognizedAtomicOperation<'a> {
-    #[message]
+    #[primary_span]
     #[label = "unrecognized atomic operation"]
     pub span: Span,
     pub op: &'a str,
@@ -25,7 +25,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0094", slug = "typeck-wrong-number-of-generic-arguments-to-intrinsic")]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
-    #[message]
+    #[primary_span]
     #[label = "expected {expected} {descr} parameter{expected_pluralize}"]
     pub span: Span,
     pub found: usize,
@@ -37,7 +37,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0093", slug = "typeck-unrecognized-intrinsic-function")]
 pub struct UnrecognizedIntrinsicFunction {
-    #[message]
+    #[primary_span]
     #[label = "unrecognized intrinsic"]
     pub span: Span,
     pub name: Symbol,
@@ -46,7 +46,7 @@ pub struct UnrecognizedIntrinsicFunction {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0195", slug = "typeck-lifetimes-or-bounds-mismatch-on-trait")]
 pub struct LifetimesOrBoundsMismatchOnTrait {
-    #[message]
+    #[primary_span]
     #[label = "lifetimes do not match {item_kind} in trait"]
     pub span: Span,
     #[label = "lifetimes in impl do not match this {item_kind} in trait"]
@@ -58,7 +58,7 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0120", slug = "typeck-drop-impl-on-wrong-item")]
 pub struct DropImplOnWrongItem {
-    #[message]
+    #[primary_span]
     #[label = "must be a struct, enum, or union"]
     pub span: Span,
 }
@@ -67,7 +67,7 @@ pub struct DropImplOnWrongItem {
 #[error(code = "E0124", slug = "typeck-field-already-declared")]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
-    #[message]
+    #[primary_span]
     #[label = "field already declared"]
     pub span: Span,
     #[label = "`{field_name}` first declared here"]
@@ -77,7 +77,7 @@ pub struct FieldAlreadyDeclared {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0184", slug = "typeck-copy-impl-on-type-with-dtor")]
 pub struct CopyImplOnTypeWithDtor {
-    #[message]
+    #[primary_span]
     #[label = "Copy not allowed on types with destructors"]
     pub span: Span,
 }
@@ -85,14 +85,14 @@ pub struct CopyImplOnTypeWithDtor {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0203", slug = "typeck-multiple-relaxed-default-bounds")]
 pub struct MultipleRelaxedDefaultBounds {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0206", slug = "typeck-copy-impl-on-non-adt")]
 pub struct CopyImplOnNonAdt {
-    #[message]
+    #[primary_span]
     #[label = "type is not a structure or enumeration"]
     pub span: Span,
 }
@@ -100,21 +100,21 @@ pub struct CopyImplOnNonAdt {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0224", slug = "typeck-trait-object-declared-with-no-traits")]
 pub struct TraitObjectDeclaredWithNoTraits {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0227", slug = "typeck-ambiguous-lifetime-bound")]
 pub struct AmbiguousLifetimeBound {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0229", slug = "typeck-assoc-type-binding-not-allowed")]
 pub struct AssocTypeBindingNotAllowed {
-    #[message]
+    #[primary_span]
     #[label = "associated type not allowed here"]
     pub span: Span,
 }
@@ -122,14 +122,14 @@ pub struct AssocTypeBindingNotAllowed {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0436", slug = "typeck-functional-record-update-on-non-struct")]
 pub struct FunctionalRecordUpdateOnNonStruct {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0516", slug = "typeck-typeof-reserved-keyword-used")]
 pub struct TypeofReservedKeywordUsed {
-    #[message]
+    #[primary_span]
     #[label = "reserved keyword"]
     pub span: Span,
 }
@@ -137,7 +137,7 @@ pub struct TypeofReservedKeywordUsed {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0572", slug = "typeck-return-stmt-outside-of-fn-body")]
 pub struct ReturnStmtOutsideOfFnBody {
-    #[message]
+    #[primary_span]
     pub span: Span,
     #[label = "the return is part of this body..."]
     pub encl_body_span: Option<Span>,
@@ -148,14 +148,14 @@ pub struct ReturnStmtOutsideOfFnBody {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0627", slug = "typeck-yield-expr-outside-of-generator")]
 pub struct YieldExprOutsideOfGenerator {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0639", slug = "typeck-struct-expr-non-exhaustive")]
 pub struct StructExprNonExhaustive {
-    #[message]
+    #[primary_span]
     pub span: Span,
     pub what: &'static str,
 }
@@ -163,14 +163,14 @@ pub struct StructExprNonExhaustive {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0699", slug = "typeck-method-call-on-unknown-type")]
 pub struct MethodCallOnUnknownType {
-    #[message]
+    #[primary_span]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0719", slug = "typeck-value-of-associated-struct-already-specified")]
 pub struct ValueOfAssociatedStructAlreadySpecified {
-    #[message]
+    #[primary_span]
     #[label = "re-bound here"]
     pub span: Span,
     #[label = "`{item_name}` bound here first"]
@@ -182,7 +182,7 @@ pub struct ValueOfAssociatedStructAlreadySpecified {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0745", slug = "typeck-address-of-temporary-taken")]
 pub struct AddressOfTemporaryTaken {
-    #[message]
+    #[primary_span]
     #[label = "temporary value"]
     pub span: Span,
 }

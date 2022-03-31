@@ -121,8 +121,8 @@ struct CodeNotProvided {}
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct MessageWrongType {
-    #[message]
-    //~^ ERROR `#[message]` attribute can only be applied to fields of type `Span`
+    #[primary_span]
+    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span`
     foo: String,
 }
 
@@ -295,7 +295,7 @@ struct OptionsInErrors {
 struct MoveOutOfBorrowError<'tcx> {
     name: Ident,
     ty: Ty<'tcx>,
-    #[message]
+    #[primary_span]
     #[label = "cannot move out of borrow"]
     span: Span,
     #[label = "`{ty}` first borrowed here"]

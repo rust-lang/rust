@@ -156,11 +156,11 @@ LL | | struct CodeNotProvided {}
    |
    = help: use the `#[error(code = "...")]` attribute to set this diagnostic's error code
 
-error: the `#[message]` attribute can only be applied to fields of type `Span`
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
   --> $DIR/session-derive-errors.rs:124:5
    |
-LL |     #[message]
-   |     ^^^^^^^^^^
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
 
 error: `#[nonsense]` is not a valid `SessionDiagnostic` field attribute
   --> $DIR/session-derive-errors.rs:132:5

@@ -20,7 +20,7 @@ use std::collections::{BTreeSet, HashMap};
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
-///     #[message]
+///     #[primary_span]
 ///     #[label = "cannot move out of borrow"]
 ///     pub span: Span,
 ///     #[label = "`{ty}` first borrowed here"]
@@ -566,7 +566,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         let meta = attr.parse_meta()?;
         match meta {
             syn::Meta::Path(_) => match name {
-                "message" => {
+                "primary_span" => {
                     if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
                         return Ok(quote! {
                             #diag.set_span(*#field_binding);
@@ -574,7 +574,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     } else {
                         throw_span_err!(
                             attr.span().unwrap(),
-                            "the `#[message]` attribute can only be applied to fields of type `Span`"
+                            "the `#[primary_span]` attribute can only be applied to fields of type `Span`"
                         );
                     }
                 }
