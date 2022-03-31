@@ -506,7 +506,7 @@ impl ModuleKind {
 /// program) if all but one of them come from glob imports.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 struct BindingKey {
-    /// The identifier for the binding, aways the `normalize_to_macros_2_0` version of the
+    /// The identifier for the binding, always the `normalize_to_macros_2_0` version of the
     /// identifier.
     ident: Ident,
     ns: Namespace,

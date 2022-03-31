@@ -484,7 +484,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let msg = format!("add missing {} argument{}", self.kind(), pluralize!(num_missing_args));
 
         // we first try to get lifetime name suggestions from scope or elision information. If none is
-        // available we use the parameter defintions
+        // available we use the parameter definitions
         let suggested_args = if let Some(hir_id) = self.path_segment.hir_id {
             if let Some(lifetimes_in_scope) = self.tcx.lifetime_scope(hir_id) {
                 match lifetimes_in_scope {
@@ -587,7 +587,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                     (gen_args_span.shrink_to_lo(), true)
                 } else {
                     let arg_span = self.gen_args.args[sugg_offset - 1].span();
-                    // If we came here then inferred lifetimes's spans can only point
+                    // If we came here then inferred lifetime's spans can only point
                     // to either the opening bracket or to the space right after.
                     // Both of these spans have an `hi` lower than or equal to the span
                     // of the generics excluding the brackets.

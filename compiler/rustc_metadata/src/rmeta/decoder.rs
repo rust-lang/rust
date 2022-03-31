@@ -580,7 +580,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
         //
         // Suppose that we're currently compiling crate A, and start deserializing
         // metadata from crate B. When we deserialize a Span from crate B's metadata,
-        // there are two posibilites:
+        // there are two possibilities:
         //
         // 1. The span references a file from crate B. This makes it a 'local' span,
         // which means that we can use crate B's serialized source map information.

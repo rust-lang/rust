@@ -306,7 +306,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// # Constrain regions, not the hidden concrete type
     ///
     /// Note that generating constraints on each region `Rc` is *not*
-    /// the same as generating an outlives constraint on `Tc` iself.
+    /// the same as generating an outlives constraint on `Tc` itself.
     /// For example, if we had a function like this:
     ///
     /// ```rust

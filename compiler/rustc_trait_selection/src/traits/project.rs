@@ -1602,7 +1602,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
                 // ```
                 //
-                // Doesn't the `T : Sometrait<Foo=usize>` predicate help
+                // Doesn't the `T : SomeTrait<Foo=usize>` predicate help
                 // resolve `T::Foo`? And of course it does, but in fact
                 // that single predicate is desugared into two predicates
                 // in the compiler: a trait predicate (`T : SomeTrait`) and a
@@ -2025,7 +2025,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 // Get obligations corresponding to the predicates from the where-clause of the
 // associated type itself.
 // Note: `feature(generic_associated_types)` is required to write such
-// predicates, even for non-generic associcated types.
+// predicates, even for non-generic associated types.
 fn assoc_ty_own_obligations<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,

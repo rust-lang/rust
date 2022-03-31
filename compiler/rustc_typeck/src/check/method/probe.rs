@@ -713,7 +713,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // FIXME Postponing the normalization of the return type likely only hides a deeper bug,
             // which might be caused by the `param_env` itself. The clauses of the `param_env`
             // maybe shouldn't include `Param`s, but rather fresh variables or be canonicalized,
-            // see isssue #89650
+            // see issue #89650
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
             let selcx = &mut traits::SelectionContext::new(self.fcx);
             let traits::Normalized { value: xform_self_ty, obligations } =
@@ -1658,7 +1658,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Similarly to `probe_for_return_type`, this method attempts to find the best matching
-    /// candidate method where the method name may have been misspelt. Similarly to other
+    /// candidate method where the method name may have been misspelled. Similarly to other
     /// Levenshtein based suggestions, we provide at most one such suggestion.
     fn probe_for_lev_candidate(&mut self) -> Result<Option<ty::AssocItem>, MethodError<'tcx>> {
         debug!("probing for method names similar to {:?}", self.method_name);

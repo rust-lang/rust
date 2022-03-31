@@ -159,7 +159,7 @@ where
             // Unions and are always treated as a series of 64-bit integer chunks
         }
         abi::FieldsShape::Arbitrary { .. } => {
-            // Stuctures with floating point numbers need special care.
+            // Structures with floating point numbers need special care.
 
             let mut data = parse_structure(
                 cx,

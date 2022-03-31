@@ -139,7 +139,7 @@ impl<'tcx> TypeFolder<'tcx> for ReverseMapper<'tcx> {
         match *r {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
-            // from the function declaraion.
+            // from the function declaration.
             // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
             ty::ReLateBound(..) | ty::ReStatic => return r,
 

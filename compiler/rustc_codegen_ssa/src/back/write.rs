@@ -779,7 +779,7 @@ pub fn compute_per_cgu_lto_type(
     // we'll encounter later.
     let is_allocator = module_kind == ModuleKind::Allocator;
 
-    // We ignore a request for full crate grath LTO if the cate type
+    // We ignore a request for full crate graph LTO if the crate type
     // is only an rlib, as there is no full crate graph to process,
     // that'll happen later.
     //

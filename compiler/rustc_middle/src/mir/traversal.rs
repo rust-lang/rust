@@ -5,7 +5,7 @@ use super::*;
 /// Preorder traversal of a graph.
 ///
 /// Preorder traversal is when each node is visited after at least one of its predecessors. If you
-/// are familar with some basic graph theory, then this performs a depth first search and returns
+/// are familiar with some basic graph theory, then this performs a depth first search and returns
 /// nodes in order of discovery time.
 ///
 /// ```text

@@ -2718,7 +2718,7 @@ impl<'tcx> ty::Instance<'tcx> {
 /// stack-based unwinding (the exact mechanism of which varies
 /// platform-by-platform).
 ///
-/// Rust functions are classfied whether or not they can unwind based on the
+/// Rust functions are classified whether or not they can unwind based on the
 /// active "panic strategy". In other words Rust functions are considered to
 /// unwind in `-Cpanic=unwind` mode and cannot unwind in `-Cpanic=abort` mode.
 /// Note that Rust supports intermingling panic=abort and panic=unwind code, but
@@ -2773,7 +2773,7 @@ pub fn fn_can_unwind<'tcx>(
     // To fix this UB rustc would like to change in the future to catch unwinds
     // from function calls that may unwind within a Rust-defined `extern "C"`
     // function and forcibly abort the process, thereby respecting the
-    // `nounwind` attribut emitted for `extern "C"`. This behavior change isn't
+    // `nounwind` attribute emitted for `extern "C"`. This behavior change isn't
     // ready to roll out, so determining whether or not the `C` family of ABIs
     // unwinds is conditional not only on their definition but also whether the
     // `#![feature(c_unwind)]` feature gate is active.

@@ -40,7 +40,7 @@ use crate::{AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis
 ///
 /// This makes `MaybeLiveLocals` unsuitable for certain classes of optimization normally associated
 /// with a live variables analysis, notably dead-store elimination. It's a dirty hack, but it works
-/// okay for the generator state transform (currently the main consumuer of this analysis).
+/// okay for the generator state transform (currently the main consumer of this analysis).
 ///
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs

@@ -1164,7 +1164,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let len = sub1.len() - common_default_params;
                     let consts_offset = len - sub1.consts().count();
 
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal("<");
                         values.1.push_normal("<");
@@ -1245,7 +1245,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
 
                     // Close the type argument bracket.
-                    // Only draw `<...>` if there're lifetime/type arguments.
+                    // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
                         values.0.push_normal(">");
                         values.1.push_normal(">");
@@ -1857,7 +1857,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     })
                     .transpose();
                 if output.is_some() {
-                    // We don't account for multiple `Future::Output = Ty` contraints.
+                    // We don't account for multiple `Future::Output = Ty` constraints.
                     return output;
                 }
             }

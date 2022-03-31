@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         let (renamed_decl, ret_decl) =
             body.local_decls.pick2_mut(returned_local, mir::RETURN_PLACE);
 
-        // Sometimes, the return place is assigned a local of a different but coercable type, for
+        // Sometimes, the return place is assigned a local of a different but coercible type, for
         // example `&mut T` instead of `&T`. Overwriting the `LocalInfo` for the return place means
         // its type may no longer match the return type of its function. This doesn't cause a
         // problem in codegen because these two types are layout-compatible, but may be unexpected.

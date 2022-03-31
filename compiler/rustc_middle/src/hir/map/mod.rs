@@ -218,7 +218,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        // Create a dependency to the crate to be sure we reexcute this when the amount of
+        // Create a dependency to the crate to be sure we re-execute this when the amount of
         // definitions change.
         self.tcx.ensure().hir_crate(());
         self.tcx.untracked_resolutions.definitions.iter_local_def_id()

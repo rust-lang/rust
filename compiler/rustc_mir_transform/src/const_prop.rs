@@ -634,7 +634,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    // Attempt to use albegraic identities to eliminate constant expressions
+    // Attempt to use algebraic identities to eliminate constant expressions
     fn eval_rvalue_with_identities(
         &mut self,
         rvalue: &Rvalue<'tcx>,

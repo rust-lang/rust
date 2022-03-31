@@ -18,7 +18,7 @@
 //!
 //! ## Subtle note
 //!
-//! When infering the generic arguments of functions, the argument
+//! When inferring the generic arguments of functions, the argument
 //! order is relevant, which can lead to the following edge case:
 //!
 //! ```rust

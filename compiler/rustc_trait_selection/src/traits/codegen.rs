@@ -19,6 +19,7 @@ use rustc_middle::ty::{self, TyCtxt};
 /// obligations *could be* resolved if we wanted to.
 ///
 /// This also expects that `trait_ref` is fully normalized.
+#[instrument(level = "debug", skip(tcx))]
 pub fn codegen_fulfill_obligation<'tcx>(
     tcx: TyCtxt<'tcx>,
     (param_env, trait_ref): (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>),
@@ -27,11 +28,6 @@ pub fn codegen_fulfill_obligation<'tcx>(
     let trait_ref = tcx.erase_regions(trait_ref);
     // We expect the input to be fully normalized.
     debug_assert_eq!(trait_ref, tcx.normalize_erasing_regions(param_env, trait_ref));
-    debug!(
-        "codegen_fulfill_obligation(trait_ref={:?}, def_id={:?})",
-        (param_env, trait_ref),
-        trait_ref.def_id()
-    );
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
@@ -46,8 +42,8 @@ pub fn codegen_fulfill_obligation<'tcx>(
             Ok(Some(selection)) => selection,
             Ok(None) => {
                 // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
+                // expands to some humongous type that never occurred
+                // statically -- this humongous type can then overflow,
                 // leading to an ambiguous result. So report this as an
                 // overflow bug, since I believe this is the only case
                 // where ambiguity can result.
@@ -80,25 +76,22 @@ pub fn codegen_fulfill_obligation<'tcx>(
             }
         };
 
-        debug!("fulfill_obligation: selection={:?}", selection);
+        debug!(?selection);
 
         // Currently, we use a fulfillment context to completely resolve
         // all nested obligations. This is because they can inform the
         // inference of the impl's type parameters.
         let mut fulfill_cx = FulfillmentContext::new();
         let impl_source = selection.map(|predicate| {
-            debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
         let impl_source = drain_fulfillment_cx_or_panic(&infcx, &mut fulfill_cx, impl_source);
 
-        // There should be no opaque types during codegen, they all get revealed.
-        let opaque_types = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-        if !opaque_types.is_empty() {
-            bug!("{:#?}", opaque_types);
-        }
+        // Opaque types may have gotten their hidden types constrained, but we can ignore them safely
+        // as they will get constrained elsewhere, too.
+        let _opaque_types = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
 
-        debug!("Cache miss: {:?} => {:?}", trait_ref, impl_source);
+        debug!("Cache miss: {trait_ref:?} => {impl_source:?}");
         Ok(&*tcx.arena.alloc(impl_source))
     })
 }

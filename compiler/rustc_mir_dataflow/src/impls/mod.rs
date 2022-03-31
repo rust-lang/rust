@@ -428,7 +428,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 
     // sets on_entry bits for Arg places
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, state: &mut Self::Domain) {
-        // set all bits to 1 (uninit) before gathering counterevidence
+        // set all bits to 1 (uninit) before gathering counter-evidence
         state.insert_all();
 
         drop_flag_effects_for_function_entry(self.tcx, self.body, self.mdpe, |path, s| {

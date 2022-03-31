@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 _ => {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
-                    // our input typs to err_args so we don't blow up the error messages
+                    // our input types to err_args so we don't blow up the error messages
                     struct_span_err!(
                         tcx.sess,
                         call_span,

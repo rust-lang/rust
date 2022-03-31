@@ -345,7 +345,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if potential_assoc_types.len() == assoc_items.len() {
                 // Only suggest when the amount of missing associated types equals the number of
                 // extra type arguments present, as that gives us a relatively high confidence
-                // that the user forgot to give the associtated type's name. The canonical
+                // that the user forgot to give the associated type's name. The canonical
                 // example would be trying to use `Iterator<isize>` instead of
                 // `Iterator<Item = isize>`.
                 for (potential, item) in iter::zip(&potential_assoc_types, assoc_items) {

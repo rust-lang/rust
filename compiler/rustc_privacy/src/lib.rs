@@ -559,9 +559,9 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
             }
 
-            // Hygine isn't really implemented for `macro_rules!` macros at the
+            // Hygiene isn't really implemented for `macro_rules!` macros at the
             // moment. Accordingly, marking them as reachable is unwise. `macro` macros
-            // have normal  hygine, so we can treat them like other items without type
+            // have normal hygiene, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
                 let item = self.tcx.hir().expect_item(def_id);
@@ -1539,7 +1539,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                             // 3. mentioned in the associated types of the impl
                             //
                             // Those in 1. can only occur if the trait is in
-                            // this crate and will've been warned about on the
+                            // this crate and will have been warned about on the
                             // trait definition (there's no need to warn twice
                             // so we don't check the methods).
                             //
@@ -1999,7 +1999,7 @@ fn visibility(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Visibility {
                 }
                 // - AST lowering may clone `use` items and the clones don't
                 //   get their entries in the resolver's visibility table.
-                // - AST lowering also creates opaque type items with inherited visibilies.
+                // - AST lowering also creates opaque type items with inherited visibilities.
                 //   Visibility on them should have no effect, but to avoid the visibility
                 //   query failing on some items, we provide it for opaque types as well.
                 Node::Item(hir::Item {

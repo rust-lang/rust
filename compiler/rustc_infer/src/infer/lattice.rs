@@ -83,7 +83,7 @@ where
         // But if we did in reverse order, we would create a `v <:
         // LHS` (or vice versa) constraint and then instantiate
         // `v`. This would require further processing to achieve same
-        // end-result; in partiular, this screws up some of the logic
+        // end-result; in particular, this screws up some of the logic
         // in coercion, which expects LUB to figure out that the LHS
         // is (e.g.) `Box<i32>`. A more obvious solution might be to
         // iterate on the subtype obligations that are returned, but I

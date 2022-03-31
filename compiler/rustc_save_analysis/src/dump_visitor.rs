@@ -1437,7 +1437,7 @@ impl<'tcx> Visitor<'tcx> for DumpVisitor<'tcx> {
         self.process_macro_use(l.span);
         self.process_var_decl(&l.pat);
 
-        // Just walk the initialiser and type (don't want to walk the pattern again).
+        // Just walk the initializer and type (don't want to walk the pattern again).
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
     }

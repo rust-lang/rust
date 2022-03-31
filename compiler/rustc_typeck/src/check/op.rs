@@ -852,7 +852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 // Binary operator categories. These categories summarize the behavior
-// with respect to the builtin operationrs supported.
+// with respect to the builtin operations supported.
 enum BinOpCategory {
     /// &&, || -- cannot be overridden
     Shortcircuit,

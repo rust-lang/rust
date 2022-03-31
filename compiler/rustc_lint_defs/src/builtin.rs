@@ -2254,7 +2254,7 @@ declare_lint! {
 declare_lint! {
     /// The `nontrivial_structural_match` lint detects constants that are used in patterns,
     /// whose type is not structural-match and whose initializer body actually uses values
-    /// that are not structural-match. So `Option<NotStruturalMatch>` is ok if the constant
+    /// that are not structural-match. So `Option<NotStructuralMatch>` is ok if the constant
     /// is just `None`.
     ///
     /// ### Example
@@ -2276,7 +2276,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants's types
+    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
     /// did not have `PartialEq` derived. Thus the compiler falls back to runtime execution of
     /// `PartialEq`, which can report that two constants are not equal even if they are
     /// bit-equivalent.
@@ -3626,7 +3626,7 @@ declare_lint! {
     /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
     /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
     ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stablized.
+    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
     /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
     ///
     /// ### Example
