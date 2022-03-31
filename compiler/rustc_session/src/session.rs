@@ -21,7 +21,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     fallback_fluent_bundle, fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, MultiSpan,
+    EmissionGuarantee, ErrorGuaranteed, FluentBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -209,10 +209,10 @@ pub struct PerfStats {
 
 /// Trait implemented by error types. This should not be implemented manually. Instead, use
 /// `#[derive(SessionDiagnostic)]` -- see [rustc_macros::SessionDiagnostic].
-pub trait SessionDiagnostic<'a> {
+pub trait SessionDiagnostic<'a, T: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `sess`.
     #[must_use]
-    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, ErrorGuaranteed>;
+    fn into_diagnostic(self, sess: &'a Session) -> DiagnosticBuilder<'a, T>;
 }
 
 impl Session {
@@ -343,6 +343,13 @@ impl Session {
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         self.diagnostic().struct_err_with_code(msg, code)
     }
+    pub fn struct_warn_with_code(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'_, ()> {
+        self.diagnostic().struct_warn_with_code(msg, code)
+    }
     pub fn struct_span_fatal<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -408,6 +415,9 @@ impl Session {
     }
     pub fn emit_err<'a>(&'a self, err: impl SessionDiagnostic<'a>) -> ErrorGuaranteed {
         err.into_diagnostic(self).emit()
+    }
+    pub fn emit_warning<'a>(&'a self, warning: impl SessionDiagnostic<'a, ()>) {
+        warning.into_diagnostic(self).emit()
     }
     #[inline]
     pub fn err_count(&self) -> usize {

@@ -777,6 +777,17 @@ impl Handler {
         result
     }
 
+    /// Construct a builder at the `Warn` level with the `msg` and the `code`.
+    pub fn struct_warn_with_code(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+        code: DiagnosticId,
+    ) -> DiagnosticBuilder<'_, ()> {
+        let mut result = self.struct_warn(msg);
+        result.code(code);
+        result
+    }
+
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     pub fn struct_span_fatal(
         &self,

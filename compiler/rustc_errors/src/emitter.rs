@@ -261,7 +261,7 @@ pub trait Emitter {
         message: &'a DiagnosticMessage,
         args: &'a FluentArgs<'_>,
     ) -> Cow<'_, str> {
-        trace!(?message);
+        trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagnosticMessage::Str(msg) => return Cow::Borrowed(&msg),
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
@@ -283,7 +283,13 @@ pub trait Emitter {
         let mut err = vec![];
         let translated = bundle.format_pattern(value, Some(&args), &mut err);
         trace!(?translated, ?err);
-        debug_assert!(err.is_empty());
+        debug_assert!(
+            err.is_empty(),
+            "identifier: {:?}, args: {:?}, errors: {:?}",
+            identifier,
+            args,
+            err
+        );
         translated
     }
 

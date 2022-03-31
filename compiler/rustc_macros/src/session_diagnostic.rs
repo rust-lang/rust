@@ -16,11 +16,11 @@ use std::collections::{BTreeSet, HashMap};
 /// # extern crate rust_middle;
 /// # use rustc_middle::ty::Ty;
 /// #[derive(SessionDiagnostic)]
-/// #[code = "E0505"]
-/// #[error = "cannot move out of {name} because it is borrowed"]
+/// #[error(code = "E0505", slug = "move-out-of-borrow-error")]
 /// pub struct MoveOutOfBorrowError<'tcx> {
 ///     pub name: Ident,
 ///     pub ty: Ty<'tcx>,
+///     #[message]
 ///     #[label = "cannot move out of borrow"]
 ///     pub span: Span,
 ///     #[label = "`{ty}` first borrowed here"]
@@ -79,13 +79,6 @@ impl std::convert::From<syn::Error> for SessionDiagnosticDeriveError {
     }
 }
 
-/// Equivalent to `rustc:errors::diagnostic::DiagnosticId`, except stores the quoted expression to
-/// initialise the code with.
-enum DiagnosticId {
-    Error(proc_macro2::TokenStream),
-    Lint(proc_macro2::TokenStream),
-}
-
 #[derive(Debug)]
 enum SessionDiagnosticDeriveError {
     SynError(syn::Error),
@@ -100,7 +93,7 @@ impl SessionDiagnosticDeriveError {
                 // Return ! to avoid having to create a blank DiagnosticBuilder to return when an
                 // error has already been emitted to the compiler.
                 quote! {
-                    unreachable!()
+                    { unreachable!(); }
                 }
             }
         }
@@ -152,17 +145,25 @@ impl<'a> SessionDiagnosticDerive<'a> {
         }
 
         Self {
-            builder: SessionDiagnosticDeriveBuilder { diag, sess, fields: fields_map, kind: None },
+            builder: SessionDiagnosticDeriveBuilder {
+                diag,
+                sess,
+                fields: fields_map,
+                kind: None,
+                code: None,
+                slug: None,
+            },
             structure,
         }
     }
+
     fn into_tokens(self) -> proc_macro2::TokenStream {
         let SessionDiagnosticDerive { mut structure, mut builder } = self;
 
         let ast = structure.ast();
         let attrs = &ast.attrs;
 
-        let implementation = {
+        let (implementation, param_ty) = {
             if let syn::Data::Struct(..) = ast.data {
                 let preamble = {
                     let preamble = attrs.iter().map(|attr| {
@@ -170,6 +171,7 @@ impl<'a> SessionDiagnosticDerive<'a> {
                             .generate_structure_code(attr)
                             .unwrap_or_else(|v| v.to_compile_error())
                     });
+
                     quote! {
                         #(#preamble)*;
                     }
@@ -213,58 +215,94 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     // it can be referred to by Fluent messages.
                     if field.attrs.is_empty() {
                         let diag = &builder.diag;
-                        let ident = &field_binding.binding;
+                        let ident = field_binding.ast().ident.as_ref().unwrap();
                         quote! { #diag.set_arg(stringify!(#ident), #field_binding.into_diagnostic_arg()); }
                     } else {
                         quote! {}
                     }
                 });
 
-                // Finally, putting it altogether.
-                match builder.kind {
-                    None => {
-                        span_err(ast.span().unwrap(), "`code` not specified")
-                        .help("use the `#[code = \"...\"]` attribute to set this diagnostic's error code ")
-                        .emit();
-                        SessionDiagnosticDeriveError::ErrorHandled.to_compile_error()
+                let span = ast.span().unwrap();
+                let (diag, sess) = (&builder.diag, &builder.sess);
+                let init = match (builder.kind, builder.slug, builder.code) {
+                    (None, _, _) => {
+                        span_err(span, "diagnostic kind not specified")
+                            .help("use the `#[error(...)]` attribute to create an error")
+                            .emit();
+                        return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
                     }
-                    Some((kind, _)) => match kind {
-                        DiagnosticId::Lint(_lint) => todo!(),
-                        DiagnosticId::Error(code) => {
-                            let (diag, sess) = (&builder.diag, &builder.sess);
-                            quote! {
-                                let mut #diag = #sess.struct_err_with_code("", rustc_errors::DiagnosticId::Error(#code));
-                                #preamble
-                                match self {
-                                    #attrs
-                                }
-                                match self {
-                                    #args
-                                }
-                                #diag
-                            }
+                    (Some((kind, _)), None, _) => {
+                        span_err(span, "`slug` not specified")
+                            .help(&format!("use the `#[{}(slug = \"...\")]` attribute to set this diagnostic's slug", kind.descr()))
+                            .emit();
+                        return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
+                    }
+                    (Some((kind, _)), _, None) => {
+                        span_err(span, "`code` not specified")
+                            .help(&format!("use the `#[{}(code = \"...\")]` attribute to set this diagnostic's error code", kind.descr()))
+                            .emit();
+                        return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
+                    }
+                    (Some((SessionDiagnosticKind::Error, _)), Some((slug, _)), Some((code, _))) => {
+                        quote! {
+                            let mut #diag = #sess.struct_err_with_code(
+                                rustc_errors::DiagnosticMessage::fluent(#slug),
+                                rustc_errors::DiagnosticId::Error(#code.to_string())
+                            );
                         }
-                    },
-                }
+                    }
+                    (Some((SessionDiagnosticKind::Warn, _)), Some((slug, _)), Some((code, _))) => {
+                        quote! {
+                            let mut #diag = #sess.struct_warn_with_code(
+                                rustc_errors::DiagnosticMessage::fluent(#slug),
+                                rustc_errors::DiagnosticId::Error(#code.to_string())
+                            );
+                        }
+                    }
+                };
+
+                let implementation = quote! {
+                    #init
+                    #preamble
+                    match self {
+                        #attrs
+                    }
+                    match self {
+                        #args
+                    }
+                    #diag
+                };
+                let param_ty = match builder.kind {
+                    Some((SessionDiagnosticKind::Error, _)) => {
+                        quote! { rustc_errors::ErrorGuaranteed }
+                    }
+                    Some((SessionDiagnosticKind::Warn, _)) => quote! { () },
+                    _ => unreachable!(),
+                };
+
+                (implementation, param_ty)
             } else {
                 span_err(
                     ast.span().unwrap(),
                     "`#[derive(SessionDiagnostic)]` can only be used on structs",
                 )
                 .emit();
-                SessionDiagnosticDeriveError::ErrorHandled.to_compile_error()
+
+                let implementation = SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
+                let param_ty = quote! { rustc_errors::ErrorGuaranteed };
+                (implementation, param_ty)
             }
         };
 
         let sess = &builder.sess;
         structure.gen_impl(quote! {
-            gen impl<'__session_diagnostic_sess> rustc_session::SessionDiagnostic<'__session_diagnostic_sess>
+            gen impl<'__session_diagnostic_sess> rustc_session::SessionDiagnostic<'__session_diagnostic_sess, #param_ty>
                     for @Self
             {
                 fn into_diagnostic(
                     self,
                     #sess: &'__session_diagnostic_sess rustc_session::Session
-                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, rustc_errors::ErrorGuaranteed> {
+                ) -> rustc_errors::DiagnosticBuilder<'__session_diagnostic_sess, #param_ty> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
@@ -282,6 +320,25 @@ struct FieldInfo<'a> {
     span: &'a proc_macro2::Span,
 }
 
+/// What kind of session diagnostic is being derived - an error or a warning?
+#[derive(Copy, Clone)]
+enum SessionDiagnosticKind {
+    /// `#[error(..)]`
+    Error,
+    /// `#[warn(..)]`
+    Warn,
+}
+
+impl SessionDiagnosticKind {
+    /// Returns human-readable string corresponding to the kind.
+    fn descr(&self) -> &'static str {
+        match self {
+            SessionDiagnosticKind::Error => "error",
+            SessionDiagnosticKind::Warn => "warning",
+        }
+    }
+}
+
 /// Tracks persistent information required for building up the individual calls to diagnostic
 /// methods for the final generated method. This is a separate struct to `SessionDiagnosticDerive`
 /// only to be able to destructure and split `self.builder` and the `self.structure` up to avoid a
@@ -289,89 +346,182 @@ struct FieldInfo<'a> {
 struct SessionDiagnosticDeriveBuilder<'a> {
     /// Name of the session parameter that's passed in to the `as_error` method.
     sess: syn::Ident,
+    /// The identifier to use for the generated `DiagnosticBuilder` instance.
+    diag: syn::Ident,
 
     /// Store a map of field name to its corresponding field. This is built on construction of the
     /// derive builder.
     fields: HashMap<String, &'a syn::Field>,
 
-    /// The identifier to use for the generated `DiagnosticBuilder` instance.
-    diag: syn::Ident,
-
-    /// Whether this is a lint or an error. This dictates how the diag will be initialised. `Span`
-    /// stores at what `Span` the kind was first set at (for error reporting purposes, if the kind
-    /// was multiply specified).
-    kind: Option<(DiagnosticId, proc_macro2::Span)>,
+    /// Kind of diagnostic requested via the struct attribute.
+    kind: Option<(SessionDiagnosticKind, proc_macro::Span)>,
+    /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
+    /// has the actual diagnostic message.
+    slug: Option<(String, proc_macro::Span)>,
+    /// Error codes are a mandatory part of the struct attribute. Slugs may replace error codes
+    /// in future but it is desirable to mandate error codes until such a time.
+    code: Option<(String, proc_macro::Span)>,
 }
 
 impl<'a> SessionDiagnosticDeriveBuilder<'a> {
+    /// Establishes state in the `SessionDiagnosticDeriveBuilder` resulting from the struct
+    /// attributes like `#[error(..)#`, such as the diagnostic kind, slug and code.
+    ///
+    /// Returns a `proc_macro2::TokenStream` so that the `Err(..)` variant can be transformed into
+    /// the same type via `to_compile_error`.
     fn generate_structure_code(
         &mut self,
         attr: &syn::Attribute,
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
-        Ok(match attr.parse_meta()? {
-            syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
-                let formatted_str = self.build_format(&s.value(), attr.span());
-                let name = attr.path.segments.last().unwrap().ident.to_string();
-                let name = name.as_str();
-                match name {
-                    "message" => {
-                        let diag = &self.diag;
-                        quote! {
-                            #diag.set_primary_message(#formatted_str);
+        let span = attr.span().unwrap();
+        let name = attr.path.segments.last().unwrap().ident.to_string();
+
+        let nested = match attr.parse_meta()? {
+            syn::Meta::List(syn::MetaList { nested, .. }) => nested,
+            syn::Meta::Path(..) => throw_span_err!(
+                span,
+                &format!("`#[{}]` is not a valid `SessionDiagnostic` struct attribute", name)
+            ),
+            syn::Meta::NameValue(..) => throw_span_err!(
+                span,
+                &format!("`#[{} = ...]` is not a valid `SessionDiagnostic` struct attribute", name)
+            ),
+        };
+
+        let kind = match name.as_str() {
+            "error" => SessionDiagnosticKind::Error,
+            "warning" => SessionDiagnosticKind::Warn,
+            other => throw_span_err!(
+                span,
+                &format!("`#[{}(...)]` is not a valid `SessionDiagnostic` struct attribute", other)
+            ),
+        };
+        self.set_kind_once(kind, span)?;
+
+        for attr in nested {
+            let span = attr.span().unwrap();
+            let meta = match attr {
+                syn::NestedMeta::Meta(meta) => meta,
+                syn::NestedMeta::Lit(_) => throw_span_err!(
+                    span,
+                    &format!(
+                        "`#[{}(\"...\")]` is not a valid `SessionDiagnostic` struct attribute",
+                        name
+                    )
+                ),
+            };
+
+            let path = meta.path();
+            let nested_name = path.segments.last().unwrap().ident.to_string();
+            match &meta {
+                // Struct attributes are only allowed to be applied once, and the diagnostic
+                // changes will be set in the initialisation code.
+                syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
+                    match nested_name.as_str() {
+                        "slug" => {
+                            self.set_slug_once(s.value(), s.span().unwrap());
+                        }
+                        "code" => {
+                            self.set_code_once(s.value(), s.span().unwrap());
+                        }
+                        other => {
+                            let diag = span_err(
+                                span,
+                                &format!(
+                                    "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
+                                    name, other
+                                ),
+                            );
+                            diag.emit();
                         }
                     }
-                    attr @ "error" | attr @ "lint" => {
-                        self.set_kind_once(
-                            if attr == "error" {
-                                DiagnosticId::Error(formatted_str)
-                            } else if attr == "lint" {
-                                DiagnosticId::Lint(formatted_str)
-                            } else {
-                                unreachable!()
-                            },
-                            s.span(),
-                        )?;
-                        // This attribute is only allowed to be applied once, and the attribute
-                        // will be set in the initialisation code.
-                        quote! {}
-                    }
-                    other => throw_span_err!(
-                        attr.span().unwrap(),
+                }
+                syn::Meta::NameValue(..) => {
+                    span_err(
+                        span,
                         &format!(
-                            "`#[{} = ...]` is not a valid `SessionDiagnostic` struct attribute",
-                            other
-                        )
-                    ),
+                            "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
+                            name, nested_name
+                        ),
+                    )
+                    .help("value must be a string")
+                    .emit();
+                }
+                syn::Meta::Path(..) => {
+                    span_err(
+                        span,
+                        &format!(
+                            "`#[{}({})]` is not a valid `SessionDiagnostic` struct attribute",
+                            name, nested_name
+                        ),
+                    )
+                    .emit();
+                }
+                syn::Meta::List(..) => {
+                    span_err(
+                        span,
+                        &format!(
+                            "`#[{}({}(...))]` is not a valid `SessionDiagnostic` struct attribute",
+                            name, nested_name
+                        ),
+                    )
+                    .emit();
                 }
             }
-            _ => todo!("unhandled meta kind"),
-        })
+        }
+
+        Ok(quote! {})
     }
 
     #[must_use]
     fn set_kind_once(
         &mut self,
-        kind: DiagnosticId,
-        span: proc_macro2::Span,
+        kind: SessionDiagnosticKind,
+        span: proc_macro::Span,
     ) -> Result<(), SessionDiagnosticDeriveError> {
-        if self.kind.is_none() {
-            self.kind = Some((kind, span));
-            Ok(())
-        } else {
-            let kind_str = |kind: &DiagnosticId| match kind {
-                DiagnosticId::Lint(..) => "lint",
-                DiagnosticId::Error(..) => "error",
-            };
+        match self.kind {
+            None => {
+                self.kind = Some((kind, span));
+                Ok(())
+            }
+            Some((prev_kind, prev_span)) => {
+                let existing = prev_kind.descr();
+                let current = kind.descr();
 
-            let existing_kind = kind_str(&self.kind.as_ref().unwrap().0);
-            let this_kind = kind_str(&kind);
+                let msg = if current == existing {
+                    format!("`{}` specified multiple times", existing)
+                } else {
+                    format!("`{}` specified when `{}` was already specified", current, existing)
+                };
+                throw_span_err!(span, &msg, |diag| diag
+                    .span_note(prev_span, "previously specified here"));
+            }
+        }
+    }
 
-            let msg = if this_kind == existing_kind {
-                format!("`{}` specified multiple times", existing_kind)
-            } else {
-                format!("`{}` specified when `{}` was already specified", this_kind, existing_kind)
-            };
-            throw_span_err!(span.unwrap(), &msg);
+    fn set_code_once(&mut self, code: String, span: proc_macro::Span) {
+        match self.code {
+            None => {
+                self.code = Some((code, span));
+            }
+            Some((_, prev_span)) => {
+                span_err(span, "`code` specified multiple times")
+                    .span_note(prev_span, "previously specified here")
+                    .emit();
+            }
+        }
+    }
+
+    fn set_slug_once(&mut self, slug: String, span: proc_macro::Span) {
+        match self.slug {
+            None => {
+                self.slug = Some((slug, span));
+            }
+            Some((_, prev_span)) => {
+                span_err(span, "`slug` specified multiple times")
+                    .span_note(prev_span, "previously specified here")
+                    .emit();
+            }
         }
     }
 
@@ -413,26 +563,29 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
-        // At this point, we need to dispatch based on the attribute key + the
-        // type.
         let meta = attr.parse_meta()?;
         match meta {
+            syn::Meta::Path(_) => match name {
+                "message" => {
+                    if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+                        return Ok(quote! {
+                            #diag.set_span(*#field_binding);
+                        });
+                    } else {
+                        throw_span_err!(
+                            attr.span().unwrap(),
+                            "the `#[message]` attribute can only be applied to fields of type `Span`"
+                        );
+                    }
+                }
+                other => throw_span_err!(
+                    attr.span().unwrap(),
+                    &format!("`#[{}]` is not a valid `SessionDiagnostic` field attribute", other)
+                ),
+            },
             syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
                 let formatted_str = self.build_format(&s.value(), attr.span());
                 match name {
-                    "message" => {
-                        if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                            return Ok(quote! {
-                                #diag.set_span(*#field_binding);
-                                #diag.set_primary_message(#formatted_str);
-                            });
-                        } else {
-                            throw_span_err!(
-                                attr.span().unwrap(),
-                                "the `#[message = \"...\"]` attribute can only be applied to fields of type `Span`"
-                            );
-                        }
-                    }
                     "label" => {
                         if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
                             return Ok(quote! {
@@ -441,7 +594,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         } else {
                             throw_span_err!(
                                 attr.span().unwrap(),
-                                "The `#[label = ...]` attribute can only be applied to fields of type `Span`"
+                                "the `#[label = ...]` attribute can only be applied to fields of type `Span`"
                             );
                         }
                     }
