@@ -559,7 +559,7 @@ window.initSearch = function(rawSearchIndex) {
      * nonempty-arg-list-without-generics = *(type-sep) arg-without-generic
      *                                      *(type-sep arg-without-generic) *(type-sep)
      * generics = OPEN-ANGLE-BRACKET [ nonempty-arg-list-without-generics ] *(type-sep)
-     *            CLOSE-ANGLE-BRACKET
+     *            CLOSE-ANGLE-BRACKET/EOF
      * return-args = RETURN-ARROW *(type-sep) nonempty-arg-list
      *
      * exact-search = [type-filter *WS COLON] [ RETURN-ARROW ] *WS QUOTE ident QUOTE [ generics ]
