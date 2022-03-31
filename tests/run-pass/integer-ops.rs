@@ -1,4 +1,5 @@
 // compile-flags: -Coverflow-checks=off
+#![feature(int_log)]
 #![allow(arithmetic_overflow)]
 
 pub fn main() {
@@ -171,4 +172,32 @@ pub fn main() {
     assert_eq!(10i8.overflowing_abs(), (10,false));
     assert_eq!((-10i8).overflowing_abs(), (10,false));
     assert_eq!((-128i8).overflowing_abs(), (-128,true));
+
+    // Logarithms
+    macro_rules! test_log {
+        ($type:ident, $max_log2:expr, $max_log10:expr) => {
+            assert_eq!($type::MIN.checked_log2(), None);
+            assert_eq!($type::MIN.checked_log10(), None);
+            assert_eq!($type::MAX.checked_log2(), Some($max_log2));
+            assert_eq!($type::MAX.checked_log10(), Some($max_log10));
+        }
+    }
+
+    test_log!(i8, 6, 2);
+    test_log!(u8, 7, 2);
+    test_log!(i16, 14, 4);
+    test_log!(u16, 15, 4);
+    test_log!(i32, 30, 9);
+    test_log!(u32, 31, 9);
+    test_log!(i64, 62, 18);
+    test_log!(u64, 63, 19);
+    test_log!(i128, 126, 38);
+    test_log!(u128, 127, 38);
+
+    for i in (1..=i16::MAX).step_by(i8::MAX as usize) {
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
+    }
+    for i in (1..=u16::MAX).step_by(i8::MAX as usize) {
+        assert_eq!(i.checked_log(13), Some((i as f32).log(13.0) as u32));
+    }
 }
