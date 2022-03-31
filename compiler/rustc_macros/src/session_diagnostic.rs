@@ -561,6 +561,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
         let diag = &self.diag;
         let field_binding = &info.binding.binding;
+
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
@@ -573,46 +574,38 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     Ok(quote! {})
                 }
                 "primary_span" => {
-                    if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                        return Ok(quote! {
-                            #diag.set_span(*#field_binding);
-                        });
-                    } else {
-                        throw_span_err!(
-                            attr.span().unwrap(),
-                            "the `#[primary_span]` attribute can only be applied to fields of type `Span`"
-                        );
-                    }
+                    self.report_error_if_not_applied_to_span(attr, info)?;
+                    Ok(quote! {
+                        #diag.set_span(*#field_binding);
+                    })
+                }
+                "label" => {
+                    self.report_error_if_not_applied_to_span(attr, info)?;
+                    Ok(self.add_subdiagnostic(field_binding, name, "label"))
                 }
                 other => throw_span_err!(
                     attr.span().unwrap(),
                     &format!("`#[{}]` is not a valid `SessionDiagnostic` field attribute", other)
                 ),
             },
-            syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
-                let formatted_str = self.build_format(&s.value(), attr.span());
-                match name {
-                    "label" => {
-                        if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
-                            return Ok(quote! {
-                                #diag.span_label(*#field_binding, #formatted_str);
-                            });
-                        } else {
-                            throw_span_err!(
-                                attr.span().unwrap(),
-                                "the `#[label = ...]` attribute can only be applied to fields of type `Span`"
-                            );
-                        }
-                    }
-                    other => throw_span_err!(
-                        attr.span().unwrap(),
-                        &format!(
-                            "`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute",
-                            other
-                        )
-                    ),
+            syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => match name {
+                "label" => {
+                    self.report_error_if_not_applied_to_span(attr, info)?;
+                    Ok(self.add_subdiagnostic(field_binding, name, &s.value()))
                 }
-            }
+                other => throw_span_err!(
+                    attr.span().unwrap(),
+                    &format!(
+                        "`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute",
+                        other
+                    )
+                ),
+            },
+            syn::Meta::NameValue(_) => throw_span_err!(
+                attr.span().unwrap(),
+                &format!("`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute", name),
+                |diag| diag.help("value must be a string")
+            ),
             syn::Meta::List(list) => {
                 match list.path.segments.iter().last().unwrap().ident.to_string().as_str() {
                     suggestion_kind @ "suggestion"
@@ -681,7 +674,55 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     ),
                 }
             }
-            _ => panic!("unhandled meta kind"),
+        }
+    }
+
+    /// Reports an error if the field's type is not `Span`.
+    fn report_error_if_not_applied_to_span(
+        &self,
+        attr: &syn::Attribute,
+        info: FieldInfo<'_>,
+    ) -> Result<(), SessionDiagnosticDeriveError> {
+        if !type_matches_path(&info.ty, &["rustc_span", "Span"]) {
+            let name = attr.path.segments.last().unwrap().ident.to_string();
+            let name = name.as_str();
+            let meta = attr.parse_meta()?;
+
+            throw_span_err!(
+                attr.span().unwrap(),
+                &format!(
+                    "the `#[{}{}]` attribute can only be applied to fields of type `Span`",
+                    name,
+                    match meta {
+                        syn::Meta::Path(_) => "",
+                        syn::Meta::NameValue(_) => " = ...",
+                        syn::Meta::List(_) => "(...)",
+                    }
+                )
+            );
+        }
+
+        Ok(())
+    }
+
+    /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug and
+    /// `fluent_attr_identifier`.
+    fn add_subdiagnostic(
+        &self,
+        field_binding: &proc_macro2::Ident,
+        kind: &str,
+        fluent_attr_identifier: &str,
+    ) -> proc_macro2::TokenStream {
+        let diag = &self.diag;
+
+        let slug =
+            self.slug.as_ref().map(|(slug, _)| slug.as_str()).unwrap_or_else(|| "missing-slug");
+        let fn_name = format_ident!("span_{}", kind);
+        quote! {
+            #diag.#fn_name(
+                *#field_binding,
+                rustc_errors::DiagnosticMessage::fluent_attr(#slug, #fluent_attr_identifier)
+            );
         }
     }
 

@@ -408,7 +408,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// the diagnostic was constructed. However, the label span is *not* considered a
     /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
     /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self);
+    pub fn span_label(&mut self, span: Span, label: impl Into<DiagnosticMessage>) -> &mut Self);
 
     forward!(
     /// Labels all the given spans with the provided label.

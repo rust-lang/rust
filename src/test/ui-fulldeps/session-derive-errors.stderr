@@ -162,35 +162,31 @@ LL |     #[nonsense]
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
   --> $DIR/session-derive-errors.rs:149:5
    |
-LL |     #[label = "this message is applied to a String field"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[label = "bar"]
+   |     ^^^^^^^^^^^^^^^^
 
 error: `name` doesn't refer to a field on this type
-  --> $DIR/session-derive-errors.rs:157:5
+  --> $DIR/session-derive-errors.rs:157:52
    |
-LL |     #[label = "This error has a field, and references {name}"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[suggestion(message = "This is a suggestion", code = "{name}")]
+   |                                                    ^^^^^^^^^^^^^^^
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/session-derive-errors.rs:163:20
+  --> $DIR/session-derive-errors.rs:162:16
    |
 LL | #[derive(SessionDiagnostic)]
-   |          ----------------- in this derive macro expansion
-LL | #[error(code = "E0123", slug = "foo")]
-   |               -    ^ expected `'}'` in format string
-   |               |
-   |               because of this opening brace
+   |           -    ^ expected `'}'` in format string
+   |           |
+   |           because of this opening brace
    |
    = note: if you intended to print `{`, you can escape it using `{{`
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/session-derive-errors.rs:173:20
+  --> $DIR/session-derive-errors.rs:172:15
    |
 LL | #[derive(SessionDiagnostic)]
-   |          ----------------- in this derive macro expansion
-LL | #[error(code = "E0123", slug = "foo")]
-   |                    ^ unmatched `}` in format string
+   |               ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
@@ -198,8 +194,8 @@ LL | #[error(code = "E0123", slug = "foo")]
 error: the `#[label = ...]` attribute can only be applied to fields of type `Span`
   --> $DIR/session-derive-errors.rs:192:5
    |
-LL |     #[label = "See here"]
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     #[label = "bar"]
+   |     ^^^^^^^^^^^^^^^^
 
 error: `nonsense` is not a valid key for `#[suggestion(...)]`
   --> $DIR/session-derive-errors.rs:217:18
@@ -250,8 +246,8 @@ LL | |     suggestion: (Applicability, Applicability, Span),
 error: invalid annotation list `#[label(...)]`
   --> $DIR/session-derive-errors.rs:279:7
    |
-LL |     #[label("wrong kind of annotation for label")]
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[label("bar")]
+   |       ^^^^^^^^^^^^
 
 error: cannot find attribute `nonsense` in this scope
   --> $DIR/session-derive-errors.rs:51:3
@@ -266,7 +262,7 @@ LL |     #[nonsense]
    |       ^^^^^^^^
 
 error[E0599]: no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
-  --> $DIR/session-derive-errors.rs:315:10
+  --> $DIR/session-derive-errors.rs:323:10
    |
 LL | struct Hello {}
    | ------------ method `into_diagnostic_arg` not found for this

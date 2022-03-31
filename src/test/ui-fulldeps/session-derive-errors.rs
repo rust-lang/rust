@@ -139,14 +139,14 @@ struct InvalidPathFieldAttr {
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithField {
     name: String,
-    #[label = "This error has a field, and references {name}"]
+    #[label = "bar"]
     span: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithMessageAppliedToField {
-    #[label = "this message is applied to a String field"]
+    #[label = "bar"]
     //~^ ERROR the `#[label = ...]` attribute can only be applied to fields of type `Span`
     name: String,
 }
@@ -154,27 +154,27 @@ struct ErrorWithMessageAppliedToField {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithNonexistentField {
-    #[label = "This error has a field, and references {name}"]
+    #[suggestion(message = "This is a suggestion", code = "{name}")]
     //~^ ERROR `name` doesn't refer to a field on this type
-    foo: Span,
+    suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
 //~^ ERROR invalid format string: expected `'}'`
+#[error(code = "E0123", slug = "foo")]
 struct ErrorMissingClosingBrace {
-    #[label = "This is missing a closing brace: {name"]
-    foo: Span,
+    #[suggestion(message = "This is a suggestion", code = "{name")]
+    suggestion: (Span, Applicability),
     name: String,
     val: usize,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
 //~^ ERROR invalid format string: unmatched `}`
+#[error(code = "E0123", slug = "foo")]
 struct ErrorMissingOpeningBrace {
-    #[label = "This is missing an opening brace: name}"]
-    foo: Span,
+    #[suggestion(message = "This is a suggestion", code = "name}")]
+    suggestion: (Span, Applicability),
     name: String,
     val: usize,
 }
@@ -182,14 +182,14 @@ struct ErrorMissingOpeningBrace {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct LabelOnSpan {
-    #[label = "See here"]
+    #[label = "bar"]
     sp: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct LabelOnNonSpan {
-    #[label = "See here"]
+    #[label = "bar"]
     //~^ ERROR the `#[label = ...]` attribute can only be applied to fields of type `Span`
     id: u32,
 }
@@ -276,7 +276,7 @@ struct SuggestWithDuplicateApplicabilityAndSpan {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct WrongKindOfAnnotation {
-    #[label("wrong kind of annotation for label")]
+    #[label("bar")]
     //~^ ERROR invalid annotation list `#[label(...)]`
     z: Span,
 }
@@ -284,7 +284,7 @@ struct WrongKindOfAnnotation {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct OptionsInErrors {
-    #[label = "Label message"]
+    #[label = "bar"]
     label: Option<Span>,
     #[suggestion(message = "suggestion message")]
     opt_sugg: Option<(Span, Applicability)>,
@@ -296,9 +296,9 @@ struct MoveOutOfBorrowError<'tcx> {
     name: Ident,
     ty: Ty<'tcx>,
     #[primary_span]
-    #[label = "cannot move out of borrow"]
+    #[label = "bar"]
     span: Span,
-    #[label = "`{ty}` first borrowed here"]
+    #[label = "qux"]
     other_span: Span,
     #[suggestion(message = "consider cloning here", code = "{name}.clone()")]
     opt_sugg: Option<(Span, Applicability)>,
@@ -307,7 +307,15 @@ struct MoveOutOfBorrowError<'tcx> {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithLifetime<'a> {
-    #[label = "Some message that references {name}"]
+    #[label = "bar"]
+    span: Span,
+    name: &'a str,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithDefaultLabelAttr<'a> {
+    #[label]
     span: Span,
     name: &'a str,
 }

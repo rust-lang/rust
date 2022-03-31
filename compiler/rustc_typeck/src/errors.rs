@@ -6,9 +6,9 @@ use rustc_span::{symbol::Ident, Span, Symbol};
 #[error(code = "E0062", slug = "typeck-field-multiply-specified-in-initializer")]
 pub struct FieldMultiplySpecifiedInInitializer {
     #[primary_span]
-    #[label = "used more than once"]
+    #[label]
     pub span: Span,
-    #[label = "first use of `{ident}`"]
+    #[label = "previous-use-label"]
     pub prev_span: Span,
     pub ident: Ident,
 }
@@ -17,7 +17,7 @@ pub struct FieldMultiplySpecifiedInInitializer {
 #[error(code = "E0092", slug = "typeck-unrecognized-atomic-operation")]
 pub struct UnrecognizedAtomicOperation<'a> {
     #[primary_span]
-    #[label = "unrecognized atomic operation"]
+    #[label]
     pub span: Span,
     pub op: &'a str,
 }
@@ -26,7 +26,7 @@ pub struct UnrecognizedAtomicOperation<'a> {
 #[error(code = "E0094", slug = "typeck-wrong-number-of-generic-arguments-to-intrinsic")]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     #[primary_span]
-    #[label = "expected {expected} {descr} parameter{expected_pluralize}"]
+    #[label]
     pub span: Span,
     pub found: usize,
     pub expected: usize,
@@ -38,7 +38,7 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
 #[error(code = "E0093", slug = "typeck-unrecognized-intrinsic-function")]
 pub struct UnrecognizedIntrinsicFunction {
     #[primary_span]
-    #[label = "unrecognized intrinsic"]
+    #[label]
     pub span: Span,
     pub name: Symbol,
 }
@@ -47,9 +47,9 @@ pub struct UnrecognizedIntrinsicFunction {
 #[error(code = "E0195", slug = "typeck-lifetimes-or-bounds-mismatch-on-trait")]
 pub struct LifetimesOrBoundsMismatchOnTrait {
     #[primary_span]
-    #[label = "lifetimes do not match {item_kind} in trait"]
+    #[label]
     pub span: Span,
-    #[label = "lifetimes in impl do not match this {item_kind} in trait"]
+    #[label = "generics-label"]
     pub generics_span: Option<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
@@ -59,7 +59,7 @@ pub struct LifetimesOrBoundsMismatchOnTrait {
 #[error(code = "E0120", slug = "typeck-drop-impl-on-wrong-item")]
 pub struct DropImplOnWrongItem {
     #[primary_span]
-    #[label = "must be a struct, enum, or union"]
+    #[label]
     pub span: Span,
 }
 
@@ -68,9 +68,9 @@ pub struct DropImplOnWrongItem {
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
     #[primary_span]
-    #[label = "field already declared"]
+    #[label]
     pub span: Span,
-    #[label = "`{field_name}` first declared here"]
+    #[label = "previous-decl-label"]
     pub prev_span: Span,
 }
 
@@ -78,7 +78,7 @@ pub struct FieldAlreadyDeclared {
 #[error(code = "E0184", slug = "typeck-copy-impl-on-type-with-dtor")]
 pub struct CopyImplOnTypeWithDtor {
     #[primary_span]
-    #[label = "Copy not allowed on types with destructors"]
+    #[label]
     pub span: Span,
 }
 
@@ -93,7 +93,7 @@ pub struct MultipleRelaxedDefaultBounds {
 #[error(code = "E0206", slug = "typeck-copy-impl-on-non-adt")]
 pub struct CopyImplOnNonAdt {
     #[primary_span]
-    #[label = "type is not a structure or enumeration"]
+    #[label]
     pub span: Span,
 }
 
@@ -115,7 +115,7 @@ pub struct AmbiguousLifetimeBound {
 #[error(code = "E0229", slug = "typeck-assoc-type-binding-not-allowed")]
 pub struct AssocTypeBindingNotAllowed {
     #[primary_span]
-    #[label = "associated type not allowed here"]
+    #[label]
     pub span: Span,
 }
 
@@ -130,7 +130,7 @@ pub struct FunctionalRecordUpdateOnNonStruct {
 #[error(code = "E0516", slug = "typeck-typeof-reserved-keyword-used")]
 pub struct TypeofReservedKeywordUsed {
     #[primary_span]
-    #[label = "reserved keyword"]
+    #[label]
     pub span: Span,
 }
 
@@ -139,9 +139,9 @@ pub struct TypeofReservedKeywordUsed {
 pub struct ReturnStmtOutsideOfFnBody {
     #[primary_span]
     pub span: Span,
-    #[label = "the return is part of this body..."]
+    #[label = "encl-body-label"]
     pub encl_body_span: Option<Span>,
-    #[label = "...not the enclosing function body"]
+    #[label = "encl-fn-label"]
     pub encl_fn_span: Option<Span>,
 }
 
@@ -171,9 +171,9 @@ pub struct MethodCallOnUnknownType {
 #[error(code = "E0719", slug = "typeck-value-of-associated-struct-already-specified")]
 pub struct ValueOfAssociatedStructAlreadySpecified {
     #[primary_span]
-    #[label = "re-bound here"]
+    #[label]
     pub span: Span,
-    #[label = "`{item_name}` bound here first"]
+    #[label = "previous-bound-label"]
     pub prev_span: Span,
     pub item_name: Ident,
     pub def_path: String,
@@ -183,6 +183,6 @@ pub struct ValueOfAssociatedStructAlreadySpecified {
 #[error(code = "E0745", slug = "typeck-address-of-temporary-taken")]
 pub struct AddressOfTemporaryTaken {
     #[primary_span]
-    #[label = "temporary value"]
+    #[label]
     pub span: Span,
 }
