@@ -308,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // In the `ValueNS`, we have `SelfCtor(..) | Ctor(_, Const), _)` remaining which
                 // could successfully compile. The former being `Self` requires a unit struct.
                 // In either case, and unlike constants, the pattern itself cannot be
-                // a reference type wherefore peeling doesn't give up any expressivity.
+                // a reference type wherefore peeling doesn't give up any expressiveness.
                 _ => AdjustMode::Peel,
             },
             // When encountering a `& mut? pat` pattern, reset to "by value".
@@ -460,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // The early check here is not for correctness, but rather better
                 // diagnostics (e.g. when `&str` is being matched, `expected` will
                 // be peeled to `str` while ty here is still `&str`, if we don't
-                // err ealy here, a rather confusing unification error will be
+                // err early here, a rather confusing unification error will be
                 // emitted instead).
                 let fail =
                     !(ty.is_numeric() || ty.is_char() || ty.is_ty_var() || ty.references_error());
@@ -1343,7 +1343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (inexistent_fields_err, unmentioned_err) {
             (Some(mut i), Some(mut u)) => {
                 if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
-                    // We don't want to show the inexistent fields error when this was
+                    // We don't want to show the nonexistent fields error when this was
                     // `Foo { a, b }` when it should have been `Foo(a, b)`.
                     i.delay_as_bug();
                     u.delay_as_bug();

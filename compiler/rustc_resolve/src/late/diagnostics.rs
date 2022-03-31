@@ -2151,7 +2151,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                             // but if we make a mistake elsewhere, mainly by keeping something in
                             // `missing_named_lifetime_spots` that we shouldn't, like associated
                             // `const`s or making a mistake in the AST lowering we would provide
-                            // non-sensical suggestions. Guard against that by skipping these.
+                            // nonsensical suggestions. Guard against that by skipping these.
                             // (#74264)
                             continue;
                         }

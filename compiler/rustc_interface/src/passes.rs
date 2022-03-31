@@ -929,7 +929,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
                 });
             },
             {
-                // We force these querie to run,
+                // We force these queries to run,
                 // since they might not otherwise get called.
                 // This marks the corresponding crate-level attributes
                 // as used, and ensures that their values are valid.

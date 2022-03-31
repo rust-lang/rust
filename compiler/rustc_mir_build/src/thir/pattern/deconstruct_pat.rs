@@ -1007,7 +1007,7 @@ impl<'tcx> SplitWildcard<'tcx> {
             {
                 // `usize`/`isize` are not allowed to be matched exhaustively unless the
                 // `precise_pointer_size_matching` feature is enabled. So we treat those types like
-                // `#[non_exhaustive]` enums by returning a special unmatcheable constructor.
+                // `#[non_exhaustive]` enums by returning a special unmatchable constructor.
                 smallvec![NonExhaustive]
             }
             &ty::Int(ity) => {
@@ -1650,7 +1650,7 @@ impl<'p, 'tcx> fmt::Debug for DeconstructedPat<'p, 'tcx> {
                     }
 
                     // Without `cx`, we can't know which field corresponds to which, so we can't
-                    // get the names of the fields. Instead we just display everything as a suple
+                    // get the names of the fields. Instead we just display everything as a tuple
                     // struct, which should be good enough.
                     write!(f, "(")?;
                     for p in self.iter_fields() {

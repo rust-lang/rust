@@ -1638,7 +1638,7 @@ impl fmt::Display for Ident {
 /// hygiene data, most importantly name of the crate it refers to.
 /// As a result we print `$crate` as `crate` if it refers to the local crate
 /// and as `::other_crate_name` if it refers to some other crate.
-/// Note, that this is only done if the ident token is printed from inside of AST pretty-pringing,
+/// Note, that this is only done if the ident token is printed from inside of AST pretty-printing,
 /// but not otherwise. Pretty-printing is the only way for proc macros to discover token contents,
 /// so we should not perform this lossy conversion if the top level call to the pretty-printer was
 /// done for a token stream or a single token.
@@ -1813,7 +1813,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // revisited after further improvements to `indexmap`.
 //
 // This type is private to prevent accidentally constructing more than one
-// `Interner` on the same thread, which makes it easy to mixup `Symbol`s
+// `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
 #[derive(Default)]
 struct InternerInner {

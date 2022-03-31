@@ -69,7 +69,7 @@ pub enum MacroRulesScope<'a> {
 /// The reason is that we update scopes with value `MacroRulesScope::Invocation(invoc_id)`
 /// in-place after `invoc_id` gets expanded.
 /// This helps to avoid uncontrollable growth of `macro_rules!` scope chains,
-/// which usually grow lineraly with the number of macro invocations
+/// which usually grow linearly with the number of macro invocations
 /// in a module (including derives) and hurt performance.
 pub(crate) type MacroRulesScopeRef<'a> = Interned<'a, Cell<MacroRulesScope<'a>>>;
 

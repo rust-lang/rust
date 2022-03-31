@@ -109,7 +109,7 @@ pub fn options() -> TargetOptions {
         crt_objects_fallback: Some(CrtObjectsFallback::Wasm),
 
         // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
-        // PIC code is implemented this has quite a drastric effect if it stays
+        // PIC code is implemented this has quite a drastic effect if it stays
         // at the default, `pic`. In an effort to keep wasm binaries as minimal
         // as possible we're defaulting to `static` for now, but the hope is
         // that eventually we can ship a `pic`-compatible standard library which

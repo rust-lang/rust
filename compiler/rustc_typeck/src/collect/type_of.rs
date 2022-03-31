@@ -43,7 +43,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         // In the above code we would call this query with the def_id of 3 and
         // the parent_node we match on would be the hir node for Self::Assoc<3>
         //
-        // `Self::Assoc<3>` cant be resolved without typchecking here as we
+        // `Self::Assoc<3>` cant be resolved without typechecking here as we
         // didnt write <Self as Foo>::Assoc<3>. If we did then another match
         // arm would handle this.
         //

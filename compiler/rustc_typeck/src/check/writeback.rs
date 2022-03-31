@@ -209,7 +209,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             if let Some(ty::Ref(_, base_ty, _)) = base_ty {
                 let index_ty = typeck_results.expr_ty_adjusted_opt(index).unwrap_or_else(|| {
                     // When encountering `return [0][0]` outside of a `fn` body we would attempt
-                    // to access an unexistend index. We assume that more relevant errors will
+                    // to access an nonexistent index. We assume that more relevant errors will
                     // already have been emitted, so we only gate on this with an ICE if no
                     // error has been emitted. (#64638)
                     self.fcx.tcx.ty_error_with_message(

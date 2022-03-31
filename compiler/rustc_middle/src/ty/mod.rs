@@ -5,7 +5,7 @@
 //! - [`rustc_middle::ty::Ty`], used to represent the semantics of a type.
 //! - [`rustc_middle::ty::TyCtxt`], the central data structure in the compiler.
 //!
-//! For more information, see ["The `ty` module: representing types"] in the ructc-dev-guide.
+//! For more information, see ["The `ty` module: representing types"] in the rustc-dev-guide.
 //!
 //! ["The `ty` module: representing types"]: https://rustc-dev-guide.rust-lang.org/ty.html
 
@@ -1263,7 +1263,7 @@ pub type PlaceholderConst<'tcx> = Placeholder<BoundConst<'tcx>>;
 /// aren't allowed to call that query: it is equal to `type_of(const_param)` which is
 /// trivial to compute.
 ///
-/// If we now want to use that constant in a place which potentionally needs its type
+/// If we now want to use that constant in a place which potentially needs its type
 /// we also pass the type of its `const_param`. This is the point of `WithOptConstParam`,
 /// except that instead of a `Ty` we bundle the `DefId` of the const parameter.
 /// Meaning that we need to use `type_of(const_param_did)` if `const_param_did` is `Some`

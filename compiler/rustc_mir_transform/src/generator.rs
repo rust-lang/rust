@@ -500,7 +500,7 @@ fn locals_live_across_suspend_points<'tcx>(
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
-                // borrows, so we conseratively assume that all borrowed locals are live until
+                // borrows, so we conservatively assume that all borrowed locals are live until
                 // we find a StorageDead statement referencing the locals.
                 // To do this we just union our `liveness` result with `borrowed_locals`, which
                 // contains all the locals which has been borrowed before this suspension point.

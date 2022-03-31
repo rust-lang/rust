@@ -1147,7 +1147,7 @@ pub struct TargetOptions {
     /// Linker arguments used in addition to `late_link_args` if at least one
     /// Rust dependency is dynamically linked.
     pub late_link_args_dynamic: LinkArgs,
-    /// Linker arguments used in addition to `late_link_args` if aall Rust
+    /// Linker arguments used in addition to `late_link_args` if all Rust
     /// dependencies are statically linked.
     pub late_link_args_static: LinkArgs,
     /// Linker arguments that are unconditionally passed *after* any

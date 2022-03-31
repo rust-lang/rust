@@ -563,7 +563,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 {
                                     // If the result is something that we can cache, then mark this
                                     // entry as 'complete'. This will allow us to skip evaluating the
-                                    // suboligations at all the next time we evaluate the projection
+                                    // subobligations at all the next time we evaluate the projection
                                     // predicate.
                                     self.infcx
                                         .inner
@@ -752,7 +752,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // provisional caches entries and inserting them into the evaluation cache
                     //
                     // This ensures that when a query reads this entry from the evaluation cache,
-                    // it will end up (transitively) dependening on all of the incr-comp dependencies
+                    // it will end up (transitively) depending on all of the incr-comp dependencies
                     // created during the evaluation of this trait. For example, evaluating a trait
                     // will usually require us to invoke `type_of(field_def_id)` to determine the
                     // constituent types, and we want any queries reading from this evaluation
@@ -1476,7 +1476,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// `No` if it does not. Return `Ambiguous` in the case that the projection type is a GAT,
     /// and applying this env_predicate constrains any of the obligation's GAT substitutions.
     ///
-    /// This behavior is a somewhat of a hack to prevent overconstraining inference variables
+    /// This behavior is a somewhat of a hack to prevent over-constraining inference variables
     /// in cases like #91762.
     pub(super) fn match_projection_projections(
         &mut self,
@@ -1730,7 +1730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // marker trait impls.
                             //
                             // Without this restriction, we could end up accidentally
-                            // constrainting inference variables based on an arbitrarily
+                            // constraining inference variables based on an arbitrarily
                             // chosen trait impl.
                             //
                             // Imagine we have the following code:
@@ -1759,7 +1759,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             // some other means (e.g. type-checking of a function). We will
                             // then be in a position to drop marker trait candidates
                             // without constraining inference variables (since there are
-                            // none left to constrin)
+                            // none left to constrain)
                             // 2) Be left with some unconstrained inference variables. We
                             // will then correctly report an inference error, since the
                             // existence of multiple marker trait impls tells us nothing
@@ -2519,7 +2519,7 @@ struct ProvisionalEvaluationCache<'tcx> {
     /// - `A B C` and we add a cache for the result of C (DFN 2)
     /// - Then we have a stack `A B D` where `D` has DFN 3
     /// - We try to solve D by evaluating E: `A B D E` (DFN 4)
-    /// - `E` generates various cache entries which have cyclic dependices on `B`
+    /// - `E` generates various cache entries which have cyclic dependencies on `B`
     ///   - `A B D E F` and so forth
     ///   - the DFN of `F` for example would be 5
     /// - then we determine that `E` is in error -- we will then clear

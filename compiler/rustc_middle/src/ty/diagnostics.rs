@@ -139,7 +139,7 @@ pub fn suggest_arbitrary_trait_bound(
         (Some(_), "Self") => return false,
         _ => {}
     }
-    // Suggest a where clause bound for a non-type paremeter.
+    // Suggest a where clause bound for a non-type parameter.
     let (action, prefix) = if generics.where_clause.predicates.is_empty() {
         ("introducing a", " where ")
     } else {

@@ -35,7 +35,7 @@ enum Frame {
 impl Frame {
     /// Construct a new frame around the delimited set of tokens.
     fn new(mut tts: Vec<mbe::TokenTree>) -> Frame {
-        // Need to add empty delimeters.
+        // Need to add empty delimiters.
         let open_tt = mbe::TokenTree::token(token::OpenDelim(token::NoDelim), DUMMY_SP);
         let close_tt = mbe::TokenTree::token(token::CloseDelim(token::NoDelim), DUMMY_SP);
         tts.insert(0, open_tt);
@@ -210,7 +210,7 @@ pub(super) fn transcribe<'a>(
                                 ));
                             }
                         } else {
-                            // 0 is the initial counter (we have done 0 repretitions so far). `len`
+                            // 0 is the initial counter (we have done 0 repetitions so far). `len`
                             // is the total number of repetitions we should generate.
                             repeats.push((0, len));
 

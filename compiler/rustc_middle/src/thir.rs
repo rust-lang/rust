@@ -656,7 +656,7 @@ pub enum PatKind<'tcx> {
     /// One of the following:
     /// * `&str`, which will be handled as a string pattern and thus exhaustiveness
     ///   checking will detect if you use the same string twice in different patterns.
-    /// * integer, bool, char or float, which will be handled by exhaustivenes to cover exactly
+    /// * integer, bool, char or float, which will be handled by exhaustiveness to cover exactly
     ///   its own value, similar to `&str`, but these values are much simpler.
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.

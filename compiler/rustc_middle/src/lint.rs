@@ -340,7 +340,7 @@ pub fn struct_lint_level<'s, 'd>(
             (Level::Expect(expect_id), _) => {
                 // This case is special as we actually allow the lint itself in this context, but
                 // we can't return early like in the case for `Level::Allow` because we still
-                // need the lint diagnostic to be emitted to `rustc_error::HanderInner`.
+                // need the lint diagnostic to be emitted to `rustc_error::HandlerInner`.
                 //
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply

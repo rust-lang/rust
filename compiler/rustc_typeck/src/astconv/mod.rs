@@ -290,7 +290,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
-    /// Constraints on associated typess are created from `create_assoc_bindings_for_generic_args`.
+    /// Constraints on associated types are created from `create_assoc_bindings_for_generic_args`.
     ///
     /// Example:
     ///
@@ -1435,7 +1435,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // If the projection output contains `Self`, force the user to
                         // elaborate it explicitly to avoid a lot of complexity.
                         //
-                        // The "classicaly useful" case is the following:
+                        // The "classically useful" case is the following:
                         // ```
                         //     trait MyTrait: FnMut() -> <Self as MyTrait>::MyOutput {
                         //         type MyOutput;
@@ -1768,7 +1768,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // Will fail except for `T::A` and `Self::A`; i.e., if `qself_ty`/`qself_def` are not a type
     // parameter or `Self`.
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
-    // it should also start reportint the `BARE_TRAIT_OBJECTS` lint.
+    // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
     pub fn associated_path_to_ty(
         &self,
         hir_ref_id: hir::HirId,

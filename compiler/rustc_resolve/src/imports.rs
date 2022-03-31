@@ -74,7 +74,7 @@ crate struct Import<'a> {
     /// In the case where the `Import` was expanded from a "nested" use tree,
     /// this id is the ID of the leaf tree. For example:
     ///
-    /// ```ignore (pacify the mercilous tidy)
+    /// ```ignore (pacify the merciless tidy)
     /// use foo::bar::{a, b}
     /// ```
     ///

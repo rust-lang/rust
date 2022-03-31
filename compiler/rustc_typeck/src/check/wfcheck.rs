@@ -510,7 +510,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<'tcx>>(
 
     for (region_a, region_a_idx) in &regions {
         // Ignore `'static` lifetimes for the purpose of this lint: it's
-        // because we know it outlives everything and so doesn't give meaninful
+        // because we know it outlives everything and so doesn't give meaningful
         // clues
         if let ty::ReStatic = **region_a {
             continue;
@@ -677,9 +677,9 @@ fn resolve_regions_with_wf_tys<'tcx>(
 struct GATSubstCollector<'tcx> {
     tcx: TyCtxt<'tcx>,
     gat: DefId,
-    // Which region appears and which parameter index its subsituted for
+    // Which region appears and which parameter index its substituted for
     regions: FxHashSet<(ty::Region<'tcx>, usize)>,
-    // Which params appears and which parameter index its subsituted for
+    // Which params appears and which parameter index its substituted for
     types: FxHashSet<(Ty<'tcx>, usize)>,
 }
 

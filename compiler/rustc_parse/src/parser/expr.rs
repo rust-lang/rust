@@ -276,7 +276,7 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
                 continue;
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
-                // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
+                // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
                 lhs = self.parse_range_expr(prec, lhs, op, cur_op_span)?;
                 break;

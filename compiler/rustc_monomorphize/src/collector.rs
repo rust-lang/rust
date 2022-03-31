@@ -975,7 +975,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
 /// this function finds the pair of types that determines the vtable linking
 /// them.
 ///
-/// For example, the source type might be `&SomeStruct` and the target type\
+/// For example, the source type might be `&SomeStruct` and the target type
 /// might be `&SomeTrait` in a cast like:
 ///
 /// let src: &SomeStruct = ...;

@@ -550,7 +550,7 @@ where
         }
 
         if a == b {
-            // Subtle: if a or b has a bound variable that we are lazilly
+            // Subtle: if a or b has a bound variable that we are lazily
             // substituting, then even if a == b, it could be that the values we
             // will substitute for those bound variables are *not* the same, and
             // hence returning `Ok(a)` is incorrect.

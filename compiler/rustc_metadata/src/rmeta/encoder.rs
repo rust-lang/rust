@@ -271,7 +271,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         // from. We use `TAG_VALID_SPAN_FOREIGN` to indicate that a `CrateNum` should
         // be deserialized after the rest of the span data, which tells the deserializer
         // which crate contains the source map information.
-        // 2. This span comes from our own crate. No special hamdling is needed - we just
+        // 2. This span comes from our own crate. No special handling is needed - we just
         // write `TAG_VALID_SPAN_LOCAL` to let the deserializer know that it should use
         // our own source map information.
         //

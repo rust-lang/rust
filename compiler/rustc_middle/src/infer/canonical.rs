@@ -220,7 +220,7 @@ pub enum Certainty {
     /// distinguish the two (e.g., due to our preference for where
     /// clauses over impls).
     ///
-    /// After some unifiations and things have been done, it makes
+    /// After some unification and things have been done, it makes
     /// sense to try and prove again -- of course, at that point, the
     /// canonical form will be different, making this a distinct
     /// query.

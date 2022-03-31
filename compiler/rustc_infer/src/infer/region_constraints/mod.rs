@@ -46,7 +46,7 @@ pub struct RegionConstraintStorage<'tcx> {
     /// exist). This prevents us from making many such regions.
     glbs: CombineMap<'tcx>,
 
-    /// When we add a R1 == R2 constriant, we currently add (a) edges
+    /// When we add a R1 == R2 constraint, we currently add (a) edges
     /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
     /// table. You can then call `opportunistic_resolve_var` early
     /// which will map R1 and R2 to some common region (i.e., either
