@@ -311,3 +311,23 @@ struct ErrorWithLifetime<'a> {
     span: Span,
     name: &'a str,
 }
+
+#[derive(SessionDiagnostic)]
+//~^ ERROR no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
+#[error(code = "E0123", slug = "foo")]
+struct ArgFieldWithoutSkip {
+    #[primary_span]
+    span: Span,
+    other: Hello,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ArgFieldWithSkip {
+    #[primary_span]
+    span: Span,
+    // `Hello` does not implement `IntoDiagnosticArg` so this would result in an error if
+    // not for `#[skip_arg]`.
+    #[skip_arg]
+    other: Hello,
+}

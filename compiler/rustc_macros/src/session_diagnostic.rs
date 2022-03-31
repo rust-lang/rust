@@ -216,7 +216,12 @@ impl<'a> SessionDiagnosticDerive<'a> {
                     if field.attrs.is_empty() {
                         let diag = &builder.diag;
                         let ident = field_binding.ast().ident.as_ref().unwrap();
-                        quote! { #diag.set_arg(stringify!(#ident), #field_binding.into_diagnostic_arg()); }
+                        quote! {
+                            #diag.set_arg(
+                                stringify!(#ident),
+                                #field_binding.into_diagnostic_arg()
+                            );
+                        }
                     } else {
                         quote! {}
                     }
@@ -566,6 +571,11 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         let meta = attr.parse_meta()?;
         match meta {
             syn::Meta::Path(_) => match name {
+                "skip_arg" => {
+                    // Don't need to do anything - by virtue of the attribute existing, the
+                    // `set_arg` call will not be generated.
+                    Ok(quote! {})
+                }
                 "primary_span" => {
                     if type_matches_path(&info.ty, &["rustc_span", "Span"]) {
                         return Ok(quote! {

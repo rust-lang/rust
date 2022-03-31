@@ -67,6 +67,7 @@ decl_derive!(
         warning,
         error,
         // field attributes
+        skip_arg,
         primary_span,
         label,
         suggestion,
