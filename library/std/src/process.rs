@@ -1964,7 +1964,17 @@ impl Child {
 /// process, no destructors on the current stack or any other thread's stack
 /// will be run. If a clean shutdown is needed it is recommended to only call
 /// this function at a known point where there are no more destructors left
-/// to run.
+/// to run; or, preferably, simply return a type implementing [`Termination`]
+/// (such as [`ExitCode`] or `Result`) from the `main` function and avoid this
+/// function altogether:
+///
+/// ```
+/// # use std::io::Error as MyError;
+/// fn main() -> Result<(), MyError> {
+///     // ...
+///     Ok(())
+/// }
+/// ```
 ///
 /// ## Platform-specific behavior
 ///
@@ -1972,39 +1982,14 @@ impl Child {
 /// will be visible to a parent process inspecting the exit code. On most
 /// Unix-like platforms, only the eight least-significant bits are considered.
 ///
-/// # Examples
-///
-/// Due to this function’s behavior regarding destructors, a conventional way
-/// to use the function is to extract the actual computation to another
-/// function and compute the exit code from its return value:
-///
-/// ```
-/// fn run_app() -> Result<(), ()> {
-///     // Application logic here
-///     Ok(())
-/// }
-///
-/// fn main() {
-///     std::process::exit(match run_app() {
-///         Ok(_) => 0,
-///         Err(err) => {
-///             eprintln!("error: {err:?}");
-///             1
-///         }
-///     });
-/// }
-/// ```
-///
-/// Due to [platform-specific behavior], the exit code for this example will be
-/// `0` on Linux, but `256` on Windows:
+/// For example, the exit code for this example will be `0` on Linux, but `256`
+/// on Windows:
 ///
 /// ```no_run
 /// use std::process;
 ///
 /// process::exit(0x0100);
 /// ```
-///
-/// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn exit(code: i32) -> ! {
     crate::rt::cleanup();
