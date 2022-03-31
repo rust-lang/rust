@@ -66,6 +66,8 @@ decl_derive!(
         // struct attributes
         warning,
         error,
+        note,
+        help,
         // field attributes
         skip_arg,
         primary_span,

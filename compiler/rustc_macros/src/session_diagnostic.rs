@@ -362,18 +362,52 @@ struct SessionDiagnosticDeriveBuilder<'a> {
 
 impl<'a> SessionDiagnosticDeriveBuilder<'a> {
     /// Establishes state in the `SessionDiagnosticDeriveBuilder` resulting from the struct
-    /// attributes like `#[error(..)#`, such as the diagnostic kind, slug and code.
-    ///
-    /// Returns a `proc_macro2::TokenStream` so that the `Err(..)` variant can be transformed into
-    /// the same type via `to_compile_error`.
+    /// attributes like `#[error(..)#`, such as the diagnostic kind and slug. Generates
+    /// diagnostic builder calls for setting error code and creating note/help messages.
     fn generate_structure_code(
         &mut self,
         attr: &syn::Attribute,
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
         let span = attr.span().unwrap();
-        let name = attr.path.segments.last().unwrap().ident.to_string();
 
-        let nested = match attr.parse_meta()? {
+        let name = attr.path.segments.last().unwrap().ident.to_string();
+        let name = name.as_str();
+        let meta = attr.parse_meta()?;
+
+        if matches!(name, "help" | "note")
+            && matches!(meta, syn::Meta::Path(_) | syn::Meta::NameValue(_))
+        {
+            let diag = &self.diag;
+            let slug = match &self.slug {
+                Some((slug, _)) => slug.as_str(),
+                None => throw_span_err!(
+                    span,
+                    &format!(
+                        "`#[{}{}]` must come after `#[error(..)]` or `#[warn(..)]`",
+                        name,
+                        match meta {
+                            syn::Meta::Path(_) => "",
+                            syn::Meta::NameValue(_) => " = ...",
+                            _ => unreachable!(),
+                        }
+                    )
+                ),
+            };
+            let id = match meta {
+                syn::Meta::Path(..) => quote! { #name },
+                syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => {
+                    quote! { #s }
+                }
+                _ => unreachable!(),
+            };
+            let fn_name = proc_macro2::Ident::new(name, attr.span());
+
+            return Ok(quote! {
+                #diag.#fn_name(rustc_errors::DiagnosticMessage::fluent_attr(#slug, #id));
+            });
+        }
+
+        let nested = match meta {
             syn::Meta::List(syn::MetaList { nested, .. }) => nested,
             syn::Meta::Path(..) => throw_span_err!(
                 span,
@@ -385,7 +419,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
             ),
         };
 
-        let kind = match name.as_str() {
+        let kind = match name {
             "error" => SessionDiagnosticKind::Error,
             "warning" => SessionDiagnosticKind::Warn,
             other => throw_span_err!(
@@ -579,9 +613,9 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                         #diag.set_span(*#field_binding);
                     })
                 }
-                "label" => {
+                "label" | "note" | "help" => {
                     self.report_error_if_not_applied_to_span(attr, info)?;
-                    Ok(self.add_subdiagnostic(field_binding, name, "label"))
+                    Ok(self.add_subdiagnostic(field_binding, name, name))
                 }
                 other => throw_span_err!(
                     attr.span().unwrap(),
@@ -589,7 +623,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 ),
             },
             syn::Meta::NameValue(syn::MetaNameValue { lit: syn::Lit::Str(s), .. }) => match name {
-                "label" => {
+                "label" | "note" | "help" => {
                     self.report_error_if_not_applied_to_span(attr, info)?;
                     Ok(self.add_subdiagnostic(field_binding, name, &s.value()))
                 }

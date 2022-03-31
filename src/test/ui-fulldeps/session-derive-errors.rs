@@ -339,3 +339,91 @@ struct ArgFieldWithSkip {
     #[skip_arg]
     other: Hello,
 }
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithSpannedNote {
+    #[note]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithSpannedNoteCustom {
+    #[note = "bar"]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+#[note]
+struct ErrorWithNote {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+#[note = "bar"]
+struct ErrorWithNoteCustom {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithSpannedHelp {
+    #[help]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithSpannedHelpCustom {
+    #[help = "bar"]
+    span: Span,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+#[help]
+struct ErrorWithHelp {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[error(code = "E0123", slug = "foo")]
+#[help = "bar"]
+struct ErrorWithHelpCustom {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[help]
+//~^ ERROR `#[help]` must come after `#[error(..)]` or `#[warn(..)]`
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithHelpWrongOrder {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[help = "bar"]
+//~^ ERROR `#[help = ...]` must come after `#[error(..)]` or `#[warn(..)]`
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithHelpCustomWrongOrder {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[note]
+//~^ ERROR `#[note]` must come after `#[error(..)]` or `#[warn(..)]`
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithNoteWrongOrder {
+    val: String,
+}
+
+#[derive(SessionDiagnostic)]
+#[note = "bar"]
+//~^ ERROR `#[note = ...]` must come after `#[error(..)]` or `#[warn(..)]`
+#[error(code = "E0123", slug = "foo")]
+struct ErrorWithNoteCustomWrongOrder {
+    val: String,
+}
