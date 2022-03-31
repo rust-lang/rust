@@ -4371,6 +4371,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
+ "hashbrown",
  "parking_lot 0.11.2",
  "rustc-rayon-core",
  "rustc_arena",

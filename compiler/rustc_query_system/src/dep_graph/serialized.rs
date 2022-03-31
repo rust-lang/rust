@@ -14,8 +14,9 @@
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex};
+use hashbrown::raw::RawTable;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHasher};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -25,6 +26,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Encodable};
 use smallvec::SmallVec;
 use std::convert::TryInto;
+use std::hash::{Hash, Hasher};
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
@@ -69,7 +71,13 @@ pub struct SerializedDepGraph<K: DepKind> {
     /// The set of all DepNodes in the graph and their position in the mmap.
     nodes: Option<OwningRef<Mmap, [(DepNode<K>, u32)]>>,
     /// Reciprocal map to `nodes`.
-    index: FxHashMap<DepNode<K>, SerializedDepNodeIndex>,
+    index: RawTable<u32>,
+}
+
+fn hash_node<K: DepKind>(key: &DepNode<K>) -> u64 {
+    let mut h = FxHasher::default();
+    key.hash(&mut h);
+    h.finish()
 }
 
 impl<K: DepKind> Default for SerializedDepGraph<K> {
@@ -91,7 +99,10 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode<K>) -> Option<SerializedDepNodeIndex> {
-        self.index.get(dep_node).cloned()
+        let nodes = self.nodes.as_ref()?;
+        let hash = hash_node(dep_node);
+        let index = self.index.get(hash, |&i| *dep_node == nodes[i as usize].0)?;
+        Some(SerializedDepNodeIndex::from_u32(*index))
     }
 
     #[inline]
@@ -112,7 +123,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
 
     #[inline]
     pub fn fingerprint_of(&self, dep_node: &DepNode<K>) -> Option<Fingerprint> {
-        let index = self.index.get(dep_node).cloned()?;
+        let index = self.node_to_index_opt(dep_node)?;
         Some(self.fingerprint_by_index(index))
     }
 
@@ -131,7 +142,7 @@ impl<K: DepKind> SerializedDepGraph<K> {
     }
 
     pub fn node_count(&self) -> usize {
-        self.index.len()
+        if let Some(ref nodes) = self.nodes { nodes.len() } else { 0 }
     }
 
     #[instrument(level = "debug", skip(mmap))]
@@ -152,11 +163,14 @@ impl<K: DepKind> SerializedDepGraph<K> {
             unsafe { d.mmap_slice_at::<(DepNode<K>, u32)>(nodes_position, node_count) }
         });
 
-        let index: FxHashMap<_, _> = nodes
-            .iter()
-            .enumerate()
-            .map(|(idx, &(dep_node, _))| (dep_node, SerializedDepNodeIndex::from_usize(idx)))
-            .collect();
+        let mut index = RawTable::with_capacity(node_count);
+        let mut known_hashes = Vec::with_capacity(node_count);
+        for (idx, (dep_node, _)) in nodes.iter().enumerate() {
+            let idx = idx.try_into().unwrap();
+            let hash = hash_node(dep_node);
+            known_hashes.push(hash);
+            index.insert(hash, idx, |&i| known_hashes[i as usize]);
+        }
 
         SerializedDepGraph { nodes: Some(nodes), index }
     }

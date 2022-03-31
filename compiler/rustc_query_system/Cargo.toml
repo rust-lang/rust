@@ -8,6 +8,7 @@ doctest = false
 
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
+hashbrown = { version = "0.12.0", features = ["raw"] }
 tracing = "0.1"
 rustc-rayon-core = { version = "0.4.0", optional = true }
 rustc_ast = { path = "../rustc_ast" }
