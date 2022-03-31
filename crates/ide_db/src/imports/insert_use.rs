@@ -337,67 +337,65 @@ fn insert_use_(
             Some((path, has_tl, node))
         });
 
-    if !group_imports {
+    if group_imports {
+        // Iterator that discards anything thats not in the required grouping
+        // This implementation allows the user to rearrange their import groups as this only takes the first group that fits
+        let group_iter = path_node_iter
+            .clone()
+            .skip_while(|(path, ..)| ImportGroup::new(path) != group)
+            .take_while(|(path, ..)| ImportGroup::new(path) == group);
+
+        // track the last element we iterated over, if this is still None after the iteration then that means we never iterated in the first place
+        let mut last = None;
+        // find the element that would come directly after our new import
+        let post_insert: Option<(_, _, SyntaxNode)> = group_iter
+            .inspect(|(.., node)| last = Some(node.clone()))
+            .find(|&(ref path, has_tl, _)| {
+                use_tree_path_cmp(insert_path, false, path, has_tl) != Ordering::Greater
+            });
+
+        if let Some((.., node)) = post_insert {
+            cov_mark::hit!(insert_group);
+            // insert our import before that element
+            return ted::insert(ted::Position::before(node), use_item.syntax());
+        }
+        if let Some(node) = last {
+            cov_mark::hit!(insert_group_last);
+            // there is no element after our new import, so append it to the end of the group
+            return ted::insert(ted::Position::after(node), use_item.syntax());
+        }
+
+        // the group we were looking for actually doesn't exist, so insert
+
+        let mut last = None;
+        // find the group that comes after where we want to insert
+        let post_group = path_node_iter
+            .inspect(|(.., node)| last = Some(node.clone()))
+            .find(|(p, ..)| ImportGroup::new(p) > group);
+        if let Some((.., node)) = post_group {
+            cov_mark::hit!(insert_group_new_group);
+            ted::insert(ted::Position::before(&node), use_item.syntax());
+            if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
+                ted::insert(ted::Position::after(node), make::tokens::single_newline());
+            }
+            return;
+        }
+        // there is no such group, so append after the last one
+        if let Some(node) = last {
+            cov_mark::hit!(insert_group_no_group);
+            ted::insert(ted::Position::after(&node), use_item.syntax());
+            ted::insert(ted::Position::after(node), make::tokens::single_newline());
+            return;
+        }
+    } else {
+        // There exists a group, so append to the end of it
         if let Some((_, _, node)) = path_node_iter.last() {
             cov_mark::hit!(insert_no_grouping_last);
             ted::insert(ted::Position::after(node), use_item.syntax());
-        } else {
-            cov_mark::hit!(insert_no_grouping_last2);
-            ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
-            ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
+            return;
         }
-        return;
     }
 
-    // Iterator that discards anything thats not in the required grouping
-    // This implementation allows the user to rearrange their import groups as this only takes the first group that fits
-    let group_iter = path_node_iter
-        .clone()
-        .skip_while(|(path, ..)| ImportGroup::new(path) != group)
-        .take_while(|(path, ..)| ImportGroup::new(path) == group);
-
-    // track the last element we iterated over, if this is still None after the iteration then that means we never iterated in the first place
-    let mut last = None;
-    // find the element that would come directly after our new import
-    let post_insert: Option<(_, _, SyntaxNode)> = group_iter
-        .inspect(|(.., node)| last = Some(node.clone()))
-        .find(|&(ref path, has_tl, _)| {
-            use_tree_path_cmp(insert_path, false, path, has_tl) != Ordering::Greater
-        });
-
-    if let Some((.., node)) = post_insert {
-        cov_mark::hit!(insert_group);
-        // insert our import before that element
-        return ted::insert(ted::Position::before(node), use_item.syntax());
-    }
-    if let Some(node) = last {
-        cov_mark::hit!(insert_group_last);
-        // there is no element after our new import, so append it to the end of the group
-        return ted::insert(ted::Position::after(node), use_item.syntax());
-    }
-
-    // the group we were looking for actually doesn't exist, so insert
-
-    let mut last = None;
-    // find the group that comes after where we want to insert
-    let post_group = path_node_iter
-        .inspect(|(.., node)| last = Some(node.clone()))
-        .find(|(p, ..)| ImportGroup::new(p) > group);
-    if let Some((.., node)) = post_group {
-        cov_mark::hit!(insert_group_new_group);
-        ted::insert(ted::Position::before(&node), use_item.syntax());
-        if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
-            ted::insert(ted::Position::after(node), make::tokens::single_newline());
-        }
-        return;
-    }
-    // there is no such group, so append after the last one
-    if let Some(node) = last {
-        cov_mark::hit!(insert_group_no_group);
-        ted::insert(ted::Position::after(&node), use_item.syntax());
-        ted::insert(ted::Position::after(node), make::tokens::single_newline());
-        return;
-    }
     // there are no imports in this file at all
     if let Some(last_inner_element) = scope_syntax
         .children_with_tokens()
@@ -407,14 +405,14 @@ fn insert_use_(
         })
         .last()
     {
-        cov_mark::hit!(insert_group_empty_inner_attr);
+        cov_mark::hit!(insert_empty_inner_attr);
         ted::insert(ted::Position::after(&last_inner_element), use_item.syntax());
         ted::insert(ted::Position::after(last_inner_element), make::tokens::single_newline());
         return;
     }
     let l_curly = match scope {
         ImportScope::File(_) => {
-            cov_mark::hit!(insert_group_empty_file);
+            cov_mark::hit!(insert_empty_file);
             ted::insert(ted::Position::first_child_of(scope_syntax), make::tokens::blank_line());
             ted::insert(ted::Position::first_child_of(scope_syntax), use_item.syntax());
             return;
@@ -426,7 +424,7 @@ fn insert_use_(
     };
     match l_curly {
         Some(b) => {
-            cov_mark::hit!(insert_group_empty_module);
+            cov_mark::hit!(insert_empty_module);
             ted::insert(ted::Position::after(&b), make::tokens::single_newline());
             ted::insert(ted::Position::after(&b), use_item.syntax());
         }
