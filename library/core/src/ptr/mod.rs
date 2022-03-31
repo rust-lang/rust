@@ -84,7 +84,7 @@
 //! have to change, and is it worse or better now? Would any patterns become truly inexpressible?
 //! Could we carve out special exceptions for those patterns? Should we?
 //!
-//! A secondary goal of this project is to see if we can disamiguate the many functions of
+//! A secondary goal of this project is to see if we can disambiguate the many functions of
 //! pointer<->integer casts enough for the definition of `usize` to be loosened so that it
 //! isn't *pointer*-sized but address-space/offset/allocation-sized (we'll probably continue
 //! to conflate these notions). This would potentially make it possible to more efficiently
@@ -163,7 +163,7 @@
 //! of pointers and `usize` (and `isize`), and defining a pointer to semantically contain the
 //! following information:
 //!
-//! * The **address-space** it is part of (i.e. "data" vs "code" in WASM).
+//! * The **address-space** it is part of (e.g. "data" vs "code" in WASM).
 //! * The **address** it points to, which can be represented by a `usize`.
 //! * The **provenance** it has, defining the memory it has permission to access.
 //!
@@ -246,7 +246,7 @@
 //! be using AtomicPtr instead. If that messes up the way you atomically manipulate pointers,
 //! we would like to know why, and what needs to be done to fix it.)
 //!
-//! Something more complicated and just generally *evil* like a XOR-List requires more significant
+//! Something more complicated and just generally *evil* like an XOR-List requires more significant
 //! changes like allocating all nodes in a pre-allocated Vec or Arena and using a pointer
 //! to the whole allocation to reconstitute the XORed addresses.
 //!
@@ -257,7 +257,7 @@
 //! special attention at all, because they're generally accessing memory outside the scope of
 //! "the abstract machine", or already using "I know what I'm doing" annotations like "volatile".
 //!
-//! Under [Strict Provenance] is is Undefined Behaviour to:
+//! Under [Strict Provenance] it is Undefined Behaviour to:
 //!
 //! * Access memory through a pointer that does not have provenance over that memory.
 //!
