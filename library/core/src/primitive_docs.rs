@@ -989,8 +989,9 @@ mod prim_tuple {}
 ///     is deviated from.
 ///   - Lastly, there are multiple bit patterns that are considered NaN.
 ///     Rust does not currently guarantee that the bit patterns of NaN are
-///     preserved over arithmetic operations,
-///     so there may be some surprising results upon inspecting the bit patterns,
+///     preserved over arithmetic operations, and they are not guaranteed to be
+///     portable or even fully deterministic! This means that there may be some
+///     surprising results upon inspecting the bit patterns,
 ///     as the same calculations might produce NaNs with different bit patterns.
 ///
 /// For more information on floating point numbers, see [Wikipedia][wikipedia].
