@@ -125,13 +125,18 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
             // Do this outside the above loop so we don't depend on modifiers coming
             // after kinds
-            if let Some(item) = items.iter().find(|item| item.has_name(sym::modifiers)) {
+            let mut modifiers_count = 0;
+            for item in items.iter().filter(|item| item.has_name(sym::modifiers)) {
                 if let Some(modifiers) = item.value_str() {
+                    modifiers_count += 1;
                     let span = item.name_value_literal_span().unwrap();
+                    let mut has_duplicate_modifiers = false;
                     for modifier in modifiers.as_str().split(',') {
                         let (modifier, value) = match modifier.strip_prefix(&['+', '-']) {
                             Some(m) => (m, modifier.starts_with('+')),
                             None => {
+                                // Note: this error also excludes the case with empty modifier
+                                // string, like `modifiers = ""`.
                                 sess.span_err(
                                     span,
                                     "invalid linking modifier syntax, expected '+' or '-' prefix \
@@ -143,6 +148,9 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
                         match (modifier, &mut lib.kind) {
                             ("bundle", NativeLibKind::Static { bundle, .. }) => {
+                                if bundle.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *bundle = Some(value);
                             }
                             ("bundle", _) => {
@@ -153,9 +161,17 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                                 );
                             }
 
-                            ("verbatim", _) => lib.verbatim = Some(value),
+                            ("verbatim", _) => {
+                                if lib.verbatim.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
+                                lib.verbatim = Some(value);
+                            }
 
                             ("whole-archive", NativeLibKind::Static { whole_archive, .. }) => {
+                                if whole_archive.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *whole_archive = Some(value);
                             }
                             ("whole-archive", _) => {
@@ -168,6 +184,9 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
 
                             ("as-needed", NativeLibKind::Dylib { as_needed })
                             | ("as-needed", NativeLibKind::Framework { as_needed }) => {
+                                if as_needed.is_some() {
+                                    has_duplicate_modifiers = true;
+                                }
                                 *as_needed = Some(value);
                             }
                             ("as-needed", _) => {
@@ -190,10 +209,20 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector<'tcx> {
                             }
                         }
                     }
+                    if has_duplicate_modifiers {
+                        let msg =
+                            "same modifier is used multiple times in a single `modifiers` argument";
+                        sess.span_err(item.span(), msg);
+                    }
                 } else {
                     let msg = "must be of the form `#[link(modifiers = \"...\")]`";
                     sess.span_err(item.span(), msg);
                 }
+            }
+
+            if modifiers_count > 1 {
+                let msg = "multiple `modifiers` arguments in a single `#[link]` attribute";
+                sess.span_err(m.span, msg);
             }
 
             // In general we require #[link(name = "...")] but we allow
@@ -349,6 +378,15 @@ impl Collector<'_> {
                 .drain_filter(|lib| {
                     if let Some(lib_name) = lib.name {
                         if lib_name.as_str() == passed_lib.name {
+                            // FIXME: This whole logic is questionable, whether modifiers are
+                            // involved or not, library reordering and kind overriding without
+                            // explicit `:rename` in particular.
+                            if lib.has_modifiers() || passed_lib.has_modifiers() {
+                                self.tcx.sess.span_err(
+                                    self.tcx.def_span(lib.foreign_module.unwrap()),
+                                    "overriding linking modifiers from command line is not supported"
+                                );
+                            }
                             if passed_lib.kind != NativeLibKind::Unspecified {
                                 lib.kind = passed_lib.kind;
                             }

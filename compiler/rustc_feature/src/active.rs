@@ -400,6 +400,8 @@ declare_features! (
     (active, generic_arg_infer, "1.55.0", Some(85077), None),
     /// Allows associated types to be generic, e.g., `type Foo<T>;` (RFC 1598).
     (active, generic_associated_types, "1.23.0", Some(44265), None),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (incomplete, generic_associated_types_extended, "1.61.0", Some(95451), None),
     /// Allows non-trivial generic constants which have to have wfness manually propagated to callers
     (incomplete, generic_const_exprs, "1.56.0", Some(76560), None),
     /// Allows using `..X`, `..=X`, `...X`, and `X..` as a pattern.
@@ -446,16 +448,12 @@ declare_features! (
     (active, must_not_suspend, "1.57.0", Some(83310), None),
     /// Allows using `#[naked]` on functions.
     (active, naked_functions, "1.9.0", Some(32408), None),
-    /// Allows specifying modifiers in the link attribute: `#[link(modifiers = "...")]`
-    (active, native_link_modifiers, "1.53.0", Some(81490), None),
     /// Allows specifying the as-needed link modifier
     (active, native_link_modifiers_as_needed, "1.53.0", Some(81490), None),
     /// Allows specifying the bundle link modifier
     (active, native_link_modifiers_bundle, "1.53.0", Some(81490), None),
     /// Allows specifying the verbatim link modifier
     (active, native_link_modifiers_verbatim, "1.53.0", Some(81490), None),
-    /// Allows specifying the whole-archive link modifier
-    (active, native_link_modifiers_whole_archive, "1.53.0", Some(81490), None),
     /// Allow negative trait implementations.
     (active, negative_impls, "1.44.0", Some(68318), None),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.

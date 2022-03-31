@@ -8,7 +8,8 @@ use core::iter::{
     FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccessNoCoerce,
 };
 use core::marker::PhantomData;
-use core::mem::{self};
+use core::mem::{self, ManuallyDrop};
+use core::ops::Deref;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -32,7 +33,9 @@ pub struct IntoIter<
     pub(super) buf: NonNull<T>,
     pub(super) phantom: PhantomData<T>,
     pub(super) cap: usize,
-    pub(super) alloc: A,
+    // the drop impl reconstructs a RawVec from buf, cap and alloc
+    // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
+    pub(super) alloc: ManuallyDrop<A>,
     pub(super) ptr: *const T,
     pub(super) end: *const T,
 }
@@ -295,11 +298,11 @@ where
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
     #[cfg(not(test))]
     fn clone(&self) -> Self {
-        self.as_slice().to_vec_in(self.alloc.clone()).into_iter()
+        self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
     }
     #[cfg(test)]
     fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.clone()).into_iter()
+        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
     }
 }
 
@@ -311,8 +314,8 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for IntoIter<T, A> {
         impl<T, A: Allocator> Drop for DropGuard<'_, T, A> {
             fn drop(&mut self) {
                 unsafe {
-                    // `IntoIter::alloc` is not used anymore after this
-                    let alloc = ptr::read(&self.0.alloc);
+                    // `IntoIter::alloc` is not used anymore after this and will be dropped by RawVec
+                    let alloc = ManuallyDrop::take(&mut self.0.alloc);
                     // RawVec handles deallocation
                     let _ = RawVec::from_raw_parts_in(self.0.buf.as_ptr(), self.0.cap, alloc);
                 }
