@@ -232,6 +232,8 @@ crate fn create_config(
         rustc_lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_string(),
         rustc_lint::builtin::UNKNOWN_LINTS.name.to_string(),
         rustc_lint::builtin::UNEXPECTED_CFGS.name.to_string(),
+        // this lint is needed to support `#[expect]` attributes
+        rustc_lint::builtin::UNFULFILLED_LINT_EXPECTATIONS.name.to_string(),
     ];
     lints_to_show.extend(crate::lint::RUSTDOC_LINTS.iter().map(|lint| lint.name.to_string()));
 
@@ -462,6 +464,8 @@ crate fn run_global_ctxt(
             krate = tcx.sess.time(p.pass.name, || (p.pass.run)(krate, &mut ctxt));
         }
     }
+
+    tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
     if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
