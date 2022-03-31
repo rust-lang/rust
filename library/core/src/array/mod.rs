@@ -12,7 +12,8 @@ use crate::hash::{self, Hash};
 use crate::iter::TrustedLen;
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
-    ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
+    ChangeOutputType, ControlFlow, Deref, DerefMut, FromResidual, Index, IndexMut,
+    NeverShortCircuit, Residual, Try,
 };
 use crate::slice::{Iter, IterMut};
 
@@ -172,6 +173,24 @@ impl<T, const N: usize> const Borrow<[T]> for [T; N] {
 impl<T, const N: usize> const BorrowMut<[T]> for [T; N] {
     fn borrow_mut(&mut self) -> &mut [T] {
         self
+    }
+}
+
+#[stable(feature = "array_deref", since = "1.61.0")]
+#[rustc_const_unstable(feature = "const_array_deref", issue = "none")]
+impl<T, const N: usize> const Deref for [T; N] {
+    type Target = [T];
+
+    fn deref(&self) -> &[T] {
+        self as &[T]
+    }
+}
+
+#[stable(feature = "array_deref", since = "1.61.0")]
+#[rustc_const_unstable(feature = "const_array_deref", issue = "none")]
+impl<T, const N: usize> const DerefMut for [T; N] {
+    fn deref_mut(&mut self) -> &mut [T] {
+        self as &mut [T]
     }
 }
 
