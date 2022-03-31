@@ -1680,4 +1680,47 @@ mod tests {
             expect_file!["./test_data/snap_multi_line_fix.txt"],
         );
     }
+
+    #[test]
+    fn reasonable_line_numbers_from_empty_file() {
+        check(
+            r##"{
+                "message": "`main` function not found in crate `current`",
+                "code": {
+                    "code": "E0601",
+                    "explanation": "No `main` function was found in a binary crate.\n\nTo fix this error, add a `main` function:\n\n```\nfn main() {\n    // Your program will start here.\n    println!(\"Hello world!\");\n}\n```\n\nIf you don't know the basics of Rust, you can look at the\n[Rust Book][rust-book] to get started.\n\n[rust-book]: https://doc.rust-lang.org/book/\n"
+                },
+                "level": "error",
+                "spans": [
+                    {
+                        "file_name": "src/bin/current.rs",
+                        "byte_start": 0,
+                        "byte_end": 0,
+                        "line_start": 0,
+                        "line_end": 0,
+                        "column_start": 1,
+                        "column_end": 1,
+                        "is_primary": true,
+                        "text": [],
+                        "label": null,
+                        "suggested_replacement": null,
+                        "suggestion_applicability": null,
+                        "expansion": null
+                    }
+                ],
+                "children": [
+                    {
+                        "message": "consider adding a `main` function to `src/bin/current.rs`",
+                        "code": null,
+                        "level": "note",
+                        "spans": [],
+                        "children": [],
+                        "rendered": null
+                    }
+                ],
+                "rendered": "error[E0601]: `main` function not found in crate `current`\n  |\n  = note: consider adding a `main` function to `src/bin/current.rs`\n\n"
+            }"##,
+            expect_file!["./test_data/reasonable_line_numbers_from_empty_file.txt"],
+        );
+    }
 }
