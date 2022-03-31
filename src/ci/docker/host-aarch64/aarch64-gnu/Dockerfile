@@ -13,6 +13,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
   sudo \
   gdb \
   libssl-dev \
+  zlib1g-dev \
   pkg-config \
   xz-utils
 
