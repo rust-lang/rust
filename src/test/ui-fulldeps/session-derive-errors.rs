@@ -83,7 +83,7 @@ struct InvalidNestedStructAttr3 {}
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct WrongPlaceField {
-    #[suggestion = "this is the wrong kind of attribute"]
+    #[suggestion = "bar"]
     //~^ ERROR `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
     sp: Span,
 }
@@ -154,7 +154,7 @@ struct ErrorWithMessageAppliedToField {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct ErrorWithNonexistentField {
-    #[suggestion(message = "This is a suggestion", code = "{name}")]
+    #[suggestion(message = "bar", code = "{name}")]
     //~^ ERROR `name` doesn't refer to a field on this type
     suggestion: (Span, Applicability),
 }
@@ -163,7 +163,7 @@ struct ErrorWithNonexistentField {
 //~^ ERROR invalid format string: expected `'}'`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorMissingClosingBrace {
-    #[suggestion(message = "This is a suggestion", code = "{name")]
+    #[suggestion(message = "bar", code = "{name")]
     suggestion: (Span, Applicability),
     name: String,
     val: usize,
@@ -173,7 +173,7 @@ struct ErrorMissingClosingBrace {
 //~^ ERROR invalid format string: unmatched `}`
 #[error(code = "E0123", slug = "foo")]
 struct ErrorMissingOpeningBrace {
-    #[suggestion(message = "This is a suggestion", code = "name}")]
+    #[suggestion(message = "bar", code = "name}")]
     suggestion: (Span, Applicability),
     name: String,
     val: usize,
@@ -197,55 +197,54 @@ struct LabelOnNonSpan {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct Suggest {
-    #[suggestion(message = "This is a suggestion", code = "This is the suggested code")]
-    #[suggestion_short(message = "This is a suggestion", code = "This is the suggested code")]
-    #[suggestion_hidden(message = "This is a suggestion", code = "This is the suggested code")]
-    #[suggestion_verbose(message = "This is a suggestion", code = "This is the suggested code")]
+    #[suggestion(message = "bar", code = "This is the suggested code")]
+    #[suggestion_short(message = "qux", code = "This is the suggested code")]
+    #[suggestion_hidden(message = "foobar", code = "This is the suggested code")]
+    #[suggestion_verbose(message = "fooqux", code = "This is the suggested code")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithoutCode {
-    #[suggestion(message = "This is a suggestion")]
+    #[suggestion(message = "bar")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithBadKey {
-    #[suggestion(nonsense = "This is nonsense")]
-    //~^ ERROR `nonsense` is not a valid key for `#[suggestion(...)]`
+    #[suggestion(nonsense = "bar")]
+    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid `SessionDiagnostic` field attribute
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithShorthandMsg {
-    #[suggestion(msg = "This is a suggestion")]
-    //~^ ERROR `msg` is not a valid key for `#[suggestion(...)]`
+    #[suggestion(msg = "bar")]
+    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid `SessionDiagnostic` field attribute
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithoutMsg {
-    #[suggestion(code = "This is suggested code")]
-    //~^ ERROR missing suggestion message
+    #[suggestion(code = "bar")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithTypesSwapped {
-    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    #[suggestion(message = "bar", code = "This is suggested code")]
     suggestion: (Applicability, Span),
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithWrongTypeApplicabilityOnly {
-    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    #[suggestion(message = "bar", code = "This is suggested code")]
     //~^ ERROR wrong field type for suggestion
     suggestion: Applicability,
 }
@@ -253,14 +252,14 @@ struct SuggestWithWrongTypeApplicabilityOnly {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithSpanOnly {
-    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    #[suggestion(message = "bar", code = "This is suggested code")]
     suggestion: Span,
 }
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithDuplicateSpanAndApplicability {
-    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    #[suggestion(message = "bar", code = "This is suggested code")]
     //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
     suggestion: (Span, Span, Applicability),
 }
@@ -268,7 +267,7 @@ struct SuggestWithDuplicateSpanAndApplicability {
 #[derive(SessionDiagnostic)]
 #[error(code = "E0123", slug = "foo")]
 struct SuggestWithDuplicateApplicabilityAndSpan {
-    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    #[suggestion(message = "bar", code = "This is suggested code")]
     //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one
     suggestion: (Applicability, Applicability, Span),
 }
@@ -277,7 +276,7 @@ struct SuggestWithDuplicateApplicabilityAndSpan {
 #[error(code = "E0123", slug = "foo")]
 struct WrongKindOfAnnotation {
     #[label("bar")]
-    //~^ ERROR invalid annotation list `#[label(...)]`
+    //~^ ERROR `#[label(...)]` is not a valid `SessionDiagnostic` field attribute
     z: Span,
 }
 
@@ -286,7 +285,7 @@ struct WrongKindOfAnnotation {
 struct OptionsInErrors {
     #[label = "bar"]
     label: Option<Span>,
-    #[suggestion(message = "suggestion message")]
+    #[suggestion(message = "bar")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 
@@ -300,7 +299,7 @@ struct MoveOutOfBorrowError<'tcx> {
     span: Span,
     #[label = "qux"]
     other_span: Span,
-    #[suggestion(message = "consider cloning here", code = "{name}.clone()")]
+    #[suggestion(message = "bar", code = "{name}.clone()")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 

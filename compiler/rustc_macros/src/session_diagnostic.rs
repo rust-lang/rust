@@ -594,6 +594,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         info: FieldInfo<'_>,
     ) -> Result<proc_macro2::TokenStream, SessionDiagnosticDeriveError> {
         let diag = &self.diag;
+        let span = attr.span().unwrap();
         let field_binding = &info.binding.binding;
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
@@ -618,7 +619,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     Ok(self.add_subdiagnostic(field_binding, name, name))
                 }
                 other => throw_span_err!(
-                    attr.span().unwrap(),
+                    span,
                     &format!("`#[{}]` is not a valid `SessionDiagnostic` field attribute", other)
                 ),
             },
@@ -628,7 +629,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                     Ok(self.add_subdiagnostic(field_binding, name, &s.value()))
                 }
                 other => throw_span_err!(
-                    attr.span().unwrap(),
+                    span,
                     &format!(
                         "`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute",
                         other
@@ -636,77 +637,103 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                 ),
             },
             syn::Meta::NameValue(_) => throw_span_err!(
-                attr.span().unwrap(),
+                span,
                 &format!("`#[{} = ...]` is not a valid `SessionDiagnostic` field attribute", name),
                 |diag| diag.help("value must be a string")
             ),
-            syn::Meta::List(list) => {
-                match list.path.segments.iter().last().unwrap().ident.to_string().as_str() {
-                    suggestion_kind @ "suggestion"
-                    | suggestion_kind @ "suggestion_short"
-                    | suggestion_kind @ "suggestion_hidden"
-                    | suggestion_kind @ "suggestion_verbose" => {
-                        let (span, applicability) = self.span_and_applicability_of_ty(info)?;
+            syn::Meta::List(syn::MetaList { path, nested, .. }) => {
+                let name = path.segments.last().unwrap().ident.to_string();
+                let name = name.as_ref();
 
-                        let mut msg = None;
-                        let mut code = None;
-
-                        for arg in list.nested.iter() {
-                            if let syn::NestedMeta::Meta(syn::Meta::NameValue(arg_name_value)) = arg
-                            {
-                                if let syn::MetaNameValue { lit: syn::Lit::Str(s), .. } =
-                                    arg_name_value
-                                {
-                                    let name = arg_name_value
-                                        .path
-                                        .segments
-                                        .last()
-                                        .unwrap()
-                                        .ident
-                                        .to_string();
-                                    let name = name.as_str();
-                                    let formatted_str = self.build_format(&s.value(), arg.span());
-                                    match name {
-                                        "message" => {
-                                            msg = Some(formatted_str);
-                                        }
-                                        "code" => {
-                                            code = Some(formatted_str);
-                                        }
-                                        other => throw_span_err!(
-                                            arg.span().unwrap(),
-                                            &format!(
-                                                "`{}` is not a valid key for `#[suggestion(...)]`",
-                                                other
-                                            )
-                                        ),
-                                    }
-                                }
-                            }
-                        }
-                        let msg = if let Some(msg) = msg {
-                            quote!(#msg.as_str())
-                        } else {
-                            throw_span_err!(
-                                list.span().unwrap(),
-                                "missing suggestion message",
-                                |diag| {
-                                    diag.help("provide a suggestion message using `#[suggestion(message = \"...\")]`")
-                                }
-                            );
-                        };
-                        let code = code.unwrap_or_else(|| quote! { String::new() });
-
-                        let suggestion_method = format_ident!("span_{}", suggestion_kind);
-                        return Ok(quote! {
-                            #diag.#suggestion_method(#span, #msg, #code, #applicability);
-                        });
-                    }
+                match name {
+                    "suggestion" | "suggestion_short" | "suggestion_hidden"
+                    | "suggestion_verbose" => (),
                     other => throw_span_err!(
-                        list.span().unwrap(),
-                        &format!("invalid annotation list `#[{}(...)]`", other)
+                        span,
+                        &format!(
+                            "`#[{}(...)]` is not a valid `SessionDiagnostic` field attribute",
+                            other
+                        )
                     ),
+                };
+
+                let (span_, applicability) = self.span_and_applicability_of_ty(info)?;
+
+                let mut msg = None;
+                let mut code = None;
+
+                for attr in nested {
+                    let meta = match attr {
+                        syn::NestedMeta::Meta(meta) => meta,
+                        syn::NestedMeta::Lit(_) => throw_span_err!(
+                            span,
+                            &format!(
+                                "`#[{}(\"...\")]` is not a valid `SessionDiagnostic` field attribute",
+                                name
+                            )
+                        ),
+                    };
+
+                    let span = meta.span().unwrap();
+                    let nested_name = meta.path().segments.last().unwrap().ident.to_string();
+                    let nested_name = nested_name.as_str();
+
+                    match meta {
+                        syn::Meta::NameValue(syn::MetaNameValue {
+                            lit: syn::Lit::Str(s), ..
+                        }) => match nested_name {
+                            "message" => {
+                                msg = Some(s.value());
+                            }
+                            "code" => {
+                                let formatted_str = self.build_format(&s.value(), s.span());
+                                code = Some(formatted_str);
+                            }
+                            other => throw_span_err!(
+                                span,
+                                &format!(
+                                    "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` field attribute",
+                                    name, other
+                                )
+                            ),
+                        },
+                        syn::Meta::NameValue(..) => throw_span_err!(
+                            span,
+                            &format!(
+                                "`#[{}({} = ...)]` is not a valid `SessionDiagnostic` struct attribute",
+                                name, nested_name
+                            ),
+                            |diag| diag.help("value must be a string")
+                        ),
+                        syn::Meta::Path(..) => throw_span_err!(
+                            span,
+                            &format!(
+                                "`#[{}({})]` is not a valid `SessionDiagnostic` struct attribute",
+                                name, nested_name
+                            )
+                        ),
+                        syn::Meta::List(..) => throw_span_err!(
+                            span,
+                            &format!(
+                                "`#[{}({}(...))]` is not a valid `SessionDiagnostic` struct attribute",
+                                name, nested_name
+                            )
+                        ),
+                    }
                 }
+
+                let method = format_ident!("span_{}", name);
+
+                let slug = self
+                    .slug
+                    .as_ref()
+                    .map(|(slug, _)| slug.as_str())
+                    .unwrap_or_else(|| "missing-slug");
+                let msg = msg.as_deref().unwrap_or("suggestion");
+                let msg = quote! { rustc_errors::DiagnosticMessage::fluent_attr(#slug, #msg) };
+                let code = code.unwrap_or_else(|| quote! { String::new() });
+
+                Ok(quote! { #diag.#method(#span_, #msg, #code, #applicability); })
             }
         }
     }
