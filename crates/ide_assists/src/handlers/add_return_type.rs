@@ -17,7 +17,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 pub(crate) fn add_return_type(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let (fn_type, tail_expr, builder_edit_pos) = extract_tail(ctx)?;
-    let module = ctx.sema.scope(tail_expr.syntax()).module()?;
+    let module = ctx.sema.scope(tail_expr.syntax())?.module();
     let ty = ctx.sema.type_of_expr(&peel_blocks(tail_expr.clone()))?.original();
     if ty.is_unit() {
         return None;

@@ -104,7 +104,7 @@ impl ImportAssets {
         let candidate_node = method_call.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::for_method_call(sema, method_call)?,
-            module_with_candidate: sema.scope(&candidate_node).module()?,
+            module_with_candidate: sema.scope(&candidate_node)?.module(),
             candidate_node,
         })
     }
@@ -119,7 +119,7 @@ impl ImportAssets {
         }
         Some(Self {
             import_candidate: ImportCandidate::for_regular_path(sema, fully_qualified_path)?,
-            module_with_candidate: sema.scope(&candidate_node).module()?,
+            module_with_candidate: sema.scope(&candidate_node)?.module(),
             candidate_node,
         })
     }
@@ -132,7 +132,7 @@ impl ImportAssets {
         let candidate_node = pat.syntax().clone();
         Some(Self {
             import_candidate: ImportCandidate::for_name(sema, &name)?,
-            module_with_candidate: sema.scope(&candidate_node).module()?,
+            module_with_candidate: sema.scope(&candidate_node)?.module(),
             candidate_node,
         })
     }
@@ -248,7 +248,10 @@ impl ImportAssets {
         };
 
         let krate = self.module_with_candidate.krate();
-        let scope = sema.scope(&self.candidate_node);
+        let scope = match sema.scope(&self.candidate_node) {
+            Some(it) => it,
+            None => return Vec::new(),
+        };
 
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => {
@@ -271,9 +274,11 @@ impl ImportAssets {
     fn scope_definitions(&self, sema: &Semantics<RootDatabase>) -> FxHashSet<ScopeDef> {
         let _p = profile::span("import_assets::scope_definitions");
         let mut scope_definitions = FxHashSet::default();
-        sema.scope(&self.candidate_node).process_all_names(&mut |_, scope_def| {
-            scope_definitions.insert(scope_def);
-        });
+        if let Some(scope) = sema.scope(&self.candidate_node) {
+            scope.process_all_names(&mut |_, scope_def| {
+                scope_definitions.insert(scope_def);
+            });
+        }
         scope_definitions
     }
 }
@@ -588,7 +593,7 @@ impl ImportCandidate {
 
     fn for_name(sema: &Semantics<RootDatabase>, name: &ast::Name) -> Option<Self> {
         if sema
-            .scope(name.syntax())
+            .scope(name.syntax())?
             .speculative_resolve(&ast::make::ext::ident_path(&name.text()))
             .is_some()
         {

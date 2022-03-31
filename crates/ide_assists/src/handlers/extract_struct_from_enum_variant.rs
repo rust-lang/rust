@@ -423,7 +423,7 @@ fn reference_to_node(
             _ => return None,
         }
     };
-    let module = sema.scope(&expr_or_pat).module()?;
+    let module = sema.scope(&expr_or_pat)?.module();
     Some((segment, expr_or_pat, module))
 }
 

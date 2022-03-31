@@ -41,7 +41,7 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
 
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-                    let module_scope = module.scope(ctx.db, ctx.module);
+                    let module_scope = module.scope(ctx.db, Some(ctx.module));
                     let unknown_is_current = |name: &hir::Name| {
                         matches!(
                             ctx.name_syntax.as_ref(),

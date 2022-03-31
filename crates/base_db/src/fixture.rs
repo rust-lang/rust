@@ -10,7 +10,7 @@ use tt::Subtree;
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::{CrateName, CrateOrigin},
+    input::{CrateName, CrateOrigin, LangCrateOrigin},
     Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
     FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, SourceDatabaseExt,
     SourceRoot, SourceRootId,
@@ -196,7 +196,7 @@ impl ChangeFixture {
                 Env::default(),
                 Default::default(),
                 false,
-                Default::default(),
+                CrateOrigin::CratesIo { repo: None },
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -233,7 +233,7 @@ impl ChangeFixture {
                 Env::default(),
                 Vec::new(),
                 false,
-                CrateOrigin::Lang,
+                CrateOrigin::Lang(LangCrateOrigin::Core),
             );
 
             for krate in all_crates {
@@ -270,7 +270,7 @@ impl ChangeFixture {
                 Env::default(),
                 proc_macro,
                 true,
-                CrateOrigin::Lang,
+                CrateOrigin::CratesIo { repo: None },
             );
 
             for krate in all_crates {
@@ -406,7 +406,11 @@ fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
         };
         (a.to_owned(), origin, Some(version.to_string()))
     } else {
-        (crate_str, CrateOrigin::Unknown, None)
+        let crate_origin = match &*crate_str {
+            "std" => CrateOrigin::Lang(LangCrateOrigin::Std),
+            _ => CrateOrigin::CratesIo { repo: None },
+        };
+        (crate_str, crate_origin, None)
     }
 }
 

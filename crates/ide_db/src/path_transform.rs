@@ -69,15 +69,13 @@ impl<'a> PathTransform<'a> {
     }
 
     pub fn apply(&self, syntax: &SyntaxNode) {
-        if let Some(ctx) = self.build_ctx() {
-            ctx.apply(syntax)
-        }
+        self.build_ctx().apply(syntax)
     }
 
-    fn build_ctx(&self) -> Option<Ctx<'a>> {
+    fn build_ctx(&self) -> Ctx<'a> {
         let db = self.source_scope.db;
-        let target_module = self.target_scope.module()?;
-        let source_module = self.source_scope.module()?;
+        let target_module = self.target_scope.module();
+        let source_module = self.source_scope.module();
         let skip = match self.generic_def {
             // this is a trait impl, so we need to skip the first type parameter -- this is a bit hacky
             hir::GenericDef::Trait(_) => 1,
@@ -111,8 +109,7 @@ impl<'a> PathTransform<'a> {
                 },
             })
             .collect();
-        let res = Ctx { substs: substs_by_param, target_module, source_scope: self.source_scope };
-        Some(res)
+        Ctx { substs: substs_by_param, target_module, source_scope: self.source_scope }
     }
 }
 

@@ -64,7 +64,7 @@ use cfg::CfgOptions;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
-        Env, FileLoader, FileSet, SourceDatabase, VfsPath,
+        CrateOrigin, Env, FileLoader, FileSet, SourceDatabase, VfsPath,
     },
     symbol_index, LineIndexDatabase,
 };
@@ -232,7 +232,7 @@ impl Analysis {
             Env::default(),
             Default::default(),
             false,
-            Default::default(),
+            CrateOrigin::CratesIo { repo: None },
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);
@@ -635,7 +635,7 @@ impl Analysis {
         self.with_db(|db| {
             let rule: ide_ssr::SsrRule = query.parse()?;
             let mut match_finder =
-                ide_ssr::MatchFinder::in_context(db, resolve_context, selections);
+                ide_ssr::MatchFinder::in_context(db, resolve_context, selections)?;
             match_finder.add_rule(rule)?;
             let edits = if parse_only { Default::default() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))

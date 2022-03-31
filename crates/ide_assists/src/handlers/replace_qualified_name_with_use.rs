@@ -63,9 +63,11 @@ pub(crate) fn replace_qualified_name_with_use(
     );
     let path_to_qualifier = starts_with_name_ref
         .then(|| {
-            ctx.sema.scope(path.syntax()).module().and_then(|m| {
-                m.find_use_path_prefixed(ctx.sema.db, module, ctx.config.insert_use.prefix_kind)
-            })
+            ctx.sema.scope(path.syntax())?.module().find_use_path_prefixed(
+                ctx.sema.db,
+                module,
+                ctx.config.insert_use.prefix_kind,
+            )
         })
         .flatten();
 

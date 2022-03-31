@@ -146,10 +146,10 @@ fn is_ref_and_impls_iter_method(
     let wanted_method = if ref_expr.mut_token().is_some() { known::iter_mut } else { known::iter };
     let expr_behind_ref = ref_expr.expr()?;
     let ty = sema.type_of_expr(&expr_behind_ref)?.adjusted();
-    let scope = sema.scope(iterable.syntax());
-    let krate = scope.module()?.krate();
+    let scope = sema.scope(iterable.syntax())?;
+    let krate = scope.krate();
     let traits_in_scope = scope.visible_traits();
-    let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
+    let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
 
     let has_wanted_method = ty
         .iterate_method_candidates(
@@ -175,24 +175,17 @@ fn is_ref_and_impls_iter_method(
 
 /// Whether iterable implements core::Iterator
 fn impls_core_iter(sema: &hir::Semantics<ide_db::RootDatabase>, iterable: &ast::Expr) -> bool {
-    let it_typ = match sema.type_of_expr(iterable) {
-        Some(it) => it.adjusted(),
-        None => return false,
-    };
+    (|| {
+        let it_typ = sema.type_of_expr(iterable)?.adjusted();
 
-    let module = match sema.scope(iterable.syntax()).module() {
-        Some(it) => it,
-        None => return false,
-    };
+        let module = sema.scope(iterable.syntax())?.module();
 
-    let krate = module.krate();
-    match FamousDefs(sema, Some(krate)).core_iter_Iterator() {
-        Some(iter_trait) => {
-            cov_mark::hit!(test_already_impls_iterator);
-            it_typ.impls_trait(sema.db, iter_trait, &[])
-        }
-        None => false,
-    }
+        let krate = module.krate();
+        let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
+        cov_mark::hit!(test_already_impls_iterator);
+        Some(it_typ.impls_trait(sema.db, iter_trait, &[]))
+    })()
+    .unwrap_or(false)
 }
 
 fn validate_method_call_expr(
@@ -214,10 +207,10 @@ fn validate_method_call_expr(
     let expr = ast::Expr::MethodCallExpr(expr);
 
     let it_type = sema.type_of_expr(&receiver)?.adjusted();
-    let module = sema.scope(receiver.syntax()).module()?;
+    let module = sema.scope(receiver.syntax())?.module();
     let krate = module.krate();
 
-    let iter_trait = FamousDefs(sema, Some(krate)).core_iter_Iterator()?;
+    let iter_trait = FamousDefs(sema, krate).core_iter_Iterator()?;
     it_type.impls_trait(sema.db, iter_trait, &[]).then(|| (expr, receiver))
 }
 

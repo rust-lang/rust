@@ -41,7 +41,7 @@ pub(crate) fn add_explicit_type(acc: &mut Assists, ctx: &AssistContext) -> Optio
         return None;
     };
 
-    let module = ctx.sema.scope(pat.syntax()).module()?;
+    let module = ctx.sema.scope(pat.syntax())?.module();
     let pat_range = pat.syntax().text_range();
 
     // Don't enable the assist if there is a type ascription without any placeholders

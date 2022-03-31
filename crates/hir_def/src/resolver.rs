@@ -25,12 +25,14 @@ use crate::{
     StaticId, StructId, TraitId, TypeAliasId, TypeOrConstParamId, TypeParamId, VariantId,
 };
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Resolver {
     /// The stack of scopes, where the inner-most scope is the last item.
     ///
     /// When using, you generally want to process the scopes in reverse order,
     /// there's `scopes` *method* for that.
+    ///
+    /// Invariant: There exists at least one Scope::ModuleScope at the start of the vec.
     scopes: Vec<Scope>,
 }
 
@@ -135,10 +137,7 @@ impl Resolver {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> PerNs {
-        let (item_map, module) = match self.module_scope() {
-            Some(it) => it,
-            None => return PerNs::none(),
-        };
+        let (item_map, module) = self.module_scope();
         let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow);
         if segment_index.is_some() {
             return PerNs::none();
@@ -155,7 +154,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<PerNs> {
-        let (item_map, module) = self.module_scope()?;
+        let (item_map, module) = self.module_scope();
         let (module_res, idx) = item_map.resolve_path(db, module, path, BuiltinShadowMode::Module);
         match module_res.take_types()? {
             ModuleDefId::TraitId(it) => {
@@ -235,10 +234,7 @@ impl Resolver {
     ) -> Option<Visibility> {
         match visibility {
             RawVisibility::Module(_) => {
-                let (item_map, module) = match self.module_scope() {
-                    Some(it) => it,
-                    None => return None,
-                };
+                let (item_map, module) = self.module_scope();
                 item_map.resolve_visibility(db, module, visibility)
             }
             RawVisibility::Public => Some(Visibility::Public),
@@ -336,7 +332,7 @@ impl Resolver {
     }
 
     pub fn resolve_path_as_macro(&self, db: &dyn DefDatabase, path: &ModPath) -> Option<MacroId> {
-        let (item_map, module) = self.module_scope()?;
+        let (item_map, module) = self.module_scope();
         item_map.resolve_path(db, module, path, BuiltinShadowMode::Other).0.take_macros()
     }
 
@@ -425,22 +421,22 @@ impl Resolver {
         traits
     }
 
-    fn module_scope(&self) -> Option<(&DefMap, LocalModuleId)> {
-        self.scopes().find_map(|scope| match scope {
-            Scope::ModuleScope(m) => Some((&*m.def_map, m.module_id)),
-
-            _ => None,
-        })
+    fn module_scope(&self) -> (&DefMap, LocalModuleId) {
+        self.scopes()
+            .find_map(|scope| match scope {
+                Scope::ModuleScope(m) => Some((&*m.def_map, m.module_id)),
+                _ => None,
+            })
+            .expect("module scope invariant violated")
     }
 
-    pub fn module(&self) -> Option<ModuleId> {
-        let (def_map, local_id) = self.module_scope()?;
-        Some(def_map.module_id(local_id))
+    pub fn module(&self) -> ModuleId {
+        let (def_map, local_id) = self.module_scope();
+        def_map.module_id(local_id)
     }
 
-    pub fn krate(&self) -> Option<CrateId> {
-        // FIXME: can this ever be `None`?
-        self.module_scope().map(|t| t.0.krate())
+    pub fn krate(&self) -> CrateId {
+        self.module_scope().0.krate()
     }
 
     pub fn where_predicates_in_scope(
@@ -749,8 +745,7 @@ impl HasResolver for ModuleId {
             def_map = parent.def_map(db);
             modules.push((def_map.clone(), parent.local_id));
         }
-        let mut resolver = Resolver::default();
-        resolver.scopes.reserve(modules.len());
+        let mut resolver = Resolver { scopes: Vec::with_capacity(modules.len()) };
         for (def_map, module) in modules.into_iter().rev() {
             resolver = resolver.push_module_scope(def_map, module);
         }

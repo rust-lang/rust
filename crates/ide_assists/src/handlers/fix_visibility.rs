@@ -43,7 +43,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext) -> O
         _ => return None,
     };
 
-    let current_module = ctx.sema.scope(path.syntax()).module()?;
+    let current_module = ctx.sema.scope(path.syntax())?.module();
     let target_module = def.module(ctx.db())?;
 
     if def.visibility(ctx.db()).is_visible_from(ctx.db(), current_module.into()) {
@@ -86,7 +86,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext) ->
     let record_field: ast::RecordExprField = ctx.find_node_at_offset()?;
     let (record_field_def, _, _) = ctx.sema.resolve_record_field(&record_field)?;
 
-    let current_module = ctx.sema.scope(record_field.syntax()).module()?;
+    let current_module = ctx.sema.scope(record_field.syntax())?.module();
     let visibility = record_field_def.visibility(ctx.db());
     if visibility.is_visible_from(ctx.db(), current_module.into()) {
         return None;

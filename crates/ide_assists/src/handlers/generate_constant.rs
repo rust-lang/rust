@@ -35,8 +35,8 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext) -> Optio
     let expr = constant_token.syntax().ancestors().find_map(ast::Expr::cast)?;
     let statement = expr.syntax().ancestors().find_map(ast::Stmt::cast)?;
     let ty = ctx.sema.type_of_expr(&expr)?;
-    let scope = ctx.sema.scope(statement.syntax());
-    let module = scope.module()?;
+    let scope = ctx.sema.scope(statement.syntax())?;
+    let module = scope.module();
     let type_name = ty.original().display_source_code(ctx.db(), module.into()).ok()?;
     let indent = IndentLevel::from_node(statement.syntax());
     if constant_token.to_string().chars().any(|it| !(it.is_uppercase() || it == '_')) {

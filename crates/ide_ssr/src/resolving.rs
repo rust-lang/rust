@@ -186,7 +186,7 @@ impl<'db> ResolutionScope<'db> {
     pub(crate) fn new(
         sema: &hir::Semantics<'db, ide_db::RootDatabase>,
         resolve_context: FilePosition,
-    ) -> ResolutionScope<'db> {
+    ) -> Option<ResolutionScope<'db>> {
         use syntax::ast::AstNode;
         let file = sema.parse(resolve_context.file_id);
         // Find a node at the requested position, falling back to the whole file.
@@ -197,8 +197,8 @@ impl<'db> ResolutionScope<'db> {
             .and_then(|token| token.parent())
             .unwrap_or_else(|| file.syntax().clone());
         let node = pick_node_for_resolution(node);
-        let scope = sema.scope(&node);
-        ResolutionScope { scope, node }
+        let scope = sema.scope(&node)?;
+        Some(ResolutionScope { scope, node })
     }
 
     /// Returns the function in which SSR was invoked, if any.
@@ -219,7 +219,7 @@ impl<'db> ResolutionScope<'db> {
         let resolved_qualifier = self.scope.speculative_resolve(&path.qualifier()?)?;
         if let hir::PathResolution::Def(hir::ModuleDef::Adt(adt)) = resolved_qualifier {
             let name = path.segment()?.name_ref()?;
-            let module = self.scope.module()?;
+            let module = self.scope.module();
             adt.ty(self.scope.db).iterate_path_candidates(
                 self.scope.db,
                 &self.scope,

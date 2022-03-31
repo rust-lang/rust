@@ -29,7 +29,7 @@ use crate::{
         const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
     },
     mapping::{from_chalk, ToChalk},
-    method_resolution,
+    method_resolution::{self, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::{generics, Generics},
@@ -487,13 +487,8 @@ impl<'a> InferenceContext<'a> {
                         }
                         _ => return None,
                     };
-                    let module = self.resolver.module();
-                    let is_visible = module
-                        .map(|mod_id| {
-                            self.db.field_visibilities(field_id.parent)[field_id.local_id]
-                                .is_visible_from(self.db.upcast(), mod_id)
-                        })
-                        .unwrap_or(true);
+                    let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
+                        .is_visible_from(self.db.upcast(), self.resolver.module());
                     if !is_visible {
                         // Write down the first field resolution even if it is not visible
                         // This aids IDE features for private fields like goto def and in
@@ -946,7 +941,7 @@ impl<'a> InferenceContext<'a> {
             self.db,
             self.trait_env.clone(),
             &traits_in_scope,
-            self.resolver.module().into(),
+            VisibleFromModule::Filter(self.resolver.module()),
             method_name,
         );
         let (receiver_ty, method_ty, substs) = match resolved {

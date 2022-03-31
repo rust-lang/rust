@@ -600,8 +600,7 @@ fn handle_as_ref_str(
     db: &dyn HirDatabase,
     famous_defs: &FamousDefs,
 ) -> Option<ReferenceConversionType> {
-    let module = famous_defs.1?.root_module(db);
-    let str_type = hir::BuiltinType::str().ty(db, module);
+    let str_type = hir::BuiltinType::str().ty(db);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
         .then(|| ReferenceConversionType::AsRefStr)

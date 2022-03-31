@@ -104,6 +104,7 @@ fn add_missing_impl_members_inner(
 ) -> Option<()> {
     let _p = profile::span("add_missing_impl_members_inner");
     let impl_def = ctx.find_node_at_offset::<ast::Impl>()?;
+    let target_scope = ctx.sema.scope(impl_def.syntax())?;
     let trait_ = resolve_target_trait(&ctx.sema, &impl_def)?;
 
     let missing_items = filter_assoc_items(
@@ -118,7 +119,6 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId(assist_id, AssistKind::QuickFix), label, target, |builder| {
-        let target_scope = ctx.sema.scope(impl_def.syntax());
         let missing_items = missing_items
             .into_iter()
             .map(|it| {

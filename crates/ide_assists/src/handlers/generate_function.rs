@@ -73,7 +73,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
                 get_fn_target(ctx, &target_module, call.clone())?
             }
             Some(hir::PathResolution::Def(hir::ModuleDef::Adt(adt))) => {
-                let current_module = current_module(call.syntax(), ctx)?;
+                let current_module = ctx.sema.scope(call.syntax())?.module();
                 let module = adt.module(ctx.sema.db);
                 target_module = if current_module == module { None } else { Some(module) };
                 if current_module.krate() != module.krate() {
@@ -117,7 +117,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let fn_name = call.name_ref()?;
     let adt = ctx.sema.type_of_expr(&call.receiver()?)?.original().strip_references().as_adt()?;
 
-    let current_module = current_module(call.syntax(), ctx)?;
+    let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module = adt.module(ctx.sema.db);
 
     if current_module.krate() != target_module.krate() {
@@ -164,10 +164,6 @@ fn add_func_to_accumulator(
             None => builder.insert(insert_offset, func),
         }
     })
-}
-
-fn current_module(current_node: &SyntaxNode, ctx: &AssistContext) -> Option<Module> {
-    ctx.sema.scope(current_node).module()
 }
 
 fn get_adt_source(
@@ -235,7 +231,8 @@ impl FunctionBuilder {
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
         let needs_pub = target_module.is_some();
-        let target_module = target_module.or_else(|| current_module(target.syntax(), ctx))?;
+        let target_module =
+            target_module.or_else(|| ctx.sema.scope(target.syntax()).map(|it| it.module()))?;
         let fn_name = make::name(fn_name);
         let (type_params, params) =
             fn_args(ctx, target_module, ast::CallableExpr::Call(call.clone()))?;
@@ -266,7 +263,7 @@ impl FunctionBuilder {
         target: GeneratedFunctionTarget,
     ) -> Option<Self> {
         let needs_pub =
-            !module_is_descendant(&current_module(call.syntax(), ctx)?, &target_module, ctx);
+            !module_is_descendant(&ctx.sema.scope(call.syntax())?.module(), &target_module, ctx);
         let fn_name = make::name(&name.text());
         let (type_params, params) =
             fn_args(ctx, target_module, ast::CallableExpr::MethodCall(call.clone()))?;
@@ -520,7 +517,7 @@ fn fn_arg_type(ctx: &AssistContext, target_module: hir::Module, fn_arg: &ast::Ex
         }
 
         if ty.is_reference() || ty.is_mutable_reference() {
-            let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax()).krate());
+            let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
                 .map(|conversion| conversion.convert_type(ctx.db()))
                 .or_else(|| ty.display_source_code(ctx.db(), target_module.into()).ok())

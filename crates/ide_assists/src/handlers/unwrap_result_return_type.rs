@@ -38,9 +38,9 @@ pub(crate) fn unwrap_result_return_type(acc: &mut Assists, ctx: &AssistContext) 
     };
 
     let type_ref = &ret_type.ty()?;
-    let ty = ctx.sema.resolve_type(type_ref).and_then(|ty| ty.as_adt());
+    let ty = ctx.sema.resolve_type(type_ref)?.as_adt();
     let result_enum =
-        FamousDefs(&ctx.sema, ctx.sema.scope(type_ref.syntax()).krate()).core_result_Result()?;
+        FamousDefs(&ctx.sema, ctx.sema.scope(type_ref.syntax())?.krate()).core_result_Result()?;
 
     if !matches!(ty, Some(hir::Adt::Enum(ret_type)) if ret_type == result_enum) {
         return None;

@@ -120,18 +120,18 @@ fn params_from_stmt_list_scope(
         Some(it) => it,
         None => return,
     };
-    let scope = ctx.sema.scope_at_offset(stmt_list.syntax(), syntax_node.text_range().end());
-    let module = match scope.module() {
-        Some(it) => it,
-        None => return,
-    };
-    scope.process_all_names(&mut |name, def| {
-        if let hir::ScopeDef::Local(local) = def {
-            if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module.into()) {
-                cb(name, ty);
+    if let Some(scope) =
+        ctx.sema.scope_at_offset(stmt_list.syntax(), syntax_node.text_range().end())
+    {
+        let module = scope.module().into();
+        scope.process_all_names(&mut |name, def| {
+            if let hir::ScopeDef::Local(local) = def {
+                if let Ok(ty) = local.ty(ctx.db).display_source_code(ctx.db, module) {
+                    cb(name, ty);
+                }
             }
-        }
-    });
+        });
+    }
 }
 
 fn remove_duplicated(

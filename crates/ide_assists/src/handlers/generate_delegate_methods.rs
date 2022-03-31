@@ -45,7 +45,7 @@ use syntax::ast::edit::AstNodeEdit;
 pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let strukt_name = strukt.name()?;
-    let current_module = ctx.sema.scope(strukt.syntax()).module()?;
+    let current_module = ctx.sema.scope(strukt.syntax())?.module();
 
     let (field_name, field_ty, target) = match ctx.find_node_at_offset::<ast::RecordField>() {
         Some(field) => {

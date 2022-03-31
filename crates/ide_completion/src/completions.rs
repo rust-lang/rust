@@ -352,14 +352,6 @@ fn enum_variants_with_paths(
 ) {
     let variants = enum_.variants(ctx.db);
 
-    let module = if let Some(module) = ctx.module {
-        // Compute path from the completion site if available.
-        module
-    } else {
-        // Otherwise fall back to the enum's definition site.
-        enum_.module(ctx.db)
-    };
-
     if let Some(impl_) = ctx.impl_def.as_ref().and_then(|impl_| ctx.sema.to_def(impl_)) {
         if impl_.self_ty(ctx.db).as_adt() == Some(hir::Adt::Enum(enum_)) {
             for &variant in &variants {
@@ -373,7 +365,7 @@ fn enum_variants_with_paths(
     }
 
     for variant in variants {
-        if let Some(path) = module.find_use_path(ctx.db, hir::ModuleDef::from(variant)) {
+        if let Some(path) = ctx.module.find_use_path(ctx.db, hir::ModuleDef::from(variant)) {
             // Variants with trivial paths are already added by the existing completion logic,
             // so we should avoid adding these twice
             if path.segments().len() > 1 {

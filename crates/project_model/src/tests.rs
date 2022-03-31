@@ -1261,7 +1261,9 @@ fn rust_project_hello_world_project_model() {
                             },
                         ],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Alloc,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1291,7 +1293,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1321,7 +1325,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1361,7 +1367,9 @@ fn rust_project_hello_world_project_model() {
                             },
                         ],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            ProcMacro,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1391,7 +1399,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Core,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1490,7 +1500,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1520,7 +1532,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1550,7 +1564,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1580,7 +1596,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Test,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1692,7 +1710,9 @@ fn rust_project_hello_world_project_model() {
                             },
                         ],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Std,
+                        ),
                         is_proc_macro: false,
                     },
                     CrateId(
@@ -1722,7 +1742,9 @@ fn rust_project_hello_world_project_model() {
                         },
                         dependencies: [],
                         proc_macro: [],
-                        origin: Lang,
+                        origin: Lang(
+                            Other,
+                        ),
                         is_proc_macro: false,
                     },
                 },

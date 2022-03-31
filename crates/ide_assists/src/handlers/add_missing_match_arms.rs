@@ -73,7 +73,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let module = ctx.sema.scope(expr.syntax()).module()?;
+    let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
         bool,
@@ -92,8 +92,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext) -> 
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
 
-        let option_enum =
-            FamousDefs(&ctx.sema, Some(module.krate())).core_option_Option().map(lift_enum);
+        let option_enum = FamousDefs(&ctx.sema, module.krate()).core_option_Option().map(lift_enum);
         let missing_pats: Box<dyn Iterator<Item = _>> = if Some(enum_def) == option_enum {
             // Match `Some` variant first.
             cov_mark::hit!(option_order);

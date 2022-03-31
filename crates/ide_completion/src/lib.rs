@@ -185,7 +185,7 @@ pub fn resolve_completion_edits(
     let position_for_import = &position_for_import(&ctx, None)?;
     let scope = ImportScope::find_insert_use_container(position_for_import, &ctx.sema)?;
 
-    let current_module = ctx.sema.scope(position_for_import).module()?;
+    let current_module = ctx.sema.scope(position_for_import)?.module();
     let current_crate = current_module.krate();
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();

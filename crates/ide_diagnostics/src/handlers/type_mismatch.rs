@@ -76,7 +76,7 @@ fn add_missing_ok_or_some(
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id)?;
     let expr = d.expr.value.to_node(&root);
     let expr_range = expr.syntax().text_range();
-    let scope = ctx.sema.scope(expr.syntax());
+    let scope = ctx.sema.scope(expr.syntax())?;
 
     let expected_adt = d.expected.as_adt()?;
     let expected_enum = expected_adt.as_enum()?;

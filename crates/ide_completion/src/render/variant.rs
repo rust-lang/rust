@@ -72,7 +72,7 @@ pub(crate) fn visible_fields(
     fields: &[hir::Field],
     item: impl HasAttrs,
 ) -> Option<(Vec<hir::Field>, bool)> {
-    let module = ctx.module?;
+    let module = ctx.module;
     let n_fields = fields.len();
     let fields = fields
         .iter()

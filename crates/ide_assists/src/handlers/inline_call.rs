@@ -391,13 +391,11 @@ fn inline(
         }
     }
     if let Some(generic_arg_list) = generic_arg_list.clone() {
-        PathTransform::function_call(
-            &sema.scope(node.syntax()),
-            &sema.scope(fn_body.syntax()),
-            function,
-            generic_arg_list,
-        )
-        .apply(body.syntax());
+        if let Some((target, source)) = &sema.scope(node.syntax()).zip(sema.scope(fn_body.syntax()))
+        {
+            PathTransform::function_call(target, source, function, generic_arg_list)
+                .apply(body.syntax());
+        }
     }
 
     let original_indentation = match node {

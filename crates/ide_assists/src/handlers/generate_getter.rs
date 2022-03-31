@@ -121,25 +121,24 @@ pub(crate) fn generate_getter_impl(
                     "a mutable reference to ",
                 )
             } else {
-                let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(field_ty.syntax()).krate());
-                ctx.sema
-                    .resolve_type(&field_ty)
-                    .and_then(|ty| convert_reference_type(ty, ctx.db(), famous_defs))
-                    .map(|conversion| {
-                        cov_mark::hit!(convert_reference_type);
-                        (
-                            conversion.convert_type(ctx.db()),
-                            conversion.getter(field_name.to_string()),
-                            if conversion.is_copy() { "" } else { "a reference to " },
-                        )
-                    })
-                    .unwrap_or_else(|| {
-                        (
-                            format!("&{}", field_ty),
-                            format!("&self.{}", field_name),
-                            "a reference to ",
-                        )
-                    })
+                (|| {
+                    let krate = ctx.sema.scope(field_ty.syntax())?.krate();
+                    let famous_defs = &FamousDefs(&ctx.sema, krate);
+                    ctx.sema
+                        .resolve_type(&field_ty)
+                        .and_then(|ty| convert_reference_type(ty, ctx.db(), famous_defs))
+                        .map(|conversion| {
+                            cov_mark::hit!(convert_reference_type);
+                            (
+                                conversion.convert_type(ctx.db()),
+                                conversion.getter(field_name.to_string()),
+                                if conversion.is_copy() { "" } else { "a reference to " },
+                            )
+                        })
+                })()
+                .unwrap_or_else(|| {
+                    (format!("&{}", field_ty), format!("&self.{}", field_name), "a reference to ")
+                })
             };
 
             format_to!(

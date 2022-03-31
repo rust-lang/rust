@@ -122,7 +122,7 @@ fn pattern_path_completion(
 
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-                    let module_scope = module.scope(ctx.db, ctx.module);
+                    let module_scope = module.scope(ctx.db, Some(ctx.module));
                     for (name, def) in module_scope {
                         let add_resolution = match def {
                             ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => {
@@ -159,13 +159,7 @@ fn pattern_path_completion(
                         hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Union(u))) => {
                             u.ty(ctx.db)
                         }
-                        hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => {
-                            let module = match ctx.module {
-                                Some(m) => m,
-                                None => return,
-                            };
-                            ty.ty(ctx.db, module)
-                        }
+                        hir::PathResolution::Def(hir::ModuleDef::BuiltinType(ty)) => ty.ty(ctx.db),
                         _ => return,
                     };
 
@@ -175,7 +169,7 @@ fn pattern_path_completion(
                         ctx.db,
                         &ctx.scope,
                         &traits_in_scope,
-                        ctx.module,
+                        Some(ctx.module),
                         None,
                         |item| {
                             match item {

@@ -734,13 +734,7 @@ fn def_to_ty(sema: &Semantics<RootDatabase>, def: &Definition) -> Option<hir::Ty
     match def {
         Definition::Adt(adt) => Some(adt.ty(sema.db)),
         Definition::TypeAlias(it) => Some(it.ty(sema.db)),
-        Definition::BuiltinType(it) => {
-            let graph = sema.db.crate_graph();
-            let krate = graph.iter().next()?;
-            let root_file = graph[krate].root_file_id;
-            let module = sema.to_module_def(root_file)?;
-            Some(it.ty(sema.db, module))
-        }
+        Definition::BuiltinType(it) => Some(it.ty(sema.db)),
         Definition::SelfType(it) => Some(it.self_ty(sema.db)),
         _ => None,
     }

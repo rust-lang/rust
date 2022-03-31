@@ -63,10 +63,7 @@ pub(crate) fn goto_implementation(
                 Definition::Trait(trait_) => impls_for_trait(&sema, trait_),
                 Definition::Adt(adt) => impls_for_ty(&sema, adt.ty(sema.db)),
                 Definition::TypeAlias(alias) => impls_for_ty(&sema, alias.ty(sema.db)),
-                Definition::BuiltinType(builtin) => {
-                    let module = sema.to_module_def(position.file_id)?;
-                    impls_for_ty(&sema, builtin.ty(sema.db, module))
-                }
+                Definition::BuiltinType(builtin) => impls_for_ty(&sema, builtin.ty(sema.db)),
                 Definition::Function(f) => {
                     let assoc = f.as_assoc_item(sema.db)?;
                     let name = assoc.name(sema.db)?;

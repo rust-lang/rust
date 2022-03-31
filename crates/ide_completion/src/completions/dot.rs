@@ -87,7 +87,7 @@ fn complete_methods(
         ctx.db,
         &ctx.scope,
         &traits_in_scope,
-        ctx.module,
+        Some(ctx.module),
         None,
         |func| {
             if func.self_param(ctx.db).is_some() && seen_methods.insert(func.name(ctx.db)) {

@@ -25,7 +25,7 @@ pub fn ssr_from_comment(db: &RootDatabase, frange: FileRange) -> Option<(MatchFi
 
     let lookup_context = FilePosition { file_id: frange.file_id, offset: frange.range.start() };
 
-    let mut match_finder = MatchFinder::in_context(db, lookup_context, vec![]);
+    let mut match_finder = MatchFinder::in_context(db, lookup_context, vec![]).ok()?;
     match_finder.add_rule(ssr_rule).ok()?;
 
     Some((match_finder, comment.syntax().text_range()))
