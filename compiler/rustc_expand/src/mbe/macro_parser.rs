@@ -263,18 +263,12 @@ crate type NamedParseResult = ParseResult<FxHashMap<MacroRulesNormalizedIdent, N
 pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
     matcher
         .iter()
-        .map(|tt| {
-            match tt {
-                TokenTree::Delimited(_, delim) => count_metavar_decls(delim.inner_tts()),
-                TokenTree::MetaVar(..) => 0,
-                TokenTree::MetaVarDecl(..) => 1,
-                // RHS meta-variable expressions eventually end-up here. `0` is returned to inform
-                // that no meta-variable was found, because "meta-variables" != "meta-variable
-                // expressions".
-                TokenTree::MetaVarExpr(..) => 0,
-                TokenTree::Sequence(_, seq) => seq.num_captures,
-                TokenTree::Token(..) => 0,
-            }
+        .map(|tt| match tt {
+            TokenTree::MetaVarDecl(..) => 1,
+            TokenTree::Sequence(_, seq) => seq.num_captures,
+            TokenTree::Delimited(_, delim) => count_metavar_decls(delim.inner_tts()),
+            TokenTree::Token(..) => 0,
+            TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         })
         .sum()
 }
