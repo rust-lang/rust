@@ -111,6 +111,13 @@ pub fn fluent_bundle(
     trace!(?locale);
     let mut bundle = FluentBundle::new(vec![locale]);
 
+    // Fluent diagnostics can insert directionality isolation markers around interpolated variables
+    // indicating that there may be a shift from right-to-left to left-to-right text (or
+    // vice-versa). These are disabled because they are sometimes visible in the error output, but
+    // may be worth investigating in future (for example: if type names are left-to-right and the
+    // surrounding diagnostic messages are right-to-left, then these might be helpful).
+    bundle.set_use_isolating(false);
+
     if let Some(requested_locale) = requested_locale {
         let mut sysroot = sysroot.to_path_buf();
         sysroot.push("share");
@@ -161,6 +168,8 @@ pub fn fallback_fluent_bundle() -> Result<Lrc<FluentBundle>, TranslationBundleEr
         .map_err(TranslationBundleError::from)?;
     trace!(?fallback_resource);
     let mut fallback_bundle = FluentBundle::new(vec![langid!("en-US")]);
+    // See comment in `fluent_bundle`.
+    fallback_bundle.set_use_isolating(false);
     fallback_bundle.add_resource(fallback_resource).map_err(TranslationBundleError::from)?;
     let fallback_bundle = Lrc::new(fallback_bundle);
     Ok(fallback_bundle)
