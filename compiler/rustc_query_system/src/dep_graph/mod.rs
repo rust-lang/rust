@@ -13,7 +13,7 @@ pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_serialize::{opaque::FileEncoder, Encodable};
+use rustc_serialize::MmapSafe;
 use rustc_session::Session;
 
 use std::fmt;
@@ -84,7 +84,7 @@ impl FingerprintStyle {
 }
 
 /// Describe the different families of dependency nodes.
-pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
+pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + MmapSafe + 'static {
     /// DepKind to use when incr. comp. is turned off.
     const NULL: Self;
 

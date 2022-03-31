@@ -1,5 +1,6 @@
 use crate::leb128::{self, max_leb128_len};
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
+use crate::MmapSafe;
 use std::convert::TryInto;
 use std::fs::File;
 use std::io::{self, Write};
@@ -397,6 +398,38 @@ impl FileEncoder {
         let res = std::mem::replace(&mut self.res, Ok(()));
         res.map(|()| self.position())
     }
+
+    #[inline]
+    pub fn write_mmap<T: MmapSafe>(&mut self, val: &T) -> usize {
+        self.write_mmap_slice(std::slice::from_ref(val))
+    }
+
+    #[inline]
+    pub fn write_mmap_slice<T: MmapSafe>(&mut self, val: &[T]) -> usize {
+        const ALIGN: [u8; 64] = [0; 64];
+        // First, we need to align the memory.
+        let pos = self.position();
+        let align = std::mem::align_of::<T>();
+        let mask = align - 1;
+        let extra = pos & mask;
+        let padding = if extra == 0 { 0 } else { align - extra };
+        self.write_all(&ALIGN[..padding]);
+
+        let pos = pos + padding;
+        debug_assert!(pos & mask == 0);
+        debug_assert_eq!(pos, self.position());
+
+        // Now, we can write the data.
+        // SAFETY: The buffer has exactly the size for type `T`.
+        let raw_data: &[u8] = unsafe {
+            std::slice::from_raw_parts(
+                val.as_ptr() as *const u8,
+                val.len() * std::mem::size_of::<T>(),
+            )
+        };
+        self.write_all(raw_data);
+        pos
+    }
 }
 
 impl Drop for FileEncoder {
@@ -557,6 +590,27 @@ impl<'a> MemDecoder<'a> {
     #[inline]
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
+    }
+
+    #[inline]
+    pub unsafe fn mmap_at<T: MmapSafe>(&self, pos: usize) -> &'a T {
+        let ret = self.mmap_slice_at::<T>(pos, 1);
+        debug_assert_eq!(ret.len(), 1);
+        &ret[0]
+    }
+
+    #[inline]
+    pub unsafe fn mmap_slice_at<T: MmapSafe>(&self, pos: usize, length: usize) -> &'a [T] {
+        let slice = &self.data[pos..];
+        if cfg!(debug_assertions) {
+            // The decoder must ensure the position is properly aligned.
+            let _pre_padding = slice.as_ptr().align_offset(std::mem::align_of::<T>());
+            debug_assert_eq!(_pre_padding, 0);
+
+            let byte_length = length * std::mem::size_of::<T>();
+            debug_assert!(byte_length <= slice.len());
+        }
+        std::slice::from_raw_parts(slice.as_ptr() as *const T, length)
     }
 }
 

@@ -204,7 +204,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                     return LoadResult::DataOutOfDate;
                 }
 
-                let dep_graph = SerializedDepGraph::decode(&mut decoder);
+                let dep_graph = SerializedDepGraph::decode(bytes);
 
                 LoadResult::Ok { data: (dep_graph, prev_work_products) }
             }
