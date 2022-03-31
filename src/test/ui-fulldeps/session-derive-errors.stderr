@@ -147,15 +147,6 @@ LL | | struct SlugNotProvided {}
    |
    = help: use the `#[error(slug = "...")]` attribute to set this diagnostic's slug
 
-error: `code` not specified
-  --> $DIR/session-derive-errors.rs:118:1
-   |
-LL | / #[error(slug = "foo")]
-LL | | struct CodeNotProvided {}
-   | |_________________________^
-   |
-   = help: use the `#[error(code = "...")]` attribute to set this diagnostic's error code
-
 error: the `#[primary_span]` attribute can only be applied to fields of type `Span`
   --> $DIR/session-derive-errors.rs:124:5
    |
@@ -285,6 +276,6 @@ LL | #[derive(SessionDiagnostic)]
    |
    = note: this error originates in the derive macro `SessionDiagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 35 previous errors
+error: aborting due to 34 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

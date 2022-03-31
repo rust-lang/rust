@@ -229,38 +229,30 @@ impl<'a> SessionDiagnosticDerive<'a> {
 
                 let span = ast.span().unwrap();
                 let (diag, sess) = (&builder.diag, &builder.sess);
-                let init = match (builder.kind, builder.slug, builder.code) {
-                    (None, _, _) => {
+                let init = match (builder.kind, builder.slug) {
+                    (None, _) => {
                         span_err(span, "diagnostic kind not specified")
                             .help("use the `#[error(...)]` attribute to create an error")
                             .emit();
                         return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
                     }
-                    (Some((kind, _)), None, _) => {
+                    (Some((kind, _)), None) => {
                         span_err(span, "`slug` not specified")
                             .help(&format!("use the `#[{}(slug = \"...\")]` attribute to set this diagnostic's slug", kind.descr()))
                             .emit();
                         return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
                     }
-                    (Some((kind, _)), _, None) => {
-                        span_err(span, "`code` not specified")
-                            .help(&format!("use the `#[{}(code = \"...\")]` attribute to set this diagnostic's error code", kind.descr()))
-                            .emit();
-                        return SessionDiagnosticDeriveError::ErrorHandled.to_compile_error();
-                    }
-                    (Some((SessionDiagnosticKind::Error, _)), Some((slug, _)), Some((code, _))) => {
+                    (Some((SessionDiagnosticKind::Error, _)), Some((slug, _))) => {
                         quote! {
-                            let mut #diag = #sess.struct_err_with_code(
+                            let mut #diag = #sess.struct_err(
                                 rustc_errors::DiagnosticMessage::fluent(#slug),
-                                rustc_errors::DiagnosticId::Error(#code.to_string())
                             );
                         }
                     }
-                    (Some((SessionDiagnosticKind::Warn, _)), Some((slug, _)), Some((code, _))) => {
+                    (Some((SessionDiagnosticKind::Warn, _)), Some((slug, _))) => {
                         quote! {
-                            let mut #diag = #sess.struct_warn_with_code(
+                            let mut #diag = #sess.struct_warn(
                                 rustc_errors::DiagnosticMessage::fluent(#slug),
-                                rustc_errors::DiagnosticId::Error(#code.to_string())
                             );
                         }
                     }
@@ -363,9 +355,9 @@ struct SessionDiagnosticDeriveBuilder<'a> {
     /// Slug is a mandatory part of the struct attribute as corresponds to the Fluent message that
     /// has the actual diagnostic message.
     slug: Option<(String, proc_macro::Span)>,
-    /// Error codes are a mandatory part of the struct attribute. Slugs may replace error codes
-    /// in future but it is desirable to mandate error codes until such a time.
-    code: Option<(String, proc_macro::Span)>,
+    /// Error codes are a optional part of the struct attribute - this is only set to detect
+    /// multiple specifications.
+    code: Option<proc_macro::Span>,
 }
 
 impl<'a> SessionDiagnosticDeriveBuilder<'a> {
@@ -403,6 +395,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         };
         self.set_kind_once(kind, span)?;
 
+        let mut tokens = Vec::new();
         for attr in nested {
             let span = attr.span().unwrap();
             let meta = match attr {
@@ -427,7 +420,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
                             self.set_slug_once(s.value(), s.span().unwrap());
                         }
                         "code" => {
-                            self.set_code_once(s.value(), s.span().unwrap());
+                            tokens.push(self.set_code_once(s.value(), s.span().unwrap()));
                         }
                         other => {
                             let diag = span_err(
@@ -475,7 +468,7 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
             }
         }
 
-        Ok(quote! {})
+        Ok(tokens.drain(..).collect())
     }
 
     #[must_use]
@@ -504,17 +497,20 @@ impl<'a> SessionDiagnosticDeriveBuilder<'a> {
         }
     }
 
-    fn set_code_once(&mut self, code: String, span: proc_macro::Span) {
+    fn set_code_once(&mut self, code: String, span: proc_macro::Span) -> proc_macro2::TokenStream {
         match self.code {
             None => {
-                self.code = Some((code, span));
+                self.code = Some(span);
             }
-            Some((_, prev_span)) => {
+            Some(prev_span) => {
                 span_err(span, "`code` specified multiple times")
                     .span_note(prev_span, "previously specified here")
                     .emit();
             }
         }
+
+        let diag = &self.diag;
+        quote! { #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string())); }
     }
 
     fn set_slug_once(&mut self, slug: String, span: proc_macro::Span) {

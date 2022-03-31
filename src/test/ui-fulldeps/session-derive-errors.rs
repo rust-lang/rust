@@ -115,7 +115,7 @@ struct KindNotProvided {} //~ ERROR diagnostic kind not specified
 struct SlugNotProvided {}
 
 #[derive(SessionDiagnostic)]
-#[error(slug = "foo")] //~ ERROR `code` not specified
+#[error(slug = "foo")]
 struct CodeNotProvided {}
 
 #[derive(SessionDiagnostic)]
