@@ -123,6 +123,14 @@ pub(crate) fn handle_view_hir(
     Ok(res)
 }
 
+pub(crate) fn handle_view_file_text(
+    snap: GlobalStateSnapshot,
+    params: lsp_types::TextDocumentIdentifier,
+) -> Result<String> {
+    let file_id = from_proto::file_id(&snap, &params.uri)?;
+    Ok(snap.analysis.file_text(file_id)?.to_string())
+}
+
 pub(crate) fn handle_view_item_tree(
     snap: GlobalStateSnapshot,
     params: lsp_ext::ViewItemTreeParams,

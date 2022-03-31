@@ -105,6 +105,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.viewFileText",
+                "title": "View File Text (as seen by the server)",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.viewItemTree",
                 "title": "Debug ItemTree",
                 "category": "Rust Analyzer"
@@ -1406,6 +1411,10 @@
                 },
                 {
                     "command": "rust-analyzer.viewHir",
+                    "when": "inRustProject"
+                },
+                {
+                    "command": "rust-analyzer.viewFileText",
                     "when": "inRustProject"
                 },
                 {
