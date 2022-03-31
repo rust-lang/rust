@@ -2285,10 +2285,10 @@ impl<'v> Visitor<'v> for FindTypeParam {
     }
 }
 
-pub fn recursive_type_with_infinite_size_error(
-    tcx: TyCtxt<'_>,
+pub fn recursive_type_with_infinite_size_error<'tcx>(
+    tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-    spans: Vec<Span>,
+    spans: Vec<(Span, Option<hir::HirId>)>,
 ) {
     assert!(type_def_id.is_local());
     let span = tcx.hir().span_if_local(type_def_id).unwrap();
@@ -2297,7 +2297,7 @@ pub fn recursive_type_with_infinite_size_error(
     let mut err =
         struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size", path);
     err.span_label(span, "recursive type has infinite size");
-    for &span in &spans {
+    for &(span, _) in &spans {
         err.span_label(span, "recursive without indirection");
     }
     let msg = format!(
@@ -2305,16 +2305,25 @@ pub fn recursive_type_with_infinite_size_error(
         path,
     );
     if spans.len() <= 4 {
+        // FIXME(compiler-errors): This suggestion might be erroneous if Box is shadowed
         err.multipart_suggestion(
             &msg,
             spans
-                .iter()
-                .flat_map(|&span| {
-                    [
-                        (span.shrink_to_lo(), "Box<".to_string()),
-                        (span.shrink_to_hi(), ">".to_string()),
-                    ]
-                    .into_iter()
+                .into_iter()
+                .flat_map(|(span, field_id)| {
+                    if let Some(generic_span) = get_option_generic_from_field_id(tcx, field_id) {
+                        // If we match an `Option` and can grab the span of the Option's generic, then
+                        // suggest boxing the generic arg for a non-null niche optimization.
+                        vec![
+                            (generic_span.shrink_to_lo(), "Box<".to_string()),
+                            (generic_span.shrink_to_hi(), ">".to_string()),
+                        ]
+                    } else {
+                        vec![
+                            (span.shrink_to_lo(), "Box<".to_string()),
+                            (span.shrink_to_hi(), ">".to_string()),
+                        ]
+                    }
                 })
                 .collect(),
             Applicability::HasPlaceholders,
@@ -2323,6 +2332,34 @@ pub fn recursive_type_with_infinite_size_error(
         err.help(&msg);
     }
     err.emit();
+}
+
+/// Extract the span for the generic type `T` of `Option<T>` in a field definition
+fn get_option_generic_from_field_id(tcx: TyCtxt<'_>, field_id: Option<hir::HirId>) -> Option<Span> {
+    let node = tcx.hir().find(field_id?);
+
+    // Expect a field from our field_id
+    let Some(hir::Node::Field(field_def)) = node
+        else { bug!("Expected HirId corresponding to FieldDef, found: {:?}", node) };
+
+    // Match a type that is a simple QPath with no Self
+    let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = &field_def.ty.kind
+        else { return None };
+
+    // Check if the path we're checking resolves to Option
+    let hir::def::Res::Def(_, did) = path.res
+        else { return None };
+
+    // Bail if this path doesn't describe `::core::option::Option`
+    if !tcx.is_diagnostic_item(sym::Option, did) {
+        return None;
+    }
+
+    // Match a single generic arg in the 0th path segment
+    let generic_arg = path.segments.last()?.args?.args.get(0)?;
+
+    // Take the span out of the type, if it's a type
+    if let hir::GenericArg::Type(generic_ty) = generic_arg { Some(generic_ty.span) } else { None }
 }
 
 /// Summarizes information

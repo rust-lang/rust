@@ -95,13 +95,6 @@ impl<'tcx> InheritedBuilder<'tcx> {
         let def_id = self.def_id;
         self.infcx.enter(|infcx| f(Inherited::new(infcx, def_id)))
     }
-
-    /// WF-checking doesn't need to recompute opaque types and can instead use
-    /// the type_of query to get them from typeck.
-    pub fn reveal_defining_opaque_types(mut self) -> Self {
-        self.infcx = self.infcx.reveal_defining_opaque_types();
-        self
-    }
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {

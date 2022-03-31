@@ -198,7 +198,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
-            hir::PatKind::Lit(ref value) => self.lower_lit(value),
+            hir::PatKind::Lit(value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());

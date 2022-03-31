@@ -1045,7 +1045,7 @@ pub(super) fn check_representable(tcx: TyCtxt<'_>, sp: Span, item_def_id: LocalD
     // recursive type. It is only necessary to throw an error on those that
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
-    match representability::ty_is_representable(tcx, rty, sp) {
+    match representability::ty_is_representable(tcx, rty, sp, None) {
         Representability::SelfRecursive(spans) => {
             recursive_type_with_infinite_size_error(tcx, item_def_id.to_def_id(), spans);
             return false;

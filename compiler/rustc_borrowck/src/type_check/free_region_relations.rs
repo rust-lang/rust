@@ -253,8 +253,10 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let constraint_sets: Vec<_> = unnormalized_input_output_tys
             .flat_map(|ty| {
                 debug!("build: input_or_output={:?}", ty);
-                // We add implied bounds from both the unnormalized and normalized ty
-                // See issue #87748
+                // We only add implied bounds for the normalized type as the unnormalized
+                // type may not actually get checked by the caller.
+                //
+                // Can otherwise be unsound, see #91068.
                 let TypeOpOutput { output: norm_ty, constraints: constraints1, .. } = self
                     .param_env
                     .and(type_op::normalize::Normalize::new(ty))

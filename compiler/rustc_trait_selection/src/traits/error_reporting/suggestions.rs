@@ -1988,7 +1988,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::Coercion { source: _, target } => {
                 err.note(&format!("required by cast to type `{}`", self.ty_to_string(target)));
             }
-            ObligationCauseCode::RepeatVec(is_const_fn) => {
+            ObligationCauseCode::RepeatElementCopy { is_const_fn } => {
                 err.note(
                     "the `Copy` trait is required because the repeated element will be copied",
                 );
