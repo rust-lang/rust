@@ -132,7 +132,6 @@ struct Parent<'tt> {
 ///                            <-------------->   first submatcher; three tts, zero metavars
 ///                  <--------------------------> top-level matcher; two tts, one metavar
 /// ```
-#[derive(Clone)]
 struct MatcherPos<'tt> {
     /// The tokens that make up the current matcher. When we are within a `Sequence` or `Delimited`
     /// submatcher, this is just the contents of that submatcher.
@@ -175,6 +174,25 @@ impl<'tt> MatcherPos<'tt> {
             match_cur: 0,
             kind: MatcherKind::TopLevel,
         }
+    }
+
+    fn empty_sequence(
+        parent_mp: &MatcherPos<'tt>,
+        seq: &'tt SequenceRepetition,
+        empty_matches: Lrc<NamedMatchVec>,
+    ) -> Self {
+        let mut mp = MatcherPos {
+            tts: parent_mp.tts,
+            idx: parent_mp.idx + 1,
+            matches: parent_mp.matches.clone(), // a cheap clone
+            seq_depth: parent_mp.seq_depth,
+            match_cur: parent_mp.match_cur + seq.num_captures,
+            kind: parent_mp.kind.clone(), // an expensive clone
+        };
+        for idx in parent_mp.match_cur..parent_mp.match_cur + seq.num_captures {
+            mp.push_match(idx, MatchedSeq(empty_matches.clone()));
+        }
+        mp
     }
 
     fn sequence(
@@ -468,13 +486,11 @@ impl<'tt> TtParser<'tt> {
                         let op = seq.kleene.op;
                         if op == mbe::KleeneOp::ZeroOrMore || op == mbe::KleeneOp::ZeroOrOne {
                             // Allow for the possibility of zero matches of this sequence.
-                            let mut new_mp = mp.clone();
-                            new_mp.match_cur += seq.num_captures;
-                            new_mp.idx += 1;
-                            for idx in mp.match_cur..mp.match_cur + seq.num_captures {
-                                new_mp.push_match(idx, MatchedSeq(self.empty_matches.clone()));
-                            }
-                            self.cur_mps.push(new_mp);
+                            self.cur_mps.push(box MatcherPos::empty_sequence(
+                                &*mp,
+                                &seq,
+                                self.empty_matches.clone(),
+                            ));
                         }
 
                         // Allow for the possibility of one or more matches of this sequence.
