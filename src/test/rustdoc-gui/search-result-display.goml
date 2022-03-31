@@ -2,8 +2,7 @@
 goto: file://|DOC_PATH|/test_docs/index.html
 size: (900, 1000)
 write: (".search-input", "test")
-// Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-settings"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
 assert-css: (".search-results div.desc", {"width": "295px"})
