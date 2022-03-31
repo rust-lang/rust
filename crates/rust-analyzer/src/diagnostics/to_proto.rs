@@ -63,8 +63,14 @@ fn location(
 
     // FIXME: this doesn't handle UTF16 offsets correctly
     let range = lsp_types::Range::new(
-        lsp_types::Position::new(span.line_start as u32 - 1, span.column_start as u32 - 1),
-        lsp_types::Position::new(span.line_end as u32 - 1, span.column_end as u32 - 1),
+        lsp_types::Position::new(
+            (span.line_start as u32).saturating_sub(1),
+            (span.column_start as u32).saturating_sub(1),
+        ),
+        lsp_types::Position::new(
+            (span.line_end as u32).saturating_sub(1),
+            (span.column_end as u32).saturating_sub(1),
+        ),
     );
 
     lsp_types::Location { uri, range }
