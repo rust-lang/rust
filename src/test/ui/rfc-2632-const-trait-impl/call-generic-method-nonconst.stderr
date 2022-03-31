@@ -17,6 +17,10 @@ note: required by a bound in `equals_self`
    |
 LL | const fn equals_self<T: ~const PartialEq>(t: &T) -> bool {
    |                         ^^^^^^^^^^^^^^^^ required by this bound in `equals_self`
+help: consider annotating `S` with `#[derive(PartialEq)]`
+   |
+LL | #[derive(PartialEq)]
+   |
 
 error: aborting due to previous error
 

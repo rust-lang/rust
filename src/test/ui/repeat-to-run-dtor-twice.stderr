@@ -5,6 +5,10 @@ LL |     let _ = [ a; 5 ];
    |             ^^^^^^^^ the trait `Copy` is not implemented for `Foo`
    |
    = note: the `Copy` trait is required because the repeated element will be copied
+help: consider annotating `Foo` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
 
 error: aborting due to previous error
 

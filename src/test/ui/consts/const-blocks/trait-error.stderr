@@ -7,6 +7,10 @@ LL |     [Foo(String::new()); 4];
    = help: the following implementations were found:
              <Foo<T> as Copy>
    = note: the `Copy` trait is required because the repeated element will be copied
+help: consider annotating `Foo<String>` with `#[derive(Copy)]`
+   |
+LL | #[derive(Copy)]
+   |
 
 error: aborting due to previous error
 
