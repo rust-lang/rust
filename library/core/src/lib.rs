@@ -118,7 +118,7 @@
 #![feature(const_intrinsic_forget)]
 #![feature(const_likely)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
-#![feature(const_maybe_uninit_assume_init_mut)]
+#![feature(const_maybe_uninit_assume_init)]
 #![feature(const_num_from_num)]
 #![feature(const_ops)]
 #![feature(const_option)]
