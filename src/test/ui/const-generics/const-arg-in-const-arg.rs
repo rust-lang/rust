@@ -12,31 +12,40 @@ struct Foo<const N: usize>;
 fn test<'a, 'b, T, const N: usize>() where &'b (): Sized {
     let _: [u8; foo::<T>()]; //~ ERROR generic parameters may not
     let _: [u8; bar::<N>()]; //~ ERROR generic parameters may not
+                             //~^ ERROR unresolved item provided when a constant was expected
     let _: [u8; faz::<'a>(&())]; //~ ERROR a non-static lifetime
+                                 //~^ ERROR cannot specify lifetime arguments
     let _: [u8; baz::<'a>(&())]; //~ ERROR a non-static lifetime
     let _: [u8; faz::<'b>(&())]; //~ ERROR a non-static lifetime
+                                 //~^ ERROR cannot specify lifetime arguments
     let _: [u8; baz::<'b>(&())]; //~ ERROR a non-static lifetime
 
-    // NOTE: This can be a future compat warning instead of an error,
-    // so we stop compilation before emitting this error in this test.
-    let _ = [0; foo::<T>()];
-
+    let _ = [0; foo::<T>()]; //~ ERROR constant expression depends on a generic parameter
     let _ = [0; bar::<N>()]; //~ ERROR generic parameters may not
+                             //~^ ERROR unresolved item provided when a constant was expected
     let _ = [0; faz::<'a>(&())]; //~ ERROR a non-static lifetime
+                                 //~^ ERROR cannot specify lifetime arguments
     let _ = [0; baz::<'a>(&())]; //~ ERROR a non-static lifetime
     let _ = [0; faz::<'b>(&())]; //~ ERROR a non-static lifetime
+                                 //~^ ERROR cannot specify lifetime arguments
     let _ = [0; baz::<'b>(&())]; //~ ERROR a non-static lifetime
     let _: Foo<{ foo::<T>() }>; //~ ERROR generic parameters may not
     let _: Foo<{ bar::<N>() }>; //~ ERROR generic parameters may not
+                                //~^ ERROR unresolved item provided when a constant was expected
     let _: Foo<{ faz::<'a>(&()) }>; //~ ERROR a non-static lifetime
+                                    //~^ ERROR cannot specify lifetime arguments
     let _: Foo<{ baz::<'a>(&()) }>; //~ ERROR a non-static lifetime
     let _: Foo<{ faz::<'b>(&()) }>; //~ ERROR a non-static lifetime
+                                    //~^ ERROR cannot specify lifetime arguments
     let _: Foo<{ baz::<'b>(&()) }>; //~ ERROR a non-static lifetime
     let _ = Foo::<{ foo::<T>() }>; //~ ERROR generic parameters may not
     let _ = Foo::<{ bar::<N>() }>; //~ ERROR generic parameters may not
+                                   //~^ ERROR unresolved item provided when a constant was expected
     let _ = Foo::<{ faz::<'a>(&()) }>; //~ ERROR a non-static lifetime
+                                       //~^ ERROR cannot specify lifetime arguments
     let _ = Foo::<{ baz::<'a>(&()) }>; //~ ERROR a non-static lifetime
     let _ = Foo::<{ faz::<'b>(&()) }>; //~ ERROR a non-static lifetime
+                                       //~^ ERROR cannot specify lifetime arguments
     let _ = Foo::<{ baz::<'b>(&()) }>; //~ ERROR a non-static lifetime
 }
 
