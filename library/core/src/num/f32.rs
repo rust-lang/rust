@@ -689,7 +689,7 @@ impl f32 {
         self * (value / 180.0f32)
     }
 
-    /// Returns the maximum of the two numbers.
+    /// Returns the maximum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE-754 2008 semantics for maxNum, except for handling of signaling NaNs;
@@ -709,7 +709,7 @@ impl f32 {
         intrinsics::maxnumf32(self, other)
     }
 
-    /// Returns the minimum of the two numbers.
+    /// Returns the minimum of the two numbers, ignoring NaN.
     ///
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE-754 2008 semantics for minNum, except for handling of signaling NaNs;
@@ -729,7 +729,7 @@ impl f32 {
         intrinsics::minnumf32(self, other)
     }
 
-    /// Returns the maximum of the two numbers.
+    /// Returns the maximum of the two numbers, propagating NaN.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f32::max`] which only returns NaN when *both* arguments are NaN.
@@ -746,6 +746,9 @@ impl f32 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the greater
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't mean that the bitpattern of a NaN operand
+    /// is necessarily conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
@@ -761,7 +764,7 @@ impl f32 {
         }
     }
 
-    /// Returns the minimum of the two numbers.
+    /// Returns the minimum of the two numbers, propagating NaN.
     ///
     /// This returns NaN when *either* argument is NaN, as opposed to
     /// [`f32::min`] which only returns NaN when *both* arguments are NaN.
@@ -778,6 +781,9 @@ impl f32 {
     /// If one of the arguments is NaN, then NaN is returned. Otherwise this returns the lesser
     /// of the two numbers. For this operation, -0.0 is considered to be less than +0.0.
     /// Note that this follows the semantics specified in IEEE 754-2019.
+    ///
+    /// Also note that "propagation" of NaNs here doesn't mean that the bitpattern of a NaN operand
+    /// is necessarily conserved; see [explanation of NaN as a special value](f32) for more info.
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     #[unstable(feature = "float_minimum_maximum", issue = "91079")]
     #[inline]
