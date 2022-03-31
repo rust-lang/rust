@@ -1599,7 +1599,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// The `same_bucket` function is passed references to two elements from the vector and
     /// must determine if the elements compare equal. The elements are passed in opposite order
-    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is removed.
+    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `b` is removed.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
