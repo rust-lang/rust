@@ -7,6 +7,10 @@ SOURCE_FILE
     PARAM_LIST
       L_PAREN "("
       PARAM
+        DOT3 "..."
+      COMMA ","
+      WHITESPACE " "
+      PARAM
         TUPLE_PAT
           L_PAREN "("
           IDENT_PAT

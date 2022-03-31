@@ -34,6 +34,18 @@ SOURCE_FILE
           WHITESPACE " "
           PARAM
             DOT3 "..."
+          COMMA ","
+          WHITESPACE " "
+          PARAM
+            WILDCARD_PAT
+              UNDERSCORE "_"
+            COLON ":"
+            WHITESPACE " "
+            PATH_TYPE
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "u8"
           R_PAREN ")"
         WHITESPACE " "
         RET_TYPE

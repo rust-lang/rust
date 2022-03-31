@@ -71,12 +71,9 @@ fn list_(p: &mut Parser, flavor: Flavor) {
             m.abandon(p);
             break;
         }
-        let param = param(p, m, flavor);
+        param(p, m, flavor);
         if !p.at(ket) {
             p.expect(T![,]);
-        }
-        if let Variadic(true) = param {
-            break;
         }
     }
 
@@ -90,27 +87,24 @@ fn list_(p: &mut Parser, flavor: Flavor) {
 
 const PARAM_FIRST: TokenSet = patterns::PATTERN_FIRST.union(types::TYPE_FIRST);
 
-struct Variadic(bool);
-
-fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
-    let mut res = Variadic(false);
+fn param(p: &mut Parser, m: Marker, flavor: Flavor) {
     match flavor {
         // test param_list_vararg
-        // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-        Flavor::FnDef | Flavor::FnPointer if p.eat(T![...]) => res = Variadic(true),
+        // extern "C" { fn printf(format: *const i8, ..., _: u8) -> i32; }
+        Flavor::FnDef | Flavor::FnPointer if p.eat(T![...]) => {}
 
         // test fn_def_param
-        // fn foo((x, y): (i32, i32)) {}
+        // fn foo(..., (x, y): (i32, i32)) {}
         Flavor::FnDef => {
             patterns::pattern(p);
-            if variadic_param(p) {
-                res = Variadic(true);
-            } else if p.at(T![:]) {
-                types::ascription(p);
-            } else {
-                // test_err missing_fn_param_type
-                // fn f(x y: i32, z, t: i32) {}
-                p.error("missing type for function parameter");
+            if !variadic_param(p) {
+                if p.at(T![:]) {
+                    types::ascription(p);
+                } else {
+                    // test_err missing_fn_param_type
+                    // fn f(x y: i32, z, t: i32) {}
+                    p.error("missing type for function parameter");
+                }
             }
         }
         // test value_parameters_no_patterns
@@ -127,12 +121,12 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
         Flavor::FnPointer => {
             if (p.at(IDENT) || p.at(UNDERSCORE)) && p.nth(1) == T![:] && !p.nth_at(1, T![::]) {
                 patterns::pattern_single(p);
-                if variadic_param(p) {
-                    res = Variadic(true);
-                } else if p.at(T![:]) {
-                    types::ascription(p);
-                } else {
-                    p.error("missing type for function parameter");
+                if !variadic_param(p) {
+                    if p.at(T![:]) {
+                        types::ascription(p);
+                    } else {
+                        p.error("missing type for function parameter");
+                    }
                 }
             } else {
                 types::type_(p);
@@ -150,7 +144,6 @@ fn param(p: &mut Parser, m: Marker, flavor: Flavor) -> Variadic {
         }
     }
     m.complete(p, PARAM);
-    res
 }
 
 fn variadic_param(p: &mut Parser) -> bool {
