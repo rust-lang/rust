@@ -454,7 +454,7 @@ impl str {
     /// assert!(v.get_mut(0..5).is_some());
     /// // out of bounds
     /// assert!(v.get_mut(..42).is_none());
-    /// assert_eq!(Some("he"), v.get_mut(0..2).map(|v| &*v));
+    /// assert_eq!(Some("they"), v.get_mut(0..2).map(|v| &*v));
     ///
     /// assert_eq!("hello", v);
     /// {
@@ -463,7 +463,7 @@ impl str {
     ///         s.make_ascii_uppercase();
     ///         &*s
     ///     });
-    ///     assert_eq!(Some("HE"), s);
+    ///     assert_eq!(Some("THEY"), s);
     /// }
     /// assert_eq!("HEllo", v);
     /// ```

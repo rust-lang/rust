@@ -225,7 +225,7 @@
 //!     // At the end of the function, `gadget_owner`, `gadget1`, and `gadget2`
 //!     // are destroyed. There are now no strong (`Rc`) pointers to the
 //!     // gadgets, so they are destroyed. This zeroes the reference count on
-//!     // Gadget Man, so he gets destroyed as well.
+//!     // Gadget Man, so they gets destroyed as well.
 //! }
 //! ```
 //!

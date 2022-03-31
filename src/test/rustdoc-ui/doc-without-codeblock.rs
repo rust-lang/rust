@@ -7,7 +7,7 @@ pub struct Foo;
 /// And then, the princess died.
 //~^ ERROR missing code example in this documentation
 pub mod foo {
-    /// Or maybe not because she saved herself!
+    /// Or maybe not because they saved herself!
     //~^ ERROR missing code example in this documentation
     pub fn bar() {}
 }

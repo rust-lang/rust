@@ -1337,7 +1337,7 @@ impl CStr {
     /// ```
     /// use std::ffi::CStr;
     ///
-    /// let cstr = CStr::from_bytes_with_nul(b"he\0llo\0");
+    /// let cstr = CStr::from_bytes_with_nul(b"they\0llo\0");
     /// assert!(cstr.is_err());
     /// ```
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
