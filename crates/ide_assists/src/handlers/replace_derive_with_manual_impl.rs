@@ -69,7 +69,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let attr = ast::Attr::cast(value)?;
     let args = attr.token_tree()?;
 
-    let current_module = ctx.sema.scope(adt.syntax()).module()?;
+    let current_module = ctx.sema.scope(adt.syntax())?.module();
     let current_crate = current_module.krate();
 
     let found_traits = items_locator::items_with_name(
@@ -177,7 +177,7 @@ fn impl_def_from_trait(
     trait_path: &ast::Path,
 ) -> Option<(ast::Impl, ast::AssocItem)> {
     let trait_ = trait_?;
-    let target_scope = sema.scope(annotated_name.syntax());
+    let target_scope = sema.scope(annotated_name.syntax())?;
     let trait_items = filter_assoc_items(sema, &trait_.items(sema.db), DefaultMethods::No);
     if trait_items.is_empty() {
         return None;

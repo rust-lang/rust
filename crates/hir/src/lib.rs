@@ -159,7 +159,7 @@ impl Crate {
             .map(|dep| {
                 let krate = Crate { id: dep.crate_id };
                 let name = dep.as_name();
-                CrateDependency { krate, name, }
+                CrateDependency { krate, name }
             })
             .collect()
     }
@@ -2224,7 +2224,7 @@ impl BuiltinAttr {
         Some(BuiltinAttr { krate: Some(krate.id), idx })
     }
 
-    pub(crate) fn builtin(name: &str) -> Option<Self> {
+    fn builtin(name: &str) -> Option<Self> {
         hir_def::builtin_attr::INERT_ATTRIBUTES
             .iter()
             .position(|tool| tool.name == name)
@@ -2263,7 +2263,7 @@ impl ToolModule {
         Some(ToolModule { krate: Some(krate.id), idx })
     }
 
-    pub(crate) fn builtin(name: &str) -> Option<Self> {
+    fn builtin(name: &str) -> Option<Self> {
         hir_def::builtin_attr::TOOL_MODULES
             .iter()
             .position(|&tool| tool == name)
@@ -2613,13 +2613,9 @@ pub struct Type {
 }
 
 impl Type {
-    pub(crate) fn new_with_resolver(
-        db: &dyn HirDatabase,
-        resolver: &Resolver,
-        ty: Ty,
-    ) -> Option<Type> {
-        let krate = resolver.krate()?;
-        Some(Type::new_with_resolver_inner(db, krate, resolver, ty))
+    pub(crate) fn new_with_resolver(db: &dyn HirDatabase, resolver: &Resolver, ty: Ty) -> Type {
+        let krate = resolver.krate();
+        Type::new_with_resolver_inner(db, krate, resolver, ty)
     }
 
     pub(crate) fn new_with_resolver_inner(
@@ -3038,10 +3034,7 @@ impl Type {
         // There should be no inference vars in types passed here
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
-        let krate = match scope.krate() {
-            Some(k) => k,
-            None => return,
-        };
+        let krate = scope.krate();
         let environment = scope.resolver().generic_def().map_or_else(
             || Arc::new(TraitEnvironment::empty(krate.id)),
             |d| db.trait_environment(d),
@@ -3098,10 +3091,7 @@ impl Type {
     ) {
         let canonical = hir_ty::replace_errors_with_variables(&self.ty);
 
-        let krate = match scope.krate() {
-            Some(k) => k,
-            None => return,
-        };
+        let krate = scope.krate();
         let environment = scope.resolver().generic_def().map_or_else(
             || Arc::new(TraitEnvironment::empty(krate.id)),
             |d| db.trait_environment(d),

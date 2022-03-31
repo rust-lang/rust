@@ -646,8 +646,8 @@ impl Match {
     ) -> Result<(), MatchFailed> {
         let module = sema
             .scope(&self.matched_node)
-            .module()
-            .ok_or_else(|| match_error!("Matched node isn't in a module"))?;
+            .ok_or_else(|| match_error!("Matched node isn't in a module"))?
+            .module();
         for (path, resolved_path) in &template.resolved_paths {
             if let hir::PathResolution::Def(module_def) = resolved_path.resolution {
                 let mod_path = module.find_use_path(sema.db, module_def).ok_or_else(|| {
@@ -788,7 +788,7 @@ mod tests {
         let input = "fn foo() {} fn bar() {} fn main() { foo(1+2); }";
 
         let (db, position, selections) = crate::tests::single_file(input);
-        let mut match_finder = MatchFinder::in_context(&db, position, selections);
+        let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
         match_finder.add_rule(rule).unwrap();
         let matches = match_finder.matches();
         assert_eq!(matches.matches.len(), 1);

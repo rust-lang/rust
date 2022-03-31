@@ -9,8 +9,11 @@ use hir_def::{
 use hir_expand::name::Name;
 
 use crate::{
-    builder::ParamKind, consteval, method_resolution, GenericArgData, Interner, Substitution,
-    TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
+    builder::ParamKind,
+    consteval,
+    method_resolution::{self, VisibleFromModule},
+    GenericArgData, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -231,7 +234,7 @@ impl<'a> InferenceContext<'a> {
             self.db,
             self.table.trait_env.clone(),
             &traits_in_scope,
-            self.resolver.module().into(),
+            VisibleFromModule::Filter(self.resolver.module()),
             Some(name),
             method_resolution::LookupMode::Path,
             move |_ty, item| {

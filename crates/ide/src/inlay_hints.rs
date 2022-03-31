@@ -110,7 +110,10 @@ fn hints(
     config: &InlayHintsConfig,
     node: SyntaxNode,
 ) {
-    let krate = sema.scope(&node).module().map(|it| it.krate());
+    let krate = match sema.scope(&node) {
+        Some(it) => it.krate(),
+        None => return,
+    };
     let famous_defs = FamousDefs(sema, krate);
     if let Some(expr) = ast::Expr::cast(node.clone()) {
         chaining_hints(hints, sema, &famous_defs, config, &expr);
@@ -503,7 +506,7 @@ fn bind_pat_hints(
         return None;
     }
 
-    let krate = sema.scope(desc_pat.syntax()).module().map(|it| it.krate());
+    let krate = sema.scope(desc_pat.syntax())?.krate();
     let famous_defs = FamousDefs(sema, krate);
     let label = hint_iterator(sema, &famous_defs, config, &ty);
 

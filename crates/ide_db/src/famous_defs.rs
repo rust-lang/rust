@@ -18,7 +18,7 @@ use crate::RootDatabase;
 /// ```
 /// //- minicore: iterator, ord, derive
 /// ```
-pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Option<Crate>);
+pub struct FamousDefs<'a, 'b>(pub &'a Semantics<'b, RootDatabase>, pub Crate);
 
 #[allow(non_snake_case)]
 impl FamousDefs<'_, '_> {
@@ -142,7 +142,7 @@ impl FamousDefs<'_, '_> {
     }
 
     fn find_lang_crate(&self, origin: LangCrateOrigin) -> Option<Crate> {
-        let krate = self.1?;
+        let krate = self.1;
         let db = self.0.db;
         let crate_graph = self.0.db.crate_graph();
         let res = krate

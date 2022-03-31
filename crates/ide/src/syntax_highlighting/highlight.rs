@@ -48,7 +48,7 @@ pub(super) fn token(sema: &Semantics<RootDatabase>, token: SyntaxToken) -> Optio
 
 pub(super) fn name_like(
     sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     syntactic_name_ref_highlighting: bool,
     name_like: ast::NameLike,
@@ -192,7 +192,7 @@ fn keyword(
 
 fn highlight_name_ref(
     sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     binding_hash: &mut Option<u64>,
     syntactic_name_ref_highlighting: bool,
@@ -278,7 +278,7 @@ fn highlight_name(
     sema: &Semantics<RootDatabase>,
     bindings_shadow_count: &mut FxHashMap<hir::Name, u32>,
     binding_hash: &mut Option<u64>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     name: ast::Name,
 ) -> Highlight {
     let name_kind = NameClass::classify(sema, &name);
@@ -322,11 +322,7 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
     hash((name, shadow_count))
 }
 
-fn highlight_def(
-    sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
-    def: Definition,
-) -> Highlight {
+fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definition) -> Highlight {
     let db = sema.db;
     let mut h = match def {
         Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
@@ -475,7 +471,7 @@ fn highlight_def(
         Definition::Module(module) => Some(module.krate()),
         _ => None,
     });
-    let is_from_other_crate = def_crate != krate;
+    let is_from_other_crate = def_crate != Some(krate);
     let is_from_builtin_crate = def_crate.map_or(false, |def_crate| def_crate.is_builtin(db));
     let is_builtin_type = matches!(def, Definition::BuiltinType(_));
     let is_public = def.visibility(db) == Some(hir::Visibility::Public);
@@ -495,7 +491,7 @@ fn highlight_def(
 
 fn highlight_method_call_by_name_ref(
     sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     name_ref: &ast::NameRef,
 ) -> Option<Highlight> {
     let mc = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast)?;
@@ -504,7 +500,7 @@ fn highlight_method_call_by_name_ref(
 
 fn highlight_method_call(
     sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     method_call: &ast::MethodCallExpr,
 ) -> Option<Highlight> {
     let func = sema.resolve_method_call(method_call)?;
@@ -523,7 +519,7 @@ fn highlight_method_call(
     }
 
     let def_crate = func.module(sema.db).krate();
-    let is_from_other_crate = Some(def_crate) != krate;
+    let is_from_other_crate = def_crate != krate;
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
@@ -589,7 +585,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
 fn highlight_name_ref_by_syntax(
     name: ast::NameRef,
     sema: &Semantics<RootDatabase>,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
 ) -> Highlight {
     let default = HlTag::UnresolvedReference;
 

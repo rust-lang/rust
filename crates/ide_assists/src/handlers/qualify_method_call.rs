@@ -44,7 +44,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext) -> Opt
     let range = call.syntax().text_range();
     let resolved_call = ctx.sema.resolve_method_call(&call)?;
 
-    let current_module = ctx.sema.scope(call.syntax()).module()?;
+    let current_module = ctx.sema.scope(call.syntax())?.module();
     let target_module_def = ModuleDef::from(resolved_call);
     let item_in_ns = ItemInNs::from(target_module_def);
     let receiver_path = current_module

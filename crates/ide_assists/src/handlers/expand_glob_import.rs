@@ -49,8 +49,8 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
         _ => return None,
     };
 
-    let current_scope = ctx.sema.scope(&star.parent()?);
-    let current_module = current_scope.module()?;
+    let current_scope = ctx.sema.scope(&star.parent()?)?;
+    let current_module = current_scope.module();
 
     let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
     let imported_defs = find_imported_defs(ctx, star)?;

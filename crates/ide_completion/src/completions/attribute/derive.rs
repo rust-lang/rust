@@ -34,7 +34,7 @@ pub(crate) fn complete_derive(acc: &mut Completions, ctx: &CompletionContext) {
                 _ => return,
             };
 
-            for (name, def) in module.scope(ctx.db, ctx.module) {
+            for (name, def) in module.scope(ctx.db, Some(ctx.module)) {
                 let add_def = match def {
                     ScopeDef::ModuleDef(hir::ModuleDef::Macro(mac)) => {
                         !ctx.existing_derives.contains(&mac) && mac.is_derive(ctx.db)

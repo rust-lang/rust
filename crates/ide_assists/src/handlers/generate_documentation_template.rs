@@ -202,7 +202,7 @@ fn all_parent_mods_public(hir_func: &hir::Function, ctx: &AssistContext) -> bool
 
 /// Returns the name of the current crate
 fn crate_name(ast_func: &ast::Fn, ctx: &AssistContext) -> Option<String> {
-    let krate = ctx.sema.scope(ast_func.syntax()).module()?.krate();
+    let krate = ctx.sema.scope(ast_func.syntax())?.krate();
     Some(krate.display_name(ctx.db())?.to_string())
 }
 

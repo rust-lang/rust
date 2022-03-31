@@ -420,9 +420,8 @@ pub(crate) fn associated_ty_data_query(
         .collect();
 
     if !ctx.unsized_types.borrow().contains(&self_ty) {
-        let sized_trait = resolver
-            .krate()
-            .and_then(|krate| db.lang_item(krate, SmolStr::new_inline("sized")))
+        let sized_trait = db
+            .lang_item(resolver.krate(), SmolStr::new_inline("sized"))
             .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
         let sized_bound = sized_trait.into_iter().map(|sized_trait| {
             let trait_bound =

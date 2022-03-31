@@ -170,7 +170,7 @@ pub(crate) fn hover_for_definition(
     config: &HoverConfig,
 ) -> Option<HoverResult> {
     let famous_defs = match &definition {
-        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node).krate())),
+        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node)?.krate())),
         _ => None,
     };
     if let Some(markup) = render::definition(sema.db, definition, famous_defs.as_ref(), config) {

@@ -179,12 +179,16 @@ pub(crate) fn highlight(
     };
 
     let mut hl = highlights::Highlights::new(root.text_range());
+    let krate = match sema.scope(&root) {
+        Some(it) => it.krate(),
+        None => return hl.to_vec(),
+    };
     traverse(
         &mut hl,
         &sema,
         file_id,
         &root,
-        sema.scope(&root).krate(),
+        krate,
         range_to_highlight,
         syntactic_name_ref_highlighting,
     );
@@ -196,7 +200,7 @@ fn traverse(
     sema: &Semantics<RootDatabase>,
     file_id: FileId,
     root: &SyntaxNode,
-    krate: Option<hir::Crate>,
+    krate: hir::Crate,
     range_to_highlight: TextRange,
     syntactic_name_ref_highlighting: bool,
 ) {

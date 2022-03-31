@@ -335,12 +335,13 @@ impl<'a> TyLoweringContext<'a> {
                     let mut expander = self.expander.borrow_mut();
                     if expander.is_some() {
                         (Some(expander), false)
-                    } else if let Some(module_id) = self.resolver.module() {
-                        *expander =
-                            Some(Expander::new(self.db.upcast(), macro_call.file_id, module_id));
-                        (Some(expander), true)
                     } else {
-                        (None, false)
+                        *expander = Some(Expander::new(
+                            self.db.upcast(),
+                            macro_call.file_id,
+                            self.resolver.module(),
+                        ));
+                        (Some(expander), true)
                     }
                 };
                 let ty = if let Some(mut expander) = expander {
@@ -860,9 +861,8 @@ impl<'a> TyLoweringContext<'a> {
             }
             TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self
-                    .resolver
-                    .krate()
-                    .and_then(|krate| self.db.lang_item(krate, SmolStr::new_inline("sized")))
+                    .db
+                    .lang_item(self.resolver.krate(), SmolStr::new_inline("sized"))
                     .and_then(|lang_item| lang_item.as_trait());
                 // Don't lower associated type bindings as the only possible relaxed trait bound
                 // `?Sized` has no of them.
@@ -1268,9 +1268,8 @@ fn implicitly_sized_clauses<'a>(
 ) -> impl Iterator<Item = WhereClause> + 'a {
     let is_trait_def = matches!(def, GenericDefId::TraitId(..));
     let generic_args = &substitution.as_slice(Interner)[is_trait_def as usize..];
-    let sized_trait = resolver
-        .krate()
-        .and_then(|krate| db.lang_item(krate, SmolStr::new_inline("sized")))
+    let sized_trait = db
+        .lang_item(resolver.krate(), SmolStr::new_inline("sized"))
         .and_then(|lang_item| lang_item.as_trait().map(to_chalk_trait_id));
 
     sized_trait.into_iter().flat_map(move |sized_trait| {

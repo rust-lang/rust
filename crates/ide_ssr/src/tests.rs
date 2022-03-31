@@ -94,7 +94,7 @@ fn assert_ssr_transform(rule: &str, input: &str, expected: Expect) {
 
 fn assert_ssr_transforms(rules: &[&str], input: &str, expected: Expect) {
     let (db, position, selections) = single_file(input);
-    let mut match_finder = MatchFinder::in_context(&db, position, selections);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
     for rule in rules {
         let rule: SsrRule = rule.parse().unwrap();
         match_finder.add_rule(rule).unwrap();
@@ -124,7 +124,7 @@ fn print_match_debug_info(match_finder: &MatchFinder, file_id: FileId, snippet: 
 
 fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
     let (db, position, selections) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position, selections);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matched_strings: Vec<String> =
         match_finder.matches().flattened().matches.iter().map(|m| m.matched_text()).collect();
@@ -136,7 +136,7 @@ fn assert_matches(pattern: &str, code: &str, expected: &[&str]) {
 
 fn assert_no_match(pattern: &str, code: &str) {
     let (db, position, selections) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position, selections);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
@@ -147,7 +147,7 @@ fn assert_no_match(pattern: &str, code: &str) {
 
 fn assert_match_failure_reason(pattern: &str, code: &str, snippet: &str, expected_reason: &str) {
     let (db, position, selections) = single_file(code);
-    let mut match_finder = MatchFinder::in_context(&db, position, selections);
+    let mut match_finder = MatchFinder::in_context(&db, position, selections).unwrap();
     match_finder.add_search_pattern(pattern.parse().unwrap()).unwrap();
     let mut reasons = Vec::new();
     for d in match_finder.debug_where_text_equal(position.file_id, snippet) {

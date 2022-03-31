@@ -110,7 +110,7 @@ fn existing_deref_impl(
     let strukt = sema.to_def(strukt)?;
     let krate = strukt.module(sema.db).krate();
 
-    let deref_trait = FamousDefs(sema, Some(krate)).core_ops_Deref()?;
+    let deref_trait = FamousDefs(sema, krate).core_ops_Deref()?;
     let strukt_type = strukt.ty(sema.db);
 
     if strukt_type.impls_trait(sema.db, deref_trait, &[]) {

@@ -64,7 +64,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
 
     let new_field_list = old_field_list.clone_for_update();
     let mut locals = FxHashMap::default();
-    ctx.sema.scope(field_list_parent.syntax()).process_all_names(&mut |name, def| {
+    ctx.sema.scope(field_list_parent.syntax())?.process_all_names(&mut |name, def| {
         if let hir::ScopeDef::Local(local) = def {
             locals.insert(name, local);
         }
@@ -171,11 +171,7 @@ fn get_default_constructor(
     if has_new_func {
         Some(make::ext::expr_ty_new(&make_ty(ty, ctx.sema.db, module)))
     } else if !ty.is_array()
-        && ty.impls_trait(
-            ctx.sema.db,
-            FamousDefs(&ctx.sema, Some(krate)).core_default_Default()?,
-            &[],
-        )
+        && ty.impls_trait(ctx.sema.db, FamousDefs(&ctx.sema, krate).core_default_Default()?, &[])
     {
         Some(make::ext::expr_ty_default(&make_ty(ty, ctx.sema.db, module)))
     } else {

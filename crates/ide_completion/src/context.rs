@@ -121,9 +121,9 @@ pub(crate) struct CompletionContext<'a> {
     /// The token before the cursor, in the macro-expanded file.
     pub(super) token: SyntaxToken,
     /// The crate of the current file.
-    pub(super) krate: Option<hir::Crate>,
+    pub(super) krate: hir::Crate,
     /// The module of the `scope`.
-    pub(super) module: Option<hir::Module>,
+    pub(super) module: hir::Module,
     pub(super) expected_name: Option<NameOrNameRef>,
     pub(super) expected_type: Option<Type>,
 
@@ -353,11 +353,7 @@ impl<'a> CompletionContext<'a> {
         attrs: &hir::Attrs,
         defining_crate: hir::Crate,
     ) -> Visible {
-        let module = match self.module {
-            Some(it) => it,
-            None => return Visible::No,
-        };
-        if !vis.is_visible_from(self.db, module.into()) {
+        if !vis.is_visible_from(self.db, self.module.into()) {
             if !self.config.enable_private_editable {
                 return Visible::No;
             }
@@ -376,11 +372,8 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
-        match self.krate {
-            // `doc(hidden)` items are only completed within the defining crate.
-            Some(krate) => krate != defining_crate && attrs.has_doc_hidden(),
-            None => true,
-        }
+        // `doc(hidden)` items are only completed within the defining crate.
+        self.krate != defining_crate && attrs.has_doc_hidden()
     }
 }
 
@@ -409,7 +402,7 @@ impl<'a> CompletionContext<'a> {
 
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
         let token = sema.descend_into_macros_single(original_token.clone());
-        let scope = sema.scope_at_offset(&token.parent()?, offset);
+        let scope = sema.scope_at_offset(&token.parent()?, offset)?;
         let krate = scope.krate();
         let module = scope.module();
         let mut locals = FxHashMap::default();

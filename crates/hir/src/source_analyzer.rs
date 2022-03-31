@@ -169,7 +169,7 @@ impl SourceAnalyzer {
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[expr_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
-        mk_ty(ty).zip(Some(coerced.and_then(mk_ty)))
+        Some((mk_ty(ty), coerced.map(mk_ty)))
     }
 
     pub(crate) fn type_of_pat(
@@ -185,7 +185,7 @@ impl SourceAnalyzer {
             .and_then(|adjusts| adjusts.last().map(|adjust| adjust.target.clone()));
         let ty = infer[pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
-        mk_ty(ty).zip(Some(coerced.and_then(mk_ty)))
+        Some((mk_ty(ty), coerced.map(mk_ty)))
     }
 
     pub(crate) fn type_of_self(
@@ -196,7 +196,7 @@ impl SourceAnalyzer {
         let src = InFile { file_id: self.file_id, value: param };
         let pat_id = self.body_source_map()?.node_self_param(src)?;
         let ty = self.infer.as_ref()?[pat_id].clone();
-        Type::new_with_resolver(db, &self.resolver, ty)
+        Some(Type::new_with_resolver(db, &self.resolver, ty))
     }
 
     pub(crate) fn resolve_method_call(
@@ -244,7 +244,7 @@ impl SourceAnalyzer {
         let field = FieldId { parent: variant, local_id: variant_data.field(&local_name)? };
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
-        Some((field.into(), local, Type::new_with_resolver(db, &self.resolver, field_ty)?))
+        Some((field.into(), local, Type::new_with_resolver(db, &self.resolver, field_ty)))
     }
 
     pub(crate) fn resolve_record_pat_field(
@@ -366,11 +366,8 @@ impl SourceAnalyzer {
             return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path) {
                 None if is_path_of_attr => {
                     path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
-                        match self.resolver.krate() {
-                            Some(krate) => ToolModule::by_name(db, krate.into(), &name_ref.text()),
-                            None => ToolModule::builtin(&name_ref.text()),
-                        }
-                        .map(PathResolution::ToolModule)
+                        ToolModule::by_name(db, self.resolver.krate().into(), &name_ref.text())
+                            .map(PathResolution::ToolModule)
                     })
                 }
                 res => res,
@@ -380,9 +377,8 @@ impl SourceAnalyzer {
             // in this case we have to check for inert/builtin attributes and tools and prioritize
             // resolution of attributes over other namespaces
             let name_ref = path.as_single_name_ref();
-            let builtin = name_ref.as_ref().and_then(|name_ref| match self.resolver.krate() {
-                Some(krate) => BuiltinAttr::by_name(db, krate.into(), &name_ref.text()),
-                None => BuiltinAttr::builtin(&name_ref.text()),
+            let builtin = name_ref.as_ref().and_then(|name_ref| {
+                BuiltinAttr::by_name(db, self.resolver.krate().into(), &name_ref.text())
             });
             if let builtin @ Some(_) = builtin {
                 return builtin.map(PathResolution::BuiltinAttr);
@@ -392,11 +388,8 @@ impl SourceAnalyzer {
                 // this labels any path that starts with a tool module as the tool itself, this is technically wrong
                 // but there is no benefit in differentiating these two cases for the time being
                 None => path.first_segment().and_then(|it| it.name_ref()).and_then(|name_ref| {
-                    match self.resolver.krate() {
-                        Some(krate) => ToolModule::by_name(db, krate.into(), &name_ref.text()),
-                        None => ToolModule::builtin(&name_ref.text()),
-                    }
-                    .map(PathResolution::ToolModule)
+                    ToolModule::by_name(db, self.resolver.krate().into(), &name_ref.text())
+                        .map(PathResolution::ToolModule)
                 }),
             };
         }
@@ -412,7 +405,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         literal: &ast::RecordExpr,
     ) -> Option<Vec<(Field, Type)>> {
-        let krate = self.resolver.krate()?;
+        let krate = self.resolver.krate();
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
@@ -430,7 +423,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pattern: &ast::RecordPat,
     ) -> Option<Vec<(Field, Type)>> {
-        let krate = self.resolver.krate()?;
+        let krate = self.resolver.krate();
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
@@ -468,7 +461,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         macro_call: InFile<&ast::MacroCall>,
     ) -> Option<HirFileId> {
-        let krate = self.resolver.krate()?;
+        let krate = self.resolver.krate();
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver
                 .resolve_path_as_macro(db.upcast(), &path)

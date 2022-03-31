@@ -75,7 +75,7 @@ fn existing_default_impl(
     let enum_ = variant.parent_enum(sema.db);
     let krate = enum_.module(sema.db).krate();
 
-    let default_trait = FamousDefs(sema, Some(krate)).core_default_Default()?;
+    let default_trait = FamousDefs(sema, krate).core_default_Default()?;
     let enum_type = enum_.ty(sema.db);
 
     if enum_type.impls_trait(sema.db, default_trait, &[]) {

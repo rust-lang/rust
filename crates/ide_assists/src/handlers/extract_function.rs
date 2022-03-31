@@ -81,7 +81,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
 
     let anchor = if self_param.is_some() { Anchor::Method } else { Anchor::Freestanding };
     let insert_after = node_to_insert_after(&body, anchor)?;
-    let module = ctx.sema.scope(&insert_after).module()?;
+    let module = ctx.sema.scope(&insert_after)?.module();
 
     let ret_ty = body.return_ty(ctx)?;
     let control_flow = body.external_control_flow(ctx, &container_info)?;
@@ -132,7 +132,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext) -> Option
                 };
 
                 let control_flow_enum =
-                    FamousDefs(&ctx.sema, Some(module.krate())).core_ops_ControlFlow();
+                    FamousDefs(&ctx.sema, module.krate()).core_ops_ControlFlow();
 
                 if let Some(control_flow_enum) = control_flow_enum {
                     let mod_path = module.find_use_path_prefixed(

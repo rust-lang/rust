@@ -103,7 +103,7 @@ pub(super) fn try_expr(
 
     let adts = inner_ty.as_adt().zip(body_ty.as_adt());
     if let Some((hir::Adt::Enum(inner), hir::Adt::Enum(body))) = adts {
-        let famous_defs = FamousDefs(sema, sema.scope(try_expr.syntax()).krate());
+        let famous_defs = FamousDefs(sema, sema.scope(try_expr.syntax())?.krate());
         // special case for two options, there is no value in showing them
         if let Some(option_enum) = famous_defs.core_option_Option() {
             if inner == option_enum && body == option_enum {
@@ -234,7 +234,7 @@ pub(super) fn keyword(
         return None;
     }
     let parent = token.parent()?;
-    let famous_defs = FamousDefs(sema, sema.scope(&parent).krate());
+    let famous_defs = FamousDefs(sema, sema.scope(&parent)?.krate());
 
     let KeywordHint { description, keyword_mod, actions } = keyword_hints(sema, token, parent);
 

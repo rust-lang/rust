@@ -762,7 +762,7 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn resolve_lang_item(&self, name: Name) -> Option<LangItemTarget> {
-        let krate = self.resolver.krate()?;
+        let krate = self.resolver.krate();
         self.db.lang_item(krate, name.to_smol_str())
     }
 

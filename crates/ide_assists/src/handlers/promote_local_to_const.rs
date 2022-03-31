@@ -53,7 +53,7 @@ pub(crate) fn promote_local_to_const(acc: &mut Assists, ctx: &AssistContext) -> 
     }
     let let_stmt = pat.syntax().parent().and_then(ast::LetStmt::cast)?;
 
-    let module = ctx.sema.scope(pat.syntax()).module()?;
+    let module = ctx.sema.scope(pat.syntax())?.module();
     let local = ctx.sema.to_def(&pat)?;
     let ty = ctx.sema.type_of_pat(&pat.into())?.original;
 

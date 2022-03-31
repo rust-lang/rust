@@ -635,7 +635,7 @@ impl Analysis {
         self.with_db(|db| {
             let rule: ide_ssr::SsrRule = query.parse()?;
             let mut match_finder =
-                ide_ssr::MatchFinder::in_context(db, resolve_context, selections);
+                ide_ssr::MatchFinder::in_context(db, resolve_context, selections)?;
             match_finder.add_rule(rule)?;
             let edits = if parse_only { Default::default() } else { match_finder.edits() };
             Ok(SourceChange::from(edits))

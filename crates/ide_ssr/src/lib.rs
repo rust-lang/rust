@@ -128,11 +128,12 @@ impl<'db> MatchFinder<'db> {
         db: &'db ide_db::RootDatabase,
         lookup_context: FilePosition,
         mut restrict_ranges: Vec<FileRange>,
-    ) -> MatchFinder<'db> {
+    ) -> Result<MatchFinder<'db>, SsrError> {
         restrict_ranges.retain(|range| !range.range.is_empty());
         let sema = Semantics::new(db);
-        let resolution_scope = resolving::ResolutionScope::new(&sema, lookup_context);
-        MatchFinder { sema, rules: Vec::new(), resolution_scope, restrict_ranges }
+        let resolution_scope = resolving::ResolutionScope::new(&sema, lookup_context)
+            .ok_or_else(|| SsrError("no resolution scope for file".into()))?;
+        Ok(MatchFinder { sema, rules: Vec::new(), resolution_scope, restrict_ranges })
     }
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
@@ -142,11 +143,11 @@ impl<'db> MatchFinder<'db> {
         if let Some(first_file_id) =
             db.local_roots().iter().next().and_then(|root| db.source_root(*root).iter().next())
         {
-            Ok(MatchFinder::in_context(
+            MatchFinder::in_context(
                 db,
                 FilePosition { file_id: first_file_id, offset: 0.into() },
                 vec![],
-            ))
+            )
         } else {
             bail!("No files to search");
         }

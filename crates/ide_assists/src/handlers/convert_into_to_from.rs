@@ -36,10 +36,10 @@ pub(crate) fn convert_into_to_from(acc: &mut Assists, ctx: &AssistContext) -> Op
     let src_type = impl_.self_ty()?;
     let ast_trait = impl_.trait_()?;
 
-    let module = ctx.sema.scope(impl_.syntax()).module()?;
+    let module = ctx.sema.scope(impl_.syntax())?.module();
 
     let trait_ = resolve_target_trait(&ctx.sema, &impl_)?;
-    if trait_ != FamousDefs(&ctx.sema, Some(module.krate())).core_convert_Into()? {
+    if trait_ != FamousDefs(&ctx.sema, module.krate()).core_convert_Into()? {
         return None;
     }
 
