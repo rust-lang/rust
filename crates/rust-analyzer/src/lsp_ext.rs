@@ -70,6 +70,14 @@ impl Request for ViewHir {
     const METHOD: &'static str = "rust-analyzer/viewHir";
 }
 
+pub enum ViewFileText {}
+
+impl Request for ViewFileText {
+    type Params = lsp_types::TextDocumentIdentifier;
+    type Result = String;
+    const METHOD: &'static str = "rust-analyzer/viewFileText";
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ViewCrateGraphParams {
