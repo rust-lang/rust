@@ -1,15 +1,15 @@
 error[E0312]: lifetime of reference outlives lifetime of borrowed content...
-  --> $DIR/issue-55401.rs:3:5
+  --> $DIR/constant-in-expr-trait-item-1.rs:14:5
    |
-LL |     *y
-   |     ^^
+LL |     <() as Foo<'a>>::C
+   |     ^^^^^^^^^^^^^^^^^^
    |
    = note: ...the reference is valid for the static lifetime...
 note: ...but the borrowed content is only valid for the lifetime `'a` as defined here
-  --> $DIR/issue-55401.rs:1:47
+  --> $DIR/constant-in-expr-trait-item-1.rs:13:8
    |
-LL | fn static_to_a_to_static_through_ref_in_tuple<'a>(x: &'a u32) -> &'static u32 {
-   |                                               ^^
+LL | fn foo<'a>(_: &'a u32) -> &'static u32 {
+   |        ^^
 
 error: aborting due to previous error
 
