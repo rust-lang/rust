@@ -124,7 +124,8 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Records the type of every item.
+    /// Returns the [`Ty`] of the given [`DefId`]. If the [`DefId`] points to an alias, it will
+    /// "skip" this alias to return the aliased type.
     query type_of(key: DefId) -> Ty<'tcx> {
         desc { |tcx|
             "{action} `{path}`",
