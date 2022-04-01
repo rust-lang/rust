@@ -5,7 +5,7 @@ use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind
 
 // Assist: generate_from_impl_for_enum
 //
-// Adds a From impl for an enum variant with one tuple field.
+// Adds a From impl for this enum variant with one tuple field.
 //
 // ```
 // enum A { $0One(u32) }

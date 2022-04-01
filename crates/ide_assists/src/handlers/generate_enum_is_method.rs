@@ -10,7 +10,7 @@ use crate::{
 
 // Assist: generate_enum_is_method
 //
-// Generate an `is_` method for an enum variant.
+// Generate an `is_` method for this enum variant.
 //
 // ```
 // enum Version {
@@ -56,9 +56,9 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
 
     let target = variant.syntax().text_range();
     acc.add_group(
-        &GroupLabel("Generate `is_`,`as_`,`try_into_`".to_owned()),
+        &GroupLabel("Generate an `is_`,`as_`, or `try_into_` for this enum variant".to_owned()),
         AssistId("generate_enum_is_method", AssistKind::Generate),
-        "Generate an `is_` method for an enum variant",
+        "Generate an `is_` method for this enum variant",
         target,
         |builder| {
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
