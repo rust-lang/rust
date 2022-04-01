@@ -281,7 +281,7 @@ impl u8 {
     /// ```
     #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
-    #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.43.0")]
+    #[rustc_const_stable(feature = "const_u8_is_ascii", since = "1.43.0")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self & 128 == 0
