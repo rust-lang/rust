@@ -11,7 +11,7 @@ use crate::{
 
 // Assist: generate_enum_try_into_method
 //
-// Generate an `try_into_` method for an enum variant.
+// Generate a `try_into_` method for this enum variant.
 //
 // ```
 // enum Value {
@@ -41,7 +41,7 @@ pub(crate) fn generate_enum_try_into_method(acc: &mut Assists, ctx: &AssistConte
         acc,
         ctx,
         "generate_enum_try_into_method",
-        "Generate an `try_into_` method for an enum variant",
+        "Generate a `try_into_` method for this enum variant",
         ProjectionProps {
             fn_name_prefix: "try_into",
             self_param: "self",
@@ -55,7 +55,7 @@ pub(crate) fn generate_enum_try_into_method(acc: &mut Assists, ctx: &AssistConte
 
 // Assist: generate_enum_as_method
 //
-// Generate an `as_` method for an enum variant.
+// Generate an `as_` method for this enum variant.
 //
 // ```
 // enum Value {
@@ -85,7 +85,7 @@ pub(crate) fn generate_enum_as_method(acc: &mut Assists, ctx: &AssistContext) ->
         acc,
         ctx,
         "generate_enum_as_method",
-        "Generate an `as_` method for an enum variant",
+        "Generate an `as_` method for this enum variant",
         ProjectionProps {
             fn_name_prefix: "as",
             self_param: "&self",
@@ -141,7 +141,7 @@ fn generate_enum_projection_method(
 
     let target = variant.syntax().text_range();
     acc.add_group(
-        &GroupLabel("Generate `is_`,`as_`,`try_into_`".to_owned()),
+        &GroupLabel("Generate an `is_`,`as_`, or `try_into_` for this enum variant".to_owned()),
         AssistId(assist_id, AssistKind::Generate),
         assist_description,
         target,
