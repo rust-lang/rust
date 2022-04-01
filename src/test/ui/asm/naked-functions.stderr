@@ -16,6 +16,12 @@ error: this is a user specified error
 LL |     compile_error!("this is a user specified error");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: asm template must be a string literal
+  --> $DIR/naked-functions.rs:215:10
+   |
+LL |     asm!(invalid_syntax)
+   |          ^^^^^^^^^^^^^^
+
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:20:5
    |
@@ -267,6 +273,6 @@ error: naked functions cannot be inlined
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 32 previous errors; 2 warnings emitted
+error: aborting due to 33 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0787`.
