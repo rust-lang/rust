@@ -28,7 +28,10 @@ use crate::{completions::Completions, context::CompletionContext};
 
 pub use crate::{
     config::CompletionConfig,
-    item::{CompletionItem, CompletionItemKind, CompletionRelevance, ImportEdit},
+    item::{
+        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        ImportEdit,
+    },
     snippet::{Snippet, SnippetScope},
 };
 
