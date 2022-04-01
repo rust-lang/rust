@@ -266,6 +266,7 @@ mod inner {
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
     use crate::fmt;
+    use crate::mem::MaybeUninit;
     use crate::sys::cvt;
     use crate::time::Duration;
 
@@ -350,9 +351,9 @@ mod inner {
 
     impl Timespec {
         pub fn now(clock: clock_t) -> Timespec {
-            let mut t = Timespec { t: libc::timespec { tv_sec: 0, tv_nsec: 0 } };
-            cvt(unsafe { libc::clock_gettime(clock, &mut t.t) }).unwrap();
-            t
+            let mut t = MaybeUninit::uninit();
+            cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
+            Timespec { t: unsafe { t.assume_init() } }
         }
     }
 }
