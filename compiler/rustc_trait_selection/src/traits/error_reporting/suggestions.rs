@@ -2593,35 +2593,37 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn suggest_derive(&self, err: &mut Diagnostic, trait_pred: ty::PolyTraitPredicate<'tcx>) {
-        if let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) {
-            let adt = match trait_pred.skip_binder().self_ty().ty_adt_def() {
-                Some(adt) if adt.did().is_local() => adt,
-                _ => return,
-            };
-            let can_derive = match diagnostic_name {
-                sym::Default => !adt.is_enum(),
-                sym::Eq
-                | sym::PartialEq
-                | sym::Ord
-                | sym::PartialOrd
-                | sym::Clone
-                | sym::Copy
-                | sym::Hash
-                | sym::Debug => true,
-                _ => false,
-            };
-            if can_derive {
-                err.span_suggestion_verbose(
-                    self.tcx.def_span(adt.did()).shrink_to_lo(),
-                    &format!(
-                        "consider annotating `{}` with `#[derive({})]`",
-                        trait_pred.skip_binder().self_ty().to_string(),
-                        diagnostic_name.to_string(),
-                    ),
-                    format!("#[derive({})]\n", diagnostic_name.to_string()),
-                    Applicability::MaybeIncorrect,
-                );
+        let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
+            return;
+        };
+        let Some(self_ty) = trait_pred.self_ty().no_bound_vars() else {
+            return;
+        };
+
+        let adt = match self_ty.ty_adt_def() {
+            Some(adt) if adt.did().is_local() => adt,
+            _ => return,
+        };
+        let can_derive = match diagnostic_name {
+            sym::Default => !adt.is_enum(),
+            sym::PartialEq | sym::PartialOrd => {
+                let rhs_ty = trait_pred.skip_binder().trait_ref.substs.type_at(1);
+                self_ty == rhs_ty
             }
+            sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+            _ => false,
+        };
+        if can_derive {
+            err.span_suggestion_verbose(
+                self.tcx.def_span(adt.did()).shrink_to_lo(),
+                &format!(
+                    "consider annotating `{}` with `#[derive({})]`",
+                    trait_pred.skip_binder().self_ty().to_string(),
+                    diagnostic_name.to_string(),
+                ),
+                format!("#[derive({})]\n", diagnostic_name.to_string()),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
