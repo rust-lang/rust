@@ -986,9 +986,13 @@ fn should_encode_generics(def_kind: DefKind) -> bool {
 
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_attrs(&mut self, def_id: DefId) {
-        let attrs = self.tcx.get_attrs(def_id);
-        record!(self.tables.attributes[def_id] <- attrs);
-        if attrs.iter().any(|attr| attr.may_have_doc_links()) {
+        let mut attrs = self
+            .tcx
+            .get_attrs(def_id)
+            .iter()
+            .filter(|attr| !rustc_feature::is_builtin_only_local(attr.name_or_empty()));
+        record!(self.tables.attributes[def_id] <- attrs.clone());
+        if attrs.any(|attr| attr.may_have_doc_links()) {
             self.tables.may_have_doc_links.set(def_id.index, ());
         }
     }
