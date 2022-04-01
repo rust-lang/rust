@@ -4,6 +4,18 @@ error: asm with the `pure` option must have at least one output
 LL |     asm!("", options(readonly, nostack), options(pure));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
 
+error: this is a user specified error
+  --> $DIR/naked-functions.rs:202:5
+   |
+LL |     compile_error!("this is a user specified error")
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this is a user specified error
+  --> $DIR/naked-functions.rs:208:5
+   |
+LL |     compile_error!("this is a user specified error");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: patterns not allowed in naked function parameters
   --> $DIR/naked-functions.rs:20:5
    |
@@ -255,6 +267,6 @@ error: naked functions cannot be inlined
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
-error: aborting due to 30 previous errors; 2 warnings emitted
+error: aborting due to 32 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0787`.

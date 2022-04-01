@@ -196,3 +196,16 @@ pub unsafe extern "C" fn inline_never() {
 pub unsafe extern "C" fn inline_all() {
     asm!("", options(noreturn));
 }
+
+#[naked]
+pub unsafe extern "C" fn allow_compile_error(a: u32) -> u32 {
+    compile_error!("this is a user specified error")
+    //~^ ERROR this is a user specified error
+}
+
+#[naked]
+pub unsafe extern "C" fn allow_compile_error_and_asm(a: u32) -> u32 {
+    compile_error!("this is a user specified error");
+    //~^ ERROR this is a user specified error
+    asm!("", options(noreturn))
+}
