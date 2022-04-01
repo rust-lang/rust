@@ -1,3 +1,4 @@
+use ide_db::assists::GroupLabel;
 use itertools::Itertools;
 use stdx::to_lower_snake_case;
 use syntax::ast::HasVisibility;
@@ -139,31 +140,37 @@ fn generate_enum_projection_method(
     let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
 
     let target = variant.syntax().text_range();
-    acc.add(AssistId(assist_id, AssistKind::Generate), assist_description, target, |builder| {
-        let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
-        let method = format!(
-            "    {0}fn {1}({2}) -> {3}{4}{5} {{
+    acc.add_group(
+        &GroupLabel("Generate `is_`,`as_`,`try_into_`".to_owned()),
+        AssistId(assist_id, AssistKind::Generate),
+        assist_description,
+        target,
+        |builder| {
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let method = format!(
+                "    {0}fn {1}({2}) -> {3}{4}{5} {{
         if let Self::{6}{7} = self {{
             {8}({9})
         }} else {{
             {10}
         }}
     }}",
-            vis,
-            fn_name,
-            props.self_param,
-            props.return_prefix,
-            field_type.syntax(),
-            props.return_suffix,
-            variant_name,
-            pattern_suffix,
-            props.happy_case,
-            bound_name,
-            props.sad_case,
-        );
+                vis,
+                fn_name,
+                props.self_param,
+                props.return_prefix,
+                field_type.syntax(),
+                props.return_suffix,
+                variant_name,
+                pattern_suffix,
+                props.happy_case,
+                bound_name,
+                props.sad_case,
+            );
 
-        add_method_to_adt(builder, &parent_enum, impl_def, &method);
-    })
+            add_method_to_adt(builder, &parent_enum, impl_def, &method);
+        },
+    )
 }
 
 #[cfg(test)]
