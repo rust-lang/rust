@@ -615,7 +615,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                     w.write_str(";\n");
 
                     if pos < required.len() - 1 {
-                        w.write_str("<div class=\"item-spacer\"></div>");
+                        w.write_str("<span class=\"item-spacer\"></span>");
                     }
                 }
                 if !required.is_empty() && !provided.is_empty() {
@@ -641,7 +641,7 @@ fn item_trait(w: &mut Buffer, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                         }
                     }
                     if pos < provided.len() - 1 {
-                        w.write_str("<div class=\"item-spacer\"></div>");
+                        w.write_str("<span class=\"item-spacer\"></span>");
                     }
                 }
                 if toggle {
