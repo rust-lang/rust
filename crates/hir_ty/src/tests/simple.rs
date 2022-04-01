@@ -2557,6 +2557,20 @@ fn f() {
 }
 
 #[test]
+fn infer_missing_type() {
+    check_types(
+        r#"
+struct S;
+
+fn f() {
+    let s: = S;
+      //^ S
+}
+    "#,
+    );
+}
+
+#[test]
 fn infer_type_alias_variant() {
     check_infer(
         r#"
