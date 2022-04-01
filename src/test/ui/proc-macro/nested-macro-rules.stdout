@@ -1,14 +1,8 @@
 PRINT-BANG INPUT (DISPLAY): FirstStruct
 PRINT-BANG INPUT (DEBUG): TokenStream [
-    Group {
-        delimiter: None,
-        stream: TokenStream [
-            Ident {
-                ident: "FirstStruct",
-                span: $DIR/auxiliary/nested-macro-rules.rs:16:14: 16:25 (#7),
-            },
-        ],
-        span: $DIR/auxiliary/nested-macro-rules.rs:9:30: 9:35 (#6),
+    Ident {
+        ident: "FirstStruct",
+        span: $DIR/auxiliary/nested-macro-rules.rs:16:14: 16:25 (#7),
     },
 ]
 PRINT-ATTR INPUT (DISPLAY): struct FirstAttrStruct {}
@@ -17,15 +11,9 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         ident: "struct",
         span: $DIR/auxiliary/nested-macro-rules.rs:10:32: 10:38 (#6),
     },
-    Group {
-        delimiter: None,
-        stream: TokenStream [
-            Ident {
-                ident: "FirstAttrStruct",
-                span: $DIR/auxiliary/nested-macro-rules.rs:16:27: 16:42 (#7),
-            },
-        ],
-        span: $DIR/auxiliary/nested-macro-rules.rs:10:39: 10:56 (#6),
+    Ident {
+        ident: "FirstAttrStruct",
+        span: $DIR/auxiliary/nested-macro-rules.rs:16:27: 16:42 (#7),
     },
     Group {
         delimiter: Brace,
