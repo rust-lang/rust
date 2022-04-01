@@ -9,6 +9,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::ErrorGuaranteed;
 use rustc_parse::nt_to_tokenstream;
 use rustc_parse::parser::ForceCollect;
+use rustc_span::profiling::SpannedEventArgRecorder;
 use rustc_span::{Span, DUMMY_SP};
 
 const EXEC_STRATEGY: pm::bridge::server::SameThread = pm::bridge::server::SameThread;
@@ -25,7 +26,10 @@ impl base::ProcMacro for BangProcMacro {
         input: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         let _timer =
-            ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
+            ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+                recorder.record_arg_with_span(ecx.expansion_descr(), span);
+            });
+
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace).map_err(|e| {
@@ -51,7 +55,10 @@ impl base::AttrProcMacro for AttrProcMacro {
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
         let _timer =
-            ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
+            ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+                recorder.record_arg_with_span(ecx.expansion_descr(), span);
+            });
+
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let server = proc_macro_server::Rustc::new(ecx);
         self.client
@@ -103,7 +110,9 @@ impl MultiItemModifier for ProcMacroDerive {
 
         let stream = {
             let _timer =
-                ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
+                ecx.sess.prof.generic_activity_with_arg_recorder("expand_proc_macro", |recorder| {
+                    recorder.record_arg_with_span(ecx.expansion_descr(), span);
+                });
             let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
             let server = proc_macro_server::Rustc::new(ecx);
             match self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace) {
