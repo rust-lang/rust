@@ -30,7 +30,6 @@ pub use crate::{
     config::CompletionConfig,
     item::{
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
-        ImportEdit,
     },
     snippet::{Snippet, SnippetScope},
 };
@@ -193,7 +192,6 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    // FIXME: lift out and make some tests here, this is ImportEdit::to_text_edit but changed to work with multiple edits
     imports.into_iter().for_each(|(full_import_path, imported_name)| {
         let items_with_name = items_locator::items_with_name(
             &ctx.sema,

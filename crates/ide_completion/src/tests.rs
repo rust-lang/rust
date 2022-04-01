@@ -35,7 +35,7 @@ use stdx::{format_to, trim_indent};
 use syntax::{AstNode, NodeOrToken, SyntaxElement};
 use test_utils::assert_eq_text;
 
-use crate::{CompletionConfig, CompletionItem, CompletionItemKind};
+use crate::{resolve_completion_edits, CompletionConfig, CompletionItem, CompletionItemKind};
 
 /// Lots of basic item definitions
 const BASE_ITEMS_FIXTURE: &str = r#"
@@ -178,15 +178,24 @@ pub(crate) fn check_edit_with_config(
     let mut actual = db.file_text(position.file_id).to_string();
 
     let mut combined_edit = completion.text_edit().to_owned();
-    completion
-        .imports_to_add()
-        .iter()
-        .filter_map(|edit| edit.to_text_edit(config.insert_use))
-        .for_each(|text_edit| {
-            combined_edit.union(text_edit).expect(
-                "Failed to apply completion resolve changes: change ranges overlap, but should not",
-            )
-        });
+
+    resolve_completion_edits(
+        &db,
+        &config,
+        position,
+        completion.imports_to_add().iter().filter_map(|import_edit| {
+            let import_path = &import_edit.import_path;
+            let import_name = import_path.segments().last()?;
+            Some((import_path.to_string(), import_name.to_string()))
+        }),
+    )
+    .into_iter()
+    .flatten()
+    .for_each(|text_edit| {
+        combined_edit.union(text_edit).expect(
+            "Failed to apply completion resolve changes: change ranges overlap, but should not",
+        )
+    });
 
     combined_edit.apply(&mut actual);
     assert_eq_text!(&ra_fixture_after, &actual)

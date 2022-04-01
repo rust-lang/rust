@@ -11,12 +11,14 @@ pub(crate) mod union_literal;
 pub(crate) mod literal;
 
 use hir::{AsAssocItem, HasAttrs, HirDisplay, ScopeDef};
-use ide_db::{helpers::item_name, RootDatabase, SnippetCap, SymbolKind};
+use ide_db::{
+    helpers::item_name, imports::import_assets::LocatedImport, RootDatabase, SnippetCap, SymbolKind,
+};
 use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
     context::{PathCompletionCtx, PathKind},
-    item::{CompletionRelevanceTypeMatch, ImportEdit},
+    item::CompletionRelevanceTypeMatch,
     render::{function::render_fn, literal::render_variant_lit, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
 };
@@ -25,7 +27,7 @@ use crate::{
 pub(crate) struct RenderContext<'a> {
     completion: &'a CompletionContext<'a>,
     is_private_editable: bool,
-    import_to_add: Option<ImportEdit>,
+    import_to_add: Option<LocatedImport>,
 }
 
 impl<'a> RenderContext<'a> {
@@ -38,7 +40,7 @@ impl<'a> RenderContext<'a> {
         self
     }
 
-    pub(crate) fn import_to_add(mut self, import_to_add: Option<ImportEdit>) -> Self {
+    pub(crate) fn import_to_add(mut self, import_to_add: Option<LocatedImport>) -> Self {
         self.import_to_add = import_to_add;
         self
     }
@@ -156,14 +158,14 @@ pub(crate) fn render_resolution_simple(
 
 pub(crate) fn render_resolution_with_import(
     ctx: RenderContext<'_>,
-    import_edit: ImportEdit,
+    import_edit: LocatedImport,
 ) -> Option<CompletionItem> {
-    let resolution = ScopeDef::from(import_edit.import.original_item);
+    let resolution = ScopeDef::from(import_edit.original_item);
     let local_name = match resolution {
         ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
         ScopeDef::ModuleDef(hir::ModuleDef::Const(c)) => c.name(ctx.completion.db)?,
         ScopeDef::ModuleDef(hir::ModuleDef::TypeAlias(t)) => t.name(ctx.completion.db),
-        _ => item_name(ctx.db(), import_edit.import.original_item)?,
+        _ => item_name(ctx.db(), import_edit.original_item)?,
     };
     Some(render_resolution_(ctx, local_name, Some(import_edit), resolution))
 }
@@ -171,7 +173,7 @@ pub(crate) fn render_resolution_with_import(
 fn render_resolution_(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
-    import_to_add: Option<ImportEdit>,
+    import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> CompletionItem {
     let _p = profile::span("render_resolution");
@@ -200,7 +202,7 @@ fn render_resolution_(
 fn render_resolution_simple_(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
-    import_to_add: Option<ImportEdit>,
+    import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
 ) -> CompletionItem {
     let _p = profile::span("render_resolution");

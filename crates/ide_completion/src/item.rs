@@ -3,17 +3,10 @@
 use std::fmt;
 
 use hir::{Documentation, Mutability};
-use ide_db::{
-    helpers::mod_path_to_ast,
-    imports::{
-        import_assets::LocatedImport,
-        insert_use::{self, ImportScope, InsertUseConfig},
-    },
-    SnippetCap, SymbolKind,
-};
+use ide_db::{imports::import_assets::LocatedImport, SnippetCap, SymbolKind};
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
-use syntax::{algo, SmolStr, TextRange};
+use syntax::{SmolStr, TextRange};
 use text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -73,7 +66,7 @@ pub struct CompletionItem {
     ref_match: Option<Mutability>,
 
     /// The import data to add to completion's edits.
-    import_to_add: SmallVec<[ImportEdit; 1]>,
+    import_to_add: SmallVec<[LocatedImport; 1]>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -380,31 +373,8 @@ impl CompletionItem {
         self.ref_match.map(|mutability| (mutability, relevance))
     }
 
-    pub fn imports_to_add(&self) -> &[ImportEdit] {
+    pub fn imports_to_add(&self) -> &[LocatedImport] {
         &self.import_to_add
-    }
-}
-
-/// An extra import to add after the completion is applied.
-#[derive(Debug, Clone)]
-pub struct ImportEdit {
-    pub import: LocatedImport,
-    pub scope: ImportScope,
-}
-
-impl ImportEdit {
-    /// Attempts to insert the import to the given scope, producing a text edit.
-    /// May return no edit in edge cases, such as scope already containing the import.
-    pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
-        let _p = profile::span("ImportEdit::to_text_edit");
-
-        let new_ast = self.scope.clone_for_update();
-        insert_use::insert_use(&new_ast, mod_path_to_ast(&self.import.import_path), &cfg);
-        let mut import_insert = TextEdit::builder();
-        algo::diff(self.scope.as_syntax_node(), new_ast.as_syntax_node())
-            .into_text_edit(&mut import_insert);
-
-        Some(import_insert.finish())
     }
 }
 
@@ -413,7 +383,7 @@ impl ImportEdit {
 #[derive(Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
-    imports_to_add: SmallVec<[ImportEdit; 1]>,
+    imports_to_add: SmallVec<[LocatedImport; 1]>,
     trait_name: Option<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
@@ -439,7 +409,7 @@ impl Builder {
 
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
-            if let Some(original_path) = import_edit.import.original_path.as_ref() {
+            if let Some(original_path) = import_edit.original_path.as_ref() {
                 lookup = lookup.or_else(|| Some(label.clone()));
                 label = SmolStr::from(format!("{} (use {})", label, original_path));
             }
@@ -533,7 +503,7 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(&mut self, import_to_add: ImportEdit) -> &mut Builder {
+    pub(crate) fn add_import(&mut self, import_to_add: LocatedImport) -> &mut Builder {
         self.imports_to_add.push(import_to_add);
         self
     }

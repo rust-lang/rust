@@ -283,7 +283,7 @@ fn completion_item(
             let imports: Vec<_> = imports
                 .iter()
                 .filter_map(|import_edit| {
-                    let import_path = &import_edit.import.import_path;
+                    let import_path = &import_edit.import_path;
                     let import_name = import_path.segments().last()?;
                     Some(lsp_ext::CompletionImport {
                         full_import_path: import_path.to_string(),

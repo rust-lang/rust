@@ -10,7 +10,6 @@ use syntax::{AstNode, SyntaxNode, T};
 use crate::{
     context::{CompletionContext, PathKind},
     render::{render_resolution_with_import, RenderContext},
-    ImportEdit,
 };
 
 use super::Completions;
@@ -136,10 +135,10 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
 
     let user_input_lowercased = potential_import_name.to_lowercase();
     let import_assets = import_assets(ctx, potential_import_name)?;
-    let import_scope = ImportScope::find_insert_use_container(
-        &position_for_import(ctx, Some(import_assets.import_candidate()))?,
-        &ctx.sema,
-    )?;
+    let position = position_for_import(ctx, Some(import_assets.import_candidate()))?;
+    if ImportScope::find_insert_use_container(&position, &ctx.sema).is_none() {
+        return None;
+    }
 
     let path_kind = match ctx.path_kind() {
         Some(kind) => Some(kind),
@@ -199,12 +198,7 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
                     &user_input_lowercased,
                 )
             })
-            .filter_map(|import| {
-                render_resolution_with_import(
-                    RenderContext::new(ctx),
-                    ImportEdit { import, scope: import_scope.clone() },
-                )
-            }),
+            .filter_map(|import| render_resolution_with_import(RenderContext::new(ctx), import)),
     );
     Some(())
 }
