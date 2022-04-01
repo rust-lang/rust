@@ -76,7 +76,9 @@ impl Mutex {
             // while spinning, to be easier on the caches.
             let state = self.futex.load(Relaxed);
 
-            if state == 0 || spin == 0 {
+            // We stop spinning when the mutex is unlocked (0),
+            // but also when it's contended (2).
+            if state != 1 || spin == 0 {
                 return state;
             }
 
