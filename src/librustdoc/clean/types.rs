@@ -493,14 +493,17 @@ impl Item {
     ) -> Item {
         trace!("name={:?}, def_id={:?}", name, def_id);
 
-        Item {
-            def_id: def_id.into(),
-            kind: box kind,
-            name,
-            attrs,
-            visibility: cx.tcx.visibility(def_id).clean(cx),
-            cfg,
-        }
+        // Primitives and Keywords are written in the source code as private modules.
+        // The modules need to be private so that nobody actually uses them, but the
+        // keywords and primitives that they are documenting are public.
+        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
+        {
+            Visibility::Public
+        } else {
+            cx.tcx.visibility(def_id).clean(cx)
+        };
+
+        Item { def_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
