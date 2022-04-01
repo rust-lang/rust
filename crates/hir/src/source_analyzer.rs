@@ -40,8 +40,9 @@ use syntax::{
 };
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, BuiltinAttr, BuiltinType, Const, Field,
-    Function, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias, Variant,
+    db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BuiltinAttr, BuiltinType, Const,
+    Field, Function, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
+    Variant,
 };
 use base_db::CrateId;
 
@@ -302,7 +303,7 @@ impl SourceAnalyzer {
             let expr_id = self.expr_id(db, &path_expr.into())?;
             let infer = self.infer.as_ref()?;
             if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
-                return Some(PathResolution::AssocItem(assoc.into()));
+                return Some(PathResolution::Def(AssocItem::from(assoc).into()));
             }
             if let Some(VariantId::EnumVariantId(variant)) =
                 infer.variant_resolution_for_expr(expr_id)
@@ -313,7 +314,7 @@ impl SourceAnalyzer {
         } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
-                return Some(PathResolution::AssocItem(assoc.into()));
+                return Some(PathResolution::Def(AssocItem::from(assoc).into()));
             }
             if let Some(VariantId::EnumVariantId(variant)) =
                 self.infer.as_ref()?.variant_resolution_for_pat(pat_id)

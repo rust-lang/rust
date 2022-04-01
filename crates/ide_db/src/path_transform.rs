@@ -2,7 +2,7 @@
 
 use crate::helpers::mod_path_to_ast;
 use either::Either;
-use hir::{HirDisplay, SemanticsScope};
+use hir::{AsAssocItem, HirDisplay, SemanticsScope};
 use rustc_hash::FxHashMap;
 use syntax::{
     ast::{self, AstNode},
@@ -197,7 +197,7 @@ impl<'a> Ctx<'a> {
                     }
                 }
             }
-            hir::PathResolution::Def(def) => {
+            hir::PathResolution::Def(def) if def.as_assoc_item(self.source_scope.db).is_none() => {
                 if let hir::ModuleDef::Trait(_) = def {
                     if matches!(path.segment()?.kind()?, ast::PathSegmentKind::Type { .. }) {
                         // `speculative_resolve` resolves segments like `<T as
@@ -222,7 +222,7 @@ impl<'a> Ctx<'a> {
             hir::PathResolution::Local(_)
             | hir::PathResolution::ConstParam(_)
             | hir::PathResolution::SelfType(_)
-            | hir::PathResolution::AssocItem(_)
+            | hir::PathResolution::Def(_)
             | hir::PathResolution::BuiltinAttr(_)
             | hir::PathResolution::ToolModule(_) => (),
         }

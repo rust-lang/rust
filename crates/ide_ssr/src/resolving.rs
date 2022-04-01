@@ -2,6 +2,7 @@
 
 use crate::errors::error;
 use crate::{parsing, SsrError};
+use hir::AsAssocItem;
 use ide_db::base_db::FilePosition;
 use parsing::Placeholder;
 use rustc_hash::FxHashMap;
@@ -82,14 +83,17 @@ impl Resolver<'_, '_> {
             .filter_map(|(path_node, resolved)| {
                 if let Some(grandparent) = path_node.parent().and_then(|parent| parent.parent()) {
                     if let Some(call_expr) = ast::CallExpr::cast(grandparent.clone()) {
-                        if let hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) =
+                        if let hir::PathResolution::Def(hir::ModuleDef::Function(function)) =
                             resolved.resolution
                         {
-                            let qualifier_type = self.resolution_scope.qualifier_type(path_node);
-                            return Some((
-                                grandparent,
-                                UfcsCallInfo { call_expr, function, qualifier_type },
-                            ));
+                            if function.as_assoc_item(self.resolution_scope.scope.db).is_some() {
+                                let qualifier_type =
+                                    self.resolution_scope.qualifier_type(path_node);
+                                return Some((
+                                    grandparent,
+                                    UfcsCallInfo { call_expr, function, qualifier_type },
+                                ));
+                            }
                         }
                     }
                 }
@@ -162,7 +166,9 @@ impl Resolver<'_, '_> {
 
     fn ok_to_use_path_resolution(&self, resolution: &hir::PathResolution) -> bool {
         match resolution {
-            hir::PathResolution::AssocItem(hir::AssocItem::Function(function)) => {
+            hir::PathResolution::Def(hir::ModuleDef::Function(function))
+                if function.as_assoc_item(self.resolution_scope.scope.db).is_some() =>
+            {
                 if function.self_param(self.resolution_scope.scope.db).is_some() {
                     // If we don't use this path resolution, then we won't be able to match method
                     // calls. e.g. `Foo::bar($s)` should match `x.bar()`.
@@ -172,7 +178,9 @@ impl Resolver<'_, '_> {
                     false
                 }
             }
-            hir::PathResolution::AssocItem(_) => {
+            hir::PathResolution::Def(
+                def @ (hir::ModuleDef::Const(_) | hir::ModuleDef::TypeAlias(_)),
+            ) if def.as_assoc_item(self.resolution_scope.scope.db).is_some() => {
                 // Not a function. Could be a constant or an associated type.
                 cov_mark::hit!(replace_associated_trait_constant);
                 false
@@ -229,7 +237,7 @@ impl<'db> ResolutionScope<'db> {
                 |assoc_item| {
                     let item_name = assoc_item.name(self.scope.db)?;
                     if item_name.to_smol_str().as_str() == name.text() {
-                        Some(hir::PathResolution::AssocItem(assoc_item))
+                        Some(hir::PathResolution::Def(assoc_item.into()))
                     } else {
                         None
                     }

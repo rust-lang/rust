@@ -482,14 +482,6 @@ impl From<PathResolution> for Definition {
     fn from(path_resolution: PathResolution) -> Self {
         match path_resolution {
             PathResolution::Def(def) => def.into(),
-            PathResolution::AssocItem(item) => {
-                let def: ModuleDef = match item {
-                    hir::AssocItem::Function(it) => it.into(),
-                    hir::AssocItem::Const(it) => it.into(),
-                    hir::AssocItem::TypeAlias(it) => it.into(),
-                };
-                def.into()
-            }
             PathResolution::Local(local) => Definition::Local(local),
             PathResolution::TypeParam(par) => Definition::GenericParam(par.into()),
             PathResolution::ConstParam(par) => Definition::GenericParam(par.into()),
