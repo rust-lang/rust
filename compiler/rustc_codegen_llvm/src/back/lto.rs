@@ -313,7 +313,9 @@ fn fat_lto(
         for (bc_decoded, name) in serialized_modules {
             let _timer = cgcx
                 .prof
-                .generic_activity_with_arg("LLVM_fat_lto_link_module", format!("{:?}", name));
+                .generic_activity_with_arg_recorder("LLVM_fat_lto_link_module", |recorder| {
+                    recorder.record_arg(format!("{:?}", name))
+                });
             info!("linking {:?}", name);
             let data = bc_decoded.data();
             linker.add(data).map_err(|()| {
