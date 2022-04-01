@@ -1,7 +1,7 @@
 //! Transforms markdown
 use ide_db::rust_doc::is_rust_fence;
 
-const RUSTDOC_FENCE: &str = "```";
+const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
 pub(crate) fn format_docs(src: &str) -> String {
     let mut processed_lines = Vec::new();
@@ -13,7 +13,8 @@ pub(crate) fn format_docs(src: &str) -> String {
             continue;
         }
 
-        if let Some(header) = line.strip_prefix(RUSTDOC_FENCE) {
+        if let Some(header) = RUSTDOC_FENCES.into_iter().find_map(|fence| line.strip_prefix(fence))
+        {
             in_code_block ^= true;
 
             if in_code_block {

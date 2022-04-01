@@ -644,6 +644,11 @@ impl Foo {
     /// let foobar = Foo::new().bar();
     /// ```
     ///
+    /// ~~~rust,no_run
+    /// // code block with tilde.
+    /// let foobar = Foo::new().bar();
+    /// ~~~
+    ///
     /// ```
     /// // functions
     /// fn foo<T, const X: usize>(arg: i32) {

@@ -474,7 +474,7 @@ impl TestAttr {
     }
 }
 
-const RUSTDOC_FENCE: &str = "```";
+const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
     &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
@@ -483,7 +483,9 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
         let mut in_code_block = false;
 
         for line in String::from(doc).lines() {
-            if let Some(header) = line.strip_prefix(RUSTDOC_FENCE) {
+            if let Some(header) =
+                RUSTDOC_FENCES.into_iter().find_map(|fence| line.strip_prefix(fence))
+            {
                 in_code_block = !in_code_block;
 
                 if in_code_block
