@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::default::Default;
+use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::lazy::SyncOnceCell as OnceCell;
@@ -355,7 +356,7 @@ crate enum ExternalLocation {
 /// Anything with a source location and set of attributes and, optionally, a
 /// name. That is, anything that can be documented. This doesn't correspond
 /// directly to the AST's concept of an item; it's a strict superset.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 crate struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
@@ -368,6 +369,27 @@ crate struct Item {
     crate def_id: ItemId,
 
     crate cfg: Option<Arc<Cfg>>,
+}
+
+/// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
+/// If you want to see the debug output for attributes and the `kind` as well, use `{:#?}` instead of `{:?}`.
+impl fmt::Debug for Item {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let alternate = f.alternate();
+        // hand-picked fields that don't bloat the logs too much
+        let mut fmt = f.debug_struct("Item");
+        fmt.field("name", &self.name)
+            .field("visibility", &self.visibility)
+            .field("def_id", &self.def_id);
+        // allow printing the full item if someone really wants to
+        if alternate {
+            fmt.field("attrs", &self.attrs).field("kind", &self.kind).field("cfg", &self.cfg);
+        } else {
+            fmt.field("kind", &self.type_());
+            fmt.field("docs", &self.doc_value());
+        }
+        fmt.finish()
+    }
 }
 
 // `Item` is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -471,14 +493,17 @@ impl Item {
     ) -> Item {
         trace!("name={:?}, def_id={:?}", name, def_id);
 
-        Item {
-            def_id: def_id.into(),
-            kind: box kind,
-            name,
-            attrs,
-            visibility: cx.tcx.visibility(def_id).clean(cx),
-            cfg,
-        }
+        // Primitives and Keywords are written in the source code as private modules.
+        // The modules need to be private so that nobody actually uses them, but the
+        // keywords and primitives that they are documenting are public.
+        let visibility = if matches!(&kind, ItemKind::KeywordItem(..) | ItemKind::PrimitiveItem(..))
+        {
+            Visibility::Public
+        } else {
+            cx.tcx.visibility(def_id).clean(cx)
+        };
+
+        Item { def_id: def_id.into(), kind: box kind, name, attrs, visibility, cfg }
     }
 
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined

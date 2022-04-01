@@ -23,8 +23,8 @@ use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayou
 
 use super::{
     AllocCheck, AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine,
-    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer, Provenance,
-    Scalar, ScalarMaybeUninit, StackPopJump,
+    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer,
+    PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -678,7 +678,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let size = size.align_to(align);
 
                 // Check if this brought us over the size limit.
-                if size.bytes() >= self.tcx.data_layout.obj_size_bound() {
+                if size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta("total size is bigger than largest supported object"));
                 }
                 Ok(Some((size, align)))
@@ -694,9 +694,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = layout.field(self, 0);
 
                 // Make sure the slice is not too big.
-                let size = elem.size.checked_mul(len, self).ok_or_else(|| {
-                    err_ub!(InvalidMeta("slice is bigger than largest supported object"))
-                })?;
+                let size = elem.size.bytes().saturating_mul(len); // we rely on `max_size_of_val` being smaller than `u64::MAX`.
+                let size = Size::from_bytes(size);
+                if size > self.max_size_of_val() {
+                    throw_ub!(InvalidMeta("slice is bigger than largest supported object"));
+                }
                 Ok(Some((size, elem.align.abi)))
             }
 

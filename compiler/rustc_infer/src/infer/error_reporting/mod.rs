@@ -1091,7 +1091,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
-    fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
+    pub fn cmp(
+        &self,
+        t1: Ty<'tcx>,
+        t2: Ty<'tcx>,
+    ) -> (DiagnosticStyledString, DiagnosticStyledString) {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions

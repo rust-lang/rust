@@ -67,6 +67,9 @@ const SLICE_LENGTH_UNINIT: &[u8] = unsafe {
 // bad slice: length too big
 const SLICE_TOO_LONG: &[u8] = unsafe { mem::transmute((&42u8, 999usize)) };
 //~^ ERROR it is undefined behavior to use this value
+// bad slice: length computation overflows
+const SLICE_TOO_LONG_OVERFLOW: &[u32] = unsafe { mem::transmute((&42u32, isize::MAX)) };
+//~^ ERROR it is undefined behavior to use this value
 // bad slice: length not an int
 const SLICE_LENGTH_PTR: &[u8] = unsafe { mem::transmute((&42u8, &3)) };
 //~^ ERROR it is undefined behavior to use this value
