@@ -721,8 +721,7 @@ pub(crate) fn link(
 
     let mut linker = Linker::new(first.module_llvm.llmod());
     for module in elements {
-        let _timer =
-            cgcx.prof.generic_activity_with_arg("LLVM_link_module", format!("{:?}", module.name));
+        let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
         linker.add(buffer.data()).map_err(|()| {
             let msg = format!("failed to serialize module {:?}", module.name);
