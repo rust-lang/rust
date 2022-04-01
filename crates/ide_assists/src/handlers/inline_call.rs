@@ -185,7 +185,6 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext) -> Option<()> 
             }?;
             let function = match ctx.sema.resolve_path(&path)? {
                 PathResolution::Def(hir::ModuleDef::Function(f)) => f,
-                PathResolution::AssocItem(hir::AssocItem::Function(f)) => f,
                 _ => return None,
             };
             (function, format!("Inline `{}`", path))

@@ -198,9 +198,6 @@ fn signature_help_for_generics(
             | hir::PathResolution::Def(hir::ModuleDef::Macro(_))
             | hir::PathResolution::Def(hir::ModuleDef::Module(_))
             | hir::PathResolution::Def(hir::ModuleDef::Static(_)) => return None,
-            hir::PathResolution::AssocItem(hir::AssocItem::Function(it)) => it.into(),
-            hir::PathResolution::AssocItem(hir::AssocItem::TypeAlias(it)) => it.into(),
-            hir::PathResolution::AssocItem(hir::AssocItem::Const(_)) => return None,
             hir::PathResolution::BuiltinAttr(_)
             | hir::PathResolution::ToolModule(_)
             | hir::PathResolution::Local(_)

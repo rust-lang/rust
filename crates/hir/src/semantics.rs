@@ -30,9 +30,9 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, AssocItem, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource,
-    HirFileId, Impl, InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path,
-    ScopeDef, ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
+    Access, BuiltinAttr, Callable, ConstParam, Crate, Field, Function, HasSource, HirFileId, Impl,
+    InFile, Label, LifetimeParam, Local, Macro, Module, ModuleDef, Name, Path, ScopeDef,
+    ToolModule, Trait, Type, TypeAlias, TypeParam, VariantDef,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -46,7 +46,6 @@ pub enum PathResolution {
     /// A const parameter
     ConstParam(ConstParam),
     SelfType(Impl),
-    AssocItem(AssocItem),
     BuiltinAttr(BuiltinAttr),
     ToolModule(ToolModule),
 }
@@ -76,10 +75,6 @@ impl PathResolution {
             | PathResolution::ConstParam(_) => None,
             PathResolution::TypeParam(param) => Some(TypeNs::GenericParam((*param).into())),
             PathResolution::SelfType(impl_def) => Some(TypeNs::SelfType((*impl_def).into())),
-            PathResolution::AssocItem(AssocItem::Const(_) | AssocItem::Function(_)) => None,
-            PathResolution::AssocItem(AssocItem::TypeAlias(alias)) => {
-                Some(TypeNs::TypeAliasId((*alias).into()))
-            }
         }
     }
 }
