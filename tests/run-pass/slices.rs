@@ -2,6 +2,7 @@
 #![feature(new_uninit)]
 #![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
+#![feature(layout_for_ptr)]
 
 use std::slice;
 
@@ -250,9 +251,17 @@ fn test_for_invalidated_pointers() {
     buffer.copy_within(1.., 0);
 }
 
+fn large_raw_slice() {
+    let size = isize::MAX as usize;
+    // Creating a raw slice of size isize::MAX and asking for its size is okay.
+    let s = std::ptr::slice_from_raw_parts(1usize as *const u8, size);
+    assert_eq!(size, unsafe { std::mem::size_of_val_raw(s) });
+}
+
 fn main() {
     slice_of_zst();
     test_iter_ref_consistency();
     uninit_slice();
     test_for_invalidated_pointers();
+    large_raw_slice();
 }

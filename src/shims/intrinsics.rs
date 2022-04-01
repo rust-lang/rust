@@ -83,6 +83,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
                 let ptr = this.read_pointer(ptr)?;
                 let count = this.read_scalar(count)?.to_machine_usize(this)?;
+                // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
+                // but no actual allocation can be big enough for the difference to be noticeable.
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
                 })?;
