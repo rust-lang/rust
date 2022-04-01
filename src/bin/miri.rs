@@ -363,6 +363,10 @@ fn main() {
                 "-Zmiri-tag-raw-pointers" => {
                     miri_config.tag_raw = true;
                 }
+                "-Zmiri-strict-provenance" => {
+                    miri_config.strict_provenance = true;
+                    miri_config.tag_raw = true;
+                }
                 "-Zmiri-track-raw-pointers" => {
                     eprintln!(
                         "WARNING: -Zmiri-track-raw-pointers has been renamed to -Zmiri-tag-raw-pointers, the old name is deprecated."

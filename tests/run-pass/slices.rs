@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-tag-raw-pointers
+// compile-flags: -Zmiri-strict-provenance -Zmiri-check-number-validity
 #![feature(new_uninit)]
 #![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]
