@@ -41,7 +41,7 @@ pub(super) fn check<'tcx>(
                     &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                     "consider using",
                     if const_context {
-                        format!("unsafe {{ std::str::from_utf8_unchecked{postfix}({snippet}) }}")
+                        format!("std::str::from_utf8_unchecked{postfix}({snippet})")
                     } else {
                         format!("std::str::from_utf8{postfix}({snippet}).unwrap()")
                     },

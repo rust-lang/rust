@@ -244,7 +244,7 @@ error: transmute from a `&[u8]` to a `&str`
   --> $DIR/transmute.rs:142:30
    |
 LL |     const _: &str = unsafe { std::mem::transmute(B) };
-   |                              ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `unsafe { std::str::from_utf8_unchecked(B) }`
+   |                              ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `std::str::from_utf8_unchecked(B)`
 
 error: aborting due to 39 previous errors
 
