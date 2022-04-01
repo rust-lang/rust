@@ -237,7 +237,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
                 _ => cause.code(),
             }
-            && let (ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
+            && let (&ObligationCauseCode::ItemObligation(item_def_id), None) = (code, override_error_code)
         {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
@@ -245,7 +245,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let mut v = TraitObjectVisitor(FxHashSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
-                self.get_impl_ident_and_self_ty_from_trait(*item_def_id, &v.0)
+                self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
                 && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
             {
                 override_error_code = Some(ident.name);

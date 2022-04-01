@@ -28,7 +28,6 @@ use super::{potentially_plural_count, FnCtxt, Inherited};
 /// - `impl_m_span`: span to use for reporting errors
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-
 crate fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
@@ -88,7 +87,7 @@ fn compare_predicate_entailment<'tcx>(
         impl_m_span,
         impl_m_hir_id,
         ObligationCauseCode::CompareImplMethodObligation {
-            impl_item_def_id: impl_m.def_id,
+            impl_item_def_id: impl_m.def_id.expect_local(),
             trait_item_def_id: trait_m.def_id,
         },
     );
@@ -231,7 +230,7 @@ fn compare_predicate_entailment<'tcx>(
                 span,
                 impl_m_hir_id,
                 ObligationCauseCode::CompareImplMethodObligation {
-                    impl_item_def_id: impl_m.def_id,
+                    impl_item_def_id: impl_m.def_id.expect_local(),
                     trait_item_def_id: trait_m.def_id,
                 },
             );
@@ -1154,7 +1153,7 @@ fn compare_type_predicate_entailment<'tcx>(
         impl_ty_span,
         impl_ty_hir_id,
         ObligationCauseCode::CompareImplTypeObligation {
-            impl_item_def_id: impl_ty.def_id,
+            impl_item_def_id: impl_ty.def_id.expect_local(),
             trait_item_def_id: trait_ty.def_id,
         },
     );
@@ -1383,7 +1382,7 @@ pub fn check_type_bounds<'tcx>(
             impl_ty_span,
             impl_ty_hir_id,
             ObligationCauseCode::CheckAssociatedTypeBounds {
-                impl_item_def_id: impl_ty.def_id,
+                impl_item_def_id: impl_ty.def_id.expect_local(),
                 trait_item_def_id: trait_ty.def_id,
             },
         );

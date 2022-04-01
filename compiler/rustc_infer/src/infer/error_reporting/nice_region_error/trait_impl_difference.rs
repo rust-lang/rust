@@ -7,7 +7,7 @@ use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::RegionHighlightMode;
@@ -51,7 +51,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         {
             let guar = self.emit_associated_type_err(
                 span,
-                self.infcx.tcx.item_name(impl_item_def_id),
+                self.infcx.tcx.item_name(impl_item_def_id.to_def_id()),
                 impl_item_def_id,
                 trait_item_def_id,
             );
@@ -155,7 +155,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         span: Span,
         item_name: Symbol,
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     ) -> ErrorGuaranteed {
         let impl_sp = self.tcx().def_span(impl_item_def_id);
