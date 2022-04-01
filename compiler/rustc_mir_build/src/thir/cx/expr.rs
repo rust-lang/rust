@@ -32,7 +32,8 @@ impl<'tcx> Cx<'tcx> {
     }
 
     pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
-        let temp_lifetime = self.region_scope_tree.temporary_scope(hir_expr.hir_id.local_id);
+        let temp_lifetime =
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
 
@@ -161,7 +162,8 @@ impl<'tcx> Cx<'tcx> {
         let tcx = self.tcx;
         let expr_ty = self.typeck_results().expr_ty(expr);
         let expr_span = expr.span;
-        let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        let temp_lifetime =
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
 
         let kind = match expr.kind {
             // Here comes the interesting stuff:
@@ -575,7 +577,9 @@ impl<'tcx> Cx<'tcx> {
             },
             hir::ExprKind::Loop(ref body, ..) => {
                 let block_ty = self.typeck_results().node_type(body.hir_id);
-                let temp_lifetime = self.region_scope_tree.temporary_scope(body.hir_id.local_id);
+                let temp_lifetime = self
+                    .rvalue_scopes
+                    .temporary_scope(self.region_scope_tree, body.hir_id.local_id);
                 let block = self.mirror_block(body);
                 let body = self.thir.exprs.push(Expr {
                     ty: block_ty,
@@ -776,7 +780,8 @@ impl<'tcx> Cx<'tcx> {
         span: Span,
         overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
     ) -> Expr<'tcx> {
-        let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        let temp_lifetime =
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
         let (def_id, substs, user_ty) = match overloaded_callee {
             Some((def_id, substs)) => (def_id, substs, None),
             None => {
@@ -863,7 +868,9 @@ impl<'tcx> Cx<'tcx> {
             // a constant reference (or constant raw pointer for `static mut`) in MIR
             Res::Def(DefKind::Static(_), id) => {
                 let ty = self.tcx.static_ptr_ty(id);
-                let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+                let temp_lifetime = self
+                    .rvalue_scopes
+                    .temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
                 let kind = if self.tcx.is_thread_local_static(id) {
                     ExprKind::ThreadLocalRef(id)
                 } else {
@@ -939,7 +946,8 @@ impl<'tcx> Cx<'tcx> {
 
         // construct the complete expression `foo()` for the overloaded call,
         // which will yield the &T type
-        let temp_lifetime = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+        let temp_lifetime =
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
         let fun = self.method_callee(expr, span, overloaded_callee);
         let fun = self.thir.exprs.push(fun);
         let fun_ty = self.thir[fun].ty;
@@ -959,7 +967,9 @@ impl<'tcx> Cx<'tcx> {
         closure_expr: &'tcx hir::Expr<'tcx>,
         place: HirPlace<'tcx>,
     ) -> Expr<'tcx> {
-        let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
+        let temp_lifetime = self
+            .rvalue_scopes
+            .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
         let var_ty = place.base_ty;
 
         // The result of capture analysis in `rustc_typeck/check/upvar.rs`represents a captured path
@@ -1014,7 +1024,9 @@ impl<'tcx> Cx<'tcx> {
         let upvar_capture = captured_place.info.capture_kind;
         let captured_place_expr =
             self.convert_captured_hir_place(closure_expr, captured_place.place.clone());
-        let temp_lifetime = self.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
+        let temp_lifetime = self
+            .rvalue_scopes
+            .temporary_scope(self.region_scope_tree, closure_expr.hir_id.local_id);
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,

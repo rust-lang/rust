@@ -4,6 +4,7 @@ use crate::astconv::{
 };
 use crate::check::callee::{self, DeferredCallResolution};
 use crate::check::method::{self, MethodCallee, SelfSource};
+use crate::check::{region, rvalue_scopes};
 use crate::check::{BreakableCtxt, Diverges, Expectation, FnCtxt, LocalTy};
 
 use rustc_data_structures::captures::Captures;
@@ -618,6 +619,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Ty<'tcx> {
         self.normalize_associated_types_in(span, field.ty(self.tcx, substs))
+    }
+
+    pub(in super::super) fn resolve_rvalue_scopes(&self, def_id: DefId) {
+        let scope_tree = region::region_scope_tree(self.tcx, def_id);
+        let rvalue_scopes = { rvalue_scopes::resolve_rvalue_scopes(self, &scope_tree, def_id) };
+        let mut typeck_results = self.inh.typeck_results.borrow_mut();
+        typeck_results.region_scope_tree = scope_tree;
+        typeck_results.rvalue_scopes = rvalue_scopes;
     }
 
     pub(in super::super) fn resolve_generator_interiors(&self, def_id: DefId) {

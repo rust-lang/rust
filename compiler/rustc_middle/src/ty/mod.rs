@@ -72,6 +72,7 @@ pub use self::context::{
 };
 pub use self::instance::{Instance, InstanceDef};
 pub use self::list::List;
+pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TyKind::*;
@@ -118,6 +119,7 @@ mod generics;
 mod impls_ty;
 mod instance;
 mod list;
+mod rvalue_scopes;
 mod structural_impls;
 mod sty;
 

@@ -14,7 +14,7 @@ use rustc_hir::hir_id::HirIdSet;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Expr, ExprKind, Guard, HirId, Pat, PatKind};
 use rustc_middle::middle::region::{self, Scope, ScopeData, YieldData};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, RvalueScopes, Ty, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 use tracing::debug;
@@ -23,8 +23,9 @@ mod drop_ranges;
 
 struct InteriorVisitor<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
+    region_scope_tree: &'a region::ScopeTree,
     types: FxIndexSet<ty::GeneratorInteriorTypeCause<'tcx>>,
-    region_scope_tree: &'tcx region::ScopeTree,
+    rvalue_scopes: &'a RvalueScopes,
     expr_count: usize,
     kind: hir::GeneratorKind,
     prev_unresolved_span: Option<Span>,
@@ -179,10 +180,12 @@ pub fn resolve_interior<'a, 'tcx>(
     kind: hir::GeneratorKind,
 ) {
     let body = fcx.tcx.hir().body(body_id);
+    let typeck_results = fcx.inh.typeck_results.borrow();
     let mut visitor = InteriorVisitor {
         fcx,
         types: FxIndexSet::default(),
-        region_scope_tree: fcx.tcx.region_scope_tree(def_id),
+        region_scope_tree: &typeck_results.region_scope_tree,
+        rvalue_scopes: &typeck_results.rvalue_scopes,
         expr_count: 0,
         kind,
         prev_unresolved_span: None,
@@ -192,7 +195,7 @@ pub fn resolve_interior<'a, 'tcx>(
     intravisit::walk_body(&mut visitor, body);
 
     // Check that we visited the same amount of expressions as the RegionResolutionVisitor
-    let region_expr_count = visitor.region_scope_tree.body_expr_count(body_id).unwrap();
+    let region_expr_count = typeck_results.region_scope_tree.body_expr_count(body_id).unwrap();
     assert_eq!(region_expr_count, visitor.expr_count);
 
     // The types are already kept in insertion order.
@@ -248,8 +251,9 @@ pub fn resolve_interior<'a, 'tcx>(
     let witness =
         fcx.tcx.mk_generator_witness(ty::Binder::bind_with_vars(type_list, bound_vars.clone()));
 
+    drop(typeck_results);
     // Store the generator types and spans into the typeck results for this generator.
-    visitor.fcx.inh.typeck_results.borrow_mut().generator_interior_types =
+    fcx.inh.typeck_results.borrow_mut().generator_interior_types =
         ty::Binder::bind_with_vars(type_causes, bound_vars);
 
     debug!(
@@ -381,12 +385,14 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // temporary on the stack that is live for the current temporary scope and then return a
         // reference to it. That value may be live across the entire temporary scope.
         let scope = if self.drop_ranges.is_borrowed_temporary(expr) {
-            self.region_scope_tree.temporary_scope(expr.hir_id.local_id)
+            self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
         } else {
             debug!("parent_node: {:?}", self.fcx.tcx.hir().find_parent_node(expr.hir_id));
             match self.fcx.tcx.hir().find_parent_node(expr.hir_id) {
                 Some(parent) => Some(Scope { id: parent.local_id, data: ScopeData::Node }),
-                None => self.region_scope_tree.temporary_scope(expr.hir_id.local_id),
+                None => {
+                    self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id)
+                }
             }
         };
 

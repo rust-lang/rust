@@ -14,7 +14,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Arm, Block, Expr, Local, Pat, PatKind, Stmt};
 use rustc_index::vec::Idx;
 use rustc_middle::middle::region::*;
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
@@ -527,7 +526,13 @@ fn resolve_local<'tcx>(
 
         if let Some(pat) = pat {
             if is_binding_pat(pat) {
-                record_rvalue_scope(visitor, &expr, blk_scope);
+                visitor.scope_tree.record_rvalue_candidate(
+                    expr.hir_id,
+                    RvalueCandidateType::Pattern {
+                        target: expr.hir_id.local_id,
+                        lifetime: blk_scope,
+                    },
+                );
             }
         }
     }
@@ -625,9 +630,15 @@ fn resolve_local<'tcx>(
         blk_id: Option<Scope>,
     ) {
         match expr.kind {
-            hir::ExprKind::AddrOf(_, _, ref subexpr) => {
-                record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
-                record_rvalue_scope(visitor, &subexpr, blk_id);
+            hir::ExprKind::AddrOf(_, _, subexpr) => {
+                record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
+                visitor.scope_tree.record_rvalue_candidate(
+                    subexpr.hir_id,
+                    RvalueCandidateType::Borrow {
+                        target: subexpr.hir_id.local_id,
+                        lifetime: blk_id,
+                    },
+                );
             }
             hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
@@ -647,52 +658,15 @@ fn resolve_local<'tcx>(
                     record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 }
             }
-            _ => {}
-        }
-    }
-
-    /// Applied to an expression `expr` if `expr` -- or something owned or partially owned by
-    /// `expr` -- is going to be indirectly referenced by a variable in a let statement. In that
-    /// case, the "temporary lifetime" or `expr` is extended to be the block enclosing the `let`
-    /// statement.
-    ///
-    /// More formally, if `expr` matches the grammar `ET`, record the rvalue scope of the matching
-    /// `<rvalue>` as `blk_id`:
-    ///
-    /// ```text
-    ///     ET = *ET
-    ///        | ET[...]
-    ///        | ET.f
-    ///        | (ET)
-    ///        | <rvalue>
-    /// ```
-    ///
-    /// Note: ET is intended to match "rvalues or places based on rvalues".
-    fn record_rvalue_scope<'tcx>(
-        visitor: &mut RegionResolutionVisitor<'tcx>,
-        expr: &hir::Expr<'_>,
-        blk_scope: Option<Scope>,
-    ) {
-        let mut expr = expr;
-        loop {
-            // Note: give all the expressions matching `ET` with the
-            // extended temporary lifetime, not just the innermost rvalue,
-            // because in codegen if we must compile e.g., `*rvalue()`
-            // into a temporary, we request the temporary scope of the
-            // outer expression.
-            visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
-
-            match expr.kind {
-                hir::ExprKind::AddrOf(_, _, ref subexpr)
-                | hir::ExprKind::Unary(hir::UnOp::Deref, ref subexpr)
-                | hir::ExprKind::Field(ref subexpr, _)
-                | hir::ExprKind::Index(ref subexpr, _) => {
-                    expr = &subexpr;
-                }
-                _ => {
-                    return;
-                }
+            hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) => {
+                // FIXME(@dingxiangfei2009): choose call arguments here
+                // for candidacy for extended parameter rule application
             }
+            hir::ExprKind::Index(..) => {
+                // FIXME(@dingxiangfei2009): select the indices
+                // as candidate for rvalue scope rules
+            }
+            _ => {}
         }
     }
 }
@@ -821,14 +795,16 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
     }
 }
 
-fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
+/// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
+/// in the case of closures, this will be redirected to the enclosing function.
+pub fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> ScopeTree {
     let typeck_root_def_id = tcx.typeck_root_def_id(def_id);
     if typeck_root_def_id != def_id {
-        return tcx.region_scope_tree(typeck_root_def_id);
+        return region_scope_tree(tcx, typeck_root_def_id);
     }
 
     let id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-    let scope_tree = if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
+    if let Some(body_id) = tcx.hir().maybe_body_owned_by(id) {
         let mut visitor = RegionResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),
@@ -845,11 +821,5 @@ fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         visitor.scope_tree
     } else {
         ScopeTree::default()
-    };
-
-    tcx.arena.alloc(scope_tree)
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { region_scope_tree, ..*providers };
+    }
 }

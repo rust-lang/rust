@@ -38,7 +38,6 @@ mod liveness;
 pub mod loops;
 mod naked_functions;
 mod reachable;
-mod region;
 pub mod stability;
 mod upvars;
 mod weak_lang_items;
@@ -57,7 +56,6 @@ pub fn provide(providers: &mut Providers) {
     liveness::provide(providers);
     intrinsicck::provide(providers);
     reachable::provide(providers);
-    region::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);
 }
