@@ -70,8 +70,6 @@ mod sub;
 pub mod type_variable;
 mod undo_log;
 
-pub use rustc_middle::infer::unify_key;
-
 #[must_use]
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
