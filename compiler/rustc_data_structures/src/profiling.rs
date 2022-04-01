@@ -183,11 +183,11 @@ impl SelfProfilerRef {
         }
     }
 
-    // This shim makes sure that calls only get executed if the filter mask
-    // lets them pass. It also contains some trickery to make sure that
-    // code is optimized for non-profiling compilation sessions, i.e. anything
-    // past the filter check is never inlined so it doesn't clutter the fast
-    // path.
+    /// This shim makes sure that calls only get executed if the filter mask
+    /// lets them pass. It also contains some trickery to make sure that
+    /// code is optimized for non-profiling compilation sessions, i.e. anything
+    /// past the filter check is never inlined so it doesn't clutter the fast
+    /// path.
     #[inline(always)]
     fn exec<F>(&self, event_filter: EventFilter, f: F) -> TimingGuard<'_>
     where
