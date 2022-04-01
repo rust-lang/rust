@@ -1987,6 +1987,7 @@ fn sidebar_assoc_items(cx: &Context<'_>, out: &mut Buffer, it: &clean::Item) {
             let used_links_bor = &mut used_links;
             let mut assoc_consts = v
                 .iter()
+                .filter(|i| i.inner_impl().trait_.is_none())
                 .flat_map(|i| get_associated_constants(i.inner_impl(), used_links_bor))
                 .collect::<Vec<_>>();
             if !assoc_consts.is_empty() {
