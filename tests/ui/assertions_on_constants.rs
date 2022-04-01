@@ -1,4 +1,4 @@
-#![allow(non_fmt_panics)]
+#![allow(non_fmt_panics, clippy::needless_bool)]
 
 macro_rules! assert_const {
     ($len:expr) => {
@@ -28,6 +28,12 @@ fn main() {
     assert_const!(3);
     assert_const!(-1);
 
-    // Don't lint on this:
+    // Don't lint if based on `cfg!(..)`:
     assert!(cfg!(feature = "hey") || cfg!(not(feature = "asdf")));
+
+    let flag: bool = cfg!(not(feature = "asdf"));
+    assert!(flag);
+
+    const CFG_FLAG: &bool = &cfg!(feature = "hey");
+    assert!(!CFG_FLAG);
 }
