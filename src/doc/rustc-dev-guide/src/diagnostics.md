@@ -594,6 +594,20 @@ declare_lint! {
 This makes the `ANONYMOUS_PARAMETERS` lint allow-by-default in the 2015 edition
 but warn-by-default in the 2018 edition.
 
+### Feature-gated lints
+
+Lints belonging to a feature should only be usable if the feature is enabled in the
+crate. To support this, lint declarations can contain a feature gate like so:
+
+```rust,ignore
+declare_lint! {
+    pub SOME_LINT_NAME,
+    Warn,
+    "a new and useful, but feature gated lint",
+    @feature_gate = sym::feature_name;
+}
+```
+
 ### Future-incompatible lints
 
 The use of the term `future-incompatible` within the compiler has a slightly
