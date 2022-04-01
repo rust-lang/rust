@@ -531,7 +531,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
         // We cannot overflow i64 as a type's size must be <= isize::MAX.
         let pointee_size = i64::try_from(self.layout_of(pointee_ty)?.size.bytes()).unwrap();
-        // The computed offset, in bytes, cannot overflow an isize.
+        // The computed offset, in bytes, must not overflow an isize.
+        // `checked_mul` enforces a too small bound, but no actual allocation can be big enough for
+        // the difference to be noticeable.
         let offset_bytes =
             offset_count.checked_mul(pointee_size).ok_or(err_ub!(PointerArithOverflow))?;
         // The offset being in bounds cannot rely on "wrapping around" the address space.
@@ -563,6 +565,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
         let layout = self.layout_of(src.layout.ty.builtin_deref(true).unwrap().ty)?;
         let (size, align) = (layout.size, layout.align.abi);
+        // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
+        // but no actual allocation can be big enough for the difference to be noticeable.
         let size = size.checked_mul(count, self).ok_or_else(|| {
             err_ub_format!(
                 "overflow computing total size of `{}`",
@@ -588,6 +592,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let byte = self.read_scalar(&byte)?.to_u8()?;
         let count = self.read_scalar(&count)?.to_machine_usize(self)?;
 
+        // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
+        // but no actual allocation can be big enough for the difference to be noticeable.
         let len = layout
             .size
             .checked_mul(count, self)

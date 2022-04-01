@@ -110,16 +110,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_SIZE).unwrap())?
             .check_init()?;
         let size = size.to_machine_usize(self)?;
+        let size = Size::from_bytes(size);
         let align = vtable
             .read_ptr_sized(pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES_ALIGN).unwrap())?
             .check_init()?;
         let align = align.to_machine_usize(self)?;
         let align = Align::from_bytes(align).map_err(|e| err_ub!(InvalidVtableAlignment(e)))?;
 
-        if size >= self.tcx.data_layout.obj_size_bound() {
+        if size > self.max_size_of_val() {
             throw_ub!(InvalidVtableSize);
         }
-        Ok((Size::from_bytes(size), align))
+        Ok((size, align))
     }
 
     pub fn read_new_vtable_after_trait_upcasting_from_vtable(
