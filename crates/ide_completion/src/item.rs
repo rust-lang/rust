@@ -3,17 +3,10 @@
 use std::fmt;
 
 use hir::{Documentation, Mutability};
-use ide_db::{
-    helpers::mod_path_to_ast,
-    imports::{
-        import_assets::LocatedImport,
-        insert_use::{self, ImportScope, InsertUseConfig},
-    },
-    SnippetCap, SymbolKind,
-};
+use ide_db::{imports::import_assets::LocatedImport, SnippetCap, SymbolKind};
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
-use syntax::{algo, SmolStr, TextRange};
+use syntax::{SmolStr, TextRange};
 use text_edit::TextEdit;
 
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
@@ -73,7 +66,7 @@ pub struct CompletionItem {
     ref_match: Option<Mutability>,
 
     /// The import data to add to completion's edits.
-    import_to_add: SmallVec<[ImportEdit; 1]>,
+    import_to_add: SmallVec<[LocatedImport; 1]>,
 }
 
 // We use custom debug for CompletionItem to make snapshot tests more readable.
@@ -187,7 +180,6 @@ pub enum CompletionRelevancePostfixMatch {
 }
 
 impl CompletionRelevance {
-    const BASE_LINE: u32 = 3;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -197,34 +189,41 @@ impl CompletionRelevance {
     ///
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
-    pub fn score(&self) -> u32 {
-        let mut score = Self::BASE_LINE;
+    pub fn score(self) -> u32 {
+        let mut score = 0;
+        let CompletionRelevance {
+            exact_name_match,
+            type_match,
+            is_local,
+            is_op_method,
+            is_private_editable,
+            postfix_match,
+        } = self;
 
-        // score decreases
-        if self.is_op_method {
-            score -= 1;
-        }
-        if self.is_private_editable {
-            score -= 1;
-        }
-        if self.postfix_match.is_some() {
-            score -= 3;
-        }
-
-        // score increases
-        if self.exact_name_match {
+        // lower rank private things
+        if !is_private_editable {
             score += 1;
         }
-        score += match self.type_match {
-            Some(CompletionRelevanceTypeMatch::Exact) => 4,
+        // lower rank trait op methods
+        if !is_op_method {
+            score += 10;
+        }
+        if exact_name_match {
+            score += 10;
+        }
+        score += match postfix_match {
+            Some(CompletionRelevancePostfixMatch::Exact) => 100,
+            Some(CompletionRelevancePostfixMatch::NonExact) => 0,
+            None => 3,
+        };
+        score += match type_match {
+            Some(CompletionRelevanceTypeMatch::Exact) => 8,
             Some(CompletionRelevanceTypeMatch::CouldUnify) => 3,
             None => 0,
         };
-        if self.is_local {
+        // slightly prefer locals
+        if is_local {
             score += 1;
-        }
-        if self.postfix_match == Some(CompletionRelevancePostfixMatch::Exact) {
-            score += 100;
         }
 
         score
@@ -234,7 +233,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > Self::BASE_LINE
+        self.score() > 0
     }
 }
 
@@ -374,31 +373,8 @@ impl CompletionItem {
         self.ref_match.map(|mutability| (mutability, relevance))
     }
 
-    pub fn imports_to_add(&self) -> &[ImportEdit] {
+    pub fn imports_to_add(&self) -> &[LocatedImport] {
         &self.import_to_add
-    }
-}
-
-/// An extra import to add after the completion is applied.
-#[derive(Debug, Clone)]
-pub struct ImportEdit {
-    pub import: LocatedImport,
-    pub scope: ImportScope,
-}
-
-impl ImportEdit {
-    /// Attempts to insert the import to the given scope, producing a text edit.
-    /// May return no edit in edge cases, such as scope already containing the import.
-    pub fn to_text_edit(&self, cfg: InsertUseConfig) -> Option<TextEdit> {
-        let _p = profile::span("ImportEdit::to_text_edit");
-
-        let new_ast = self.scope.clone_for_update();
-        insert_use::insert_use(&new_ast, mod_path_to_ast(&self.import.import_path), &cfg);
-        let mut import_insert = TextEdit::builder();
-        algo::diff(self.scope.as_syntax_node(), new_ast.as_syntax_node())
-            .into_text_edit(&mut import_insert);
-
-        Some(import_insert.finish())
     }
 }
 
@@ -407,7 +383,7 @@ impl ImportEdit {
 #[derive(Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
-    imports_to_add: SmallVec<[ImportEdit; 1]>,
+    imports_to_add: SmallVec<[LocatedImport; 1]>,
     trait_name: Option<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
@@ -433,7 +409,7 @@ impl Builder {
 
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
-            if let Some(original_path) = import_edit.import.original_path.as_ref() {
+            if let Some(original_path) = import_edit.original_path.as_ref() {
                 lookup = lookup.or_else(|| Some(label.clone()));
                 label = SmolStr::from(format!("{} (use {})", label, original_path));
             }
@@ -527,7 +503,7 @@ impl Builder {
         self.trigger_call_info = Some(true);
         self
     }
-    pub(crate) fn add_import(&mut self, import_to_add: ImportEdit) -> &mut Builder {
+    pub(crate) fn add_import(&mut self, import_to_add: LocatedImport) -> &mut Builder {
         self.imports_to_add.push(import_to_add);
         self
     }
@@ -584,55 +560,34 @@ mod tests {
 
     #[test]
     fn relevance_score() {
+        use CompletionRelevance as Cr;
+        let default = Cr::default();
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
-            vec![CompletionRelevance {
-                postfix_match: Some(CompletionRelevancePostfixMatch::NonExact),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                is_op_method: true,
-                is_private_editable: true,
-                ..CompletionRelevance::default()
-            }],
-            vec![
-                CompletionRelevance { is_private_editable: true, ..CompletionRelevance::default() },
-                CompletionRelevance { is_op_method: true, ..CompletionRelevance::default() },
-            ],
-            vec![CompletionRelevance::default()],
-            vec![
-                CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },
-                CompletionRelevance { is_local: true, ..CompletionRelevance::default() },
-            ],
-            vec![CompletionRelevance {
-                exact_name_match: true,
-                is_local: true,
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                type_match: Some(CompletionRelevanceTypeMatch::CouldUnify),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                type_match: Some(CompletionRelevanceTypeMatch::Exact),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
+            vec![],
+            vec![Cr { is_op_method: true, is_private_editable: true, ..default }],
+            vec![Cr { is_op_method: true, ..default }],
+            vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::NonExact), ..default }],
+            vec![Cr { is_private_editable: true, ..default }],
+            vec![default],
+            vec![Cr { is_local: true, ..default }],
+            vec![Cr { type_match: Some(CompletionRelevanceTypeMatch::CouldUnify), ..default }],
+            vec![Cr { type_match: Some(CompletionRelevanceTypeMatch::Exact), ..default }],
+            vec![Cr { exact_name_match: true, ..default }],
+            vec![Cr { exact_name_match: true, is_local: true, ..default }],
+            vec![Cr {
                 exact_name_match: true,
                 type_match: Some(CompletionRelevanceTypeMatch::Exact),
-                ..CompletionRelevance::default()
+                ..default
             }],
-            vec![CompletionRelevance {
+            vec![Cr {
                 exact_name_match: true,
                 type_match: Some(CompletionRelevanceTypeMatch::Exact),
                 is_local: true,
-                ..CompletionRelevance::default()
+                ..default
             }],
-            vec![CompletionRelevance {
-                postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
-                ..CompletionRelevance::default()
-            }],
+            vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::Exact), ..default }],
         ];
 
         check_relevance_score_ordered(expected_relevance_order);

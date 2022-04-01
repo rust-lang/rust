@@ -102,11 +102,11 @@ use std::ops::Deref;
 // }
 // ----
 
-use ide_db::imports::{import_assets::LocatedImport, insert_use::ImportScope};
+use ide_db::imports::import_assets::LocatedImport;
 use itertools::Itertools;
 use syntax::{ast, AstNode, GreenNode, SyntaxNode};
 
-use crate::{context::CompletionContext, ImportEdit};
+use crate::context::CompletionContext;
 
 /// A snippet scope describing where a snippet may apply to.
 /// These may differ slightly in meaning depending on the snippet trigger.
@@ -156,12 +156,8 @@ impl Snippet {
     }
 
     /// Returns [`None`] if the required items do not resolve.
-    pub(crate) fn imports(
-        &self,
-        ctx: &CompletionContext,
-        import_scope: &ImportScope,
-    ) -> Option<Vec<ImportEdit>> {
-        import_edits(ctx, import_scope, &self.requires)
+    pub(crate) fn imports(&self, ctx: &CompletionContext) -> Option<Vec<LocatedImport>> {
+        import_edits(ctx, &self.requires)
     }
 
     pub fn snippet(&self) -> String {
@@ -173,11 +169,7 @@ impl Snippet {
     }
 }
 
-fn import_edits(
-    ctx: &CompletionContext,
-    import_scope: &ImportScope,
-    requires: &[GreenNode],
-) -> Option<Vec<ImportEdit>> {
+fn import_edits(ctx: &CompletionContext, requires: &[GreenNode]) -> Option<Vec<LocatedImport>> {
     let resolve = |import: &GreenNode| {
         let path = ast::Path::cast(SyntaxNode::new_root(import.clone()))?;
         let item = match ctx.scope.speculative_resolve(&path)? {
@@ -186,10 +178,7 @@ fn import_edits(
         };
         let path =
             ctx.module.find_use_path_prefixed(ctx.db, item, ctx.config.insert_use.prefix_kind)?;
-        Some((path.len() > 1).then(|| ImportEdit {
-            import: LocatedImport::new(path.clone(), item, item, None),
-            scope: import_scope.clone(),
-        }))
+        Some((path.len() > 1).then(|| LocatedImport::new(path.clone(), item, item, None)))
     };
     let mut res = Vec::with_capacity(requires.len());
     for import in requires {
