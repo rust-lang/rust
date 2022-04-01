@@ -1,4 +1,4 @@
-use crate::mbe::macro_parser;
+use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
 use rustc_ast::token::{self, Token};
@@ -211,14 +211,15 @@ fn parse_tree(
                     let (separator, kleene) =
                         parse_sep_and_kleene_op(&mut trees, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
-                    let name_captures = macro_parser::count_metavar_decls(&sequence);
+                    let num_captures =
+                        if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
                     TokenTree::Sequence(
                         delim_span,
                         Lrc::new(SequenceRepetition {
                             tts: sequence,
                             separator,
                             kleene,
-                            num_captures: name_captures,
+                            num_captures,
                         }),
                     )
                 }
