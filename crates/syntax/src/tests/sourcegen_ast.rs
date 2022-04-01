@@ -11,7 +11,7 @@ use std::{
 use itertools::Itertools;
 use proc_macro2::{Punct, Spacing};
 use quote::{format_ident, quote};
-use ungrammar::{rust_grammar, Grammar, Rule};
+use ungrammar::{Grammar, Rule};
 
 use crate::tests::ast_src::{
     AstEnumSrc, AstNodeSrc, AstSrc, Cardinality, Field, KindsSrc, KINDS_SRC,
@@ -24,7 +24,8 @@ fn sourcegen_ast() {
         sourcegen::project_root().join("crates/parser/src/syntax_kind/generated.rs");
     sourcegen::ensure_file_contents(syntax_kinds_file.as_path(), &syntax_kinds);
 
-    let grammar = rust_grammar();
+    let grammar =
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/rust.ungram")).parse().unwrap();
     let ast = lower(&grammar);
 
     let ast_tokens = generate_tokens(&ast);
