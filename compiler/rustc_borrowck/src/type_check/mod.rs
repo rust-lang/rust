@@ -936,7 +936,7 @@ crate struct MirTypeckRegionConstraints<'tcx> {
 
     crate outlives_constraints: OutlivesConstraintSet<'tcx>,
 
-    crate member_constraints: MemberConstraintSet<'tcx, RegionVid>,
+    crate member_constraints: MemberConstraintSet<RegionVid>,
 
     crate closure_bounds_mapping:
         FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,

@@ -26,7 +26,6 @@ use rustc_mir_dataflow::ResultsCursor;
 use crate::{
     borrow_set::BorrowSet,
     constraint_generation,
-    diagnostics::RegionErrors,
     facts::{AllFacts, AllFactsExt, RustcFacts},
     invalidation,
     location::LocationTable,
@@ -47,7 +46,6 @@ crate struct NllOutput<'tcx> {
     pub polonius_input: Option<Box<AllFacts>>,
     pub polonius_output: Option<Rc<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
-    pub nll_errors: RegionErrors<'tcx>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -313,7 +311,6 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
         polonius_input: all_facts.map(Box::new),
         polonius_output,
         opt_closure_req: closure_region_requirements,
-        nll_errors,
     }
 }
 

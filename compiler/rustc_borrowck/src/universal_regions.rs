@@ -141,10 +141,6 @@ impl<'tcx> DefiningTy<'tcx> {
         }
     }
 
-    pub fn is_fn_def(&self) -> bool {
-        matches!(*self, DefiningTy::FnDef(..))
-    }
-
     pub fn is_const(&self) -> bool {
         matches!(*self, DefiningTy::Const(..) | DefiningTy::InlineConst(..))
     }

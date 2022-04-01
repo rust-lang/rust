@@ -32,7 +32,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     ) -> Fallible<()> {
         TypeRelating::new(
             self.infcx,
-            NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate(a, b)),
+            NllTypeRelatingDelegate::new(self, locations, category, UniverseInfo::relate()),
             v,
         )
         .relate(a, b)?;

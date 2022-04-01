@@ -1,14 +1,14 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc_middle::infer::MemberConstraint;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self};
 use rustc_span::Span;
 use std::hash::Hash;
 use std::ops::Index;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
-crate struct MemberConstraintSet<'tcx, R>
+crate struct MemberConstraintSet<R>
 where
     R: Copy + Eq,
 {
@@ -19,7 +19,7 @@ where
     /// Stores the data about each `R0 member of [R1..Rn]` constraint.
     /// These are organized into a linked list, so each constraint
     /// contains the index of the next constraint with the same `R0`.
-    constraints: IndexVec<NllMemberConstraintIndex, NllMemberConstraint<'tcx>>,
+    constraints: IndexVec<NllMemberConstraintIndex, NllMemberConstraint>,
 
     /// Stores the `R1..Rn` regions for *all* sets. For any given
     /// constraint, we keep two indices so that we can pull out a
@@ -28,14 +28,11 @@ where
 }
 
 /// Represents a `R0 member of [R1..Rn]` constraint
-crate struct NllMemberConstraint<'tcx> {
+crate struct NllMemberConstraint {
     next_constraint: Option<NllMemberConstraintIndex>,
 
     /// The span where the hidden type was instantiated.
     crate definition_span: Span,
-
-    /// The hidden type in which `R0` appears. (Used in error reporting.)
-    crate hidden_ty: Ty<'tcx>,
 
     /// The region `R0`.
     crate member_region_vid: ty::RegionVid,
@@ -53,7 +50,7 @@ rustc_index::newtype_index! {
     }
 }
 
-impl Default for MemberConstraintSet<'_, ty::RegionVid> {
+impl Default for MemberConstraintSet<ty::RegionVid> {
     fn default() -> Self {
         Self {
             first_constraints: Default::default(),
@@ -63,7 +60,7 @@ impl Default for MemberConstraintSet<'_, ty::RegionVid> {
     }
 }
 
-impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
+impl MemberConstraintSet<ty::RegionVid> {
     /// Pushes a member constraint into the set.
     ///
     /// The input member constraint `m_c` is in the form produced by
@@ -73,7 +70,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     /// within into `RegionVid` format -- it typically consults the
     /// `UniversalRegions` data structure that is known to the caller
     /// (but which this code is unaware of).
-    crate fn push_constraint(
+    crate fn push_constraint<'tcx>(
         &mut self,
         m_c: &MemberConstraint<'tcx>,
         mut to_region_vid: impl FnMut(ty::Region<'tcx>) -> ty::RegionVid,
@@ -88,7 +85,6 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
             next_constraint,
             member_region_vid,
             definition_span: m_c.definition_span,
-            hidden_ty: m_c.hidden_ty,
             start_index,
             end_index,
         });
@@ -97,7 +93,7 @@ impl<'tcx> MemberConstraintSet<'tcx, ty::RegionVid> {
     }
 }
 
-impl<'tcx, R1> MemberConstraintSet<'tcx, R1>
+impl<R1> MemberConstraintSet<R1>
 where
     R1: Copy + Hash + Eq,
 {
@@ -106,10 +102,7 @@ where
     /// the original `RegionVid` to an scc index. In some cases, we
     /// may have multiple `R1` values mapping to the same `R2` key -- that
     /// is ok, the two sets will be merged.
-    crate fn into_mapped<R2>(
-        self,
-        mut map_fn: impl FnMut(R1) -> R2,
-    ) -> MemberConstraintSet<'tcx, R2>
+    crate fn into_mapped<R2>(self, mut map_fn: impl FnMut(R1) -> R2) -> MemberConstraintSet<R2>
     where
         R2: Copy + Hash + Eq,
     {
@@ -140,7 +133,7 @@ where
     }
 }
 
-impl<R> MemberConstraintSet<'_, R>
+impl<R> MemberConstraintSet<R>
 where
     R: Copy + Hash + Eq,
 {
@@ -178,13 +171,13 @@ where
     }
 }
 
-impl<'tcx, R> Index<NllMemberConstraintIndex> for MemberConstraintSet<'tcx, R>
+impl<R> Index<NllMemberConstraintIndex> for MemberConstraintSet<R>
 where
     R: Copy + Eq,
 {
-    type Output = NllMemberConstraint<'tcx>;
+    type Output = NllMemberConstraint;
 
-    fn index(&self, i: NllMemberConstraintIndex) -> &NllMemberConstraint<'tcx> {
+    fn index(&self, i: NllMemberConstraintIndex) -> &NllMemberConstraint {
         &self.constraints[i]
     }
 }
@@ -206,7 +199,7 @@ where
 /// target_list: A -> B -> C -> D -> E -> F -> (None)
 /// ```
 fn append_list(
-    constraints: &mut IndexVec<NllMemberConstraintIndex, NllMemberConstraint<'_>>,
+    constraints: &mut IndexVec<NllMemberConstraintIndex, NllMemberConstraint>,
     target_list: NllMemberConstraintIndex,
     source_list: NllMemberConstraintIndex,
 ) {

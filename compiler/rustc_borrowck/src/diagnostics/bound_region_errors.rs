@@ -9,7 +9,7 @@ use rustc_infer::traits::{Normalized, ObligationCause, TraitEngine, TraitEngineE
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::RegionVid;
 use rustc_middle::ty::UniverseIndex;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, TyCtxt, TypeFoldable};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op;
 use rustc_trait_selection::traits::{SelectionContext, TraitEngineExt as _};
@@ -28,7 +28,7 @@ crate struct UniverseInfo<'tcx>(UniverseInfoInner<'tcx>);
 #[derive(Clone)]
 enum UniverseInfoInner<'tcx> {
     /// Relating two types which have binders.
-    RelateTys { expected: Ty<'tcx>, found: Ty<'tcx> },
+    RelateTys,
     /// Created from performing a `TypeOp`.
     TypeOp(Rc<dyn TypeOpInfo<'tcx> + 'tcx>),
     /// Any other reason.
@@ -40,39 +40,8 @@ impl<'tcx> UniverseInfo<'tcx> {
         UniverseInfo(UniverseInfoInner::Other)
     }
 
-    crate fn relate(expected: Ty<'tcx>, found: Ty<'tcx>) -> UniverseInfo<'tcx> {
-        UniverseInfo(UniverseInfoInner::RelateTys { expected, found })
-    }
-
-    crate fn report_error(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'tcx>,
-        placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
-        cause: ObligationCause<'tcx>,
-    ) {
-        match self.0 {
-            UniverseInfoInner::RelateTys { expected, found } => {
-                let err = mbcx.infcx.report_mismatched_types(
-                    &cause,
-                    expected,
-                    found,
-                    TypeError::RegionsPlaceholderMismatch,
-                );
-                mbcx.buffer_error(err);
-            }
-            UniverseInfoInner::TypeOp(ref type_op_info) => {
-                type_op_info.report_error(mbcx, placeholder, error_element, cause);
-            }
-            UniverseInfoInner::Other => {
-                // FIXME: This error message isn't great, but it doesn't show
-                // up in the existing UI tests. Consider investigating this
-                // some more.
-                mbcx.buffer_error(
-                    mbcx.infcx.tcx.sess.struct_span_err(cause.span, "higher-ranked subtype error"),
-                );
-            }
-        }
+    crate fn relate() -> UniverseInfo<'tcx> {
+        UniverseInfo(UniverseInfoInner::RelateTys)
     }
 }
 

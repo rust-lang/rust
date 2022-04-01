@@ -23,21 +23,18 @@ use super::MirBorrowckCtxt;
 
 mod find_all_local_uses;
 mod find_use;
-mod outlives_suggestion;
 mod region_name;
 mod var_name;
 
 mod bound_region_errors;
 mod conflict_errors;
 mod explain_borrow;
-mod move_errors;
 mod mutability_errors;
 mod region_errors;
 
 crate use bound_region_errors::{ToUniverseInfo, UniverseInfo};
 crate use mutability_errors::AccessKind;
-crate use outlives_suggestion::OutlivesSuggestionBuilder;
-crate use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionErrors};
+crate use region_errors::{RegionErrorKind, RegionErrors};
 crate use region_name::{RegionName, RegionNameSource};
 crate use rustc_const_eval::util::CallKind;
 
@@ -694,34 +691,6 @@ pub(super) enum BorrowedContentSource<'tcx> {
 }
 
 impl<'tcx> BorrowedContentSource<'tcx> {
-    pub(super) fn describe_for_unnamed_place(&self, tcx: TyCtxt<'_>) -> String {
-        match *self {
-            BorrowedContentSource::DerefRawPointer => "a raw pointer".to_string(),
-            BorrowedContentSource::DerefSharedRef => "a shared reference".to_string(),
-            BorrowedContentSource::DerefMutableRef => "a mutable reference".to_string(),
-            BorrowedContentSource::OverloadedDeref(ty) => ty
-                .ty_adt_def()
-                .and_then(|adt| match tcx.get_diagnostic_name(adt.did())? {
-                    name @ (sym::Rc | sym::Arc) => Some(format!("an `{}`", name)),
-                    _ => None,
-                })
-                .unwrap_or_else(|| format!("dereference of `{}`", ty)),
-            BorrowedContentSource::OverloadedIndex(ty) => format!("index of `{}`", ty),
-        }
-    }
-
-    pub(super) fn describe_for_named_place(&self) -> Option<&'static str> {
-        match *self {
-            BorrowedContentSource::DerefRawPointer => Some("raw pointer"),
-            BorrowedContentSource::DerefSharedRef => Some("shared reference"),
-            BorrowedContentSource::DerefMutableRef => Some("mutable reference"),
-            // Overloaded deref and index operators should be evaluated into a
-            // temporary. So we don't need a description here.
-            BorrowedContentSource::OverloadedDeref(_)
-            | BorrowedContentSource::OverloadedIndex(_) => None,
-        }
-    }
-
     pub(super) fn describe_for_immutable_place(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             BorrowedContentSource::DerefRawPointer => "a `*const` pointer".to_string(),

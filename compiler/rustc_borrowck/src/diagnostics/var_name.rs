@@ -7,32 +7,6 @@ use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
-    crate fn get_var_name_and_span_for_region(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
-        local_names: &IndexVec<Local, Option<Symbol>>,
-        upvars: &[Upvar<'tcx>],
-        fr: RegionVid,
-    ) -> Option<(Option<Symbol>, Span)> {
-        debug!("get_var_name_and_span_for_region(fr={:?})", fr);
-        assert!(self.universal_regions().is_universal_region(fr));
-
-        debug!("get_var_name_and_span_for_region: attempting upvar");
-        self.get_upvar_index_for_region(tcx, fr)
-            .map(|index| {
-                // FIXME(project-rfc-2229#8): Use place span for diagnostics
-                let (name, span) = self.get_upvar_name_and_span_for_region(tcx, upvars, index);
-                (Some(name), span)
-            })
-            .or_else(|| {
-                debug!("get_var_name_and_span_for_region: attempting argument");
-                self.get_argument_index_for_region(tcx, fr).map(|index| {
-                    self.get_argument_name_and_span_for_region(body, local_names, index)
-                })
-            })
-    }
-
     /// Search the upvars (if any) to find one that references fr. Return its index.
     crate fn get_upvar_index_for_region(&self, tcx: TyCtxt<'tcx>, fr: RegionVid) -> Option<usize> {
         let upvar_index =

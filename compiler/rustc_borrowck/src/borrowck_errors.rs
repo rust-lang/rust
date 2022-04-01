@@ -1,5 +1,5 @@
 use rustc_errors::{struct_span_err, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{MultiSpan, Span};
 
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
@@ -277,56 +277,6 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
-    }
-
-    crate fn cannot_move_out_of(
-        &self,
-        move_from_span: Span,
-        move_from_desc: &str,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc,)
-    }
-
-    /// Signal an error due to an attempt to move out of the interior
-    /// of an array or slice. `is_index` is None when error origin
-    /// didn't capture whether there was an indexing operation or not.
-    crate fn cannot_move_out_of_interior_noncopy(
-        &self,
-        move_from_span: Span,
-        ty: Ty<'_>,
-        is_index: Option<bool>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let type_name = match (&ty.kind(), is_index) {
-            (&ty::Array(_, _), Some(true)) | (&ty::Array(_, _), None) => "array",
-            (&ty::Slice(_), _) => "slice",
-            _ => span_bug!(move_from_span, "this path should not cause illegal move"),
-        };
-        let mut err = struct_span_err!(
-            self,
-            move_from_span,
-            E0508,
-            "cannot move out of type `{}`, a non-copy {}",
-            ty,
-            type_name,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
-    }
-
-    crate fn cannot_move_out_of_interior_of_drop(
-        &self,
-        move_from_span: Span,
-        container_ty: Ty<'_>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
-        let mut err = struct_span_err!(
-            self,
-            move_from_span,
-            E0509,
-            "cannot move out of type `{}`, which implements the `Drop` trait",
-            container_ty,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
     }
 
     crate fn cannot_act_on_moved_value(

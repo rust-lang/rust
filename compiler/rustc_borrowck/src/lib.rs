@@ -36,14 +36,13 @@ use rustc_middle::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, Stat
 use rustc_middle::mir::{InlineAsmOperand, Terminator, TerminatorKind};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CapturedPlace, ParamEnv, RegionVid, TyCtxt};
-use rustc_session::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT, UNUSED_MUT};
-use rustc_span::{Span, Symbol, DUMMY_SP};
+use rustc_session::lint::builtin::UNUSED_MUT;
+use rustc_span::{Span, Symbol};
 
 use either::Either;
 use smallvec::SmallVec;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::mem;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::{
@@ -208,12 +207,12 @@ fn do_mir_borrowck<'a, 'tcx>(
     let location_table_owned = LocationTable::new(body);
     let location_table = &location_table_owned;
 
-    let (move_data, move_errors): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
+    let (move_data, _): (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>) =
         match MoveData::gather_moves(&body, tcx, param_env) {
             Ok(move_data) => (move_data, Vec::new()),
             Err((move_data, move_errors)) => (move_data, move_errors),
         };
-    let promoted_errors = promoted
+    let _ = promoted
         .iter_enumerated()
         .map(|(idx, body)| (idx, MoveData::gather_moves(&body, tcx, param_env)));
 
@@ -238,7 +237,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         polonius_input,
         polonius_output,
         opt_closure_req,
-        nll_errors,
     } = nll::compute_regions(
         infcx,
         free_regions,
@@ -297,40 +295,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         })
     );
 
-    for (idx, move_data_results) in promoted_errors {
-        let promoted_body = &promoted[idx];
-
-        if let Err((move_data, move_errors)) = move_data_results {
-            let mut promoted_mbcx = MirBorrowckCtxt {
-                infcx,
-                param_env,
-                body: promoted_body,
-                move_data: &move_data,
-                location_table, // no need to create a real one for the promoted, it is not used
-                movable_generator,
-                fn_self_span_reported: Default::default(),
-                locals_are_invalidated_at_exit,
-                access_place_error_reported: Default::default(),
-                reservation_error_reported: Default::default(),
-                reservation_warnings: Default::default(),
-                uninitialized_error_reported: Default::default(),
-                regioncx: regioncx.clone(),
-                used_mut: Default::default(),
-                used_mut_upvars: SmallVec::new(),
-                borrow_set: Rc::clone(&borrow_set),
-                dominators: Dominators::dummy(), // not used
-                upvars: Vec::new(),
-                local_names: IndexVec::from_elem(None, &promoted_body.local_decls),
-                region_names: RefCell::default(),
-                next_region_name: RefCell::new(1),
-                polonius_output: None,
-                errors,
-            };
-            promoted_mbcx.report_move_errors(move_errors);
-            errors = promoted_mbcx.errors;
-        };
-    }
-
     let dominators = body.dominators();
 
     let mut mbcx = MirBorrowckCtxt {
@@ -359,16 +323,11 @@ fn do_mir_borrowck<'a, 'tcx>(
         errors,
     };
 
-    // Compute and report region errors, if any.
-    mbcx.report_region_errors(nll_errors);
-
     let results = BorrowckResults {
         ever_inits: flow_ever_inits,
         uninits: flow_uninits,
         borrows: flow_borrows,
     };
-
-    mbcx.report_move_errors(move_errors);
 
     rustc_mir_dataflow::visit_results(
         body,
@@ -376,34 +335,6 @@ fn do_mir_borrowck<'a, 'tcx>(
         &results,
         &mut mbcx,
     );
-
-    // Convert any reservation warnings into lints.
-    let reservation_warnings = mem::take(&mut mbcx.reservation_warnings);
-    for (_, (place, span, location, bk, borrow)) in reservation_warnings {
-        let initial_diag = mbcx.report_conflicting_borrow(location, (place, span), bk, &borrow);
-
-        let scope = mbcx.body.source_info(location).scope;
-        let lint_root = match &mbcx.body.source_scopes[scope].local_data {
-            ClearCrossCrate::Set(data) => data.lint_root,
-            _ => def_hir_id,
-        };
-
-        // Span and message don't matter; we overwrite them below anyway
-        mbcx.infcx.tcx.struct_span_lint_hir(
-            MUTABLE_BORROW_RESERVATION_CONFLICT,
-            lint_root,
-            DUMMY_SP,
-            |lint| {
-                let mut diag = lint.build("");
-
-                diag.message = initial_diag.styled_message().clone();
-                diag.span = initial_diag.span.clone();
-
-                mbcx.buffer_non_error_diag(diag);
-            },
-        );
-        initial_diag.cancel();
-    }
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
@@ -461,7 +392,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         })
     }
 
-    let tainted_by_errors = mbcx.emit_errors();
+    let tainted_by_errors = None;
 
     let result = BorrowCheckResult {
         concrete_opaque_types: opaque_type_values,
@@ -2333,10 +2264,6 @@ mod error {
             self.errors.buffer_error(t);
         }
 
-        pub fn buffer_non_error_diag(&mut self, t: DiagnosticBuilder<'_, ()>) {
-            self.errors.buffer_non_error_diag(t);
-        }
-
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
@@ -2351,24 +2278,6 @@ mod error {
             } else {
                 true
             }
-        }
-
-        pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
-            // Buffer any move errors that we collected and de-duplicated.
-            for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
-                // We have already set tainted for this error, so just buffer it.
-                diag.buffer(&mut self.errors.buffered);
-            }
-
-            if !self.errors.buffered.is_empty() {
-                self.errors.buffered.sort_by_key(|diag| diag.sort_span);
-
-                for mut diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.diagnostic().emit_diagnostic(&mut diag);
-                }
-            }
-
-            self.errors.tainted_by_errors
         }
 
         pub fn has_buffered_errors(&self) -> bool {

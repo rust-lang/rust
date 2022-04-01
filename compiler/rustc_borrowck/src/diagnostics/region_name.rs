@@ -79,25 +79,6 @@ impl RegionName {
         }
     }
 
-    crate fn span(&self) -> Option<Span> {
-        match self.source {
-            RegionNameSource::Static => None,
-            RegionNameSource::NamedEarlyBoundRegion(span)
-            | RegionNameSource::NamedFreeRegion(span)
-            | RegionNameSource::SynthesizedFreeEnvRegion(span, _)
-            | RegionNameSource::AnonRegionFromUpvar(span, _)
-            | RegionNameSource::AnonRegionFromYieldTy(span, _)
-            | RegionNameSource::AnonRegionFromAsyncFn(span) => Some(span),
-            RegionNameSource::AnonRegionFromArgument(ref highlight)
-            | RegionNameSource::AnonRegionFromOutput(ref highlight, _) => match *highlight {
-                RegionNameHighlight::MatchedHirTy(span)
-                | RegionNameHighlight::MatchedAdtAndSegment(span)
-                | RegionNameHighlight::CannotMatchHirTy(span, _)
-                | RegionNameHighlight::Occluded(span, _) => Some(span),
-            },
-        }
-    }
-
     crate fn highlight_region_name(&self, diag: &mut Diagnostic) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
