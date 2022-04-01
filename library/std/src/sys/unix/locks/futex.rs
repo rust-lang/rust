@@ -38,6 +38,7 @@ impl Mutex {
         }
     }
 
+    #[cold]
     fn lock_contended(&self) {
         // Spin first to speed things up if the lock is released quickly.
         let mut state = self.spin();
@@ -91,8 +92,13 @@ impl Mutex {
             // will mark the mutex as contended (2) (see lock_contended above),
             // which makes sure that any other waiting threads will also be
             // woken up eventually.
-            futex_wake(&self.futex);
+            self.wake();
         }
+    }
+
+    #[cold]
+    fn wake(&self) {
+        futex_wake(&self.futex);
     }
 }
 
@@ -118,24 +124,20 @@ impl Condvar {
     // All the memory orderings here are `Relaxed`,
     // because synchronization is done by unlocking and locking the mutex.
 
-    #[inline]
     pub unsafe fn notify_one(&self) {
         self.futex.fetch_add(1, Relaxed);
         futex_wake(&self.futex);
     }
 
-    #[inline]
     pub unsafe fn notify_all(&self) {
         self.futex.fetch_add(1, Relaxed);
         futex_wake_all(&self.futex);
     }
 
-    #[inline]
     pub unsafe fn wait(&self, mutex: &Mutex) {
         self.wait_optional_timeout(mutex, None);
     }
 
-    #[inline]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, timeout: Duration) -> bool {
         self.wait_optional_timeout(mutex, Some(timeout))
     }
