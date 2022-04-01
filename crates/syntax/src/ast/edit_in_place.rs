@@ -302,16 +302,33 @@ impl ast::UseTree {
 
     /// Splits off the given prefix, making it the path component of the use tree,
     /// appending the rest of the path to all UseTreeList items.
+    ///
+    /// # Examples
+    ///
+    /// `prefix$0::suffix` -> `prefix::{suffix}`
+    ///
+    /// `prefix$0` -> `prefix::{self}`
+    ///
+    /// `prefix$0::*` -> `prefix::{*}`
     pub fn split_prefix(&self, prefix: &ast::Path) {
         debug_assert_eq!(self.path(), Some(prefix.top_path()));
         let path = self.path().unwrap();
         if &path == prefix && self.use_tree_list().is_none() {
-            let self_suffix = make::path_unqualified(make::path_segment_self()).clone_for_update();
-            ted::replace(path.syntax(), self_suffix.syntax());
+            if self.star_token().is_some() {
+                // path$0::* -> *
+                self.coloncolon_token().map(ted::remove);
+                ted::remove(prefix.syntax());
+            } else {
+                // path$0 -> self
+                let self_suffix =
+                    make::path_unqualified(make::path_segment_self()).clone_for_update();
+                ted::replace(path.syntax(), self_suffix.syntax());
+            }
         } else if split_path_prefix(prefix).is_none() {
             return;
         }
-
+        // At this point, prefix path is detached; _self_ use tree has suffix path.
+        // Next, transoform 'suffix' use tree into 'prefix::{suffix}'
         let subtree = self.clone_subtree().clone_for_update();
         ted::remove_all_iter(self.syntax().children_with_tokens());
         ted::insert(Position::first_child_of(self.syntax()), prefix.syntax());

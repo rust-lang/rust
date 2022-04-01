@@ -656,7 +656,7 @@ fn merge_mod_into_glob() {
     check_with_config(
         "token::TokenKind",
         r"use token::TokenKind::*;",
-        r"use token::TokenKind::{self, *};",
+        r"use token::TokenKind::{*, self};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -670,11 +670,10 @@ fn merge_mod_into_glob() {
 
 #[test]
 fn merge_self_glob() {
-    cov_mark::check!(merge_self_glob);
     check_with_config(
         "self",
         r"use self::*;",
-        r"use self::{self, *};",
+        r"use self::{*, self};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -693,7 +692,7 @@ fn merge_glob() {
         r"
 use syntax::{SyntaxKind::*};",
         r"
-use syntax::{SyntaxKind::{self, *}};",
+use syntax::{SyntaxKind::{*, self}};",
     )
 }
 
@@ -702,7 +701,7 @@ fn merge_glob_nested() {
     check_crate(
         "foo::bar::quux::Fez",
         r"use foo::bar::{Baz, quux::*};",
-        r"use foo::bar::{Baz, quux::{self::*, Fez}};",
+        r"use foo::bar::{Baz, quux::{*, Fez}};",
     )
 }
 
