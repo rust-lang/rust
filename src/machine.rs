@@ -205,7 +205,7 @@ impl MemoryExtra {
         MemoryExtra {
             stacked_borrows,
             data_race,
-            intptrcast: Default::default(),
+            intptrcast: RefCell::new(intptrcast::GlobalState::new(config)),
             extern_statics: FxHashMap::default(),
             rng: RefCell::new(rng),
             tracked_alloc_id: config.tracked_alloc_id,

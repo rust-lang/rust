@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-tag-raw-pointers
+// compile-flags: -Zmiri-strict-provenance -Zmiri-check-number-validity
 use std::collections::VecDeque;
 
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {

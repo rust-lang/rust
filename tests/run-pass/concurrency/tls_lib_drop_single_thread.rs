@@ -1,4 +1,3 @@
-// compile-flags: -Zmiri-tag-raw-pointers
 //! Check that destructors of the thread locals are executed on all OSes.
 
 use std::cell::RefCell;

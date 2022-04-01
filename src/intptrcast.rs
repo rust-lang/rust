@@ -15,23 +15,27 @@ pub type MemoryExtra = RefCell<GlobalState>;
 pub struct GlobalState {
     /// This is used as a map between the address of each allocation and its `AllocId`.
     /// It is always sorted
-    pub int_to_ptr_map: Vec<(u64, AllocId)>,
+    int_to_ptr_map: Vec<(u64, AllocId)>,
     /// The base address for each allocation.  We cannot put that into
     /// `AllocExtra` because function pointers also have a base address, and
     /// they do not have an `AllocExtra`.
     /// This is the inverse of `int_to_ptr_map`.
-    pub base_addr: FxHashMap<AllocId, u64>,
+    base_addr: FxHashMap<AllocId, u64>,
     /// This is used as a memory address when a new pointer is casted to an integer. It
     /// is always larger than any address that was previously made part of a block.
-    pub next_base_addr: u64,
+    next_base_addr: u64,
+    /// Whether to enforce "strict provenance" rules. Enabling this means int2ptr casts return
+    /// pointers with an invalid provenance, i.e., not valid for any memory access.
+    strict_provenance: bool,
 }
 
-impl Default for GlobalState {
-    fn default() -> Self {
+impl GlobalState {
+    pub fn new(config: &MiriConfig) -> Self {
         GlobalState {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
             next_base_addr: STACK_ADDR,
+            strict_provenance: config.strict_provenance,
         }
     }
 }
@@ -43,8 +47,12 @@ impl<'mir, 'tcx> GlobalState {
     ) -> Pointer<Option<Tag>> {
         trace!("Casting 0x{:x} to a pointer", addr);
         let global_state = memory.extra.intptrcast.borrow();
-        let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
 
+        if global_state.strict_provenance {
+            return Pointer::new(None, Size::from_bytes(addr));
+        }
+
+        let pos = global_state.int_to_ptr_map.binary_search_by_key(&addr, |(addr, _)| *addr);
         let alloc_id = match pos {
             Ok(pos) => Some(global_state.int_to_ptr_map[pos].1),
             Err(0) => None,
