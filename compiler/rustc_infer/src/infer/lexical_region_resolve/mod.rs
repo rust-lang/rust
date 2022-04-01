@@ -42,18 +42,7 @@ pub(crate) fn resolve<'tcx>(
             let values = resolver.infer_variable_values(&mut errors);
             (values, errors)
         }
-        RegionckMode::Erase { suppress_errors: false } => {
-            // Do real inference to get errors, then erase the results.
-            let mut values = resolver.infer_variable_values(&mut errors);
-            let re_erased = region_rels.tcx.lifetimes.re_erased;
-
-            values.values.iter_mut().for_each(|v| match *v {
-                VarValue::Value(ref mut r) => *r = re_erased,
-                VarValue::ErrorValue => {}
-            });
-            (values, errors)
-        }
-        RegionckMode::Erase { suppress_errors: true } => {
+        RegionckMode::Erase => {
             // Skip region inference entirely.
             (resolver.erased_data(region_rels.tcx), Vec::new())
         }

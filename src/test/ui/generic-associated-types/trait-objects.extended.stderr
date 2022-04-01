@@ -1,12 +1,17 @@
-error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/trait-objects.rs:18:7
+error[E0521]: borrowed data escapes outside of function
+  --> $DIR/trait-objects.rs:16:5
    |
 LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> usize {
-   |                ------------------------------------------------------ help: add explicit lifetime `'a` to the type of `x`: `&'a mut (dyn StreamingIterator<for<'a> Item = &'a i32> + 'a)`
+   |             -  - let's call the lifetime of this reference `'1`
+   |             |
+   |             `x` is a reference that is only valid in the function body
 LL |
 LL |     x.size_hint().0
-   |       ^^^^^^^^^ lifetime `'a` required
+   |     ^^^^^^^^^^^^^
+   |     |
+   |     `x` escapes the function body here
+   |     argument requires that `'1` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.
+For more information about this error, try `rustc --explain E0521`.

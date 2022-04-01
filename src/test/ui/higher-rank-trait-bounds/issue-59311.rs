@@ -6,10 +6,6 @@
 // an error, but the regression test is here to ensure
 // that it does not ICE. See discussion on #74889 for details.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 pub trait T {
     fn t<F: Fn()>(&self, _: F) {}
 }
@@ -19,9 +15,8 @@ where
     for<'a> &'a V: T + 'static,
 {
     v.t(|| {});
-    //[base]~^ ERROR: `&'a V` does not fulfill the required lifetime
-    //[nll]~^^ ERROR: higher-ranked lifetime error
-    //[nll]~| ERROR: higher-ranked lifetime error
+    //~^ ERROR: higher-ranked lifetime error
+    //~| ERROR: higher-ranked lifetime error
 }
 
 fn main() {}

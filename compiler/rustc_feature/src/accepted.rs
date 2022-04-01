@@ -221,6 +221,8 @@ declare_features! (
     (accepted, native_link_modifiers, "1.61.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
+    /// Allows using non lexical lifetimes (RFC 2094).
+    (accepted, nll, "1.63.0", Some(43234), None),
     /// Allows using `#![no_std]`.
     (accepted, no_std, "1.6.0", None, None),
     /// Allows defining identifiers beyond ASCII.

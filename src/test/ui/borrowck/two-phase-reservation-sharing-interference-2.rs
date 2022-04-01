@@ -2,31 +2,21 @@
 // accidentally allowed under migrate/nll, then linted against in migrate mode
 // but disallowed under NLL. Now, we accept it everywhere.
 
-//ignore-compare-mode-nll
 //ignore-compare-mode-polonius
-
-//revisions: base nll
-
-//[migrate2018] edition:2018
-//[nll2018] edition:2018
-
-#![cfg_attr(nll, feature(nll))]
 
 fn double_conflicts() {
     let mut v = vec![0, 1, 2];
     let shared = &v;
 
     v.extend(shared);
-    //[base]~^ ERROR cannot borrow `v` as mutable
-    //[nll]~^^ ERROR cannot borrow `v` as mutable
+    //~^ ERROR cannot borrow `v` as mutable
 }
 
 fn activation_conflict() {
     let mut v = vec![0, 1, 2];
 
     v.extend(&v);
-    //[base]~^ ERROR cannot borrow `v` as mutable
-    //[nll]~^^ ERROR cannot borrow `v` as mutable
+    //~^ ERROR cannot borrow `v` as mutable
 }
 
 fn reservation_allowed() {

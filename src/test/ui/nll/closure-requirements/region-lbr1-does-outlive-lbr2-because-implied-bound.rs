@@ -2,7 +2,7 @@
 // report an error because of the (implied) bound that `'b: 'a`.
 
 // check-pass
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 fn foo<'a, 'b>(x: &'a &'b u32) -> &'a u32 {
     &**x

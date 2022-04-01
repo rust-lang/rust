@@ -3,10 +3,6 @@
 // specific lifetime is not enough to satisfy the `for<'a> ...` constraint, which
 // should require *all* lifetimes.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 static X: &'static u32 = &42;
 
 trait Bar {

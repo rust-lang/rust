@@ -18,7 +18,6 @@
 #![feature(let_else)]
 #![feature(if_let_guard)]
 #![feature(negative_impls)]
-#![feature(nll)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![allow(rustc::potential_query_instability)]

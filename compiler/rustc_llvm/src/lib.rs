@@ -1,4 +1,3 @@
-#![feature(nll)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 
 // NOTE: This crate only exists to allow linking on mingw targets.

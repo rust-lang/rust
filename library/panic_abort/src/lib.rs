@@ -9,7 +9,6 @@
 #![panic_runtime]
 #![allow(unused_features)]
 #![feature(core_intrinsics)]
-#![feature(nll)]
 #![feature(panic_runtime)]
 #![feature(std_internals)]
 #![feature(staged_api)]

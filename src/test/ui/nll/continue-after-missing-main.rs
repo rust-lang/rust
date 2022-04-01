@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 #![allow(dead_code)]
 
 struct Tableau<'a, MP> {
@@ -30,5 +26,4 @@ fn create_and_solve_subproblems<'data_provider, 'original_data, MP>(
     tableau: Tableau<'data_provider, AdaptedMatrixProvider<'original_data, MP>>,
 ) {
     let _: AdaptedMatrixProvider<'original_data, MP> = tableau.provider().clone_with_extra_bound();
-    //[base]~^ ERROR lifetime mismatch
 } //~ ERROR `main` function not found in crate

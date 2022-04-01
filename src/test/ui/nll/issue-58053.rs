@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 fn main() {
     let i = &3;
 

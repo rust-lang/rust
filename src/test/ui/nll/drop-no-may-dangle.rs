@@ -3,8 +3,6 @@
 // because of destructor. (Note that the stderr also identifies this
 // destructor in the error message.)
 
-// compile-flags:-Zborrowck=mir
-
 #![allow(warnings)]
 #![feature(dropck_eyepatch)]
 

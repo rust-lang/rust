@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/ty-param-fn-body.rs:19:5
+  --> $DIR/ty-param-fn-body.rs:17:5
    |
 LL |     outlives(cell, t)
    |     ^^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds

@@ -1,0 +1,24 @@
+error[E0597]: `foo` does not live long enough
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:7:32
+   |
+LL |     let refcell = RefCell::new(&mut foo);
+   |                                ^^^^^^^^ borrowed value does not live long enough
+LL |
+LL |     let read = &refcell as &RefCell<dyn Read>;
+   |                -------- cast requires that `foo` is borrowed for `'static`
+...
+LL | }
+   | - `foo` dropped here while still borrowed
+
+error: lifetime may not live long enough
+  --> $DIR/issue-90600-expected-return-static-indirect.rs:9:16
+   |
+LL | fn inner(mut foo: &[u8]) {
+   |                   - let's call the lifetime of this reference `'1`
+...
+LL |     let read = &refcell as &RefCell<dyn Read>;
+   |                ^^^^^^^^ cast requires that `'1` must outlive `'static`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.

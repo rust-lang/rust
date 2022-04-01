@@ -69,7 +69,6 @@ This API is completely unstable and subject to change.
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(once_cell)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]

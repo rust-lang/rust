@@ -29,7 +29,6 @@ use rustc_middle::ty::subst::{GenericArg, GenericArgKind, InternalSubsts, Substs
 pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::{self, GenericParamDefKind, InferConst, Ty, TyCtxt};
 use rustc_middle::ty::{ConstVid, FloatVid, IntVid, TyVid};
-use rustc_session::config::BorrowckMode;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 
@@ -97,29 +96,7 @@ pub enum RegionckMode {
     #[default]
     Solve,
     /// Erase the results of region after solving.
-    Erase {
-        /// A flag that is used to suppress region errors, when we are doing
-        /// region checks that the NLL borrow checker will also do -- it might
-        /// be set to true.
-        suppress_errors: bool,
-    },
-}
-
-impl RegionckMode {
-    /// Indicates that the MIR borrowck will repeat these region
-    /// checks, so we should ignore errors if NLL is (unconditionally)
-    /// enabled.
-    pub fn for_item_body(tcx: TyCtxt<'_>) -> Self {
-        // FIXME(Centril): Once we actually remove `::Migrate` also make
-        // this always `true` and then proceed to eliminate the dead code.
-        match tcx.borrowck_mode() {
-            // If we're on Migrate mode, report AST region errors
-            BorrowckMode::Migrate => RegionckMode::Erase { suppress_errors: false },
-
-            // If we're on MIR, don't report AST region errors as they should be reported by NLL
-            BorrowckMode::Mir => RegionckMode::Erase { suppress_errors: true },
-        }
-    }
+    Erase,
 }
 
 /// This type contains all the things within `InferCtxt` that sit within a

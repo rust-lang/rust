@@ -5,10 +5,6 @@
 //
 // This test began its life as a test for issue #4325.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 struct Node<'b, T: 'b> {
     val: T,
     next: Option<&'b Node<'b, T>>
@@ -16,9 +12,9 @@ struct Node<'b, T: 'b> {
 
 impl<'b, T> Node<'b, T> {
     fn get<'a>(&'a self) -> &'b T {
-        match self.next { //[nll]~ ERROR lifetime may not live long enough
+        match self.next { //~ ERROR lifetime may not live long enough
             Some(ref next) => next.get(),
-            None => &self.val //[base]~ ERROR cannot infer
+            None => &self.val
         }
     }
 }

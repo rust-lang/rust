@@ -1,5 +1,5 @@
 error[E0309]: the parameter type `T` may not live long enough
-  --> $DIR/projection-where-clause-none.rs:16:5
+  --> $DIR/projection-where-clause-none.rs:14:5
    |
 LL |     bar::<T::Output>()
    |     ^^^^^^^^^^^^^^^^ ...so that the type `T` will meet its required lifetime bounds

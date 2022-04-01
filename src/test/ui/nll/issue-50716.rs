@@ -2,10 +2,6 @@
 // Regression test for the issue #50716: NLL ignores lifetimes bounds
 // derived from `Sized` requirements
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 trait A {
     type X: ?Sized;
 }

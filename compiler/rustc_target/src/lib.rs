@@ -13,7 +13,6 @@
 #![feature(let_else)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
 

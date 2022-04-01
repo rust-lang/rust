@@ -1,8 +1,6 @@
 // Test that NLL analysis propagates lifetimes correctly through
 // field accesses, Box accesses, etc.
 
-#![feature(nll)]
-
 fn foo(s: &mut (i32,)) -> i32 {
     let t = &mut *s; // this borrow should last for the entire function
     let x = &t.0;

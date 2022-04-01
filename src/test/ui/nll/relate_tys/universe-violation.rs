@@ -4,8 +4,6 @@
 //
 // compile-flags:-Zno-leak-check
 
-#![feature(nll)]
-
 fn make_it() -> fn(&'static u32) -> &'static u32 {
     panic!()
 }

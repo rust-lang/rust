@@ -36,7 +36,6 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(never_type)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 
 #[macro_use]

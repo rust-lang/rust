@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 // Test for diagnostic improvement issue #76547
 // edition:2018
 
@@ -22,8 +18,7 @@ impl<'a> Future for ListFut<'a> {
 
 async fn fut(bufs: &mut [&mut [u8]]) {
     ListFut(bufs).await
-    //[base]~^ ERROR lifetime mismatch
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 pub struct ListFut2<'a>(&'a mut [&'a mut [u8]]);
@@ -37,8 +32,7 @@ impl<'a> Future for ListFut2<'a> {
 
 async fn fut2(bufs: &mut [&mut [u8]]) -> i32 {
     ListFut2(bufs).await
-    //[base]~^ ERROR lifetime mismatch
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

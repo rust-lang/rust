@@ -741,7 +741,6 @@ impl Default for Options {
             incremental: None,
             debugging_opts: Default::default(),
             prints: Vec::new(),
-            borrowck_mode: BorrowckMode::Migrate,
             cg: Default::default(),
             error_format: ErrorOutputType::default(),
             externs: Externs(BTreeMap::new()),
@@ -2084,14 +2083,6 @@ fn parse_libs(matches: &getopts::Matches, error_format: ErrorOutputType) -> Vec<
         .collect()
 }
 
-fn parse_borrowck_mode(dopts: &DebuggingOptions, error_format: ErrorOutputType) -> BorrowckMode {
-    match dopts.borrowck.as_ref() {
-        "migrate" => BorrowckMode::Migrate,
-        "mir" => BorrowckMode::Mir,
-        m => early_error(error_format, &format!("unknown borrowck mode `{m}`")),
-    }
-}
-
 pub fn parse_externs(
     matches: &getopts::Matches,
     debugging_opts: &DebuggingOptions,
@@ -2429,8 +2420,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let test = matches.opt_present("test");
 
-    let borrowck_mode = parse_borrowck_mode(&debugging_opts, error_format);
-
     if !cg.remark.is_empty() && debuginfo == DebugInfo::None {
         early_warn(error_format, "-C remark requires \"-C debuginfo=n\" to show source locations");
     }
@@ -2506,7 +2495,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         incremental,
         debugging_opts,
         prints,
-        borrowck_mode,
         cg,
         error_format,
         externs,

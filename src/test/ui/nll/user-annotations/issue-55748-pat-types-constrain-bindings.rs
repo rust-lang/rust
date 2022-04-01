@@ -7,8 +7,6 @@
 // 2. the bindings (if any) nested within the pattern on the left-hand
 //    side (and here, the type-constraint is *invariant*).
 
-#![feature(nll)]
-
 #![allow(dead_code, unused_mut)]
 type PairUncoupled<'a, 'b, T> = (&'a T, &'b T);
 type PairCoupledRegions<'a, T> = (&'a T, &'a T);

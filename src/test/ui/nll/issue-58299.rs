@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct A<'a>(&'a ());
 
 trait Y {

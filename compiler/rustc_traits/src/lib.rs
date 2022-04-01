@@ -2,7 +2,6 @@
 //! the guts are broken up into modules; see the comments in those modules.
 
 #![feature(let_else)]
-#![feature(nll)]
 #![recursion_limit = "256"]
 
 #[macro_use]

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Bar: Copy` is not satisfied
-  --> $DIR/nll-fail.rs:12:38
+  --> $DIR/nll-fail.rs:11:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                      ^ the trait `Copy` is not implemented for `Bar`
@@ -12,7 +12,7 @@ LL | #[derive(Copy)]
    |
 
 error[E0277]: the trait bound `Bar: Copy` is not satisfied
-  --> $DIR/nll-fail.rs:18:38
+  --> $DIR/nll-fail.rs:17:38
    |
 LL |         let arr: [Option<Bar>; 2] = [x; 2];
    |                                      ^ the trait `Copy` is not implemented for `Bar`

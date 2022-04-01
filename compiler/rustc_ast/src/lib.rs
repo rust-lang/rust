@@ -17,7 +17,6 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
-#![feature(nll)]
 #![feature(slice_internals)]
 #![feature(stmt_expr_attributes)]
 #![recursion_limit = "256"]

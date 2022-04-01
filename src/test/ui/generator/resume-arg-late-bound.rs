@@ -1,7 +1,3 @@
-// ignore-compare-mode-nll
-// revisions: base nll
-// [nll]compile-flags: -Zborrowck=mir
-
 //! Tests that we cannot produce a generator that accepts a resume argument
 //! with any lifetime and then stores it across a `yield`.
 
@@ -18,5 +14,4 @@ fn main() {
     };
     test(gen);
     //~^ ERROR mismatched types
-    //[base]~^^ ERROR mismatched types
 }

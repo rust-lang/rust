@@ -21,7 +21,6 @@
 // Please avoid unstable features where possible to minimize the amount of changes necessary
 // to make it compile with rust-analyzer on stable.
 #![feature(rustc_allow_const_fn_unstable)]
-#![feature(nll)]
 #![feature(staged_api)]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]

@@ -3,10 +3,6 @@
 // Test that even when `T` is only used in covariant position, it
 // is treated as invariant.
 
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 trait Get<T> {
     fn get(&self) -> T;
 }
@@ -16,16 +12,14 @@ fn get_min_from_max<'min, 'max, G>()
 {
     // Previously OK, now an error as traits are invariant.
     impls_get::<G,&'min i32>()
-    //[base]~^ ERROR mismatched types
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn get_max_from_min<'min, 'max, G>()
     where 'max : 'min, G : Get<&'min i32>
 {
     impls_get::<G,&'max i32>()
-    //[base]~^ ERROR mismatched types
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn impls_get<G,T>() where G : Get<T> { }

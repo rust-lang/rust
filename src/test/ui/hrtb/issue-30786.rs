@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 // rust-lang/rust#30786: the use of `for<'b> &'b mut A: Stream<Item=T`
 // should act as assertion that item does not borrow from its stream;
 // but an earlier buggy rustc allowed `.map(|x: &_| x)` which does

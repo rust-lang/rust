@@ -2,9 +2,6 @@
 // you declare a variable of type `struct A(Box<A>, ...);` (which is impossible
 // to construct but *is* possible to declare; see also issues #4287, #44933,
 // and #52852).
-//
-// We will explicitly test NLL, and migration modes; thus we will also skip the
-// automated compare-mode=nll.
 
 // run-pass
 

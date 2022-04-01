@@ -1,5 +1,3 @@
-// compile-flags:-Zborrowck=mir
-
 // Test that we assume that universal types like `T` outlive the
 // function body.
 

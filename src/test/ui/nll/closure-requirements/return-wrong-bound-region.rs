@@ -2,7 +2,7 @@
 // the first, but actually returns the second. This should fail within
 // the closure.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

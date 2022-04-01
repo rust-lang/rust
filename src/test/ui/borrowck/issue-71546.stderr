@@ -1,20 +1,59 @@
-error[E0310]: the associated type `<&'a V as IntoIterator>::Item` may not live long enough
-  --> $DIR/issue-71546.rs:12:27
+error: higher-ranked lifetime error
+  --> $DIR/issue-71546.rs:9:27
    |
 LL |       let csv_str: String = value
    |  ___________________________^
+LL | |
+LL | |
+LL | |
 LL | |         .into_iter()
 LL | |         .map(|elem| elem.to_string())
    | |_____________________________________^
    |
-   = help: consider adding an explicit lifetime bound `<&'a V as IntoIterator>::Item: 'static`...
-   = note: ...so that the type `<&'a V as IntoIterator>::Item` will meet its required lifetime bounds...
-note: ...that is required by this bound
-  --> $DIR/issue-71546.rs:10:55
+   = note: could not prove for<'r> [closure@$DIR/issue-71546.rs:14:14: 14:37] well-formed
+
+error: higher-ranked lifetime error
+  --> $DIR/issue-71546.rs:9:27
    |
-LL |     for<'a> <&'a V as IntoIterator>::Item: ToString + 'static,
-   |                                                       ^^^^^^^
+LL |       let csv_str: String = value
+   |  ___________________________^
+LL | |
+LL | |
+LL | |
+LL | |         .into_iter()
+LL | |         .map(|elem| elem.to_string())
+   | |_____________________________________^
+   |
+   = note: could not prove for<'r, 's> Map<<&'r V as IntoIterator>::IntoIter, [closure@$DIR/issue-71546.rs:14:14: 14:37]> well-formed
 
-error: aborting due to previous error
+error: higher-ranked lifetime error
+  --> $DIR/issue-71546.rs:9:27
+   |
+LL |       let csv_str: String = value
+   |  ___________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | |         .collect::<String>();
+   | |____________________________^
+   |
+   = note: could not prove for<'r, 's> Map<<&'r V as IntoIterator>::IntoIter, [closure@$DIR/issue-71546.rs:14:14: 14:37]> well-formed
 
-For more information about this error, try `rustc --explain E0310`.
+error: higher-ranked lifetime error
+  --> $DIR/issue-71546.rs:14:14
+   |
+LL |         .map(|elem| elem.to_string())
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: could not prove for<'a> <&'a V as IntoIterator>::Item: 'static
+
+error: higher-ranked lifetime error
+  --> $DIR/issue-71546.rs:16:10
+   |
+LL |         .collect::<String>();
+   |          ^^^^^^^
+
+error: aborting due to 5 previous errors
+

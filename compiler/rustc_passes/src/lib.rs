@@ -11,7 +11,6 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
-#![feature(nll)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
 

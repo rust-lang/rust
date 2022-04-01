@@ -1,7 +1,3 @@
-// revisions: base nll
-// ignore-compare-mode-nll
-//[nll] compile-flags: -Z borrowck=mir
-
 fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 'b: 'a + 'c {
     // Note: this is legal because of the `'b:'a` declaration.
     *x = *y;
@@ -11,15 +7,13 @@ fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 
 fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Illegal now because there is no `'b:'a` declaration.
     *x = *y;
-    //[base]~^ ERROR E0623
-    *z = *y; //[base]~ ERROR E0623
+    *z = *y;
 }
 
 fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
     a(x, y, z);
-    //[base]~^ ERROR lifetime mismatch [E0623]
 }
 
 fn d() {
