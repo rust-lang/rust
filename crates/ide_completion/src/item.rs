@@ -143,15 +143,8 @@ pub struct CompletionRelevance {
     pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
     pub is_private_editable: bool,
-    /// This is set in cases like these:
-    ///
-    /// ```
-    /// (a > b).not$0
-    /// ```
-    ///
-    /// Basically, we want to guarantee that postfix snippets always takes
-    /// precedence over everything else.
-    pub exact_postfix_snippet_match: bool,
+    /// Set for postfix snippet item completions
+    pub postfix_match: Option<CompletionRelevancePostfixMatch>,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -178,8 +171,23 @@ pub enum CompletionRelevanceTypeMatch {
     Exact,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub enum CompletionRelevancePostfixMatch {
+    /// Set in cases when item is postfix, but not exact
+    NonExact,
+    /// This is set in cases like these:
+    ///
+    /// ```
+    /// (a > b).not$0
+    /// ```
+    ///
+    /// Basically, we want to guarantee that postfix snippets always takes
+    /// precedence over everything else.
+    Exact,
+}
+
 impl CompletionRelevance {
-    const BASE_LINE: u32 = 2;
+    const BASE_LINE: u32 = 3;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -199,6 +207,9 @@ impl CompletionRelevance {
         if self.is_private_editable {
             score -= 1;
         }
+        if self.postfix_match.is_some() {
+            score -= 3;
+        }
 
         // score increases
         if self.exact_name_match {
@@ -212,9 +223,10 @@ impl CompletionRelevance {
         if self.is_local {
             score += 1;
         }
-        if self.exact_postfix_snippet_match {
+        if self.postfix_match == Some(CompletionRelevancePostfixMatch::Exact) {
             score += 100;
         }
+
         score
     }
 
@@ -530,7 +542,9 @@ mod tests {
     use itertools::Itertools;
     use test_utils::assert_eq_text;
 
-    use super::{CompletionRelevance, CompletionRelevanceTypeMatch};
+    use super::{
+        CompletionRelevance, CompletionRelevancePostfixMatch, CompletionRelevanceTypeMatch,
+    };
 
     /// Check that these are CompletionRelevance are sorted in ascending order
     /// by their relevance score.
@@ -574,6 +588,10 @@ mod tests {
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
             vec![CompletionRelevance {
+                postfix_match: Some(CompletionRelevancePostfixMatch::NonExact),
+                ..CompletionRelevance::default()
+            }],
+            vec![CompletionRelevance {
                 is_op_method: true,
                 is_private_editable: true,
                 ..CompletionRelevance::default()
@@ -612,7 +630,7 @@ mod tests {
                 ..CompletionRelevance::default()
             }],
             vec![CompletionRelevance {
-                exact_postfix_snippet_match: true,
+                postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
                 ..CompletionRelevance::default()
             }],
         ];

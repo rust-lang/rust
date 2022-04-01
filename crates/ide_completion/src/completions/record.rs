@@ -4,7 +4,7 @@ use syntax::{ast::Expr, T};
 
 use crate::{
     patterns::ImmediateLocation, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionRelevance, Completions,
+    CompletionRelevance, CompletionRelevancePostfixMatch, Completions,
 };
 
 pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
@@ -45,7 +45,7 @@ pub(crate) fn complete_record(acc: &mut Completions, ctx: &CompletionContext) ->
                     let completion_text =
                         completion_text.strip_prefix(ctx.token.text()).unwrap_or(completion_text);
                     item.insert_text(completion_text).set_relevance(CompletionRelevance {
-                        exact_postfix_snippet_match: true,
+                        postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
                         ..Default::default()
                     });
                     item.add_to(acc);

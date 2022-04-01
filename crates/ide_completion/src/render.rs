@@ -365,7 +365,7 @@ mod tests {
     use crate::{
         item::CompletionRelevanceTypeMatch,
         tests::{check_edit, do_completion, get_all_items, TEST_CONFIG},
-        CompletionItem, CompletionItemKind, CompletionRelevance,
+        CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
     };
 
     #[track_caller]
@@ -432,7 +432,10 @@ mod tests {
                 ),
                 (relevance.exact_name_match, "name"),
                 (relevance.is_local, "local"),
-                (relevance.exact_postfix_snippet_match, "snippet"),
+                (
+                    relevance.postfix_match == Some(CompletionRelevancePostfixMatch::Exact),
+                    "snippet",
+                ),
                 (relevance.is_op_method, "op_method"),
             ]
             .into_iter()
@@ -614,7 +617,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_local: false,
                             is_op_method: false,
                             is_private_editable: false,
-                            exact_postfix_snippet_match: false,
+                            postfix_match: None,
                         },
                     },
                     CompletionItem {
@@ -635,7 +638,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_local: false,
                             is_op_method: false,
                             is_private_editable: false,
-                            exact_postfix_snippet_match: false,
+                            postfix_match: None,
                         },
                     },
                 ]
@@ -722,7 +725,7 @@ fn foo() { A { the$0 } }
                             is_local: false,
                             is_op_method: false,
                             is_private_editable: false,
-                            exact_postfix_snippet_match: false,
+                            postfix_match: None,
                         },
                     },
                 ]
