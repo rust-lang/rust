@@ -144,7 +144,7 @@ impl<'a, K, V> IntoIterator for &'a VecMap<K, V> {
     }
 }
 
-impl<'a, K, V> IntoIterator for &'a mut VecMap<K, V> {
+impl<'a, K: 'a, V: 'a> IntoIterator for &'a mut VecMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = impl Iterator<Item = Self::Item>;
 
