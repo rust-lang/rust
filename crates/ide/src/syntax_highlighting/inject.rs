@@ -78,7 +78,8 @@ pub(super) fn ra_fixture(
     Some(())
 }
 
-const RUSTDOC_FENCE: &str = "```";
+const RUSTDOC_FENCE_LENGTH: usize = 3;
+const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
 
 /// Injection of syntax highlighting of doctests.
 pub(super) fn doc_comment(
@@ -166,11 +167,11 @@ pub(super) fn doc_comment(
             };
             let mut pos = TextSize::from(0);
 
-            match line.find(RUSTDOC_FENCE) {
+            match RUSTDOC_FENCES.into_iter().find_map(|fence| line.find(fence)) {
                 Some(idx) => {
                     is_codeblock = !is_codeblock;
                     // Check whether code is rust by inspecting fence guards
-                    let guards = &line[idx + RUSTDOC_FENCE.len()..];
+                    let guards = &line[idx + RUSTDOC_FENCE_LENGTH..];
                     let is_rust = is_rust_fence(guards);
                     is_doctest = is_codeblock && is_rust;
                     continue;
