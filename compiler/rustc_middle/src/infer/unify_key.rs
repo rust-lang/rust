@@ -1,5 +1,5 @@
 use crate::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::unify::{EqUnifyValue, NoError, UnifyKey, UnifyValue};
+use rustc_data_structures::unify::{NoError, UnifyKey, UnifyValue};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -160,5 +160,3 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
         })
     }
 }
-
-impl<'tcx> EqUnifyValue for ty::Const<'tcx> {}
