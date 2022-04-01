@@ -490,11 +490,11 @@ fn ptr_metadata() {
     let vtable_5: DynMetadata<dyn Display> =
         metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
-        let address_1: usize = std::mem::transmute(vtable_1);
-        let address_2: usize = std::mem::transmute(vtable_2);
-        let address_3: usize = std::mem::transmute(vtable_3);
-        let address_4: usize = std::mem::transmute(vtable_4);
-        let address_5: usize = std::mem::transmute(vtable_5);
+        let address_1: *const () = std::mem::transmute(vtable_1);
+        let address_2: *const () = std::mem::transmute(vtable_2);
+        let address_3: *const () = std::mem::transmute(vtable_3);
+        let address_4: *const () = std::mem::transmute(vtable_4);
+        let address_5: *const () = std::mem::transmute(vtable_5);
         // Different trait => different vtable pointer
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
