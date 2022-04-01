@@ -87,6 +87,7 @@
 #![feature(int_roundings)]
 #![feature(slice_group_by)]
 #![feature(split_array)]
+#![feature(strict_provenance)]
 #![feature(trusted_random_access)]
 #![feature(unsize)]
 #![feature(unzip_option)]
