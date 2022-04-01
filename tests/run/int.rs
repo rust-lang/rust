@@ -3,32 +3,13 @@
 // Run-time:
 //   status: 0
 
-#![feature(arbitrary_self_types, auto_traits, core_intrinsics, lang_items, start, intrinsics)]
+#![feature(core_intrinsics, start)]
 
 #![no_std]
 
-mod intrinsics {
-    extern "rust-intrinsic" {
-        pub fn abort() -> !;
-    }
-}
-
-/*
- * Core
- */
-
-mod libc {
-    #[link(name = "c")]
-    extern "C" {
-        pub fn puts(s: *const u8) -> i32;
-    }
-}
-
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    unsafe {
-        core::intrinsics::abort();
-    }
+    core::intrinsics::abort();
 }
 
 /*
