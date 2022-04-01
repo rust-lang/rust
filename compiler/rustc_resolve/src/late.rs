@@ -1732,72 +1732,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                             |this| {
                                 this.visit_generics(generics);
                                 walk_list!(this, visit_param_bound, bounds, BoundKind::SuperTraits);
-
-                                let walk_assoc_item =
-                                    |this: &mut Self,
-                                     generics: &Generics,
-                                     kind,
-                                     item: &'ast AssocItem| {
-                                        this.with_generic_param_rib(
-                                            &generics.params,
-                                            AssocItemRibKind,
-                                            LifetimeRibKind::Generics {
-                                                binder: item.id,
-                                                span: generics.span,
-                                                kind,
-                                            },
-                                            |this| {
-                                                visit::walk_assoc_item(this, item, AssocCtxt::Trait)
-                                            },
-                                        );
-                                    };
-
-                                this.with_trait_items(items, |this| {
-                                    for item in items {
-                                        match &item.kind {
-                                            AssocItemKind::Const(_, ty, default) => {
-                                                this.visit_ty(ty);
-                                                // Only impose the restrictions of `ConstRibKind` for an
-                                                // actual constant expression in a provided default.
-                                                if let Some(expr) = default {
-                                                    // We allow arbitrary const expressions inside of associated consts,
-                                                    // even if they are potentially not const evaluatable.
-                                                    //
-                                                    // Type parameters can already be used and as associated consts are
-                                                    // not used as part of the type system, this is far less surprising.
-                                                    this.with_constant_rib(
-                                                        IsRepeatExpr::No,
-                                                        HasGenericParams::Yes,
-                                                        None,
-                                                        |this| this.visit_expr(expr),
-                                                    );
-                                                }
-                                            }
-                                            AssocItemKind::Fn(box Fn { generics, .. }) => {
-                                                walk_assoc_item(
-                                                    this,
-                                                    generics,
-                                                    LifetimeBinderKind::Function,
-                                                    item,
-                                                );
-                                            }
-                                            AssocItemKind::TyAlias(box TyAlias {
-                                                generics,
-                                                ..
-                                            }) => {
-                                                walk_assoc_item(
-                                                    this,
-                                                    generics,
-                                                    LifetimeBinderKind::Item,
-                                                    item,
-                                                );
-                                            }
-                                            AssocItemKind::MacCall(_) => {
-                                                panic!("unexpanded macro in resolve!")
-                                            }
-                                        };
-                                    }
-                                });
+                                this.resolve_trait_items(items);
                             },
                         );
                     },
@@ -2073,16 +2008,53 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     /// When evaluating a `trait` use its associated types' idents for suggestions in E0412.
-    fn with_trait_items<T>(
-        &mut self,
-        trait_items: &'ast [P<AssocItem>],
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    fn resolve_trait_items(&mut self, trait_items: &'ast [P<AssocItem>]) {
         let trait_assoc_items =
             replace(&mut self.diagnostic_metadata.current_trait_assoc_items, Some(&trait_items));
-        let result = f(self);
+
+        let walk_assoc_item =
+            |this: &mut Self, generics: &Generics, kind, item: &'ast AssocItem| {
+                this.with_generic_param_rib(
+                    &generics.params,
+                    AssocItemRibKind,
+                    LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind },
+                    |this| visit::walk_assoc_item(this, item, AssocCtxt::Trait),
+                );
+            };
+
+        for item in trait_items {
+            match &item.kind {
+                AssocItemKind::Const(_, ty, default) => {
+                    self.visit_ty(ty);
+                    // Only impose the restrictions of `ConstRibKind` for an
+                    // actual constant expression in a provided default.
+                    if let Some(expr) = default {
+                        // We allow arbitrary const expressions inside of associated consts,
+                        // even if they are potentially not const evaluatable.
+                        //
+                        // Type parameters can already be used and as associated consts are
+                        // not used as part of the type system, this is far less surprising.
+                        self.with_constant_rib(
+                            IsRepeatExpr::No,
+                            HasGenericParams::Yes,
+                            None,
+                            |this| this.visit_expr(expr),
+                        );
+                    }
+                }
+                AssocItemKind::Fn(box Fn { generics, .. }) => {
+                    walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
+                }
+                AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
+                    walk_assoc_item(self, generics, LifetimeBinderKind::Item, item);
+                }
+                AssocItemKind::MacCall(_) => {
+                    panic!("unexpanded macro in resolve!")
+                }
+            };
+        }
+
         self.diagnostic_metadata.current_trait_assoc_items = trait_assoc_items;
-        result
     }
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
@@ -2173,99 +2145,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                                         this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
                                             debug!("resolve_implementation with_self_rib_ns(ValueNS, ...)");
                                             for item in impl_items {
-                                                use crate::ResolutionError::*;
-                                                match &item.kind {
-                                                    AssocItemKind::Const(_default, _ty, _expr) => {
-                                                        debug!("resolve_implementation AssocItemKind::Const");
-                                                        // If this is a trait impl, ensure the const
-                                                        // exists in trait
-                                                        this.check_trait_item(
-                                                            item.id,
-                                                            item.ident,
-                                                            &item.kind,
-                                                            ValueNS,
-                                                            item.span,
-                                                            |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                                                        );
-
-                                                        // We allow arbitrary const expressions inside of associated consts,
-                                                        // even if they are potentially not const evaluatable.
-                                                        //
-                                                        // Type parameters can already be used and as associated consts are
-                                                        // not used as part of the type system, this is far less surprising.
-                                                        this.with_constant_rib(
-                                                            IsRepeatExpr::No,
-                                                            HasGenericParams::Yes,
-                                                            None,
-                                                            |this| {
-                                                                visit::walk_assoc_item(
-                                                                    this,
-                                                                    item,
-                                                                    AssocCtxt::Impl,
-                                                                )
-                                                            },
-                                                        );
-                                                    }
-                                                    AssocItemKind::Fn(box Fn { generics, .. }) => {
-                                                        debug!("resolve_implementation AssocItemKind::Fn");
-                                                        // We also need a new scope for the impl item type parameters.
-                                                        this.with_generic_param_rib(
-                                                            &generics.params,
-                                                            AssocItemRibKind,
-                                                            LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind: LifetimeBinderKind::Function },
-                                                            |this| {
-                                                                // If this is a trait impl, ensure the method
-                                                                // exists in trait
-                                                                this.check_trait_item(
-                                                                    item.id,
-                                                                    item.ident,
-                                                                    &item.kind,
-                                                                    ValueNS,
-                                                                    item.span,
-                                                                    |i, s, c| MethodNotMemberOfTrait(i, s, c),
-                                                                );
-
-                                                                visit::walk_assoc_item(
-                                                                    this,
-                                                                    item,
-                                                                    AssocCtxt::Impl,
-                                                                )
-                                                            },
-                                                        );
-                                                    }
-                                                    AssocItemKind::TyAlias(box TyAlias {
-                                                        generics, ..
-                                                    }) => {
-                                                        debug!("resolve_implementation AssocItemKind::TyAlias");
-                                                        // We also need a new scope for the impl item type parameters.
-                                                        this.with_generic_param_rib(
-                                                            &generics.params,
-                                                            AssocItemRibKind,
-                                                            LifetimeRibKind::Generics { binder: item.id, span: generics.span, kind: LifetimeBinderKind::Item },
-                                                            |this| {
-                                                                // If this is a trait impl, ensure the type
-                                                                // exists in trait
-                                                                this.check_trait_item(
-                                                                    item.id,
-                                                                    item.ident,
-                                                                    &item.kind,
-                                                                    TypeNS,
-                                                                    item.span,
-                                                                    |i, s, c| TypeNotMemberOfTrait(i, s, c),
-                                                                );
-
-                                                                visit::walk_assoc_item(
-                                                                    this,
-                                                                    item,
-                                                                    AssocCtxt::Impl,
-                                                                )
-                                                            },
-                                                        );
-                                                    }
-                                                    AssocItemKind::MacCall(_) => {
-                                                        panic!("unexpanded macro in resolve!")
-                                                    }
-                                                }
+                                                this.resolve_impl_item(&**item);
                                             }
                                         });
                                     });
@@ -2276,6 +2156,91 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 });
             });
         });
+    }
+
+    fn resolve_impl_item(&mut self, item: &'ast AssocItem) {
+        use crate::ResolutionError::*;
+        match &item.kind {
+            AssocItemKind::Const(_default, _ty, _expr) => {
+                debug!("resolve_implementation AssocItemKind::Const");
+                // If this is a trait impl, ensure the const
+                // exists in trait
+                self.check_trait_item(
+                    item.id,
+                    item.ident,
+                    &item.kind,
+                    ValueNS,
+                    item.span,
+                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                );
+
+                // We allow arbitrary const expressions inside of associated consts,
+                // even if they are potentially not const evaluatable.
+                //
+                // Type parameters can already be used and as associated consts are
+                // not used as part of the type system, this is far less surprising.
+                self.with_constant_rib(IsRepeatExpr::No, HasGenericParams::Yes, None, |this| {
+                    visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                });
+            }
+            AssocItemKind::Fn(box Fn { generics, .. }) => {
+                debug!("resolve_implementation AssocItemKind::Fn");
+                // We also need a new scope for the impl item type parameters.
+                self.with_generic_param_rib(
+                    &generics.params,
+                    AssocItemRibKind,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        span: generics.span,
+                        kind: LifetimeBinderKind::Function,
+                    },
+                    |this| {
+                        // If this is a trait impl, ensure the method
+                        // exists in trait
+                        this.check_trait_item(
+                            item.id,
+                            item.ident,
+                            &item.kind,
+                            ValueNS,
+                            item.span,
+                            |i, s, c| MethodNotMemberOfTrait(i, s, c),
+                        );
+
+                        visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                    },
+                );
+            }
+            AssocItemKind::TyAlias(box TyAlias { generics, .. }) => {
+                debug!("resolve_implementation AssocItemKind::TyAlias");
+                // We also need a new scope for the impl item type parameters.
+                self.with_generic_param_rib(
+                    &generics.params,
+                    AssocItemRibKind,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        span: generics.span,
+                        kind: LifetimeBinderKind::Item,
+                    },
+                    |this| {
+                        // If this is a trait impl, ensure the type
+                        // exists in trait
+                        this.check_trait_item(
+                            item.id,
+                            item.ident,
+                            &item.kind,
+                            TypeNS,
+                            item.span,
+                            |i, s, c| TypeNotMemberOfTrait(i, s, c),
+                        );
+
+                        visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                    },
+                );
+            }
+            AssocItemKind::MacCall(_) => {
+                panic!("unexpanded macro in resolve!")
+            }
+        }
     }
 
     fn check_trait_item<F>(
