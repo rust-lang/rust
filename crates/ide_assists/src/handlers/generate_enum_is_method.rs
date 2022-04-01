@@ -1,3 +1,4 @@
+use ide_db::assists::GroupLabel;
 use stdx::to_lower_snake_case;
 use syntax::ast::HasVisibility;
 use syntax::ast::{self, AstNode, HasName};
@@ -54,7 +55,8 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext) ->
     let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
 
     let target = variant.syntax().text_range();
-    acc.add(
+    acc.add_group(
+        &GroupLabel("Generate `is_`,`as_`,`try_into_`".to_owned()),
         AssistId("generate_enum_is_method", AssistKind::Generate),
         "Generate an `is_` method for an enum variant",
         target,
