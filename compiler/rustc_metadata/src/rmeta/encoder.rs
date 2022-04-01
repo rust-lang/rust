@@ -1048,6 +1048,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
         record!(self.tables.children[def_id] <- variant.fields.iter().map(|f| {
             assert!(f.did.is_local());
             f.did.index
@@ -1077,6 +1078,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         record!(self.tables.kind[def_id] <- EntryKind::Variant(self.lazy(data)));
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1154,7 +1156,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             is_non_exhaustive: variant.is_field_list_non_exhaustive(),
         };
 
-        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data), adt_def.repr()));
+        record!(self.tables.repr_options[def_id] <- adt_def.repr());
+        record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
+        record!(self.tables.kind[def_id] <- EntryKind::Struct(self.lazy(data)));
         self.encode_item_type(def_id);
         if variant.ctor_kind == CtorKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1194,22 +1198,18 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.rendered_const[def_id] <- rendered);
             }
             ty::AssocKind::Fn => {
-                let fn_data = if let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind {
-                    match *m {
-                        hir::TraitFn::Required(ref names) => {
-                            record!(self.tables.fn_arg_names[def_id] <- *names)
-                        }
-                        hir::TraitFn::Provided(body) => {
-                            record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
-                        }
-                    };
-                    record!(self.tables.asyncness[def_id] <- m_sig.header.asyncness);
-                    FnData { constness: hir::Constness::NotConst }
-                } else {
-                    bug!()
+                let hir::TraitItemKind::Fn(m_sig, m) = &ast_item.kind else { bug!() };
+                match *m {
+                    hir::TraitFn::Required(ref names) => {
+                        record!(self.tables.fn_arg_names[def_id] <- *names)
+                    }
+                    hir::TraitFn::Provided(body) => {
+                        record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
+                    }
                 };
+                record!(self.tables.asyncness[def_id] <- m_sig.header.asyncness);
+                record!(self.tables.impl_constness[def_id] <- hir::Constness::NotConst);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocFn(self.lazy(AssocFnData {
-                    fn_data,
                     container,
                     has_self: trait_item.fn_has_self_parameter,
                 })));
@@ -1264,22 +1264,17 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             ty::AssocKind::Fn => {
-                let fn_data = if let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind {
-                    record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
-                    record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
-                    FnData {
-                        // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
-                        constness: if self.tcx.is_const_fn_raw(def_id) {
-                            hir::Constness::Const
-                        } else {
-                            hir::Constness::NotConst
-                        },
-                    }
+                let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
+                record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
+                record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
+                // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
+                let constness = if self.tcx.is_const_fn_raw(def_id) {
+                    hir::Constness::Const
                 } else {
-                    bug!()
+                    hir::Constness::NotConst
                 };
+                record!(self.tables.impl_constness[def_id] <- constness);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocFn(self.lazy(AssocFnData {
-                    fn_data,
                     container,
                     has_self: impl_item.fn_has_self_parameter,
                 })));
@@ -1401,9 +1396,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemKind::Fn(ref sig, .., body) => {
                 record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
                 record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
-                let data = FnData { constness: sig.header.constness };
-
-                EntryKind::Fn(self.lazy(data))
+                record!(self.tables.impl_constness[def_id] <- sig.header.constness);
+                EntryKind::Fn
             }
             hir::ItemKind::Macro(ref macro_def, _) => {
                 EntryKind::MacroDef(self.lazy(&*macro_def.body), macro_def.macro_rules)
@@ -1418,10 +1412,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.encode_explicit_item_bounds(def_id);
                 EntryKind::OpaqueTy
             }
-            hir::ItemKind::Enum(..) => EntryKind::Enum(self.tcx.adt_def(def_id).repr()),
+            hir::ItemKind::Enum(..) => {
+                let adt_def = self.tcx.adt_def(def_id);
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
+                EntryKind::Enum
+            }
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let adt_def = self.tcx.adt_def(def_id);
-                let variant = adt_def.non_enum_variant();
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
+                record!(self.tables.impl_constness[def_id] <- hir::Constness::Const);
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -1430,29 +1429,25 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     .ctor_hir_id()
                     .map(|ctor_hir_id| self.tcx.hir().local_def_id(ctor_hir_id).local_def_index);
 
-                EntryKind::Struct(
-                    self.lazy(VariantData {
-                        ctor_kind: variant.ctor_kind,
-                        discr: variant.discr,
-                        ctor,
-                        is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                    }),
-                    adt_def.repr(),
-                )
+                let variant = adt_def.non_enum_variant();
+                EntryKind::Struct(self.lazy(VariantData {
+                    ctor_kind: variant.ctor_kind,
+                    discr: variant.discr,
+                    ctor,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
+                }))
             }
             hir::ItemKind::Union(..) => {
                 let adt_def = self.tcx.adt_def(def_id);
-                let variant = adt_def.non_enum_variant();
+                record!(self.tables.repr_options[def_id] <- adt_def.repr());
 
-                EntryKind::Union(
-                    self.lazy(VariantData {
-                        ctor_kind: variant.ctor_kind,
-                        discr: variant.discr,
-                        ctor: None,
-                        is_non_exhaustive: variant.is_field_list_non_exhaustive(),
-                    }),
-                    adt_def.repr(),
-                )
+                let variant = adt_def.non_enum_variant();
+                EntryKind::Union(self.lazy(VariantData {
+                    ctor_kind: variant.ctor_kind,
+                    discr: variant.discr,
+                    ctor: None,
+                    is_non_exhaustive: variant.is_field_list_non_exhaustive(),
+                }))
             }
             hir::ItemKind::Impl(hir::Impl { defaultness, constness, .. }) => {
                 record!(self.tables.impl_defaultness[def_id] <- defaultness);
@@ -1483,19 +1478,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemKind::Trait(..) => {
                 let trait_def = self.tcx.trait_def(def_id);
-                let data = TraitData {
-                    unsafety: trait_def.unsafety,
-                    paren_sugar: trait_def.paren_sugar,
-                    has_auto_impl: self.tcx.trait_is_auto(def_id),
-                    is_marker: trait_def.is_marker,
-                    skip_array_during_method_dispatch: trait_def.skip_array_during_method_dispatch,
-                    specialization_kind: trait_def.specialization_kind,
-                    must_implement_one_of: trait_def.must_implement_one_of.clone(),
-                };
+                record!(self.tables.trait_def[def_id] <- trait_def);
 
-                EntryKind::Trait(self.lazy(data))
+                EntryKind::Trait
             }
-            hir::ItemKind::TraitAlias(..) => EntryKind::TraitAlias,
+            hir::ItemKind::TraitAlias(..) => {
+                let trait_def = self.tcx.trait_def(def_id);
+                record!(self.tables.trait_def[def_id] <- trait_def);
+
+                EntryKind::TraitAlias
+            }
             hir::ItemKind::ExternCrate(_) | hir::ItemKind::Use(..) => {
                 bug!("cannot encode info for item {:?}", item)
             }
@@ -1896,14 +1888,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 record!(self.tables.asyncness[def_id] <- hir::IsAsync::NotAsync);
                 record!(self.tables.fn_arg_names[def_id] <- *names);
-                let data = FnData {
-                    constness: if self.tcx.is_const_fn_raw(def_id) {
-                        hir::Constness::Const
-                    } else {
-                        hir::Constness::NotConst
-                    },
+                let constness = if self.tcx.is_const_fn_raw(def_id) {
+                    hir::Constness::Const
+                } else {
+                    hir::Constness::NotConst
                 };
-                record!(self.tables.kind[def_id] <- EntryKind::ForeignFn(self.lazy(data)));
+                record!(self.tables.impl_constness[def_id] <- constness);
+                record!(self.tables.kind[def_id] <- EntryKind::ForeignFn);
             }
             hir::ForeignItemKind::Static(..) => {
                 record!(self.tables.kind[def_id] <- EntryKind::ForeignStatic);

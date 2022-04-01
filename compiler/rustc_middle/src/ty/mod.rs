@@ -289,6 +289,11 @@ pub struct ClosureSizeProfileData<'tcx> {
 pub trait DefIdTree: Copy {
     fn parent(self, id: DefId) -> Option<DefId>;
 
+    #[inline]
+    fn local_parent(self, id: LocalDefId) -> Option<LocalDefId> {
+        Some(self.parent(id.to_def_id())?.expect_local())
+    }
+
     fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
         if descendant.krate != ancestor.krate {
             return false;
@@ -2255,6 +2260,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_object_safe(self, key: DefId) -> bool {
         self.object_safety_violations(key).is_empty()
+    }
+
+    #[inline]
+    pub fn is_const_fn_raw(self, def_id: DefId) -> bool {
+        matches!(self.def_kind(def_id), DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..))
+            && self.impl_constness(def_id) == hir::Constness::Const
     }
 }
 

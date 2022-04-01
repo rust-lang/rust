@@ -153,8 +153,8 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     asyncness => { table }
     fn_arg_names => { table }
     generator_kind => { table }
+    trait_def => { table }
 
-    trait_def => { cdata.get_trait_def(def_id.index, tcx.sess) }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
         let _ = cdata;
@@ -163,7 +163,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     associated_item_def_ids => { cdata.get_associated_item_def_ids(tcx, def_id.index) }
     associated_item => { cdata.get_associated_item(def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
-    is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     item_attrs => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(def_id.index, tcx.sess)) }
     trait_of_item => { cdata.get_trait_of_item(def_id.index) }
