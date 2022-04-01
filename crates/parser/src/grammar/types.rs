@@ -57,6 +57,12 @@ fn type_with_bounds_cond(p: &mut Parser, allow_bounds: bool) {
 pub(super) fn ascription(p: &mut Parser) {
     assert!(p.at(T![:]));
     p.bump(T![:]);
+    if p.at(T![=]) {
+        // recover from `let x: = expr;`, `const X: = expr;` and similars
+        // hopefully no type starts with `=`
+        p.error("missing type");
+        return;
+    }
     type_(p);
 }
 
