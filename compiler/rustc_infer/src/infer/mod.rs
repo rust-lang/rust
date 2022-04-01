@@ -558,9 +558,9 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by `tcx.infer_ctxt()`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
+/// A temporary returned by `tcx.infer_ctxt()`. This is necessary
+/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// without using `Rc` or something similar.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,
