@@ -991,6 +991,12 @@ extern "rust-intrinsic" {
     /// let ptr_num_cast = ptr as *const i32 as usize;
     /// ```
     ///
+    /// Note that using `transmute` to turn a pointer to a `usize` is (as noted above) [undefined
+    /// behavior][ub] in `const` contexts. Also outside of consts, this operation might not behave
+    /// as expected -- this is touching on many unspecified aspects of the Rust memory model. To
+    /// make sure your code is well-defined, the conversion of pointers to integers and back should
+    /// always be done explicitly via casts.
+    ///
     /// Turning a `*mut T` into an `&mut T`:
     ///
     /// ```
