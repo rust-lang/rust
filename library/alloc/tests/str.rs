@@ -2234,11 +2234,14 @@ fn utf8_chars() {
 #[test]
 fn utf8_char_counts() {
     let strs = [("e", 1), ("é", 1), ("€", 1), ("\u{10000}", 1), ("eé€\u{10000}", 4)];
-    let mut reps =
-        [8, 64, 256, 512, 1024].iter().copied().flat_map(|n| n - 8..=n + 8).collect::<Vec<usize>>();
+    let spread = if cfg!(miri) { 4 } else { 8 };
+    let mut reps = [8, 64, 256, 512]
+        .iter()
+        .copied()
+        .flat_map(|n| n - spread..=n + spread)
+        .collect::<Vec<usize>>();
     if cfg!(not(miri)) {
-        let big = 1 << 16;
-        reps.extend(big - 8..=big + 8);
+        reps.extend([1024, 1 << 16].iter().copied().flat_map(|n| n - spread..=n + spread));
     }
     let counts = if cfg!(miri) { 0..1 } else { 0..8 };
     let padding = counts.map(|len| " ".repeat(len)).collect::<Vec<String>>();
