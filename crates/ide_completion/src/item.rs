@@ -187,7 +187,6 @@ pub enum CompletionRelevancePostfixMatch {
 }
 
 impl CompletionRelevance {
-    const BASE_LINE: u32 = 3;
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
@@ -197,34 +196,41 @@ impl CompletionRelevance {
     ///
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
-    pub fn score(&self) -> u32 {
-        let mut score = Self::BASE_LINE;
+    pub fn score(self) -> u32 {
+        let mut score = 0;
+        let CompletionRelevance {
+            exact_name_match,
+            type_match,
+            is_local,
+            is_op_method,
+            is_private_editable,
+            postfix_match,
+        } = self;
 
-        // score decreases
-        if self.is_op_method {
-            score -= 1;
-        }
-        if self.is_private_editable {
-            score -= 1;
-        }
-        if self.postfix_match.is_some() {
-            score -= 3;
-        }
-
-        // score increases
-        if self.exact_name_match {
+        // lower rank private things
+        if !is_private_editable {
             score += 1;
         }
-        score += match self.type_match {
-            Some(CompletionRelevanceTypeMatch::Exact) => 4,
+        // lower rank trait op methods
+        if !is_op_method {
+            score += 10;
+        }
+        if exact_name_match {
+            score += 10;
+        }
+        score += match postfix_match {
+            Some(CompletionRelevancePostfixMatch::Exact) => 100,
+            Some(CompletionRelevancePostfixMatch::NonExact) => 0,
+            None => 3,
+        };
+        score += match type_match {
+            Some(CompletionRelevanceTypeMatch::Exact) => 8,
             Some(CompletionRelevanceTypeMatch::CouldUnify) => 3,
             None => 0,
         };
-        if self.is_local {
+        // slightly prefer locals
+        if is_local {
             score += 1;
-        }
-        if self.postfix_match == Some(CompletionRelevancePostfixMatch::Exact) {
-            score += 100;
         }
 
         score
@@ -234,7 +240,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > Self::BASE_LINE
+        self.score() > 0
     }
 }
 
@@ -584,55 +590,34 @@ mod tests {
 
     #[test]
     fn relevance_score() {
+        use CompletionRelevance as Cr;
+        let default = Cr::default();
         // This test asserts that the relevance score for these items is ascending, and
         // that any items in the same vec have the same score.
         let expected_relevance_order = vec![
-            vec![CompletionRelevance {
-                postfix_match: Some(CompletionRelevancePostfixMatch::NonExact),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                is_op_method: true,
-                is_private_editable: true,
-                ..CompletionRelevance::default()
-            }],
-            vec![
-                CompletionRelevance { is_private_editable: true, ..CompletionRelevance::default() },
-                CompletionRelevance { is_op_method: true, ..CompletionRelevance::default() },
-            ],
-            vec![CompletionRelevance::default()],
-            vec![
-                CompletionRelevance { exact_name_match: true, ..CompletionRelevance::default() },
-                CompletionRelevance { is_local: true, ..CompletionRelevance::default() },
-            ],
-            vec![CompletionRelevance {
-                exact_name_match: true,
-                is_local: true,
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                type_match: Some(CompletionRelevanceTypeMatch::CouldUnify),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
-                type_match: Some(CompletionRelevanceTypeMatch::Exact),
-                ..CompletionRelevance::default()
-            }],
-            vec![CompletionRelevance {
+            vec![],
+            vec![Cr { is_op_method: true, is_private_editable: true, ..default }],
+            vec![Cr { is_op_method: true, ..default }],
+            vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::NonExact), ..default }],
+            vec![Cr { is_private_editable: true, ..default }],
+            vec![default],
+            vec![Cr { is_local: true, ..default }],
+            vec![Cr { type_match: Some(CompletionRelevanceTypeMatch::CouldUnify), ..default }],
+            vec![Cr { type_match: Some(CompletionRelevanceTypeMatch::Exact), ..default }],
+            vec![Cr { exact_name_match: true, ..default }],
+            vec![Cr { exact_name_match: true, is_local: true, ..default }],
+            vec![Cr {
                 exact_name_match: true,
                 type_match: Some(CompletionRelevanceTypeMatch::Exact),
-                ..CompletionRelevance::default()
+                ..default
             }],
-            vec![CompletionRelevance {
+            vec![Cr {
                 exact_name_match: true,
                 type_match: Some(CompletionRelevanceTypeMatch::Exact),
                 is_local: true,
-                ..CompletionRelevance::default()
+                ..default
             }],
-            vec![CompletionRelevance {
-                postfix_match: Some(CompletionRelevancePostfixMatch::Exact),
-                ..CompletionRelevance::default()
-            }],
+            vec![Cr { postfix_match: Some(CompletionRelevancePostfixMatch::Exact), ..default }],
         ];
 
         check_relevance_score_ordered(expected_relevance_order);
