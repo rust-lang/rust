@@ -46,24 +46,13 @@ LL |     let d: usize = 1;
 error: unneeded late initialization
   --> $DIR/needless_late_init_fixable.rs:17:5
    |
-LL |     let mut e;
-   |     ^^^^^^^^^^
+LL |     let e;
+   |     ^^^^^^
    |
 help: declare `e` here
    |
-LL |     let mut e = 1;
-   |     ~~~~~~~~~
-
-error: unneeded late initialization
-  --> $DIR/needless_late_init_fixable.rs:21:5
-   |
-LL |     let h;
-   |     ^^^^^^
-   |
-help: declare `h` here
-   |
-LL |     let h = format!("{}", e);
+LL |     let e = format!("{}", d);
    |     ~~~~~
 
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
