@@ -289,7 +289,7 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             .span_suggestion(
                 last_span,
                 "consider specifying that the asm block is responsible \
-                for returning, if desired",
+                for returning from the function",
                 String::from(", options(noreturn)"),
                 Applicability::MachineApplicable,
             )

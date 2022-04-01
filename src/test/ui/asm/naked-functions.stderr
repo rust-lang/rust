@@ -98,7 +98,7 @@ LL | |          sym G,
 LL | |     );
    | |_____^
    |
-help: consider specifying that the asm block is responsible for returning, if desired
+help: consider specifying that the asm block is responsible for returning from the function
    |
 LL |          sym G, options(noreturn),
    |               +++++++++++++++++++
@@ -137,7 +137,7 @@ error[E0787]: asm in naked functions must use `noreturn` option
 LL |     asm!("");
    |     ^^^^^^^^
    |
-help: consider specifying that the asm block is responsible for returning, if desired
+help: consider specifying that the asm block is responsible for returning from the function
    |
 LL |     asm!("", options(noreturn));
    |            +++++++++++++++++++
@@ -148,7 +148,7 @@ error[E0787]: asm in naked functions must use `noreturn` option
 LL |     asm!("");
    |     ^^^^^^^^
    |
-help: consider specifying that the asm block is responsible for returning, if desired
+help: consider specifying that the asm block is responsible for returning from the function
    |
 LL |     asm!("", options(noreturn));
    |            +++++++++++++++++++
@@ -159,7 +159,7 @@ error[E0787]: asm in naked functions must use `noreturn` option
 LL |     asm!("");
    |     ^^^^^^^^
    |
-help: consider specifying that the asm block is responsible for returning, if desired
+help: consider specifying that the asm block is responsible for returning from the function
    |
 LL |     asm!("", options(noreturn));
    |            +++++++++++++++++++
@@ -219,7 +219,7 @@ error[E0787]: asm in naked functions must use `noreturn` option
 LL |     asm!("", options(readonly, nostack), options(pure));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: consider specifying that the asm block is responsible for returning, if desired
+help: consider specifying that the asm block is responsible for returning from the function
    |
 LL |     asm!("", options(noreturn), options(readonly, nostack), options(pure));
    |            +++++++++++++++++++
