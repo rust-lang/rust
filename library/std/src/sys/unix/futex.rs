@@ -14,6 +14,8 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -
     use crate::sync::atomic::Ordering::Relaxed;
 
     // Calculate the timeout as an absolute timespec.
+    //
+    // Overflows are rounded up to an infinite timeout (None).
     let timespec =
         timeout.and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?));
 
