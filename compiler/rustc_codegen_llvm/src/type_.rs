@@ -19,7 +19,7 @@ use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 use std::fmt;
 use std::ptr;
 
-use libc::c_uint;
+use libc::{c_char, c_uint};
 
 impl PartialEq for Type {
     fn eq(&self, other: &Self) -> bool {
@@ -287,5 +287,33 @@ impl<'ll, 'tcx> LayoutTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
     fn reg_backend_type(&self, ty: &Reg) -> &'ll Type {
         ty.llvm_type(self)
+    }
+}
+
+impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn set_type_metadata(&self, function: &'ll Value, typeid: String) {
+        let typeid_metadata = self.typeid_metadata(typeid);
+        let v = [self.const_usize(0), typeid_metadata];
+        unsafe {
+            llvm::LLVMGlobalSetMetadata(
+                function,
+                llvm::MD_type as c_uint,
+                llvm::LLVMValueAsMetadata(llvm::LLVMMDNodeInContext(
+                    self.llcx,
+                    v.as_ptr(),
+                    v.len() as c_uint,
+                )),
+            )
+        }
+    }
+
+    fn typeid_metadata(&self, typeid: String) -> &'ll Value {
+        unsafe {
+            llvm::LLVMMDStringInContext(
+                self.llcx,
+                typeid.as_ptr() as *const c_char,
+                typeid.len() as c_uint,
+            )
+        }
     }
 }
