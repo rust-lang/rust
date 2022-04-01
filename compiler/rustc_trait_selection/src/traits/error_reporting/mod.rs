@@ -2,10 +2,10 @@ pub mod on_unimplemented;
 pub mod suggestions;
 
 use super::{
-    EvaluationResult, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes,
-    Obligation, ObligationCause, ObligationCauseCode, OnUnimplementedDirective,
-    OnUnimplementedNote, OutputTypeParameterMismatch, Overflow, PredicateObligation,
-    SelectionContext, SelectionError, TraitNotObjectSafe,
+    EvaluationResult, FulfillmentContext, FulfillmentError, FulfillmentErrorCode,
+    MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
+    OnUnimplementedDirective, OnUnimplementedNote, OutputTypeParameterMismatch, Overflow,
+    PredicateObligation, SelectionContext, SelectionError, TraitNotObjectSafe,
 };
 
 use crate::infer::error_reporting::{TyCategory, TypeAnnotationNeeded as ErrorCode};
@@ -21,6 +21,8 @@ use rustc_hir::intravisit::Visitor;
 use rustc_hir::GenericParam;
 use rustc_hir::Item;
 use rustc_hir::Node;
+use rustc_infer::infer::error_reporting::same_type_modulo_infer;
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::thir::abstract_const::NotConstEvaluatable;
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
@@ -103,6 +105,17 @@ pub trait InferCtxtExt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
+
+    /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
+    /// in that order, and returns the generic type corresponding to the
+    /// argument of that trait (corresponding to the closure arguments).
+    fn type_implements_fn_trait(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: ty::Binder<'tcx, Ty<'tcx>>,
+        constness: ty::BoundConstness,
+        polarity: ty::ImplPolarity,
+    ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()>;
 }
 
 impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
@@ -563,7 +576,64 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         }
 
                         // Try to report a help message
-                        if !trait_ref.has_infer_types_or_consts()
+                        if is_fn_trait
+                            && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
+                                obligation.param_env,
+                                trait_ref.self_ty(),
+                                trait_predicate.skip_binder().constness,
+                                trait_predicate.skip_binder().polarity,
+                            )
+                        {
+                            // If the type implements `Fn`, `FnMut`, or `FnOnce`, suppress the following
+                            // suggestion to add trait bounds for the type, since we only typically implement
+                            // these traits once.
+
+                            // Note if the `FnMut` or `FnOnce` is less general than the trait we're trying
+                            // to implement.
+                            let selected_kind =
+                                ty::ClosureKind::from_def_id(self.tcx, trait_ref.def_id())
+                                    .expect("expected to map DefId to ClosureKind");
+                            if !implemented_kind.extends(selected_kind) {
+                                err.note(
+                                    &format!(
+                                        "`{}` implements `{}`, but it must implement `{}`, which is more general",
+                                        trait_ref.skip_binder().self_ty(),
+                                        implemented_kind,
+                                        selected_kind
+                                    )
+                                );
+                            }
+
+                            // Note any argument mismatches
+                            let given_ty = params.skip_binder();
+                            let expected_ty = trait_ref.skip_binder().substs.type_at(1);
+                            if let ty::Tuple(given) = given_ty.kind()
+                                && let ty::Tuple(expected) = expected_ty.kind()
+                            {
+                                if expected.len() != given.len() {
+                                    // Note number of types that were expected and given
+                                    err.note(
+                                        &format!(
+                                            "expected a closure taking {} argument{}, but one taking {} argument{} was given",
+                                            given.len(),
+                                            if given.len() == 1 { "" } else { "s" },
+                                            expected.len(),
+                                            if expected.len() == 1 { "" } else { "s" },
+                                        )
+                                    );
+                                } else if !same_type_modulo_infer(given_ty, expected_ty) {
+                                    // Print type mismatch
+                                    let (expected_args, given_args) =
+                                        self.cmp(given_ty, expected_ty);
+                                    err.note_expected_found(
+                                        &"a closure with arguments",
+                                        expected_args,
+                                        &"a closure with arguments",
+                                        given_args,
+                                    );
+                                }
+                            }
+                        } else if !trait_ref.has_infer_types_or_consts()
                             && self.predicate_can_apply(obligation.param_env, trait_ref)
                         {
                             // If a where-clause may be useful, remind the
@@ -1147,6 +1217,52 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         err
+    }
+
+    fn type_implements_fn_trait(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: ty::Binder<'tcx, Ty<'tcx>>,
+        constness: ty::BoundConstness,
+        polarity: ty::ImplPolarity,
+    ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
+        self.commit_if_ok(|_| {
+            for trait_def_id in [
+                self.tcx.lang_items().fn_trait(),
+                self.tcx.lang_items().fn_mut_trait(),
+                self.tcx.lang_items().fn_once_trait(),
+            ] {
+                let Some(trait_def_id) = trait_def_id else { continue };
+                // Make a fresh inference variable so we can determine what the substitutions
+                // of the trait are.
+                let var = self.next_ty_var(TypeVariableOrigin {
+                    span: DUMMY_SP,
+                    kind: TypeVariableOriginKind::MiscVariable,
+                });
+                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
+                let obligation = Obligation::new(
+                    ObligationCause::dummy(),
+                    param_env,
+                    ty.rebind(ty::TraitPredicate {
+                        trait_ref: ty::TraitRef::new(trait_def_id, substs),
+                        constness,
+                        polarity,
+                    })
+                    .to_predicate(self.tcx),
+                );
+                let mut fulfill_cx = FulfillmentContext::new_in_snapshot();
+                fulfill_cx.register_predicate_obligation(self, obligation);
+                if fulfill_cx.select_all_or_error(self).is_empty() {
+                    return Ok((
+                        ty::ClosureKind::from_def_id(self.tcx, trait_def_id)
+                            .expect("expected to map DefId to ClosureKind"),
+                        ty.rebind(self.resolve_vars_if_possible(var)),
+                    ));
+                }
+            }
+
+            Err(())
+        })
     }
 }
 
