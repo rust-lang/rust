@@ -801,6 +801,12 @@ impl CrateInfo {
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
             .collect();
+        let linked_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::linked_symbols(tcx, c)))
+            .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem = tcx.sess.first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
@@ -834,6 +840,7 @@ impl CrateInfo {
         let mut info = CrateInfo {
             target_cpu,
             exported_symbols,
+            linked_symbols,
             local_crate_name,
             compiler_builtins: None,
             profiler_runtime: None,
