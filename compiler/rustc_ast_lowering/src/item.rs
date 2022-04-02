@@ -1,18 +1,19 @@
 use super::ResolverAstLoweringExt;
-use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
+use super::{ImplTraitContext, ImplTraitPosition};
 
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_data_structures::steal::Steal;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{AstOwner, ResolverOutputs, TyCtxt};
 use rustc_session::utils::NtToTokenstream;
 use rustc_span::source_map::DesugaringKind;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -27,7 +28,7 @@ pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'hir ResolverOutputs,
     pub(super) nt_to_tokenstream: NtToTokenstream,
-    pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
+    pub(super) ast_index: &'a IndexVec<LocalDefId, Steal<AstOwner>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
 
@@ -107,13 +108,13 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
     ) -> hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>> {
         self.owners.ensure_contains_elem(def_id, || hir::MaybeOwner::Phantom);
         if let hir::MaybeOwner::Phantom = self.owners[def_id] {
-            let node = self.ast_index[def_id];
+            let node = self.ast_index[def_id].steal();
             match node {
-                AstOwner::NonOwner => {}
-                AstOwner::Crate(c) => self.lower_crate(c),
-                AstOwner::Item(item) => self.lower_item(item),
-                AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(item, ctxt),
-                AstOwner::ForeignItem(item) => self.lower_foreign_item(item),
+                AstOwner::NonOwner | AstOwner::Synthetic(..) => {}
+                AstOwner::Crate(c) => self.lower_crate(&c),
+                AstOwner::Item(item) => self.lower_item(&item),
+                AstOwner::AssocItem(item, ctxt) => self.lower_assoc_item(&item, ctxt),
+                AstOwner::ForeignItem(item) => self.lower_foreign_item(&item),
             }
         }
 

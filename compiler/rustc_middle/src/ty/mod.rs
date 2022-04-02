@@ -33,7 +33,9 @@ use rustc_ast::node_id::NodeMap;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::{Interned, WithStableHash};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, LifetimeRes, Res};
@@ -127,6 +129,23 @@ mod sty;
 // Data types
 
 pub type RegisteredTools = FxHashSet<Ident>;
+
+/// Pointers to parts of the AST to index it.
+/// We use OwningRef to release memory when all the owners have been taken.
+pub enum AstOwner {
+    NonOwner,
+    Synthetic(LocalDefId),
+    Crate(Lrc<ast::Crate>),
+    Item(OwningRef<Lrc<ast::Crate>, ast::Item>),
+    AssocItem(OwningRef<Lrc<ast::Crate>, ast::AssocItem>, ast::visit::AssocCtxt),
+    ForeignItem(OwningRef<Lrc<ast::Crate>, ast::ForeignItem>),
+}
+
+impl AstOwner {
+    pub fn expect_crate(&self) -> &Lrc<ast::Crate> {
+        if let AstOwner::Crate(c) = self { c } else { panic!() }
+    }
+}
 
 #[derive(Debug)]
 pub struct ResolverOutputs {

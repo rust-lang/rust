@@ -46,8 +46,10 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::owning_ref::OwningRef;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
@@ -56,7 +58,7 @@ use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::ty::{ResolverOutputs, TyCtxt};
+use rustc_middle::ty::{AstOwner, ResolverOutputs, TyCtxt};
 use rustc_session::parse::feature_err;
 use rustc_session::utils::{FlattenNonterminals, NtToTokenstream};
 use rustc_session::Session;
@@ -341,31 +343,48 @@ impl FnDeclKind {
     }
 }
 
-#[derive(Copy, Clone)]
-enum AstOwner<'a> {
-    NonOwner,
-    Crate(&'a ast::Crate),
-    Item(&'a ast::Item),
-    AssocItem(&'a ast::AssocItem, visit::AssocCtxt),
-    ForeignItem(&'a ast::ForeignItem),
-}
-
-fn index_crate<'a>(
+pub fn index_crate(
     node_id_to_def_id: &FxHashMap<NodeId, LocalDefId>,
-    krate: &'a Crate,
-) -> IndexVec<LocalDefId, AstOwner<'a>> {
-    let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
-    indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner);
-    indexer.index[CRATE_DEF_ID] = AstOwner::Crate(krate);
-    visit::walk_crate(&mut indexer, krate);
+    krate: Lrc<Crate>,
+) -> IndexVec<LocalDefId, Steal<AstOwner>> {
+    let mut indexer =
+        Indexer { node_id_to_def_id, krate: OwningRef::new(krate.clone()), index: IndexVec::new() };
+    indexer.index.ensure_contains_elem(CRATE_DEF_ID, || Steal::new(AstOwner::NonOwner));
+    indexer.index[CRATE_DEF_ID] = Steal::new(AstOwner::Crate(krate.clone()));
+    visit::walk_crate(&mut indexer, &krate);
     return indexer.index;
 
-    struct Indexer<'s, 'a> {
+    struct Indexer<'s> {
         node_id_to_def_id: &'s FxHashMap<NodeId, LocalDefId>,
-        index: IndexVec<LocalDefId, AstOwner<'a>>,
+        krate: OwningRef<Lrc<Crate>, Crate>,
+        index: IndexVec<LocalDefId, Steal<AstOwner>>,
     }
 
-    impl<'a> visit::Visitor<'a> for Indexer<'_, 'a> {
+    impl Indexer<'_> {
+        fn visit_item_id_use_tree(&mut self, tree: &UseTree, parent: LocalDefId) {
+            match tree.kind {
+                UseTreeKind::Glob => {}
+                UseTreeKind::Simple(_, id1, id2) => {
+                    for id in &[id1, id2] {
+                        let def_id = self.node_id_to_def_id[id];
+                        self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
+                        self.index[def_id] = Steal::new(AstOwner::Synthetic(parent));
+                    }
+                }
+                UseTreeKind::Nested(ref nested_vec) => {
+                    for &(ref nested, id) in nested_vec {
+                        let def_id = self.node_id_to_def_id[&id];
+                        self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
+                        self.index[def_id] = Steal::new(AstOwner::Synthetic(parent));
+
+                        self.visit_item_id_use_tree(nested, def_id);
+                    }
+                }
+            }
+        }
+    }
+
+    impl<'a> visit::Visitor<'a> for Indexer<'_> {
         fn visit_attribute(&mut self, _: &'a Attribute) {
             // We do not want to lower expressions that appear in attributes,
             // as they are not accessible to the rest of the HIR.
@@ -373,22 +392,31 @@ fn index_crate<'a>(
 
         fn visit_item(&mut self, item: &'a ast::Item) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::Item(item);
+            // SAFETY: the visitor guarantees the item ref comes from krate.
+            let item_ref = self.krate.clone().map(|_| unsafe { &*(item as *const _) });
+            self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
+            self.index[def_id] = Steal::new(AstOwner::Item(item_ref));
+            if let ItemKind::Use(ref use_tree) = item.kind {
+                self.visit_item_id_use_tree(use_tree, def_id);
+            }
             visit::walk_item(self, item)
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::AssocItem(item, ctxt);
+            // SAFETY: the visitor guarantees the item ref comes from krate.
+            let item_ref = self.krate.clone().map(|_| unsafe { &*(item as *const _) });
+            self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
+            self.index[def_id] = Steal::new(AstOwner::AssocItem(item_ref, ctxt));
             visit::walk_assoc_item(self, item, ctxt);
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
             let def_id = self.node_id_to_def_id[&item.id];
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = AstOwner::ForeignItem(item);
+            // SAFETY: the visitor guarantees the item ref comes from krate.
+            let item_ref = self.krate.clone().map(|_| unsafe { &*(item as *const _) });
+            self.index.ensure_contains_elem(def_id, || Steal::new(AstOwner::NonOwner));
+            self.index[def_id] = Steal::new(AstOwner::ForeignItem(item_ref));
             visit::walk_foreign_item(self, item);
         }
     }
@@ -419,13 +447,12 @@ fn compute_hir_hash(
 
 pub fn lower_crate<'hir>(
     tcx: TyCtxt<'hir>,
-    krate: &Crate,
     nt_to_tokenstream: NtToTokenstream,
 ) -> hir::Crate<'hir> {
     let _prof_timer = tcx.sess.prof.verbose_generic_activity("hir_lowering");
 
     let resolver = tcx.resolutions(());
-    let ast_index = index_crate(&resolver.node_id_to_def_id, krate);
+    let ast_index = &tcx.untracked_crate;
 
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
@@ -437,7 +464,7 @@ pub fn lower_crate<'hir>(
             tcx,
             resolver,
             nt_to_tokenstream,
-            ast_index: &ast_index,
+            ast_index: ast_index,
             owners: &mut owners,
         }
         .lower_node(def_id);

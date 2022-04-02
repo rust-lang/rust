@@ -492,13 +492,9 @@ pub fn configure_and_expand(
 
 fn lower_to_hir<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> Crate<'tcx> {
     let sess = tcx.sess;
-    let krate = tcx.untracked_crate.steal();
 
     // Lower AST to HIR.
-    let hir_crate = rustc_ast_lowering::lower_crate(tcx, &krate, rustc_parse::nt_to_tokenstream);
-
-    // Drop AST to free memory
-    sess.time("drop_ast", || std::mem::drop(krate));
+    let hir_crate = rustc_ast_lowering::lower_crate(tcx, rustc_parse::nt_to_tokenstream);
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.debugging_opts.keep_hygiene_data {
@@ -835,6 +831,7 @@ pub fn create_global_ctxt<'tcx>(
     dep_graph.assert_ignored();
 
     let (definitions, cstore, resolver_outputs) = BoxedResolver::to_resolver_outputs(resolver);
+    let krate = rustc_ast_lowering::index_crate(&resolver_outputs.node_id_to_def_id, krate);
 
     let sess = &compiler.session();
     let query_result_on_disk_cache = rustc_incremental::load_query_result_cache(sess);

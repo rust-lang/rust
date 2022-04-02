@@ -1029,7 +1029,7 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Output of the resolver.
     pub(crate) untracked_resolutions: ty::ResolverOutputs,
-    pub untracked_crate: Steal<Lrc<ast::Crate>>,
+    pub untracked_crate: IndexVec<LocalDefId, Steal<ty::AstOwner>>,
 
     /// This provides access to the incremental compilation on-disk cache for query results.
     /// Do not access this directly. It is only meant to be used by
@@ -1170,7 +1170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         definitions: Definitions,
         cstore: Box<CrateStoreDyn>,
         untracked_resolutions: ty::ResolverOutputs,
-        krate: Lrc<ast::Crate>,
+        untracked_crate: IndexVec<LocalDefId, Steal<ty::AstOwner>>,
         dep_graph: DepGraph,
         on_disk_cache: Option<&'tcx dyn OnDiskCache<'tcx>>,
         queries: &'tcx dyn query::QueryEngine<'tcx>,
@@ -1200,7 +1200,7 @@ impl<'tcx> TyCtxt<'tcx> {
             lifetimes: common_lifetimes,
             consts: common_consts,
             untracked_resolutions,
-            untracked_crate: Steal::new(krate),
+            untracked_crate,
             on_disk_cache,
             queries,
             query_caches: query::QueryCaches::default(),
