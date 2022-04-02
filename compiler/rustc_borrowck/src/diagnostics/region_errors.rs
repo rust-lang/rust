@@ -330,14 +330,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     ty::RawPtr(ty_mut) => {
                         assert_eq!(ty_mut.mutbl, rustc_hir::Mutability::Mut);
                         (
-                            format!("a mutable pointer to {}", ty_mut.ty),
+                            format!("a mutable pointer to `{}`", ty_mut.ty),
                             "mutable pointers are invariant over their type parameter".to_string(),
                         )
                     }
                     ty::Ref(_, inner_ty, mutbl) => {
                         assert_eq!(*mutbl, rustc_hir::Mutability::Mut);
                         (
-                            format!("a mutable reference to {}", inner_ty),
+                            format!("a mutable reference to `{}`", inner_ty),
                             "mutable references are invariant over their type parameter"
                                 .to_string(),
                         )
@@ -351,10 +351,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         let adt_desc = adt.descr();
 
                         let desc = format!(
-                            "the type {ty}, which makes the generic argument {generic_arg} invariant"
+                            "the type `{ty}`, which makes the generic argument `{generic_arg}` invariant"
                         );
                         let note = format!(
-                            "the {adt_desc} {base_ty} is invariant over the parameter {base_generic_arg}"
+                            "the {adt_desc} `{base_ty}` is invariant over the parameter `{base_generic_arg}`"
                         );
                         (desc, note)
                     }
