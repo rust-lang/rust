@@ -809,12 +809,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Ptr(m_e), Ptr(m_c)) => self.check_ptr_ptr_cast(fcx, m_e, m_c), // ptr-ptr-cast
 
             // ptr-addr-cast
-            (Ptr(m_expr), Int(_)) => {
-                self.fuzzy_provenance_ptr2int_lint(fcx, t_from);
+            (Ptr(m_expr), Int(t_c)) => {
+                self.lossy_provenance_ptr2int_lint(fcx, t_c);
                 self.check_ptr_addr_cast(fcx, m_expr)
             }
             (FnPtr, Int(_)) => {
-                self.fuzzy_provenance_ptr2int_lint(fcx, t_from);
+                // FIXME(#95489): there should eventually be a lint for these casts
                 Ok(CastKind::FnPtrAddrCast)
             }
             // addr-ptr-cast
@@ -945,7 +945,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         fcx: &FnCtxt<'a, 'tcx>,
         m_cast: TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError> {
-        self.fuzzy_provenance_int2ptr_lint(fcx);
         // ptr-addr cast. pointer must be thin.
         match fcx.pointer_kind(m_cast.ty, self.span)? {
             None => Err(CastError::UnknownCastPtrKind),
@@ -986,25 +985,36 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn fuzzy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_from: CastTy<'tcx>) {
+    fn lossy_provenance_ptr2int_lint(&self, fcx: &FnCtxt<'a, 'tcx>, t_c: ty::cast::IntTy) {
         fcx.tcx.struct_span_lint_hir(
-            lint::builtin::FUZZY_PROVENANCE_CASTS,
+            lint::builtin::LOSSY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
             |err| {
                 let mut err = err.build(&format!(
-                    "strict provenance disallows casting pointer `{}` to integer `{}`",
+                    "under strict provenance it is considered bad style to cast pointer `{}` to integer `{}`",
                     self.expr_ty, self.cast_ty
                 ));
 
-                if let CastTy::FnPtr = t_from {
-                    err.help(
-                        "use `(... as *const u8).addr()` to obtain \
-                         the address of a function pointer",
+                let msg = "use `.addr()` to obtain the address of a pointer";
+                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                    let scalar_cast = match t_c {
+                        ty::cast::IntTy::U(ty::UintTy::Usize) => String::new(),
+                        _ => format!(" as {}", self.cast_ty),
+                    };
+                    err.span_suggestion(
+                        self.span,
+                        msg,
+                        format!("({}).addr(){}", snippet, scalar_cast),
+                        Applicability::MaybeIncorrect
                     );
                 } else {
-                    err.help("use `.addr()` to obtain the address of a pointer");
+                    err.help(msg);
                 }
+                err.help(
+                    "if you can't comply with strict provenance and need to expose the pointer\
+                    provenance you can use `.expose_addr()` instead"
+                );
 
                 err.emit();
             },
@@ -1017,15 +1027,28 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             self.expr.hir_id,
             self.span,
             |err| {
-                err.build(&format!(
+
+                let mut err = err.build(&format!(
                     "strict provenance disallows casting integer `{}` to pointer `{}`",
                     self.expr_ty, self.cast_ty
-                ))
-                .help(
-                    "use `.with_addr(...)` to adjust a valid pointer \
-                     in the same allocation, to this address",
-                )
-                .emit();
+                ));
+                let msg = "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address";
+                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                    err.span_suggestion(
+                        self.span,
+                        msg,
+                        format!("(...).with_addr({})", snippet),
+                        Applicability::HasPlaceholders,
+                    );
+                } else {
+                    err.help(msg);
+                }
+                err.help(
+                    "if you can't comply with strict provenance and don't have a pointer with \
+                    the correct provenance you can use `std::ptr::from_exposed_addr()` instead"
+                 );
+
+                err.emit();
             },
         );
     }
