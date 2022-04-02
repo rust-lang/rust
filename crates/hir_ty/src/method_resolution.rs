@@ -8,9 +8,8 @@ use arrayvec::ArrayVec;
 use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, UniverseIndex};
 use hir_def::{
-    item_scope::ItemScope, lang_item::LangItemTarget, nameres::DefMap, AssocItemId, BlockId,
-    ConstId, FunctionId, GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
+    item_scope::ItemScope, nameres::DefMap, AssocItemId, BlockId, ConstId, FunctionId,
+    GenericDefId, HasModule, ImplId, ItemContainerId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -21,7 +20,7 @@ use crate::{
     db::HirDatabase,
     from_foreign_def_id,
     infer::{unify::InferenceTable, Adjust, Adjustment, AutoBorrow, OverloadedDeref, PointerCast},
-    primitive::{self, FloatTy, IntTy, UintTy},
+    primitive::{FloatTy, IntTy, UintTy},
     static_lifetime,
     utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, ForeignDefId, InEnvironment, Interner,
@@ -337,6 +336,30 @@ impl InherentImpls {
     }
 }
 
+pub fn inherent_impl_crates_query(
+    db: &dyn HirDatabase,
+    krate: CrateId,
+    fp: TyFingerprint,
+) -> ArrayVec<CrateId, 2> {
+    let _p = profile::span("inherent_impl_crates_query");
+    let mut res = ArrayVec::new();
+    let crate_graph = db.crate_graph();
+
+    for krate in crate_graph.transitive_deps(krate) {
+        if res.is_full() {
+            // we don't currently look for or store more than two crates here,
+            // so don't needlessly look at more crates than necessary.
+            break;
+        }
+        let impls = db.inherent_impls_in_crate(krate);
+        if impls.map.get(&fp).map_or(false, |v| !v.is_empty()) {
+            res.push(krate);
+        }
+    }
+
+    res
+}
+
 fn collect_unnamed_consts<'a>(
     db: &'a dyn HirDatabase,
     scope: &'a ItemScope,
@@ -370,63 +393,30 @@ pub fn def_crates(
     ty: &Ty,
     cur_crate: CrateId,
 ) -> Option<ArrayVec<CrateId, 2>> {
-    // Types like slice can have inherent impls in several crates, (core and alloc).
-    // The corresponding impls are marked with lang items, so we can use them to find the required crates.
-    macro_rules! lang_item_crate {
-            ($($name:expr),+ $(,)?) => {{
-                let mut v = ArrayVec::<LangItemTarget, 2>::new();
-                $(
-                    v.extend(db.lang_item(cur_crate, $name.into()));
-                )+
-                v
-            }};
-        }
-
     let mod_to_crate_ids = |module: ModuleId| Some(iter::once(module.krate()).collect());
 
-    let lang_item_targets = match ty.kind(Interner) {
-        TyKind::Adt(AdtId(def_id), _) => {
-            return mod_to_crate_ids(def_id.module(db.upcast()));
-        }
+    let fp = TyFingerprint::for_inherent_impl(ty);
+
+    match ty.kind(Interner) {
+        TyKind::Adt(AdtId(def_id), _) => mod_to_crate_ids(def_id.module(db.upcast())),
         TyKind::Foreign(id) => {
-            return mod_to_crate_ids(
-                from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()),
-            );
+            mod_to_crate_ids(from_foreign_def_id(*id).lookup(db.upcast()).module(db.upcast()))
         }
-        TyKind::Scalar(Scalar::Bool) => lang_item_crate!("bool"),
-        TyKind::Scalar(Scalar::Char) => lang_item_crate!("char"),
-        TyKind::Scalar(Scalar::Float(f)) => match f {
-            // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-            FloatTy::F32 => lang_item_crate!("f32", "f32_runtime"),
-            FloatTy::F64 => lang_item_crate!("f64", "f64_runtime"),
-        },
-        &TyKind::Scalar(Scalar::Int(t)) => {
-            lang_item_crate!(primitive::int_ty_to_string(t))
-        }
-        &TyKind::Scalar(Scalar::Uint(t)) => {
-            lang_item_crate!(primitive::uint_ty_to_string(t))
-        }
-        TyKind::Str => lang_item_crate!("str_alloc", "str"),
-        TyKind::Slice(_) => lang_item_crate!("slice_alloc", "slice"),
-        TyKind::Array(..) => lang_item_crate!("array"),
-        TyKind::Raw(Mutability::Not, _) => lang_item_crate!("const_ptr"),
-        TyKind::Raw(Mutability::Mut, _) => lang_item_crate!("mut_ptr"),
-        TyKind::Dyn(_) => {
-            return ty.dyn_trait().and_then(|trait_| {
-                mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))
-            });
+        TyKind::Dyn(_) => ty
+            .dyn_trait()
+            .and_then(|trait_| mod_to_crate_ids(GenericDefId::TraitId(trait_).module(db.upcast()))),
+        // for primitives, there may be impls in various places (core and alloc
+        // mostly). We just check the whole crate graph for crates with impls
+        // (cached behind a query).
+        TyKind::Scalar(_)
+        | TyKind::Str
+        | TyKind::Slice(_)
+        | TyKind::Array(..)
+        | TyKind::Raw(..) => {
+            Some(db.inherent_impl_crates(cur_crate, fp.expect("fingerprint for primitive")))
         }
         _ => return None,
-    };
-    let res = lang_item_targets
-        .into_iter()
-        .filter_map(|it| match it {
-            LangItemTarget::ImplDefId(it) => Some(it),
-            _ => None,
-        })
-        .map(|it| it.lookup(db.upcast()).container.krate())
-        .collect();
-    Some(res)
+    }
 }
 
 /// Look up the method with the given name.
