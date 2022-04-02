@@ -224,7 +224,6 @@
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
-#![feature(associated_type_bounds)]
 #![feature(box_syntax)]
 #![feature(c_unwind)]
 #![feature(cfg_target_thread_local)]
