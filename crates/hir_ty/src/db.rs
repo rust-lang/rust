@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use arrayvec::ArrayVec;
 use base_db::{impl_intern_key, salsa, CrateId, Upcast};
 use hir_def::{
     db::DefDatabase, expr::ExprId, BlockId, ConstId, ConstParamId, DefWithBodyId, FunctionId,
@@ -13,7 +14,7 @@ use la_arena::ArenaMap;
 use crate::{
     chalk_db,
     consteval::{ComputedExpr, ConstEvalError},
-    method_resolution::{InherentImpls, TraitImpls},
+    method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     Binders, CallableDefId, FnDefId, GenericArg, ImplTraitId, InferenceResult, Interner, PolyFnSig,
     QuantifiedWhereClause, ReturnTypeImplTraits, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
@@ -85,6 +86,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(InherentImpls::inherent_impls_in_block_query)]
     fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
+
+    /// Collects all crates in the dependency graph that have impls for the
+    /// given fingerprint. This is only used for primitive types; for
+    /// user-defined types we just look at the crate where the type is defined.
+    #[salsa::invoke(crate::method_resolution::inherent_impl_crates_query)]
+    fn inherent_impl_crates(&self, krate: CrateId, fp: TyFingerprint) -> ArrayVec<CrateId, 2>;
 
     #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
     fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;

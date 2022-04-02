@@ -6,33 +6,39 @@ use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
 fn infer_slice_method() {
-    check_infer(
+    check_types(
         r#"
-        #[lang = "slice"]
-        impl<T> [T] {
-            fn foo(&self) -> T {
-                loop {}
-            }
-        }
+impl<T> [T] {
+    fn foo(&self) -> T {
+        loop {}
+    }
+}
 
-        #[lang = "slice_alloc"]
-        impl<T> [T] {}
-
-        fn test(x: &[u8]) {
-            <[_]>::foo(x);
-        }
+fn test(x: &[u8]) {
+    <[_]>::foo(x);
+  //^^^^^^^^^^^^^ u8
+}
         "#,
-        expect![[r#"
-            44..48 'self': &[T]
-            55..78 '{     ...     }': T
-            65..72 'loop {}': !
-            70..72 '{}': ()
-            130..131 'x': &[u8]
-            140..162 '{     ...(x); }': ()
-            146..156 '<[_]>::foo': fn foo<u8>(&[u8]) -> u8
-            146..159 '<[_]>::foo(x)': u8
-            157..158 'x': &[u8]
-        "#]],
+    );
+}
+
+#[test]
+fn cross_crate_primitive_method() {
+    check_types(
+        r#"
+//- /main.rs crate:main deps:other_crate
+fn test() {
+    let x = 1f32;
+    x.foo();
+} //^^^^^^^ f32
+
+//- /lib.rs crate:other_crate
+mod foo {
+    impl f32 {
+        pub fn foo(self) -> f32 { 0. }
+    }
+}
+"#,
     );
 }
 
@@ -40,16 +46,15 @@ fn infer_slice_method() {
 fn infer_array_inherent_impl() {
     check_types(
         r#"
-        #[lang = "array"]
-        impl<T, const N: usize> [T; N] {
-            fn foo(&self) -> T {
-                loop {}
-            }
-        }
-        fn test(x: &[u8; 0]) {
-            <[_; 0]>::foo(x);
-          //^^^^^^^^^^^^^^^^ u8
-        }
+impl<T, const N: usize> [T; N] {
+    fn foo(&self) -> T {
+        loop {}
+    }
+}
+fn test(x: &[u8; 0]) {
+    <[_; 0]>::foo(x);
+  //^^^^^^^^^^^^^^^^ u8
+}
         "#,
     );
 }
