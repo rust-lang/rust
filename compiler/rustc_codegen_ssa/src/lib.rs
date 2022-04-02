@@ -29,6 +29,7 @@ use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
 use rustc_middle::ty::query::{ExternProviders, Providers};
+use rustc_serialize::{opaque, Decodable, Decoder, Encoder};
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
 use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
@@ -189,4 +190,54 @@ pub fn looks_like_rust_object_file(filename: &str) -> bool {
 
     // Check if the "inner" extension
     ext2 == Some(RUST_CGU_EXT)
+}
+
+const RLINK_VERSION: u32 = 1;
+const RLINK_MAGIC: &[u8] = b"rustlink";
+
+const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
+
+impl CodegenResults {
+    pub fn serialize_rlink(codegen_results: &CodegenResults) -> Vec<u8> {
+        let mut encoder = opaque::Encoder::new(vec![]);
+        encoder.emit_raw_bytes(RLINK_MAGIC).unwrap();
+        // `emit_raw_bytes` is used to make sure that the version representation does not depend on
+        // Encoder's inner representation of `u32`.
+        encoder.emit_raw_bytes(&RLINK_VERSION.to_be_bytes()).unwrap();
+        encoder.emit_str(RUSTC_VERSION.unwrap()).unwrap();
+
+        let mut encoder = rustc_serialize::opaque::Encoder::new(encoder.into_inner());
+        rustc_serialize::Encodable::encode(codegen_results, &mut encoder).unwrap();
+        encoder.into_inner()
+    }
+
+    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {
+        // The Decodable machinery is not used here because it panics if the input data is invalid
+        // and because its internal representation may change.
+        if !data.starts_with(RLINK_MAGIC) {
+            return Err("The input does not look like a .rlink file".to_string());
+        }
+        let data = &data[RLINK_MAGIC.len()..];
+        if data.len() < 4 {
+            return Err("The input does not contain version number".to_string());
+        }
+
+        let mut version_array: [u8; 4] = Default::default();
+        version_array.copy_from_slice(&data[..4]);
+        if u32::from_be_bytes(version_array) != RLINK_VERSION {
+            return Err(".rlink file was produced with encoding version {version_array}, but the current version is {RLINK_VERSION}".to_string());
+        }
+
+        let mut decoder = opaque::Decoder::new(&data[4..], 0);
+        let rustc_version = decoder.read_str();
+        let current_version = RUSTC_VERSION.unwrap();
+        if rustc_version != current_version {
+            return Err(format!(
+                ".rlink file was produced by rustc version {rustc_version}, but the current version is {current_version}."
+            ));
+        }
+
+        let codegen_results = CodegenResults::decode(&mut decoder);
+        Ok(codegen_results)
+    }
 }

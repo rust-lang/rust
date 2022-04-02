@@ -217,9 +217,9 @@ macro_rules! __thread_local_inner {
                 // 1 == dtor registered, dtor not run
                 // 2 == dtor registered and is running or has run
                 #[thread_local]
-                static mut STATE: u8 = 0;
+                static mut STATE: $crate::primitive::u8 = 0;
 
-                unsafe extern "C" fn destroy(ptr: *mut u8) {
+                unsafe extern "C" fn destroy(ptr: *mut $crate::primitive::u8) {
                     let ptr = ptr as *mut $t;
 
                     unsafe {
@@ -235,7 +235,7 @@ macro_rules! __thread_local_inner {
                         //   so now.
                         0 => {
                             $crate::thread::__FastLocalKeyInner::<$t>::register_dtor(
-                                $crate::ptr::addr_of_mut!(VAL) as *mut u8,
+                                $crate::ptr::addr_of_mut!(VAL) as *mut $crate::primitive::u8,
                                 destroy,
                             );
                             STATE = 1;
