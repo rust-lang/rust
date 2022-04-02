@@ -549,7 +549,7 @@ impl<T> Option<T> {
     #[must_use = "if you intended to assert that this has a value, consider `.unwrap()` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     pub const fn is_some(&self) -> bool {
         matches!(*self, Some(_))
     }
@@ -592,7 +592,7 @@ impl<T> Option<T> {
                   `.and_then(|_| panic!(\"`Option` had a value when expected `None`\"))` instead"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     pub const fn is_none(&self) -> bool {
         !self.is_some()
     }
@@ -621,7 +621,7 @@ impl<T> Option<T> {
     /// println!("still can print text: {text:?}");
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_option", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_option_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Option<&T> {
         match *self {

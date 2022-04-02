@@ -1,7 +1,7 @@
 // error-pattern: any use of this value will cause an error
 
 #![feature(never_type)]
-#![feature(const_maybe_uninit_assume_init, const_assert_type2)]
+#![feature(const_assert_type2)]
 #![feature(core_intrinsics)]
 
 use std::intrinsics;
