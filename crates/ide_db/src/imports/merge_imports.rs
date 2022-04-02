@@ -129,7 +129,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                         _ => (),
                     }
 
-                    if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
+                    if lhs_t.is_simple_path() && rhs_t.is_simple_path() {
                         continue;
                     }
                 }

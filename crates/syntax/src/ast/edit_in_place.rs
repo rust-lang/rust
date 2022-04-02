@@ -328,7 +328,7 @@ impl ast::UseTree {
             return;
         }
         // At this point, prefix path is detached; _self_ use tree has suffix path.
-        // Next, transoform 'suffix' use tree into 'prefix::{suffix}'
+        // Next, transform 'suffix' use tree into 'prefix::{suffix}'
         let subtree = self.clone_subtree().clone_for_update();
         ted::remove_all_iter(self.syntax().children_with_tokens());
         ted::insert(Position::first_child_of(self.syntax()), prefix.syntax());
