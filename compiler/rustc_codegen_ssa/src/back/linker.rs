@@ -12,6 +12,7 @@ use std::{env, mem, str};
 
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_middle::middle::dependency_format::Linkage;
+use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{json, Encoder};
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -1550,6 +1551,51 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
                 }
 
                 symbols.push(symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum));
+            }
+        }
+    }
+
+    symbols
+}
+
+pub(crate) fn linked_symbols(
+    tcx: TyCtxt<'_>,
+    crate_type: CrateType,
+) -> Vec<(String, SymbolExportKind)> {
+    match crate_type {
+        CrateType::Executable | CrateType::Cdylib => (),
+        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib | CrateType::Dylib => {
+            return Vec::new();
+        }
+    }
+
+    let mut symbols = Vec::new();
+
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+        if info.level.is_below_threshold(export_threshold) || info.used {
+            symbols.push((
+                symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, LOCAL_CRATE),
+                info.kind,
+            ));
+        }
+    }
+
+    let formats = tcx.dependency_formats(());
+    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
+
+    for (index, dep_format) in deps.iter().enumerate() {
+        let cnum = CrateNum::new(index + 1);
+        // For each dependency that we are linking to statically ...
+        if *dep_format == Linkage::Static {
+            // ... we add its symbol list to our export list.
+            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
+                if info.level.is_below_threshold(export_threshold) || info.used {
+                    symbols.push((
+                        symbol_export::symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                        info.kind,
+                    ));
+                }
             }
         }
     }

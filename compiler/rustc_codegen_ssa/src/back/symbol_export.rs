@@ -9,7 +9,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportLevel,
+    metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -124,6 +124,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
             };
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
                 tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
@@ -131,6 +132,17 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             );
             (def_id.to_def_id(), SymbolExportInfo {
                 level: export_level,
+                kind: if tcx.is_static(def_id.to_def_id()) {
+                    if codegen_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                        SymbolExportKind::Tls
+                    } else {
+                        SymbolExportKind::Data
+                    }
+                } else {
+                    SymbolExportKind::Text
+                },
+                used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                    || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER),
             })
         })
         .collect();
@@ -138,7 +150,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
     if let Some(id) = tcx.proc_macro_decls_static(()) {
         reachable_non_generics.insert(
             id.to_def_id(),
-            SymbolExportInfo { level: SymbolExportLevel::C },
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
         );
     }
 
@@ -180,7 +196,11 @@ fn exported_symbols_provider_local<'tcx>(
 
         symbols.push((
             exported_symbol,
-            SymbolExportInfo { level: SymbolExportLevel::C },
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Text,
+                used: false,
+            },
         ));
     }
 
@@ -191,7 +211,11 @@ fn exported_symbols_provider_local<'tcx>(
 
             symbols.push((
                 exported_symbol,
-                SymbolExportInfo { level: SymbolExportLevel::Rust },
+                SymbolExportInfo {
+                    level: SymbolExportLevel::Rust,
+                    kind: SymbolExportKind::Text,
+                    used: false,
+                },
             ));
         }
     }
@@ -207,7 +231,11 @@ fn exported_symbols_provider_local<'tcx>(
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (
                 exported_symbol,
-                SymbolExportInfo { level: SymbolExportLevel::C },
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
             )
         }));
     }
@@ -220,7 +248,11 @@ fn exported_symbols_provider_local<'tcx>(
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (
                 exported_symbol,
-                SymbolExportInfo { level: SymbolExportLevel::C },
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
             )
         }));
     }
@@ -231,7 +263,11 @@ fn exported_symbols_provider_local<'tcx>(
 
         symbols.push((
             exported_symbol,
-            SymbolExportInfo { level: SymbolExportLevel::Rust },
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
         ));
     }
 
@@ -269,6 +305,8 @@ fn exported_symbols_provider_local<'tcx>(
                             symbol,
                             SymbolExportInfo {
                                 level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
                             },
                         ));
                     }
@@ -283,6 +321,8 @@ fn exported_symbols_provider_local<'tcx>(
                         ExportedSymbol::DropGlue(ty),
                         SymbolExportInfo {
                             level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
                         },
                     ));
                 }
