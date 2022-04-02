@@ -59,7 +59,7 @@ impl FromInternal<(TreeAndSpacing, &'_ mut Vec<Self>, &mut Rustc<'_, '_>)>
         use rustc_ast::token::*;
 
         let joint = spacing == Joint;
-        let Token { kind, span } = match tree {
+        let Token { kind, span, .. } = match tree {
             tokenstream::TokenTree::Delimited(span, delim, tts) => {
                 let delimiter = Delimiter::from_internal(delim);
                 return TokenTree::Group(Group { delimiter, stream: tts, span, flatten: false });

@@ -299,7 +299,7 @@ impl TokenCursor {
     #[inline(always)]
     fn inlined_next_desugared(&mut self) -> (Token, Spacing) {
         let (data, attr_style, sp) = match self.inlined_next() {
-            (Token { kind: token::DocComment(_, attr_style, data), span }, _) => {
+            (Token { kind: token::DocComment(_, attr_style, data), span, .. }, _) => {
                 (data, attr_style, span)
             }
             tok => return tok,

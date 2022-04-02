@@ -683,10 +683,9 @@ struct MacroArgParser {
 fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
         TokenTree::Token(ref t) => t.clone(),
-        TokenTree::Delimited(delim_span, delim, _) => Token {
-            kind: TokenKind::CloseDelim(delim),
-            span: delim_span.close,
-        },
+        TokenTree::Delimited(delim_span, delim, _) => {
+            Token::new(TokenKind::CloseDelim(delim), delim_span.close)
+        }
     }
 }
 
@@ -695,14 +694,8 @@ impl MacroArgParser {
         MacroArgParser {
             buf: String::new(),
             is_meta_var: false,
-            last_tok: Token {
-                kind: TokenKind::Eof,
-                span: DUMMY_SP,
-            },
-            start_tok: Token {
-                kind: TokenKind::Eof,
-                span: DUMMY_SP,
-            },
+            last_tok: Token::new(TokenKind::Eof, DUMMY_SP),
+            start_tok: Token::new(TokenKind::Eof, DUMMY_SP),
             result: vec![],
         }
     }
@@ -862,6 +855,7 @@ impl MacroArgParser {
                 TokenTree::Token(Token {
                     kind: TokenKind::Dollar,
                     span,
+                    ..
                 }) => {
                     // We always want to add a separator before meta variables.
                     if !self.buf.is_empty() {
@@ -870,10 +864,7 @@ impl MacroArgParser {
 
                     // Start keeping the name of this metavariable in the buffer.
                     self.is_meta_var = true;
-                    self.start_tok = Token {
-                        kind: TokenKind::Dollar,
-                        span,
-                    };
+                    self.start_tok = Token::new(TokenKind::Dollar, span);
                 }
                 TokenTree::Token(Token {
                     kind: TokenKind::Colon,
@@ -1150,6 +1141,7 @@ impl MacroParser {
         if let Some(TokenTree::Token(Token {
             kind: TokenKind::Semi,
             span,
+            ..
         })) = self.toks.look_ahead(0)
         {
             hi = span.hi();

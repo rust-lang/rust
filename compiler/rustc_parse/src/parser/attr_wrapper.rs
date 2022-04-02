@@ -96,7 +96,7 @@ struct LazyTokenStreamImpl {
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 144);
+rustc_data_structures::static_assert_size!(LazyTokenStreamImpl, 152);
 
 impl CreateTokenStream for LazyTokenStreamImpl {
     fn create_token_stream(&self) -> AttrAnnotatedTokenStream {
@@ -414,10 +414,10 @@ fn make_token_stream(
     let mut token_and_spacing = iter.next();
     while let Some((token, spacing)) = token_and_spacing {
         match token {
-            FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span }) => {
+            FlatToken::Token(Token { kind: TokenKind::OpenDelim(delim), span, .. }) => {
                 stack.push(FrameData { open: span, open_delim: delim, inner: vec![] });
             }
-            FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span }) => {
+            FlatToken::Token(Token { kind: TokenKind::CloseDelim(delim), span, .. }) => {
                 // HACK: If we encounter a mismatched `None` delimiter at the top
                 // level, just ignore it.
                 if matches!(delim, DelimToken::NoDelim)

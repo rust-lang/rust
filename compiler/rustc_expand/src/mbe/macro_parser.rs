@@ -95,7 +95,7 @@ type NamedMatchVec = SmallVec<[NamedMatch; 1]>;
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
+rustc_data_structures::static_assert_size!(NamedMatchVec, 56);
 
 #[derive(Clone)]
 enum MatcherKind<'tt> {

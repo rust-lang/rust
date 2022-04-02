@@ -57,7 +57,9 @@ pub(super) fn parse(
         match tree {
             TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
                 let span = match trees.next() {
-                    Some(tokenstream::TokenTree::Token(Token { kind: token::Colon, span })) => {
+                    Some(tokenstream::TokenTree::Token(Token {
+                        kind: token::Colon, span, ..
+                    })) => {
                         match trees.next() {
                             Some(tokenstream::TokenTree::Token(token)) => match token.ident() {
                                 Some((frag, _)) => {
@@ -149,7 +151,7 @@ fn parse_tree(
     // Depending on what `tree` is, we could be parsing different parts of a macro
     match tree {
         // `tree` is a `$` token. Look at the next token in `trees`
-        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span }) => {
+        tokenstream::TokenTree::Token(Token { kind: token::Dollar, span, .. }) => {
             // FIXME: Handle `None`-delimited groups in a more systematic way
             // during parsing.
             let mut next = outer_trees.next();
@@ -168,7 +170,7 @@ fn parse_tree(
                         if delim != token::Paren {
                             span_dollar_dollar_or_metavar_in_the_lhs_err(
                                 sess,
-                                &Token { kind: token::OpenDelim(delim), span: delim_span.entire() },
+                                &Token::new(token::OpenDelim(delim), delim_span.entire()),
                             );
                         }
                     } else {
@@ -237,11 +239,13 @@ fn parse_tree(
                 }
 
                 // `tree` is followed by another `$`. This is an escaped `$`.
-                Some(tokenstream::TokenTree::Token(Token { kind: token::Dollar, span })) => {
+                Some(tokenstream::TokenTree::Token(Token {
+                    kind: token::Dollar, span, ..
+                })) => {
                     if parsing_patterns {
                         span_dollar_dollar_or_metavar_in_the_lhs_err(
                             sess,
-                            &Token { kind: token::Dollar, span },
+                            &Token::new(token::Dollar, span),
                         );
                     } else {
                         maybe_emit_macro_metavar_expr_feature(features, sess, span);

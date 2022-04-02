@@ -248,6 +248,7 @@ rustc_data_structures::static_assert_size!(TokenKind, 16);
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
+    pub span2: Span,
 }
 
 impl TokenKind {
@@ -306,7 +307,7 @@ impl TokenKind {
 
 impl Token {
     pub fn new(kind: TokenKind, span: Span) -> Self {
-        Token { kind, span }
+        Token { kind, span, span2: span }
     }
 
     /// Some token that will be thrown away later.

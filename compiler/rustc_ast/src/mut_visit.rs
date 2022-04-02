@@ -719,13 +719,14 @@ pub fn visit_lazy_tts<T: MutVisitor>(lazy_tts: &mut Option<LazyTokenStream>, vis
 // In practice the ident part is not actually used by specific visitors right now,
 // but there's a test below checking that it works.
 pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
-    let Token { kind, span } = t;
+    let Token { kind, span, span2 } = t;
     match kind {
         token::Ident(name, _) | token::Lifetime(name) => {
             let mut ident = Ident::new(*name, *span);
             vis.visit_ident(&mut ident);
             *name = ident.name;
             *span = ident.span;
+            vis.visit_span(span2);
             return; // Avoid visiting the span for the second time.
         }
         token::Interpolated(nt) => {
@@ -735,6 +736,7 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
         _ => {}
     }
     vis.visit_span(span);
+    vis.visit_span(span2);
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
