@@ -375,8 +375,11 @@ pub struct Arc;
 "#,
         expect![[r#"
             crate
+            alloc: t
             alloc_crate: t
             sync: t
+
+            crate::alloc
 
             crate::sync
             Arc: t v
@@ -401,8 +404,11 @@ pub struct Arc;
 "#,
         expect![[r#"
             crate
+            alloc: t
             alloc_crate: t
             sync: t
+
+            crate::alloc
 
             crate::sync
             Arc: t v

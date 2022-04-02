@@ -526,6 +526,9 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
+            foo: t
+
+            crate::foo
         "#]],
     );
 }

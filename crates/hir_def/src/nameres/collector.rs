@@ -1743,6 +1743,12 @@ impl ModCollector<'_, '_> {
                         }
                     }
                     Err(candidates) => {
+                        self.push_child_module(
+                            module.name.clone(),
+                            ast_id,
+                            None,
+                            &self.item_tree[module.visibility],
+                        );
                         self.def_collector.def_map.diagnostics.push(
                             DefDiagnostic::unresolved_module(self.module_id, ast_id, candidates),
                         );
