@@ -1,7 +1,7 @@
 //! Checks validity of naked functions.
 
 use rustc_ast::{Attribute, InlineAsmOptions};
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{FnKind, Visitor};
@@ -274,11 +274,24 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
         }
 
         if !asm.options.contains(InlineAsmOptions::NORETURN) {
+            let last_span = asm
+                .operands
+                .last()
+                .map_or_else(|| asm.template_strs.last().unwrap().2, |op| op.1)
+                .shrink_to_hi();
+
             struct_span_err!(
                 self.tcx.sess,
                 span,
                 E0787,
                 "asm in naked functions must use `noreturn` option"
+            )
+            .span_suggestion(
+                last_span,
+                "consider specifying that the asm block is responsible \
+                for returning from the function",
+                String::from(", options(noreturn)"),
+                Applicability::MachineApplicable,
             )
             .emit();
         }

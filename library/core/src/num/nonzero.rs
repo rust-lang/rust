@@ -74,7 +74,7 @@ macro_rules! nonzero_integers {
                 /// Returns the value as a primitive type.
                 #[$stability]
                 #[inline]
-                #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
+                #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
                     self.0
                 }

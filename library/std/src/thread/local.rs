@@ -193,7 +193,7 @@ macro_rules! __thread_local_inner {
             #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
             {
                 static mut VAL: $t = INIT_EXPR;
-                Some(&VAL)
+                $crate::option::Option::Some(&VAL)
             }
 
             // If the platform has support for `#[thread_local]`, use it.
@@ -209,7 +209,7 @@ macro_rules! __thread_local_inner {
                 // just get going.
                 if !$crate::mem::needs_drop::<$t>() {
                     unsafe {
-                        return Some(&VAL)
+                        return $crate::option::Option::Some(&VAL)
                     }
                 }
 
@@ -223,7 +223,7 @@ macro_rules! __thread_local_inner {
                     let ptr = ptr as *mut $t;
 
                     unsafe {
-                        debug_assert_eq!(STATE, 1);
+                        $crate::debug_assert_eq!(STATE, 1);
                         STATE = 2;
                         $crate::ptr::drop_in_place(ptr);
                     }
@@ -239,14 +239,14 @@ macro_rules! __thread_local_inner {
                                 destroy,
                             );
                             STATE = 1;
-                            Some(&VAL)
+                            $crate::option::Option::Some(&VAL)
                         }
                         // 1 == the destructor is registered and the value
                         //   is valid, so return the pointer.
-                        1 => Some(&VAL),
+                        1 => $crate::option::Option::Some(&VAL),
                         // otherwise the destructor has already run, so we
                         // can't give access.
-                        _ => None,
+                        _ => $crate::option::Option::None,
                     }
                 }
             }
@@ -269,7 +269,7 @@ macro_rules! __thread_local_inner {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
                             } else if $crate::cfg!(debug_assertions) {
-                                unreachable!("missing initial value");
+                                $crate::unreachable!("missing initial value");
                             }
                         }
                         __init()
@@ -344,7 +344,7 @@ macro_rules! __thread_local_inner {
                             if let $crate::option::Option::Some(value) = init.take() {
                                 return value;
                             } else if $crate::cfg!(debug_assertions) {
-                                unreachable!("missing default value");
+                                $crate::unreachable!("missing default value");
                             }
                         }
                         __init()

@@ -510,7 +510,7 @@ pub const fn null_mut<T>() -> *mut T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.61.0")]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid<T>(addr: usize) -> *const T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
@@ -537,7 +537,7 @@ pub const fn invalid<T>(addr: usize) -> *const T {
 /// see the [module documentation][crate::ptr] for details.
 #[inline(always)]
 #[must_use]
-#[rustc_const_stable(feature = "strict_provenance", since = "1.61.0")]
+#[rustc_const_stable(feature = "stable_things_using_strict_provenance", since = "1.61.0")]
 #[unstable(feature = "strict_provenance", issue = "95228")]
 pub const fn invalid_mut<T>(addr: usize) -> *mut T {
     // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.

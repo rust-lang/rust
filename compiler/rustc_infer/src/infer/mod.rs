@@ -70,8 +70,6 @@ mod sub;
 pub mod type_variable;
 mod undo_log;
 
-pub use rustc_middle::infer::unify_key;
-
 #[must_use]
 #[derive(Debug)]
 pub struct InferOk<'tcx, T> {
@@ -425,16 +423,20 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplMethodObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplMethodObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Comparing the signature and requirements of an impl associated type
     /// against the containing trait
-    CompareImplTypeObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplTypeObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
         parent: Box<SubregionOrigin<'tcx>>,
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 }
@@ -558,9 +560,9 @@ impl<'tcx> fmt::Display for FixupError<'tcx> {
     }
 }
 
-/// Helper type of a temporary returned by `tcx.infer_ctxt()`.
-/// Necessary because we can't write the following bound:
-/// `F: for<'b, 'tcx> where 'tcx FnOnce(InferCtxt<'b, 'tcx>)`.
+/// A temporary returned by `tcx.infer_ctxt()`. This is necessary
+/// for multiple `InferCtxt` to share the same `in_progress_typeck_results`
+/// without using `Rc` or something similar.
 pub struct InferCtxtBuilder<'tcx> {
     tcx: TyCtxt<'tcx>,
     fresh_typeck_results: Option<RefCell<ty::TypeckResults<'tcx>>>,

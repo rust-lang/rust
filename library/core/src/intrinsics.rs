@@ -1638,7 +1638,7 @@ extern "rust-intrinsic" {
     /// let num_trailing = unsafe { cttz_nonzero(x) };
     /// assert_eq!(num_trailing, 3);
     /// ```
-    #[rustc_const_stable(feature = "const_cttz", since = "1.53.0")]
+    #[rustc_const_stable(feature = "const_cttz_nonzero", since = "1.53.0")]
     pub fn cttz_nonzero<T: Copy>(x: T) -> T;
 
     /// Reverses the bytes in an integer type `T`.
@@ -1718,7 +1718,7 @@ extern "rust-intrinsic" {
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_div` method. For example,
     /// [`u32::checked_div`]
-    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.52.0")]
+    #[rustc_const_stable(feature = "const_int_unchecked_div", since = "1.52.0")]
     pub fn unchecked_div<T: Copy>(x: T, y: T) -> T;
     /// Returns the remainder of an unchecked division, resulting in
     /// undefined behavior when `y == 0` or `x == T::MIN && y == -1`
@@ -1726,7 +1726,7 @@ extern "rust-intrinsic" {
     /// Safe wrappers for this intrinsic are available on the integer
     /// primitives via the `checked_rem` method. For example,
     /// [`u32::checked_rem`]
-    #[rustc_const_stable(feature = "const_int_unchecked_arith", since = "1.52.0")]
+    #[rustc_const_stable(feature = "const_int_unchecked_rem", since = "1.52.0")]
     pub fn unchecked_rem<T: Copy>(x: T, y: T) -> T;
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
