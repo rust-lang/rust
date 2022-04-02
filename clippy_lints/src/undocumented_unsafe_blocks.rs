@@ -15,6 +15,24 @@ declare_clippy_lint! {
     /// explaining why the unsafe operations performed inside
     /// the block are safe.
     ///
+    /// Note the comment must appear on the line(s) preceding the unsafe block
+    /// with nothing appearing in between. The following is ok:
+    /// ```ignore
+    /// foo(
+    ///     // SAFETY:
+    ///     // This is a valid safety comment
+    ///     unsafe { *x }
+    /// )
+    /// ```
+    /// But neither of these are:
+    /// ```ignore
+    /// // SAFETY:
+    /// // This is not a valid safety comment
+    /// foo(
+    ///     /* SAFETY: Neither is this */ unsafe { *x },
+    /// );
+    /// ```
+    ///
     /// ### Why is this bad?
     /// Undocumented unsafe blocks can make it difficult to
     /// read and maintain code, as well as uncover unsoundness

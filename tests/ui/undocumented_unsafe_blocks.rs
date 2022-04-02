@@ -251,6 +251,11 @@ fn from_proc_macro() {
 
 // Invalid comments
 
+#[rustfmt::skip]
+fn inline_block_comment() {
+    /* Safety: */ unsafe {}
+}
+
 fn no_comment() {
     unsafe {}
 }
