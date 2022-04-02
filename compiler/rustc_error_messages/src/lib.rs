@@ -193,7 +193,11 @@ pub enum DiagnosticMessage {
     /// Non-translatable diagnostic message.
     // FIXME(davidtwco): can a `Cow<'static, str>` be used here?
     Str(String),
-    /// Identifier for a Fluent message corresponding to the diagnostic message.
+    /// Identifier for a Fluent message (with optional attribute) corresponding to the diagnostic
+    /// message.
+    ///
+    /// <https://projectfluent.org/fluent/guide/hello.html>
+    /// <https://projectfluent.org/fluent/guide/attributes.html>
     FluentIdentifier(FluentId, Option<FluentId>),
 }
 
