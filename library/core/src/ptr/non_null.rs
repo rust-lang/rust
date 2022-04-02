@@ -4,6 +4,7 @@ use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
+use crate::num::NonZeroUsize;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
 use crate::slice::{self, SliceIndex};
@@ -251,6 +252,53 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub const fn to_raw_parts(self) -> (NonNull<()>, <T as super::Pointee>::Metadata) {
         (self.cast(), super::metadata(self.as_ptr()))
+    }
+
+    /// Gets the "address" portion of the pointer.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn addr(self) -> NonZeroUsize
+    where
+        T: Sized,
+    {
+        // SAFETY: The pointer is guaranteed by the type to be non-null,
+        // meaning that the address will be non-zero.
+        unsafe { NonZeroUsize::new_unchecked(self.pointer.addr()) }
+    }
+
+    /// Creates a new pointer with the given address.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn with_addr(self, addr: NonZeroUsize) -> Self
+    where
+        T: Sized,
+    {
+        // SAFETY: The result of `ptr::from::with_addr` is non-null because `addr` is guaranteed to be non-zero.
+        unsafe { NonNull::new_unchecked(self.pointer.with_addr(addr.get()) as *mut _) }
+    }
+
+    /// Creates a new pointer by mapping `self`'s address to a new one.
+    ///
+    /// This is a convenience for [`with_addr`][Self::with_addr], see that method for details.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment,
+    /// see the [module documentation][crate::ptr] for details.
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn map_addr(self, f: impl FnOnce(NonZeroUsize) -> NonZeroUsize) -> Self
+    where
+        T: Sized,
+    {
+        self.with_addr(f(self.addr()))
     }
 
     /// Acquires the underlying `*mut` pointer.
