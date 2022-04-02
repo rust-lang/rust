@@ -19,6 +19,8 @@ pub fn target() -> Target {
         .entry(LinkerFlavor::Lld(LldFlavor::Link))
         .or_default()
         .extend(pre_link_args_msvc);
+    // Workaround for #95429
+    base.has_thread_local = false;
 
     Target {
         llvm_target: "i686-pc-windows-msvc".to_string(),
