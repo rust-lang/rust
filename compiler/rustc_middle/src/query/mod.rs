@@ -869,6 +869,7 @@ rustc_queries! {
     /// Not meant to be used directly outside of coherence.
     query crate_inherent_impls(k: ()) -> CrateInherentImpls {
         storage(ArenaCacheSelector<'tcx>)
+        eval_always
         desc { "all inherent impls defined in crate" }
     }
 
