@@ -358,6 +358,17 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         );
                         (desc, note)
                     }
+                    ty::FnDef(def_id, _) => {
+                        let name = self.infcx.tcx.item_name(*def_id);
+                        let identity_substs =
+                            InternalSubsts::identity_for_item(self.infcx.tcx, *def_id);
+                        let desc = format!("a function pointer to `{name}`");
+                        let note = format!(
+                            "the function `{name}` is invariant over the parameter `{}`",
+                            identity_substs[param_index as usize]
+                        );
+                        (desc, note)
+                    }
                     _ => panic!("Unexpected type {:?}", ty),
                 };
                 diag.note(&format!("requirement occurs because of {desc}",));
