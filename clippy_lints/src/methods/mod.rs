@@ -26,6 +26,7 @@ mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
+mod is_digit_ascii_radix;
 mod iter_cloned_collect;
 mod iter_count;
 mod iter_next_slice;
@@ -2131,6 +2132,36 @@ declare_clippy_lint! {
     "no-op use of `deref` or `deref_mut` method to `Option`."
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds usages of [`char::is_digit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_digit) that
+    /// can be replaced with [`is_ascii_digit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_digit) or
+    /// [`is_ascii_hexdigit`]
+    /// (https://doc.rust-lang.org/stable/std/primitive.char.html#method.is_ascii_hexdigit).
+    ///
+    /// ### Why is this bad?
+    /// `is_digit(..)` is slower and requires specifying the radix.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let c: char = '6';
+    /// c.is_digit(10);
+    /// c.is_digit(16);
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// let c: char = '6';
+    /// c.is_ascii_digit();
+    /// c.is_ascii_hexdigit();
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub IS_DIGIT_ASCII_RADIX,
+    style,
+    "use of `char::is_digit(..)` with literal radix of 10 or 16"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2219,6 +2250,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_JOIN,
     ERR_EXPECT,
     NEEDLESS_OPTION_AS_DEREF,
+    IS_DIGIT_ASCII_RADIX,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2516,6 +2548,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("get_or_insert_with", [arg]) => unnecessary_lazy_eval::check(cx, expr, recv, arg, "get_or_insert"),
             ("is_file", []) => filetype_is_file::check(cx, expr, recv),
+            ("is_digit", [radix]) => is_digit_ascii_radix::check(cx, expr, recv, radix, msrv),
             ("is_none", []) => check_is_some_is_none(cx, expr, recv, false),
             ("is_some", []) => check_is_some_is_none(cx, expr, recv, true),
             ("join", [join_arg]) => {
