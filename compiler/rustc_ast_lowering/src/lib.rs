@@ -459,6 +459,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         node_id: ast::NodeId,
         data: DefPathData,
     ) -> LocalDefId {
+        debug_assert_ne!(node_id, ast::DUMMY_NODE_ID);
         assert!(
             self.opt_local_def_id(node_id).is_none(),
             "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
@@ -469,13 +470,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let def_id = self.tcx.create_def(parent, data);
 
-        // Some things for which we allocate `LocalDefId`s don't correspond to
-        // anything in the AST, so they don't have a `NodeId`. For these cases
-        // we don't need a mapping from `NodeId` to `LocalDefId`.
-        if node_id != ast::DUMMY_NODE_ID {
-            debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-            self.resolver.node_id_to_def_id.insert(node_id, def_id);
-        }
+        debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
+        self.resolver.node_id_to_def_id.insert(node_id, def_id);
 
         def_id
     }
