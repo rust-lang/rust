@@ -176,7 +176,8 @@ impl<'tcx> Inliner<'tcx> {
         callee: &Instance<'tcx>,
     ) -> Result<(), &'static str> {
         let caller_def_id = caller_body.source.def_id();
-        if callee.def_id() == caller_def_id {
+        let callee_def_id = callee.def_id();
+        if callee_def_id == caller_def_id {
             return Err("self-recursion");
         }
 
@@ -185,7 +186,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If there is no MIR available (either because it was not in metadata or
                 // because it has no MIR because it's an extern function), then the inliner
                 // won't cause cycles on this.
-                if !self.tcx.is_mir_available(callee.def_id()) {
+                if !self.tcx.is_mir_available(callee_def_id) {
                     return Err("item MIR unavailable");
                 }
             }
@@ -205,19 +206,19 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
-        if self.tcx.is_constructor(callee.def_id()) {
+        if self.tcx.is_constructor(callee_def_id) {
             trace!("constructors always have MIR");
             // Constructor functions cannot cause a query cycle.
             return Ok(());
         }
 
-        if let Some(callee_def_id) = callee.def_id().as_local() {
+        if callee_def_id.is_local() {
             // Avoid a cycle here by only using `instance_mir` only if we have
             // a lower `DefPathHash` than the callee. This ensures that the callee will
             // not inline us. This trick even works with incremental compilation,
             // since `DefPathHash` is stable.
             if self.tcx.def_path_hash(caller_def_id).local_hash()
-                < self.tcx.def_path_hash(callee_def_id.to_def_id()).local_hash()
+                < self.tcx.def_path_hash(callee_def_id).local_hash()
             {
                 return Ok(());
             }
