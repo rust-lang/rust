@@ -30,7 +30,6 @@ pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
     pub span: Span,
     pub found: usize,
     pub expected: usize,
-    pub expected_pluralize: &'a str,
     pub descr: &'a str,
 }
 
