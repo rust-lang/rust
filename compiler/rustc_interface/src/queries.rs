@@ -18,6 +18,7 @@ use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
+use rustc_codegen_ssa::CodegenResults;
 
 /// Represent the result of a query.
 ///
@@ -360,10 +361,9 @@ impl Linker {
         }
 
         if sess.opts.debugging_opts.no_link {
-            let mut encoder = rustc_serialize::opaque::Encoder::new(Vec::new());
-            rustc_serialize::Encodable::encode(&codegen_results, &mut encoder).unwrap();
+            let encoded = CodegenResults::serialize_rlink(&codegen_results);
             let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
-            std::fs::write(&rlink_file, encoder.into_inner()).map_err(|err| {
+            std::fs::write(&rlink_file, encoded).map_err(|err| {
                 sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
             })?;
             return Ok(());

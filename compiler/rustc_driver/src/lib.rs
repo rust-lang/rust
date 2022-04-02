@@ -588,8 +588,8 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to read rlink file: {}", err));
             });
-            let mut decoder = rustc_serialize::opaque::Decoder::new(&rlink_data, 0);
-            let codegen_results: CodegenResults = rustc_serialize::Decodable::decode(&mut decoder);
+            let codegen_results = CodegenResults::deserialize_rlink(rlink_data)
+                .expect("Could not deserialize .rlink file");
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {

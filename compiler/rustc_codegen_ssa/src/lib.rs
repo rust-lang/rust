@@ -34,6 +34,7 @@ use rustc_session::cstore::{self, CrateSource};
 use rustc_session::utils::NativeLibKind;
 use rustc_span::symbol::Symbol;
 use std::path::{Path, PathBuf};
+use rustc_serialize::{Decodable, Decoder, Encoder, opaque};
 
 pub mod back;
 pub mod base;
@@ -189,4 +190,34 @@ pub fn looks_like_rust_object_file(filename: &str) -> bool {
 
     // Check if the "inner" extension
     ext2 == Some(RUST_CGU_EXT)
+}
+
+const RLINK_MAGIC: &'static [u8; 5] = b"rlink";
+const RUSTC_VERSION: Option<&str> = option_env!("CFG_VERSION");
+
+impl CodegenResults {
+    pub fn serialize_rlink(codegen_results: &CodegenResults) -> Vec<u8> {
+        let mut encoder = opaque::Encoder::new(vec![]);
+        encoder.emit_raw_bytes(RLINK_MAGIC).unwrap();
+        encoder.emit_str(RUSTC_VERSION.unwrap()).unwrap();
+
+        let mut encoder = rustc_serialize::opaque::Encoder::new(encoder.into_inner());
+        rustc_serialize::Encodable::encode(codegen_results, &mut encoder).unwrap();
+        encoder.into_inner()
+    }
+
+    pub fn deserialize_rlink(data: Vec<u8>) -> Result<Self, String> {
+        if !data.starts_with(RLINK_MAGIC) {
+            return Err("The input does not look like a .rlink file".to_string());
+        }
+        let mut decoder = opaque::Decoder::new(&data[RLINK_MAGIC.len()..], 0);
+        let rustc_version = decoder.read_str();
+        let current_version = RUSTC_VERSION.unwrap();
+        if rustc_version != current_version {
+            return Err(format!(".rlink file was produced by rustc version {rustc_version}, but the current version is {current_version}."));
+        }
+
+        let codegen_results = CodegenResults::decode(&mut decoder);
+        Ok(codegen_results)
+    }
 }
