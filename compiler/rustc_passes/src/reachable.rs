@@ -332,6 +332,8 @@ impl CollectPrivateImplItemsVisitor<'_, '_> {
         // which are currently akin to allocator symbols.
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator()
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         {
             self.worklist.push(def_id);
