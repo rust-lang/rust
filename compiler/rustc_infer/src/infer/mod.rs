@@ -423,16 +423,20 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Comparing the signature and requirements of an impl method against
     /// the containing trait.
-    CompareImplMethodObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplMethodObligation {
+        span: Span,
+        impl_item_def_id: LocalDefId,
+        trait_item_def_id: DefId,
+    },
 
     /// Comparing the signature and requirements of an impl associated type
     /// against the containing trait
-    CompareImplTypeObligation { span: Span, impl_item_def_id: DefId, trait_item_def_id: DefId },
+    CompareImplTypeObligation { span: Span, impl_item_def_id: LocalDefId, trait_item_def_id: DefId },
 
     /// Checking that the bounds of a trait's associated type hold for a given impl
     CheckAssociatedTypeBounds {
         parent: Box<SubregionOrigin<'tcx>>,
-        impl_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
     },
 }

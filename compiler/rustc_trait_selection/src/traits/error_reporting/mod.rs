@@ -1913,15 +1913,15 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 } else if let (
                     Ok(ref snippet),
-                    ObligationCauseCode::BindingObligation(ref def_id, _),
+                    &ObligationCauseCode::BindingObligation(def_id, _),
                 ) =
                     (self.tcx.sess.source_map().span_to_snippet(span), obligation.cause.code())
                 {
-                    let generics = self.tcx.generics_of(*def_id);
+                    let generics = self.tcx.generics_of(def_id);
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
                         && !snippet.ends_with('>')
                         && !generics.has_impl_trait()
-                        && !self.tcx.fn_trait_kind_from_lang_item(*def_id).is_some()
+                        && !self.tcx.fn_trait_kind_from_lang_item(def_id).is_some()
                     {
                         // FIXME: To avoid spurious suggestions in functions where type arguments
                         // where already supplied, we check the snippet to make sure it doesn't
@@ -2223,6 +2223,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             "suggest_unsized_bound_if_applicable: pred={:?} item_def_id={:?} span={:?}",
             pred, item_def_id, span
         );
+
         let (Some(node), true) = (
             self.tcx.hir().get_if_local(item_def_id),
             Some(pred.def_id()) == self.tcx.lang_items().sized_trait(),

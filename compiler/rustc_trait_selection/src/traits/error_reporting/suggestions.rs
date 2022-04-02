@@ -128,7 +128,7 @@ pub trait InferCtxtExt<'tcx> {
     fn suggest_fully_qualified_path(
         &self,
         err: &mut Diagnostic,
-        def_id: DefId,
+        item_def_id: DefId,
         span: Span,
         trait_ref: DefId,
     );
@@ -1317,16 +1317,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     fn suggest_fully_qualified_path(
         &self,
         err: &mut Diagnostic,
-        def_id: DefId,
+        item_def_id: DefId,
         span: Span,
         trait_ref: DefId,
     ) {
-        if let Some(assoc_item) = self.tcx.opt_associated_item(def_id) {
+        if let Some(assoc_item) = self.tcx.opt_associated_item(item_def_id) {
             if let ty::AssocKind::Const | ty::AssocKind::Type = assoc_item.kind {
                 err.note(&format!(
                     "{}s cannot be accessed directly on a `trait`, they can only be \
                         accessed through a specific `impl`",
-                    assoc_item.kind.as_def_kind().descr(def_id)
+                    assoc_item.kind.as_def_kind().descr(item_def_id)
                 ));
                 err.span_suggestion(
                     span,
