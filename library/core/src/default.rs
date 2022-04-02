@@ -50,7 +50,7 @@
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all of the type's fields implement
-/// `Default`. When `derive`d, it will use the default value for each field's type.
+/// `Default`. When `derived`, it will use the default value for each field's type.
 ///
 /// ## How can I implement `Default`?
 ///
