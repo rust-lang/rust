@@ -668,3 +668,35 @@ fn array_mixed_equality_nans() {
     assert!(!(mut3 == array3));
     assert!(mut3 != array3);
 }
+
+#[test]
+fn array_into_iter_fold() {
+    // Strings to help MIRI catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().for_each(|b| s += &b);
+    assert_eq!(s, "sAaBbCc");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    it.advance_by(1).unwrap();
+    it.advance_back_by(2).unwrap();
+    let s = it.fold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10234);
+}
+
+#[test]
+fn array_into_iter_rfold() {
+    // Strings to help MIRI catch if we double-free or something
+    let a = ["Aa".to_string(), "Bb".to_string(), "Cc".to_string()];
+    let mut s = "s".to_string();
+    a.into_iter().rev().for_each(|b| s += &b);
+    assert_eq!(s, "sCcBbAa");
+
+    let a = [1, 2, 3, 4, 5, 6];
+    let mut it = a.into_iter();
+    it.advance_by(1).unwrap();
+    it.advance_back_by(2).unwrap();
+    let s = it.rfold(10, |a, b| 10 * a + b);
+    assert_eq!(s, 10432);
+}

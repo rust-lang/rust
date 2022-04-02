@@ -40,3 +40,32 @@ impl<I: Iterator> Iterator for ByRefSized<'_, I> {
         self.0.try_fold(init, f)
     }
 }
+
+impl<I: DoubleEndedIterator> DoubleEndedIterator for ByRefSized<'_, I> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.0.next_back()
+    }
+
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        self.0.advance_back_by(n)
+    }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth_back(n)
+    }
+
+    fn rfold<B, F>(self, init: B, f: F) -> B
+    where
+        F: FnMut(B, Self::Item) -> B,
+    {
+        self.0.rfold(init, f)
+    }
+
+    fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        self.0.try_rfold(init, f)
+    }
+}
