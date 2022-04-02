@@ -1382,7 +1382,7 @@ impl<T> *mut [T] {
     /// ```
     #[inline(always)]
     #[track_caller]
-    #[unstable(feature = "raw_slice_split", issue = "71146")]
+    #[unstable(feature = "raw_slice_split", issue = "95595")]
     pub fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
         assert!(mid <= self.len());
         // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
@@ -1426,7 +1426,7 @@ impl<T> *mut [T] {
     /// assert_eq!(v, [1, 2, 3, 4, 5, 6]);
     /// ```
     #[inline(always)]
-    #[unstable(feature = "raw_slice_split", issue = "71146")]
+    #[unstable(feature = "raw_slice_split", issue = "95595")]
     pub unsafe fn split_at_mut_unchecked(self, mid: usize) -> (*mut [T], *mut [T]) {
         let len = self.len();
         let ptr = self.as_mut_ptr();
