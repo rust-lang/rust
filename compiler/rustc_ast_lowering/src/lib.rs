@@ -646,9 +646,13 @@ impl<'hir> LoweringContext<'hir> {
         }
     }
 
+    /// Generate a new `HirId` without a backing `NodeId`.
     fn next_id(&mut self) -> hir::HirId {
-        let node_id = self.next_node_id();
-        self.lower_node_id(node_id)
+        let owner = self.current_hir_id_owner;
+        let local_id = self.item_local_id_counter;
+        assert_ne!(local_id, hir::ItemLocalId::new(0));
+        self.item_local_id_counter.increment_by(1);
+        hir::HirId { owner, local_id }
     }
 
     fn lower_res(&mut self, res: Res<NodeId>) -> Res {
