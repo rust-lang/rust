@@ -975,9 +975,9 @@ trait FromStrRadixHelper: PartialOrd + Copy {
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
-    unsafe fn unchecked_mul(&self, other: u32) -> Self;
-    unsafe fn unchecked_sub(&self, other: u32) -> Self;
-    unsafe fn unchecked_add(&self, other: u32) -> Self;
+    unsafe fn unchecked_mul(self, other: u32) -> Self;
+    unsafe fn unchecked_sub(self, other: u32) -> Self;
+    unsafe fn unchecked_add(self, other: u32) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {
@@ -993,7 +993,7 @@ macro_rules! from_str_radix_int_impl {
 }
 from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
-macro_rules! doit {
+macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         const MIN: Self = Self::MIN;
         #[inline]
@@ -1011,29 +1011,29 @@ macro_rules! doit {
             Self::checked_add(*self, other as Self)
         }
         #[inline]
-        unsafe fn unchecked_mul(&self, other: u32) -> Self {
+        unsafe fn unchecked_mul(self, other: u32) -> Self {
             // SAFETY:  Conditions of `Self::unchecked_mul` must be upheld by the caller.
             unsafe {
-                Self::unchecked_mul(*self, other as Self)
+                Self::unchecked_mul(self, other as Self)
             }
         }
         #[inline]
-        unsafe fn unchecked_sub(&self, other: u32) -> Self {
+        unsafe fn unchecked_sub(self, other: u32) -> Self {
             // SAFETY:  Conditions of `Self::unchecked_sub` must be upheld by the caller.
             unsafe {
-                Self::unchecked_sub(*self, other as Self)
+                Self::unchecked_sub(self, other as Self)
             }
         }
         #[inline]
-        unsafe fn unchecked_add(&self, other: u32) -> Self {
+        unsafe fn unchecked_add(self, other: u32) -> Self {
             // SAFETY: Conditions of `Self::unchecked_add` must be upheld by the caller.
             unsafe {
-                Self::unchecked_add(*self, other as Self)
+                Self::unchecked_add(self, other as Self)
             }
         }
     })*)
 }
-doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
@@ -1078,41 +1078,49 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
         // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
         unsafe {
-            macro_rules! run_loop {
+            macro_rules! run_unchecked_loop {
                 ($unchecked_additive_op:ident) => {
                     for &c in digits {
                         result = result.unchecked_mul(radix);
                         let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-                        result = T::$unchecked_additive_op(&result, x);
+                        result = T::$unchecked_additive_op(result, x);
                     }
                 };
             }
             if is_positive {
-                run_loop!(unchecked_add)
+                run_unchecked_loop!(unchecked_add)
             } else {
-                run_loop!(unchecked_sub)
+                run_unchecked_loop!(unchecked_sub)
             };
         }
-    } else {
-        let additive_op = if is_positive { T::checked_add } else { T::checked_sub };
-        let overflow_err = || PIE { kind: if is_positive { PosOverflow } else { NegOverflow } };
-
-        for &c in digits {
-            // When `radix` is passed in as a literal, rather than doing a slow `imul`
-            // the compiler can use shifts if `radix` can be expressed as a
-            // sum of powers of 2 (x*10 can be written as x*8 + x*2).
-            // When the compiler can't use these optimisations,
-            // the latency of the multiplication can be hidden by issuing it
-            // before the result is needed to improve performance on
-            // modern out-of-order CPU as multiplication here is slower
-            // than the other instructions, we can get the end result faster
-            // doing multiplication first and let the CPU spends other cycles
-            // doing other computation and get multiplication result later.
-            let mul = result.checked_mul(radix);
-            let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-            result = mul.ok_or_else(overflow_err)?;
-            result = additive_op(&result, x).ok_or_else(overflow_err)?;
+    } else {        
+        macro_rules! run_checked_loop {
+            ($checked_additive_op:ident, $overflow_err:ident) => {
+                for &c in digits {
+                    // When `radix` is passed in as a literal, rather than doing a slow `imul`
+                    // the compiler can use shifts if `radix` can be expressed as a
+                    // sum of powers of 2 (x*10 can be written as x*8 + x*2).
+                    // When the compiler can't use these optimisations,
+                    // the latency of the multiplication can be hidden by issuing it
+                    // before the result is needed to improve performance on
+                    // modern out-of-order CPU as multiplication here is slower
+                    // than the other instructions, we can get the end result faster
+                    // doing multiplication first and let the CPU spends other cycles
+                    // doing other computation and get multiplication result later.
+                    let mul = result.checked_mul(radix);
+                    let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                    result = mul.ok_or_else($overflow_err)?;
+                    result =  T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
+                }
+            }
         }
+        if is_positive {
+            let overflow_err = || PIE { kind: PosOverflow };
+            run_checked_loop!(checked_add, overflow_err)
+        } else {
+            let overflow_err = || PIE { kind: NegOverflow };
+            run_checked_loop!(checked_sub, overflow_err)
+        };
     }
     Ok(result)
 }
