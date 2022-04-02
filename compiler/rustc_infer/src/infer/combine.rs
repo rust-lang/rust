@@ -27,15 +27,12 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
 use super::type_variable::TypeVariableValue;
-use super::unify_key::replace_if_possible;
-use super::unify_key::{ConstVarValue, ConstVariableValue};
-use super::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use super::{InferCtxt, MiscVariable, TypeTrace};
-
 use crate::traits::{Obligation, PredicateObligations};
-
 use rustc_data_structures::sso::SsoHashMap;
 use rustc_hir::def_id::DefId;
+use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
@@ -140,8 +137,8 @@ impl<'infcx, 'tcx> InferCtxt<'infcx, 'tcx> {
             return Ok(a);
         }
 
-        let a = replace_if_possible(&mut self.inner.borrow_mut().const_unification_table(), a);
-        let b = replace_if_possible(&mut self.inner.borrow_mut().const_unification_table(), b);
+        let a = self.shallow_resolve(a);
+        let b = self.shallow_resolve(b);
 
         let a_is_expected = relation.a_is_expected();
 
