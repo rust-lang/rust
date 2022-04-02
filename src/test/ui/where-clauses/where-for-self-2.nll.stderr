@@ -1,5 +1,5 @@
 error: implementation of `Bar` is not general enough
-  --> $DIR/where-for-self-2.rs:23:5
+  --> $DIR/where-for-self-2.rs:27:5
    |
 LL |     foo(&X);
    |     ^^^^^^^ implementation of `Bar` is not general enough

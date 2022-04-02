@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-use-invariant-struct-1.rs:12:5
+  --> $DIR/variance-use-invariant-struct-1.rs:14:5
    |
 LL | fn foo<'min,'max>(v: SomeStruct<&'max ()>)
    |        ---- ---- lifetime `'max` defined here
@@ -15,7 +15,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-use-invariant-struct-1.rs:19:5
+  --> $DIR/variance-use-invariant-struct-1.rs:23:5
    |
 LL | fn bar<'min,'max>(v: SomeStruct<&'min ()>)
    |        ---- ---- lifetime `'max` defined here
