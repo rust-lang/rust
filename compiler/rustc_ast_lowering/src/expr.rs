@@ -1020,6 +1020,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
         None
     }
 
+    /// If the given expression is a path to a unit struct, returns that path.
+    /// It is not a complete check, but just tries to reject most paths early
+    /// if they are not unit structs.
+    /// Type checking will take care of the full validation later.
+    fn extract_unit_struct_path<'a>(
+        &mut self,
+        expr: &'a Expr,
+    ) -> Option<(&'a Option<QSelf>, &'a Path)> {
+        if let ExprKind::Path(qself, path) = &expr.kind {
+            // Does the path resolve to something disallowed in a unit struct/variant pattern?
+            if let Some(partial_res) = self.resolver.get_partial_res(expr.id) {
+                if partial_res.unresolved_segments() == 0
+                    && !partial_res.base_res().expected_in_unit_struct_pat()
+                {
+                    return None;
+                }
+            }
+            return Some((qself, path));
+        }
+        None
+    }
+
     /// Convert the LHS of a destructuring assignment to a pattern.
     /// Each sub-assignment is recorded in `assignments`.
     fn destructure_assign(
@@ -1078,6 +1100,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let tuple_struct_pat =
                         hir::PatKind::TupleStruct(qpath, pats, rest.map(|r| r.0));
                     return self.pat_without_dbm(lhs.span, tuple_struct_pat);
+                }
+            }
+            // Unit structs and enum variants.
+            ExprKind::Path(..) => {
+                if let Some((qself, path)) = self.extract_unit_struct_path(lhs) {
+                    let qpath = self.lower_qpath(
+                        lhs.id,
+                        qself,
+                        path,
+                        ParamMode::Optional,
+                        ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                    );
+                    // Destructure like a unit struct.
+                    let unit_struct_pat = hir::PatKind::Path(qpath);
+                    return self.pat_without_dbm(lhs.span, unit_struct_pat);
                 }
             }
             // Structs.
