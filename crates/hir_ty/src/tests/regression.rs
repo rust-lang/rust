@@ -1497,3 +1497,22 @@ fn regression_11688_3() {
         "#,
     );
 }
+
+#[test]
+fn gat_crash() {
+    cov_mark::check!(ignore_gats);
+    check_no_mismatches(
+        r#"
+trait ATrait {}
+
+trait Crash {
+    type Member<const N: usize>: ATrait;
+    fn new<const N: usize>() -> Self::Member<N>;
+}
+
+fn test<T: Crash>() {
+    T::new();
+}
+"#,
+    );
+}
