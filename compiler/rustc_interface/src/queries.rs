@@ -3,6 +3,7 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -18,7 +19,6 @@ use rustc_span::symbol::sym;
 use std::any::Any;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
-use rustc_codegen_ssa::CodegenResults;
 
 /// Represent the result of a query.
 ///

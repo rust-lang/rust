@@ -588,8 +588,12 @@ pub fn try_process_rlink(sess: &Session, compiler: &interface::Compiler) -> Comp
             let rlink_data = fs::read(file).unwrap_or_else(|err| {
                 sess.fatal(&format!("failed to read rlink file: {}", err));
             });
-            let codegen_results = CodegenResults::deserialize_rlink(rlink_data)
-                .expect("Could not deserialize .rlink file");
+            let codegen_results = match CodegenResults::deserialize_rlink(rlink_data) {
+                Ok(codegen) => codegen,
+                Err(error) => {
+                    sess.fatal(&format!("Could not deserialize .rlink file: {error}"));
+                }
+            };
             let result = compiler.codegen_backend().link(sess, codegen_results, &outputs);
             abort_on_err(result, sess);
         } else {
