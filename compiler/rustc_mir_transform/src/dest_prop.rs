@@ -104,7 +104,7 @@ use rustc_middle::mir::{
     Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::impls::{MaybeInitializedLocals, MaybeLiveLocals};
+use rustc_mir_dataflow::impls::MaybeLiveLocals;
 use rustc_mir_dataflow::Analysis;
 
 // Empirical measurements have resulted in some observations:
@@ -381,10 +381,6 @@ impl<'a> Conflicts<'a> {
             body.local_decls.len(),
         );
 
-        let mut init = MaybeInitializedLocals
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
         let mut live =
             MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint().into_results_cursor(body);
 
@@ -394,38 +390,27 @@ impl<'a> Conflicts<'a> {
 
             match pass_where {
                 PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
-                    init.seek_before_primary_effect(loc);
                     live.seek_after_primary_effect(loc);
-
-                    writeln!(w, "        // init: {:?}", init.get())?;
                     writeln!(w, "        // live: {:?}", live.get())?;
                 }
                 PassWhere::AfterTerminator(bb) if reachable.contains(bb) => {
                     let loc = body.terminator_loc(bb);
-                    init.seek_after_primary_effect(loc);
                     live.seek_before_primary_effect(loc);
-
-                    writeln!(w, "        // init: {:?}", init.get())?;
                     writeln!(w, "        // live: {:?}", live.get())?;
                 }
 
                 PassWhere::BeforeBlock(bb) if reachable.contains(bb) => {
-                    init.seek_to_block_start(bb);
                     live.seek_to_block_start(bb);
-
-                    writeln!(w, "    // init: {:?}", init.get())?;
                     writeln!(w, "    // live: {:?}", live.get())?;
                 }
 
                 PassWhere::BeforeCFG | PassWhere::AfterCFG | PassWhere::AfterLocation(_) => {}
 
                 PassWhere::BeforeLocation(_) | PassWhere::AfterTerminator(_) => {
-                    writeln!(w, "        // init: <unreachable>")?;
                     writeln!(w, "        // live: <unreachable>")?;
                 }
 
                 PassWhere::BeforeBlock(_) => {
-                    writeln!(w, "    // init: <unreachable>")?;
                     writeln!(w, "    // live: <unreachable>")?;
                 }
             }
@@ -448,8 +433,6 @@ impl<'a> Conflicts<'a> {
             },
         };
 
-        let mut live_and_init_locals = Vec::new();
-
         // Visit only reachable basic blocks. The exact order is not important.
         for (block, data) in traversal::preorder(body) {
             // We need to observe the dataflow state *before* all possible locations (statement or
@@ -457,46 +440,27 @@ impl<'a> Conflicts<'a> {
             // effect is applied. As long as neither `init` nor `borrowed` has a "before" effect,
             // we will observe all possible dataflow states.
 
-            // Since liveness is a backwards analysis, we need to walk the results backwards. To do
-            // that, we first collect in the `MaybeInitializedLocals` results in a forwards
-            // traversal.
-
-            live_and_init_locals.resize_with(data.statements.len() + 1, || {
-                BitSet::new_empty(body.local_decls.len())
-            });
-
-            // First, go forwards for `MaybeInitializedLocals` and apply intra-statement/terminator
-            // conflicts.
-            for (i, statement) in data.statements.iter().enumerate() {
+            // First, apply intra-statement/terminator conflicts.
+            for statement in data.statements.iter() {
                 this.record_statement_conflicts(statement);
-
-                let loc = Location { block, statement_index: i };
-                init.seek_before_primary_effect(loc);
-
-                live_and_init_locals[i].clone_from(init.get());
             }
 
             this.record_terminator_conflicts(data.terminator());
-            let term_loc = Location { block, statement_index: data.statements.len() };
-            init.seek_before_primary_effect(term_loc);
-            live_and_init_locals[term_loc.statement_index].clone_from(init.get());
 
-            // Now, go backwards and union with the liveness results.
+            // Now, apply liveness results.
             for statement_index in (0..=data.statements.len()).rev() {
                 let loc = Location { block, statement_index };
                 live.seek_after_primary_effect(loc);
 
-                live_and_init_locals[statement_index].intersect(live.get());
+                let mut live_locals = live.get().clone();
 
                 trace!("record conflicts at {:?}", loc);
 
-                this.record_dataflow_conflicts(&mut live_and_init_locals[statement_index]);
+                this.record_dataflow_conflicts(&mut live_locals);
             }
 
-            init.seek_to_block_end(block);
             live.seek_to_block_end(block);
-            let mut conflicts = init.get().clone();
-            conflicts.intersect(live.get());
+            let mut conflicts = live.get().clone();
             trace!("record conflicts at end of {:?}", block);
 
             this.record_dataflow_conflicts(&mut conflicts);

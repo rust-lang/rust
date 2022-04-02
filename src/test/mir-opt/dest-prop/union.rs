@@ -14,3 +14,6 @@ fn main() {
 
     drop(unsafe { un.us });
 }
+
+// FIXME(JakobDegen): This example is currently broken; it needs a more precise liveness analysis in
+// order to be fixed.
