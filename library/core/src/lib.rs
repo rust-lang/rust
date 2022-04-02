@@ -153,11 +153,21 @@
 #![feature(const_slice_from_ref)]
 //
 // Language features:
+#![feature(abi_amdgpu_kernel)]
+#![feature(abi_avr_interrupt)]
+#![feature(abi_c_cmse_nonsecure_call)]
+#![feature(abi_efiapi)]
+#![feature(abi_msp430_interrupt)]
+#![feature(abi_ptx)]
+#![feature(abi_thiscall)]
 #![feature(abi_unadjusted)]
+#![feature(abi_vectorcall)]
+#![feature(abi_x86_interrupt)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(c_unwind)]
 #![feature(cfg_target_has_atomic)]
 #![feature(const_fn_floating_point_arithmetic)]
 #![feature(const_fn_fn_ptr_basics)]
@@ -202,6 +212,7 @@
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
+#![feature(wasm_abi)]
 #![feature(asm_const)]
 //
 // Target features:
