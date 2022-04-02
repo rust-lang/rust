@@ -302,9 +302,13 @@ impl<'a> Ctx<'a> {
         let end_param = self.next_param_idx();
         let params = IdxRange::new(start_param..end_param);
 
-        let ret_type = match func.ret_type().and_then(|rt| rt.ty()) {
-            Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
-            _ => TypeRef::unit(),
+        let ret_type = match func.ret_type() {
+            Some(rt) => match rt.ty() {
+                Some(type_ref) => TypeRef::from_ast(&self.body_ctx, type_ref),
+                None if rt.thin_arrow_token().is_some() => TypeRef::Error,
+                None => TypeRef::unit(),
+            },
+            None => TypeRef::unit(),
         };
 
         let (ret_type, async_ret_type) = if func.async_token().is_some() {
