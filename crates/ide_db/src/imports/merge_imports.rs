@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
-    ast::{self, make, AstNode, HasAttrs, HasVisibility, PathSegmentKind},
+    ast::{self, AstNode, HasAttrs, HasVisibility, PathSegmentKind},
     ted,
 };
 
@@ -129,29 +129,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                         _ => (),
                     }
 
-                    // Glob imports aren't part of the use-tree lists so we need
-                    // to special handle them here as well this special handling
-                    // is only required for when we merge a module import into a
-                    // glob import of said module see the `merge_self_glob` or
-                    // `merge_mod_into_glob` tests.
-                    if lhs_t.star_token().is_some() || rhs_t.star_token().is_some() {
-                        if tree_is_self(lhs_t) || tree_is_self(&rhs_t) {
-                            cov_mark::hit!(merge_self_glob);
-                            let self_tree = make::use_tree(
-                                make::path_unqualified(make::path_segment_self()),
-                                None,
-                                None,
-                                false,
-                            )
-                            .clone_for_update();
-                            ted::replace(lhs_t.syntax(), self_tree.syntax());
-                            *lhs_t = self_tree;
-                            let glob = make::use_tree_glob().clone_for_update();
-                            use_trees.insert(idx, glob.clone());
-                            lhs.get_or_create_use_tree_list().add_use_tree(glob);
-                            continue;
-                        }
-                    } else if lhs_t.use_tree_list().is_none() && rhs_t.use_tree_list().is_none() {
+                    if lhs_t.is_simple_path() && rhs_t.is_simple_path() {
                         continue;
                     }
                 }

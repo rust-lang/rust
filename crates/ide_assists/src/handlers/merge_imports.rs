@@ -330,7 +330,7 @@ use std$0::{fmt::*};
 use std::{fmt::{self, Display}};
 ",
             r"
-use std::{fmt::{self, *, Display}};
+use std::{fmt::{*, self, Display}};
 ",
         )
     }
@@ -438,6 +438,20 @@ use foo::{
             r"
 use std::$0
 fn main() {}",
+        );
+    }
+
+    #[test]
+    fn split_glob() {
+        check_assist(
+            merge_imports,
+            r"
+use foo::$0*;
+use foo::bar::Baz;
+",
+            r"
+use foo::{*, bar::Baz};
+",
         );
     }
 }
