@@ -210,6 +210,10 @@ impl<'a> Parser<'a> {
         self.unclosed_delims.extend(snapshot.unclosed_delims.clone());
     }
 
+    pub fn unclosed_delims(&self) -> &[UnmatchedBrace] {
+        &self.unclosed_delims
+    }
+
     /// Create a snapshot of the `Parser`.
     pub(super) fn create_snapshot_for_diagnostic(&self) -> SnapshotParser<'a> {
         let mut snapshot = self.clone();

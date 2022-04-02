@@ -10,7 +10,10 @@ use rustc_interface::interface;
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
+use rustc_parse::maybe_new_parser_from_source_str;
+use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
+use rustc_session::parse::ParseSess;
 use rustc_session::{lint, DiagnosticOutput, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -493,7 +496,7 @@ crate fn make_test(
     edition: Edition,
     test_id: Option<&str>,
 ) -> (String, usize, bool) {
-    let (crate_attrs, everything_else, crates) = partition_source(s);
+    let (crate_attrs, everything_else, crates) = partition_source(s, edition);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
@@ -525,9 +528,7 @@ crate fn make_test(
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::{Emitter, EmitterWriter};
             use rustc_errors::Handler;
-            use rustc_parse::maybe_new_parser_from_source_str;
             use rustc_parse::parser::ForceCollect;
-            use rustc_session::parse::ParseSess;
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(s);
@@ -697,8 +698,39 @@ crate fn make_test(
     (prog, line_offset, supports_color)
 }
 
-// FIXME(aburka): use a real parser to deal with multiline attributes
-fn partition_source(s: &str) -> (String, String, String) {
+fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
+    if source.is_empty() {
+        // Empty content so nothing to check in here...
+        return true;
+    }
+    rustc_span::create_session_if_not_set_then(edition, |_| {
+        let filename = FileName::anon_source_code(source);
+        let sess = ParseSess::with_silent_emitter(None);
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source.to_owned())
+        {
+            Ok(p) => p,
+            Err(_) => {
+                debug!("Cannot build a parser to check mod attr so skipping...");
+                return true;
+            }
+        };
+        // If a parsing error happened, it's very likely that the attribute is incomplete.
+        if !parser.parse_attribute(InnerAttrPolicy::Permitted).is_ok() {
+            return false;
+        }
+        // We now check if there is an unclosed delimiter for the attribute. To do so, we look at
+        // the `unclosed_delims` and see if the opening square bracket was closed.
+        parser
+            .unclosed_delims()
+            .get(0)
+            .map(|unclosed| {
+                unclosed.unclosed_span.map(|s| s.lo()).unwrap_or(BytePos(0)) != BytePos(2)
+            })
+            .unwrap_or(true)
+    })
+}
+
+fn partition_source(s: &str, edition: Edition) -> (String, String, String) {
     #[derive(Copy, Clone, PartialEq)]
     enum PartitionState {
         Attrs,
@@ -710,6 +742,8 @@ fn partition_source(s: &str) -> (String, String, String) {
     let mut crates = String::new();
     let mut after = String::new();
 
+    let mut mod_attr_pending = String::new();
+
     for line in s.lines() {
         let trimline = line.trim();
 
@@ -717,8 +751,14 @@ fn partition_source(s: &str) -> (String, String, String) {
         // shunted into "everything else"
         match state {
             PartitionState::Attrs => {
-                state = if trimline.starts_with("#![")
-                    || trimline.chars().all(|c| c.is_whitespace())
+                state = if trimline.starts_with("#![") {
+                    if !check_if_attr_is_complete(line, edition) {
+                        mod_attr_pending = line.to_owned();
+                    } else {
+                        mod_attr_pending.clear();
+                    }
+                    PartitionState::Attrs
+                } else if trimline.chars().all(|c| c.is_whitespace())
                     || (trimline.starts_with("//") && !trimline.starts_with("///"))
                 {
                     PartitionState::Attrs
@@ -727,7 +767,21 @@ fn partition_source(s: &str) -> (String, String, String) {
                 {
                     PartitionState::Crates
                 } else {
-                    PartitionState::Other
+                    // First we check if the previous attribute was "complete"...
+                    if !mod_attr_pending.is_empty() {
+                        // If not, then we append the new line into the pending attribute to check
+                        // if this time it's complete...
+                        mod_attr_pending.push_str(line);
+                        if !trimline.is_empty() && check_if_attr_is_complete(line, edition) {
+                            // If it's complete, then we can clear the pending content.
+                            mod_attr_pending.clear();
+                        }
+                        // In any case, this is considered as `PartitionState::Attrs` so it's
+                        // prepended before rustdoc's inserts.
+                        PartitionState::Attrs
+                    } else {
+                        PartitionState::Other
+                    }
                 };
             }
             PartitionState::Crates => {
