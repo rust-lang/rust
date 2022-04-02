@@ -491,8 +491,11 @@ impl<'tcx> Cx<'tcx> {
                             hir::InlineAsmOperand::Const { ref anon_const } => {
                                 let anon_const_def_id =
                                     self.tcx.hir().local_def_id(anon_const.hir_id);
-                                let value =
-                                    mir::ConstantKind::from_anon_const(self.tcx, anon_const_def_id);
+                                let value = mir::ConstantKind::from_anon_const(
+                                    self.tcx,
+                                    anon_const_def_id,
+                                    self.param_env,
+                                );
                                 let span = self.tcx.hir().span(anon_const.hir_id);
 
                                 InlineAsmOperand::Const { value, span }
