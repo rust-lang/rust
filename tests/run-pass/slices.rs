@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance -Zmiri-check-number-validity
+// compile-flags: -Zmiri-strict-provenance
 #![feature(new_uninit)]
 #![feature(slice_as_chunks)]
 #![feature(slice_partition_dedup)]

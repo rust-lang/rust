@@ -366,6 +366,7 @@ fn main() {
                 "-Zmiri-strict-provenance" => {
                     miri_config.strict_provenance = true;
                     miri_config.tag_raw = true;
+                    miri_config.check_number_validity = true;
                 }
                 "-Zmiri-track-raw-pointers" => {
                     eprintln!(

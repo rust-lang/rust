@@ -1,4 +1,4 @@
-// compile-flags: -Zmiri-strict-provenance -Zmiri-check-number-validity
+// compile-flags: -Zmiri-strict-provenance
 #![feature(new_uninit)]
 #![feature(get_mut_unchecked)]
 
