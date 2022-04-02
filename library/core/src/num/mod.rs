@@ -1035,6 +1035,11 @@ macro_rules! impl_helper_for {
 }
 impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
+#[inline(always)]
+pub(crate) fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits:&[u8]) -> bool {
+    radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
+}
+
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
@@ -1068,7 +1073,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 
     let mut result = T::from_u32(0);
 
-    if radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize {
+    if can_not_overflow::<T>(radix, is_signed_ty, digits) {
         // SAFETY: If the len of the str is short compared to the range of the type
         // we are parsing into, then we can be certain that an overflow will not occur.
         // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
@@ -1093,9 +1098,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
                 run_unchecked_loop!(unchecked_sub)
             };
         }
-    } else {        
+    } else {
         macro_rules! run_checked_loop {
-            ($checked_additive_op:ident, $overflow_err:ident) => {
+            ($checked_additive_op:ident, $overflow_err:expr) => {
                 for &c in digits {
                     // When `radix` is passed in as a literal, rather than doing a slow `imul`
                     // the compiler can use shifts if `radix` can be expressed as a
@@ -1110,17 +1115,23 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
                     let mul = result.checked_mul(radix);
                     let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
                     result = mul.ok_or_else($overflow_err)?;
-                    result =  T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
+                    result = T::$checked_additive_op(&result, x).ok_or_else($overflow_err)?;
                 }
-            }
+            };
         }
         if is_positive {
-            let overflow_err = || PIE { kind: PosOverflow };
-            run_checked_loop!(checked_add, overflow_err)
+            run_checked_loop!(checked_add, || PIE { kind: PosOverflow })
         } else {
-            let overflow_err = || PIE { kind: NegOverflow };
-            run_checked_loop!(checked_sub, overflow_err)
+            run_checked_loop!(checked_sub, || PIE { kind: NegOverflow })
         };
     }
     Ok(result)
+}
+
+mod tests {
+    #[test]
+    fn test_can_not_overflow() {
+        assert_eq!(can_not_overflow::<i8>(10, true, "99".as_bytes()), true);
+        assert_eq!(can_not_overflow::<i8>(10, true, "129".as_bytes()), false);
+    }
 }
