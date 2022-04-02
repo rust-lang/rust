@@ -1,3 +1,4 @@
+#![feature(let_chains)]
 #![feature(path_try_exists)]
 
 use fluent_bundle::FluentResource;
@@ -105,9 +106,12 @@ pub fn fluent_bundle(
         return Ok(None);
     }
 
+    let fallback_locale = langid!("en-US");
+    let requested_fallback_locale = requested_locale.as_ref() == Some(&fallback_locale);
+
     // If there is only `-Z additional-ftl-path`, assume locale is "en-US", otherwise use user
     // provided locale.
-    let locale = requested_locale.clone().unwrap_or_else(|| langid!("en-US"));
+    let locale = requested_locale.clone().unwrap_or(fallback_locale);
     trace!(?locale);
     let mut bundle = FluentBundle::new(vec![locale]);
 
@@ -118,7 +122,8 @@ pub fn fluent_bundle(
     // surrounding diagnostic messages are right-to-left, then these might be helpful).
     bundle.set_use_isolating(false);
 
-    if let Some(requested_locale) = requested_locale {
+    // If the user requests the default locale then don't try to load anything.
+    if !requested_fallback_locale && let Some(requested_locale) = requested_locale {
         let mut sysroot = sysroot.to_path_buf();
         sysroot.push("share");
         sysroot.push("locale");
@@ -140,7 +145,8 @@ pub fn fluent_bundle(
                 continue;
             }
 
-            let resource_str = fs::read_to_string(path).map_err(TranslationBundleError::ReadFtl)?;
+            let resource_str =
+                fs::read_to_string(path).map_err(TranslationBundleError::ReadFtl)?;
             let resource =
                 FluentResource::try_new(resource_str).map_err(TranslationBundleError::from)?;
             trace!(?resource);
