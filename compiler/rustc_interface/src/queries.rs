@@ -3,6 +3,7 @@ use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
+use rustc_codegen_ssa::CodegenResults;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{Lrc, OnceCell, WorkerLocal};
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -360,10 +361,9 @@ impl Linker {
         }
 
         if sess.opts.debugging_opts.no_link {
-            let mut encoder = rustc_serialize::opaque::Encoder::new(Vec::new());
-            rustc_serialize::Encodable::encode(&codegen_results, &mut encoder).unwrap();
+            let encoded = CodegenResults::serialize_rlink(&codegen_results);
             let rlink_file = self.prepare_outputs.with_extension(config::RLINK_EXT);
-            std::fs::write(&rlink_file, encoder.into_inner()).map_err(|err| {
+            std::fs::write(&rlink_file, encoded).map_err(|err| {
                 sess.fatal(&format!("failed to write file {}: {}", rlink_file.display(), err));
             })?;
             return Ok(());
