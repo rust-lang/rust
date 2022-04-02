@@ -1,6 +1,6 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{self, Body, Promoted};
+use crate::mir::{Body, Promoted};
 use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
 use rustc_data_structures::stable_map::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
@@ -419,13 +419,6 @@ pub enum ClosureOutlivesSubject<'tcx> {
 pub struct DestructuredConst<'tcx> {
     pub variant: Option<VariantIdx>,
     pub fields: &'tcx [ty::Const<'tcx>],
-}
-
-/// The constituent parts of an ADT or array.
-#[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredMirConstant<'tcx> {
-    pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [mir::ConstantKind<'tcx>],
 }
 
 /// Coverage information summarized from a MIR if instrumented for source code coverage (see

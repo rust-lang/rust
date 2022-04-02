@@ -739,7 +739,6 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     }
 }
 
-// FIXME: Get rid of this function once valtrees land
 #[instrument(skip(tcx), level = "debug")]
 crate fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -759,8 +758,7 @@ crate fn compare_const_vals<'tcx>(
 
     // Early return for equal constants (so e.g. references to ZSTs can be compared, even if they
     // are just integer addresses).
-    // FIXME This might be wrong
-    if a == b {
+    if a.val() == b.val() {
         return from_bool(true);
     }
 
