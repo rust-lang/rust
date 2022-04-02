@@ -107,6 +107,9 @@ pub fn run(update_mode: UpdateMode) {
             &content,
         );
     }
+
+    let content = gen_deprecated_lints_test(&deprecated_lints);
+    process_file("tests/ui/deprecated.rs", update_mode, &content);
 }
 
 pub fn print_lints() {
@@ -274,6 +277,15 @@ fn gen_register_lint_list<'a>(
     output.push_str("])\n");
 
     output
+}
+
+fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
+    let mut res: String = GENERATED_FILE_COMMENT.into();
+    for lint in lints {
+        writeln!(res, "#![warn(clippy::{})]", lint.name).unwrap();
+    }
+    res.push_str("\nfn main() {}\n");
+    res
 }
 
 /// Gathers all lints defined in `clippy_lints/src`
