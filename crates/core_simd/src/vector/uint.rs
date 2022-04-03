@@ -2,62 +2,62 @@
 
 use crate::simd::Simd;
 
-/// Vector of two `usize` values
+/// A SIMD vector with two elements of type `usize`.
 pub type usizex2 = Simd<usize, 2>;
 
-/// Vector of four `usize` values
+/// A SIMD vector with four elements of type `usize`.
 pub type usizex4 = Simd<usize, 4>;
 
-/// Vector of eight `usize` values
+/// A SIMD vector with eight elements of type `usize`.
 pub type usizex8 = Simd<usize, 8>;
 
-/// Vector of two `u16` values
+/// A 32-bit SIMD vector with two elements of type `u16`.
 pub type u16x2 = Simd<u16, 2>;
 
-/// Vector of four `u16` values
+/// A 64-bit SIMD vector with four elements of type `u16`.
 pub type u16x4 = Simd<u16, 4>;
 
-/// Vector of eight `u16` values
+/// A 128-bit SIMD vector with eight elements of type `u16`.
 pub type u16x8 = Simd<u16, 8>;
 
-/// Vector of 16 `u16` values
+/// A 256-bit SIMD vector with 16 elements of type `u16`.
 pub type u16x16 = Simd<u16, 16>;
 
-/// Vector of 32 `u16` values
+/// A 512-bit SIMD vector with 32 elements of type `u16`.
 pub type u16x32 = Simd<u16, 32>;
 
-/// Vector of two `u32` values
+/// A 64-bit SIMD vector with two elements of type `u32`.
 pub type u32x2 = Simd<u32, 2>;
 
-/// Vector of four `u32` values
+/// A 128-bit SIMD vector with four elements of type `u32`.
 pub type u32x4 = Simd<u32, 4>;
 
-/// Vector of eight `u32` values
+/// A 256-bit SIMD vector with eight elements of type `u32`.
 pub type u32x8 = Simd<u32, 8>;
 
-/// Vector of 16 `u32` values
+/// A 512-bit SIMD vector with 16 elements of type `u32`.
 pub type u32x16 = Simd<u32, 16>;
 
-/// Vector of two `u64` values
+/// A 128-bit SIMD vector with two elements of type `u64`.
 pub type u64x2 = Simd<u64, 2>;
 
-/// Vector of four `u64` values
+/// A 256-bit SIMD vector with four elements of type `u64`.
 pub type u64x4 = Simd<u64, 4>;
 
-/// Vector of eight `u64` values
+/// A 512-bit SIMD vector with eight elements of type `u64`.
 pub type u64x8 = Simd<u64, 8>;
 
-/// Vector of four `u8` values
+/// A 32-bit SIMD vector with four elements of type `u8`.
 pub type u8x4 = Simd<u8, 4>;
 
-/// Vector of eight `u8` values
+/// A 64-bit SIMD vector with eight elements of type `u8`.
 pub type u8x8 = Simd<u8, 8>;
 
-/// Vector of 16 `u8` values
+/// A 128-bit SIMD vector with 16 elements of type `u8`.
 pub type u8x16 = Simd<u8, 16>;
 
-/// Vector of 32 `u8` values
+/// A 256-bit SIMD vector with 32 elements of type `u8`.
 pub type u8x32 = Simd<u8, 32>;
 
-/// Vector of 64 `u8` values
+/// A 512-bit SIMD vector with 64 elements of type `u8`.
 pub type u8x64 = Simd<u8, 64>;

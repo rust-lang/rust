@@ -507,58 +507,58 @@ where
     }
 }
 
-/// Vector of eight 8-bit masks
+/// A 64-bit SIMD vector mask for eight elements of 8 bits.
 pub type mask8x8 = Mask<i8, 8>;
 
-/// Vector of 16 8-bit masks
+/// A 128-bit SIMD vector mask for 16 elements of 8 bits.
 pub type mask8x16 = Mask<i8, 16>;
 
-/// Vector of 32 8-bit masks
+/// A 256-bit SIMD vector mask for 32 elements of 8 bits.
 pub type mask8x32 = Mask<i8, 32>;
 
-/// Vector of 16 8-bit masks
+/// A 512-bit SIMD vector mask for 64 elements of 8 bits.
 pub type mask8x64 = Mask<i8, 64>;
 
-/// Vector of four 16-bit masks
+/// A 64-bit SIMD vector mask for four elements of 16 bits.
 pub type mask16x4 = Mask<i16, 4>;
 
-/// Vector of eight 16-bit masks
+/// A 128-bit SIMD vector mask for eight elements of 16 bits.
 pub type mask16x8 = Mask<i16, 8>;
 
-/// Vector of 16 16-bit masks
+/// A 256-bit SIMD vector mask for 16 elements of 16 bits.
 pub type mask16x16 = Mask<i16, 16>;
 
-/// Vector of 32 16-bit masks
+/// A 512-bit SIMD vector mask for 32 elements of 16 bits.
 pub type mask16x32 = Mask<i16, 32>;
 
-/// Vector of two 32-bit masks
+/// A 64-bit SIMD vector mask for two elements of 32 bits.
 pub type mask32x2 = Mask<i32, 2>;
 
-/// Vector of four 32-bit masks
+/// A 128-bit SIMD vector mask for four elements of 32 bits.
 pub type mask32x4 = Mask<i32, 4>;
 
-/// Vector of eight 32-bit masks
+/// A 256-bit SIMD vector mask for eight elements of 32 bits.
 pub type mask32x8 = Mask<i32, 8>;
 
-/// Vector of 16 32-bit masks
+/// A 512-bit SIMD vector mask for 16 elements of 32 bits.
 pub type mask32x16 = Mask<i32, 16>;
 
-/// Vector of two 64-bit masks
+/// A 128-bit SIMD vector mask for two elements of 64 bits.
 pub type mask64x2 = Mask<i64, 2>;
 
-/// Vector of four 64-bit masks
+/// A 256-bit SIMD vector mask for four elements of 64 bits.
 pub type mask64x4 = Mask<i64, 4>;
 
-/// Vector of eight 64-bit masks
+/// A 512-bit SIMD vector mask for eight elements of 64 bits.
 pub type mask64x8 = Mask<i64, 8>;
 
-/// Vector of two pointer-width masks
+/// A SIMD vector mask for two elements of pointer width.
 pub type masksizex2 = Mask<isize, 2>;
 
-/// Vector of four pointer-width masks
+/// A SIMD vector mask for four elements of pointer width.
 pub type masksizex4 = Mask<isize, 4>;
 
-/// Vector of eight pointer-width masks
+/// A SIMD vector mask for eight elements of pointer width.
 pub type masksizex8 = Mask<isize, 8>;
 
 macro_rules! impl_from {

@@ -177,23 +177,23 @@ macro_rules! impl_float_vector {
 impl_float_vector! { f32, u32, i32 }
 impl_float_vector! { f64, u64, i64 }
 
-/// Vector of two `f32` values
+/// A 64-bit SIMD vector with two elements of type `f32`.
 pub type f32x2 = Simd<f32, 2>;
 
-/// Vector of four `f32` values
+/// A 128-bit SIMD vector with four elements of type `f32`.
 pub type f32x4 = Simd<f32, 4>;
 
-/// Vector of eight `f32` values
+/// A 256-bit SIMD vector with eight elements of type `f32`.
 pub type f32x8 = Simd<f32, 8>;
 
-/// Vector of 16 `f32` values
+/// A 512-bit SIMD vector with 16 elements of type `f32`.
 pub type f32x16 = Simd<f32, 16>;
 
-/// Vector of two `f64` values
+/// A 128-bit SIMD vector with two elements of type `f64`.
 pub type f64x2 = Simd<f64, 2>;
 
-/// Vector of four `f64` values
+/// A 256-bit SIMD vector with four elements of type `f64`.
 pub type f64x4 = Simd<f64, 4>;
 
-/// Vector of eight `f64` values
+/// A 512-bit SIMD vector with eight elements of type `f64`.
 pub type f64x8 = Simd<f64, 8>;
