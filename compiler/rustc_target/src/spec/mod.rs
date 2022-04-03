@@ -40,6 +40,7 @@ use crate::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_serialize::json::{Json, ToJson};
 use rustc_span::symbol::{sym, Symbol};
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::iter::FromIterator;
@@ -458,7 +459,7 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<String>>;
+pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum SplitDebuginfo {
@@ -1026,6 +1027,22 @@ supported_targets! {
     ("mips64-openwrt-linux-musl", mips64_openwrt_linux_musl),
 }
 
+/// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
+macro_rules! cvs {
+    () => {
+        ::std::borrow::Cow::Borrowed(&[])
+    };
+    ($($x:expr),+ $(,)?) => {
+        ::std::borrow::Cow::Borrowed(&[
+            $(
+                ::std::borrow::Cow::Borrowed($x),
+            )*
+        ])
+    };
+}
+
+pub(crate) use cvs;
+
 /// Warnings encountered when parsing the target `json`.
 ///
 /// Includes fields that weren't recognized and fields that don't have the expected type.
@@ -1064,14 +1081,14 @@ impl TargetWarnings {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
     /// Target triple to pass to LLVM.
-    pub llvm_target: String,
+    pub llvm_target: StaticCow<str>,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
-    pub arch: String,
+    pub arch: StaticCow<str>,
     /// [Data layout](https://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: String,
+    pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -1086,6 +1103,8 @@ impl HasTargetSpec for Target {
         self
     }
 }
+
+type StaticCow<T> = Cow<'static, T>;
 
 /// Optional aspects of a target specification.
 ///
@@ -1103,25 +1122,25 @@ pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
-    pub c_int_width: String,
+    pub c_int_width: StaticCow<str>,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
     /// "none" implies a bare metal target without `std` library.
     /// A couple of targets having `std` also use "unknown" as an `os` value,
     /// but they are exceptions.
-    pub os: String,
+    pub os: StaticCow<str>,
     /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
-    pub env: String,
+    pub env: StaticCow<str>,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to "".
-    pub abi: String,
+    pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: String,
+    pub vendor: StaticCow<str>,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
     /// on the command line. Defaults to `LinkerFlavor::Gcc`.
     pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
-    pub linker: Option<String>,
+    pub linker: Option<StaticCow<str>>,
 
     /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
     /// without clarifying its flavor in any way.
@@ -1156,23 +1175,23 @@ pub struct TargetOptions {
     /// Optional link script applied to `dylib` and `executable` crate types.
     /// This is a string containing the script, not a path. Can only be applied
     /// to linkers where `linker_is_gnu` is true.
-    pub link_script: Option<String>,
+    pub link_script: Option<StaticCow<str>>,
 
     /// Environment variables to be set for the linker invocation.
-    pub link_env: Vec<(String, String)>,
+    pub link_env: StaticCow<[(StaticCow<str>, StaticCow<str>)]>,
     /// Environment variables to be removed for the linker invocation.
-    pub link_env_remove: Vec<String>,
+    pub link_env_remove: StaticCow<[StaticCow<str>]>,
 
     /// Extra arguments to pass to the external assembler (when used)
-    pub asm_args: Vec<String>,
+    pub asm_args: StaticCow<[StaticCow<str>]>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
-    pub cpu: String,
+    pub cpu: StaticCow<str>,
     /// Default target features to pass to LLVM. These features will *always* be
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
     /// -mattr=$features`.
-    pub features: String,
+    pub features: StaticCow<str>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
     /// If dynamic linking is available, whether only cdylibs are supported.
@@ -1196,21 +1215,21 @@ pub struct TargetOptions {
     /// Emit each function in its own section. Defaults to true.
     pub function_sections: bool,
     /// String to prepend to the name of every dynamic library. Defaults to "lib".
-    pub dll_prefix: String,
+    pub dll_prefix: StaticCow<str>,
     /// String to append to the name of every dynamic library. Defaults to ".so".
-    pub dll_suffix: String,
+    pub dll_suffix: StaticCow<str>,
     /// String to append to the name of every executable.
-    pub exe_suffix: String,
+    pub exe_suffix: StaticCow<str>,
     /// String to prepend to the name of every static library. Defaults to "lib".
-    pub staticlib_prefix: String,
+    pub staticlib_prefix: StaticCow<str>,
     /// String to append to the name of every static library. Defaults to ".a".
-    pub staticlib_suffix: String,
+    pub staticlib_suffix: StaticCow<str>,
     /// Values of the `target_family` cfg set for this target.
     ///
     /// Common options are: "unix", "windows". Defaults to no families.
     ///
     /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
-    pub families: Vec<String>,
+    pub families: StaticCow<[StaticCow<str>]>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -1282,7 +1301,7 @@ pub struct TargetOptions {
     /// LLVM to assemble an archive or fall back to the system linker, and
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
-    pub archive_format: String,
+    pub archive_format: StaticCow<str>,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
     /// Whether the runtime startup code requires the `main` function be passed
@@ -1298,7 +1317,7 @@ pub struct TargetOptions {
     /// Whether the target requires that emitted object code includes bitcode.
     pub forces_embed_bitcode: bool,
     /// Content of the LLVM cmdline section associated with embedded bitcode.
-    pub bitcode_llvm_cmdline: String,
+    pub bitcode_llvm_cmdline: StaticCow<str>,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -1370,7 +1389,7 @@ pub struct TargetOptions {
 
     /// If set, have the linker export exactly these symbols, instead of using
     /// the usual logic to figure this out from the crate itself.
-    pub override_export_symbols: Option<Vec<String>>,
+    pub override_export_symbols: Option<StaticCow<[StaticCow<str>]>>,
 
     /// Determines how or whether the MergeFunctions LLVM pass should run for
     /// this target. Either "disabled", "trampolines", or "aliases".
@@ -1381,16 +1400,16 @@ pub struct TargetOptions {
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function
-    pub mcount: String,
+    pub mcount: StaticCow<str>,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
-    pub llvm_abiname: String,
+    pub llvm_abiname: StaticCow<str>,
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
-    pub llvm_args: Vec<String>,
+    pub llvm_args: StaticCow<[StaticCow<str>]>,
 
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
@@ -1437,20 +1456,20 @@ impl Default for TargetOptions {
         TargetOptions {
             is_builtin: false,
             endian: Endian::Little,
-            c_int_width: "32".to_string(),
-            os: "none".to_string(),
-            env: String::new(),
-            abi: String::new(),
-            vendor: "unknown".to_string(),
+            c_int_width: "32".into(),
+            os: "none".into(),
+            env: "".into(),
+            abi: "".into(),
+            vendor: "unknown".into(),
             linker_flavor: LinkerFlavor::Gcc,
-            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.to_string()),
+            linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
             lld_flavor: LldFlavor::Ld,
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             link_script: None,
-            asm_args: Vec::new(),
-            cpu: "generic".to_string(),
-            features: String::new(),
+            asm_args: cvs![],
+            cpu: "generic".into(),
+            features: "".into(),
             dynamic_linking: false,
             only_cdylib: false,
             executables: false,
@@ -1460,12 +1479,12 @@ impl Default for TargetOptions {
             disable_redzone: false,
             frame_pointer: FramePointer::MayOmit,
             function_sections: true,
-            dll_prefix: "lib".to_string(),
-            dll_suffix: ".so".to_string(),
-            exe_suffix: String::new(),
-            staticlib_prefix: "lib".to_string(),
-            staticlib_suffix: ".a".to_string(),
-            families: Vec::new(),
+            dll_prefix: "lib".into(),
+            dll_suffix: ".so".into(),
+            exe_suffix: "".into(),
+            staticlib_prefix: "lib".into(),
+            staticlib_suffix: ".a".into(),
+            families: cvs![],
             abi_return_struct_as_int: false,
             is_like_osx: false,
             is_like_solaris: false,
@@ -1491,15 +1510,15 @@ impl Default for TargetOptions {
             late_link_args: LinkArgs::new(),
             late_link_args_dynamic: LinkArgs::new(),
             late_link_args_static: LinkArgs::new(),
-            link_env: Vec::new(),
-            link_env_remove: Vec::new(),
-            archive_format: "gnu".to_string(),
+            link_env: cvs![],
+            link_env_remove: cvs![],
+            archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
             forces_embed_bitcode: false,
-            bitcode_llvm_cmdline: String::new(),
+            bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,
@@ -1522,10 +1541,10 @@ impl Default for TargetOptions {
             limit_rdylib_exports: true,
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
-            mcount: "mcount".to_string(),
-            llvm_abiname: "".to_string(),
+            mcount: "mcount".into(),
+            llvm_abiname: "".into(),
             relax_elf_relocations: false,
-            llvm_args: vec![],
+            llvm_args: cvs![],
             use_ctors_section: false,
             eh_frame_header: true,
             has_thumb_interworking: false,
@@ -1671,12 +1690,12 @@ impl Target {
         };
 
         let mut base = Target {
-            llvm_target: get_req_field("llvm-target")?,
+            llvm_target: get_req_field("llvm-target")?.into(),
             pointer_width: get_req_field("target-pointer-width")?
                 .parse::<u32>()
                 .map_err(|_| "target-pointer-width must be an integer".to_string())?,
-            data_layout: get_req_field("data-layout")?,
-            arch: get_req_field("arch")?,
+            data_layout: get_req_field("data-layout")?.into(),
+            arch: get_req_field("arch")?.into(),
             options: Default::default(),
         };
 
@@ -1685,13 +1704,13 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(s) = obj.remove_key(&name).and_then(|j| Json::as_string(&j).map(str::to_string)) {
+                if let Some(s) = obj.remove_key(&name).and_then(|j| Json::as_string(&j).map(str::to_string).map(Cow::from)) {
                     base.$key_name = s;
                 }
             } );
             ($key_name:ident = $json_name:expr) => ( {
                 let name = $json_name;
-                if let Some(s) = obj.remove_key(&name).and_then(|j| Json::as_string(&j).map(str::to_string)) {
+                if let Some(s) = obj.remove_key(&name).and_then(|j| Json::as_string(&j).map(str::to_string).map(Cow::from)) {
                     base.$key_name = s;
                 }
             } );
@@ -1711,7 +1730,7 @@ impl Target {
                 let name = (stringify!($key_name)).replace("_", "-");
                 if let Some(s) = obj.remove_key(&name).and_then(|j| Json::as_u64(&j)) {
                     if s < 1 || s > 5 {
-                        return Err("Not a valid DWARF version number".to_string());
+                        return Err("Not a valid DWARF version number".into());
                     }
                     base.$key_name = Some(s as u32);
                 }
@@ -1813,7 +1832,7 @@ impl Target {
                 if let Some(j) = obj.remove_key(&name){
                     if let Some(v) = Json::as_array(&j) {
                         base.$key_name = v.iter()
-                            .map(|a| a.as_string().unwrap().to_string())
+                            .map(|a| a.as_string().unwrap().to_string().into())
                             .collect();
                     } else {
                         incorrect_type.push(name)
@@ -1825,7 +1844,7 @@ impl Target {
                 if let Some(j) = obj.remove_key(&name) {
                     if let Some(v) = Json::as_array(&j) {
                         base.$key_name = Some(v.iter()
-                            .map(|a| a.as_string().unwrap().to_string())
+                            .map(|a| a.as_string().unwrap().to_string().into())
                             .collect());
                     } else {
                         incorrect_type.push(name)
@@ -1837,7 +1856,7 @@ impl Target {
                 if let Some(o) = obj.remove_key(&name[..]) {
                     base.$key_name = o
                         .as_string()
-                        .map(|s| s.to_string() );
+                        .map(|s| s.to_string().into());
                 }
             } );
             ($key_name:ident, LldFlavor) => ( {
@@ -1931,7 +1950,7 @@ impl Target {
                             .map(|(i,s)| {
                                 let s = s.as_string().ok_or_else(||
                                     format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_owned())
+                                Ok(s.to_string().into())
                             })
                             .collect::<Result<Vec<_>, String>>()?;
 
@@ -1958,7 +1977,7 @@ impl Target {
                             .map(|(i,s)| {
                                 let s = s.as_string().ok_or_else(||
                                     format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_owned())
+                                Ok(s.to_string().into())
                             })
                             .collect::<Result<Vec<_>, String>>()?;
 
@@ -1977,7 +1996,7 @@ impl Target {
                                 if p.len() == 2 {
                                     let k = p[0].to_string();
                                     let v = p[1].to_string();
-                                    base.$key_name.push((k, v));
+                                    base.$key_name.to_mut().push((k.into(), v.into()));
                                 }
                             }
                         }
@@ -2000,10 +2019,10 @@ impl Target {
                 if let Some(value) = obj.remove_key("target-family") {
                     if let Some(v) = Json::as_array(&value) {
                         base.$key_name = v.iter()
-                            .map(|a| a.as_string().unwrap().to_string())
+                            .map(|a| a.as_string().unwrap().to_string().into())
                             .collect();
                     } else if let Some(v) = Json::as_string(&value) {
-                        base.$key_name = vec![v.to_string()];
+                        base.$key_name = vec![v.to_string().into()].into();
                     }
                 }
             } );
@@ -2013,7 +2032,7 @@ impl Target {
             if let Some(s) = Json::as_string(&j) {
                 base.endian = s.parse()?;
             } else {
-                incorrect_type.push("target-endian".to_string())
+                incorrect_type.push("target-endian".into())
             }
         }
 
@@ -2023,7 +2042,7 @@ impl Target {
                     .parse()
                     .map_err(|()| format!("'{}' is not a valid value for frame-pointer", s))?;
             } else {
-                incorrect_type.push("frame-pointer".to_string())
+                incorrect_type.push("frame-pointer".into())
             }
         }
 
@@ -2128,7 +2147,7 @@ impl Target {
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
-            return Err("may not set is_builtin for targets not built-in".to_string());
+            return Err("may not set is_builtin for targets not built-in".into());
         }
         // Each field should have been read using `Json::remove_key` so any keys remaining are unused.
         let remaining_keys = obj.as_object().ok_or("Expected JSON object for target")?.keys();
@@ -2232,7 +2251,7 @@ impl ToJson for Target {
             }};
             ($attr:ident, $key_name:expr) => {{
                 let name = $key_name;
-                d.insert(name.to_string(), self.$attr.to_json());
+                d.insert(name.into(), self.$attr.to_json());
             }};
         }
 
@@ -2246,7 +2265,7 @@ impl ToJson for Target {
             ($attr:ident, $key_name:expr) => {{
                 let name = $key_name;
                 if default.$attr != self.$attr {
-                    d.insert(name.to_string(), self.$attr.to_json());
+                    d.insert(name.into(), self.$attr.to_json());
                 }
             }};
             (link_args - $attr:ident) => {{
@@ -2255,7 +2274,7 @@ impl ToJson for Target {
                     let obj = self
                         .$attr
                         .iter()
-                        .map(|(k, v)| (k.desc().to_owned(), v.clone()))
+                        .map(|(k, v)| (k.desc().to_string(), v.clone()))
                         .collect::<BTreeMap<_, _>>();
                     d.insert(name, obj.to_json());
                 }
@@ -2266,7 +2285,7 @@ impl ToJson for Target {
                     let obj = self
                         .$attr
                         .iter()
-                        .map(|&(ref k, ref v)| k.clone() + "=" + &v)
+                        .map(|&(ref k, ref v)| format!("{k}={v}"))
                         .collect::<Vec<_>>();
                     d.insert(name, obj.to_json());
                 }
@@ -2379,7 +2398,7 @@ impl ToJson for Target {
         target_option_val!(supports_stack_protector);
 
         if let Some(abi) = self.default_adjusted_cabi {
-            d.insert("default-adjusted-cabi".to_string(), Abi::name(abi).to_json());
+            d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());
         }
 
         Json::Object(d)
@@ -2396,7 +2415,7 @@ pub enum TargetTriple {
 impl TargetTriple {
     /// Creates a target triple from the passed target triple string.
     pub fn from_triple(triple: &str) -> Self {
-        TargetTriple::TargetTriple(triple.to_string())
+        TargetTriple::TargetTriple(triple.into())
     }
 
     /// Creates a target triple from the passed target path.
@@ -2434,7 +2453,7 @@ impl TargetTriple {
             let hash = hasher.finish();
             format!("{}-{}", triple, hash)
         } else {
-            triple.to_owned()
+            triple.into()
         }
     }
 }

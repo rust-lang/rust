@@ -78,13 +78,13 @@ use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
 pub fn target() -> Target {
     let mut options = wasm_base::options();
 
-    options.os = "wasi".to_string();
+    options.os = "wasi".into();
     options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
     options
         .pre_link_args
         .entry(LinkerFlavor::Gcc)
         .or_insert(Vec::new())
-        .push("--target=wasm32-wasi".to_string());
+        .push("--target=wasm32-wasi".into());
 
     options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
     options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
@@ -107,10 +107,10 @@ pub fn target() -> Target {
     options.main_needs_argc_argv = false;
 
     Target {
-        llvm_target: "wasm32-wasi".to_string(),
+        llvm_target: "wasm32-wasi".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".to_string(),
-        arch: "wasm32".to_string(),
+        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        arch: "wasm32".into(),
         options,
     }
 }

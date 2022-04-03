@@ -3,17 +3,17 @@ use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel};
 
 pub fn target() -> Target {
     Target {
-        data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".to_string(),
-        llvm_target: "riscv64".to_string(),
+        data_layout: "e-m:e-p:64:64-i64:64-i128:128-n64-S128".into(),
+        llvm_target: "riscv64".into(),
         pointer_width: 64,
-        arch: "riscv64".to_string(),
+        arch: "riscv64".into(),
 
         options: TargetOptions {
             linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-            linker: Some("rust-lld".to_string()),
-            cpu: "generic-rv64".to_string(),
+            linker: Some("rust-lld".into()),
+            cpu: "generic-rv64".into(),
             max_atomic_width: Some(64),
-            features: "+m,+a,+c".to_string(),
+            features: "+m,+a,+c".into(),
             executables: true,
             panic_strategy: PanicStrategy::Abort,
             relocation_model: RelocModel::Static,

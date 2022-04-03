@@ -18,7 +18,7 @@ pub fn opts() -> TargetOptions {
         // Non-standard subsystems have no default entry-point in PE+ files. We have to define
         // one. "efi_main" seems to be a common choice amongst other implementations and the
         // spec.
-        "/entry:efi_main".to_string(),
+        "/entry:efi_main".into(),
         // COFF images have a "Subsystem" field in their header, which defines what kind of
         // program it is. UEFI has 3 fields reserved, which are EFI_APPLICATION,
         // EFI_BOOT_SERVICE_DRIVER, and EFI_RUNTIME_DRIVER. We default to EFI_APPLICATION,
@@ -28,7 +28,7 @@ pub fn opts() -> TargetOptions {
         // regions the application is loaded into (runtime-drivers need to be put into
         // reserved areas), as well as whether a return from the entry-point is treated as
         // exit (default for applications).
-        "/subsystem:efi_application".to_string(),
+        "/subsystem:efi_application".into(),
     ];
     base.pre_link_args.entry(LinkerFlavor::Msvc).or_default().extend(pre_link_args_msvc.clone());
     base.pre_link_args
@@ -37,17 +37,17 @@ pub fn opts() -> TargetOptions {
         .extend(pre_link_args_msvc);
 
     TargetOptions {
-        os: "uefi".to_string(),
+        os: "uefi".into(),
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Link),
         disable_redzone: true,
-        exe_suffix: ".efi".to_string(),
+        exe_suffix: ".efi".into(),
         allows_weak_linkage: false,
         panic_strategy: PanicStrategy::Abort,
         // LLVM does not emit inline assembly because the LLVM target does not get considered as…
         // "Windows".
         stack_probes: StackProbeType::Call,
         singlethread: true,
-        linker: Some("rust-lld".to_string()),
+        linker: Some("rust-lld".into()),
         ..base
     }
 }

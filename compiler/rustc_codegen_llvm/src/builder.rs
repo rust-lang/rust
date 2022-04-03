@@ -1452,7 +1452,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     }
 
     fn fptoint_sat_broken_in_llvm(&self) -> bool {
-        match self.tcx.sess.target.arch.as_str() {
+        match self.tcx.sess.target.arch.as_ref() {
             // FIXME - https://bugs.llvm.org/show_bug.cgi?id=50083
             "riscv64" => llvm_util::get_version() < (13, 0, 0),
             _ => false,

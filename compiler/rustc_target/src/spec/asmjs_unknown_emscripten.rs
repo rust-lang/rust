@@ -6,6 +6,6 @@ pub fn target() -> Target {
         .post_link_args
         .entry(LinkerFlavor::Em)
         .or_default()
-        .extend(vec!["-s".to_string(), "WASM=0".to_string()]);
+        .extend(vec!["-s".into(), "WASM=0".into()]);
     target
 }

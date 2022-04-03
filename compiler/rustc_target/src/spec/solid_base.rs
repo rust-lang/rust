@@ -3,8 +3,8 @@ use crate::spec::TargetOptions;
 
 pub fn opts(kernel: &str) -> TargetOptions {
     TargetOptions {
-        os: format!("solid_{}", kernel),
-        vendor: "kmc".to_string(),
+        os: format!("solid_{}", kernel).into(),
+        vendor: "kmc".into(),
         frame_pointer: FramePointer::NonLeaf,
         has_thread_local: true,
         ..Default::default()

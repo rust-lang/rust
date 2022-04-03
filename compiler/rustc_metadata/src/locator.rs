@@ -416,10 +416,10 @@ impl<'a> CrateLocator<'a> {
                     (&f[rlib_prefix.len()..(f.len() - rlib_suffix.len())], CrateFlavor::Rlib)
                 } else if f.starts_with(rmeta_prefix) && f.ends_with(rmeta_suffix) {
                     (&f[rmeta_prefix.len()..(f.len() - rmeta_suffix.len())], CrateFlavor::Rmeta)
-                } else if f.starts_with(dylib_prefix) && f.ends_with(dylib_suffix) {
+                } else if f.starts_with(dylib_prefix) && f.ends_with(dylib_suffix.as_ref()) {
                     (&f[dylib_prefix.len()..(f.len() - dylib_suffix.len())], CrateFlavor::Dylib)
                 } else {
-                    if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix) {
+                    if f.starts_with(staticlib_prefix) && f.ends_with(staticlib_suffix.as_ref()) {
                         self.crate_rejections.via_kind.push(CrateMismatch {
                             path: spf.path.clone(),
                             got: "static".to_string(),
@@ -698,8 +698,8 @@ impl<'a> CrateLocator<'a> {
             };
 
             if file.starts_with("lib") && (file.ends_with(".rlib") || file.ends_with(".rmeta"))
-                || file.starts_with(&self.target.dll_prefix)
-                    && file.ends_with(&self.target.dll_suffix)
+                || file.starts_with(self.target.dll_prefix.as_ref())
+                    && file.ends_with(self.target.dll_suffix.as_ref())
             {
                 // Make sure there's at most one rlib and at most one dylib.
                 // Note to take care and match against the non-canonicalized name:
@@ -733,8 +733,8 @@ impl<'a> CrateLocator<'a> {
             crate_name: self.crate_name,
             root,
             triple: self.triple,
-            dll_prefix: self.target.dll_prefix.clone(),
-            dll_suffix: self.target.dll_suffix.clone(),
+            dll_prefix: self.target.dll_prefix.to_string(),
+            dll_suffix: self.target.dll_suffix.to_string(),
             crate_rejections: self.crate_rejections,
         })
     }
