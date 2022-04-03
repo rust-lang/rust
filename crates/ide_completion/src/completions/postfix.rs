@@ -243,8 +243,10 @@ fn build_postfix_snippet_builder<'ctx>(
                 CompletionItem::new(CompletionItemKind::Snippet, ctx.source_range(), label);
             item.detail(detail).snippet_edit(cap, edit);
             let postfix_match = if ctx.original_token.text() == label {
+                cov_mark::hit!(postfix_exact_match_is_high_priority);
                 Some(CompletionRelevancePostfixMatch::Exact)
             } else {
+                cov_mark::hit!(postfix_inexact_match_is_low_priority);
                 Some(CompletionRelevancePostfixMatch::NonExact)
             };
             let relevance = CompletionRelevance { postfix_match, ..Default::default() };
