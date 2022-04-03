@@ -627,10 +627,10 @@ fn bench_map_regular(b: &mut Bencher) {
 fn bench_map_fast(b: &mut Bencher) {
     let data = black_box([(0, 0); LEN]);
     b.iter(|| {
-        let mut result = Vec::with_capacity(data.len());
+        let mut result: Vec<u32> = Vec::with_capacity(data.len());
         for i in 0..data.len() {
             unsafe {
-                *result.get_unchecked_mut(i) = data[i].0;
+                *result.as_mut_ptr().add(i) = data[i].0;
                 result.set_len(i);
             }
         }

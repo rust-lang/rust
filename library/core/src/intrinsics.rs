@@ -1969,6 +1969,40 @@ extern "rust-intrinsic" {
 // (`transmute` also falls into this category, but it cannot be wrapped due to the
 // check that `T` and `U` have the same size.)
 
+/// Check that the preconditions of an unsafe function are followed, if debug_assertions are on,
+/// and only at runtime.
+///
+/// # Safety
+///
+/// Invoking this macro is only sound if the following code is already UB when the passed
+/// expression evaluates to false.
+///
+/// This macro expands to a check at runtime if debug_assertions is set. It has no effect at
+/// compile time, but the semantics of the contained `const_eval_select` must be the same at
+/// runtime and at compile time. Thus if the expression evaluates to false, this macro produces
+/// different behavior at compile time and at runtime, and invoking it is incorrect.
+///
+/// So in a sense it is UB if this macro is useful, but we expect callers of `unsafe fn` to make
+/// the occasional mistake, and this check should help them figure things out.
+#[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
+macro_rules! assert_unsafe_precondition {
+    ($e:expr) => {
+        if cfg!(debug_assertions) {
+            // Use a closure so that we can capture arbitrary expressions from the invocation
+            let runtime = || {
+                if !$e {
+                    // abort instead of panicking to reduce impact on code size
+                    ::core::intrinsics::abort();
+                }
+            };
+            const fn comptime() {}
+
+            ::core::intrinsics::const_eval_select((), comptime, runtime);
+        }
+    };
+}
+pub(crate) use assert_unsafe_precondition;
+
 /// Checks whether `ptr` is properly aligned with respect to
 /// `align_of::<T>()`.
 pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
@@ -1977,7 +2011,6 @@ pub(crate) fn is_aligned_and_not_null<T>(ptr: *const T) -> bool {
 
 /// Checks whether the regions of memory starting at `src` and `dst` of size
 /// `count * size_of::<T>()` do *not* overlap.
-#[cfg(debug_assertions)]
 pub(crate) fn is_nonoverlapping<T>(src: *const T, dst: *const T, count: usize) -> bool {
     let src_usize = src.addr();
     let dst_usize = dst.addr();
@@ -2079,28 +2112,16 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(src: *const T, dst: *mut T, count: usize) {
-        if !is_aligned_and_not_null(src)
-            || !is_aligned_and_not_null(dst)
-            || !is_nonoverlapping(src, dst, count)
-        {
-            // Not panicking to keep codegen impact smaller.
-            abort();
-        }
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_src: *const T, _dst: *mut T, _count: usize) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
-    // Therefore, compiletime_check and runtime_check are observably equivalent.
-    unsafe {
-        const_eval_select((src, dst, count), compiletime_check, runtime_check);
-    }
-
     // SAFETY: the safety contract for `copy_nonoverlapping` must be
     // upheld by the caller.
-    unsafe { copy_nonoverlapping(src, dst, count) }
+    unsafe {
+        assert_unsafe_precondition!(
+            is_aligned_and_not_null(src)
+                && is_aligned_and_not_null(dst)
+                && is_nonoverlapping(src, dst, count)
+        );
+        copy_nonoverlapping(src, dst, count)
+    }
 }
 
 /// Copies `count * size_of::<T>()` bytes from `src` to `dst`. The source
@@ -2173,24 +2194,11 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
         fn copy<T>(src: *const T, dst: *mut T, count: usize);
     }
 
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(src: *const T, dst: *mut T) {
-        if !is_aligned_and_not_null(src) || !is_aligned_and_not_null(dst) {
-            // Not panicking to keep codegen impact smaller.
-            abort();
-        }
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_src: *const T, _dst: *mut T) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: As per our safety precondition, we may assume that the `abort` above is never reached.
-    // Therefore, compiletime_check and runtime_check are observably equivalent.
-    unsafe {
-        const_eval_select((src, dst), compiletime_check, runtime_check);
-    }
-
     // SAFETY: the safety contract for `copy` must be upheld by the caller.
-    unsafe { copy(src, dst, count) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(src) && is_aligned_and_not_null(dst));
+        copy(src, dst, count)
+    }
 }
 
 /// Sets `count * size_of::<T>()` bytes of memory starting at `dst` to
@@ -2274,24 +2282,11 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
         fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
     }
 
-    #[cfg(debug_assertions)]
-    fn runtime_check<T>(ptr: *mut T) {
-        debug_assert!(
-            is_aligned_and_not_null(ptr),
-            "attempt to write to unaligned or null pointer"
-        );
-    }
-    #[cfg(debug_assertions)]
-    const fn compiletime_check<T>(_ptr: *mut T) {}
-    #[cfg(debug_assertions)]
-    // SAFETY: runtime debug-assertions are a best-effort basis; it's fine to
-    // not do them during compile time
-    unsafe {
-        const_eval_select((dst,), compiletime_check, runtime_check);
-    }
-
     // SAFETY: the safety contract for `write_bytes` must be upheld by the caller.
-    unsafe { write_bytes(dst, val, count) }
+    unsafe {
+        assert_unsafe_precondition!(is_aligned_and_not_null(dst));
+        write_bytes(dst, val, count)
+    }
 }
 
 /// Selects which function to call depending on the context.
