@@ -477,12 +477,7 @@ changelog-seen = 2
 # Valid values are the same as those accepted by `-C split-debuginfo`
 # (`off`/`unpacked`/`packed`).
 #
-# On Linux, packed split debuginfo is used by default, which splits debuginfo
-# into a separate `rustc.dwp` file. Split DWARF on Linux results in lower
-# linking times (there's less debuginfo for the linker to process),
-# `split-debuginfo` is enabled on default for Linux. Unpacked debuginfo could
-# technically work too, but the cost of running the DWARF packager is marginal
-# and results in debuginfo being in a single file.
+# On Linux, split debuginfo is disabled by default.
 #
 # On Apple platforms, unpacked split debuginfo is used by default. Unpacked
 # debuginfo does not run `dsymutil`, which packages debuginfo from disparate
@@ -494,7 +489,7 @@ changelog-seen = 2
 #
 # On Windows platforms, packed debuginfo is the only supported option,
 # producing a `.pdb` file.
-#split-debuginfo = if linux { packed } else if windows { packed } else if apple { unpacked }
+#split-debuginfo = if linux { off } else if windows { packed } else if apple { unpacked }
 
 # Whether or not `panic!`s generate backtraces (RUST_BACKTRACE)
 #backtrace = true

@@ -256,7 +256,7 @@ impl SplitDebuginfo {
         } else if target.contains("windows") {
             SplitDebuginfo::Packed
         } else {
-            SplitDebuginfo::Unpacked
+            SplitDebuginfo::Off
         }
     }
 }
