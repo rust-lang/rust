@@ -3711,6 +3711,7 @@ version = "0.0.0"
 dependencies = [
  "fluent-bundle",
  "fluent-syntax",
+ "intl-memoizer",
  "rustc_data_structures",
  "rustc_macros",
  "rustc_serialize",

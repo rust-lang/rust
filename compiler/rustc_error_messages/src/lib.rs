@@ -14,12 +14,27 @@ use std::io;
 use std::path::Path;
 use tracing::{instrument, trace};
 
+#[cfg(parallel_compiler)]
+use intl_memoizer::concurrent::IntlLangMemoizer;
+#[cfg(not(parallel_compiler))]
+use intl_memoizer::IntlLangMemoizer;
+
 pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
 static FALLBACK_FLUENT_RESOURCE: &'static str = include_str!("../locales/en-US/diagnostics.ftl");
 
-pub type FluentBundle = fluent_bundle::FluentBundle<FluentResource>;
+pub type FluentBundle = fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>;
+
+#[cfg(parallel_compiler)]
+fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
+    FluentBundle::new_concurrent(locales)
+}
+
+#[cfg(not(parallel_compiler))]
+fn new_bundle(locales: Vec<LanguageIdentifier>) -> FluentBundle {
+    FluentBundle::new(locales)
+}
 
 #[derive(Debug)]
 pub enum TranslationBundleError {
@@ -114,7 +129,7 @@ pub fn fluent_bundle(
     // provided locale.
     let locale = requested_locale.clone().unwrap_or(fallback_locale);
     trace!(?locale);
-    let mut bundle = FluentBundle::new(vec![locale]);
+    let mut bundle = new_bundle(vec![locale]);
 
     // Fluent diagnostics can insert directionality isolation markers around interpolated variables
     // indicating that there may be a shift from right-to-left to left-to-right text (or
@@ -176,7 +191,7 @@ pub fn fallback_fluent_bundle(
     let fallback_resource = FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
         .map_err(TranslationBundleError::from)?;
     trace!(?fallback_resource);
-    let mut fallback_bundle = FluentBundle::new(vec![langid!("en-US")]);
+    let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
     // See comment in `fluent_bundle`.
     fallback_bundle.set_use_isolating(with_directionality_markers);
     fallback_bundle.add_resource(fallback_resource).map_err(TranslationBundleError::from)?;
