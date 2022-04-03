@@ -77,6 +77,8 @@ impl_element! { isize }
 
 /// A SIMD vector mask for `LANES` elements of width specified by `Element`.
 ///
+/// Masks represent boolean inclusion/exclusion on a per-lane basis.
+///
 /// The layout of this type is unspecified.
 #[repr(transparent)]
 pub struct Mask<T, const LANES: usize>(mask_impl::Mask<T, LANES>)
