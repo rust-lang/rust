@@ -637,8 +637,9 @@ pub const fn slice_from_raw_parts_mut<T>(data: *mut T, len: usize) -> *mut [T] {
 ///
 /// let mut array = [0, 1, 2, 3];
 ///
-/// let x = array[0..].as_mut_ptr() as *mut [u32; 2]; // this is `array[0..2]`
-/// let y = array[2..].as_mut_ptr() as *mut [u32; 2]; // this is `array[2..4]`
+/// let (x, y) = array.split_at_mut(2);
+/// let x = x.as_mut_ptr().cast::<[u32; 2]>(); // this is `array[0..2]`
+/// let y = y.as_mut_ptr().cast::<[u32; 2]>(); // this is `array[2..4]`
 ///
 /// unsafe {
 ///     ptr::swap(x, y);
