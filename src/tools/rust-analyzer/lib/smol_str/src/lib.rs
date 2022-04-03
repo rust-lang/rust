@@ -29,6 +29,8 @@ use core::{
 /// languages. Strings consisting of a series of newlines, followed by a series of
 /// whitespace are a typical pattern in computer programs because of indentation.
 /// Note that a specialized interner might be a better solution for some use cases.
+///
+/// `WS`: A string of 32 newlines followed by 128 spaces.
 #[derive(Clone)]
 pub struct SmolStr(Repr);
 
