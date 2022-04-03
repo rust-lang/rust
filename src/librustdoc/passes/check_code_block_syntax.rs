@@ -32,8 +32,8 @@ struct SyntaxChecker<'a, 'tcx> {
 impl<'a, 'tcx> SyntaxChecker<'a, 'tcx> {
     fn check_rust_syntax(&self, item: &clean::Item, dox: &str, code_block: RustCodeBlock) {
         let buffer = Lrc::new(Lock::new(Buffer::default()));
-        let fallback_bundle =
-            rustc_errors::fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
+        let fallback_bundle = rustc_errors::fallback_fluent_bundle(false)
+            .expect("failed to load fallback fluent bundle");
         let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));

@@ -101,6 +101,7 @@ pub fn fluent_bundle(
     sysroot: &Path,
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
+    with_directionality_markers: bool,
 ) -> Result<Option<Lrc<FluentBundle>>, TranslationBundleError> {
     if requested_locale.is_none() && additional_ftl_path.is_none() {
         return Ok(None);
@@ -120,7 +121,7 @@ pub fn fluent_bundle(
     // vice-versa). These are disabled because they are sometimes visible in the error output, but
     // may be worth investigating in future (for example: if type names are left-to-right and the
     // surrounding diagnostic messages are right-to-left, then these might be helpful).
-    bundle.set_use_isolating(false);
+    bundle.set_use_isolating(with_directionality_markers);
 
     // If the user requests the default locale then don't try to load anything.
     if !requested_fallback_locale && let Some(requested_locale) = requested_locale {
@@ -169,13 +170,15 @@ pub fn fluent_bundle(
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace")]
-pub fn fallback_fluent_bundle() -> Result<Lrc<FluentBundle>, TranslationBundleError> {
+pub fn fallback_fluent_bundle(
+    with_directionality_markers: bool,
+) -> Result<Lrc<FluentBundle>, TranslationBundleError> {
     let fallback_resource = FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
         .map_err(TranslationBundleError::from)?;
     trace!(?fallback_resource);
     let mut fallback_bundle = FluentBundle::new(vec![langid!("en-US")]);
     // See comment in `fluent_bundle`.
-    fallback_bundle.set_use_isolating(false);
+    fallback_bundle.set_use_isolating(with_directionality_markers);
     fallback_bundle.add_resource(fallback_resource).map_err(TranslationBundleError::from)?;
     let fallback_bundle = Lrc::new(fallback_bundle);
     Ok(fallback_bundle)

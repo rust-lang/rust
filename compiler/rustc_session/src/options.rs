@@ -1482,6 +1482,8 @@ options! {
         "language identifier for diagnostic output"),
     translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "additional fluent translation to preferentially use (for testing translation)"),
+    translate_directionality_markers: bool = (false, parse_bool, [TRACKED],
+        "emit directionality isolation markers in translated diagnostics"),
     tune_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select processor to schedule for (`rustc --print target-cpus` for details)"),
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],

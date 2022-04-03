@@ -1218,9 +1218,12 @@ pub fn build_session(
         &sysroot,
         sopts.debugging_opts.translate_lang.clone(),
         sopts.debugging_opts.translate_additional_ftl.as_deref(),
+        sopts.debugging_opts.translate_directionality_markers,
     )
     .expect("failed to load fluent bundle");
-    let fallback_bundle = fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
+    let fallback_bundle =
+        fallback_fluent_bundle(sopts.debugging_opts.translate_directionality_markers)
+            .expect("failed to load fallback fluent bundle");
     let emitter =
         default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
 
@@ -1455,7 +1458,8 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle = fallback_fluent_bundle().expect("failed to load fallback fluent bundle");
+    let fallback_bundle =
+        fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
