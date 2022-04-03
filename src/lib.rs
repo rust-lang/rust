@@ -287,8 +287,10 @@ fn handle_native(name: &str) -> &str {
 }
 
 pub fn target_cpu(sess: &Session) -> &str {
-    let name = sess.opts.cg.target_cpu.as_ref().unwrap_or(&sess.target.cpu);
-    handle_native(name)
+    match sess.opts.cg.target_cpu {
+        Some(ref name) => handle_native(name),
+        None => handle_native(sess.target.cpu.as_ref()),
+    }
 }
 
 pub fn target_features(sess: &Session) -> Vec<Symbol> {
