@@ -396,14 +396,14 @@ fn main() {
         //^ error: missing match arm
     match a {
         Either::A { } => (),
-      //^^^^^^^^^ error: missing structure fields:
+      //^^^^^^^^^ 💡 error: missing structure fields:
       //        | - foo
         Either::B => (),
     }
     match a {
         //^ error: missing match arm
         Either::A { } => (),
-    } //^^^^^^^^^ error: missing structure fields:
+    } //^^^^^^^^^ 💡 error: missing structure fields:
       //        | - foo
 
     match a {

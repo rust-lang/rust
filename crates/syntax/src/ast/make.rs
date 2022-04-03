@@ -555,6 +555,10 @@ pub fn record_pat_field(name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPat
     ast_from_text(&format!("fn f(S {{ {}: {} }}: ()))", name_ref, pat))
 }
 
+pub fn record_pat_field_shorthand(name_ref: ast::NameRef) -> ast::RecordPatField {
+    ast_from_text(&format!("fn f(S {{ {} }}: ()))", name_ref))
+}
+
 /// Returns a `BindPat` if the path has just one segment, a `PathPat` otherwise.
 pub fn path_pat(path: ast::Path) -> ast::Pat {
     return from_text(&path.to_string());
