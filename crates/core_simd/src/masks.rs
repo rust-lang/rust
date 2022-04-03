@@ -507,7 +507,7 @@ where
     }
 }
 
-/// A 64-bit SIMD vector mask for eight elements of 8 bits.
+/// A SIMD vector mask of eight elements, for operating with SIMD vectors with 8 bit elements. 
 pub type mask8x8 = Mask<i8, 8>;
 
 /// A 128-bit SIMD vector mask for 16 elements of 8 bits.
