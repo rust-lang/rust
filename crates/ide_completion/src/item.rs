@@ -138,6 +138,8 @@ pub struct CompletionRelevance {
     pub is_private_editable: bool,
     /// Set for postfix snippet item completions
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
+    /// This is setted for type inference results
+    pub is_definite: bool,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -198,6 +200,7 @@ impl CompletionRelevance {
             is_op_method,
             is_private_editable,
             postfix_match,
+            is_definite,
         } = self;
 
         // lower rank private things
@@ -225,7 +228,9 @@ impl CompletionRelevance {
         if is_local {
             score += 1;
         }
-
+        if is_definite {
+            score += 10;
+        }
         score
     }
 
@@ -243,6 +248,7 @@ pub enum CompletionItemKind {
     SymbolKind(SymbolKind),
     Binding,
     BuiltinType,
+    InferredType,
     Keyword,
     Method,
     Snippet,
@@ -284,6 +290,7 @@ impl CompletionItemKind {
             },
             CompletionItemKind::Binding => "bn",
             CompletionItemKind::BuiltinType => "bt",
+            CompletionItemKind::InferredType => "it",
             CompletionItemKind::Keyword => "kw",
             CompletionItemKind::Method => "me",
             CompletionItemKind::Snippet => "sn",

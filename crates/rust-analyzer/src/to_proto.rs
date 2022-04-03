@@ -107,6 +107,7 @@ pub(crate) fn completion_item_kind(
     match completion_item_kind {
         CompletionItemKind::Binding => lsp_types::CompletionItemKind::VARIABLE,
         CompletionItemKind::BuiltinType => lsp_types::CompletionItemKind::STRUCT,
+        CompletionItemKind::InferredType => lsp_types::CompletionItemKind::SNIPPET,
         CompletionItemKind::Keyword => lsp_types::CompletionItemKind::KEYWORD,
         CompletionItemKind::Method => lsp_types::CompletionItemKind::METHOD,
         CompletionItemKind::Snippet => lsp_types::CompletionItemKind::SNIPPET,

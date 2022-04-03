@@ -8,7 +8,7 @@ use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
     algo::non_trivia_sibling,
-    ast::{self, HasArgList, HasLoopBody},
+    ast::{self, HasArgList, HasLoopBody, HasName},
     match_ast, AstNode, Direction, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -25,6 +25,14 @@ pub(crate) enum ImmediatePrevSibling {
     ImplDefType,
     Visibility,
     Attribute,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TypeAnnotation {
+    Let(Option<ast::Pat>),
+    FnParam(Option<ast::Pat>),
+    RetType(Option<ast::Expr>),
+    Const(Option<ast::Expr>),
 }
 
 /// Direct parent "thing" of what we are currently completing.
@@ -44,6 +52,8 @@ pub(crate) enum ImmediateLocation {
     ItemList,
     TypeBound,
     Variant,
+    /// Original file ast node
+    TypeAnnotation(TypeAnnotation),
     /// Fake file ast node
     ModDeclaration(ast::Module),
     /// Original file ast node
@@ -235,10 +245,7 @@ pub(crate) fn determine_location(
                 }
             },
             ast::FieldExpr(it) => {
-                let receiver = it
-                    .expr()
-                    .map(|e| e.syntax().text_range())
-                    .and_then(|r| find_node_with_range(original_file, r));
+                let receiver = find_in_original_file(it.expr(), original_file);
                 let receiver_is_ambiguous_float_literal = if let Some(ast::Expr::Literal(l)) = &receiver {
                     match l.kind() {
                         ast::LiteralKind::FloatNumber { .. } => l.token().text().ends_with('.'),
@@ -253,15 +260,65 @@ pub(crate) fn determine_location(
                 }
             },
             ast::MethodCallExpr(it) => ImmediateLocation::MethodCall {
-                receiver: it
-                    .receiver()
-                    .map(|e| e.syntax().text_range())
-                    .and_then(|r| find_node_with_range(original_file, r)),
+                receiver: find_in_original_file(it.receiver(), original_file),
                 has_parens: it.arg_list().map_or(false, |it| it.l_paren_token().is_some())
+            },
+            ast::Const(it) => {
+                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
+                    return None;
+                }
+                let name = find_in_original_file(it.name(), original_file)?;
+                let original = ast::Const::cast(name.syntax().parent()?)?;
+                ImmediateLocation::TypeAnnotation(TypeAnnotation::Const(original.body()))
+            },
+            ast::RetType(it) => {
+                if it.thin_arrow_token().is_none() {
+                    return None;
+                }
+                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
+                    return None;
+                }
+                let parent = match ast::Fn::cast(parent.parent()?) {
+                    Some(x) => x.param_list(),
+                    None => ast::ClosureExpr::cast(parent.parent()?)?.param_list(),
+                };
+                let parent = find_in_original_file(parent, original_file)?.syntax().parent()?;
+                ImmediateLocation::TypeAnnotation(TypeAnnotation::RetType(match_ast! {
+                    match parent {
+                        ast::ClosureExpr(it) => {
+                            it.body()
+                        },
+                        ast::Fn(it) => {
+                            it.body().map(ast::Expr::BlockExpr)
+                        },
+                        _ => return None,
+                    }
+                }))
+            },
+            ast::Param(it) => {
+                if it.colon_token().is_none() {
+                    return None;
+                }
+                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
+                    return None;
+                }
+                ImmediateLocation::TypeAnnotation(TypeAnnotation::FnParam(find_in_original_file(it.pat(), original_file)))
+            },
+            ast::LetStmt(it) => {
+                if it.colon_token().is_none() {
+                    return None;
+                }
+                if !it.ty().map_or(false, |x| x.syntax().text_range().contains(offset)) {
+                    return None;
+                }
+                ImmediateLocation::TypeAnnotation(TypeAnnotation::Let(find_in_original_file(it.pat(), original_file)))
             },
             _ => return None,
         }
     };
+    fn find_in_original_file<N: AstNode>(x: Option<N>, original_file: &SyntaxNode) -> Option<N> {
+        x.map(|e| e.syntax().text_range()).and_then(|r| find_node_with_range(original_file, r))
+    }
     Some(res)
 }
 

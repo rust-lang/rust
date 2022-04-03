@@ -90,6 +90,206 @@ fn x<'lt, T, const C: usize>() -> $0
 }
 
 #[test]
+fn inferred_type_const() {
+    check(
+        r#"
+struct Foo<T>(T);
+const FOO: $0 = Foo(2);
+"#,
+        expect![[r#"
+            it Foo<i32>
+            kw self
+            kw super
+            kw crate
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Foo<…>
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_closure_param() {
+    check(
+        r#"
+fn f1(f: fn(i32) -> i32) {}
+fn f2() {
+    f1(|x: $0);
+}
+"#,
+        expect![[r#"
+            it i32
+            kw self
+            kw super
+            kw crate
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_closure_return() {
+    check(
+        r#"
+fn f1(f: fn(u64) -> u64) {}
+fn f2() {
+    f1(|x| -> $0 {
+        x + 5
+    });
+}
+"#,
+        expect![[r#"
+            it u64
+            kw self
+            kw super
+            kw crate
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_fn_return() {
+    check(
+        r#"
+fn f2(x: u64) -> $0 {
+    x + 5
+}
+"#,
+        expect![[r#"
+            it u64
+            kw self
+            kw super
+            kw crate
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_fn_param() {
+    check(
+        r#"
+fn f1(x: i32) {}
+fn f2(x: $0) {
+    f1(x);
+}
+"#,
+        expect![[r#"
+            it i32
+            kw self
+            kw super
+            kw crate
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_not_in_the_scope() {
+    check(
+        r#"
+mod a {
+    pub struct Foo<T>(T);
+    pub fn x() -> Foo<Foo<i32>> {
+        Foo(Foo(2))
+    }
+}
+fn foo<'lt, T, const C: usize>() {
+    let local = ();
+    let foo: $0 = a::x();
+}
+"#,
+        expect![[r#"
+            it a::Foo<a::Foo<i32>>
+            kw self
+            kw super
+            kw crate
+            tp T
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Unit
+            ma makro!(…)           macro_rules! makro
+            un Union
+            md a
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
+fn inferred_type_let() {
+    check(
+        r#"
+struct Foo<T>(T);
+fn foo<'lt, T, const C: usize>() {
+    let local = ();
+    let foo: $0 = Foo(2);
+}
+"#,
+        expect![[r#"
+            it Foo<i32>
+            kw self
+            kw super
+            kw crate
+            tp T
+            tt Trait
+            en Enum
+            st Record
+            st Tuple
+            md module
+            st Foo<…>
+            st Unit
+            ma makro!(…) macro_rules! makro
+            un Union
+            bt u32
+        "#]],
+    );
+}
+
+#[test]
 fn body_type_pos() {
     check(
         r#"

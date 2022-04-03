@@ -21,12 +21,13 @@ pub(crate) mod vis;
 
 use std::iter;
 
-use hir::{db::HirDatabase, known, ScopeDef};
+use hir::{db::HirDatabase, known, HirDisplay, ScopeDef};
 use ide_db::SymbolKind;
 
 use crate::{
     context::Visible,
     item::Builder,
+    patterns::{ImmediateLocation, TypeAnnotation},
     render::{
         const_::render_const,
         function::{render_fn, render_method},
@@ -34,6 +35,7 @@ use crate::{
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_resolution, render_resolution_simple, render_tuple_field,
+        render_type_inference,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
         RenderContext,
@@ -373,4 +375,20 @@ fn enum_variants_with_paths(
             }
         }
     }
+}
+
+pub(crate) fn inferred_type(acc: &mut Completions, ctx: &CompletionContext) -> Option<()> {
+    use TypeAnnotation::*;
+    let pat = match &ctx.completion_location {
+        Some(ImmediateLocation::TypeAnnotation(t)) => t,
+        _ => return None,
+    };
+    let x = match pat {
+        Let(pat) | FnParam(pat) => ctx.sema.type_of_pat(pat.as_ref()?),
+        Const(exp) | RetType(exp) => ctx.sema.type_of_expr(exp.as_ref()?),
+    }?
+    .adjusted();
+    let ty_string = x.display_source_code(ctx.db, ctx.module.into()).ok()?;
+    acc.add(render_type_inference(ty_string, ctx));
+    None
 }

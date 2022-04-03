@@ -170,6 +170,13 @@ pub(crate) fn render_resolution_with_import(
     Some(render_resolution_(ctx, local_name, Some(import_edit), resolution))
 }
 
+pub(crate) fn render_type_inference(ty_string: String, ctx: &CompletionContext) -> CompletionItem {
+    let mut builder =
+        CompletionItem::new(CompletionItemKind::InferredType, ctx.source_range(), ty_string);
+    builder.set_relevance(CompletionRelevance { is_definite: true, ..Default::default() });
+    builder.build()
+}
+
 fn render_resolution_(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
@@ -620,6 +627,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
+                            is_definite: false,
                         },
                     },
                     CompletionItem {
@@ -641,6 +649,7 @@ fn main() { let _: m::Spam = S$0 }
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
+                            is_definite: false,
                         },
                     },
                 ]
@@ -728,6 +737,7 @@ fn foo() { A { the$0 } }
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
+                            is_definite: false,
                         },
                     },
                 ]
