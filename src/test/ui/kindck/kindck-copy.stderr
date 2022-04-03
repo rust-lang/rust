@@ -129,10 +129,6 @@ note: required by a bound in `assert_copy`
    |
 LL | fn assert_copy<T:Copy>() { }
    |                  ^^^^ required by this bound in `assert_copy`
-help: consider annotating `MyNoncopyStruct` with `#[derive(Copy)]`
-   |
-LL | #[derive(Copy)]
-   |
 
 error[E0277]: the trait bound `Rc<isize>: Copy` is not satisfied
   --> $DIR/kindck-copy.rs:67:19
