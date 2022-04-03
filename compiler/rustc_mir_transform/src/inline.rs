@@ -1,7 +1,6 @@
 //! Inlining pass for MIR functions
 
 use rustc_attr::InlineAttr;
-use rustc_hir as hir;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -88,7 +87,6 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
         tcx,
         param_env,
         codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
-        hir_id,
         history: Vec::new(),
         changed: false,
     };
@@ -102,8 +100,6 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Caller HirID.
-    hir_id: hir::HirId,
     /// Stack of inlined Instances.
     history: Vec<ty::Instance<'tcx>>,
     /// Indicates that the caller body has been modified.
@@ -179,7 +175,9 @@ impl<'tcx> Inliner<'tcx> {
         caller_body: &Body<'tcx>,
         callee: &Instance<'tcx>,
     ) -> Result<(), &'static str> {
-        if callee.def_id() == caller_body.source.def_id() {
+        let caller_def_id = caller_body.source.def_id();
+        let callee_def_id = callee.def_id();
+        if callee_def_id == caller_def_id {
             return Err("self-recursion");
         }
 
@@ -188,7 +186,7 @@ impl<'tcx> Inliner<'tcx> {
                 // If there is no MIR available (either because it was not in metadata or
                 // because it has no MIR because it's an extern function), then the inliner
                 // won't cause cycles on this.
-                if !self.tcx.is_mir_available(callee.def_id()) {
+                if !self.tcx.is_mir_available(callee_def_id) {
                     return Err("item MIR unavailable");
                 }
             }
@@ -208,29 +206,26 @@ impl<'tcx> Inliner<'tcx> {
             | InstanceDef::CloneShim(..) => return Ok(()),
         }
 
-        if self.tcx.is_constructor(callee.def_id()) {
+        if self.tcx.is_constructor(callee_def_id) {
             trace!("constructors always have MIR");
             // Constructor functions cannot cause a query cycle.
             return Ok(());
         }
 
-        if let Some(callee_def_id) = callee.def_id().as_local() {
-            let callee_hir_id = self.tcx.hir().local_def_id_to_hir_id(callee_def_id);
+        if callee_def_id.is_local() {
             // Avoid a cycle here by only using `instance_mir` only if we have
-            // a lower `HirId` than the callee. This ensures that the callee will
-            // not inline us. This trick only works without incremental compilation.
-            // So don't do it if that is enabled.
-            if !self.tcx.dep_graph.is_fully_enabled() && self.hir_id.index() < callee_hir_id.index()
+            // a lower `DefPathHash` than the callee. This ensures that the callee will
+            // not inline us. This trick even works with incremental compilation,
+            // since `DefPathHash` is stable.
+            if self.tcx.def_path_hash(caller_def_id).local_hash()
+                < self.tcx.def_path_hash(callee_def_id).local_hash()
             {
                 return Ok(());
             }
 
             // If we know for sure that the function we're calling will itself try to
             // call us, then we avoid inlining that function.
-            if self
-                .tcx
-                .mir_callgraph_reachable((*callee, caller_body.source.def_id().expect_local()))
-            {
+            if self.tcx.mir_callgraph_reachable((*callee, caller_def_id.expect_local())) {
                 return Err("caller might be reachable from callee (query cycle avoidance)");
             }
 
