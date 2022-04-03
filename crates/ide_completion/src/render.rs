@@ -1550,7 +1550,8 @@ fn foo() {
     }
 
     #[test]
-    fn postfix_completion_relevance() {
+    fn postfix_exact_match_is_high_priority() {
+        cov_mark::check!(postfix_exact_match_is_high_priority);
         check_relevance_for_kinds(
             r#"
 mod ops {
@@ -1582,6 +1583,35 @@ fn main() {
                 sn dbg []
                 sn dbgr []
                 sn call []
+            "#]],
+        );
+    }
+
+    #[test]
+    fn postfix_inexact_match_is_low_priority() {
+        cov_mark::check!(postfix_inexact_match_is_low_priority);
+        check_relevance_for_kinds(
+            r#"
+struct S;
+impl S {
+    fn f(&self) {}
+}
+fn main() {
+    S.$0
+}
+    "#,
+            &[CompletionItemKind::Snippet, CompletionItemKind::Method],
+            expect![[r#"
+                me f() []
+                sn ref []
+                sn refm []
+                sn match []
+                sn box []
+                sn dbg []
+                sn dbgr []
+                sn call []
+                sn let []
+                sn letm []
             "#]],
         );
     }
