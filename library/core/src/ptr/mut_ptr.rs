@@ -1366,6 +1366,22 @@ impl<T> *mut [T] {
     ///
     /// Panics if `mid > len`.
     ///
+    /// # Safety
+    ///
+    /// `mid` must be [in-bounds] of the underlying [allocated object].
+    /// Which means `self` must be dereferenceable and span a single allocation
+    /// that is at least `mid * size_of::<T>()` bytes long. Not upholding these
+    /// requirements is *[undefined behavior]* even if the resulting pointers are not used.
+    ///
+    /// Since `len` being in-bounds it is not a safety invariant of `*mut [T]` the
+    /// safety requirements of this method are the same as for [`split_at_mut_unchecked`].
+    /// The explicit bounds check is only as useful as `len` is correct.
+    ///
+    /// [`split_at_mut_unchecked`]: #method.split_at_mut_unchecked
+    /// [in-bounds]: #method.add
+    /// [allocated object]: crate::ptr#allocated-object
+    /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -1374,8 +1390,8 @@ impl<T> *mut [T] {
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// let ptr = &mut v as *mut [_];
-    /// let (left, right) = ptr.split_at_mut(2);
     /// unsafe {
+    ///     let (left, right) = ptr.split_at_mut(2);
     ///     assert_eq!(&*left, [1, 0]);
     ///     assert_eq!(&*right, [3, 0, 5, 6]);
     /// }
@@ -1383,10 +1399,10 @@ impl<T> *mut [T] {
     #[inline(always)]
     #[track_caller]
     #[unstable(feature = "raw_slice_split", issue = "95595")]
-    pub fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
+    pub unsafe fn split_at_mut(self, mid: usize) -> (*mut [T], *mut [T]) {
         assert!(mid <= self.len());
-        // SAFETY: `[ptr; mid]` and `[mid; len]` are inside `self`, which
-        // fulfills the requirements of `from_raw_parts_mut`.
+        // SAFETY: The assert above is only a safety-net as long as `self.len()` is correct
+        // The actual safety requirements of this function are the same as for `split_at_mut_unchecked`
         unsafe { self.split_at_mut_unchecked(mid) }
     }
 
@@ -1396,16 +1412,15 @@ impl<T> *mut [T] {
     /// the index `mid` itself) and the second will contain all
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
-    /// For a safe alternative see [`split_at_mut`].
-    ///
-    /// [`split_at_mut`]: #method.split_at_mut
-    ///
     /// # Safety
     ///
-    /// Calling this method with an out-of-bounds index is *[undefined behavior]*
-    /// even if the resulting reference is not used. The caller has to ensure that
-    /// `0 <= mid <= self.len()`.
+    /// `mid` must be [in-bounds] of the underlying [allocated object].
+    /// Which means `self` must be dereferenceable and span a single allocation
+    /// that is at least `mid * size_of::<T>()` bytes long. Not upholding these
+    /// requirements is *[undefined behavior]* even if the resulting pointers are not used.
     ///
+    /// [in-bounds]: #method.add
+    /// [out-of-bounds index]: #method.add
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
@@ -1431,16 +1446,12 @@ impl<T> *mut [T] {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
-        // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
-        //
-        // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
-        // is fine.
-        unsafe {
-            (
-                crate::ptr::slice_from_raw_parts_mut(ptr, mid),
-                crate::ptr::slice_from_raw_parts_mut(ptr.add(mid), len - mid),
-            )
-        }
+        // SAFETY: Caller must pass a valid pointer and an index that is in-bounds.
+        let tail = unsafe { ptr.add(mid) };
+        (
+            crate::ptr::slice_from_raw_parts_mut(ptr, mid),
+            crate::ptr::slice_from_raw_parts_mut(tail, len - mid),
+        )
     }
 
     /// Returns a raw pointer to the slice's buffer.
@@ -1466,9 +1477,10 @@ impl<T> *mut [T] {
     /// Returns a raw pointer to an element or subslice, without doing bounds
     /// checking.
     ///
-    /// Calling this method with an out-of-bounds index or when `self` is not dereferenceable
+    /// Calling this method with an [out-of-bounds index] or when `self` is not dereferenceable
     /// is *[undefined behavior]* even if the resulting pointer is not used.
     ///
+    /// [out-of-bounds index]: #method.add
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
     /// # Examples
