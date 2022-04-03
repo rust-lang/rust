@@ -75,7 +75,7 @@ pub fn get_linker<'a>(
         if let Some(ref tool) = msvc_tool {
             let original_path = tool.path();
             if let Some(ref root_lib_path) = original_path.ancestors().nth(4) {
-                let arch = match t.arch.as_str() {
+                let arch = match t.arch.as_ref() {
                     "x86_64" => Some("x64"),
                     "x86" => Some("x86"),
                     "aarch64" => Some("arm64"),
@@ -1520,7 +1520,7 @@ impl<'a> L4Bender<'a> {
 
 pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     if let Some(ref exports) = tcx.sess.target.override_export_symbols {
-        return exports.clone();
+        return exports.iter().map(ToString::to_string).collect();
     }
 
     let mut symbols = Vec::new();

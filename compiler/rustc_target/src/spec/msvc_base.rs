@@ -4,7 +4,7 @@ pub fn opts() -> TargetOptions {
     let pre_link_args_msvc = vec![
         // Suppress the verbose logo and authorship debugging output, which would needlessly
         // clog any log files.
-        "/NOLOGO".to_string(),
+        "/NOLOGO".into(),
     ];
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Msvc, pre_link_args_msvc.clone());
