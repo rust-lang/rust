@@ -219,15 +219,12 @@ impl DiagnosticMessage {
     }
 
     /// Create a `DiagnosticMessage` for the provided Fluent identifier.
-    pub fn fluent(id: impl Into<Cow<'static, str>>) -> Self {
+    pub fn fluent(id: impl Into<FluentId>) -> Self {
         DiagnosticMessage::FluentIdentifier(id.into(), None)
     }
 
     /// Create a `DiagnosticMessage` for the provided Fluent identifier and attribute.
-    pub fn fluent_attr(
-        id: impl Into<Cow<'static, str>>,
-        attr: impl Into<Cow<'static, str>>,
-    ) -> Self {
+    pub fn fluent_attr(id: impl Into<FluentId>, attr: impl Into<FluentId>) -> Self {
         DiagnosticMessage::FluentIdentifier(id.into(), Some(attr.into()))
     }
 }
