@@ -57,6 +57,9 @@ type_alias! { "c_schar.md", c_schar = i8, NonZero_c_schar = NonZeroI8; }
 type_alias! { "c_uchar.md", c_uchar = u8, NonZero_c_uchar = NonZeroU8; }
 type_alias! { "c_short.md", c_short = i16, NonZero_c_short = NonZeroI16; }
 type_alias! { "c_ushort.md", c_ushort = u16, NonZero_c_ushort = NonZeroU16; }
+#[cfg(any(target_arch = "avr", target_arch = "msp430"))]
+type_alias! { "c_int.md", c_int = i16, NonZero_c_int = NonZeroI16; }
+#[cfg(not(any(target_arch = "avr", target_arch = "msp430")))]
 type_alias! { "c_int.md", c_int = i32, NonZero_c_int = NonZeroI32; }
 type_alias! { "c_uint.md", c_uint = u32, NonZero_c_uint = NonZeroU32; }
 type_alias! { "c_long.md", c_long = i32, NonZero_c_long = NonZeroI32;

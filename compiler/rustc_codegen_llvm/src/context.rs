@@ -859,7 +859,10 @@ impl<'ll> CodegenCx<'ll, '_> {
 
         // This isn't an "LLVM intrinsic", but LLVM's optimization passes
         // recognize it like one and we assume it exists in `core::slice::cmp`
-        ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32);
+        match self.sess().target.arch.as_str() {
+            "avr" | "msp430" => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i16),
+            _ => ifn!("memcmp", fn(i8p, i8p, t_isize) -> t_i32),
+        }
 
         // variadic intrinsics
         ifn!("llvm.va_start", fn(i8p) -> void);
