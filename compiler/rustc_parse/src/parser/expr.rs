@@ -267,6 +267,17 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
+            if self.prev_token == token::BinOp(token::Plus)
+                && self.token == token::BinOp(token::Plus)
+                && self.prev_token.span.between(self.token.span).is_empty()
+            {
+                let op_span = self.prev_token.span.to(self.token.span);
+                // Eat the second `+`
+                self.bump();
+                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
+                continue;
+            }
+
             let op = op.node;
             // Special cases:
             if op == AssocOp::As {
@@ -580,6 +591,19 @@ impl<'a> Parser<'a> {
                 this.bump();
                 this.parse_prefix_expr(None)
             } // `+expr`
+            // Recover from `++x`:
+            token::BinOp(token::Plus)
+                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
+            {
+                let prev_is_semi = this.prev_token == token::Semi;
+                let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
+                // Eat both `+`s.
+                this.bump();
+                this.bump();
+
+                let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
+                this.recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+            }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
             }
