@@ -302,108 +302,99 @@ fn main() {}",
 
 #[test]
 fn insert_empty_file() {
-    {
-        // Default configuration
-        cov_mark::check!(insert_empty_file);
-        // empty files will get two trailing newlines
-        // this is due to the test case insert_no_imports above
-        check_crate(
-            "foo::bar",
-            "",
-            r"use foo::bar;
+    cov_mark::check_count!(insert_empty_file, 2);
+
+    // Default configuration
+    // empty files will get two trailing newlines
+    // this is due to the test case insert_no_imports above
+    check_crate(
+        "foo::bar",
+        "",
+        r"use foo::bar;
 
 ",
-        );
-    }
-    {
-        // "not group" configuration
-        cov_mark::check!(insert_empty_file);
-        check_with_config(
-            "use external_crate2::bar::A",
-            r"",
-            r"use external_crate2::bar::A;
+    );
+
+    // "not group" configuration
+    check_with_config(
+        "use external_crate2::bar::A",
+        r"",
+        r"use external_crate2::bar::A;
 
 ",
-            &InsertUseConfig {
-                granularity: ImportGranularity::Item,
-                enforce_granularity: true,
-                prefix_kind: PrefixKind::Plain,
-                group: false,
-                skip_glob_imports: true,
-            },
-        );
-    }
+        &InsertUseConfig {
+            granularity: ImportGranularity::Item,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: true,
+        },
+    );
 }
 
 #[test]
 fn insert_empty_module() {
-    {
-        // Default configuration
-        cov_mark::check!(insert_empty_module);
-        check(
-            "foo::bar",
-            r"
+    cov_mark::check_count!(insert_empty_module, 2);
+
+    // Default configuration
+    check(
+        "foo::bar",
+        r"
 mod x {$0}
 ",
-            r"
+        r"
 mod x {
     use foo::bar;
 }
 ",
-            ImportGranularity::Item,
-        );
-    }
-    {
-        // "not group" configuration
-        cov_mark::check!(insert_empty_module);
-        check_with_config(
-            "foo::bar",
-            r"mod x {$0}",
-            r"mod x {
+        ImportGranularity::Item,
+    );
+
+    // "not group" configuration
+    check_with_config(
+        "foo::bar",
+        r"mod x {$0}",
+        r"mod x {
     use foo::bar;
 }",
-            &InsertUseConfig {
-                granularity: ImportGranularity::Item,
-                enforce_granularity: true,
-                prefix_kind: PrefixKind::Plain,
-                group: false,
-                skip_glob_imports: true,
-            },
-        );
-    }
+        &InsertUseConfig {
+            granularity: ImportGranularity::Item,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: true,
+        },
+    );
 }
 
 #[test]
 fn insert_after_inner_attr() {
-    {
-        // Default configuration
-        cov_mark::check!(insert_empty_inner_attr);
-        check_crate(
-            "foo::bar",
-            r"#![allow(unused_imports)]",
-            r"#![allow(unused_imports)]
+    cov_mark::check_count!(insert_empty_inner_attr, 2);
+
+    // Default configuration
+    check_crate(
+        "foo::bar",
+        r"#![allow(unused_imports)]",
+        r"#![allow(unused_imports)]
 
 use foo::bar;",
-        );
-    }
-    {
-        // "not group" configuration
-        cov_mark::check!(insert_empty_inner_attr);
-        check_with_config(
-            "foo::bar",
-            r"#![allow(unused_imports)]",
-            r"#![allow(unused_imports)]
+    );
+
+    // "not group" configuration
+    check_with_config(
+        "foo::bar",
+        r"#![allow(unused_imports)]",
+        r"#![allow(unused_imports)]
 
 use foo::bar;",
-            &InsertUseConfig {
-                granularity: ImportGranularity::Item,
-                enforce_granularity: true,
-                prefix_kind: PrefixKind::Plain,
-                group: false,
-                skip_glob_imports: true,
-            },
-        );
-    }
+        &InsertUseConfig {
+            granularity: ImportGranularity::Item,
+            enforce_granularity: true,
+            prefix_kind: PrefixKind::Plain,
+            group: false,
+            skip_glob_imports: true,
+        },
+    );
 }
 
 #[test]
