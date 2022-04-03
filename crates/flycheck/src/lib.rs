@@ -329,7 +329,7 @@ impl CargoActor {
             Ok(output) if output.status.success() => Ok(()),
             Ok(output)  => {
                 Err(io::Error::new(io::ErrorKind::Other, format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})\nMake sure to have `cargo clippy` installed.",
+                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})\nMake sure you have `cargo clippy` installed and updated.",
                     output.status
                 )))
             }
