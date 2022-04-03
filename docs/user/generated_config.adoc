@@ -558,3 +558,10 @@ Workspace symbol search scope.
 --
 Workspace symbol search kind.
 --
+[[rust-analyzer.workspace.symbol.search.limit]]rust-analyzer.workspace.symbol.search.limit (default: `128`)::
++
+--
+Limits the number of items returned from a workspace symbol search (Defaults to 128).
+Some clients like vs-code issue new searches on result filtering and don't require all results to be returned in the initial search.
+Other clients requires all results upfront and might require a higher limit.
+--
