@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
-    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
+    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<P<Stmt>>> {
         Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Option<Stmt>> {
+    ) -> PResult<'a, Option<P<Stmt>>> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
@@ -54,7 +54,7 @@ impl<'a> Parser<'a> {
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            return Ok(Some(stmt.into_inner()));
+            return Ok(Some(stmt));
         }
 
         Ok(Some(if self.token.is_keyword(kw::Let) {
@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
+    fn parse_stmt_path_start(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, P<Stmt>> {
         let stmt = self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
@@ -145,13 +145,17 @@ impl<'a> Parser<'a> {
             Ok((this.mk_stmt(rustc_span::DUMMY_SP, StmtKind::Expr(expr)), TrailingToken::None))
         })?;
 
-        if let StmtKind::Expr(expr) = stmt.kind {
-            // Perform this outside of the `collect_tokens_trailing_token` closure,
-            // since our outer attributes do not apply to this part of the expression
-            let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
-            })?;
-            Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
+        if let StmtKind::Expr(_expr) = &stmt.kind {
+            if let StmtKind::Expr(expr) = stmt.into_inner().kind {
+                // Perform this outside of the `collect_tokens_trailing_token` closure,
+                // since our outer attributes do not apply to this part of the expression
+                let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
+                    this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
+                })?;
+                Ok(self.mk_stmt(lo.to(self.prev_token.span), StmtKind::Expr(expr)))
+            } else {
+                unreachable!();
+            }
         } else {
             Ok(stmt)
         }
@@ -159,7 +163,12 @@ impl<'a> Parser<'a> {
 
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
     /// At this point, the `!` token after the path has already been eaten.
-    fn parse_stmt_mac(&mut self, lo: Span, attrs: AttrVec, path: ast::Path) -> PResult<'a, Stmt> {
+    fn parse_stmt_mac(
+        &mut self,
+        lo: Span,
+        attrs: AttrVec,
+        path: ast::Path,
+    ) -> PResult<'a, P<Stmt>> {
         let args = self.parse_mac_args()?;
         let delim = args.delim();
         let hi = self.prev_token.span;
@@ -204,7 +213,7 @@ impl<'a> Parser<'a> {
         attrs: AttrWrapper,
         msg: &str,
         sugg: &str,
-    ) -> PResult<'a, Stmt> {
+    ) -> PResult<'a, P<Stmt>> {
         let stmt = self.recover_local_after_let(lo, attrs)?;
         self.struct_span_err(lo, "invalid variable declaration")
             .span_suggestion(lo, msg, sugg.to_string(), Applicability::MachineApplicable)
@@ -218,7 +227,7 @@ impl<'a> Parser<'a> {
         attrs: AttrWrapper,
         capture_semi: bool,
         force_collect: ForceCollect,
-    ) -> PResult<'a, Stmt> {
+    ) -> PResult<'a, P<Stmt>> {
         self.collect_tokens_trailing_token(attrs, force_collect, |this, attrs| {
             this.expect_keyword(kw::Let)?;
             let local = this.parse_local(attrs.into())?;
@@ -231,7 +240,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, Stmt> {
+    fn recover_local_after_let(&mut self, lo: Span, attrs: AttrWrapper) -> PResult<'a, P<Stmt>> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let local = this.parse_local(attrs.into())?;
             // FIXME - maybe capture semicolon in recovery?
@@ -433,7 +442,7 @@ impl<'a> Parser<'a> {
                 if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
                     || do_not_suggest_help => {}
             // Do not suggest `if foo println!("") {;}` (as would be seen in test for #46836).
-            Ok(Some(Stmt { kind: StmtKind::Empty, .. })) => {}
+            Ok(Some(stmt)) if let StmtKind::Empty = stmt.kind => {}
             Ok(Some(stmt)) => {
                 let stmt_own_line = self.sess.source_map().is_line_before_span_empty(sp);
                 let stmt_span = if stmt_own_line && self.eat(&token::Semi) {
@@ -533,9 +542,9 @@ impl<'a> Parser<'a> {
     pub fn parse_full_stmt(
         &mut self,
         recover: AttemptLocalParseRecovery,
-    ) -> PResult<'a, Option<Stmt>> {
+    ) -> PResult<'a, Option<P<Stmt>>> {
         // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |x| Some(x.into_inner()));
+        maybe_whole!(self, NtStmt, |x| Some(x));
 
         let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
             return Ok(None);
@@ -599,13 +608,18 @@ impl<'a> Parser<'a> {
         }
 
         if eat_semi && self.eat(&token::Semi) {
-            stmt = stmt.add_trailing_semicolon();
+            stmt = stmt.add_trailing_semicolon()
         }
         stmt.span = stmt.span.to(self.prev_token.span);
         Ok(Some(stmt))
     }
 
-    pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
+    pub(super) fn mk_block(
+        &self,
+        stmts: Vec<P<Stmt>>,
+        rules: BlockCheckMode,
+        span: Span,
+    ) -> P<Block> {
         P(Block {
             stmts,
             id: DUMMY_NODE_ID,
@@ -616,11 +630,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
-        Stmt { id: DUMMY_NODE_ID, kind, span }
+    pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> P<Stmt> {
+        P(Stmt { id: DUMMY_NODE_ID, kind, span })
     }
 
-    pub(super) fn mk_stmt_err(&self, span: Span) -> Stmt {
+    pub(super) fn mk_stmt_err(&self, span: Span) -> P<Stmt> {
         self.mk_stmt(span, StmtKind::Expr(self.mk_expr_err(span)))
     }
 

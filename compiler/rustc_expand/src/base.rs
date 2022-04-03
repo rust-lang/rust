@@ -163,9 +163,9 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_stmt(self) -> ast::Stmt {
+    pub fn expect_stmt(self) -> P<ast::Stmt> {
         match self {
-            Annotatable::Stmt(stmt) => stmt.into_inner(),
+            Annotatable::Stmt(stmt) => stmt,
             _ => panic!("expected statement"),
         }
     }
@@ -350,11 +350,11 @@ where
 macro_rules! make_stmts_default {
     ($me:expr) => {
         $me.make_expr().map(|e| {
-            smallvec![ast::Stmt {
+            smallvec![P(ast::Stmt {
                 id: ast::DUMMY_NODE_ID,
                 span: e.span,
                 kind: ast::StmtKind::Expr(e),
-            }]
+            })]
         })
     };
 }
@@ -396,7 +396,7 @@ pub trait MacResult {
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[P<ast::Stmt>; 1]>> {
         make_stmts_default!(self)
     }
 
@@ -469,7 +469,7 @@ make_MacEager! {
     impl_items: SmallVec<[P<ast::AssocItem>; 1]>,
     trait_items: SmallVec<[P<ast::AssocItem>; 1]>,
     foreign_items: SmallVec<[P<ast::ForeignItem>; 1]>,
-    stmts: SmallVec<[ast::Stmt; 1]>,
+    stmts: SmallVec<[P<ast::Stmt>; 1]>,
     ty: P<ast::Ty>,
 }
 
@@ -494,7 +494,7 @@ impl MacResult for MacEager {
         self.foreign_items
     }
 
-    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    fn make_stmts(self: Box<Self>) -> Option<SmallVec<[P<ast::Stmt>; 1]>> {
         match self.stmts.as_ref().map_or(0, |s| s.len()) {
             0 => make_stmts_default!(self),
             _ => self.stmts,
@@ -597,12 +597,12 @@ impl MacResult for DummyResult {
         Some(SmallVec::new())
     }
 
-    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        Some(smallvec![ast::Stmt {
+    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::Stmt>; 1]>> {
+        Some(smallvec![P(ast::Stmt {
             id: ast::DUMMY_NODE_ID,
             kind: ast::StmtKind::Expr(DummyResult::raw_expr(self.span, self.is_error)),
             span: self.span,
-        }])
+        })])
     }
 
     fn make_ty(self: Box<DummyResult>) -> Option<P<ast::Ty>> {

@@ -54,7 +54,7 @@ pub fn expand(
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
-        Annotatable::Stmt(P(ecx.stmt_item(span, const_item)))
+        Annotatable::Stmt(ecx.stmt_item(span, const_item))
     } else {
         Annotatable::Item(const_item)
     };
@@ -72,7 +72,7 @@ struct AllocFnFactory<'a, 'b> {
 }
 
 impl AllocFnFactory<'_, '_> {
-    fn allocator_fn(&self, method: &AllocatorMethod) -> Stmt {
+    fn allocator_fn(&self, method: &AllocatorMethod) -> P<Stmt> {
         let mut abi_args = Vec::new();
         let mut i = 0;
         let mut mk = || {

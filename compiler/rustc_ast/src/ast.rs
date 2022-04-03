@@ -565,7 +565,7 @@ pub enum MetaItemKind {
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Block {
     /// The statements in the block.
-    pub stmts: Vec<Stmt>,
+    pub stmts: Vec<P<Stmt>>,
     pub id: NodeId,
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
@@ -946,6 +946,16 @@ impl Stmt {
         }
     }
 
+    pub fn is_item(&self) -> bool {
+        matches!(self.kind, StmtKind::Item(_))
+    }
+
+    pub fn is_expr(&self) -> bool {
+        matches!(self.kind, StmtKind::Expr(_))
+    }
+}
+
+impl P<Stmt> {
     /// Converts a parsed `Stmt` to a `Stmt` with
     /// a trailing semicolon.
     ///
@@ -953,26 +963,19 @@ impl Stmt {
     /// `LazyTokenStream`. The parser is responsible for calling
     /// `CreateTokenStream::add_trailing_semi` when there is actually
     /// a semicolon in the tokenstream.
-    pub fn add_trailing_semicolon(mut self) -> Self {
-        self.kind = match self.kind {
-            StmtKind::Expr(expr) => StmtKind::Semi(expr),
-            StmtKind::MacCall(mac) => {
-                StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
-                    MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
-                }))
-            }
-            kind => kind,
-        };
-
-        self
-    }
-
-    pub fn is_item(&self) -> bool {
-        matches!(self.kind, StmtKind::Item(_))
-    }
-
-    pub fn is_expr(&self) -> bool {
-        matches!(self.kind, StmtKind::Expr(_))
+    pub fn add_trailing_semicolon(self) -> P<Stmt> {
+        self.map(|mut stmt| {
+            stmt.kind = match stmt.kind {
+                StmtKind::Expr(expr) => StmtKind::Semi(expr),
+                StmtKind::MacCall(mac) => {
+                    StmtKind::MacCall(mac.map(|MacCallStmt { mac, style: _, attrs, tokens }| {
+                        MacCallStmt { mac, style: MacStmtStyle::Semicolon, attrs, tokens }
+                    }))
+                }
+                kind => kind,
+            };
+            stmt
+        })
     }
 }
 

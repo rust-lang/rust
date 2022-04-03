@@ -57,7 +57,7 @@ fn cs_total_eq_assert(
 ) -> P<Expr> {
     fn assert_ty_bounds(
         cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
+        stmts: &mut Vec<P<ast::Stmt>>,
         ty: P<ast::Ty>,
         span: Span,
         helper_name: &str,
@@ -75,7 +75,7 @@ fn cs_total_eq_assert(
     }
     fn process_variant(
         cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
+        stmts: &mut Vec<P<ast::Stmt>>,
         variant: &ast::VariantData,
     ) {
         for field in variant.fields() {

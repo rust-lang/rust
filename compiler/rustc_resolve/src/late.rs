@@ -2295,12 +2295,11 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
 
         let prev = self.diagnostic_metadata.current_block_could_be_bare_struct_literal.take();
-        if let (true, [Stmt { kind: StmtKind::Expr(expr), .. }]) =
-            (block.could_be_bare_literal, &block.stmts[..])
-            && let ExprKind::Type(..) = expr.kind
-        {
+        if let (true, [stmt]) = (block.could_be_bare_literal, &block.stmts[..])
+            && let Stmt { kind: StmtKind::Expr(ref expr), .. } = **stmt
+            && let ExprKind::Type(..) = expr.kind {
             self.diagnostic_metadata.current_block_could_be_bare_struct_literal =
-            Some(block.span);
+                Some(block.span);
         }
         // Descend into the block.
         for stmt in &block.stmts {

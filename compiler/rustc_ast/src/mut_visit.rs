@@ -129,7 +129,7 @@ pub trait MutVisitor: Sized {
         noop_visit_block(b, self);
     }
 
-    fn flat_map_stmt(&mut self, s: Stmt) -> SmallVec<[Stmt; 1]> {
+    fn flat_map_stmt(&mut self, s: P<Stmt>) -> SmallVec<[P<Stmt>; 1]> {
         noop_flat_map_stmt(s, self)
     }
 
@@ -772,9 +772,7 @@ pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut 
         token::NtBlock(block) => vis.visit_block(block),
         token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
             // See reasoning above.
-            stmt.map(|stmt| {
-                vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
-            })
+            vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
         }),
         token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
@@ -1410,15 +1408,13 @@ pub fn noop_filter_map_expr<T: MutVisitor>(mut e: P<Expr>, vis: &mut T) -> Optio
     })
 }
 
-pub fn noop_flat_map_stmt<T: MutVisitor>(
-    Stmt { kind, mut span, mut id }: Stmt,
-    vis: &mut T,
-) -> SmallVec<[Stmt; 1]> {
+pub fn noop_flat_map_stmt<T: MutVisitor>(stmt: P<Stmt>, vis: &mut T) -> SmallVec<[P<Stmt>; 1]> {
+    let Stmt { kind, mut span, mut id } = stmt.into_inner();
     vis.visit_id(&mut id);
     vis.visit_span(&mut span);
     let stmts: SmallVec<_> = noop_flat_map_stmt_kind(kind, vis)
         .into_iter()
-        .map(|kind| Stmt { id, kind, span })
+        .map(|kind| P(Stmt { id, kind, span }))
         .collect();
     if stmts.len() > 1 {
         panic!(

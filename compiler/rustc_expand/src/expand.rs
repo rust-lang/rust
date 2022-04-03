@@ -150,7 +150,7 @@ ast_fragments! {
     Expr(P<ast::Expr>) { "expression"; one fn visit_expr; fn visit_expr; fn make_expr; }
     Pat(P<ast::Pat>) { "pattern"; one fn visit_pat; fn visit_pat; fn make_pat; }
     Ty(P<ast::Ty>) { "type"; one fn visit_ty; fn visit_ty; fn make_ty; }
-    Stmts(SmallVec<[ast::Stmt; 1]>) {
+    Stmts(SmallVec<[P<ast::Stmt>; 1]>) {
         "statement"; many fn flat_map_stmt; fn visit_stmt(); fn make_stmts;
     }
     Items(SmallVec<[P<ast::Item>; 1]>) {
@@ -1335,11 +1335,11 @@ impl InvocationCollectorNode for ast::Arm {
     }
 }
 
-impl InvocationCollectorNode for ast::Stmt {
+impl InvocationCollectorNode for P<ast::Stmt> {
     type AttrsTy = ast::AttrVec;
     const KIND: AstFragmentKind = AstFragmentKind::Stmts;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::Stmt(P(self))
+        Annotatable::Stmt(self)
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_stmts()
@@ -1362,7 +1362,7 @@ impl InvocationCollectorNode for ast::Stmt {
     fn take_mac_call(self) -> (ast::MacCall, Self::AttrsTy, AddSemicolon) {
         // We pull macro invocations (both attributes and fn-like macro calls) out of their
         // `StmtKind`s and treat them as statement macro invocations, not as items or expressions.
-        let (add_semicolon, mac, attrs) = match self.kind {
+        let (add_semicolon, mac, attrs) = match self.into_inner().kind {
             StmtKind::MacCall(mac) => {
                 let ast::MacCallStmt { mac, style, attrs, .. } = mac.into_inner();
                 (style == MacStmtStyle::Semicolon, mac, attrs)
@@ -1839,7 +1839,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.flat_map_node(node)
     }
 
-    fn flat_map_stmt(&mut self, node: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, node: P<ast::Stmt>) -> SmallVec<[P<ast::Stmt>; 1]> {
         // FIXME: invocations in semicolon-less expressions positions are expanded as expressions,
         // changing that requires some compatibility measures.
         if node.is_expr() {

@@ -2424,7 +2424,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `;`
         let mut stmts =
             vec![self.mk_stmt(first_expr.span, ast::StmtKind::Expr(first_expr.clone()))];
-        let err = |this: &mut Parser<'_>, stmts: Vec<ast::Stmt>| {
+        let err = |this: &mut Parser<'_>, stmts: Vec<P<ast::Stmt>>| {
             let span = stmts[0].span.to(stmts[stmts.len() - 1].span);
             let mut err = this.struct_span_err(span, "`match` arm body without braces");
             let (these, s, are) =

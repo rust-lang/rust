@@ -1,4 +1,5 @@
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
+use rustc_ast::ptr::P;
 use rustc_ast::{AttrVec, Block, BlockCheckMode, Expr, Local, LocalKind, Stmt, StmtKind};
 use rustc_hir as hir;
 use rustc_session::parse::feature_err;
@@ -28,7 +29,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_stmts(
         &mut self,
-        mut ast_stmts: &[Stmt],
+        mut ast_stmts: &[P<Stmt>],
     ) -> (&'hir [hir::Stmt<'hir>], Option<&'hir hir::Expr<'hir>>) {
         let mut stmts = SmallVec::<[hir::Stmt<'hir>; 8]>::new();
         let mut expr = None;
@@ -122,7 +123,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         local: &Local,
         init: &Expr,
         els: &Block,
-        tail: &[Stmt],
+        tail: &[P<Stmt>],
     ) -> &'hir hir::Expr<'hir> {
         let ty = local
             .ty

@@ -4,7 +4,6 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 
 use rustc_ast as ast;
 use rustc_ast::attr;
-use rustc_ast::ptr::P;
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_expand::base::*;
@@ -341,11 +340,11 @@ pub fn expand_test_or_bench(
     if is_stmt {
         vec![
             // Access to libtest under a hygienic name
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_extern))),
+            Annotatable::Stmt(cx.stmt_item(sp, test_extern)),
             // The generated test case
-            Annotatable::Stmt(P(cx.stmt_item(sp, test_const))),
+            Annotatable::Stmt(cx.stmt_item(sp, test_const)),
             // The original item
-            Annotatable::Stmt(P(cx.stmt_item(sp, item))),
+            Annotatable::Stmt(cx.stmt_item(sp, item)),
         ]
     } else {
         vec![

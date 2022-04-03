@@ -319,7 +319,7 @@ pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt)
 }
 
 #[inline]
-pub(crate) fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
+pub(crate) fn stmt_expr(stmt: &ptr::P<ast::Stmt>) -> Option<&ast::Expr> {
     match stmt.kind {
         ast::StmtKind::Expr(ref expr) => Some(expr),
         _ => None,

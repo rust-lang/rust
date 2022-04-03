@@ -209,7 +209,7 @@ pub fn eq_block(l: &Block, r: &Block) -> bool {
     l.rules == r.rules && over(&l.stmts, &r.stmts, eq_stmt)
 }
 
-pub fn eq_stmt(l: &Stmt, r: &Stmt) -> bool {
+pub fn eq_stmt(l: &P<Stmt>, r: &P<Stmt>) -> bool {
     use StmtKind::*;
     match (&l.kind, &r.kind) {
         (Local(l), Local(r)) => {

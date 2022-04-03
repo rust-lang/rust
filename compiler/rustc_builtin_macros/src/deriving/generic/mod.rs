@@ -1393,7 +1393,7 @@ impl<'a> MethodDef<'a> {
             // let __self1_vi = std::intrinsics::discriminant_value(&arg1);
             // let __self2_vi = std::intrinsics::discriminant_value(&arg2);
             // ```
-            let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
+            let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::with_capacity(vi_idents.len() + 1);
 
             // We also build an expression which checks whether all discriminants are equal
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...

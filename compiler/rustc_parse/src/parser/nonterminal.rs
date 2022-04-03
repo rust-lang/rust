@@ -118,7 +118,7 @@ impl<'a> Parser<'a> {
                 token::NtBlock(self.collect_tokens_no_attrs(|this| this.parse_block())?)
             }
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(s) => token::NtStmt(P(s)),
+                Some(s) => token::NtStmt(s),
                 None => {
                     return Err(self.struct_span_err(self.token.span, "expected a statement"));
                 }

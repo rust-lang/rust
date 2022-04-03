@@ -2,7 +2,6 @@ use crate::base::{self, *};
 use crate::proc_macro_server;
 
 use rustc_ast as ast;
-use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::{CanSynthesizeMissingTokens, TokenStream, TokenTree};
 use rustc_data_structures::sync::Lrc;
@@ -129,7 +128,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 Ok(None) => break,
                 Ok(Some(item)) => {
                     if is_stmt {
-                        items.push(Annotatable::Stmt(P(ecx.stmt_item(span, item))));
+                        items.push(Annotatable::Stmt(ecx.stmt_item(span, item)));
                     } else {
                         items.push(Annotatable::Item(item));
                     }

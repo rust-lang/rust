@@ -62,9 +62,7 @@ fn flat_map_annotatable(
         Annotatable::ForeignItem(item) => {
             vis.flat_map_foreign_item(item).pop().map(Annotatable::ForeignItem)
         }
-        Annotatable::Stmt(stmt) => {
-            vis.flat_map_stmt(stmt.into_inner()).pop().map(P).map(Annotatable::Stmt)
-        }
+        Annotatable::Stmt(stmt) => vis.flat_map_stmt(stmt).pop().map(Annotatable::Stmt),
         Annotatable::Expr(mut expr) => {
             vis.visit_expr(&mut expr);
             Some(Annotatable::Expr(expr))
@@ -165,9 +163,9 @@ impl CfgEval<'_, '_> {
                     parser.parse_foreign_item(ForceCollect::Yes).unwrap().unwrap().unwrap(),
                 )
             },
-            Annotatable::Stmt(_) => |parser| {
-                Annotatable::Stmt(P(parser.parse_stmt(ForceCollect::Yes).unwrap().unwrap()))
-            },
+            Annotatable::Stmt(_) => {
+                |parser| Annotatable::Stmt(parser.parse_stmt(ForceCollect::Yes).unwrap().unwrap())
+            }
             Annotatable::Expr(_) => {
                 |parser| Annotatable::Expr(parser.parse_expr_force_collect().unwrap())
             }
@@ -234,7 +232,7 @@ impl MutVisitor for CfgEval<'_, '_> {
         mut_visit::noop_flat_map_generic_param(configure!(self, param), self)
     }
 
-    fn flat_map_stmt(&mut self, stmt: ast::Stmt) -> SmallVec<[ast::Stmt; 1]> {
+    fn flat_map_stmt(&mut self, stmt: P<ast::Stmt>) -> SmallVec<[P<ast::Stmt>; 1]> {
         mut_visit::noop_flat_map_stmt(configure!(self, stmt), self)
     }
 

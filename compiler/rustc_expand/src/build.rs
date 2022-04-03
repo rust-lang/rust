@@ -139,11 +139,11 @@ impl<'a> ExtCtxt<'a> {
         ast::Lifetime { id: ast::DUMMY_NODE_ID, ident: ident.with_span_pos(span) }
     }
 
-    pub fn stmt_expr(&self, expr: P<ast::Expr>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) }
+    pub fn stmt_expr(&self, expr: P<ast::Expr>) -> P<ast::Stmt> {
+        P(ast::Stmt { id: ast::DUMMY_NODE_ID, span: expr.span, kind: ast::StmtKind::Expr(expr) })
     }
 
-    pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> ast::Stmt {
+    pub fn stmt_let(&self, sp: Span, mutbl: bool, ident: Ident, ex: P<ast::Expr>) -> P<ast::Stmt> {
         let pat = if mutbl {
             let binding_mode = ast::BindingMode::ByValue(ast::Mutability::Mut);
             self.pat_ident_binding_mode(sp, ident, binding_mode)
@@ -159,11 +159,11 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp }
+        P(ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span: sp })
     }
 
     // Generates `let _: Type;`, which is usually used for type assertions.
-    pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
+    pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Stmt> {
         let local = P(ast::Local {
             pat: self.pat_wild(span),
             ty: Some(ty),
@@ -173,24 +173,24 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             tokens: None,
         });
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span }
+        P(ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Local(local), span })
     }
 
-    pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> ast::Stmt {
-        ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp }
+    pub fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> P<ast::Stmt> {
+        P(ast::Stmt { id: ast::DUMMY_NODE_ID, kind: ast::StmtKind::Item(item), span: sp })
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
         self.block(
             expr.span,
-            vec![ast::Stmt {
+            vec![P(ast::Stmt {
                 id: ast::DUMMY_NODE_ID,
                 span: expr.span,
                 kind: ast::StmtKind::Expr(expr),
-            }],
+            })],
         )
     }
-    pub fn block(&self, span: Span, stmts: Vec<ast::Stmt>) -> P<ast::Block> {
+    pub fn block(&self, span: Span, stmts: Vec<P<ast::Stmt>>) -> P<ast::Block> {
         P(ast::Block {
             stmts,
             id: ast::DUMMY_NODE_ID,
@@ -497,7 +497,12 @@ impl<'a> ExtCtxt<'a> {
         self.lambda(span, vec![ident], body)
     }
 
-    pub fn lambda_stmts_1(&self, span: Span, stmts: Vec<ast::Stmt>, ident: Ident) -> P<ast::Expr> {
+    pub fn lambda_stmts_1(
+        &self,
+        span: Span,
+        stmts: Vec<P<ast::Stmt>>,
+        ident: Ident,
+    ) -> P<ast::Expr> {
         self.lambda1(span, self.expr_block(self.block(span, stmts)), ident)
     }
 

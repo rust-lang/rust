@@ -39,7 +39,7 @@ impl<'a> Stmt<'a> {
 
     pub(crate) fn from_ast_nodes<I>(iter: I) -> Vec<Self>
     where
-        I: Iterator<Item = &'a ast::Stmt>,
+        I: Iterator<Item = &'a rustc_ast::ptr::P<ast::Stmt>>,
     {
         let mut result = vec![];
         let mut iter = iter.peekable();

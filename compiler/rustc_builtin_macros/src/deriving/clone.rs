@@ -109,7 +109,7 @@ fn cs_clone_shallow(
 ) -> P<Expr> {
     fn assert_ty_bounds(
         cx: &mut ExtCtxt<'_>,
-        stmts: &mut Vec<ast::Stmt>,
+        stmts: &mut Vec<P<ast::Stmt>>,
         ty: P<ast::Ty>,
         span: Span,
         helper_name: &str,
@@ -125,7 +125,7 @@ fn cs_clone_shallow(
         );
         stmts.push(cx.stmt_let_type_only(span, cx.ty_path(assert_path)));
     }
-    fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<ast::Stmt>, variant: &VariantData) {
+    fn process_variant(cx: &mut ExtCtxt<'_>, stmts: &mut Vec<P<ast::Stmt>>, variant: &VariantData) {
         for field in variant.fields() {
             // let _: AssertParamIsClone<FieldTy>;
             assert_ty_bounds(cx, stmts, field.ty.clone(), field.span, "AssertParamIsClone");
