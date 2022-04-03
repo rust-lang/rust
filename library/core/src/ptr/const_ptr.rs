@@ -185,7 +185,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
-    /// use in pointer-to-integer casts.
+    /// use in [`from_exposed_addr`][].
     ///
     /// This is equivalent to `self as usize`, which semantically discards *provenance* and
     /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
