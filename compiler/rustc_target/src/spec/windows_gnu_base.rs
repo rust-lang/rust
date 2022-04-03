@@ -1,7 +1,5 @@
 use crate::spec::crt_objects::{self, CrtObjectsFallback};
-use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
-
-use super::cvs;
+use crate::spec::{cvs, LinkArgs, LinkerFlavor, LldFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();

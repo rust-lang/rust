@@ -1,7 +1,4 @@
-use crate::spec::{LinkerFlavor, PanicStrategy, TargetOptions};
-use std::default::Default;
-
-use super::cvs;
+use crate::spec::{cvs, LinkerFlavor, PanicStrategy, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

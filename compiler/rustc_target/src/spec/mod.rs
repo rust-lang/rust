@@ -459,7 +459,7 @@ impl fmt::Display for LinkOutputKind {
     }
 }
 
-pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<Cow<'static, str>>>;
+pub type LinkArgs = BTreeMap<LinkerFlavor, Vec<StaticCow<str>>>;
 
 #[derive(Clone, Copy, Hash, Debug, PartialEq, Eq)]
 pub enum SplitDebuginfo {
@@ -1028,19 +1028,16 @@ supported_targets! {
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
-// FIXME(Urgau): Figure out why the obvious form `["".into()].into()` doesn't work.
 macro_rules! cvs {
     () => {
         ::std::borrow::Cow::Borrowed(&[])
     };
     ($($x:expr),+ $(,)?) => {
-        {
-            ::std::borrow::Cow::Borrowed(&[
-                $(
-                    ::std::borrow::Cow::Borrowed($x),
-                )*
-            ])
-        }
+        ::std::borrow::Cow::Borrowed(&[
+            $(
+                ::std::borrow::Cow::Borrowed($x),
+            )*
+        ])
     };
 }
 
@@ -1084,14 +1081,14 @@ impl TargetWarnings {
 #[derive(PartialEq, Clone, Debug)]
 pub struct Target {
     /// Target triple to pass to LLVM.
-    pub llvm_target: Cow<'static, str>,
+    pub llvm_target: StaticCow<str>,
     /// Number of bits in a pointer. Influences the `target_pointer_width` `cfg` variable.
     pub pointer_width: u32,
     /// Architecture to use for ABI considerations. Valid options include: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", "powerpc64", and others.
-    pub arch: Cow<'static, str>,
+    pub arch: StaticCow<str>,
     /// [Data layout](https://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: Cow<'static, str>,
+    pub data_layout: StaticCow<str>,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -1106,6 +1103,8 @@ impl HasTargetSpec for Target {
         self
     }
 }
+
+type StaticCow<T> = Cow<'static, T>;
 
 /// Optional aspects of a target specification.
 ///
@@ -1123,25 +1122,25 @@ pub struct TargetOptions {
     /// Used as the `target_endian` `cfg` variable. Defaults to little endian.
     pub endian: Endian,
     /// Width of c_int type. Defaults to "32".
-    pub c_int_width: Cow<'static, str>,
+    pub c_int_width: StaticCow<str>,
     /// OS name to use for conditional compilation (`target_os`). Defaults to "none".
     /// "none" implies a bare metal target without `std` library.
     /// A couple of targets having `std` also use "unknown" as an `os` value,
     /// but they are exceptions.
-    pub os: Cow<'static, str>,
+    pub os: StaticCow<str>,
     /// Environment name to use for conditional compilation (`target_env`). Defaults to "".
-    pub env: Cow<'static, str>,
+    pub env: StaticCow<str>,
     /// ABI name to distinguish multiple ABIs on the same OS and architecture. For instance, `"eabi"`
     /// or `"eabihf"`. Defaults to "".
-    pub abi: Cow<'static, str>,
+    pub abi: StaticCow<str>,
     /// Vendor name to use for conditional compilation (`target_vendor`). Defaults to "unknown".
-    pub vendor: Cow<'static, str>,
+    pub vendor: StaticCow<str>,
     /// Default linker flavor used if `-C linker-flavor` or `-C linker` are not passed
     /// on the command line. Defaults to `LinkerFlavor::Gcc`.
     pub linker_flavor: LinkerFlavor,
 
     /// Linker to invoke
-    pub linker: Option<Cow<'static, str>>,
+    pub linker: Option<StaticCow<str>>,
 
     /// LLD flavor used if `lld` (or `rust-lld`) is specified as a linker
     /// without clarifying its flavor in any way.
@@ -1176,23 +1175,23 @@ pub struct TargetOptions {
     /// Optional link script applied to `dylib` and `executable` crate types.
     /// This is a string containing the script, not a path. Can only be applied
     /// to linkers where `linker_is_gnu` is true.
-    pub link_script: Option<Cow<'static, str>>,
+    pub link_script: Option<StaticCow<str>>,
 
     /// Environment variables to be set for the linker invocation.
-    pub link_env: Cow<'static, [(Cow<'static, str>, Cow<'static, str>)]>,
+    pub link_env: StaticCow<[(StaticCow<str>, StaticCow<str>)]>,
     /// Environment variables to be removed for the linker invocation.
-    pub link_env_remove: Cow<'static, [Cow<'static, str>]>,
+    pub link_env_remove: StaticCow<[StaticCow<str>]>,
 
     /// Extra arguments to pass to the external assembler (when used)
-    pub asm_args: Cow<'static, [Cow<'static, str>]>,
+    pub asm_args: StaticCow<[StaticCow<str>]>,
 
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
-    pub cpu: Cow<'static, str>,
+    pub cpu: StaticCow<str>,
     /// Default target features to pass to LLVM. These features will *always* be
     /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
     /// -mattr=$features`.
-    pub features: Cow<'static, str>,
+    pub features: StaticCow<str>,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
     /// If dynamic linking is available, whether only cdylibs are supported.
@@ -1216,21 +1215,21 @@ pub struct TargetOptions {
     /// Emit each function in its own section. Defaults to true.
     pub function_sections: bool,
     /// String to prepend to the name of every dynamic library. Defaults to "lib".
-    pub dll_prefix: Cow<'static, str>,
+    pub dll_prefix: StaticCow<str>,
     /// String to append to the name of every dynamic library. Defaults to ".so".
-    pub dll_suffix: Cow<'static, str>,
+    pub dll_suffix: StaticCow<str>,
     /// String to append to the name of every executable.
-    pub exe_suffix: Cow<'static, str>,
+    pub exe_suffix: StaticCow<str>,
     /// String to prepend to the name of every static library. Defaults to "lib".
-    pub staticlib_prefix: Cow<'static, str>,
+    pub staticlib_prefix: StaticCow<str>,
     /// String to append to the name of every static library. Defaults to ".a".
-    pub staticlib_suffix: Cow<'static, str>,
+    pub staticlib_suffix: StaticCow<str>,
     /// Values of the `target_family` cfg set for this target.
     ///
     /// Common options are: "unix", "windows". Defaults to no families.
     ///
     /// See <https://doc.rust-lang.org/reference/conditional-compilation.html#target_family>.
-    pub families: Cow<'static, [Cow<'static, str>]>,
+    pub families: StaticCow<[StaticCow<str>]>,
     /// Whether the target toolchain's ABI supports returning small structs as an integer.
     pub abi_return_struct_as_int: bool,
     /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
@@ -1302,7 +1301,7 @@ pub struct TargetOptions {
     /// LLVM to assemble an archive or fall back to the system linker, and
     /// currently only "gnu" is used to fall into LLVM. Unknown strings cause
     /// the system linker to be used.
-    pub archive_format: Cow<'static, str>,
+    pub archive_format: StaticCow<str>,
     /// Is asm!() allowed? Defaults to true.
     pub allow_asm: bool,
     /// Whether the runtime startup code requires the `main` function be passed
@@ -1318,7 +1317,7 @@ pub struct TargetOptions {
     /// Whether the target requires that emitted object code includes bitcode.
     pub forces_embed_bitcode: bool,
     /// Content of the LLVM cmdline section associated with embedded bitcode.
-    pub bitcode_llvm_cmdline: Cow<'static, str>,
+    pub bitcode_llvm_cmdline: StaticCow<str>,
 
     /// Don't use this field; instead use the `.min_atomic_width()` method.
     pub min_atomic_width: Option<u64>,
@@ -1390,7 +1389,7 @@ pub struct TargetOptions {
 
     /// If set, have the linker export exactly these symbols, instead of using
     /// the usual logic to figure this out from the crate itself.
-    pub override_export_symbols: Option<Cow<'static, [Cow<'static, str>]>>,
+    pub override_export_symbols: Option<StaticCow<[StaticCow<str>]>>,
 
     /// Determines how or whether the MergeFunctions LLVM pass should run for
     /// this target. Either "disabled", "trampolines", or "aliases".
@@ -1401,16 +1400,16 @@ pub struct TargetOptions {
     pub merge_functions: MergeFunctions,
 
     /// Use platform dependent mcount function
-    pub mcount: Cow<'static, str>,
+    pub mcount: StaticCow<str>,
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
-    pub llvm_abiname: Cow<'static, str>,
+    pub llvm_abiname: StaticCow<str>,
 
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
 
     /// Additional arguments to pass to LLVM, similar to the `-C llvm-args` codegen option.
-    pub llvm_args: Cow<'static, [Cow<'static, str>]>,
+    pub llvm_args: StaticCow<[StaticCow<str>]>,
 
     /// Whether to use legacy .ctors initialization hooks rather than .init_array. Defaults
     /// to false (uses .init_array).
@@ -1459,8 +1458,8 @@ impl Default for TargetOptions {
             endian: Endian::Little,
             c_int_width: "32".into(),
             os: "none".into(),
-            env: Cow::from(""),
-            abi: Cow::from(""),
+            env: "".into(),
+            abi: "".into(),
             vendor: "unknown".into(),
             linker_flavor: LinkerFlavor::Gcc,
             linker: option_env!("CFG_DEFAULT_LINKER").map(|s| s.into()),
@@ -1468,9 +1467,9 @@ impl Default for TargetOptions {
             pre_link_args: LinkArgs::new(),
             post_link_args: LinkArgs::new(),
             link_script: None,
-            asm_args: Cow::Borrowed(&[]),
+            asm_args: cvs![],
             cpu: "generic".into(),
-            features: Cow::from(""),
+            features: "".into(),
             dynamic_linking: false,
             only_cdylib: false,
             executables: false,
@@ -1482,7 +1481,7 @@ impl Default for TargetOptions {
             function_sections: true,
             dll_prefix: "lib".into(),
             dll_suffix: ".so".into(),
-            exe_suffix: Cow::from(""),
+            exe_suffix: "".into(),
             staticlib_prefix: "lib".into(),
             staticlib_suffix: ".a".into(),
             families: cvs![],
@@ -1511,15 +1510,15 @@ impl Default for TargetOptions {
             late_link_args: LinkArgs::new(),
             late_link_args_dynamic: LinkArgs::new(),
             late_link_args_static: LinkArgs::new(),
-            link_env: Cow::Borrowed(&[]),
-            link_env_remove: Cow::Borrowed(&[]),
+            link_env: cvs![],
+            link_env_remove: cvs![],
             archive_format: "gnu".into(),
             main_needs_argc_argv: true,
             allow_asm: true,
             has_thread_local: false,
             obj_is_bitcode: false,
             forces_embed_bitcode: false,
-            bitcode_llvm_cmdline: Cow::from(""),
+            bitcode_llvm_cmdline: "".into(),
             min_atomic_width: None,
             max_atomic_width: None,
             atomic_cas: true,

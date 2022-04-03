@@ -1,6 +1,4 @@
-use crate::spec::{RelroLevel, TargetOptions};
-
-use super::cvs;
+use crate::spec::{cvs, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

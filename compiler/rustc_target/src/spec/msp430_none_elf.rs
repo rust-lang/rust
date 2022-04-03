@@ -1,5 +1,4 @@
-use super::cvs;
-use crate::spec::{PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{cvs, PanicStrategy, RelocModel, Target, TargetOptions};
 
 pub fn target() -> Target {
     Target {

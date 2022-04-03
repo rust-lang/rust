@@ -1,6 +1,4 @@
-use crate::spec::TargetOptions;
-
-use super::cvs;
+use crate::spec::{cvs, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let base = super::msvc_base::opts();

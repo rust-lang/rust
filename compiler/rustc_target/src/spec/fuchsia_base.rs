@@ -1,6 +1,6 @@
-use crate::spec::{crt_objects, LinkArgs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions};
-
-use super::cvs;
+use crate::spec::{
+    crt_objects, cvs, LinkArgs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions,
+};
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();

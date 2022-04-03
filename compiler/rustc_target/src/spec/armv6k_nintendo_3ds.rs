@@ -1,6 +1,4 @@
-use crate::spec::{LinkArgs, LinkerFlavor, RelocModel, Target, TargetOptions};
-
-use super::cvs;
+use crate::spec::{cvs, LinkArgs, LinkerFlavor, RelocModel, Target, TargetOptions};
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
 ///

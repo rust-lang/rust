@@ -1,7 +1,5 @@
+use crate::spec::{cvs, Target, TargetOptions};
 use crate::spec::{LinkArgs, LinkerFlavor, LldFlavor, RelocModel};
-use crate::spec::{Target, TargetOptions};
-
-use super::cvs;
 
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");

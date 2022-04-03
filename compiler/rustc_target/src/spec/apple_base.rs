@@ -1,8 +1,6 @@
 use std::{borrow::Cow, env};
 
-use crate::spec::{FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
-
-use super::cvs;
+use crate::spec::{cvs, FramePointer, LldFlavor, SplitDebuginfo, TargetOptions};
 
 pub fn opts(os: &'static str) -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6

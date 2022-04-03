@@ -675,10 +675,10 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
     linker::disable_localization(&mut cmd);
 
-    for &(ref k, ref v) in sess.target.link_env.iter() {
+    for &(ref k, ref v) in sess.target.link_env.as_ref() {
         cmd.env(k.as_ref(), v.as_ref());
     }
-    for k in sess.target.link_env_remove.iter() {
+    for k in sess.target.link_env_remove.as_ref() {
         cmd.env_remove(k.as_ref());
     }
 
@@ -1217,7 +1217,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     if let Some(ret) = infer_from(
         sess,
-        sess.target.linker.as_ref().map(|l| PathBuf::from(l.as_ref())),
+        sess.target.linker.as_deref().map(PathBuf::from),
         Some(sess.target.linker_flavor),
     ) {
         return ret;

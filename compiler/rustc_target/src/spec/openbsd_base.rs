@@ -1,6 +1,4 @@
-use crate::spec::{FramePointer, RelroLevel, TargetOptions};
-
-use super::cvs;
+use crate::spec::{cvs, FramePointer, RelroLevel, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     TargetOptions {

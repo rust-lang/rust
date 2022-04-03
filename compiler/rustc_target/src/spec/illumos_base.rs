@@ -1,7 +1,4 @@
-use crate::spec::{FramePointer, LinkArgs, LinkerFlavor, TargetOptions};
-use std::default::Default;
-
-use super::cvs;
+use crate::spec::{cvs, FramePointer, LinkArgs, LinkerFlavor, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     let mut late_link_args = LinkArgs::new();
