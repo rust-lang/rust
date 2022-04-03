@@ -157,7 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 if size == 0 {
                     this.write_null(&ret.into())?;
                 } else {
-                    let ptr = this.memory.allocate(
+                    let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into(),
@@ -174,7 +174,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let symbol = this.read_pointer(symbol)?;
                 let symbol_name = this.read_c_str(symbol)?;
                 if let Some(dlsym) = Dlsym::from_str(symbol_name, &this.tcx.sess.target.os)? {
-                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
+                    let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;
@@ -214,7 +214,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves).
                 let dtor = if !this.ptr_is_null(dtor)? {
-                    Some(this.memory.get_fn(dtor)?.as_instance()?)
+                    Some(this.get_ptr_fn(dtor)?.as_instance()?)
                 } else {
                     None
                 };

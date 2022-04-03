@@ -87,7 +87,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = this.memory.read_bytes(buf, Size::from_bytes(u64::from(n)))?;
+                    let buf_cont = this.read_bytes_ptr(buf, Size::from_bytes(u64::from(n)))?;
                     let res = if handle == -11 {
                         io::stdout().write(buf_cont)
                     } else {
@@ -157,7 +157,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let system_info = this.deref_operand(system_info)?;
                 // Initialize with `0`.
-                this.memory.write_bytes(
+                this.write_bytes_ptr(
                     system_info.ptr,
                     iter::repeat(0u8).take(system_info.layout.size.bytes() as usize),
                 )?;
@@ -269,7 +269,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.read_scalar(hModule)?.to_machine_isize(this)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
-                    let ptr = this.memory.create_fn_alloc(FnVal::Other(dlsym));
+                    let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
                     this.write_pointer(ptr, dest)?;
                 } else {
                     this.write_null(dest)?;

@@ -34,7 +34,7 @@ trait FileDescriptor: std::fmt::Debug {
         bytes: &mut [u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
     fn write<'tcx>(
-        &mut self,
+        &self,
         communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>>;
@@ -66,12 +66,12 @@ impl FileDescriptor for FileHandle {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
         communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
         assert!(communicate_allowed, "isolation should have prevented even opening a file");
-        Ok(self.file.write(bytes))
+        Ok((&mut &self.file).write(bytes))
     }
 
     fn seek<'tcx>(
@@ -133,7 +133,7 @@ impl FileDescriptor for io::Stdin {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         _bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
@@ -174,12 +174,12 @@ impl FileDescriptor for io::Stdout {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
-        let result = Write::write(self, bytes);
+        let result = Write::write(&mut { self }, bytes);
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -224,13 +224,13 @@ impl FileDescriptor for io::Stderr {
     }
 
     fn write<'tcx>(
-        &mut self,
+        &self,
         _communicate_allowed: bool,
         bytes: &[u8],
     ) -> InterpResult<'tcx, io::Result<usize>> {
         // We allow writing to stderr even with isolation enabled.
         // No need to flush, stderr is not buffered.
-        Ok(Write::write(self, bytes))
+        Ok(Write::write(&mut { self }, bytes))
     }
 
     fn seek<'tcx>(
@@ -681,7 +681,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         trace!("Reading from FD {}, size {}", fd, count);
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             buf,
             Size::from_bytes(count),
             Align::ONE,
@@ -707,7 +707,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             match result {
                 Ok(read_bytes) => {
                     // If reading to `bytes` did not fail, we write those bytes to the buffer.
-                    this.memory.write_bytes(buf, bytes)?;
+                    this.write_bytes_ptr(buf, bytes)?;
                     Ok(read_bytes)
                 }
                 Err(e) => {
@@ -727,7 +727,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Isolation check is done via `FileDescriptor` trait.
 
         // Check that the *entire* buffer is actually valid memory.
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             buf,
             Size::from_bytes(count),
             Align::ONE,
@@ -739,8 +739,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = count.min(this.machine_isize_max() as u64).min(isize::MAX as u64);
         let communicate = this.machine.communicate();
 
-        if let Some(file_descriptor) = this.machine.file_handler.handles.get_mut(&fd) {
-            let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
+        if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
+            let bytes = this.read_bytes_ptr(buf, Size::from_bytes(count))?;
             let result =
                 file_descriptor.write(communicate, &bytes)?.map(|c| i64::try_from(c).unwrap());
             this.try_unwrap_io_result(result)
@@ -1288,7 +1288,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 )?;
 
                 let name_ptr = entry.offset(Size::from_bytes(d_name_offset), this)?;
-                this.memory.write_bytes(name_ptr, name_bytes.iter().copied())?;
+                this.write_bytes_ptr(name_ptr, name_bytes.iter().copied())?;
 
                 entry
             }
@@ -1597,7 +1597,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 }
                 // 'readlink' truncates the resolved path if
                 // the provided buffer is not large enough.
-                this.memory.write_bytes(buf, path_bytes.iter().copied())?;
+                this.write_bytes_ptr(buf, path_bytes.iter().copied())?;
                 Ok(path_bytes.len().try_into().unwrap())
             }
             Err(e) => {

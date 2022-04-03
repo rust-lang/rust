@@ -121,7 +121,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let &[ref dtor, ref data] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let dtor = this.read_pointer(dtor)?;
-                let dtor = this.memory.get_fn(dtor)?.as_instance()?;
+                let dtor = this.get_ptr_fn(dtor)?.as_instance()?;
                 let data = this.read_scalar(data)?.check_init()?;
                 let active_thread = this.get_active_thread();
                 this.machine.tls.set_macos_thread_dtor(active_thread, dtor, data)?;

@@ -9,10 +9,10 @@ use rustc_target::abi::{HasDataLayout, Size};
 
 use crate::*;
 
-pub type MemoryExtra = RefCell<GlobalState>;
+pub type GlobalState = RefCell<GlobalStateInner>;
 
 #[derive(Clone, Debug)]
-pub struct GlobalState {
+pub struct GlobalStateInner {
     /// This is used as a map between the address of each allocation and its `AllocId`.
     /// It is always sorted
     int_to_ptr_map: Vec<(u64, AllocId)>,
@@ -29,9 +29,9 @@ pub struct GlobalState {
     strict_provenance: bool,
 }
 
-impl GlobalState {
+impl GlobalStateInner {
     pub fn new(config: &MiriConfig) -> Self {
-        GlobalState {
+        GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
             next_base_addr: STACK_ADDR,
@@ -40,13 +40,10 @@ impl GlobalState {
     }
 }
 
-impl<'mir, 'tcx> GlobalState {
-    pub fn ptr_from_addr(
-        addr: u64,
-        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-    ) -> Pointer<Option<Tag>> {
+impl<'mir, 'tcx> GlobalStateInner {
+    pub fn ptr_from_addr(addr: u64, ecx: &MiriEvalContext<'mir, 'tcx>) -> Pointer<Option<Tag>> {
         trace!("Casting 0x{:x} to a pointer", addr);
-        let global_state = memory.extra.intptrcast.borrow();
+        let global_state = ecx.machine.intptrcast.borrow();
 
         if global_state.strict_provenance {
             return Pointer::new(None, Size::from_bytes(addr));
@@ -64,7 +61,11 @@ impl<'mir, 'tcx> GlobalState {
                 let offset = addr - glb;
                 // If the offset exceeds the size of the allocation, don't use this `alloc_id`.
                 if offset
-                    <= memory.get_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap().0.bytes()
+                    <= ecx
+                        .get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead)
+                        .unwrap()
+                        .0
+                        .bytes()
                 {
                     Some(alloc_id)
                 } else {
@@ -79,11 +80,8 @@ impl<'mir, 'tcx> GlobalState {
         )
     }
 
-    fn alloc_base_addr(
-        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-        alloc_id: AllocId,
-    ) -> u64 {
-        let mut global_state = memory.extra.intptrcast.borrow_mut();
+    fn alloc_base_addr(ecx: &MiriEvalContext<'mir, 'tcx>, alloc_id: AllocId) -> u64 {
+        let mut global_state = ecx.machine.intptrcast.borrow_mut();
         let global_state = &mut *global_state;
 
         match global_state.base_addr.entry(alloc_id) {
@@ -92,12 +90,12 @@ impl<'mir, 'tcx> GlobalState {
                 // There is nothing wrong with a raw pointer being cast to an integer only after
                 // it became dangling.  Hence `MaybeDead`.
                 let (size, align) =
-                    memory.get_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
+                    ecx.get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead).unwrap();
 
                 // This allocation does not have a base address yet, pick one.
                 // Leave some space to the previous allocation, to give it some chance to be less aligned.
                 let slack = {
-                    let mut rng = memory.extra.rng.borrow_mut();
+                    let mut rng = ecx.machine.rng.borrow_mut();
                     // This means that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
                     rng.gen_range(0..16)
                 };
@@ -129,27 +127,21 @@ impl<'mir, 'tcx> GlobalState {
     }
 
     /// Convert a relative (tcx) pointer to an absolute address.
-    pub fn rel_ptr_to_addr(
-        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-        ptr: Pointer<AllocId>,
-    ) -> u64 {
+    pub fn rel_ptr_to_addr(ecx: &MiriEvalContext<'mir, 'tcx>, ptr: Pointer<AllocId>) -> u64 {
         let (alloc_id, offset) = ptr.into_parts(); // offset is relative
-        let base_addr = GlobalState::alloc_base_addr(memory, alloc_id);
+        let base_addr = GlobalStateInner::alloc_base_addr(ecx, alloc_id);
 
         // Add offset with the right kind of pointer-overflowing arithmetic.
-        let dl = memory.data_layout();
+        let dl = ecx.data_layout();
         dl.overflowing_offset(base_addr, offset.bytes()).0
     }
 
-    pub fn abs_ptr_to_rel(
-        memory: &Memory<'mir, 'tcx, Evaluator<'mir, 'tcx>>,
-        ptr: Pointer<Tag>,
-    ) -> Size {
+    pub fn abs_ptr_to_rel(ecx: &MiriEvalContext<'mir, 'tcx>, ptr: Pointer<Tag>) -> Size {
         let (tag, addr) = ptr.into_parts(); // addr is absolute
-        let base_addr = GlobalState::alloc_base_addr(memory, tag.alloc_id);
+        let base_addr = GlobalStateInner::alloc_base_addr(ecx, tag.alloc_id);
 
         // Wrapping "addr - base_addr"
-        let dl = memory.data_layout();
+        let dl = ecx.data_layout();
         let neg_base_addr = (base_addr as i64).wrapping_neg();
         Size::from_bytes(dl.overflowing_signed_offset(addr.bytes(), neg_base_addr).0)
     }
@@ -170,7 +162,7 @@ mod tests {
 
     #[test]
     fn test_align_addr() {
-        assert_eq!(GlobalState::align_addr(37, 4), 40);
-        assert_eq!(GlobalState::align_addr(44, 4), 44);
+        assert_eq!(GlobalStateInner::align_addr(37, 4), 40);
+        assert_eq!(GlobalStateInner::align_addr(44, 4), 44);
     }
 }

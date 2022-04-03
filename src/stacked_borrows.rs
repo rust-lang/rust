@@ -93,7 +93,7 @@ pub struct Stacks {
 
 /// Extra global state, available to the memory access hooks.
 #[derive(Debug)]
-pub struct GlobalState {
+pub struct GlobalStateInner {
     /// Next unused pointer ID (tag).
     next_ptr_id: PtrId,
     /// Table storing the "base" tag for each allocation.
@@ -111,8 +111,8 @@ pub struct GlobalState {
     /// Whether to track raw pointers.
     tag_raw: bool,
 }
-/// Memory extra state gives us interior mutable access to the global state.
-pub type MemoryExtra = RefCell<GlobalState>;
+/// We need interior mutable access to the global state.
+pub type GlobalState = RefCell<GlobalStateInner>;
 
 /// Indicates which kind of access is being performed.
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -156,13 +156,13 @@ impl fmt::Display for RefKind {
 }
 
 /// Utilities for initialization and ID generation
-impl GlobalState {
+impl GlobalStateInner {
     pub fn new(
         tracked_pointer_tag: Option<PtrId>,
         tracked_call_id: Option<CallId>,
         tag_raw: bool,
     ) -> Self {
-        GlobalState {
+        GlobalStateInner {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
@@ -308,7 +308,7 @@ impl<'tcx> Stack {
     fn check_protector(
         item: &Item,
         provoking_access: Option<(SbTag, AccessKind)>,
-        global: &GlobalState,
+        global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         if let SbTag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
@@ -348,7 +348,7 @@ impl<'tcx> Stack {
         access: AccessKind,
         tag: SbTag,
         (alloc_id, range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
-        global: &GlobalState,
+        global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Two main steps: Find granting item, remove incompatible items above.
 
@@ -396,7 +396,7 @@ impl<'tcx> Stack {
         &mut self,
         tag: SbTag,
         dbg_ptr: Pointer<AllocId>, // just for debug printing and error messages
-        global: &GlobalState,
+        global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag).ok_or_else(|| {
@@ -425,7 +425,7 @@ impl<'tcx> Stack {
         derived_from: SbTag,
         new: Item,
         (alloc_id, alloc_range, offset): (AllocId, AllocRange, Size), // just for debug printing and error messages
-        global: &GlobalState,
+        global: &GlobalStateInner,
     ) -> InterpResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access =
@@ -584,10 +584,10 @@ impl Stacks {
     pub fn new_allocation(
         id: AllocId,
         size: Size,
-        extra: &MemoryExtra,
+        state: &GlobalState,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Self {
-        let mut extra = extra.borrow_mut();
+        let mut extra = state.borrow_mut();
         let (base_tag, perm) = match kind {
             // New unique borrow. This tag is not accessible by the program,
             // so it will only ever be used when using the local directly (i.e.,
@@ -628,7 +628,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: SbTag,
         range: AllocRange,
-        extra: &MemoryExtra,
+        state: &GlobalState,
     ) -> InterpResult<'tcx> {
         trace!(
             "read access with tag {:?}: {:?}, size {}",
@@ -636,7 +636,7 @@ impl Stacks {
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let global = &*extra.borrow();
+        let global = &*state.borrow();
         self.for_each(range, move |offset, stack| {
             stack.access(AccessKind::Read, tag, (alloc_id, range, offset), global)
         })
@@ -648,7 +648,7 @@ impl Stacks {
         alloc_id: AllocId,
         tag: SbTag,
         range: AllocRange,
-        extra: &mut MemoryExtra,
+        state: &mut GlobalState,
     ) -> InterpResult<'tcx> {
         trace!(
             "write access with tag {:?}: {:?}, size {}",
@@ -656,7 +656,7 @@ impl Stacks {
             Pointer::new(alloc_id, range.start),
             range.size.bytes()
         );
-        let global = extra.get_mut();
+        let global = state.get_mut();
         self.for_each_mut(range, move |offset, stack| {
             stack.access(AccessKind::Write, tag, (alloc_id, range, offset), global)
         })
@@ -668,10 +668,10 @@ impl Stacks {
         alloc_id: AllocId,
         tag: SbTag,
         range: AllocRange,
-        extra: &mut MemoryExtra,
+        state: &mut GlobalState,
     ) -> InterpResult<'tcx> {
         trace!("deallocation with tag {:?}: {:?}, size {}", tag, alloc_id, range.size.bytes());
-        let global = extra.get_mut();
+        let global = state.get_mut();
         self.for_each_mut(range, move |offset, stack| {
             stack.dealloc(tag, Pointer::new(alloc_id, offset), global)
         })
@@ -702,12 +702,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             );
             return Ok(());
         }
-        let (alloc_id, base_offset, ptr) = this.memory.ptr_get_alloc(place.ptr)?;
+        let (alloc_id, base_offset, ptr) = this.ptr_get_alloc_id(place.ptr)?;
         let orig_tag = ptr.provenance.sb;
 
         // Ensure we bail out if the pointer goes out-of-bounds (see miri#1050).
         let (alloc_size, _) =
-            this.memory.get_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
+            this.get_alloc_size_and_align(alloc_id, AllocCheck::Dereferenceable)?;
         if base_offset + size > alloc_size {
             throw_ub!(PointerOutOfBounds {
                 alloc_id,
@@ -750,10 +750,10 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // We need a frozen-sensitive reborrow.
                 // We have to use shared references to alloc/memory_extra here since
                 // `visit_freeze_sensitive` needs to access the global state.
-                let extra = this.memory.get_alloc_extra(alloc_id)?;
+                let extra = this.get_alloc_extra(alloc_id)?;
                 let stacked_borrows =
                     extra.stacked_borrows.as_ref().expect("we should have Stacked Borrows data");
-                let global = this.memory.extra.stacked_borrows.as_ref().unwrap().borrow();
+                let global = this.machine.stacked_borrows.as_ref().unwrap().borrow();
                 this.visit_freeze_sensitive(place, size, |mut range, frozen| {
                     // Adjust range.
                     range.start += base_offset;
@@ -774,7 +774,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Here we can avoid `borrow()` calls because we have mutable references.
         // Note that this asserts that the allocation is mutable -- but since we are creating a
         // mutable pointer, that seems reasonable.
-        let (alloc_extra, memory_extra) = this.memory.get_alloc_extra_mut(alloc_id)?;
+        let (alloc_extra, memory_extra) = this.get_alloc_extra_mut(alloc_id)?;
         let stacked_borrows =
             alloc_extra.stacked_borrows.as_mut().expect("we should have Stacked Borrows data");
         let global = memory_extra.stacked_borrows.as_mut().unwrap().get_mut();
@@ -808,7 +808,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Compute new borrow.
         let new_tag = {
-            let mem_extra = this.memory.extra.stacked_borrows.as_mut().unwrap().get_mut();
+            let mem_extra = this.machine.stacked_borrows.as_mut().unwrap().get_mut();
             match kind {
                 // Give up tracking for raw pointers.
                 RefKind::Raw { .. } if !mem_extra.tag_raw => SbTag::Untagged,

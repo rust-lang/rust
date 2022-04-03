@@ -69,7 +69,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let (dest, ret) = ret.unwrap();
 
-        if this.memory.extra.check_alignment != AlignmentCheck::Symbolic {
+        if this.machine.check_alignment != AlignmentCheck::Symbolic {
             // Just use actual implementation.
             return Ok(false);
         }
@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Ok(ptr) = ptr.into_pointer_or_addr() {
             // Only do anything if we can identify the allocation this goes to.
             let (_, cur_align) =
-                this.memory.get_size_and_align(ptr.provenance.alloc_id, AllocCheck::MaybeDead)?;
+                this.get_alloc_size_and_align(ptr.provenance.alloc_id, AllocCheck::MaybeDead)?;
             if cur_align.bytes() >= req_align {
                 // If the allocation alignment is at least the required alignment we use the
                 // real implementation.

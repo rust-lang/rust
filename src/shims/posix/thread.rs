@@ -41,7 +41,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let old_thread_id = this.set_active_thread(new_thread_id);
 
         // Perform the function pointer load in the new thread frame.
-        let instance = this.memory.get_fn(fn_ptr)?.as_instance()?;
+        let instance = this.get_ptr_fn(fn_ptr)?.as_instance()?;
 
         // Note: the returned value is currently ignored (see the FIXME in
         // pthread_join below) because the Rust standard library does not use
@@ -122,7 +122,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let mut name = this.get_active_thread_name().to_vec();
             name.push(0u8);
             assert!(name.len() <= 16);
-            this.memory.write_bytes(address, name)?;
+            this.write_bytes_ptr(address, name)?;
         } else {
             throw_unsup_format!("unsupported prctl option {}", option);
         }

@@ -82,10 +82,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             Ok(Pointer::null())
         } else {
             let align = this.min_align(size, kind);
-            let ptr = this.memory.allocate(Size::from_bytes(size), align, kind.into())?;
+            let ptr = this.allocate_ptr(Size::from_bytes(size), align, kind.into())?;
             if zero_init {
                 // We just allocated this, the access is definitely in-bounds.
-                this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
+                this.write_bytes_ptr(ptr.into(), iter::repeat(0u8).take(size as usize)).unwrap();
             }
             Ok(ptr.into())
         }
@@ -94,7 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn free(&mut self, ptr: Pointer<Option<Tag>>, kind: MiriMemoryKind) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         if !this.ptr_is_null(ptr)? {
-            this.memory.deallocate(ptr, None, kind.into())?;
+            this.deallocate_ptr(ptr, None, kind.into())?;
         }
         Ok(())
     }
@@ -112,15 +112,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 Ok(Pointer::null())
             } else {
                 let new_ptr =
-                    this.memory.allocate(Size::from_bytes(new_size), new_align, kind.into())?;
+                    this.allocate_ptr(Size::from_bytes(new_size), new_align, kind.into())?;
                 Ok(new_ptr.into())
             }
         } else {
             if new_size == 0 {
-                this.memory.deallocate(old_ptr, None, kind.into())?;
+                this.deallocate_ptr(old_ptr, None, kind.into())?;
                 Ok(Pointer::null())
             } else {
-                let new_ptr = this.memory.reallocate(
+                let new_ptr = this.reallocate_ptr(
                     old_ptr,
                     None,
                     Size::from_bytes(new_size),
@@ -373,7 +373,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "miri_static_root" => {
                 let &[ref ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
-                let (alloc_id, offset, _) = this.memory.ptr_get_alloc(ptr)?;
+                let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr)?;
                 if offset != Size::ZERO {
                     throw_unsup_format!("pointer passed to miri_static_root must point to beginning of an allocated block");
                 }
@@ -440,7 +440,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return this.emulate_allocator(Symbol::intern("__rg_alloc"), |this| {
                     Self::check_alloc_request(size, align)?;
 
-                    let ptr = this.memory.allocate(
+                    let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
@@ -457,14 +457,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return this.emulate_allocator(Symbol::intern("__rg_alloc_zeroed"), |this| {
                     Self::check_alloc_request(size, align)?;
 
-                    let ptr = this.memory.allocate(
+                    let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
                     )?;
 
                     // We just allocated this, the access is definitely in-bounds.
-                    this.memory.write_bytes(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
+                    this.write_bytes_ptr(ptr.into(), iter::repeat(0u8).take(usize::try_from(size).unwrap())).unwrap();
                     this.write_pointer(ptr, dest)
                 });
             }
@@ -476,7 +476,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 return this.emulate_allocator(Symbol::intern("__rg_dealloc"), |this| {
                     // No need to check old_size/align; we anyway check that they match the allocation.
-                    this.memory.deallocate(
+                    this.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
                         MiriMemoryKind::Rust.into(),
@@ -495,7 +495,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Self::check_alloc_request(new_size, align)?;
 
                     let align = Align::from_bytes(align).unwrap();
-                    let new_ptr = this.memory.reallocate(
+                    let new_ptr = this.reallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), align)),
                         Size::from_bytes(new_size),
@@ -514,8 +514,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let n = Size::from_bytes(this.read_scalar(n)?.to_machine_usize(this)?);
 
                 let result = {
-                    let left_bytes = this.memory.read_bytes(left, n)?;
-                    let right_bytes = this.memory.read_bytes(right, n)?;
+                    let left_bytes = this.read_bytes_ptr(left, n)?;
+                    let right_bytes = this.read_bytes_ptr(right, n)?;
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
@@ -533,8 +533,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 if let Some(idx) = this
-                    .memory
-                    .read_bytes(ptr, Size::from_bytes(num))?
+                    .read_bytes_ptr(ptr, Size::from_bytes(num))?
                     .iter()
                     .rev()
                     .position(|&c| c == val)
@@ -551,8 +550,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let val = this.read_scalar(val)?.to_i32()? as u8;
                 let num = this.read_scalar(num)?.to_machine_usize(this)?;
                 let idx = this
-                    .memory
-                    .read_bytes(ptr, Size::from_bytes(num))?
+                    .read_bytes_ptr(ptr, Size::from_bytes(num))?
                     .iter()
                     .position(|&c| c == val);
                 if let Some(idx) = idx {

@@ -89,7 +89,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let catch_fn = this.read_scalar(catch_fn)?.check_init()?;
 
         // Now we make a function call, and pass `data` as first and only argument.
-        let f_instance = this.memory.get_fn(try_fn)?.as_instance()?;
+        let f_instance = this.get_ptr_fn(try_fn)?.as_instance()?;
         trace!("try_fn: {:?}", f_instance);
         let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
         this.call_function(
@@ -123,7 +123,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         trace!("handle_stack_pop(extra = {:?}, unwinding = {})", extra, unwinding);
-        if let Some(stacked_borrows) = &this.memory.extra.stacked_borrows {
+        if let Some(stacked_borrows) = &this.machine.stacked_borrows {
             stacked_borrows.borrow_mut().end_call(extra.call_id);
         }
 
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Push the `catch_fn` stackframe.
             let f_instance =
-                this.memory.get_fn(this.scalar_to_ptr(catch_unwind.catch_fn))?.as_instance()?;
+                this.get_ptr_fn(this.scalar_to_ptr(catch_unwind.catch_fn))?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(

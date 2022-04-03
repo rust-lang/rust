@@ -574,7 +574,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let allocation = tcx.eval_static_initializer(def_id)?;
             // Create a fresh allocation with this content.
             let new_alloc =
-                this.memory.allocate_with(allocation.inner().clone(), MiriMemoryKind::Tls.into());
+                this.allocate_raw_ptr(allocation.inner().clone(), MiriMemoryKind::Tls.into());
             this.machine.threads.set_thread_local_alloc(def_id, new_alloc);
             Ok(new_alloc)
         }
@@ -584,7 +584,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn create_thread(&mut self) -> ThreadId {
         let this = self.eval_context_mut();
         let id = this.machine.threads.create_thread();
-        if let Some(data_race) = &mut this.memory.extra.data_race {
+        if let Some(data_race) = &mut this.machine.data_race {
             data_race.thread_created(id);
         }
         id
@@ -599,14 +599,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn join_thread(&mut self, joined_thread_id: ThreadId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        this.machine.threads.join_thread(joined_thread_id, this.memory.extra.data_race.as_mut())?;
+        this.machine.threads.join_thread(joined_thread_id, this.machine.data_race.as_mut())?;
         Ok(())
     }
 
     #[inline]
     fn set_active_thread(&mut self, thread_id: ThreadId) -> ThreadId {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &this.memory.extra.data_race {
+        if let Some(data_race) = &this.machine.data_race {
             data_race.thread_set_active(thread_id);
         }
         this.machine.threads.set_active_thread_id(thread_id)
@@ -669,7 +669,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn set_active_thread_name(&mut self, new_thread_name: Vec<u8>) {
         let this = self.eval_context_mut();
-        if let Some(data_race) = &mut this.memory.extra.data_race {
+        if let Some(data_race) = &mut this.machine.data_race {
             if let Ok(string) = String::from_utf8(new_thread_name.clone()) {
                 data_race.thread_set_name(this.machine.threads.active_thread, string);
             }
@@ -753,7 +753,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn schedule(&mut self) -> InterpResult<'tcx, SchedulingAction> {
         let this = self.eval_context_mut();
-        let data_race = &this.memory.extra.data_race;
+        let data_race = &this.machine.data_race;
         this.machine.threads.schedule(data_race)
     }
 
@@ -764,8 +764,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     #[inline]
     fn thread_terminated(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        for ptr in this.machine.threads.thread_terminated(this.memory.extra.data_race.as_mut()) {
-            this.memory.deallocate(ptr.into(), None, MiriMemoryKind::Tls.into())?;
+        for ptr in this.machine.threads.thread_terminated(this.machine.data_race.as_mut()) {
+            this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
         }
         Ok(())
     }
