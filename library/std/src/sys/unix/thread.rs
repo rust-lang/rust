@@ -122,7 +122,7 @@ impl Thread {
         // pthread wrapper only appeared in glibc 2.12, so we use syscall
         // directly.
         unsafe {
-            libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
+            libc::prctl(PR_SET_NAME, name.as_ptr(), 0, 0, 0);
         }
     }
 
