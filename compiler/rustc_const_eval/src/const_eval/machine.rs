@@ -364,7 +364,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
 
                 // If an allocation is created in an another const,
                 // we don't deallocate it.
-                let (alloc_id, _, _) = ecx.ptr_get_alloc(ptr)?;
+                let (alloc_id, _, _) = ecx.ptr_get_alloc_id(ptr)?;
                 let is_allocated_in_another_const = matches!(
                     ecx.tcx.get_global_alloc(alloc_id),
                     Some(interpret::GlobalAlloc::Memory(_))

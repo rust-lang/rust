@@ -200,7 +200,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'static, Pointer<M::PointerTag>> {
         let alloc = Allocation::uninit(size, align, M::PANIC_ON_ALLOC_FAIL)?;
-        Ok(self.allocate_with_ptr(alloc, kind))
+        Ok(self.allocate_raw_ptr(alloc, kind))
     }
 
     pub fn allocate_bytes_ptr(
@@ -211,10 +211,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         mutability: Mutability,
     ) -> Pointer<M::PointerTag> {
         let alloc = Allocation::from_bytes(bytes, align, mutability);
-        self.allocate_with_ptr(alloc, kind)
+        self.allocate_raw_ptr(alloc, kind)
     }
 
-    pub fn allocate_with_ptr(
+    pub fn allocate_raw_ptr(
         &mut self,
         alloc: Allocation,
         kind: MemoryKind<M::MemoryKind>,
@@ -238,7 +238,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        let (alloc_id, offset, ptr) = self.ptr_get_alloc(ptr)?;
+        let (alloc_id, offset, ptr) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub_format!(
                 "reallocating {:?} which does not point to the beginning of an object",
@@ -274,7 +274,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         old_size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx> {
-        let (alloc_id, offset, ptr) = self.ptr_get_alloc(ptr)?;
+        let (alloc_id, offset, ptr) = self.ptr_get_alloc_id(ptr)?;
         trace!("deallocating: {}", alloc_id);
 
         if offset.bytes() != 0 {
@@ -419,7 +419,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         }
 
-        Ok(match self.ptr_try_get_alloc(ptr) {
+        Ok(match self.ptr_try_get_alloc_id(ptr) {
             Err(addr) => {
                 // We couldn't get a proper allocation. This is only okay if the access size is 0,
                 // and the address is not null.
@@ -731,7 +731,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ptr: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         trace!("get_fn({:?})", ptr);
-        let (alloc_id, offset, _ptr) = self.ptr_get_alloc(ptr)?;
+        let (alloc_id, offset, _ptr) = self.ptr_get_alloc_id(ptr)?;
         if offset.bytes() != 0 {
             throw_ub!(InvalidFunctionPointer(Pointer::new(alloc_id, offset)))
         }
@@ -1125,7 +1125,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Err(_) => {
                 // Can only happen during CTFE.
                 let ptr = self.scalar_to_ptr(scalar);
-                match self.ptr_try_get_alloc(ptr) {
+                match self.ptr_try_get_alloc_id(ptr) {
                     Ok((alloc_id, offset, _)) => {
                         let (size, _align) = self
                             .get_alloc_size_and_align(alloc_id, AllocCheck::MaybeDead)
@@ -1142,7 +1142,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Turning a "maybe pointer" into a proper pointer (and some information
     /// about where it points), or an absolute address.
-    pub fn ptr_try_get_alloc(
+    pub fn ptr_try_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
     ) -> Result<(AllocId, Size, Pointer<M::PointerTag>), u64> {
@@ -1157,11 +1157,11 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Turning a "maybe pointer" into a proper pointer (and some information about where it points).
     #[inline(always)]
-    pub fn ptr_get_alloc(
+    pub fn ptr_get_alloc_id(
         &self,
         ptr: Pointer<Option<M::PointerTag>>,
     ) -> InterpResult<'tcx, (AllocId, Size, Pointer<M::PointerTag>)> {
-        self.ptr_try_get_alloc(ptr).map_err(|offset| {
+        self.ptr_try_get_alloc_id(ptr).map_err(|offset| {
             err_ub!(DanglingIntPointer(offset, CheckInAllocMsg::InboundsTest)).into()
         })
     }

@@ -318,7 +318,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see `ptr_offset_inbounds` below).
-                match (self.ptr_try_get_alloc(a), self.ptr_try_get_alloc(b)) {
+                match (self.ptr_try_get_alloc_id(a), self.ptr_try_get_alloc_id(b)) {
                     (Err(a), Err(b)) if a == b && a != 0 => {
                         // Both are the same non-null integer.
                         self.write_scalar(Scalar::from_machine_isize(0, self), dest)?;
