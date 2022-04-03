@@ -38,20 +38,20 @@
     "dependencies": {
         "vscode-languageclient": "8.0.0-next.12",
         "d3": "^7.3.0",
-        "d3-graphviz": "^4.0.0"
+        "d3-graphviz": "^4.1.0"
     },
     "devDependencies": {
         "@types/node": "~14.17.5",
         "@types/vscode": "~1.65.0",
-        "@typescript-eslint/eslint-plugin": "^5.10.0",
-        "@typescript-eslint/parser": "^5.10.0",
-        "@vscode/test-electron": "^2.1.1",
-        "esbuild": "^0.14.12",
-        "eslint": "^8.10.0",
+        "@typescript-eslint/eslint-plugin": "^5.16.0",
+        "@typescript-eslint/parser": "^5.16.0",
+        "@vscode/test-electron": "^2.1.3",
+        "esbuild": "^0.14.27",
+        "eslint": "^8.11.0",
         "tslib": "^2.3.0",
-        "typescript": "^4.5.5",
+        "typescript": "^4.6.3",
         "typescript-formatter": "^7.2.2",
-        "vsce": "^2.6.7"
+        "vsce": "^2.7.0"
     },
     "activationEvents": [
         "onLanguage:rust",

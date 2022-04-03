@@ -565,7 +565,7 @@ function crateGraph(ctx: Ctx, full: boolean): Cmd {
             </head>
             <body>
                 <script type="text/javascript" src="${uri}/d3/dist/d3.min.js"></script>
-                <script type="javascript/worker" src="${uri}/@hpcc-js/wasm/dist/index.min.js"></script>
+                <script type="text/javascript" src="${uri}/@hpcc-js/wasm/dist/index.min.js"></script>
                 <script type="text/javascript" src="${uri}/d3-graphviz/build/d3-graphviz.min.js"></script>
                 <div id="graph"></div>
                 <script>
