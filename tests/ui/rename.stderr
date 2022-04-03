@@ -12,17 +12,17 @@ error: lint `clippy::new_without_default_derive` has been renamed to `clippy::ne
 LL | #![warn(clippy::new_without_default_derive)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::new_without_default`
 
-error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
-  --> $DIR/rename.rs:37:9
-   |
-LL | #![warn(clippy::const_static_lifetime)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
-
 error: lint `clippy::cyclomatic_complexity` has been renamed to `clippy::cognitive_complexity`
-  --> $DIR/rename.rs:38:9
+  --> $DIR/rename.rs:37:9
    |
 LL | #![warn(clippy::cyclomatic_complexity)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::cognitive_complexity`
+
+error: lint `clippy::const_static_lifetime` has been renamed to `clippy::redundant_static_lifetimes`
+  --> $DIR/rename.rs:38:9
+   |
+LL | #![warn(clippy::const_static_lifetime)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::redundant_static_lifetimes`
 
 error: lint `clippy::option_and_then_some` has been renamed to `clippy::bind_instead_of_map`
   --> $DIR/rename.rs:39:9
@@ -151,55 +151,55 @@ LL | #![warn(clippy::to_string_in_display)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `clippy::recursive_format_impl`
 
 error: lint `clippy::invalid_ref` has been renamed to `invalid_value`
-  --> $DIR/rename.rs:61:9
+  --> $DIR/rename.rs:60:9
    |
 LL | #![warn(clippy::invalid_ref)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_value`
 
 error: lint `clippy::into_iter_on_array` has been renamed to `array_into_iter`
-  --> $DIR/rename.rs:62:9
+  --> $DIR/rename.rs:61:9
    |
 LL | #![warn(clippy::into_iter_on_array)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `array_into_iter`
 
 error: lint `clippy::unused_label` has been renamed to `unused_labels`
-  --> $DIR/rename.rs:63:9
+  --> $DIR/rename.rs:62:9
    |
 LL | #![warn(clippy::unused_label)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unused_labels`
 
 error: lint `clippy::drop_bounds` has been renamed to `drop_bounds`
-  --> $DIR/rename.rs:64:9
+  --> $DIR/rename.rs:63:9
    |
 LL | #![warn(clippy::drop_bounds)]
    |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `drop_bounds`
 
 error: lint `clippy::temporary_cstring_as_ptr` has been renamed to `temporary_cstring_as_ptr`
-  --> $DIR/rename.rs:65:9
+  --> $DIR/rename.rs:64:9
    |
 LL | #![warn(clippy::temporary_cstring_as_ptr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `temporary_cstring_as_ptr`
 
 error: lint `clippy::panic_params` has been renamed to `non_fmt_panics`
-  --> $DIR/rename.rs:66:9
+  --> $DIR/rename.rs:65:9
    |
 LL | #![warn(clippy::panic_params)]
    |         ^^^^^^^^^^^^^^^^^^^^ help: use the new name: `non_fmt_panics`
 
 error: lint `clippy::unknown_clippy_lints` has been renamed to `unknown_lints`
-  --> $DIR/rename.rs:67:9
+  --> $DIR/rename.rs:66:9
    |
 LL | #![warn(clippy::unknown_clippy_lints)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `unknown_lints`
 
 error: lint `clippy::invalid_atomic_ordering` has been renamed to `invalid_atomic_ordering`
-  --> $DIR/rename.rs:68:9
+  --> $DIR/rename.rs:67:9
    |
 LL | #![warn(clippy::invalid_atomic_ordering)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `invalid_atomic_ordering`
 
 error: lint `clippy::mem_discriminant_non_enum` has been renamed to `enum_intrinsics_non_enums`
-  --> $DIR/rename.rs:69:9
+  --> $DIR/rename.rs:68:9
    |
 LL | #![warn(clippy::mem_discriminant_non_enum)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use the new name: `enum_intrinsics_non_enums`

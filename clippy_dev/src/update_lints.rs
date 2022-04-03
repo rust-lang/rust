@@ -1,7 +1,7 @@
 use core::fmt::Write;
 use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -32,7 +32,7 @@ pub enum UpdateMode {
 /// Panics if a file path could not read from or then written to
 #[allow(clippy::too_many_lines)]
 pub fn run(update_mode: UpdateMode) {
-    let (lints, deprecated_lints) = gather_all();
+    let (lints, deprecated_lints, renamed_lints) = gather_all();
 
     let internal_lints = Lint::internal_lints(&lints);
     let usable_lints = Lint::usable_lints(&lints);
@@ -110,10 +110,13 @@ pub fn run(update_mode: UpdateMode) {
 
     let content = gen_deprecated_lints_test(&deprecated_lints);
     process_file("tests/ui/deprecated.rs", update_mode, &content);
+
+    let content = gen_renamed_lints_test(&renamed_lints);
+    process_file("tests/ui/rename.rs", update_mode, &content);
 }
 
 pub fn print_lints() {
-    let (lint_list, _) = gather_all();
+    let (lint_list, _, _) = gather_all();
     let usable_lints = Lint::usable_lints(&lint_list);
     let usable_lint_count = usable_lints.len();
     let grouped_by_lint_group = Lint::by_lint_group(usable_lints.into_iter());
@@ -213,6 +216,19 @@ impl DeprecatedLint {
     }
 }
 
+struct RenamedLint {
+    old_name: String,
+    new_name: String,
+}
+impl RenamedLint {
+    fn new(old_name: &str, new_name: &str) -> Self {
+        Self {
+            old_name: remove_line_splices(old_name),
+            new_name: remove_line_splices(new_name),
+        }
+    }
+}
+
 /// Generates the code for registering a group
 fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lint>) -> String {
     let mut details: Vec<_> = lints.map(|l| (&l.module, l.name.to_uppercase())).collect();
@@ -288,10 +304,30 @@ fn gen_deprecated_lints_test(lints: &[DeprecatedLint]) -> String {
     res
 }
 
+fn gen_renamed_lints_test(lints: &[RenamedLint]) -> String {
+    let mut seen_lints = HashSet::new();
+    let mut res: String = GENERATED_FILE_COMMENT.into();
+    res.push_str("// run-rustfix\n\n");
+    for lint in lints {
+        if seen_lints.insert(&lint.new_name) {
+            writeln!(res, "#![allow({})]", lint.new_name).unwrap();
+        }
+    }
+    seen_lints.clear();
+    for lint in lints {
+        if seen_lints.insert(&lint.old_name) {
+            writeln!(res, "#![warn({})]", lint.old_name).unwrap();
+        }
+    }
+    res.push_str("\nfn main() {}\n");
+    res
+}
+
 /// Gathers all lints defined in `clippy_lints/src`
-fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>) {
+fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>, Vec<RenamedLint>) {
     let mut lints = Vec::with_capacity(1000);
     let mut deprecated_lints = Vec::with_capacity(50);
+    let mut renamed_lints = Vec::with_capacity(50);
     let root_path = clippy_project_root().join("clippy_lints/src");
 
     for (rel_path, file) in WalkDir::new(&root_path)
@@ -317,13 +353,13 @@ fn gather_all() -> (Vec<Lint>, Vec<DeprecatedLint>) {
             module.strip_suffix(".rs").unwrap_or(&module)
         };
 
-        if module == "deprecated_lints" {
-            parse_deprecated_contents(&contents, &mut deprecated_lints);
-        } else {
-            parse_contents(&contents, module, &mut lints);
+        match module {
+            "deprecated_lints" => parse_deprecated_contents(&contents, &mut deprecated_lints),
+            "renamed_lints" => parse_renamed_contents(&contents, &mut renamed_lints),
+            _ => parse_contents(&contents, module, &mut lints),
         }
     }
-    (lints, deprecated_lints)
+    (lints, deprecated_lints, renamed_lints)
 }
 
 macro_rules! match_tokens {
@@ -403,6 +439,25 @@ fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
             CloseBrace
         );
         lints.push(DeprecatedLint::new(name, reason));
+    }
+}
+
+fn parse_renamed_contents(contents: &str, lints: &mut Vec<RenamedLint>) {
+    for line in contents.lines() {
+        let mut offset = 0usize;
+        let mut iter = tokenize(line).map(|t| {
+            let range = offset..offset + t.len;
+            offset = range.end;
+            (t.kind, &line[range])
+        });
+        let (old_name, new_name) = match_tokens!(
+            iter,
+            // ("old_name",
+            Whitespace OpenParen Literal{kind: LiteralKind::Str{..},..}(old_name) Comma
+            // "new_name"),
+            Whitespace Literal{kind: LiteralKind::Str{..},..}(new_name) CloseParen Comma
+        );
+        lints.push(RenamedLint::new(old_name, new_name));
     }
 }
 

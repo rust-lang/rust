@@ -162,6 +162,8 @@ mod deprecated_lints;
 #[cfg_attr(feature = "internal", allow(clippy::missing_clippy_version_attribute))]
 mod utils;
 
+mod renamed_lints;
+
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 mod absurd_extreme_comparisons;
 mod approx_const;
@@ -920,43 +922,9 @@ fn register_removed_non_tool_lints(store: &mut rustc_lint::LintStore) {
 ///
 /// Used in `./src/driver.rs`.
 pub fn register_renamed(ls: &mut rustc_lint::LintStore) {
-    // NOTE: when renaming a lint, add a corresponding test to tests/ui/rename.rs
-    ls.register_renamed("clippy::stutter", "clippy::module_name_repetitions");
-    ls.register_renamed("clippy::new_without_default_derive", "clippy::new_without_default");
-    ls.register_renamed("clippy::cyclomatic_complexity", "clippy::cognitive_complexity");
-    ls.register_renamed("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes");
-    ls.register_renamed("clippy::option_and_then_some", "clippy::bind_instead_of_map");
-    ls.register_renamed("clippy::box_vec", "clippy::box_collection");
-    ls.register_renamed("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions");
-    ls.register_renamed("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions");
-    ls.register_renamed("clippy::option_map_unwrap_or", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::option_map_unwrap_or_else", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::result_map_unwrap_or_else", "clippy::map_unwrap_or");
-    ls.register_renamed("clippy::option_unwrap_used", "clippy::unwrap_used");
-    ls.register_renamed("clippy::result_unwrap_used", "clippy::unwrap_used");
-    ls.register_renamed("clippy::option_expect_used", "clippy::expect_used");
-    ls.register_renamed("clippy::result_expect_used", "clippy::expect_used");
-    ls.register_renamed("clippy::for_loop_over_option", "clippy::for_loops_over_fallibles");
-    ls.register_renamed("clippy::for_loop_over_result", "clippy::for_loops_over_fallibles");
-    ls.register_renamed("clippy::identity_conversion", "clippy::useless_conversion");
-    ls.register_renamed("clippy::zero_width_space", "clippy::invisible_characters");
-    ls.register_renamed("clippy::single_char_push_str", "clippy::single_char_add_str");
-    ls.register_renamed("clippy::if_let_some_result", "clippy::match_result_ok");
-    ls.register_renamed("clippy::disallowed_type", "clippy::disallowed_types");
-    ls.register_renamed("clippy::disallowed_method", "clippy::disallowed_methods");
-    ls.register_renamed("clippy::ref_in_deref", "clippy::needless_borrow");
-    ls.register_renamed("clippy::to_string_in_display", "clippy::recursive_format_impl");
-
-    // uplifted lints
-    ls.register_renamed("clippy::invalid_ref", "invalid_value");
-    ls.register_renamed("clippy::into_iter_on_array", "array_into_iter");
-    ls.register_renamed("clippy::unused_label", "unused_labels");
-    ls.register_renamed("clippy::drop_bounds", "drop_bounds");
-    ls.register_renamed("clippy::temporary_cstring_as_ptr", "temporary_cstring_as_ptr");
-    ls.register_renamed("clippy::panic_params", "non_fmt_panics");
-    ls.register_renamed("clippy::unknown_clippy_lints", "unknown_lints");
-    ls.register_renamed("clippy::invalid_atomic_ordering", "invalid_atomic_ordering");
-    ls.register_renamed("clippy::mem_discriminant_non_enum", "enum_intrinsics_non_enums");
+    for (old_name, new_name) in renamed_lints::RENAMED_LINTS {
+        ls.register_renamed(old_name, new_name);
+    }
 }
 
 // only exists to let the dogfood integration test works.
