@@ -72,7 +72,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let (fn_val, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
                     ty::FnPtr(_sig) => {
                         let fn_ptr = self.read_pointer(&func)?;
-                        let fn_val = self.memory.get_fn(fn_ptr)?;
+                        let fn_val = self.get_ptr_fn(fn_ptr)?;
                         (fn_val, self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?, false)
                     }
                     ty::FnDef(def_id, substs) => {
