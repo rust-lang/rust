@@ -33,7 +33,7 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
         if let ItemKind::Struct(var_data, _) = &item.kind
-            && !is_unit_like_struct(var_data)
+            && has_brackets(var_data)
             && has_no_fields(cx, var_data, span_after_ident) {
             span_lint_and_then(
                 cx,
@@ -56,8 +56,8 @@ fn has_no_ident_token(braces_span_str: &str) -> bool {
     !rustc_lexer::tokenize(braces_span_str).any(|t| t.kind == TokenKind::Ident)
 }
 
-fn is_unit_like_struct(var_data: &VariantData) -> bool {
-    matches!(var_data, VariantData::Unit(_))
+fn has_brackets(var_data: &VariantData) -> bool {
+    !matches!(var_data, VariantData::Unit(_))
 }
 
 fn has_no_fields(cx: &EarlyContext<'_>, var_data: &VariantData, braces_span: Span) -> bool {
