@@ -30,6 +30,13 @@ pub struct Discr<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+/// Used as an input to [`TyCtxt::uses_unique_generic_params`].
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum IgnoreRegions {
+    Yes,
+    No,
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum NotUniqueParam<'tcx> {
     DuplicateParam(ty::GenericArg<'tcx>),
@@ -461,20 +468,18 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn uses_unique_generic_params(
         self,
         substs: SubstsRef<'tcx>,
-        ignore_regions: bool,
+        ignore_regions: IgnoreRegions,
     ) -> Result<(), NotUniqueParam<'tcx>> {
         let mut seen = GrowableBitSet::default();
         for arg in substs {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => {
-                    if !ignore_regions {
-                        match lt.kind() {
-                            ty::ReEarlyBound(p) => {
-                                if !seen.insert(p.index) {
-                                    return Err(NotUniqueParam::DuplicateParam(lt.into()));
-                                }
-                            }
-                            _ => return Err(NotUniqueParam::NotParam(lt.into())),
+                    if ignore_regions == IgnoreRegions::No {
+                        let ty::ReEarlyBound(p) = lt.kind() else {
+                            return Err(NotUniqueParam::NotParam(lt.into()))
+                        };
+                        if !seen.insert(p.index) {
+                            return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
                 }

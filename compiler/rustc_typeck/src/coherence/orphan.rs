@@ -8,6 +8,7 @@ use rustc_hir as hir;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::subst::InternalSubsts;
+use rustc_middle::ty::util::IgnoreRegions;
 use rustc_middle::ty::{self, ImplPolarity, Ty, TyCtxt, TypeFoldable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -354,7 +355,7 @@ fn lint_auto_trait_impls(tcx: TyCtxt<'_>, trait_def_id: DefId, impls: &[LocalDef
         // Impls which completely cover a given root type are fine as they
         // disable auto impls entirely. So only lint if the substs
         // are not a permutation of the identity substs.
-        match tcx.uses_unique_generic_params(substs, true) {
+        match tcx.uses_unique_generic_params(substs, IgnoreRegions::Yes) {
             Ok(()) => {} // ok
             Err(arg) => {
                 // Ideally:
