@@ -6,6 +6,7 @@
 -     let _1: u32;                         // in scope 0 at $DIR/simplify-locals.rs:56:14: 56:21
 -     let mut _2: &mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:15: 56:21
 -     let mut _3: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:20: 56:21
+-     let mut _4: *mut u32;                // in scope 0 at $DIR/simplify-locals.rs:56:15: 56:21
       scope 1 {
       }
   
@@ -14,7 +15,9 @@
 -         StorageLive(_2);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
 -         StorageLive(_3);                 // scope 1 at $DIR/simplify-locals.rs:56:20: 56:21
 -         _3 = &/*tls*/ mut X;             // scope 1 at $DIR/simplify-locals.rs:56:20: 56:21
--         _2 = &mut (*_3);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
+-         StorageLive(_4);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
+-         _4 = move _3;                    // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
+-         _2 = &mut (*_4);                 // scope 1 at $DIR/simplify-locals.rs:56:15: 56:21
 -         _1 = (*_2);                      // scope 1 at $DIR/simplify-locals.rs:56:14: 56:21
 -         StorageDead(_3);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
 -         StorageDead(_2);                 // scope 0 at $DIR/simplify-locals.rs:56:23: 56:24
