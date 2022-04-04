@@ -77,6 +77,14 @@ pub trait InferCtxtExt<'tcx> {
         has_custom_message: bool,
     ) -> bool;
 
+    fn suggest_borrowing_for_object_cast(
+        &self,
+        err: &mut Diagnostic,
+        obligation: &PredicateObligation<'tcx>,
+        self_ty: Ty<'tcx>,
+        object_ty: Ty<'tcx>,
+    );
+
     fn suggest_remove_reference(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -799,6 +807,35 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    // Suggest borrowing the type
+    fn suggest_borrowing_for_object_cast(
+        &self,
+        err: &mut Diagnostic,
+        obligation: &PredicateObligation<'tcx>,
+        self_ty: Ty<'tcx>,
+        object_ty: Ty<'tcx>,
+    ) {
+        let ty::Dynamic(predicates, _) = object_ty.kind() else { return; };
+        let self_ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, self_ty);
+
+        for predicate in predicates.iter() {
+            if !self.predicate_must_hold_modulo_regions(
+                &obligation.with(predicate.with_self_ty(self.tcx, self_ref_ty)),
+            ) {
+                return;
+            }
+        }
+
+        err.span_suggestion(
+            obligation.cause.span.shrink_to_lo(),
+            &format!(
+                "consider borrowing the value, since `&{self_ty}` can be coerced into `{object_ty}`"
+            ),
+            "&".to_string(),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
