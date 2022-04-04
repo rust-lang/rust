@@ -658,16 +658,16 @@ impl server::Literal for Rustc<'_, '_> {
         self.lit(token::Float, Symbol::intern(n), Some(sym::f64))
     }
     fn string(&mut self, string: &str) -> Self::Literal {
-        let mut escaped = String::new();
-        for ch in string.chars() {
-            escaped.extend(ch.escape_debug());
-        }
-        self.lit(token::Str, Symbol::intern(&escaped), None)
+        let quoted = format!("{:?}", string);
+        assert!(quoted.starts_with('"') && quoted.ends_with('"'));
+        let symbol = &quoted[1..quoted.len() - 1];
+        self.lit(token::Str, Symbol::intern(symbol), None)
     }
     fn character(&mut self, ch: char) -> Self::Literal {
-        let mut escaped = String::new();
-        escaped.extend(ch.escape_unicode());
-        self.lit(token::Char, Symbol::intern(&escaped), None)
+        let quoted = format!("{:?}", ch);
+        assert!(quoted.starts_with('\'') && quoted.ends_with('\''));
+        let symbol = &quoted[1..quoted.len() - 1];
+        self.lit(token::Char, Symbol::intern(symbol), None)
     }
     fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
         let string = bytes
