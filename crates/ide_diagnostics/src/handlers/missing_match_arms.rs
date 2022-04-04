@@ -931,6 +931,22 @@ fn f(ty: Enum) {
         );
     }
 
+    #[test]
+    fn unexpected_ty_fndef() {
+        cov_mark::check!(validate_match_bailed_out);
+        check_diagnostics(
+            r"
+enum Exp {
+    Tuple(()),
+}
+fn f() {
+    match __unknown {
+        Exp::Tuple => {}
+    }
+}",
+        );
+    }
+
     mod false_negatives {
         //! The implementation of match checking here is a work in progress. As we roll this out, we
         //! prefer false negatives to false positives (ideally there would be no false positives). This
