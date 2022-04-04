@@ -21,7 +21,6 @@
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(test)]
-#![feature(total_cmp)]
 
 // Public reexports
 pub use self::bench::{black_box, Bencher};
