@@ -12,13 +12,16 @@ Compiler
 - [Fixes wrong `unreachable_pub` lints on nested and glob public reexport][87487]
 - [Stabilize `-Z instrument-coverage` as `-C instrument-coverage`][90132]
 - [Stabilize `-Z print-link-args` as `--print link-args`][91606]
-- [`mips64-openwrt-linux-musl`: Add Tier 3 target][92300]
-- [Add new target `armv7-unknown-linux-uclibceabi` (softfloat)][92383]
+- [Add new Tier 3 target `mips64-openwrt-linux-musl`\*][92300]
+- [Add new Tier 3 target `armv7-unknown-linux-uclibceabi` (softfloat)\*][92383]
 - [Fix invalid removal of newlines from doc comments][92357]
 - [Add kernel target for RustyHermit][92670]
 - [Deny mixing bin crate type with lib crate types][92933]
 - [Make rustc use `RUST_BACKTRACE=full` by default][93566]
 - [Upgrade to LLVM 14][93577]
+
+\* Refer to Rust's [platform support page][platform-support-doc] for more
+   information on Rust's tiered platform support.
 
 Libraries
 ---------
