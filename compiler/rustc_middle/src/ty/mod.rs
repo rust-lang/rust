@@ -2188,9 +2188,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets the attributes of a definition.
     ///
-    /// Note that attributes which are be relevant while
-    /// the current local crate are not stored in the crate metadata
-    /// and therefore cannot be accessed outside of that crate.
+    /// Note that attributes which are only relevant for the current
+    /// crate are not stored in the crate metadata and therefore cannot
+    /// be accessed outside of that crate.
     pub fn get_attrs(self, did: DefId) -> Attributes<'tcx> {
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
