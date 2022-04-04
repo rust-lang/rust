@@ -17,7 +17,7 @@ fn d(_1: &Box<T>) -> &T {
         StorageLive(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _4 = move (*_3);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _2 = &(*_4);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _2 = &(*_4);                     // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageDead(_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _0 = &(*_2);                     // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:5: 18:15
         StorageDead(_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:18:14: 18:15
         StorageDead(_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:19:1: 19:2

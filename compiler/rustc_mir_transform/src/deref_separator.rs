@@ -8,11 +8,15 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut patch = MirPatch::new(body);
     let (basic_blocks, local_decl) = body.basic_blocks_and_local_decls_mut();
     for (block, data) in basic_blocks.iter_enumerated_mut() {
+        let statement_len = data.statements.len();
         for (i, stmt) in data.statements.iter_mut().enumerate() {
             match stmt.kind {
                 StatementKind::Assign(box (og_place, Rvalue::Ref(region, borrow_knd, place))) => {
                     for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
-                        if p_elem == ProjectionElem::Deref && !p_ref.projection.is_empty() {
+                        if p_elem == ProjectionElem::Deref
+                            && !p_ref.projection.is_empty()
+                            && region.is_erased()
+                        {
                             // The type that we are derefing
                             let ty = p_ref.ty(local_decl, tcx).ty;
                             let temp = patch.new_temp(ty, stmt.source_info.span);
@@ -36,12 +40,6 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                             // and copying derefed values which we need to create new statement
                             let temp_place =
                                 Place::from(temp).project_deeper(&place.projection[idx..], tcx);
-                            patch.add_assign(
-                                loc,
-                                og_place,
-                                Rvalue::Ref(region, borrow_knd, temp_place),
-                            );
-
                             let new_stmt = Statement {
                                 source_info: stmt.source_info,
                                 kind: StatementKind::Assign(Box::new((
@@ -49,8 +47,13 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                                     Rvalue::Ref(region, borrow_knd, temp_place),
                                 ))),
                             };
+
                             // Replace current statement with newly created one
                             *stmt = new_stmt;
+
+                            // Since our job with the temp is done it should be gone
+                            let loc = Location { block: block, statement_index: statement_len };
+                            patch.add_statement(loc, StatementKind::StorageDead(temp));
                         }
                     }
                 }

@@ -23,11 +23,11 @@ fn b(_1: &mut Box<T>) -> &mut T {
         StorageLive(_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _7 = move (*_4);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _6 = &mut (*_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
-        _6 = &mut (*_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _5 = &mut (*_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _3 = &mut (*_5);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageDead(_6);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         StorageDead(_5);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
+        StorageDead(_7);                 // scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         _2 = &mut (*_3);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
         StorageDead(_4);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:14: 8:15
         _0 = &mut (*_2);                 // scope 0 at $DIR/issue-58867-inline-as-ref-as-mut.rs:8:5: 8:15
