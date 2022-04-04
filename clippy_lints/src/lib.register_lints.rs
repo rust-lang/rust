@@ -70,6 +70,7 @@ store.register_lints(&[
     cargo::REDUNDANT_FEATURE_NAMES,
     cargo::WILDCARD_DEPENDENCIES,
     case_sensitive_file_extension_comparisons::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS,
+    casts::CAST_ABS_TO_UNSIGNED,
     casts::CAST_ENUM_CONSTRUCTOR,
     casts::CAST_ENUM_TRUNCATION,
     casts::CAST_LOSSLESS,

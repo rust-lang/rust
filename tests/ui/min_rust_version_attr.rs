@@ -150,6 +150,11 @@ fn err_expect() {
     x.err().expect("Testing expect_err");
 }
 
+fn cast_abs_to_unsigned() {
+    let x: i32 = 10;
+    assert_eq!(10u32, x.abs() as u32);
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -168,6 +173,7 @@ fn main() {
     unnest_or_patterns();
     int_from_bool();
     err_expect();
+    cast_abs_to_unsigned();
 }
 
 mod just_under_msrv {

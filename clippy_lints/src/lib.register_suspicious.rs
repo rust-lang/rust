@@ -7,6 +7,7 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(attrs::BLANKET_CLIPPY_RESTRICTION_LINTS),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_LOCK),
     LintId::of(await_holding_invalid::AWAIT_HOLDING_REFCELL_REF),
+    LintId::of(casts::CAST_ABS_TO_UNSIGNED),
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),

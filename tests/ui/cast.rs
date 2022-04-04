@@ -7,7 +7,7 @@
     clippy::cast_sign_loss,
     clippy::cast_possible_wrap
 )]
-#[allow(clippy::no_effect, clippy::unnecessary_operation)]
+#[allow(clippy::cast_abs_to_unsigned, clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
     // Test clippy::cast_precision_loss
     let x0 = 1i32;
