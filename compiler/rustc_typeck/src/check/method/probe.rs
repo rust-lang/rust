@@ -1,7 +1,7 @@
 use super::suggest;
+use super::CandidateSource;
 use super::MethodError;
 use super::NoMatchData;
-use super::{CandidateSource, ImplSource, TraitSource};
 
 use crate::check::FnCtxt;
 use crate::errors::MethodCallOnUnknownType;
@@ -694,7 +694,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         for item in self.impl_or_trait_item(impl_def_id) {
             if !self.has_applicable_self(&item) {
                 // No receiver declared. Not a candidate.
-                self.record_static_candidate(ImplSource(impl_def_id));
+                self.record_static_candidate(CandidateSource::Impl(impl_def_id));
                 continue;
             }
 
@@ -848,7 +848,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             debug!("elaborate_bounds(bound_trait_ref={:?})", bound_trait_ref);
             for item in self.impl_or_trait_item(bound_trait_ref.def_id()) {
                 if !self.has_applicable_self(&item) {
-                    self.record_static_candidate(TraitSource(bound_trait_ref.def_id()));
+                    self.record_static_candidate(CandidateSource::Trait(bound_trait_ref.def_id()));
                 } else {
                     mk_cand(self, bound_trait_ref, item);
                 }
@@ -946,7 +946,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // Check whether `trait_def_id` defines a method with suitable name.
                 if !self.has_applicable_self(&item) {
                     debug!("method has inapplicable self");
-                    self.record_static_candidate(TraitSource(trait_def_id));
+                    self.record_static_candidate(CandidateSource::Trait(trait_def_id));
                     continue;
                 }
 
@@ -1018,8 +1018,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             Some(Err(MethodError::Ambiguity(v))) => v
                 .into_iter()
                 .map(|source| match source {
-                    TraitSource(id) => id,
-                    ImplSource(impl_id) => match tcx.trait_id_of_impl(impl_id) {
+                    CandidateSource::Trait(id) => id,
+                    CandidateSource::Impl(impl_id) => match tcx.trait_id_of_impl(impl_id) {
                         Some(id) => id,
                         None => span_bug!(span, "found inherent method when looking at traits"),
                     },
@@ -1417,8 +1417,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
     fn candidate_source(&self, candidate: &Candidate<'tcx>, self_ty: Ty<'tcx>) -> CandidateSource {
         match candidate.kind {
-            InherentImplCandidate(..) => ImplSource(candidate.item.container.id()),
-            ObjectCandidate | WhereClauseCandidate(_) => TraitSource(candidate.item.container.id()),
+            InherentImplCandidate(..) => CandidateSource::Impl(candidate.item.container.id()),
+            ObjectCandidate | WhereClauseCandidate(_) => {
+                CandidateSource::Trait(candidate.item.container.id())
+            }
             TraitCandidate(trait_ref) => self.probe(|_| {
                 let _ = self
                     .at(&ObligationCause::dummy(), self.param_env)
@@ -1428,9 +1430,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
-                        ImplSource(impl_data.impl_def_id)
+                        CandidateSource::Impl(impl_data.impl_def_id)
                     }
-                    _ => TraitSource(candidate.item.container.id()),
+                    _ => CandidateSource::Trait(candidate.item.container.id()),
                 }
             }),
         }
