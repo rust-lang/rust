@@ -1,7 +1,7 @@
 [package]
 authors = ["Miri Team"]
 description = "An experimental interpreter for Rust MIR (core driver)."
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 name = "miri"
 repository = "https://github.com/rust-lang/miri"
 version = "0.1.0"
