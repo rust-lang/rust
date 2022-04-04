@@ -315,7 +315,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 let vtable = self.ecx.scalar_to_ptr(meta.unwrap_meta());
                 // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
                 try_validation!(
-                    self.ecx.memory.check_ptr_access_align(
+                    self.ecx.check_ptr_access_align(
                         vtable,
                         3 * self.ecx.tcx.data_layout.pointer_size, // drop, size, align
                         self.ecx.tcx.data_layout.pointer_align.abi,
@@ -403,7 +403,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             .unwrap_or_else(|| (place.layout.size, place.layout.align.abi));
         // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
         try_validation!(
-            self.ecx.memory.check_ptr_access_align(
+            self.ecx.check_ptr_access_align(
                 place.ptr,
                 size,
                 align,
@@ -432,7 +432,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         if let Some(ref mut ref_tracking) = self.ref_tracking {
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
-            if let Ok((alloc_id, _offset, _ptr)) = self.ecx.memory.ptr_try_get_alloc(place.ptr) {
+            if let Ok((alloc_id, _offset, _ptr)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {
                 // Special handling for pointers to statics (irrespective of their type).
                 let alloc_kind = self.ecx.tcx.get_global_alloc(alloc_id);
                 if let Some(GlobalAlloc::Static(did)) = alloc_kind {
@@ -579,7 +579,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 if let Some(_) = self.ref_tracking {
                     let ptr = self.ecx.scalar_to_ptr(value);
                     let _fn = try_validation!(
-                        self.ecx.memory.get_fn(ptr),
+                        self.ecx.get_ptr_fn(ptr),
                         self.path,
                         err_ub!(DanglingIntPointer(0, _)) =>
                             { "a null function pointer" },
@@ -825,7 +825,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 let mplace = op.assert_mem_place(); // strings are never immediate
                 let len = mplace.len(self.ecx)?;
                 try_validation!(
-                    self.ecx.memory.read_bytes(mplace.ptr, Size::from_bytes(len)),
+                    self.ecx.read_bytes_ptr(mplace.ptr, Size::from_bytes(len)),
                     self.path,
                     err_ub!(InvalidUninitBytes(..)) => { "uninitialized data in `str`" },
                     err_unsup!(ReadPointerAsBytes) => { "a pointer in `str`" },
@@ -861,7 +861,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept uninit, for consistency with the slow path.
-                let Some(alloc) = self.ecx.memory.get(mplace.ptr, size, mplace.align)? else {
+                let Some(alloc) = self.ecx.get_ptr_alloc(mplace.ptr, size, mplace.align)? else {
                     // Size 0, nothing more to check.
                     return Ok(());
                 };

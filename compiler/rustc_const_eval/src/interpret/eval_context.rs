@@ -22,9 +22,9 @@ use rustc_span::{Pos, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocCheck, AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine,
-    MemPlace, MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, Pointer,
-    PointerArithmetic, Provenance, Scalar, ScalarMaybeUninit, StackPopJump,
+    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
+    MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
+    Scalar, ScalarMaybeUninit, StackPopJump,
 };
 use crate::transform::validate::equal_up_to_regions;
 
@@ -413,13 +413,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         root_span: Span,
         param_env: ty::ParamEnv<'tcx>,
         machine: M,
-        memory_extra: M::MemoryExtra,
     ) -> Self {
         InterpCx {
             machine,
             tcx: tcx.at(root_span),
             param_env,
-            memory: Memory::new(tcx, memory_extra),
+            memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
         }
     }
@@ -431,49 +430,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .rev()
             .find(|frame| !frame.instance.def.requires_caller_location(*self.tcx))
             .map_or(self.tcx.span, |f| f.current_span())
-    }
-
-    #[inline(always)]
-    pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
-        self.memory.scalar_to_ptr(scalar)
-    }
-
-    /// Test if this value might be null.
-    /// If the machine does not support ptr-to-int casts, this is conservative.
-    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> bool {
-        match scalar.try_to_int() {
-            Ok(int) => int.is_null(),
-            Err(_) => {
-                // Can only happen during CTFE.
-                let ptr = self.scalar_to_ptr(scalar);
-                match self.memory.ptr_try_get_alloc(ptr) {
-                    Ok((alloc_id, offset, _)) => {
-                        let (size, _align) = self
-                            .memory
-                            .get_size_and_align(alloc_id, AllocCheck::MaybeDead)
-                            .expect("alloc info with MaybeDead cannot fail");
-                        // If the pointer is out-of-bounds, it may be null.
-                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                        offset > size
-                    }
-                    Err(_offset) => bug!("a non-int scalar is always a pointer"),
-                }
-            }
-        }
-    }
-
-    /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
-    /// the machine pointer to the allocation.  Must never be used
-    /// for any other pointers, nor for TLS statics.
-    ///
-    /// Using the resulting pointer represents a *direct* access to that memory
-    /// (e.g. by directly using a `static`),
-    /// as opposed to access through a pointer that was created by the program.
-    ///
-    /// This function can fail only if `ptr` points to an `extern static`.
-    #[inline(always)]
-    pub fn global_base_pointer(&self, ptr: Pointer) -> InterpResult<'tcx, Pointer<M::PointerTag>> {
-        self.memory.global_base_pointer(ptr)
     }
 
     #[inline(always)]
@@ -949,9 +905,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             trace!(
                 "deallocating local {:?}: {:?}",
                 local,
-                self.memory.dump_alloc(ptr.provenance.unwrap().get_alloc_id())
+                self.dump_alloc(ptr.provenance.unwrap().get_alloc_id())
             );
-            self.memory.deallocate(ptr, None, MemoryKind::Stack)?;
+            self.deallocate_ptr(ptr, None, MemoryKind::Stack)?;
         };
         Ok(())
     }
@@ -1057,7 +1013,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     }
                 }
 
-                write!(fmt, ": {:?}", self.ecx.memory.dump_allocs(allocs))
+                write!(fmt, ": {:?}", self.ecx.dump_allocs(allocs))
             }
             Place::Ptr(mplace) => match mplace.ptr.provenance.map(Provenance::get_alloc_id) {
                 Some(alloc_id) => write!(
@@ -1065,7 +1021,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> std::fmt::Debug
                     "by align({}) ref {:?}: {:?}",
                     mplace.align.bytes(),
                     mplace.ptr,
-                    self.ecx.memory.dump_alloc(alloc_id)
+                    self.ecx.dump_alloc(alloc_id)
                 ),
                 ptr => write!(fmt, " integral by ref: {:?}", ptr),
             },

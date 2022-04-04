@@ -56,7 +56,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         )
                         .ok_or_else(|| err_inval!(TooGeneric))?;
 
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "reify fn pointer on {:?}", src.layout.ty),
@@ -87,7 +87,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
+                        let fn_ptr = self.create_fn_alloc_ptr(FnVal::Instance(instance));
                         self.write_pointer(fn_ptr, dest)?;
                     }
                     _ => span_bug!(self.cur_span(), "closure fn pointer on {:?}", src.layout.ty),
@@ -153,8 +153,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(**src);
             } else {
                 // Casting the metadata away from a fat ptr.
-                assert_eq!(src.layout.size, 2 * self.memory.pointer_size());
-                assert_eq!(dest_layout.size, self.memory.pointer_size());
+                assert_eq!(src.layout.size, 2 * self.pointer_size());
+                assert_eq!(dest_layout.size, self.pointer_size());
                 assert!(src.layout.ty.is_unsafe_ptr());
                 return match **src {
                     Immediate::ScalarPair(data, _) => Ok(data.into()),
