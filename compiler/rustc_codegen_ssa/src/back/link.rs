@@ -2080,9 +2080,14 @@ fn add_local_native_libraries(
             NativeLibKind::Framework { as_needed } => {
                 cmd.link_framework(name, as_needed.unwrap_or(true))
             }
-            NativeLibKind::Static { whole_archive, .. } => {
+            NativeLibKind::Static { whole_archive, bundle, .. } => {
                 if whole_archive == Some(true)
                     || (whole_archive == None && default_to_whole_archive(sess, crate_type, cmd))
+                    // Backward compatibility case: this can be a rlib (so `+whole-archive` cannot
+                    // be added explicitly if necessary, see the error in `fn link_rlib`) compiled
+                    // as an executable due to `--test`. Use whole-archive implicitly, like before
+                    // the introduction of native lib modifiers.
+                    || (bundle != Some(false) && sess.opts.test)
                 {
                     cmd.link_whole_staticlib(
                         name,
