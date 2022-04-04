@@ -139,6 +139,7 @@
 #![feature(const_type_id)]
 #![feature(const_type_name)]
 #![feature(const_default_impls)]
+#![feature(const_unsafecell_get_mut)]
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
