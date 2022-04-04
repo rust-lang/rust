@@ -75,6 +75,9 @@ Misc
 Compatibility Notes
 -------------------
 - [Remove compiler-rt linking hack on Android][83822]
+- In a future release we're planning to increase the baseline requirements for
+  the Linux kernel to version 3.2, and for glibc to version 2.17. We'd love
+  your feedback in [PR #95026][95026].
 
 Internal Changes
 ----------------
@@ -107,6 +110,7 @@ and related tools.
 [93742]: https://github.com/rust-lang/rust/pull/93742
 [93824]: https://github.com/rust-lang/rust/pull/93824
 [93918]: https://github.com/rust-lang/rust/pull/93918
+[95026]: https://github.com/rust-lang/rust/pull/95026
 
 [cargo/10086]: https://github.com/rust-lang/cargo/pull/10086
 [cargo/10245]: https://github.com/rust-lang/cargo/pull/10245
