@@ -10,6 +10,8 @@ store.register_group(true, "clippy::suspicious", Some("clippy_suspicious"), vec!
     LintId::of(casts::CAST_ENUM_CONSTRUCTOR),
     LintId::of(casts::CAST_ENUM_TRUNCATION),
     LintId::of(crate_in_macro_def::CRATE_IN_MACRO_DEF),
+    LintId::of(drop_forget_ref::DROP_NON_DROP),
+    LintId::of(drop_forget_ref::FORGET_NON_DROP),
     LintId::of(eval_order_dependence::EVAL_ORDER_DEPENDENCE),
     LintId::of(float_equality_without_abs::FLOAT_EQUALITY_WITHOUT_ABS),
     LintId::of(format_impl::PRINT_IN_FORMAT_IMPL),

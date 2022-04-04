@@ -3256,6 +3256,7 @@ Released 2018-09-13
 [`double_neg`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_neg
 [`double_parens`]: https://rust-lang.github.io/rust-clippy/master/index.html#double_parens
 [`drop_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_copy
+[`drop_non_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_non_drop
 [`drop_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#drop_ref
 [`duplicate_underscore_argument`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
 [`duration_subsec`]: https://rust-lang.github.io/rust-clippy/master/index.html#duration_subsec
@@ -3307,6 +3308,7 @@ Released 2018-09-13
 [`for_kv_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_kv_map
 [`for_loops_over_fallibles`]: https://rust-lang.github.io/rust-clippy/master/index.html#for_loops_over_fallibles
 [`forget_copy`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_copy
+[`forget_non_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_non_drop
 [`forget_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#forget_ref
 [`format_in_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#format_in_format_args
 [`from_iter_instead_of_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#from_iter_instead_of_collect

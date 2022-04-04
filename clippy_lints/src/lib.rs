@@ -376,7 +376,6 @@ mod transmuting_null;
 mod try_err;
 mod types;
 mod undocumented_unsafe_blocks;
-mod undropped_manually_drops;
 mod unicode;
 mod uninit_vec;
 mod unit_hash;
@@ -813,7 +812,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
-    store.register_late_pass(|| Box::new(undropped_manually_drops::UndroppedManuallyDrops));
     store.register_late_pass(|| Box::new(strings::StrToString));
     store.register_late_pass(|| Box::new(strings::StringToString));
     store.register_late_pass(|| Box::new(zero_sized_map_values::ZeroSizedMapValues));
