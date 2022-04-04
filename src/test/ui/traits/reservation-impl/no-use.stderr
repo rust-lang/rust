@@ -6,8 +6,7 @@ LL |     <() as MyTrait>::foo(&());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the following implementations were found:
-             <() as MyTrait>
+   = help: the trait `MyTrait` is implemented for `()`
 
 error: aborting due to previous error
 

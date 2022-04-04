@@ -4,8 +4,7 @@ error[E0277]: the trait bound `A<{_: usize}>: Bar<{_: usize}>` is not satisfied
 LL |     let _ = A;
    |             ^ the trait `Bar<{_: usize}>` is not implemented for `A<{_: usize}>`
    |
-   = help: the following implementations were found:
-             <A<7_usize> as Bar<N>>
+   = help: the trait `Bar<N>` is implemented for `A<7_usize>`
 note: required by a bound in `A`
   --> $DIR/unused-substs-1.rs:9:11
    |

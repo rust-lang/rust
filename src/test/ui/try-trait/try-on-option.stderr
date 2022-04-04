@@ -10,6 +10,7 @@ LL | | }
    | |_- this function returns a `Result`
    |
    = help: the trait `FromResidual<Option<Infallible>>` is not implemented for `Result<u32, ()>`
+   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
 
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option.rs:11:6
