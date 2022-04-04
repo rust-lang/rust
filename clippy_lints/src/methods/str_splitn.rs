@@ -1,36 +1,77 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{is_diag_item_method, match_def_path, paths};
+use clippy_utils::{is_diag_item_method, match_def_path, meets_msrv, msrvs, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, Node, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, adjustment::Adjust};
+use rustc_middle::ty;
+use rustc_semver::RustcVersion;
 use rustc_span::{symbol::sym, Span, SyntaxContext};
 
-use super::MANUAL_SPLIT_ONCE;
+use super::{MANUAL_SPLIT_ONCE, NEEDLESS_SPLITN};
 
-pub(super) fn check_manual_split_once(
+pub(super) fn check(
     cx: &LateContext<'_>,
     method_name: &str,
     expr: &Expr<'_>,
     self_arg: &Expr<'_>,
     pat_arg: &Expr<'_>,
+    count: u128,
+    msrv: Option<&RustcVersion>,
 ) {
-    if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
+    if count < 2 || !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
         return;
     }
 
     let ctxt = expr.span.ctxt();
-    let (method_name, msg, reverse) = if method_name == "splitn" {
-        ("split_once", "manual implementation of `split_once`", false)
-    } else {
-        ("rsplit_once", "manual implementation of `rsplit_once`", true)
+    let Some(usage) = parse_iter_usage(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id)) else { return };
+
+    let needless = match usage.kind {
+        IterUsageKind::Nth(n) => count > n + 1,
+        IterUsageKind::NextTuple => count > 2,
     };
-    let usage = match parse_iter_usage(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id), reverse) {
-        Some(x) => x,
-        None => return,
+
+    if needless {
+        let mut app = Applicability::MachineApplicable;
+        let (r, message) = if method_name == "splitn" {
+            ("", "unnecessary use of `splitn`")
+        } else {
+            ("r", "unnecessary use of `rsplitn`")
+        };
+
+        span_lint_and_sugg(
+            cx,
+            NEEDLESS_SPLITN,
+            expr.span,
+            message,
+            "try this",
+            format!(
+                "{}.{r}split({})",
+                snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0,
+                snippet_with_context(cx, pat_arg.span, ctxt, "..", &mut app).0,
+            ),
+            app,
+        );
+    } else if count == 2 && meets_msrv(msrv, &msrvs::STR_SPLIT_ONCE) {
+        check_manual_split_once(cx, method_name, expr, self_arg, pat_arg, &usage);
+    }
+}
+
+fn check_manual_split_once(
+    cx: &LateContext<'_>,
+    method_name: &str,
+    expr: &Expr<'_>,
+    self_arg: &Expr<'_>,
+    pat_arg: &Expr<'_>,
+    usage: &IterUsage,
+) {
+    let ctxt = expr.span.ctxt();
+    let (msg, reverse) = if method_name == "splitn" {
+        ("manual implementation of `split_once`", false)
+    } else {
+        ("manual implementation of `rsplit_once`", true)
     };
 
     let mut app = Applicability::MachineApplicable;
@@ -39,77 +80,36 @@ pub(super) fn check_manual_split_once(
 
     let sugg = match usage.kind {
         IterUsageKind::NextTuple => {
-            format!("{}.{}({})", self_snip, method_name, pat_snip)
-        },
-        IterUsageKind::RNextTuple => format!("{}.{}({}).map(|(x, y)| (y, x))", self_snip, method_name, pat_snip),
-        IterUsageKind::Next | IterUsageKind::Second => {
-            let self_deref = {
-                let adjust = cx.typeck_results().expr_adjustments(self_arg);
-                if adjust.len() < 2 {
-                    String::new()
-                } else if cx.typeck_results().expr_ty(self_arg).is_box()
-                    || adjust
-                        .iter()
-                        .any(|a| matches!(a.kind, Adjust::Deref(Some(_))) || a.target.is_box())
-                {
-                    format!("&{}", "*".repeat(adjust.len().saturating_sub(1)))
-                } else {
-                    "*".repeat(adjust.len().saturating_sub(2))
-                }
-            };
-            if matches!(usage.kind, IterUsageKind::Next) {
-                match usage.unwrap_kind {
-                    Some(UnwrapKind::Unwrap) => {
-                        if reverse {
-                            format!("{}.{}({}).unwrap().0", self_snip, method_name, pat_snip)
-                        } else {
-                            format!(
-                                "{}.{}({}).map_or({}{}, |x| x.0)",
-                                self_snip, method_name, pat_snip, self_deref, &self_snip
-                            )
-                        }
-                    },
-                    Some(UnwrapKind::QuestionMark) => {
-                        format!(
-                            "{}.{}({}).map_or({}{}, |x| x.0)",
-                            self_snip, method_name, pat_snip, self_deref, &self_snip
-                        )
-                    },
-                    None => {
-                        format!(
-                            "Some({}.{}({}).map_or({}{}, |x| x.0))",
-                            &self_snip, method_name, pat_snip, self_deref, &self_snip
-                        )
-                    },
-                }
+            if reverse {
+                format!("{self_snip}.rsplit_once({pat_snip}).map(|(x, y)| (y, x))")
             } else {
-                match usage.unwrap_kind {
-                    Some(UnwrapKind::Unwrap) => {
-                        if reverse {
-                            // In this case, no better suggestion is offered.
-                            return;
-                        }
-                        format!("{}.{}({}).unwrap().1", self_snip, method_name, pat_snip)
-                    },
-                    Some(UnwrapKind::QuestionMark) => {
-                        format!("{}.{}({})?.1", self_snip, method_name, pat_snip)
-                    },
-                    None => {
-                        format!("{}.{}({}).map(|x| x.1)", self_snip, method_name, pat_snip)
-                    },
-                }
+                format!("{self_snip}.split_once({pat_snip})")
             }
         },
+        IterUsageKind::Nth(1) => {
+            let (r, field) = if reverse { ("r", 0) } else { ("", 1) };
+
+            match usage.unwrap_kind {
+                Some(UnwrapKind::Unwrap) => {
+                    format!("{self_snip}.{r}split_once({pat_snip}).unwrap().{field}")
+                },
+                Some(UnwrapKind::QuestionMark) => {
+                    format!("{self_snip}.{r}split_once({pat_snip})?.{field}")
+                },
+                None => {
+                    format!("{self_snip}.{r}split_once({pat_snip}).map(|x| x.{field})")
+                },
+            }
+        },
+        IterUsageKind::Nth(_) => return,
     };
 
     span_lint_and_sugg(cx, MANUAL_SPLIT_ONCE, usage.span, msg, "try this", sugg, app);
 }
 
 enum IterUsageKind {
-    Next,
-    Second,
+    Nth(u128),
     NextTuple,
-    RNextTuple,
 }
 
 enum UnwrapKind {
@@ -128,7 +128,6 @@ fn parse_iter_usage<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
     mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
-    reverse: bool,
 ) -> Option<IterUsage> {
     let (kind, span) = match iter.next() {
         Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
@@ -141,13 +140,7 @@ fn parse_iter_usage<'tcx>(
             let iter_id = cx.tcx.get_diagnostic_item(sym::Iterator)?;
 
             match (name.ident.as_str(), args) {
-                ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                    if reverse {
-                        (IterUsageKind::Second, e.span)
-                    } else {
-                        (IterUsageKind::Next, e.span)
-                    }
-                },
+                ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => (IterUsageKind::Nth(0), e.span),
                 ("next_tuple", []) => {
                     return if_chain! {
                         if match_def_path(cx, did, &paths::ITERTOOLS_NEXT_TUPLE);
@@ -157,7 +150,7 @@ fn parse_iter_usage<'tcx>(
                         if subs.len() == 2;
                         then {
                             Some(IterUsage {
-                                kind: if reverse { IterUsageKind::RNextTuple } else { IterUsageKind::NextTuple },
+                                kind: IterUsageKind::NextTuple,
                                 span: e.span,
                                 unwrap_kind: None
                             })
@@ -185,11 +178,7 @@ fn parse_iter_usage<'tcx>(
                                 }
                             }
                         };
-                        match if reverse { idx ^ 1 } else { idx } {
-                            0 => (IterUsageKind::Next, span),
-                            1 => (IterUsageKind::Second, span),
-                            _ => return None,
-                        }
+                        (IterUsageKind::Nth(idx), span)
                     } else {
                         return None;
                     }
@@ -237,87 +226,4 @@ fn parse_iter_usage<'tcx>(
         unwrap_kind,
         span,
     })
-}
-
-use super::NEEDLESS_SPLITN;
-
-pub(super) fn check_needless_splitn(
-    cx: &LateContext<'_>,
-    method_name: &str,
-    expr: &Expr<'_>,
-    self_arg: &Expr<'_>,
-    pat_arg: &Expr<'_>,
-    count: u128,
-) {
-    if !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
-        return;
-    }
-    let ctxt = expr.span.ctxt();
-    let mut app = Applicability::MachineApplicable;
-    let (reverse, message) = if method_name == "splitn" {
-        (false, "unnecessary use of `splitn`")
-    } else {
-        (true, "unnecessary use of `rsplitn`")
-    };
-    if_chain! {
-        if count >= 2;
-        if check_iter(cx, ctxt, cx.tcx.hir().parent_iter(expr.hir_id), count);
-        then {
-            span_lint_and_sugg(
-                cx,
-                NEEDLESS_SPLITN,
-                expr.span,
-                message,
-                "try this",
-                format!(
-                    "{}.{}({})",
-                    snippet_with_context(cx, self_arg.span, ctxt, "..", &mut app).0,
-                    if reverse {"rsplit"} else {"split"},
-                    snippet_with_context(cx, pat_arg.span, ctxt, "..", &mut app).0
-                ),
-                app,
-            );
-        }
-    }
-}
-
-fn check_iter<'tcx>(
-    cx: &LateContext<'tcx>,
-    ctxt: SyntaxContext,
-    mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
-    count: u128,
-) -> bool {
-    match iter.next() {
-        Some((_, Node::Expr(e))) if e.span.ctxt() == ctxt => {
-            let (name, args) = if let ExprKind::MethodCall(name, [_, args @ ..], _) = e.kind {
-                (name, args)
-            } else {
-                return false;
-            };
-            if_chain! {
-                if let Some(did) = cx.typeck_results().type_dependent_def_id(e.hir_id);
-                if let Some(iter_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-                then {
-                    match (name.ident.as_str(), args) {
-                        ("next", []) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                            return true;
-                        },
-                        ("next_tuple", []) if count > 2 => {
-                            return true;
-                        },
-                        ("nth", [idx_expr]) if cx.tcx.trait_of_item(did) == Some(iter_id) => {
-                            if let Some((Constant::Int(idx), _)) = constant(cx, cx.typeck_results(), idx_expr) {
-                                if count > idx + 1 {
-                                    return true;
-                                }
-                            }
-                        },
-                        _ =>  return false,
-                    }
-                }
-            }
-        },
-        _ => return false,
-    };
-    false
 }

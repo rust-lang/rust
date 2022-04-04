@@ -1,100 +1,88 @@
 error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:13:13
+  --> $DIR/manual_split_once.rs:14:13
    |
-LL |     let _ = "key=value".splitn(2, '=').next();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `Some("key=value".split_once('=').map_or("key=value", |x| x.0))`
+LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').unwrap().1`
    |
    = note: `-D clippy::manual-split-once` implied by `-D warnings`
 
 error: manual implementation of `split_once`
   --> $DIR/manual_split_once.rs:15:13
    |
-LL |     let _ = "key=value".splitn(2, '=').next().unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').map_or("key=value", |x| x.0)`
-
-error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:16:13
-   |
-LL |     let _ = "key=value".splitn(2, '=').nth(0).unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').map_or("key=value", |x| x.0)`
-
-error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:17:13
-   |
-LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').unwrap().1`
-
-error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:18:13
-   |
 LL |     let _ = "key=value".splitn(2, '=').skip(1).next().unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:19:18
+  --> $DIR/manual_split_once.rs:16:18
    |
 LL |     let (_, _) = "key=value".splitn(2, '=').next_tuple().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=')`
 
 error: manual implementation of `split_once`
+  --> $DIR/manual_split_once.rs:19:13
+   |
+LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').unwrap().1`
+
+error: manual implementation of `split_once`
   --> $DIR/manual_split_once.rs:22:13
    |
-LL |     let _ = s.splitn(2, '=').next().unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').map_or(&*s, |x| x.0)`
+LL |     let _ = s.splitn(2, '=').nth(1).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
   --> $DIR/manual_split_once.rs:25:13
    |
-LL |     let _ = s.splitn(2, '=').nth(0).unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').map_or(&*s, |x| x.0)`
+LL |     let _ = s.splitn(2, '=').skip(1).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').unwrap().1`
 
 error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:28:13
+  --> $DIR/manual_split_once.rs:28:17
    |
-LL |     let _ = s.splitn(2, '=').skip(0).next().unwrap();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=').map_or(*s, |x| x.0)`
+LL |         let _ = s.splitn(2, '=').nth(1)?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=')?.1`
 
 error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:31:17
+  --> $DIR/manual_split_once.rs:29:17
    |
-LL |         let _ = s.splitn(2, "key=value").next()?;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once("key=value").map_or(s, |x| x.0)`
-
-error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:32:17
-   |
-LL |         let _ = s.splitn(2, "key=value").nth(1)?;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once("key=value")?.1`
-
-error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:33:17
-   |
-LL |         let _ = s.splitn(2, "key=value").skip(1).next()?;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once("key=value")?.1`
+LL |         let _ = s.splitn(2, '=').skip(1).next()?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.split_once('=')?.1`
 
 error: manual implementation of `rsplit_once`
-  --> $DIR/manual_split_once.rs:42:13
+  --> $DIR/manual_split_once.rs:30:17
+   |
+LL |         let _ = s.rsplitn(2, '=').nth(1)?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.rsplit_once('=')?.0`
+
+error: manual implementation of `rsplit_once`
+  --> $DIR/manual_split_once.rs:31:17
+   |
+LL |         let _ = s.rsplitn(2, '=').skip(1).next()?;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.rsplit_once('=')?.0`
+
+error: manual implementation of `rsplit_once`
+  --> $DIR/manual_split_once.rs:39:13
    |
 LL |     let _ = "key=value".rsplitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".rsplit_once('=').unwrap().0`
 
 error: manual implementation of `rsplit_once`
-  --> $DIR/manual_split_once.rs:43:13
-   |
-LL |     let _ = "key=value".rsplitn(2, '=').nth(0);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".rsplit_once('=').map(|x| x.1)`
-
-error: manual implementation of `rsplit_once`
-  --> $DIR/manual_split_once.rs:44:18
+  --> $DIR/manual_split_once.rs:40:18
    |
 LL |     let (_, _) = "key=value".rsplitn(2, '=').next_tuple().unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".rsplit_once('=').map(|(x, y)| (y, x))`
 
+error: manual implementation of `rsplit_once`
+  --> $DIR/manual_split_once.rs:41:13
+   |
+LL |     let _ = s.rsplitn(2, '=').nth(1);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `s.rsplit_once('=').map(|x| x.0)`
+
 error: manual implementation of `split_once`
-  --> $DIR/manual_split_once.rs:55:13
+  --> $DIR/manual_split_once.rs:52:13
    |
 LL |     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `"key=value".split_once('=').unwrap().1`
 
-error: aborting due to 16 previous errors
+error: aborting due to 14 previous errors
 
