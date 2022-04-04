@@ -308,14 +308,16 @@ impl AnonPipe {
         }
 
         // Wait indefinitely for the result.
-        while async_result.is_none() {
+        let result = loop {
             // STEP 2: Enter an alertable state.
             // The second parameter of `SleepEx` is used to make this sleep alertable.
             c::SleepEx(c::INFINITE, c::TRUE);
-        }
+            if let Some(result) = async_result {
+                break result;
+            }
+        };
         // STEP 4: Return the result.
-        // `async_result` is always `Some` at this point.
-        let result = async_result.unwrap();
+        // `async_result` is always `Some` at this point
         match result.error {
             c::ERROR_SUCCESS => Ok(result.transfered as usize),
             error => Err(io::Error::from_raw_os_error(error as _)),
