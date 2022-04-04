@@ -443,6 +443,29 @@ impl<'tt> TtParser<'tt> {
 
         while let Some(mut mp) = self.cur_mps.pop() {
             match &self.locs[mp.idx] {
+                MatcherLoc::Token { token: t } => {
+                    // If it's a doc comment, we just ignore it and move on to the next tt in the
+                    // matcher. This is a bug, but #95267 showed that existing programs rely on
+                    // this behaviour, and changing it would require some care and a transition
+                    // period.
+                    //
+                    // If the token matches, we can just advance the parser.
+                    //
+                    // Otherwise, this match has failed, there is nothing to do, and hopefully
+                    // another mp in `cur_mps` will match.
+                    if matches!(t, Token { kind: DocComment(..), .. }) {
+                        mp.idx += 1;
+                        self.cur_mps.push(mp);
+                    } else if token_name_eq(&t, token) {
+                        mp.idx += 1;
+                        self.next_mps.push(mp);
+                    }
+                }
+                MatcherLoc::Delimited => {
+                    // Entering the delimeter is trivial.
+                    mp.idx += 1;
+                    self.cur_mps.push(mp);
+                }
                 &MatcherLoc::Sequence {
                     op,
                     num_metavar_decls,
@@ -470,37 +493,6 @@ impl<'tt> TtParser<'tt> {
                     // Try one or more matches of this sequence, by entering it.
                     mp.idx += 1;
                     self.cur_mps.push(mp);
-                }
-                MatcherLoc::MetaVarDecl { kind, .. } => {
-                    // Built-in nonterminals never start with these tokens, so we can eliminate
-                    // them from consideration. We use the span of the metavariable declaration
-                    // to determine any edition-specific matching behavior for non-terminals.
-                    if Parser::nonterminal_may_begin_with(*kind, token) {
-                        self.bb_mps.push(mp);
-                    }
-                }
-                MatcherLoc::Delimited => {
-                    // Entering the delimeter is trivial.
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
-                }
-                MatcherLoc::Token { token: t } => {
-                    // If it's a doc comment, we just ignore it and move on to the next tt in the
-                    // matcher. This is a bug, but #95267 showed that existing programs rely on
-                    // this behaviour, and changing it would require some care and a transition
-                    // period.
-                    //
-                    // If the token matches, we can just advance the parser.
-                    //
-                    // Otherwise, this match has failed, there is nothing to do, and hopefully
-                    // another mp in `cur_mps` will match.
-                    if matches!(t, Token { kind: DocComment(..), .. }) {
-                        mp.idx += 1;
-                        self.cur_mps.push(mp);
-                    } else if token_name_eq(&t, token) {
-                        mp.idx += 1;
-                        self.next_mps.push(mp);
-                    }
                 }
                 &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
                     // We are past the end of a sequence with no separator. Try ending the
@@ -539,6 +531,14 @@ impl<'tt> TtParser<'tt> {
                     // they don't permit separators. Try another repetition.
                     mp.idx = idx_first;
                     self.cur_mps.push(mp);
+                }
+                MatcherLoc::MetaVarDecl { kind, .. } => {
+                    // Built-in nonterminals never start with these tokens, so we can eliminate
+                    // them from consideration. We use the span of the metavariable declaration
+                    // to determine any edition-specific matching behavior for non-terminals.
+                    if Parser::nonterminal_may_begin_with(*kind, token) {
+                        self.bb_mps.push(mp);
+                    }
                 }
                 MatcherLoc::Eof => {
                     // We are past the matcher's end, and not in a sequence. Try to end things.
