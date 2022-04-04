@@ -27,7 +27,6 @@ Libraries
 ---------
 - [Guarantee call order for `sort_by_cached_key`][89621]
 - [Improve `Duration::try_from_secs_f32`/`f64` accuracy by directly processing exponent and mantissa][90247]
-- [Switch all libraries to the 2021 edition][92068]
 - [Make `Instant::{duration_since, elapsed, sub}` saturating and remove workarounds][89926]
 - [Change PhantomData type for `BuildHasherDefault` (and more)][92630]
 
@@ -84,7 +83,7 @@ These changes provide no direct user facing benefits, but represent significant
 improvements to the internals and overall performance of rustc
 and related tools.
 
-<!-- TODO: anything to highlight? -->
+- [Switch all libraries to the 2021 edition][92068]
 
 [83822]: https://github.com/rust-lang/rust/pull/83822
 [86374]: https://github.com/rust-lang/rust/pull/86374
