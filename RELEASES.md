@@ -29,7 +29,7 @@ Libraries
 - [Improve `Duration::try_from_secs_f32`/`f64` accuracy by directly processing exponent and mantissa][90247]
 - [Make `Instant::{duration_since, elapsed, sub}` saturating][89926]
 - [Remove non-monotonic clocks workarounds in `Instant::now`][89926]
-- [Change PhantomData type for `BuildHasherDefault` (and more)][92630]
+- [Make `BuildHasherDefault`, `iter::Empty` and `future::Pending` covariant][92630]
 
 Stabilized APIs
 ---------------
