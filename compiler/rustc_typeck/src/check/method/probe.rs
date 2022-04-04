@@ -24,7 +24,9 @@ use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{self, ParamEnvAnd, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::lev_distance::{find_best_match_for_name, lev_distance};
+use rustc_span::lev_distance::{
+    find_best_match_for_name_with_substrings, lev_distance_with_substrings,
+};
 use rustc_span::{symbol::Ident, Span, Symbol, DUMMY_SP};
 use rustc_trait_selection::autoderef::{self, Autoderef};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -1699,7 +1701,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         .iter()
                         .map(|cand| cand.name)
                         .collect::<Vec<Symbol>>();
-                    find_best_match_for_name(&names, self.method_name.unwrap().name, None)
+                    find_best_match_for_name_with_substrings(
+                        &names,
+                        self.method_name.unwrap().name,
+                        None,
+                    )
                 }
                 .unwrap();
                 Ok(applicable_close_candidates.into_iter().find(|method| method.name == best_name))
@@ -1856,7 +1862,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         if x.kind.namespace() != Namespace::ValueNS {
                             return false;
                         }
-                        match lev_distance(name.as_str(), x.name.as_str(), max_dist) {
+                        match lev_distance_with_substrings(name.as_str(), x.name.as_str(), max_dist)
+                        {
                             Some(d) => d > 0,
                             None => false,
                         }
