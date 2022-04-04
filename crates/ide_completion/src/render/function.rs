@@ -141,7 +141,7 @@ pub(super) fn add_call_parens<'b>(
                                 Some(adt) => adt
                                     .name(ctx.db)
                                     .as_text()
-                                    .map(to_lower_snake_case)
+                                    .map(|s| to_lower_snake_case(s.as_str()))
                                     .unwrap_or("_".to_string()),
                             };
                             f(&format_args!("${{{}:{}}}", index + offset, name))
