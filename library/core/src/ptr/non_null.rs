@@ -256,8 +256,10 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Gets the "address" portion of the pointer.
     ///
+    /// For more details see the equivalent method on a raw pointer, [`pointer::addr`].
+    ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// see the [`ptr` module documentation][crate::ptr].
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
@@ -272,8 +274,10 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Creates a new pointer with the given address.
     ///
+    /// For more details see the equivalent method on a raw pointer, [`pointer::with_addr`].
+    ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// see the [`ptr` module documentation][crate::ptr].
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
@@ -287,10 +291,10 @@ impl<T: ?Sized> NonNull<T> {
 
     /// Creates a new pointer by mapping `self`'s address to a new one.
     ///
-    /// This is a convenience for [`with_addr`][Self::with_addr], see that method for details.
+    /// For more details see the equivalent method on a raw pointer, [`pointer::map_addr`].
     ///
     /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// see the [`ptr` module documentation][crate::ptr].
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
