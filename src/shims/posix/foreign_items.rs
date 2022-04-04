@@ -462,7 +462,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Platform-specific shims
             _ => {
-                match this.tcx.sess.target.os.as_str() {
+                match this.tcx.sess.target.os.as_ref() {
                     "linux" => return shims::posix::linux::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                     "macos" => return shims::posix::macos::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                     _ => unreachable!(),

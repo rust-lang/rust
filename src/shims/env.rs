@@ -41,7 +41,7 @@ impl<'tcx> EnvVars<'tcx> {
         mut excluded_env_vars: Vec<String>,
         forwarded_env_vars: Vec<String>,
     ) -> InterpResult<'tcx> {
-        let target_os = ecx.tcx.sess.target.os.as_str();
+        let target_os = ecx.tcx.sess.target.os.as_ref();
         // HACK: Exclude `TERM` var to avoid terminfo trying to open the termcap file.
         // This is (a) very slow and (b) does not work on Windows.
         excluded_env_vars.push("TERM".to_owned());

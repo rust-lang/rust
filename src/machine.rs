@@ -227,7 +227,7 @@ impl MemoryExtra {
     pub fn init_extern_statics<'tcx, 'mir>(
         this: &mut MiriEvalContext<'mir, 'tcx>,
     ) -> InterpResult<'tcx> {
-        match this.tcx.sess.target.os.as_str() {
+        match this.tcx.sess.target.os.as_ref() {
             "linux" => {
                 // "environ"
                 Self::add_extern_static(

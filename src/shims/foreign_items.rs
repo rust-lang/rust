@@ -46,7 +46,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn min_align(&self, size: u64, kind: MiriMemoryKind) -> Align {
         let this = self.eval_context_ref();
         // List taken from `libstd/sys_common/alloc.rs`.
-        let min_align = match this.tcx.sess.target.arch.as_str() {
+        let min_align = match this.tcx.sess.target.arch.as_ref() {
             "x86" | "arm" | "mips" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "s390x" | "sparc64" => 16,
             arch => bug!("Unsupported target architecture: {}", arch),
@@ -695,7 +695,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // Platform-specific shims
-            _ => match this.tcx.sess.target.os.as_str() {
+            _ => match this.tcx.sess.target.os.as_ref() {
                 "linux" | "macos" => return shims::posix::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                 "windows" => return shims::windows::foreign_items::EvalContextExt::emulate_foreign_item_by_name(this, link_name, abi, args, dest, ret),
                 target => throw_unsup_format!("the target `{}` is not supported", target),
