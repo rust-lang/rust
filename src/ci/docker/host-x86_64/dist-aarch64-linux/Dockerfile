@@ -21,6 +21,10 @@ RUN sh /scripts/cross-apt-packages.sh
 COPY scripts/make3.sh /scripts/
 RUN sh /scripts/make3.sh
 
+# We need an aarch64 build of zlib for parity with x86_64.
+# See https://github.com/rust-lang/rust/pull/95545.
+RUN dpkg --add-architecture arm64 && apt-get update && apt-get install zlib1g-dev:arm64
+
 COPY scripts/crosstool-ng.sh /scripts/
 RUN sh /scripts/crosstool-ng.sh
 
