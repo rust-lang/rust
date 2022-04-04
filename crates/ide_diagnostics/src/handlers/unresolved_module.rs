@@ -39,7 +39,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedModule) -> Option<Vec<
             .map(|candidate| {
                 fix(
                     "create_module",
-                    "Create module",
+                    &format!("Create module at `{candidate}`"),
                     FileSystemEdit::CreateFile {
                         dst: AnchoredPathBuf {
                             anchor: d.decl.file_id.original_file(ctx.sema.db),
@@ -97,7 +97,7 @@ mod baz {}
                                         "create_module",
                                         QuickFix,
                                     ),
-                                    label: "Create module",
+                                    label: "Create module at `foo.rs`",
                                     group: None,
                                     target: 0..8,
                                     source_change: Some(
@@ -123,7 +123,7 @@ mod baz {}
                                         "create_module",
                                         QuickFix,
                                     ),
-                                    label: "Create module",
+                                    label: "Create module at `foo/mod.rs`",
                                     group: None,
                                     target: 0..8,
                                     source_change: Some(

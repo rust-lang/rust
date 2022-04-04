@@ -465,7 +465,7 @@ fn main() {}
         },
         json!([
             {
-                "title": "Create module",
+                "title": "Create module at `bar.rs`",
                 "kind": "quickfix",
                 "edit": {
                 "documentChanges": [
@@ -477,7 +477,7 @@ fn main() {}
                 }
             },
             {
-                "title": "Create module",
+                "title": "Create module at `bar/mod.rs`",
                 "kind": "quickfix",
                 "edit": {
                 "documentChanges": [
@@ -549,7 +549,7 @@ fn main() {{}}
         },
         json!([
             {
-                "title": "Create module",
+                "title": "Create module at `bar.rs`",
                 "kind": "quickfix",
                 "edit": {
                 "documentChanges": [
@@ -561,7 +561,7 @@ fn main() {{}}
                 }
             },
             {
-                "title": "Create module",
+                "title": "Create module at `bar/mod.rs`",
                 "kind": "quickfix",
                 "edit": {
                 "documentChanges": [
