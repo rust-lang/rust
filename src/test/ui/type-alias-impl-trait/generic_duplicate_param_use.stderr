@@ -29,10 +29,10 @@ LL |     t
    |     ^
    |
 note: constant used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:12:22
+  --> $DIR/generic_duplicate_param_use.rs:12:16
    |
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
-   |                      ^               ^
+   |                ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 
