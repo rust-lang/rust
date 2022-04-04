@@ -377,7 +377,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(panic_handler, Normal, template!(Word), WarnFollowing), // RFC 2070
 
     // Code generation:
-    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing),
+    ungated!(inline, Normal, template!(Word, List: "always|never"), FutureWarnFollowing, @only_local: true),
     ungated!(cold, Normal, template!(Word), WarnFollowing),
     ungated!(no_builtins, CrateLevel, template!(Word), WarnFollowing),
     ungated!(target_feature, Normal, template!(List: r#"enable = "name""#), DuplicatesOk),

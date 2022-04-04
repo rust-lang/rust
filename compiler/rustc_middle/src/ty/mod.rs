@@ -2201,6 +2201,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Determines whether an item is annotated with an attribute.
     pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
+        if cfg!(debug_assertions) && !did.is_local() && rustc_feature::is_builtin_only_local(attr) {
+            bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
+        }
         self.sess.contains_name(&self.get_attrs(did), attr)
     }
 
