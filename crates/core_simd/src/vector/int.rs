@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 
-use crate::simd::{LaneCount, Mask, Simd, SupportedLaneCount};
+use crate::simd::{LaneCount, Mask, Simd, SimdPartialOrd, SupportedLaneCount};
 
 /// Implements additional integer traits (Eq, Ord, Hash) on the specified vector `$name`, holding multiple `$lanes` of `$type`.
 macro_rules! impl_integer_vector {
@@ -12,13 +12,13 @@ macro_rules! impl_integer_vector {
             /// Returns true for each positive lane and false if it is zero or negative.
             #[inline]
             pub fn is_positive(self) -> Mask<$type, LANES> {
-                self.lanes_gt(Self::splat(0))
+                self.simd_gt(Self::splat(0))
             }
 
             /// Returns true for each negative lane and false if it is zero or positive.
             #[inline]
             pub fn is_negative(self) -> Mask<$type, LANES> {
-                self.lanes_lt(Self::splat(0))
+                self.simd_lt(Self::splat(0))
             }
 
             /// Returns numbers representing the sign of each lane.
