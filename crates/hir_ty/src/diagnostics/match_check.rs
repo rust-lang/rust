@@ -11,7 +11,7 @@ pub(crate) mod deconstruct_pat;
 pub(crate) mod usefulness;
 
 use hir_def::{body::Body, expr::PatId, EnumVariantId, LocalFieldId, VariantId};
-use stdx::never;
+use stdx::{always, never};
 
 use crate::{
     db::HirDatabase, infer::BindingMode, InferenceResult, Interner, Substitution, Ty, TyKind,
@@ -127,7 +127,11 @@ impl<'a> PatCtxt<'a> {
             hir_def::expr::Pat::Tuple { ref args, ellipsis } => {
                 let arity = match *ty.kind(Interner) {
                     TyKind::Tuple(arity, _) => arity,
-                    _ => panic!("unexpected type for tuple pattern: {:?}", ty),
+                    _ => {
+                        never!("unexpected type for tuple pattern: {:?}", ty);
+                        self.errors.push(PatternError::UnexpectedType);
+                        return Pat { ty: ty.clone(), kind: PatKind::Wild.into() };
+                    }
                 };
                 let subpatterns = self.lower_tuple_subpats(args, arity, ellipsis);
                 PatKind::Leaf { subpatterns }
@@ -227,11 +231,16 @@ impl<'a> PatCtxt<'a> {
             Some(variant_id) => {
                 if let VariantId::EnumVariantId(enum_variant) = variant_id {
                     let substs = match ty.kind(Interner) {
-                        TyKind::Adt(_, substs) | TyKind::FnDef(_, substs) => substs.clone(),
-                        TyKind::Error => {
+                        TyKind::Adt(_, substs) => substs.clone(),
+                        kind => {
+                            always!(
+                                matches!(kind, TyKind::FnDef(..) | TyKind::Error),
+                                "inappropriate type for def: {:?}",
+                                ty
+                            );
+                            self.errors.push(PatternError::UnexpectedType);
                             return PatKind::Wild;
                         }
-                        _ => panic!("inappropriate type for def: {:?}", ty),
                     };
                     PatKind::Variant { substs, enum_variant, subpatterns }
                 } else {
