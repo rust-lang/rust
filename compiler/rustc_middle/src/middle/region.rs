@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_macros::HashStable;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -446,10 +446,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
             ref yield_in_scope,
         } = *self;
 
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            root_body.hash_stable(hcx, hasher)
-        });
-
+        root_body.hash_stable(hcx, hasher);
         body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);
