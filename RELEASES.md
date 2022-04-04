@@ -68,7 +68,7 @@ Cargo
 
 Misc
 ----
-- [Add manifest docs fallback for tier-2 platforms.][92800]
+- [Ship docs on Tier 2 platforms by reusing the closest Tier 1 platform docs][92800]
 - [Drop rustc-docs from complete profile][93742]
 - [bootstrap: tidy up flag handling for llvm build][93918]
 
