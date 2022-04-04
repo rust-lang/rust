@@ -137,10 +137,12 @@ pub(super) fn add_call_parens<'b>(
                         }
                         None => {
                             let name = match param.ty().as_adt() {
-                                Some(adt) => {
-                                    to_lower_snake_case(&adt.name(ctx.db).as_text().unwrap())
-                                }
                                 None => "_".to_string(),
+                                Some(adt) => adt
+                                    .name(ctx.db)
+                                    .as_text()
+                                    .map(to_lower_snake_case)
+                                    .unwrap_or("_".to_string()),
                             };
                             f(&format_args!("${{{}:{}}}", index + offset, name))
                         }
