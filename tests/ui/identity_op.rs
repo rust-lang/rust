@@ -1,3 +1,5 @@
+use std::fmt::Write as _;
+
 const ONE: i64 = 1;
 const NEG_ONE: i64 = -1;
 const ZERO: i64 = 0;
@@ -7,7 +9,7 @@ struct A(String);
 impl std::ops::Shl<i32> for A {
     type Output = A;
     fn shl(mut self, other: i32) -> Self {
-        self.0.push_str(&format!("{}", other));
+        let _ = write!(self.0, "{}", other);
         self
     }
 }

@@ -231,6 +231,7 @@ mod floating_point_arithmetic;
 mod format;
 mod format_args;
 mod format_impl;
+mod format_push_string;
 mod formatting;
 mod from_over_into;
 mod from_str_radix_10;
@@ -873,6 +874,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
     store.register_late_pass(|| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     store.register_early_pass(|| Box::new(pub_use::PubUse));
+    store.register_late_pass(|| Box::new(format_push_string::FormatPushString));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
