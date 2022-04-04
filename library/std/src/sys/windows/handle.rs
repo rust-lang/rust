@@ -192,7 +192,7 @@ impl Handle {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        unsafe { self.synchronous_write(&buf, None) }
+        self.synchronous_write(&buf, None)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
@@ -205,7 +205,7 @@ impl Handle {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        unsafe { self.synchronous_write(&buf, Some(offset)) }
+        self.synchronous_write(&buf, Some(offset))
     }
 
     pub fn try_clone(&self) -> io::Result<Self> {
@@ -276,25 +276,27 @@ impl Handle {
     /// See #81357.
     ///
     /// If `offset` is `None` then the current file position is used.
-    unsafe fn synchronous_write(&self, buf: &[u8], offset: Option<u64>) -> io::Result<usize> {
+    fn synchronous_write(&self, buf: &[u8], offset: Option<u64>) -> io::Result<usize> {
         let mut io_status = c::IO_STATUS_BLOCK::default();
 
         // The length is clamped at u32::MAX.
         let len = cmp::min(buf.len(), c::DWORD::MAX as usize) as c::DWORD;
-        let status = c::NtWriteFile(
-            self.as_handle(),
-            ptr::null_mut(),
-            None,
-            ptr::null_mut(),
-            &mut io_status,
-            buf.as_ptr(),
-            len,
-            offset.map(|n| n as _).as_ref(),
-            None,
-        );
+        let status = unsafe {
+            c::NtWriteFile(
+                self.as_handle(),
+                ptr::null_mut(),
+                None,
+                ptr::null_mut(),
+                &mut io_status,
+                buf.as_ptr(),
+                len,
+                offset.map(|n| n as _).as_ref(),
+                None,
+            )
+        };
         match status {
             // If the operation has not completed then abort the process.
-            // Doing otherwise means that the buffer maybe read and the stack
+            // Doing otherwise means that the buffer may be read and the stack
             // written to after this function returns.
             c::STATUS_PENDING => {
                 eprintln!("I/O error: operation failed to complete synchronously");
@@ -305,7 +307,7 @@ impl Handle {
             status if c::nt_success(status) => Ok(io_status.Information),
 
             status => {
-                let error = c::RtlNtStatusToDosError(status);
+                let error = unsafe { c::RtlNtStatusToDosError(status) };
                 Err(io::Error::from_raw_os_error(error as _))
             }
         }

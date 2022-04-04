@@ -986,13 +986,6 @@ extern "system" {
         lpOverlapped: LPOVERLAPPED,
         lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
     ) -> BOOL;
-    pub fn WriteFile(
-        hFile: BorrowedHandle<'_>,
-        lpBuffer: LPVOID,
-        nNumberOfBytesToWrite: DWORD,
-        lpNumberOfBytesWritten: LPDWORD,
-        lpOverlapped: LPOVERLAPPED,
-    ) -> BOOL;
     pub fn WriteFileEx(
         hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
