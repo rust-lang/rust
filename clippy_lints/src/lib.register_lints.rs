@@ -129,6 +129,7 @@ store.register_lints(&[
     duration_subsec::DURATION_SUBSEC,
     else_if_without_else::ELSE_IF_WITHOUT_ELSE,
     empty_enum::EMPTY_ENUM,
+    empty_structs_with_brackets::EMPTY_STRUCTS_WITH_BRACKETS,
     entry::MAP_ENTRY,
     enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
     enum_variants::ENUM_VARIANT_NAMES,

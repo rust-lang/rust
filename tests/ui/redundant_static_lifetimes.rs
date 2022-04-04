@@ -3,7 +3,7 @@
 #![allow(unused)]
 
 #[derive(Debug)]
-struct Foo {}
+struct Foo;
 
 const VAR_ONE: &'static str = "Test constant #1"; // ERROR Consider removing 'static.
 

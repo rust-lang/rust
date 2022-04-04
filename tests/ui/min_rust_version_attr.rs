@@ -99,7 +99,7 @@ pub fn manual_range_contains() {
 }
 
 pub fn use_self() {
-    struct Foo {}
+    struct Foo;
 
     impl Foo {
         fn new() -> Foo {
