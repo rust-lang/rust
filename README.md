@@ -297,7 +297,8 @@ environment variable:
 * `-Zmiri-strict-provenance` enables [strict
   provenance](https://github.com/rust-lang/rust/issues/95228) checking in Miri. This means that
   casting an integer to a pointer yields a result with 'invalid' provenance, i.e., with provenance
-  that cannot be used for any memory access. Also implies `-Zmiri-tag-raw-pointers`.
+  that cannot be used for any memory access. Also implies `-Zmiri-tag-raw-pointers` and
+  `-Zmiri-check-number-validity`.
 * `-Zmiri-symbolic-alignment-check` makes the alignment check more strict.  By
   default, alignment is checked by casting the pointer to an integer, and making
   sure that is a multiple of the alignment.  This can lead to cases where a
