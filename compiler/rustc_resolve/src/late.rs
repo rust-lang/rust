@@ -2297,21 +2297,19 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         let prev = self.diagnostic_metadata.current_block_could_be_bare_struct_literal.take();
         if let (true, [Stmt { kind: StmtKind::Expr(expr), .. }]) =
             (block.could_be_bare_literal, &block.stmts[..])
+            && let ExprKind::Type(..) = expr.kind
         {
-            if let ExprKind::Type(..) = expr.kind {
-                self.diagnostic_metadata.current_block_could_be_bare_struct_literal =
-                    Some(block.span);
-            }
+            self.diagnostic_metadata.current_block_could_be_bare_struct_literal =
+            Some(block.span);
         }
         // Descend into the block.
         for stmt in &block.stmts {
-            if let StmtKind::Item(ref item) = stmt.kind {
-                if let ItemKind::MacroDef(..) = item.kind {
-                    num_macro_definition_ribs += 1;
-                    let res = self.r.local_def_id(item.id).to_def_id();
-                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
-                    self.label_ribs.push(Rib::new(MacroDefinition(res)));
-                }
+            if let StmtKind::Item(ref item) = stmt.kind
+                && let ItemKind::MacroDef(..) = item.kind {
+                num_macro_definition_ribs += 1;
+                let res = self.r.local_def_id(item.id).to_def_id();
+                self.ribs[ValueNS].push(Rib::new(MacroDefinition(res)));
+                self.label_ribs.push(Rib::new(MacroDefinition(res)));
             }
 
             self.visit_stmt(stmt);
