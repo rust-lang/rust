@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
 use crate::char::EscapeDebugExtArgs;
 use crate::marker::PhantomData;
 use crate::mem;
@@ -2397,6 +2397,13 @@ impl<T: ?Sized + Debug> Debug for RefMut<'_, T> {
 impl<T: ?Sized> Debug for UnsafeCell<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         f.debug_struct("UnsafeCell").finish_non_exhaustive()
+    }
+}
+
+#[unstable(feature = "sync_unsafe_cell", issue = "95439")]
+impl<T: ?Sized> Debug for SyncUnsafeCell<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.debug_struct("SyncUnsafeCell").finish_non_exhaustive()
     }
 }
 
