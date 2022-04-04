@@ -2,7 +2,7 @@
 //! another compatible command (f.x. clippy) in a background thread and provide
 //! LSP diagnostics based on the output of the command.
 
-use std::{fmt, io, process::Command, time::Duration};
+use std::{fmt, io, process::Command, time::Duration, str::from_utf8};
 
 use crossbeam_channel::{never, select, unbounded, Receiver, Sender};
 use paths::AbsPathBuf;
@@ -329,8 +329,8 @@ impl CargoActor {
             Ok(output) if output.status.success() => Ok(()),
             Ok(output)  => {
                 Err(io::Error::new(io::ErrorKind::Other, format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})\nMake sure you have `cargo clippy` installed and updated.",
-                    output.status
+                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})\nCargo's stderr output:\n{}",
+                    output.status, from_utf8(&output.stderr).unwrap_or("(Error: Could not fetch Cargo's stderr output)")
                 )))
             }
             Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
