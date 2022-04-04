@@ -585,16 +585,17 @@ where
 impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
+        if !self.finished {
             self.finished = true;
-            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
-            unsafe {
-                let string = self.matcher.haystack().get_unchecked(self.start..self.end);
-                Some(string)
+
+            if self.allow_trailing_empty || self.end - self.start > 0 {
+                // SAFETY: `self.start` and `self.end` always lie on unicode boundaries.
+                let string = unsafe { self.matcher.haystack().get_unchecked(self.start..self.end) };
+                return Some(string);
             }
-        } else {
-            None
         }
+
+        None
     }
 
     #[inline]
