@@ -299,8 +299,7 @@ impl Handle {
             // Doing otherwise means that the buffer may be read and the stack
             // written to after this function returns.
             c::STATUS_PENDING => {
-                eprintln!("I/O error: operation failed to complete synchronously");
-                crate::process::abort();
+                rtabort!("I/O error: operation failed to complete synchronously");
             }
 
             // Success!
