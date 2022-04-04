@@ -510,7 +510,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
         let target = &this.tcx.sess.target;
         let target_os = &target.os;
-        let last_error = if target.families.contains(&"unix".to_owned()) {
+        let last_error = if target.families.iter().any(|f| f == "unix") {
             this.eval_libc(match err_kind {
                 ConnectionRefused => "ECONNREFUSED",
                 ConnectionReset => "ECONNRESET",
@@ -534,7 +534,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     )
                 }
             })?
-        } else if target.families.contains(&"windows".to_owned()) {
+        } else if target.families.iter().any(|f| f == "windows") {
             // FIXME: we have to finish implementing the Windows equivalent of this.
             this.eval_windows(
                 "c",
