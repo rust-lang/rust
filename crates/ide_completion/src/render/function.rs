@@ -3,7 +3,7 @@
 use hir::{db::HirDatabase, AsAssocItem, HirDisplay};
 use ide_db::{SnippetCap, SymbolKind};
 use itertools::Itertools;
-use stdx::format_to;
+use stdx::{format_to, to_lower_snake_case};
 use syntax::SmolStr;
 
 use crate::{
@@ -135,7 +135,17 @@ pub(super) fn add_call_parens<'b>(
                             let ref_ = ref_of_param(ctx, text, param.ty());
                             f(&format_args!("${{{}:{}{}}}", index + offset, ref_, text))
                         }
-                        None => f(&format_args!("${{{}:_}}", index + offset,)),
+                        None => {
+                            let name = match param.ty().as_adt() {
+                                None => "_".to_string(),
+                                Some(adt) => adt
+                                    .name(ctx.db)
+                                    .as_text()
+                                    .map(|s| to_lower_snake_case(s.as_str()))
+                                    .unwrap_or_else(|| "_".to_string()),
+                            };
+                            f(&format_args!("${{{}:{}}}", index + offset, name))
+                        }
                     }
                 });
             match self_param {
@@ -515,6 +525,39 @@ fn take_mutably(mut x: &i32) {}
 
 fn main() {
     take_mutably(${1:x})$0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn complete_pattern_args_with_type_name_if_adt() {
+        check_edit(
+            "qux",
+            r#"
+struct Foo {
+    bar: i32
+}
+
+fn qux(Foo { bar }: Foo) {
+    println!("{}", bar);
+}
+
+fn main() {
+  qu$0
+}
+"#,
+            r#"
+struct Foo {
+    bar: i32
+}
+
+fn qux(Foo { bar }: Foo) {
+    println!("{}", bar);
+}
+
+fn main() {
+  qux(${1:foo})$0
 }
 "#,
         );
