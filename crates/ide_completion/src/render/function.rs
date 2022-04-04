@@ -142,7 +142,7 @@ pub(super) fn add_call_parens<'b>(
                                     .name(ctx.db)
                                     .as_text()
                                     .map(|s| to_lower_snake_case(s.as_str()))
-                                    .unwrap_or("_".to_string()),
+                                    .unwrap_or_else(|| "_".to_string()),
                             };
                             f(&format_args!("${{{}:{}}}", index + offset, name))
                         }
