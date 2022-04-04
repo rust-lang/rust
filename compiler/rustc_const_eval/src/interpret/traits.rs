@@ -32,7 +32,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let vtable_allocation = self.tcx.vtable_allocation((ty, poly_trait_ref));
 
-        let vtable_ptr = self.memory.global_base_pointer(Pointer::from(vtable_allocation))?;
+        let vtable_ptr = self.global_base_pointer(Pointer::from(vtable_allocation))?;
 
         Ok(vtable_ptr.into())
     }
@@ -48,11 +48,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let ptr_size = self.pointer_size();
         let vtable_slot = vtable.offset(ptr_size * idx, self)?;
         let vtable_slot = self
-            .memory
-            .get(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
+            .get_ptr_alloc(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
         let fn_ptr = self.scalar_to_ptr(vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?);
-        self.memory.get_fn(fn_ptr)
+        self.get_ptr_fn(fn_ptr)
     }
 
     /// Returns the drop fn instance as well as the actual dynamic type.
@@ -63,8 +62,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let pointer_size = self.pointer_size();
         // We don't care about the pointee type; we just want a pointer.
         let vtable = self
-            .memory
-            .get(
+            .get_ptr_alloc(
                 vtable,
                 pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES.len()).unwrap(),
                 self.tcx.data_layout.pointer_align.abi,
@@ -77,7 +75,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
-        let drop_instance = self.memory.get_fn(self.scalar_to_ptr(drop_fn))?.as_instance()?;
+        let drop_instance = self.get_ptr_fn(self.scalar_to_ptr(drop_fn))?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
         let fn_sig = drop_instance.ty(*self.tcx, self.param_env).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig);
@@ -99,8 +97,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
         // the size, and the align (which we read below).
         let vtable = self
-            .memory
-            .get(
+            .get_ptr_alloc(
                 vtable,
                 pointer_size * u64::try_from(COMMON_VTABLE_ENTRIES.len()).unwrap(),
                 self.tcx.data_layout.pointer_align.abi,
@@ -132,8 +129,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let vtable_slot = vtable.offset(pointer_size * idx, self)?;
         let new_vtable = self
-            .memory
-            .get(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
+            .get_ptr_alloc(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
 
         let new_vtable = self.scalar_to_ptr(new_vtable.read_ptr_sized(Size::ZERO)?.check_init()?);
