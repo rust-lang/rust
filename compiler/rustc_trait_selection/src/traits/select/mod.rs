@@ -1025,11 +1025,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.evaluation_cache.get(&param_env.and(trait_pred), tcx) {
+            if let Some(res) = tcx.evaluation_cache.get(&(param_env, trait_pred), tcx) {
                 return Some(res);
             }
         }
-        self.infcx.evaluation_cache.get(&param_env.and(trait_pred), tcx)
+        self.infcx.evaluation_cache.get(&(param_env, trait_pred), tcx)
     }
 
     fn insert_evaluation_cache(
@@ -1060,13 +1060,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME: Due to #50507 this overwrites the different values
                 // This should be changed to use HashMapExt::insert_same
                 // when that is fixed
-                self.tcx().evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
+                self.tcx().evaluation_cache.insert((param_env, trait_pred), dep_node, result);
                 return;
             }
         }
 
         debug!(?trait_pred, ?result, "insert_evaluation_cache");
-        self.infcx.evaluation_cache.insert(param_env.and(trait_pred), dep_node, result);
+        self.infcx.evaluation_cache.insert((param_env, trait_pred), dep_node, result);
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -1275,11 +1275,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         pred.remap_constness(tcx, &mut param_env);
 
         if self.can_use_global_caches(param_env) {
-            if let Some(res) = tcx.selection_cache.get(&param_env.and(pred), tcx) {
+            if let Some(res) = tcx.selection_cache.get(&(param_env, pred), tcx) {
                 return Some(res);
             }
         }
-        self.infcx.selection_cache.get(&param_env.and(pred), tcx)
+        self.infcx.selection_cache.get(&(param_env, pred), tcx)
     }
 
     /// Determines whether can we safely cache the result
@@ -1340,14 +1340,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 if !candidate.needs_infer() {
                     debug!(?pred, ?candidate, "insert_candidate_cache global");
                     // This may overwrite the cache with the same value.
-                    tcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
+                    tcx.selection_cache.insert((param_env, pred), dep_node, candidate);
                     return;
                 }
             }
         }
 
         debug!(?pred, ?candidate, "insert_candidate_cache local");
-        self.infcx.selection_cache.insert(param_env.and(pred), dep_node, candidate);
+        self.infcx.selection_cache.insert((param_env, pred), dep_node, candidate);
     }
 
     /// Matches a predicate against the bounds of its self type.
