@@ -462,16 +462,17 @@ impl<T: ?Sized> *const T {
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [offset][pointer::offset] on it. See that method for documentation
     /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const unsafe fn byte_offset(self, count: isize) -> Self
-    where
-        T: Sized,
-    {
+    pub const unsafe fn byte_offset(self, count: isize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `offset`.
-        unsafe { self.cast::<u8>().offset(count).cast::<T>() }
+        let this = unsafe { self.cast::<u8>().offset(count).cast::<()>() };
+        from_raw_parts::<T>(this, metadata(self))
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -543,15 +544,15 @@ impl<T: ?Sized> *const T {
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [wrapping_offset][pointer::wrapping_offset] on it. See that method
     /// for documentation.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const fn wrapping_byte_offset(self, count: isize) -> Self
-    where
-        T: Sized,
-    {
-        self.cast::<u8>().wrapping_offset(count).cast::<T>()
+    pub const fn wrapping_byte_offset(self, count: isize) -> Self {
+        from_raw_parts::<T>(self.cast::<u8>().wrapping_offset(count).cast::<()>(), metadata(self))
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -654,13 +655,13 @@ impl<T: ?Sized> *const T {
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [offset_from][pointer::offset_from] on it. See that method for
     /// documentation and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation considers only the data pointers,
+    /// ignoring the metadata.
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const unsafe fn byte_offset_from(self, origin: *const T) -> isize
-    where
-        T: Sized,
-    {
+    pub const unsafe fn byte_offset_from(self, origin: *const T) -> isize {
         // SAFETY: the caller must uphold the safety contract for `offset_from`.
         unsafe { self.cast::<u8>().offset_from(origin.cast::<u8>()) }
     }
@@ -874,16 +875,17 @@ impl<T: ?Sized> *const T {
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [add][pointer::add] on it. See that method for documentation
     /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const unsafe fn byte_add(self, count: usize) -> Self
-    where
-        T: Sized,
-    {
+    pub const unsafe fn byte_add(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `add`.
-        unsafe { self.cast::<u8>().add(count).cast::<T>() }
+        let this = unsafe { self.cast::<u8>().add(count).cast::<()>() };
+        from_raw_parts::<T>(this, metadata(self))
     }
 
     /// Calculates the offset from a pointer (convenience for
@@ -958,16 +960,17 @@ impl<T: ?Sized> *const T {
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [sub][pointer::sub] on it. See that method for documentation
     /// and safety requirements.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const unsafe fn byte_sub(self, count: usize) -> Self
-    where
-        T: Sized,
-    {
+    pub const unsafe fn byte_sub(self, count: usize) -> Self {
         // SAFETY: the caller must uphold the safety contract for `sub`.
-        unsafe { self.cast::<u8>().sub(count).cast::<T>() }
+        let this = unsafe { self.cast::<u8>().sub(count).cast::<()>() };
+        from_raw_parts::<T>(this, metadata(self))
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1039,15 +1042,15 @@ impl<T: ?Sized> *const T {
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [wrapping_add][pointer::wrapping_add] on it. See that method for documentation.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const fn wrapping_byte_add(self, count: usize) -> Self
-    where
-        T: Sized,
-    {
-        self.cast::<u8>().wrapping_add(count).cast::<T>()
+    pub const fn wrapping_byte_add(self, count: usize) -> Self {
+        from_raw_parts::<T>(self.cast::<u8>().wrapping_add(count).cast::<()>(), metadata(self))
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
@@ -1119,15 +1122,15 @@ impl<T: ?Sized> *const T {
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
     /// using [wrapping_sub][pointer::wrapping_sub] on it. See that method for documentation.
+    ///
+    /// For non-`Sized` pointees this operation changes only the data pointer,
+    /// leaving the metadata untouched.
     #[must_use]
     #[inline(always)]
     #[unstable(feature = "pointer_byte_offsets", issue = "none")]
     #[rustc_const_unstable(feature = "const_pointer_byte_offsets", issue = "none")]
-    pub const fn wrapping_byte_sub(self, count: usize) -> Self
-    where
-        T: Sized,
-    {
-        self.cast::<u8>().wrapping_sub(count).cast::<T>()
+    pub const fn wrapping_byte_sub(self, count: usize) -> Self {
+        from_raw_parts::<T>(self.cast::<u8>().wrapping_sub(count).cast::<()>(), metadata(self))
     }
 
     /// Reads the value from `self` without moving it. This leaves the
@@ -1303,21 +1306,22 @@ impl<T: ?Sized> *const T {
 
     /// Returns whether the pointer is aligned to `align`.
     ///
+    /// For non-`Sized` pointees this operation considers only the data pointer,
+    /// ignoring the metadata.
+    ///
     /// # Panics
     ///
     /// The function panics if `align` is not a power-of-two (this includes 0).
     #[must_use]
     #[inline]
     #[unstable(feature = "pointer_is_aligned", issue = "none")]
-    pub fn is_aligned_to(self, align: usize) -> bool
-    where
-        T: Sized,
-    {
+    pub fn is_aligned_to(self, align: usize) -> bool {
         if !align.is_power_of_two() {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        self.addr() % align == 0
+        // Cast is needed for `T: !Sized`
+        self.cast::<u8>().addr() % align == 0
     }
 }
 
