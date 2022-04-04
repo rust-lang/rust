@@ -18,9 +18,9 @@ fn main() {
             if matches.is_present("print-only") {
                 update_lints::print_lints();
             } else if matches.is_present("check") {
-                update_lints::run(update_lints::UpdateMode::Check);
+                update_lints::update(update_lints::UpdateMode::Check);
             } else {
-                update_lints::run(update_lints::UpdateMode::Change);
+                update_lints::update(update_lints::UpdateMode::Change);
             }
         },
         ("new_lint", Some(matches)) => {
@@ -30,7 +30,7 @@ fn main() {
                 matches.value_of("category"),
                 matches.is_present("msrv"),
             ) {
-                Ok(_) => update_lints::run(update_lints::UpdateMode::Change),
+                Ok(_) => update_lints::update(update_lints::UpdateMode::Change),
                 Err(e) => eprintln!("Unable to create lint: {}", e),
             }
         },
@@ -58,6 +58,12 @@ fn main() {
         ("lint", Some(matches)) => {
             let filename = matches.value_of("filename").unwrap();
             lint::run(filename);
+        },
+        ("rename_lint", Some(matches)) => {
+            let old_name = matches.value_of("old_name").unwrap();
+            let new_name = matches.value_of("new_name").unwrap_or(old_name);
+            let uplift = matches.is_present("uplift");
+            update_lints::rename(old_name, new_name, uplift);
         },
         _ => {},
     }
@@ -230,6 +236,27 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                     Arg::with_name("filename")
                         .required(true)
                         .help("The path to a file to lint"),
+                ),
+        )
+        .subcommand(
+            SubCommand::with_name("rename_lint")
+                .about("Renames the given lint")
+                .arg(
+                    Arg::with_name("old_name")
+                        .index(1)
+                        .required(true)
+                        .help("The name of the lint to rename"),
+                )
+                .arg(
+                    Arg::with_name("new_name")
+                        .index(2)
+                        .required_unless("uplift")
+                        .help("The new name of the lint"),
+                )
+                .arg(
+                    Arg::with_name("uplift")
+                        .long("uplift")
+                        .help("This lint will be uplifted into rustc"),
                 ),
         )
         .get_matches()
