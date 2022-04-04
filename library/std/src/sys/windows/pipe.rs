@@ -282,7 +282,7 @@ impl AnonPipe {
         }
 
         // STEP 3: The callback.
-        unsafe extern "C" fn callback(
+        unsafe extern "system" fn callback(
             dwErrorCode: u32,
             dwNumberOfBytesTransfered: u32,
             lpOverlapped: *mut c::OVERLAPPED,

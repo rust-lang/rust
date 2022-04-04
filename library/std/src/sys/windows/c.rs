@@ -326,7 +326,7 @@ impl Default for IO_STATUS_BLOCK {
     }
 }
 
-pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "C" fn(
+pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
     dwErrorCode: DWORD,
     dwNumberOfBytesTransfered: DWORD,
     lpOverlapped: *mut OVERLAPPED,
