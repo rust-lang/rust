@@ -782,6 +782,7 @@ symbols! {
         integer_: "integer",
         integral,
         intel,
+        internal_debug_from_slices,
         into_future,
         into_iter,
         intra_doc_pointers,

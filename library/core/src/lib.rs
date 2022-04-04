@@ -183,6 +183,7 @@
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
+#![feature(let_else)]
 #![feature(link_llvm_intrinsics)]
 #![feature(min_specialization)]
 #![feature(mixed_integer_ops)]

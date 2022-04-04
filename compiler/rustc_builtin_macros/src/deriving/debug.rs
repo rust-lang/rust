@@ -6,7 +6,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, Expr, LocalKind, MetaItem};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 fn make_mut_borrow(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<Expr>) -> P<Expr> {
     cx.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Mut, expr))
@@ -78,6 +78,65 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         return cx.expr_block(block);
     }
 
+    if let ast::VariantData::Struct(..) = vdata {
+        let mut name_exprs = Vec::with_capacity(fields.len() + 1);
+        let mut value_exprs = Vec::with_capacity(fields.len());
+
+        name_exprs.push(name);
+        for field in fields {
+            name_exprs.push(cx.expr_lit(
+                field.span,
+                ast::LitKind::Str(field.name.unwrap().name, ast::StrStyle::Cooked),
+            ));
+
+            // Use double indirection to make sure this works for unsized types
+            let value_ref = cx.expr_addr_of(field.span, field.self_.clone());
+            value_exprs.push(cx.expr_addr_of(field.span, value_ref));
+        }
+
+        // `let names: &'static _ = &["TheType", "field1", "field2"];`
+        let lt_static = Some(cx.lifetime_static(span));
+        let ty_static_ref = cx.ty_rptr(span, cx.ty_infer(span), lt_static, ast::Mutability::Not);
+        let names_let = cx.stmt_let_ty(
+            span,
+            false,
+            Ident::new(sym::names, span),
+            Some(ty_static_ref),
+            cx.expr_array_ref(span, name_exprs),
+        );
+
+        // `let values: &[&dyn Debug] = &[&&self.field1, &&self.field2];`
+        let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
+        let ty_dyn_debug = cx.ty(
+            span,
+            ast::TyKind::TraitObject(vec![cx.trait_bound(path_debug)], ast::TraitObjectSyntax::Dyn),
+        );
+        let ty_slice = cx.ty(
+            span,
+            ast::TyKind::Slice(cx.ty_rptr(span, ty_dyn_debug, None, ast::Mutability::Not)),
+        );
+        let values_let = cx.stmt_let_ty(
+            span,
+            false,
+            Ident::new(sym::values, span),
+            Some(cx.ty_rptr(span, ty_slice, None, ast::Mutability::Not)),
+            cx.expr_array_ref(span, value_exprs),
+        );
+
+        // `fmt::DebugStruct::internal_debug_from_slices(fmt, names, values)`
+        let fn_path_debug_internal =
+            cx.std_path(&[sym::fmt, sym::DebugStruct, sym::internal_debug_from_slices]);
+        let args = vec![
+            fmt,
+            cx.expr_ident(span, Ident::new(sym::names, span)),
+            cx.expr_ident(span, Ident::new(sym::values, span)),
+        ];
+        let expr = cx.expr_call_global(span, fn_path_debug_internal, args);
+
+        let block = cx.block(span, vec![names_let, values_let, cx.stmt_expr(expr)]);
+        return cx.expr_block(block);
+    }
+
     let builder = Ident::new(sym::debug_trait_builder, span);
     let builder_expr = cx.expr_ident(span, builder);
 
@@ -111,6 +170,9 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugTuple, sym::finish]);
         }
         ast::VariantData::Struct(..) => {
+            cx.span_bug(span, "structs should have been handled above");
+
+            /*
             // normal struct/struct variant
             let fn_path_debug_struct = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_struct]);
             let expr = cx.expr_call_global(span, fn_path_debug_struct, vec![fmt, name]);
@@ -135,6 +197,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
                 stmts.push(stmt_let_underscore(cx, span, expr));
             }
             fn_path_finish = cx.std_path(&[sym::fmt, sym::DebugStruct, sym::finish]);
+            */
         }
     }
 

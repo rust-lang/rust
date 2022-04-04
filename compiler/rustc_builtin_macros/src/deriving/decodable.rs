@@ -162,7 +162,7 @@ fn decodable_substructure(
                 cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms),
             );
             let lambda = cx.lambda(trait_span, vec![blkarg, variant], result);
-            let variant_vec = cx.expr_vec(trait_span, variants);
+            let variant_vec = cx.expr_array(trait_span, variants);
             let variant_vec = cx.expr_addr_of(trait_span, variant_vec);
             let fn_read_enum_variant_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Decoder, sym::read_enum_variant]);

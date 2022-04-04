@@ -318,7 +318,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                         proc_macro_ty_method_path(cx, custom_derive),
                         vec![
                             cx.expr_str(cd.span, cd.trait_name),
-                            cx.expr_vec_slice(
+                            cx.expr_array_ref(
                                 span,
                                 cd.attrs
                                     .iter()
@@ -365,7 +365,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                 ast::Mutability::Not,
             ),
             ast::Mutability::Not,
-            cx.expr_vec_slice(span, decls),
+            cx.expr_array_ref(span, decls),
         )
         .map(|mut i| {
             let attr = cx.meta_word(span, sym::rustc_proc_macro_decls);

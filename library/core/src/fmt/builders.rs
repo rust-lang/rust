@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 use crate::fmt::{self, Debug, Formatter};
+use crate::iter;
 
 struct PadAdapter<'buf, 'state> {
     buf: &'buf mut (dyn fmt::Write + 'buf),
@@ -101,6 +102,86 @@ pub(super) fn debug_struct_new<'a, 'b>(
 }
 
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
+    /// Makes the full debug output using the data from the provided slices.
+    ///
+    /// This is a horrible API that encodes far more in the `names` slice than
+    /// any good API ever would.  It will never be stabilized.
+    ///
+    /// But this a great way for the derive in `rustc_builtin_macros` to be able
+    /// to just have a `'static` slice for `names`, and a runtime array for
+    /// `values`, rather than needing to codegen a call for every field.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(fmt_helpers_for_derive)]
+    /// use std::fmt;
+    ///
+    /// struct Bar {
+    ///     bar: i32,
+    ///     another: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Bar {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt::DebugStruct::internal_debug_from_slices(
+    ///             fmt,
+    ///             &["Bartender", "bar", "another"],
+    ///             &[&self.bar, &self.another],
+    ///         )
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bar { bar: 10, another: "Hello World".to_string() }),
+    ///     "Bartender { bar: 10, another: \"Hello World\" }",
+    /// );
+    ///
+    /// struct Bat {
+    ///     bat: i32,
+    /// }
+    ///
+    /// impl fmt::Debug for Bat {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+    ///         fmt::DebugStruct::internal_debug_from_slices(
+    ///             fmt,
+    ///             &["Baton", "battle", ".."],
+    ///             &[&self.bat],
+    ///         )
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(
+    ///     format!("{:?}", Bat { bat: 123 }),
+    ///     "Baton { battle: 123, .. }",
+    /// );
+    /// ```
+    //#[doc(hidden)]
+    #[unstable(feature = "fmt_helpers_for_derive", issue = "none")]
+    pub fn internal_debug_from_slices(
+        fmt: &mut fmt::Formatter<'_>,
+        names: &[&str],
+        values: &[&dyn Debug],
+    ) -> fmt::Result {
+        // The derive will never call this without a name.
+        debug_assert_ne!(names.len(), 0);
+
+        let Some((struct_name, field_names)) = names.split_first() else {
+            return Err(fmt::Error);
+        };
+
+        let mut builder = fmt.debug_struct(struct_name);
+        for (n, v) in iter::zip(field_names, values) {
+            builder.field(n, v);
+        }
+
+        if field_names.len() > values.len() {
+            builder.finish_non_exhaustive()
+        } else {
+            builder.finish()
+        }
+    }
+
     /// Adds a new field to the generated struct output.
     ///
     /// # Examples
