@@ -5,6 +5,7 @@ LL |     Bar
    |     ^^^ no implementation for `Bar == (Bar, i32)`
    |
    = help: the trait `PartialEq<(Bar, i32)>` is not implemented for `Bar`
+   = help: the trait `PartialEq<(Foo, i32)>` is implemented for `Bar`
 
 error: aborting due to previous error
 

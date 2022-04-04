@@ -140,6 +140,7 @@ mod private_slice_index {
 /// Implementations of this trait have to promise that if the argument
 /// to `get_(mut_)unchecked` is a safe reference, then so is the result.
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
+#[rustc_diagnostic_item = "SliceIndex"]
 #[rustc_on_unimplemented(
     on(T = "str", label = "string indices are ranges of `usize`",),
     on(

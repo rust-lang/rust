@@ -378,6 +378,12 @@ impl Diagnostic {
         self
     }
 
+    /// Add a help message attached to this diagnostic with a customizable highlighted message.
+    pub fn highlighted_help(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
+        self.sub_with_highlights(Level::Help, msg, MultiSpan::new(), None);
+        self
+    }
+
     /// Prints the span with some help above it.
     /// This is like [`Diagnostic::help()`], but it gets its own span.
     pub fn span_help<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self {

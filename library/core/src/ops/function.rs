@@ -53,6 +53,7 @@
 /// ```
 #[lang = "fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "Fn"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -133,6 +134,7 @@ pub trait Fn<Args>: FnMut<Args> {
 /// ```
 #[lang = "fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FnMut"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
@@ -205,6 +207,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
 /// ```
 #[lang = "fn_once"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_diagnostic_item = "FnOnce"]
 #[rustc_paren_sugar]
 #[rustc_on_unimplemented(
     on(
