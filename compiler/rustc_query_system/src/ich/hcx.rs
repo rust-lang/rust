@@ -2,8 +2,7 @@ use crate::ich;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::stable_hasher::{HashingControls, NodeIdHashingMode};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -69,10 +68,7 @@ impl<'a> StableHashingContext<'a> {
             incremental_ignore_spans: sess.opts.debugging_opts.incremental_ignore_spans,
             caching_source_map: None,
             raw_source_map: sess.source_map(),
-            hashing_controls: HashingControls {
-                hash_spans: hash_spans_initial,
-                node_id_hashing_mode: NodeIdHashingMode::HashDefPath,
-            },
+            hashing_controls: HashingControls { hash_spans: hash_spans_initial },
         }
     }
 
@@ -136,18 +132,6 @@ impl<'a> StableHashingContext<'a> {
         self.hashing_controls.hash_spans = hash_spans;
         f(self);
         self.hashing_controls.hash_spans = prev_hash_spans;
-    }
-
-    #[inline]
-    pub fn with_node_id_hashing_mode<F: FnOnce(&mut Self)>(
-        &mut self,
-        mode: NodeIdHashingMode,
-        f: F,
-    ) {
-        let prev = self.hashing_controls.node_id_hashing_mode;
-        self.hashing_controls.node_id_hashing_mode = mode;
-        f(self);
-        self.hashing_controls.node_id_hashing_mode = prev;
     }
 
     #[inline]
@@ -233,9 +217,7 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
 
 impl<'a> rustc_data_structures::intern::InternedHashingContext for StableHashingContext<'a> {
     fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self)) {
-        self.while_hashing_spans(false, |hcx| {
-            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| f(hcx))
-        });
+        self.while_hashing_spans(false, f);
     }
 }
 

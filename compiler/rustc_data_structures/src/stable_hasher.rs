@@ -612,12 +612,6 @@ fn stable_hash_reduce<HCX, I, C, F>(
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug)]
-pub enum NodeIdHashingMode {
-    Ignore,
-    HashDefPath,
-}
-
 /// Controls what data we do or not not hash.
 /// Whenever a `HashStable` implementation caches its
 /// result, it needs to include `HashingControls` as part
@@ -628,5 +622,4 @@ pub enum NodeIdHashingMode {
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct HashingControls {
     pub hash_spans: bool,
-    pub node_id_hashing_mode: NodeIdHashingMode,
 }

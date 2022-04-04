@@ -47,7 +47,7 @@ use rustc_hir::{
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_macros::HashStable;
 use rustc_middle::mir::FakeReadCause;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::config::{BorrowckMode, CrateType, OutputFilenames};
 use rustc_session::lint::{Level, Lint};
@@ -367,7 +367,7 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub expr: Option<hir::HirId>,
 }
 
-#[derive(TyEncodable, TyDecodable, Debug)]
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct TypeckResults<'tcx> {
     /// The `HirId::owner` all `ItemLocalId`s in this table are relative to.
     pub hir_owner: LocalDefId,
@@ -780,62 +780,6 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn coercion_casts(&self) -> &ItemLocalSet {
         &self.coercion_casts
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckResults<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let ty::TypeckResults {
-            hir_owner,
-            ref type_dependent_defs,
-            ref field_indices,
-            ref user_provided_types,
-            ref user_provided_sigs,
-            ref node_types,
-            ref node_substs,
-            ref adjustments,
-            ref pat_binding_modes,
-            ref pat_adjustments,
-            ref closure_kind_origins,
-            ref liberated_fn_sigs,
-            ref fru_field_types,
-            ref coercion_casts,
-            ref used_trait_imports,
-            tainted_by_errors,
-            ref concrete_opaque_types,
-            ref closure_min_captures,
-            ref closure_fake_reads,
-            ref generator_interior_types,
-            ref treat_byte_string_as_slice,
-            ref closure_size_eval,
-        } = *self;
-
-        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hcx.local_def_path_hash(hir_owner);
-
-            type_dependent_defs.hash_stable(hcx, hasher);
-            field_indices.hash_stable(hcx, hasher);
-            user_provided_types.hash_stable(hcx, hasher);
-            user_provided_sigs.hash_stable(hcx, hasher);
-            node_types.hash_stable(hcx, hasher);
-            node_substs.hash_stable(hcx, hasher);
-            adjustments.hash_stable(hcx, hasher);
-            pat_binding_modes.hash_stable(hcx, hasher);
-            pat_adjustments.hash_stable(hcx, hasher);
-
-            closure_kind_origins.hash_stable(hcx, hasher);
-            liberated_fn_sigs.hash_stable(hcx, hasher);
-            fru_field_types.hash_stable(hcx, hasher);
-            coercion_casts.hash_stable(hcx, hasher);
-            used_trait_imports.hash_stable(hcx, hasher);
-            tainted_by_errors.hash_stable(hcx, hasher);
-            concrete_opaque_types.hash_stable(hcx, hasher);
-            closure_min_captures.hash_stable(hcx, hasher);
-            closure_fake_reads.hash_stable(hcx, hasher);
-            generator_interior_types.hash_stable(hcx, hasher);
-            treat_byte_string_as_slice.hash_stable(hcx, hasher);
-            closure_size_eval.hash_stable(hcx, hasher);
-        })
     }
 }
 

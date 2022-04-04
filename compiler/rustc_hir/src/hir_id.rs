@@ -12,7 +12,7 @@ use std::fmt;
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-#[derive(Encodable, Decodable)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 #[rustc_pass_by_value]
 pub struct HirId {
     pub owner: LocalDefId,
