@@ -27,7 +27,8 @@ Libraries
 ---------
 - [Guarantee call order for `sort_by_cached_key`][89621]
 - [Improve `Duration::try_from_secs_f32`/`f64` accuracy by directly processing exponent and mantissa][90247]
-- [Make `Instant::{duration_since, elapsed, sub}` saturating and remove workarounds][89926]
+- [Make `Instant::{duration_since, elapsed, sub}` saturating][89926]
+- [Remove non-monotonic clocks workarounds in `Instant::now`][89926]
 - [Change PhantomData type for `BuildHasherDefault` (and more)][92630]
 
 Stabilized APIs
@@ -75,6 +76,14 @@ Misc
 Compatibility Notes
 -------------------
 - [Remove compiler-rt linking hack on Android][83822]
+- [Mitigations for platforms with non-monotonic clocks have been removed from
+  `Instant::now`][89926]. On platforms that don't provide monotonic clocks, an
+  instant is not guaranteed to be greater than an earlier instant anymore.
+- [`Instant::{duration_since, elapsed, sub}` do not panic anymore on underflow,
+  saturating to `0` instead][89926]. In the real world the panic happened mostly
+  on platforms with buggy monotonic clock implementations rather than catching
+  programming errors like reversing the start and end times. Such programming
+  errors will now results in `0` rather than a panic.
 - In a future release we're planning to increase the baseline requirements for
   the Linux kernel to version 3.2, and for glibc to version 2.17. We'd love
   your feedback in [PR #95026][95026].
