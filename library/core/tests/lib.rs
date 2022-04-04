@@ -55,6 +55,7 @@
 #![feature(numfmt)]
 #![feature(step_trait)]
 #![feature(str_internals)]
+#![feature(std_internals)]
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_blocks)]

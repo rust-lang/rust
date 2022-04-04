@@ -969,9 +969,8 @@ pub enum FpCategory {
 }
 
 #[doc(hidden)]
-trait FromStrRadixHelper: PartialOrd + Copy {
+trait FromStrRadixHelper: PartialOrd + Copy + Default {
     const MIN: Self;
-    fn from_u32(u: u32) -> Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
@@ -996,8 +995,6 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         const MIN: Self = Self::MIN;
-        #[inline]
-        fn from_u32(u: u32) -> Self { u as Self }
         #[inline]
         fn checked_mul(&self, other: u32) -> Option<Self> {
             Self::checked_mul(*self, other as Self)
@@ -1035,8 +1032,14 @@ macro_rules! impl_helper_for {
 }
 impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
+/// Determins if a string of text of that length of that radix could be guaranteed to be
+/// stored in the given type T.
+/// Note that if the radix is known to the compiler, it is just the check of digits.len that
+/// is done at runtime.
+#[doc(hidden)]
 #[inline(always)]
-pub(crate) fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits:&[u8]) -> bool {
+#[unstable(issue = "none", feature = "std_internals")]
+pub fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
     radix <= 16 && digits.len() <= mem::size_of::<T>() * 2 - is_signed_ty as usize
 }
 
@@ -1054,7 +1057,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         return Err(PIE { kind: Empty });
     }
 
-    let is_signed_ty = T::from_u32(0) > T::MIN;
+    let is_signed_ty = T::default() > T::MIN;
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
@@ -1071,7 +1074,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         _ => (true, src),
     };
 
-    let mut result = T::from_u32(0);
+    let mut result = T::default();
 
     if can_not_overflow::<T>(radix, is_signed_ty, digits) {
         // SAFETY: If the len of the str is short compared to the range of the type
@@ -1126,12 +1129,4 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         };
     }
     Ok(result)
-}
-
-mod tests {
-    #[test]
-    fn test_can_not_overflow() {
-        assert_eq!(can_not_overflow::<i8>(10, true, "99".as_bytes()), true);
-        assert_eq!(can_not_overflow::<i8>(10, true, "129".as_bytes()), false);
-    }
 }

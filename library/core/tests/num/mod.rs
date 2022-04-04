@@ -2,7 +2,7 @@ use core::cmp::PartialEq;
 use core::convert::{TryFrom, TryInto};
 use core::fmt::Debug;
 use core::marker::Copy;
-use core::num::{IntErrorKind, ParseIntError, TryFromIntError};
+use core::num::{can_not_overflow, IntErrorKind, ParseIntError, TryFromIntError};
 use core::ops::{Add, Div, Mul, Rem, Sub};
 use core::option::Option;
 use core::option::Option::None;
@@ -118,6 +118,51 @@ fn test_int_from_str_overflow() {
 
     test_parse::<i64>("-9223372036854775808", Ok(-9_223_372_036_854_775_808));
     test_parse::<i64>("-9223372036854775809", Err(IntErrorKind::NegOverflow));
+}
+
+#[test]
+fn test_can_not_overflow() {
+    // Not currently in std lib (issue: #27728)
+    fn format_radix<T>(mut x: T, radix: T) -> String
+    where
+        T: std::ops::Rem<Output = T>,
+        T: std::ops::Div<Output = T>,
+        T: std::cmp::PartialEq,
+        T: std::default::Default,
+        T: Copy,
+        T: Default,
+        u32: TryFrom<T>,
+    {
+        let mut result = vec![];
+
+        loop {
+            let m = x % radix;
+            x = x / radix;
+            result.push(
+                std::char::from_digit(m.try_into().ok().unwrap(), radix.try_into().ok().unwrap())
+                    .unwrap(),
+            );
+            if x == T::default() {
+                break;
+            }
+        }
+        result.into_iter().rev().collect()
+    }
+
+    macro_rules! check {
+        ($($t:ty)*) => ($(
+        for base in 2..=36 {
+            let num = (<$t>::MAX as u128) + 1;
+
+           // Calcutate the string length for the smallest overflowing number:
+           let max_len_string = format_radix(num, base as u128);
+           // Ensure that that string length is deemed to potentially overflow:
+           assert_eq!(can_not_overflow::<$t>(base, <$t>::default() > <$t>::MIN, max_len_string.as_bytes()), false);
+        }
+        )*)
+    }
+
+    check! { i8 i16 i32 i64 i128 isize usize u8 u16 u32 u64 }
 }
 
 #[test]
