@@ -5,7 +5,7 @@ LL |     2_usize + (loop {});
    |             ^ no implementation for `usize + ()`
    |
    = help: the trait `Add<()>` is not implemented for `usize`
-   = help: the following other types implement trait `Add<Rhs>`:
+   = help: the following other types implement trait `Add`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>

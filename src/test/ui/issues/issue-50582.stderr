@@ -14,7 +14,7 @@ LL |     Vec::<[(); 1 + for x in 0..1 {}]>::new();
    |                  ^ no implementation for `{integer} + ()`
    |
    = help: the trait `Add<()>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Add<Rhs>`:
+   = help: the following other types implement trait `Add`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>

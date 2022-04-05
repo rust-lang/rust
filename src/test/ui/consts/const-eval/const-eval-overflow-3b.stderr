@@ -11,7 +11,7 @@ LL |     = [0; (i8::MAX + 1u8) as usize];
    |                    ^ no implementation for `i8 + u8`
    |
    = help: the trait `Add<u8>` is not implemented for `i8`
-   = help: the following other types implement trait `Add<Rhs>`:
+   = help: the following other types implement trait `Add`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>

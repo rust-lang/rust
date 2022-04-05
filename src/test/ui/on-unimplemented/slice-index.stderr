@@ -15,7 +15,7 @@ LL |     x[..1i32];
    |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
    |
    = help: the trait `SliceIndex<[i32]>` is not implemented for `RangeTo<i32>`
-   = help: the following other types implement trait `SliceIndex<T>`:
+   = help: the following other types implement trait `SliceIndex<str>`:
              <RangeTo<usize> as SliceIndex<[T]>>
              <RangeTo<usize> as SliceIndex<str>>
    = note: required because of the requirements on the impl of `Index<RangeTo<i32>>` for `[i32]`

@@ -1769,12 +1769,13 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             if candidates.len() == 0 {
                 return false;
             }
+            let trait_ref = candidates[0];
             if candidates.len() == 1 {
                 err.highlighted_help(vec![
                     (
                         format!(
                             "the trait `{}` is implemented for `",
-                            candidates[0].print_only_trait_path()
+                            trait_ref.print_only_trait_path()
                         ),
                         Style::NoStyle,
                     ),
@@ -1783,7 +1784,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 ]);
                 return true;
             }
-            let trait_ref = TraitRef::identity(self.tcx, candidates[0].def_id);
             // Check if the trait is the same in all cases. If so, we'll only show the type.
             // FIXME: there *has* to be a better way!
             let mut traits: Vec<_> = candidates

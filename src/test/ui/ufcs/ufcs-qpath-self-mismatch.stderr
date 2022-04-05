@@ -5,7 +5,7 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |     ^^^^^^^^^^^^^^^^^^^^^^ no implementation for `i32 + u32`
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
-   = help: the following other types implement trait `Add<Rhs>`:
+   = help: the following other types implement trait `Add`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>

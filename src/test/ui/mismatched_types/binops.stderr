@@ -5,7 +5,7 @@ LL |     1 + Some(1);
    |       ^ no implementation for `{integer} + Option<{integer}>`
    |
    = help: the trait `Add<Option<{integer}>>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Add<Rhs>`:
+   = help: the following other types implement trait `Add`:
              <&'a f32 as Add<f32>>
              <&'a f64 as Add<f64>>
              <&'a i128 as Add<i128>>
@@ -23,7 +23,7 @@ LL |     2 as usize - Some(1);
    |                ^ no implementation for `usize - Option<{integer}>`
    |
    = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
-   = help: the following other types implement trait `Sub<Rhs>`:
+   = help: the following other types implement trait `Sub`:
              <&'a f32 as Sub<f32>>
              <&'a f64 as Sub<f64>>
              <&'a i128 as Sub<i128>>
@@ -41,7 +41,7 @@ LL |     3 * ();
    |       ^ no implementation for `{integer} * ()`
    |
    = help: the trait `Mul<()>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Mul<Rhs>`:
+   = help: the following other types implement trait `Mul`:
              <&'a f32 as Mul<f32>>
              <&'a f64 as Mul<f64>>
              <&'a i128 as Mul<i128>>
@@ -59,7 +59,7 @@ LL |     4 / "";
    |       ^ no implementation for `{integer} / &str`
    |
    = help: the trait `Div<&str>` is not implemented for `{integer}`
-   = help: the following other types implement trait `Div<Rhs>`:
+   = help: the following other types implement trait `Div`:
              <&'a f32 as Div<f32>>
              <&'a f64 as Div<f64>>
              <&'a i128 as Div<i128>>
@@ -77,7 +77,7 @@ LL |     5 < String::new();
    |       ^ no implementation for `{integer} < String` and `{integer} > String`
    |
    = help: the trait `PartialOrd<String>` is not implemented for `{integer}`
-   = help: the following other types implement trait `PartialOrd<Rhs>`:
+   = help: the following other types implement trait `PartialOrd`:
              f32
              f64
              i128
@@ -95,7 +95,7 @@ LL |     6 == Ok(1);
    |       ^^ no implementation for `{integer} == Result<{integer}, _>`
    |
    = help: the trait `PartialEq<Result<{integer}, _>>` is not implemented for `{integer}`
-   = help: the following other types implement trait `PartialEq<Rhs>`:
+   = help: the following other types implement trait `PartialEq`:
              f32
              f64
              i128
