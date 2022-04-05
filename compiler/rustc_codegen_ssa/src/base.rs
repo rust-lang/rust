@@ -861,7 +861,7 @@ impl CrateInfo {
         for &cnum in crates.iter() {
             info.native_libraries
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
-            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
+            info.crate_name.insert(cnum, tcx.crate_name(cnum));
             info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum).clone());
             if tcx.is_compiler_builtins(cnum) {
                 info.compiler_builtins = Some(cnum);

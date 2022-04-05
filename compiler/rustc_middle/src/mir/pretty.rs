@@ -561,8 +561,7 @@ fn write_scope_tree(
         }
         indented_decl.push(';');
 
-        let local_name =
-            if local == RETURN_PLACE { " return place".to_string() } else { String::new() };
+        let local_name = if local == RETURN_PLACE { " return place" } else { "" };
 
         writeln!(
             w,

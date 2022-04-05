@@ -146,7 +146,7 @@ pub struct CrateInfo {
     pub profiler_runtime: Option<CrateNum>,
     pub is_no_builtins: FxHashSet<CrateNum>,
     pub native_libraries: FxHashMap<CrateNum, Vec<NativeLib>>,
-    pub crate_name: FxHashMap<CrateNum, String>,
+    pub crate_name: FxHashMap<CrateNum, Symbol>,
     pub used_libraries: Vec<NativeLib>,
     pub used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
     pub used_crates: Vec<CrateNum>,
