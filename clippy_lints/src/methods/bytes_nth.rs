@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx E
         cx,
         BYTES_NTH,
         expr.span,
-        &format!("called `.byte().nth()` on a `{}`", caller_type),
+        &format!("called `.bytes().nth()` on a `{}`", caller_type),
         "try",
         format!(
             "{}.as_bytes().get({})",
