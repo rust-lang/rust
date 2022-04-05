@@ -1,11 +1,12 @@
 error[E0308]: mismatched types
-  --> $DIR/rfc1623.rs:25:35
+  --> $DIR/rfc1623.rs:29:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
-LL | |     foo: &Foo { bools: &[false, true] },
-LL | |     bar: &Bar { bools: &[true, true] },
-LL | |     f: &id,
+LL | |
+LL | |
+LL | |
+...  |
 LL | |
 LL | | };
    | |_^ one type is more general than the other
@@ -14,13 +15,14 @@ LL | | };
               found type `Fn<(&Foo<'_>,)>`
 
 error[E0308]: mismatched types
-  --> $DIR/rfc1623.rs:25:35
+  --> $DIR/rfc1623.rs:29:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
-LL | |     foo: &Foo { bools: &[false, true] },
-LL | |     bar: &Bar { bools: &[true, true] },
-LL | |     f: &id,
+LL | |
+LL | |
+LL | |
+...  |
 LL | |
 LL | | };
    | |_^ one type is more general than the other
@@ -29,13 +31,14 @@ LL | | };
               found type `Fn<(&Foo<'_>,)>`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623.rs:25:35
+  --> $DIR/rfc1623.rs:29:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
-LL | |     foo: &Foo { bools: &[false, true] },
-LL | |     bar: &Bar { bools: &[true, true] },
-LL | |     f: &id,
+LL | |
+LL | |
+LL | |
+...  |
 LL | |
 LL | | };
    | |_^ implementation of `FnOnce` is not general enough
@@ -44,13 +47,14 @@ LL | | };
    = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623.rs:25:35
+  --> $DIR/rfc1623.rs:29:35
    |
 LL |   static SOME_STRUCT: &SomeStruct = &SomeStruct {
    |  ___________________________________^
-LL | |     foo: &Foo { bools: &[false, true] },
-LL | |     bar: &Bar { bools: &[true, true] },
-LL | |     f: &id,
+LL | |
+LL | |
+LL | |
+...  |
 LL | |
 LL | | };
    | |_^ implementation of `FnOnce` is not general enough

@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-55394.rs:9:9
+  --> $DIR/issue-55394.rs:13:9
    |
 LL |     fn new(bar: &mut Bar) -> Self {
    |                 -            ---- return type is Foo<'2>
