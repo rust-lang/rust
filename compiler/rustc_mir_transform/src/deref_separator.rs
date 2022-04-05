@@ -8,7 +8,6 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut patch = MirPatch::new(body);
     let (basic_blocks, local_decl) = body.basic_blocks_and_local_decls_mut();
     for (block, data) in basic_blocks.iter_enumerated_mut() {
-        let statement_len = data.statements.len();
         for (i, stmt) in data.statements.iter_mut().enumerate() {
             match stmt.kind {
                 StatementKind::Assign(box (og_place, Rvalue::Ref(region, borrow_knd, place))) => {
@@ -49,7 +48,7 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                             *stmt = new_stmt;
 
                             // Since our job with the temp is done it should be gone
-                            let loc = Location { block: block, statement_index: statement_len };
+                            let loc = Location { block: block, statement_index: i + 1 };
                             patch.add_statement(loc, StatementKind::StorageDead(temp));
 
                             // As all projections are off the base projection, if there are
