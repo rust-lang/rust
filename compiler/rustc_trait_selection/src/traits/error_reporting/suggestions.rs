@@ -1129,8 +1129,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.get_parent_node(obligation.cause.body_id);
-        let node = hir.find(fn_hir_id);
+        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let node = hir.find(parent_node);
         let Some(hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(sig, _, body_id),
             ..
@@ -1168,17 +1168,16 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         visitor.visit_body(&body);
 
         let typeck_results = self.in_progress_typeck_results.map(|t| t.borrow()).unwrap();
-        let Some(liberated_sig) = typeck_results.liberated_fn_sigs().get(fn_hir_id) else { return false; };
 
-        let ret_types = visitor
+        let mut ret_types = visitor
             .returns
             .iter()
-            .filter_map(|expr| Some((expr.span, typeck_results.node_type_opt(expr.hir_id)?)))
-            .map(|(expr_span, ty)| (expr_span, self.resolve_vars_if_possible(ty)));
+            .filter_map(|expr| typeck_results.node_type_opt(expr.hir_id))
+            .map(|ty| self.resolve_vars_if_possible(ty));
         let (last_ty, all_returns_have_same_type, only_never_return) = ret_types.clone().fold(
             (None, true, true),
             |(last_ty, mut same, only_never_return): (std::option::Option<Ty<'_>>, bool, bool),
-             (_, ty)| {
+             ty| {
                 let ty = self.resolve_vars_if_possible(ty);
                 same &=
                     !matches!(ty.kind(), ty::Error(_))
@@ -1199,60 +1198,39 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 (Some(ty), same, only_never_return && matches!(ty.kind(), ty::Never))
             },
         );
-        let mut spans_and_needs_box = vec![];
-
-        match liberated_sig.output().kind() {
-            ty::Dynamic(predicates, _) => {
-                let cause = ObligationCause::misc(ret_ty.span, fn_hir_id);
-                let param_env = ty::ParamEnv::empty();
-
-                if !only_never_return {
-                    for (expr_span, return_ty) in ret_types {
-                        let self_ty_satisfies_dyn_predicates = |self_ty| {
-                            predicates.iter().all(|predicate| {
-                                let pred = predicate.with_self_ty(self.tcx, self_ty);
-                                let obl = Obligation::new(cause.clone(), param_env, pred);
-                                self.predicate_may_hold(&obl)
+        let all_returns_conform_to_trait =
+            if let Some(ty_ret_ty) = typeck_results.node_type_opt(ret_ty.hir_id) {
+                match ty_ret_ty.kind() {
+                    ty::Dynamic(predicates, _) => {
+                        let cause = ObligationCause::misc(ret_ty.span, ret_ty.hir_id);
+                        let param_env = ty::ParamEnv::empty();
+                        only_never_return
+                            || ret_types.all(|returned_ty| {
+                                predicates.iter().all(|predicate| {
+                                    let pred = predicate.with_self_ty(self.tcx, returned_ty);
+                                    let obl = Obligation::new(cause.clone(), param_env, pred);
+                                    self.predicate_may_hold(&obl)
+                                })
                             })
-                        };
-
-                        if let ty::Adt(def, substs) = return_ty.kind()
-                            && def.is_box()
-                            && self_ty_satisfies_dyn_predicates(substs.type_at(0))
-                        {
-                            spans_and_needs_box.push((expr_span, false));
-                        } else if self_ty_satisfies_dyn_predicates(return_ty) {
-                            spans_and_needs_box.push((expr_span, true));
-                        } else {
-                            return false;
-                        }
                     }
+                    _ => false,
                 }
-            }
-            _ => return false,
-        };
+            } else {
+                true
+            };
 
         let sm = self.tcx.sess.source_map();
-        if !ret_ty.span.overlaps(span) {
+        let (true, hir::TyKind::TraitObject(..), Ok(snippet), true) = (
+            // Verify that we're dealing with a return `dyn Trait`
+            ret_ty.span.overlaps(span),
+            &ret_ty.kind,
+            sm.span_to_snippet(ret_ty.span),
+            // If any of the return types does not conform to the trait, then we can't
+            // suggest `impl Trait` nor trait objects: it is a type mismatch error.
+            all_returns_conform_to_trait,
+        ) else {
             return false;
-        }
-        let snippet = if let hir::TyKind::TraitObject(..) = ret_ty.kind {
-            if let Ok(snippet) = sm.span_to_snippet(ret_ty.span) {
-                snippet
-            } else {
-                return false;
-            }
-        } else {
-            // Substitute the type, so we can print a fixup given `type Alias = dyn Trait`
-            let name = liberated_sig.output().to_string();
-            let name =
-                name.strip_prefix('(').and_then(|name| name.strip_suffix(')')).unwrap_or(&name);
-            if !name.starts_with("dyn ") {
-                return false;
-            }
-            name.to_owned()
         };
-
         err.code(error_code!(E0746));
         err.set_primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
@@ -1262,7 +1240,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let trait_obj_msg = "for information on trait objects, see \
             <https://doc.rust-lang.org/book/ch17-02-trait-objects.html\
             #using-trait-objects-that-allow-for-values-of-different-types>";
-
         let has_dyn = snippet.split_whitespace().next().map_or(false, |s| s == "dyn");
         let trait_obj = if has_dyn { &snippet[4..] } else { &snippet };
         if only_never_return {
@@ -1290,25 +1267,26 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         } else {
             if is_object_safe {
                 // Suggest `-> Box<dyn Trait>` and `Box::new(returned_value)`.
-                err.multipart_suggestion(
-                    "return a boxed trait object instead",
-                    vec![
-                        (ret_ty.span.shrink_to_lo(), "Box<".to_string()),
-                        (span.shrink_to_hi(), ">".to_string()),
-                    ],
-                    Applicability::MaybeIncorrect,
-                );
-                for (span, needs_box) in spans_and_needs_box {
-                    if needs_box {
-                        err.multipart_suggestion(
-                            "... and box this value",
-                            vec![
-                                (span.shrink_to_lo(), "Box::new(".to_string()),
-                                (span.shrink_to_hi(), ")".to_string()),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                // Get all the return values and collect their span and suggestion.
+                let mut suggestions: Vec<_> = visitor
+                    .returns
+                    .iter()
+                    .flat_map(|expr| {
+                        [
+                            (expr.span.shrink_to_lo(), "Box::new(".to_string()),
+                            (expr.span.shrink_to_hi(), ")".to_string()),
+                        ]
+                        .into_iter()
+                    })
+                    .collect();
+                if !suggestions.is_empty() {
+                    // Add the suggestion for the return type.
+                    suggestions.push((ret_ty.span, format!("Box<dyn {}>", trait_obj)));
+                    err.multipart_suggestion(
+                        "return a boxed trait object instead",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
                 }
             } else {
                 // This is currently not possible to trigger because E0038 takes precedence, but
@@ -2845,15 +2823,13 @@ fn suggest_trait_object_return_type_alternatives(
         Applicability::MaybeIncorrect,
     );
     if is_object_safe {
-        err.multipart_suggestion(
+        err.span_suggestion(
+            ret_ty,
             &format!(
                 "use a boxed trait object if all return paths implement trait `{}`",
                 trait_obj,
             ),
-            vec![
-                (ret_ty.shrink_to_lo(), "Box<".to_string()),
-                (ret_ty.shrink_to_hi(), ">".to_string()),
-            ],
+            format!("Box<dyn {}>", trait_obj),
             Applicability::MaybeIncorrect,
         );
     }
