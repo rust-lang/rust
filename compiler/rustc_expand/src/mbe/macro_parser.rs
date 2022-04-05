@@ -106,9 +106,9 @@ rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
 ///
 /// This means a matcher can be represented by `&[MatcherLoc]`, and traversal mostly involves
 /// simply incrementing the current matcher position index by one.
-enum MatcherLoc<'tt> {
+enum MatcherLoc {
     Token {
-        token: &'tt Token,
+        token: Token,
     },
     Delimited,
     Sequence {
@@ -123,7 +123,7 @@ enum MatcherLoc<'tt> {
         idx_first: usize,
     },
     SequenceSep {
-        separator: &'tt Token,
+        separator: Token,
     },
     SequenceKleeneOpAfterSep {
         idx_first: usize,
@@ -298,11 +298,11 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector fo each kind that is cleared and reused repeatedly.
-pub struct TtParser<'tt> {
+pub struct TtParser {
     macro_name: Ident,
 
     /// The matcher of the current rule.
-    locs: Vec<MatcherLoc<'tt>>,
+    locs: Vec<MatcherLoc>,
 
     /// The set of current mps to be processed. This should be empty by the end of a successful
     /// execution of `parse_tt_inner`.
@@ -320,8 +320,8 @@ pub struct TtParser<'tt> {
     empty_matches: Lrc<NamedMatchVec>,
 }
 
-impl<'tt> TtParser<'tt> {
-    pub(super) fn new(macro_name: Ident) -> TtParser<'tt> {
+impl TtParser {
+    pub(super) fn new(macro_name: Ident) -> TtParser {
         TtParser {
             macro_name,
             locs: vec![],
@@ -340,19 +340,19 @@ impl<'tt> TtParser<'tt> {
     fn compute_locs(
         &mut self,
         sess: &ParseSess,
-        matcher: &'tt [TokenTree],
+        matcher: &[TokenTree],
     ) -> Result<usize, (Span, String)> {
-        fn inner<'tt>(
+        fn inner(
             sess: &ParseSess,
-            tts: &'tt [TokenTree],
-            locs: &mut Vec<MatcherLoc<'tt>>,
+            tts: &[TokenTree],
+            locs: &mut Vec<MatcherLoc>,
             next_metavar: &mut usize,
             seq_depth: usize,
         ) -> Result<(), (Span, String)> {
             for tt in tts {
                 match tt {
                     TokenTree::Token(token) => {
-                        locs.push(MatcherLoc::Token { token });
+                        locs.push(MatcherLoc::Token { token: token.clone() });
                     }
                     TokenTree::Delimited(_, delimited) => {
                         locs.push(MatcherLoc::Delimited);
@@ -373,7 +373,7 @@ impl<'tt> TtParser<'tt> {
                         inner(sess, &seq.tts, locs, next_metavar, seq_depth + 1)?;
 
                         if let Some(separator) = &seq.separator {
-                            locs.push(MatcherLoc::SequenceSep { separator });
+                            locs.push(MatcherLoc::SequenceSep { separator: separator.clone() });
                             locs.push(MatcherLoc::SequenceKleeneOpAfterSep { idx_first });
                         } else {
                             locs.push(MatcherLoc::SequenceKleeneOpNoSep { op, idx_first });
@@ -586,7 +586,7 @@ impl<'tt> TtParser<'tt> {
     pub(super) fn parse_tt(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
-        matcher: &'tt [TokenTree],
+        matcher: &[TokenTree],
     ) -> NamedParseResult {
         let num_metavar_decls = match self.compute_locs(parser.sess, matcher) {
             Ok(num_metavar_decls) => num_metavar_decls,
