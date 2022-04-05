@@ -7,7 +7,7 @@ LL |     Index::index(&[] as &[i32], 2u32);
    |     required by a bound introduced by this call
    |
    = help: the trait `Index<u32>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 
@@ -20,7 +20,7 @@ LL |     Index::index(&[] as &[i32], Foo(2u32));
    |     required by a bound introduced by this call
    |
    = help: the trait `Index<Foo<u32>>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 
@@ -33,7 +33,7 @@ LL |     Index::index(&[] as &[i32], Bar(2u32));
    |     required by a bound introduced by this call
    |
    = help: the trait `Index<Bar<u32>>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 
@@ -44,7 +44,7 @@ LL |     Index::index(&[] as &[i32], 2u32);
    |     ^^^^^^^^^^^^ trait message
    |
    = help: the trait `Index<u32>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 
@@ -55,7 +55,7 @@ LL |     Index::index(&[] as &[i32], Foo(2u32));
    |     ^^^^^^^^^^^^ on impl for Foo
    |
    = help: the trait `Index<Foo<u32>>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 
@@ -66,7 +66,7 @@ LL |     Index::index(&[] as &[i32], Bar(2u32));
    |     ^^^^^^^^^^^^ on impl for Bar
    |
    = help: the trait `Index<Bar<u32>>` is not implemented for `[i32]`
-   = help: the following other types implement trait `Index<Foo<usize>>`:
+   = help: the following implementations were found:
              <[i32] as Index<Bar<usize>>>
              <[i32] as Index<Foo<usize>>>
 

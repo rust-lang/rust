@@ -30,7 +30,7 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::{
-    self, SubtypePredicate, ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    self, SubtypePredicate, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, TypeFoldable,
 };
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, MultiSpan, Span, DUMMY_SP};
@@ -1762,60 +1762,6 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         err: &mut Diagnostic,
     ) -> bool {
-        let report = |mut candidates: Vec<TraitRef<'_>>, err: &mut Diagnostic| {
-            candidates.sort();
-            candidates.dedup();
-            let len = candidates.len();
-            if candidates.len() == 0 {
-                return false;
-            }
-            let trait_ref = candidates[0];
-            if candidates.len() == 1 {
-                err.highlighted_help(vec![
-                    (
-                        format!(
-                            "the trait `{}` is implemented for `",
-                            trait_ref.print_only_trait_path()
-                        ),
-                        Style::NoStyle,
-                    ),
-                    (candidates[0].self_ty().to_string(), Style::Highlight),
-                    ("`".to_string(), Style::NoStyle),
-                ]);
-                return true;
-            }
-            // Check if the trait is the same in all cases. If so, we'll only show the type.
-            // FIXME: there *has* to be a better way!
-            let mut traits: Vec<_> = candidates
-                .iter()
-                .map(|c| format!("{}", c).split(" as ").last().unwrap().to_string())
-                .collect();
-            traits.sort();
-            traits.dedup();
-
-            let mut candidates: Vec<String> = candidates
-                .into_iter()
-                .map(|c| {
-                    if traits.len() == 1 {
-                        format!("\n  {}", c.self_ty())
-                    } else {
-                        format!("\n  {}", c)
-                    }
-                })
-                .collect();
-
-            candidates.sort();
-            candidates.dedup();
-            let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
-            err.help(&format!(
-                "the following other types implement trait `{}`:{}{}",
-                trait_ref.print_only_trait_path(),
-                candidates[..end].join(""),
-                if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
-            ));
-            true
-        };
-
         let def_id = trait_ref.def_id();
         if impl_candidates.is_empty() {
             if self.tcx.trait_is_auto(def_id)
@@ -1825,7 +1771,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 // Mentioning implementers of `Copy`, `Debug` and friends is not useful.
                 return false;
             }
-            let normalized_impl_candidates: Vec<_> = self
+            let mut normalized_impl_candidates: Vec<_> = self
                 .tcx
                 .all_impls(def_id)
                 // Ignore automatically derived impls and `!Trait` impls.
@@ -1836,9 +1782,44 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                 .filter_map(|def_id| self.tcx.impl_trait_ref(def_id))
                 // Avoid mentioning type parameters.
                 .filter(|trait_ref| !matches!(trait_ref.self_ty().kind(), ty::Param(_)))
+                .map(|trait_ref| format!("\n  {}", trait_ref.self_ty()))
                 .collect();
-            return report(normalized_impl_candidates, err);
+            normalized_impl_candidates.sort();
+            normalized_impl_candidates.dedup();
+            let len = normalized_impl_candidates.len();
+            if len == 0 {
+                return false;
+            }
+            if len == 1 {
+                err.highlighted_help(vec![
+                    (
+                        format!(
+                            "the trait `{}` is implemented for `",
+                            trait_ref.print_only_trait_path()
+                        ),
+                        Style::NoStyle,
+                    ),
+                    (normalized_impl_candidates[0].trim().to_string(), Style::Highlight),
+                    ("`".to_string(), Style::NoStyle),
+                ]);
+                return true;
+            }
+            let end = if normalized_impl_candidates.len() <= 9 {
+                normalized_impl_candidates.len()
+            } else {
+                8
+            };
+            err.help(&format!(
+                "the following other types implement trait `{}`:{}{}",
+                trait_ref.print_only_trait_path(),
+                normalized_impl_candidates[..end].join(""),
+                if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
+            ));
+            return true;
         }
+
+        let len = impl_candidates.len();
+        let end = if impl_candidates.len() <= 9 { impl_candidates.len() } else { 8 };
 
         let normalize = |candidate| {
             self.tcx.infer_ctxt().enter(|ref infcx| {
@@ -1847,8 +1828,8 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     .normalize(candidate)
                     .ok();
                 match normalized {
-                    Some(normalized) => normalized.value,
-                    None => candidate,
+                    Some(normalized) => format!("\n  {}", normalized.value),
+                    None => format!("\n  {}", candidate),
                 }
             })
         };
@@ -1859,6 +1840,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         //
         // Prefer more similar candidates first, then sort lexicographically
         // by their normalized string representation.
+        let first_candidate = impl_candidates.get(0).map(|candidate| candidate.trait_ref);
         let mut normalized_impl_candidates_and_similarities = impl_candidates
             .into_iter()
             .map(|ImplCandidate { trait_ref, similarity }| {
@@ -1874,7 +1856,26 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             .map(|(_, normalized)| normalized)
             .collect::<Vec<_>>();
 
-        report(normalized_impl_candidates, err)
+        if normalized_impl_candidates.len() == 1 {
+            err.highlighted_help(vec![
+                (
+                    format!(
+                        "the trait `{}` is implemented for `",
+                        first_candidate.unwrap().print_only_trait_path()
+                    ),
+                    Style::NoStyle,
+                ),
+                (first_candidate.unwrap().self_ty().to_string(), Style::Highlight),
+                ("`".to_string(), Style::NoStyle),
+            ]);
+        } else {
+            err.help(&format!(
+                "the following implementations were found:{}{}",
+                normalized_impl_candidates[..end].join(""),
+                if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
+            ));
+        }
+        true
     }
 
     /// Gets the parent trait chain start
