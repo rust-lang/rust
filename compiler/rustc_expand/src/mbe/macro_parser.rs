@@ -106,7 +106,7 @@ rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
 ///
 /// This means a matcher can be represented by `&[MatcherLoc]`, and traversal mostly involves
 /// simply incrementing the current matcher position index by one.
-enum MatcherLoc {
+pub(super) enum MatcherLoc {
     Token {
         token: Token,
     },
@@ -136,6 +136,78 @@ enum MatcherLoc {
         seq_depth: usize,
     },
     Eof,
+}
+
+pub(super) fn compute_locs(sess: &ParseSess, matcher: &[TokenTree]) -> Vec<MatcherLoc> {
+    fn inner(
+        sess: &ParseSess,
+        tts: &[TokenTree],
+        locs: &mut Vec<MatcherLoc>,
+        next_metavar: &mut usize,
+        seq_depth: usize,
+    ) {
+        for tt in tts {
+            match tt {
+                TokenTree::Token(token) => {
+                    locs.push(MatcherLoc::Token { token: token.clone() });
+                }
+                TokenTree::Delimited(_, delimited) => {
+                    locs.push(MatcherLoc::Delimited);
+                    inner(sess, &delimited.all_tts, locs, next_metavar, seq_depth);
+                }
+                TokenTree::Sequence(_, seq) => {
+                    // We can't determine `idx_first_after` and construct the final
+                    // `MatcherLoc::Sequence` until after `inner()` is called and the sequence end
+                    // pieces are processed. So we push a dummy value (`Eof` is cheapest to
+                    // construct) now, and overwrite it with the proper value below.
+                    let dummy = MatcherLoc::Eof;
+                    locs.push(dummy);
+
+                    let next_metavar_orig = *next_metavar;
+                    let op = seq.kleene.op;
+                    let idx_first = locs.len();
+                    let idx_seq = idx_first - 1;
+                    inner(sess, &seq.tts, locs, next_metavar, seq_depth + 1);
+
+                    if let Some(separator) = &seq.separator {
+                        locs.push(MatcherLoc::SequenceSep { separator: separator.clone() });
+                        locs.push(MatcherLoc::SequenceKleeneOpAfterSep { idx_first });
+                    } else {
+                        locs.push(MatcherLoc::SequenceKleeneOpNoSep { op, idx_first });
+                    }
+
+                    // Overwrite the dummy value pushed above with the proper value.
+                    locs[idx_seq] = MatcherLoc::Sequence {
+                        op,
+                        num_metavar_decls: seq.num_captures,
+                        idx_first_after: locs.len(),
+                        next_metavar: next_metavar_orig,
+                        seq_depth,
+                    };
+                }
+                &TokenTree::MetaVarDecl(span, bind, kind) => {
+                    locs.push(MatcherLoc::MetaVarDecl {
+                        span,
+                        bind,
+                        kind,
+                        next_metavar: *next_metavar,
+                        seq_depth,
+                    });
+                    *next_metavar += 1;
+                }
+                TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
+            }
+        }
+    }
+
+    let mut locs = vec![];
+    let mut next_metavar = 0;
+    inner(sess, matcher, &mut locs, &mut next_metavar, /* seq_depth */ 0);
+
+    // A final entry is needed for eof.
+    locs.push(MatcherLoc::Eof);
+
+    locs
 }
 
 /// A single matcher position, representing the state of matching.
@@ -301,9 +373,6 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 pub struct TtParser {
     macro_name: Ident,
 
-    /// The matcher of the current rule.
-    locs: Vec<MatcherLoc>,
-
     /// The set of current mps to be processed. This should be empty by the end of a successful
     /// execution of `parse_tt_inner`.
     cur_mps: Vec<MatcherPos>,
@@ -324,90 +393,11 @@ impl TtParser {
     pub(super) fn new(macro_name: Ident) -> TtParser {
         TtParser {
             macro_name,
-            locs: vec![],
             cur_mps: vec![],
             next_mps: vec![],
             bb_mps: vec![],
             empty_matches: Lrc::new(smallvec![]),
         }
-    }
-
-    /// Convert a `&[TokenTree]` to a `&[MatcherLoc]`. Note: this conversion happens every time the
-    /// macro is called, which may be many times if there are many call sites or if it is
-    /// recursive. This conversion is fairly cheap and the representation is sufficiently better
-    /// for matching than `&[TokenTree]` that it's a clear performance win even with the overhead.
-    /// But it might be possible to move the conversion outwards so it only occurs once per macro.
-    fn compute_locs(&mut self, sess: &ParseSess, matcher: &[TokenTree]) -> usize {
-        fn inner(
-            sess: &ParseSess,
-            tts: &[TokenTree],
-            locs: &mut Vec<MatcherLoc>,
-            next_metavar: &mut usize,
-            seq_depth: usize,
-        ) {
-            for tt in tts {
-                match tt {
-                    TokenTree::Token(token) => {
-                        locs.push(MatcherLoc::Token { token: token.clone() });
-                    }
-                    TokenTree::Delimited(_, delimited) => {
-                        locs.push(MatcherLoc::Delimited);
-                        inner(sess, &delimited.all_tts, locs, next_metavar, seq_depth);
-                    }
-                    TokenTree::Sequence(_, seq) => {
-                        // We can't determine `idx_first_after` and construct the final
-                        // `MatcherLoc::Sequence` until after `inner()` is called and the sequence
-                        // end pieces are processed. So we push a dummy value (`Eof` is cheapest to
-                        // construct) now, and overwrite it with the proper value below.
-                        let dummy = MatcherLoc::Eof;
-                        locs.push(dummy);
-
-                        let next_metavar_orig = *next_metavar;
-                        let op = seq.kleene.op;
-                        let idx_first = locs.len();
-                        let idx_seq = idx_first - 1;
-                        inner(sess, &seq.tts, locs, next_metavar, seq_depth + 1);
-
-                        if let Some(separator) = &seq.separator {
-                            locs.push(MatcherLoc::SequenceSep { separator: separator.clone() });
-                            locs.push(MatcherLoc::SequenceKleeneOpAfterSep { idx_first });
-                        } else {
-                            locs.push(MatcherLoc::SequenceKleeneOpNoSep { op, idx_first });
-                        }
-
-                        // Overwrite the dummy value pushed above with the proper value.
-                        locs[idx_seq] = MatcherLoc::Sequence {
-                            op,
-                            num_metavar_decls: seq.num_captures,
-                            idx_first_after: locs.len(),
-                            next_metavar: next_metavar_orig,
-                            seq_depth,
-                        };
-                    }
-                    &TokenTree::MetaVarDecl(span, bind, kind) => {
-                        locs.push(MatcherLoc::MetaVarDecl {
-                            span,
-                            bind,
-                            kind,
-                            next_metavar: *next_metavar,
-                            seq_depth,
-                        });
-                        *next_metavar += 1;
-                    }
-                    TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
-                }
-            }
-        }
-
-        self.locs.clear();
-        let mut next_metavar = 0;
-        inner(sess, matcher, &mut self.locs, &mut next_metavar, /* seq_depth */ 0);
-
-        // A final entry is needed for eof.
-        self.locs.push(MatcherLoc::Eof);
-
-        // This is the number of metavar decls.
-        next_metavar
     }
 
     /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will
@@ -420,7 +410,7 @@ impl TtParser {
     fn parse_tt_inner(
         &mut self,
         sess: &ParseSess,
-        num_metavar_decls: usize,
+        matcher: &[MatcherLoc],
         token: &Token,
     ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
@@ -428,7 +418,7 @@ impl TtParser {
         let mut eof_mps = EofMatcherPositions::None;
 
         while let Some(mut mp) = self.cur_mps.pop() {
-            match &self.locs[mp.idx] {
+            match &matcher[mp.idx] {
                 MatcherLoc::Token { token: t } => {
                     // If it's a doc comment, we just ignore it and move on to the next tt in the
                     // matcher. This is a bug, but #95267 showed that existing programs rely on
@@ -536,7 +526,7 @@ impl TtParser {
                 }
                 MatcherLoc::Eof => {
                     // We are past the matcher's end, and not in a sequence. Try to end things.
-                    debug_assert_eq!(mp.idx, self.locs.len() - 1);
+                    debug_assert_eq!(mp.idx, matcher.len() - 1);
                     if *token == token::Eof {
                         eof_mps = match eof_mps {
                             EofMatcherPositions::None => EofMatcherPositions::One(mp),
@@ -554,11 +544,10 @@ impl TtParser {
         if *token == token::Eof {
             Some(match eof_mps {
                 EofMatcherPositions::One(mut eof_mp) => {
-                    assert_eq!(eof_mp.matches.len(), num_metavar_decls);
                     // Need to take ownership of the matches from within the `Lrc`.
                     Lrc::make_mut(&mut eof_mp.matches);
                     let matches = Lrc::try_unwrap(eof_mp.matches).unwrap().into_iter();
-                    self.nameize(sess, matches)
+                    self.nameize(sess, matcher, matches)
                 }
                 EofMatcherPositions::Multiple => {
                     Error(token.span, "ambiguity: multiple successful parses".to_string())
@@ -580,10 +569,8 @@ impl TtParser {
     pub(super) fn parse_tt(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
-        matcher: &[TokenTree],
+        matcher: &[MatcherLoc],
     ) -> NamedParseResult {
-        let num_metavar_decls = self.compute_locs(parser.sess, matcher);
-
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
@@ -598,7 +585,7 @@ impl TtParser {
 
             // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            if let Some(res) = self.parse_tt_inner(&parser.sess, num_metavar_decls, &parser.token) {
+            if let Some(res) = self.parse_tt_inner(&parser.sess, matcher, &parser.token) {
                 return res;
             }
 
@@ -626,7 +613,7 @@ impl TtParser {
                 (0, 1) => {
                     // We need to call the black-box parser to get some nonterminal.
                     let mut mp = self.bb_mps.pop().unwrap();
-                    let loc = &self.locs[mp.idx];
+                    let loc = &matcher[mp.idx];
                     if let &MatcherLoc::MetaVarDecl {
                         span,
                         kind: Some(kind),
@@ -664,7 +651,7 @@ impl TtParser {
 
                 (_, _) => {
                     // Too many possibilities!
-                    return self.ambiguity_error(parser.token.span);
+                    return self.ambiguity_error(matcher, parser.token.span);
                 }
             }
 
@@ -672,11 +659,15 @@ impl TtParser {
         }
     }
 
-    fn ambiguity_error(&self, token_span: rustc_span::Span) -> NamedParseResult {
+    fn ambiguity_error(
+        &self,
+        matcher: &[MatcherLoc],
+        token_span: rustc_span::Span,
+    ) -> NamedParseResult {
         let nts = self
             .bb_mps
             .iter()
-            .map(|mp| match &self.locs[mp.idx] {
+            .map(|mp| match &matcher[mp.idx] {
                 MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
                     format!("{} ('{}')", kind, bind)
                 }
@@ -702,12 +693,13 @@ impl TtParser {
     fn nameize<I: Iterator<Item = NamedMatch>>(
         &self,
         sess: &ParseSess,
+        matcher: &[MatcherLoc],
         mut res: I,
     ) -> NamedParseResult {
         // Make that each metavar has _exactly one_ binding. If so, insert the binding into the
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
-        for loc in self.locs.iter() {
+        for loc in matcher {
             if let &MatcherLoc::MetaVarDecl { span, bind, kind, .. } = loc {
                 if kind.is_some() {
                     match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
