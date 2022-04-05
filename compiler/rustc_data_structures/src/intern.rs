@@ -115,34 +115,41 @@ pub trait InternedHashingContext {
     fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self));
 }
 
+/// A helper type that you can wrap round your own type in order to automatically
+/// cache the stable hash on creation and not recompute it whenever the stable hash
+/// of the type is computed.
+/// This is only done in incremental mode. You can also opt out of caching by using
+/// StableHash::ZERO for the hash, in which case the hash gets computed each time.
+/// This is useful if you have values that you intern but never (can?) use for stable
+/// hashing.
 #[derive(Copy, Clone)]
-pub struct InTy<T> {
+pub struct WithStableHash<T> {
     pub internee: T,
     pub stable_hash: Fingerprint,
 }
 
-impl<T: PartialEq> PartialEq for InTy<T> {
+impl<T: PartialEq> PartialEq for WithStableHash<T> {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         self.internee.eq(&other.internee)
     }
 }
 
-impl<T: Eq> Eq for InTy<T> {}
+impl<T: Eq> Eq for WithStableHash<T> {}
 
-impl<T: Ord> PartialOrd for InTy<T> {
-    fn partial_cmp(&self, other: &InTy<T>) -> Option<Ordering> {
+impl<T: Ord> PartialOrd for WithStableHash<T> {
+    fn partial_cmp(&self, other: &WithStableHash<T>) -> Option<Ordering> {
         Some(self.internee.cmp(&other.internee))
     }
 }
 
-impl<T: Ord> Ord for InTy<T> {
-    fn cmp(&self, other: &InTy<T>) -> Ordering {
+impl<T: Ord> Ord for WithStableHash<T> {
+    fn cmp(&self, other: &WithStableHash<T>) -> Ordering {
         self.internee.cmp(&other.internee)
     }
 }
 
-impl<T> Deref for InTy<T> {
+impl<T> Deref for WithStableHash<T> {
     type Target = T;
 
     #[inline]
@@ -151,14 +158,14 @@ impl<T> Deref for InTy<T> {
     }
 }
 
-impl<T: Hash> Hash for InTy<T> {
+impl<T: Hash> Hash for WithStableHash<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
         self.internee.hash(s)
     }
 }
 
-impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for InTy<T> {
+impl<T: HashStable<CTX>, CTX: InternedHashingContext> HashStable<CTX> for WithStableHash<T> {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
             // No cached hash available. This can only mean that incremental is disabled.

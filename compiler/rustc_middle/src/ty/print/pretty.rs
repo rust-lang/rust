@@ -3,7 +3,7 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::{InTy, Interned};
+use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -1266,13 +1266,13 @@ pub trait PrettyPrinter<'tcx>:
             ty::Ref(
                 _,
                 Ty(Interned(
-                    InTy {
+                    WithStableHash {
                         internee:
                             ty::TyS {
                                 kind:
                                     ty::Array(
                                         Ty(Interned(
-                                            InTy {
+                                            WithStableHash {
                                                 internee:
                                                     ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. },
                                                 ..
@@ -1452,7 +1452,10 @@ pub trait PrettyPrinter<'tcx>:
                 ConstValue::Slice { data, start, end },
                 ty::Ref(
                     _,
-                    Ty(Interned(InTy { internee: ty::TyS { kind: ty::Slice(t), .. }, .. }, _)),
+                    Ty(Interned(
+                        WithStableHash { internee: ty::TyS { kind: ty::Slice(t), .. }, .. },
+                        _,
+                    )),
                     _,
                 ),
             ) if *t == u8_type => {
@@ -1467,7 +1470,7 @@ pub trait PrettyPrinter<'tcx>:
                 ConstValue::Slice { data, start, end },
                 ty::Ref(
                     _,
-                    Ty(Interned(InTy { internee: ty::TyS { kind: ty::Str, .. }, .. }, _)),
+                    Ty(Interned(WithStableHash { internee: ty::TyS { kind: ty::Str, .. }, .. }, _)),
                     _,
                 ),
             ) => {

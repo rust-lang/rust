@@ -31,7 +31,7 @@ use crate::ty::util::Discr;
 use rustc_ast as ast;
 use rustc_attr as attr;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::intern::{InTy, Interned};
+use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_hir as hir;
@@ -439,15 +439,22 @@ crate struct TyS<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(TyS<'_>, 40);
 
+// We are actually storing a stable hash cache next to the type, so let's
+// also check the full size
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+static_assert_size!(WithStableHash<TyS<'_>>, 56);
+
 /// Use this rather than `TyS`, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_diagnostic_item = "Ty"]
 #[rustc_pass_by_value]
-pub struct Ty<'tcx>(Interned<'tcx, InTy<TyS<'tcx>>>);
+pub struct Ty<'tcx>(Interned<'tcx, WithStableHash<TyS<'tcx>>>);
 
 // Statics only used for internal testing.
-pub static BOOL_TY: Ty<'static> =
-    Ty(Interned::new_unchecked(&InTy { internee: BOOL_TYS, stable_hash: Fingerprint::ZERO }));
+pub static BOOL_TY: Ty<'static> = Ty(Interned::new_unchecked(&WithStableHash {
+    internee: BOOL_TYS,
+    stable_hash: Fingerprint::ZERO,
+}));
 const BOOL_TYS: TyS<'static> = TyS {
     kind: ty::Bool,
     flags: TypeFlags::empty(),
