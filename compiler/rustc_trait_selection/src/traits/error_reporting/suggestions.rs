@@ -1,6 +1,6 @@
 use super::{
-    DerivedObligationCause, EvaluationResult, ImplDerivedObligationCause, Obligation,
-    ObligationCause, ObligationCauseCode, PredicateObligation, SelectionContext,
+    EvaluationResult, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation,
+    SelectionContext,
 };
 
 use crate::autoderef::Autoderef;
@@ -504,77 +504,49 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It only make sense when suggesting dereferences for arguments
-        let ObligationCauseCode::FunctionArgumentObligation { .. } = obligation.cause.code() else {
+        let code = if let ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } =
+            obligation.cause.code()
+        {
+            parent_code.clone()
+        } else {
             return false;
         };
         let param_env = obligation.param_env;
         let body_id = obligation.cause.body_id;
         let span = obligation.cause.span;
-        let mut real_trait_pred = trait_pred;
-        let mut code = obligation.cause.code();
-        loop {
-            match &code {
-                ObligationCauseCode::FunctionArgumentObligation { parent_code, .. } => {
-                    code = &parent_code;
-                }
-                ObligationCauseCode::ImplDerivedObligation(box ImplDerivedObligationCause {
-                    derived: DerivedObligationCause { parent_code, parent_trait_pred },
-                    ..
-                })
-                | ObligationCauseCode::BuiltinDerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                })
-                | ObligationCauseCode::DerivedObligation(DerivedObligationCause {
-                    parent_code,
-                    parent_trait_pred,
-                }) => {
-                    code = &parent_code;
-                    real_trait_pred = *parent_trait_pred;
-                }
-                _ => break,
-            };
-            let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
-                continue;
-            };
+        let real_trait_pred = match &*code {
+            ObligationCauseCode::ImplDerivedObligation(cause) => cause.derived.parent_trait_pred,
+            ObligationCauseCode::DerivedObligation(cause)
+            | ObligationCauseCode::BuiltinDerivedObligation(cause) => cause.parent_trait_pred,
+            _ => trait_pred,
+        };
+        let Some(real_ty) = real_trait_pred.self_ty().no_bound_vars() else {
+            return false;
+        };
 
-            if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
-                let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
-                if let Some(steps) = autoderef.find_map(|(ty, steps)| {
-                    // Re-add the `&`
-                    let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
-                    let obligation =
-                        self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred, ty);
-                    Some(steps).filter(|_| self.predicate_may_hold(&obligation))
-                }) {
-                    if steps > 0 {
-                        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            // Don't care about `&mut` because `DerefMut` is used less
-                            // often and user will not expect autoderef happens.
-                            if src.starts_with('&') && !src.starts_with("&mut ") {
-                                let derefs = "*".repeat(steps);
-                                err.span_suggestion(
-                                    span,
-                                    "consider dereferencing here",
-                                    format!("&{}{}", derefs, &src[1..]),
-                                    Applicability::MachineApplicable,
-                                );
-                                return true;
-                            }
+        if let ty::Ref(region, base_ty, mutbl) = *real_ty.kind() {
+            let mut autoderef = Autoderef::new(self, param_env, body_id, span, base_ty, span);
+            if let Some(steps) = autoderef.find_map(|(ty, steps)| {
+                // Re-add the `&`
+                let ty = self.tcx.mk_ref(region, TypeAndMut { ty, mutbl });
+                let obligation =
+                    self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred, ty);
+                Some(steps).filter(|_| self.predicate_may_hold(&obligation))
+            }) {
+                if steps > 0 {
+                    if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        // Don't care about `&mut` because `DerefMut` is used less
+                        // often and user will not expect autoderef happens.
+                        if src.starts_with('&') && !src.starts_with("&mut ") {
+                            let derefs = "*".repeat(steps);
+                            err.span_suggestion(
+                                span,
+                                "consider adding dereference here",
+                                format!("&{}{}", derefs, &src[1..]),
+                                Applicability::MachineApplicable,
+                            );
+                            return true;
                         }
-                    }
-                } else if real_trait_pred != trait_pred {
-                    // This branch addresses #87437.
-                    let obligation =
-                        self.mk_trait_obligation_with_new_self_ty(param_env, real_trait_pred, base_ty);
-                    if self.predicate_may_hold(&obligation) {
-                        err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
-                            "consider dereferencing here",
-                            "*".to_string(),
-                            Applicability::MachineApplicable,
-                        );
-                        return true;
                     }
                 }
             }
