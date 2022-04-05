@@ -567,10 +567,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
         let scalar_unit = |value: Primitive| {
             let size = value.size(dl);
             assert!(size.bits() <= 128);
-            Scalar::Initialized {
-                value,
-                valid_range: WrappingRange { start: 0, end: size.unsigned_int_max() },
-            }
+            Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
         };
         let scalar =
             |value: Primitive| tcx.intern_layout(LayoutS::scalar(self, scalar_unit(value)));
