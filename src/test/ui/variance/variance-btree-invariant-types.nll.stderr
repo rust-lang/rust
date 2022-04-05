@@ -6,8 +6,8 @@ LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::IterMut<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::IterMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::IterMut<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::IterMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -18,8 +18,8 @@ LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::IterMut<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::IterMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::IterMut<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::IterMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -30,8 +30,8 @@ LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::IterMut<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::IterMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::IterMut<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::IterMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -42,8 +42,8 @@ LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::IterMut<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::IterMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::IterMut<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::IterMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -54,8 +54,8 @@ LL | fn range_cov_key<'a, 'new>(v: RangeMut<'a, &'static (), ()>) -> RangeMut<'a
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type RangeMut<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct RangeMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `RangeMut<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `RangeMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -66,8 +66,8 @@ LL | fn range_cov_val<'a, 'new>(v: RangeMut<'a, (), &'static ()>) -> RangeMut<'a
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type RangeMut<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct RangeMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `RangeMut<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `RangeMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -78,8 +78,8 @@ LL | fn range_contra_key<'a, 'new>(v: RangeMut<'a, &'new (), ()>) -> RangeMut<'a
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type RangeMut<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct RangeMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `RangeMut<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `RangeMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -90,8 +90,8 @@ LL | fn range_contra_val<'a, 'new>(v: RangeMut<'a, (), &'new ()>) -> RangeMut<'a
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type RangeMut<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct RangeMut<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `RangeMut<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `RangeMut<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -103,8 +103,8 @@ LL |                          -> OccupiedEntry<'a, &'new (), ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::OccupiedEntry<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::OccupiedEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::OccupiedEntry<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::OccupiedEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -116,8 +116,8 @@ LL |                          -> OccupiedEntry<'a, (), &'new ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::OccupiedEntry<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::OccupiedEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::OccupiedEntry<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::OccupiedEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -129,8 +129,8 @@ LL |                             -> OccupiedEntry<'a, &'static (), ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::OccupiedEntry<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::OccupiedEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::OccupiedEntry<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::OccupiedEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -142,8 +142,8 @@ LL |                             -> OccupiedEntry<'a, (), &'static ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::OccupiedEntry<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::OccupiedEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::OccupiedEntry<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::OccupiedEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -155,8 +155,8 @@ LL |                          -> VacantEntry<'a, &'new (), ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::VacantEntry<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::VacantEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::VacantEntry<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::VacantEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -168,8 +168,8 @@ LL |                          -> VacantEntry<'a, (), &'new ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::VacantEntry<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::VacantEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::VacantEntry<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::VacantEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -181,8 +181,8 @@ LL |                             -> VacantEntry<'a, &'static (), ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::VacantEntry<'_, &(), ()>, which makes the generic argument &() invariant
-   = note: the struct std::collections::btree_map::VacantEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::VacantEntry<'_, &(), ()>`, which makes the generic argument `&()` invariant
+   = note: the struct `std::collections::btree_map::VacantEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -194,8 +194,8 @@ LL |                             -> VacantEntry<'a, (), &'static ()> {
 LL |     v
    |     ^ returning this value requires that `'new` must outlive `'static`
    |
-   = note: requirement occurs because of the type std::collections::btree_map::VacantEntry<'_, (), &()>, which makes the generic argument () invariant
-   = note: the struct std::collections::btree_map::VacantEntry<'a, K, V> is invariant over the parameter K
+   = note: requirement occurs because of the type `std::collections::btree_map::VacantEntry<'_, (), &()>`, which makes the generic argument `()` invariant
+   = note: the struct `std::collections::btree_map::VacantEntry<'a, K, V>` is invariant over the parameter `K`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 16 previous errors
