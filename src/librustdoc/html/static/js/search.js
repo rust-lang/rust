@@ -1476,7 +1476,7 @@ window.initSearch = function(rawSearchIndex) {
         };
         searchState.input.onpaste = searchState.input.onchange;
 
-        searchState.outputElement().addEventListener("keydown", function(e) {
+        function onSearchKeydown(e) {
             // We only handle unmodified keystrokes here. We don't want to interfere with,
             // for instance, alt-left and alt-right for history navigation.
             if (e.altKey || e.ctrlKey || e.shiftKey || e.metaKey) {
@@ -1509,57 +1509,69 @@ window.initSearch = function(rawSearchIndex) {
                 nextTab(1);
                 e.preventDefault();
             }
-        });
+        }
 
-        searchState.input.addEventListener("keydown", function(e) {
+        searchState.outputElement().removeEventListener("keydown", onSearchKeydown);
+        searchState.outputElement().addEventListener("keydown", onSearchKeydown);
+
+        function onSearchInputKeydown(e) {
             if (e.which === 40) { // down
                 focusSearchResult();
                 e.preventDefault();
             }
-        });
+        }
 
-        searchState.input.addEventListener("focus", function() {
-            putBackSearch();
-        });
+        searchState.input.removeEventListener("keydown", onSearchInputKeydown);
+        searchState.input.addEventListener("keydown", onSearchInputKeydown);
 
-        searchState.input.addEventListener("blur", function() {
+        searchState.input.removeEventListener("focus", putBackSearch);
+        searchState.input.addEventListener("focus", putBackSearch);
+
+        function onSearchInputBlur() {
             searchState.input.placeholder = searchState.input.origPlaceholder;
-        });
+        }
+
+        searchState.input.removeEventListener("blur", onSearchInputBlur);
+        searchState.input.addEventListener("blur", onSearchInputBlur);
+
+        // Store the previous <title> so we can revert back to it later.
+        var previousTitle = document.title;
+
+        function onPopState(e) {
+            var params = searchState.getQueryStringParams();
+            // Revert to the previous title manually since the History
+            // API ignores the title parameter.
+            document.title = previousTitle;
+            // When browsing forward to search results the previous
+            // search will be repeated, so the currentResults are
+            // cleared to ensure the search is successful.
+            currentResults = null;
+            // Synchronize search bar with query string state and
+            // perform the search. This will empty the bar if there's
+            // nothing there, which lets you really go back to a
+            // previous state with nothing in the bar.
+            if (params.search && params.search.length > 0) {
+                searchState.input.value = params.search;
+                // Some browsers fire "onpopstate" for every page load
+                // (Chrome), while others fire the event only when actually
+                // popping a state (Firefox), which is why search() is
+                // called both here and at the end of the startSearch()
+                // function.
+                registerSearchEvents();
+                search(e);
+            } else {
+                searchState.input.value = "";
+                // When browsing back from search results the main page
+                // visibility must be reset.
+                searchState.hideResults();
+            }
+        }
 
         // Push and pop states are used to add search results to the browser
         // history.
         if (searchState.browserSupportsHistoryApi()) {
-            // Store the previous <title> so we can revert back to it later.
-            var previousTitle = document.title;
-
-            window.addEventListener("popstate", function(e) {
-                var params = searchState.getQueryStringParams();
-                // Revert to the previous title manually since the History
-                // API ignores the title parameter.
-                document.title = previousTitle;
-                // When browsing forward to search results the previous
-                // search will be repeated, so the currentResults are
-                // cleared to ensure the search is successful.
-                currentResults = null;
-                // Synchronize search bar with query string state and
-                // perform the search. This will empty the bar if there's
-                // nothing there, which lets you really go back to a
-                // previous state with nothing in the bar.
-                if (params.search && params.search.length > 0) {
-                    searchState.input.value = params.search;
-                    // Some browsers fire "onpopstate" for every page load
-                    // (Chrome), while others fire the event only when actually
-                    // popping a state (Firefox), which is why search() is
-                    // called both here and at the end of the startSearch()
-                    // function.
-                    search(e);
-                } else {
-                    searchState.input.value = "";
-                    // When browsing back from search results the main page
-                    // visibility must be reset.
-                    searchState.hideResults();
-                }
-            });
+            window.removeEventListener("popstate", onPopState);
+            window.addEventListener("popstate", onPopState);
         }
 
         // This is required in firefox to avoid this problem: Navigating to a search result
@@ -1568,11 +1580,12 @@ window.initSearch = function(rawSearchIndex) {
         // This was an interaction between the back-forward cache and our handlers
         // that try to sync state between the URL and the search input. To work around it,
         // do a small amount of re-init on page show.
-        window.onpageshow = function(){
+        window.onpageshow = function() {
             var qSearch = searchState.getQueryStringParams().search;
             if (searchState.input.value === "" && qSearch) {
                 searchState.input.value = qSearch;
             }
+            registerSearchEvents();
             search();
         };
     }
