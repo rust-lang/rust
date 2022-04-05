@@ -1,5 +1,9 @@
 #![feature(type_alias_impl_trait)]
 
+// revisions: base nll
+// ignore-compare-mode-nll
+//[nll] compile-flags: -Z borrowck=mir
+
 fn main() {
     let y = 42;
     let x = wrong_generic(&y);

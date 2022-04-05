@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/dyn-trait-underscore.rs:8:5
+  --> $DIR/dyn-trait-underscore.rs:12:5
    |
 LL | fn a<T>(items: &[T]) -> Box<dyn Iterator<Item=&T>> {
    |                - let's call the lifetime of this reference `'1`
