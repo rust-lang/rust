@@ -66,8 +66,8 @@ pub use crate::eval::{
 };
 pub use crate::helpers::EvalContextExt as HelpersEvalContextExt;
 pub use crate::machine::{
-    AllocExtra, Evaluator, FrameData, MemoryExtra, MiriEvalContext, MiriEvalContextExt,
-    MiriMemoryKind, Tag, NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    AllocExtra, Evaluator, FrameData, MiriEvalContext, MiriEvalContextExt, MiriMemoryKind, Tag,
+    NUM_CPUS, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;

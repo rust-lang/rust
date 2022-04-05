@@ -199,11 +199,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             getrandom::getrandom(&mut data)
                 .map_err(|err| err_unsup_format!("host getrandom failed: {}", err))?;
         } else {
-            let rng = this.memory.extra.rng.get_mut();
+            let rng = this.machine.rng.get_mut();
             rng.fill_bytes(&mut data);
         }
 
-        this.memory.write_bytes(ptr, data.iter().copied())
+        this.write_bytes_ptr(ptr, data.iter().copied())
     }
 
     /// Call a function: Push the stack frame and pass the arguments.
@@ -645,7 +645,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.memory.get(ptr.offset(len, this)?.into(), size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
+            let alloc =
+                this.get_ptr_alloc(ptr.offset(len, this)?.into(), size1, Align::ONE)?.unwrap(); // not a ZST, so we will get a result
             let byte = alloc.read_scalar(alloc_range(Size::ZERO, size1))?.to_u8()?;
             if byte == 0 {
                 break;
@@ -655,7 +656,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Step 2: get the bytes.
-        this.memory.read_bytes(ptr.into(), len)
+        this.read_bytes_ptr(ptr.into(), len)
     }
 
     fn read_wide_str(&self, mut ptr: Pointer<Option<Tag>>) -> InterpResult<'tcx, Vec<u16>> {
@@ -667,7 +668,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         loop {
             // FIXME: We are re-getting the allocation each time around the loop.
             // Would be nice if we could somehow "extend" an existing AllocRange.
-            let alloc = this.memory.get(ptr.into(), size2, align2)?.unwrap(); // not a ZST, so we will get a result
+            let alloc = this.get_ptr_alloc(ptr.into(), size2, align2)?.unwrap(); // not a ZST, so we will get a result
             let wchar = alloc.read_scalar(alloc_range(Size::ZERO, size2))?.to_u16()?;
             if wchar == 0 {
                 break;
@@ -750,8 +751,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// Mark a machine allocation that was just created as immutable.
     fn mark_immutable(&mut self, mplace: &MemPlace<Tag>) {
         let this = self.eval_context_mut();
-        this.memory
-            .mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
+        this.alloc_mark_immutable(mplace.ptr.into_pointer_or_addr().unwrap().provenance.alloc_id)
             .unwrap();
     }
 }

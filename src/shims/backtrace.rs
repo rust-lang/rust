@@ -64,7 +64,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // to reconstruct the needed frame information in `handle_miri_resolve_frame`.
                 // Note that we never actually read or write anything from/to this pointer -
                 // all of the data is represented by the pointer value itself.
-                let fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(instance));
+                let fn_ptr = this.create_fn_alloc_ptr(FnVal::Instance(instance));
                 fn_ptr.wrapping_offset(Size::from_bytes(pos.0), this)
             })
             .collect();
@@ -125,7 +125,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let ptr = this.read_pointer(ptr)?;
         // Take apart the pointer, we need its pieces.
-        let (alloc_id, offset, ptr) = this.memory.ptr_get_alloc(ptr)?;
+        let (alloc_id, offset, ptr) = this.ptr_get_alloc_id(ptr)?;
 
         let fn_instance =
             if let Some(GlobalAlloc::Function(instance)) = this.tcx.get_global_alloc(alloc_id) {
@@ -159,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Reconstruct the original function pointer,
         // which we pass to user code.
-        let fn_ptr = this.memory.create_fn_alloc(FnVal::Instance(fn_instance));
+        let fn_ptr = this.create_fn_alloc_ptr(FnVal::Instance(fn_instance));
 
         let num_fields = dest.layout.fields.count();
 
@@ -244,8 +244,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let (_, _, name, filename) = this.resolve_frame_pointer(ptr)?;
 
-        this.memory.write_bytes(this.read_pointer(name_ptr)?, name.bytes())?;
-        this.memory.write_bytes(this.read_pointer(filename_ptr)?, filename.bytes())?;
+        this.write_bytes_ptr(this.read_pointer(name_ptr)?, name.bytes())?;
+        this.write_bytes_ptr(this.read_pointer(filename_ptr)?, filename.bytes())?;
 
         Ok(())
     }

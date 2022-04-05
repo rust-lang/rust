@@ -153,7 +153,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,
     entry_type: EntryFnType,
-    config: MiriConfig,
+    config: &MiriConfig,
 ) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'mir, 'tcx>>, MPlaceTy<'tcx, Tag>)> {
     let param_env = ty::ParamEnv::reveal_all();
     let layout_cx = LayoutCx { tcx, param_env };
@@ -161,12 +161,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx,
         rustc_span::source_map::DUMMY_SP,
         param_env,
-        Evaluator::new(&config, layout_cx),
-        MemoryExtra::new(&config),
+        Evaluator::new(config, layout_cx),
     );
-    // Complete initialization.
-    EnvVars::init(&mut ecx, config.excluded_env_vars, config.forwarded_env_vars)?;
-    MemoryExtra::init_extern_statics(&mut ecx)?;
+    // Some parts of initialization require a full `InterpCx`.
+    Evaluator::late_init(&mut ecx, config)?;
 
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel = ecx.resolve_path(&["core", "ascii", "escape_default"]);
@@ -260,7 +258,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             .unwrap()
             .unwrap();
 
-            let main_ptr = ecx.memory.create_fn_alloc(FnVal::Instance(entry_instance));
+            let main_ptr = ecx.create_fn_alloc_ptr(FnVal::Instance(entry_instance));
 
             ecx.call_function(
                 start_instance,
@@ -296,7 +294,7 @@ pub fn eval_entry<'tcx>(
     // Copy setting before we move `config`.
     let ignore_leaks = config.ignore_leaks;
 
-    let (mut ecx, ret_place) = match create_ecx(tcx, entry_id, entry_type, config) {
+    let (mut ecx, ret_place) = match create_ecx(tcx, entry_id, entry_type, &config) {
         Ok(v) => v,
         Err(err) => {
             err.print_backtrace();
@@ -354,7 +352,7 @@ pub fn eval_entry<'tcx>(
                 }
                 // Check for memory leaks.
                 info!("Additonal static roots: {:?}", ecx.machine.static_roots);
-                let leaks = ecx.memory.leak_report(&ecx.machine.static_roots);
+                let leaks = ecx.leak_report(&ecx.machine.static_roots);
                 if leaks != 0 {
                     tcx.sess.err("the evaluated program leaked memory");
                     tcx.sess.note_without_error("pass `-Zmiri-ignore-leaks` to disable this check");

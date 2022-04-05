@@ -88,8 +88,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `{}`", intrinsic_name)
                 })?;
-                this.memory
-                    .write_bytes(ptr, iter::repeat(val_byte).take(byte_count.bytes() as usize))?;
+                this.write_bytes_ptr(
+                    ptr,
+                    iter::repeat(val_byte).take(byte_count.bytes() as usize),
+                )?;
             }
 
             // Floating-point operations
@@ -1087,7 +1089,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             place.ptr,
             place.layout.size,
             align,
@@ -1113,7 +1115,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             place.ptr,
             place.layout.size,
             align,
@@ -1168,7 +1170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             place.ptr,
             place.layout.size,
             align,
@@ -1210,7 +1212,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             place.ptr,
             place.layout.size,
             align,
@@ -1241,7 +1243,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // even if the type they wrap would be less aligned (e.g. AtomicU64 on 32bit must
         // be 8-aligned).
         let align = Align::from_bytes(place.layout.size.bytes()).unwrap();
-        this.memory.check_ptr_access_align(
+        this.check_ptr_access_align(
             place.ptr,
             place.layout.size,
             align,

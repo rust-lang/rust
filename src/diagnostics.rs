@@ -196,7 +196,7 @@ pub fn report_error<'tcx, 'mir>(
                 Unsupported(_) =>
                     vec![(None, format!("this is likely not a bug in the program; it indicates that the program performed an operation that the interpreter does not support"))],
                 UndefinedBehavior(UndefinedBehaviorInfo::AlignmentCheckFailed { .. })
-                    if ecx.memory.extra.check_alignment == AlignmentCheck::Symbolic
+                    if ecx.machine.check_alignment == AlignmentCheck::Symbolic
                 =>
                     vec![
                         (None, format!("this usually indicates that your program performed an invalid operation and caused Undefined Behavior")),
@@ -251,7 +251,7 @@ pub fn report_error<'tcx, 'mir>(
                 access.uninit_offset.bytes(),
                 access.uninit_offset.bytes() + access.uninit_size.bytes(),
             );
-            eprintln!("{:?}", ecx.memory.dump_alloc(*alloc_id));
+            eprintln!("{:?}", ecx.dump_alloc(*alloc_id));
         }
         _ => {}
     }
