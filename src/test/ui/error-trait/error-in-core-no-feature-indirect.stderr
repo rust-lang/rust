@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'error_in_core'
+  --> $DIR/error-in-core-no-feature-indirect.rs:6:5
+   |
+LL | use core::error;
+   |     ^^^^^^^^^^^
+   |
+   = help: add `#![feature(error_in_core)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
