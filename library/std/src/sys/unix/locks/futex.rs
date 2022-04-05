@@ -146,7 +146,7 @@ impl Condvar {
     }
 
     unsafe fn wait_optional_timeout(&self, mutex: &Mutex, timeout: Option<Duration>) -> bool {
-        // Check the notification counter before we unlock the mutex.
+        // Examine the notification counter _before_ we unlock the mutex.
         let futex_value = self.futex.load(Relaxed);
 
         // Unlock the mutex before going to sleep.
