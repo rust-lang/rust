@@ -14,7 +14,7 @@ mod terminator;
 mod traits;
 mod util;
 mod validity;
-mod visitor;
+pub(crate) mod visitor;
 
 pub use rustc_middle::mir::interpret::*; // have all the `interpret` symbols in one place: here
 

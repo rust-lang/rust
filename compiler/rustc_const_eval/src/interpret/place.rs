@@ -82,7 +82,7 @@ rustc_data_structures::static_assert_size!(Place, 56);
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceTy<'tcx, Tag: Provenance = AllocId> {
-    place: Place<Tag>, // Keep this private; it helps enforce invariants.
+    pub(crate) place: Place<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
 
@@ -100,7 +100,7 @@ impl<'tcx, Tag: Provenance> std::ops::Deref for PlaceTy<'tcx, Tag> {
 /// A MemPlace with its layout. Constructing it is only possible in this module.
 #[derive(Copy, Clone, Hash, Eq, PartialEq, Debug)]
 pub struct MPlaceTy<'tcx, Tag: Provenance = AllocId> {
-    mplace: MemPlace<Tag>,
+    pub(crate) mplace: MemPlace<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
 
@@ -294,6 +294,7 @@ where
 
     /// Take an operand, representing a pointer, and dereference it to a place -- that
     /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -487,7 +488,8 @@ where
     }
 
     /// Project into an mplace
-    pub(super) fn mplace_projection(
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) fn mplace_projection(
         &self,
         base: &MPlaceTy<'tcx, M::PointerTag>,
         proj_elem: mir::PlaceElem<'tcx>,
@@ -548,6 +550,7 @@ where
     /// Just a convenience function, but used quite a bit.
     /// This is the only projection that might have a side-effect: We cannot project
     /// into the field of a local `ScalarPair`, we have to first allocate it.
+    #[instrument(skip(self), level = "debug")]
     pub fn place_field(
         &mut self,
         base: &PlaceTy<'tcx, M::PointerTag>,
@@ -586,6 +589,7 @@ where
     }
 
     /// Projects into a place.
+    #[instrument(skip(self), level = "debug")]
     pub fn place_projection(
         &mut self,
         base: &PlaceTy<'tcx, M::PointerTag>,
@@ -617,19 +621,23 @@ where
 
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_for_read`.
+    #[instrument(skip(self), level = "debug")]
     pub fn eval_place(
         &mut self,
         place: mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
+        debug!("projection: {:?}", place.projection);
         let mut place_ty = PlaceTy {
             // This works even for dead/uninitialized locals; we check further when writing
             place: Place::Local { frame: self.frame_idx(), local: place.local },
             layout: self.layout_of_local(self.frame(), place.local, None)?,
         };
+        debug!(?place_ty);
 
         for elem in place.projection.iter() {
             place_ty = self.place_projection(&place_ty, &elem)?
         }
+        debug!("place after projections: {:?}", place_ty);
 
         trace!("{:?}", self.dump_place(place_ty.place));
         // Sanity-check the type we ended up with.
@@ -646,6 +654,7 @@ where
 
     /// Write an immediate to a place
     #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
     pub fn write_immediate(
         &mut self,
         src: Immediate<M::PointerTag>,
@@ -684,6 +693,7 @@ where
     /// Write an immediate to a place.
     /// If you use this you are responsible for validating that things got copied at the
     /// right type.
+    #[instrument(skip(self), level = "debug")]
     fn write_immediate_no_validate(
         &mut self,
         src: Immediate<M::PointerTag>,
@@ -736,6 +746,7 @@ where
     /// Write an immediate to memory.
     /// If you use this you are responsible for validating that things got copied at the
     /// right type.
+    #[instrument(skip(self), level = "debug")]
     fn write_immediate_to_mplace_no_validate(
         &mut self,
         value: Immediate<M::PointerTag>,
@@ -758,6 +769,7 @@ where
         // cover all the bytes!
         match value {
             Immediate::Scalar(scalar) => {
+                debug!(?scalar);
                 match dest.layout.abi {
                     Abi::Scalar(_) => {} // fine
                     _ => span_bug!(
@@ -830,6 +842,7 @@ where
     /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     #[inline(always)]
+    #[instrument(skip(self), level = "debug")]
     pub fn copy_op(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -849,6 +862,7 @@ where
     /// Use `copy_op_transmute` if the layouts could disagree.
     /// Also, if you use this you are responsible for validating that things get copied at the
     /// right type.
+    #[instrument(skip(self), level = "debug")]
     fn copy_op_no_validate(
         &mut self,
         src: &OpTy<'tcx, M::PointerTag>,
@@ -868,6 +882,7 @@ where
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
         let src = match self.try_read_immediate(src)? {
             Ok(src_val) => {
+                debug!("immediate from src is {:?}", src_val);
                 assert!(!src.layout.is_unsized(), "cannot have unsized immediates");
                 // Yay, we got a value that we can write directly.
                 // FIXME: Add a check to make sure that if `src` is indirect,
@@ -955,6 +970,7 @@ where
     /// This supports unsized types and returns the computed size to avoid some
     /// redundant computation when copying; use `force_allocation` for a simpler, sized-only
     /// version.
+    #[instrument(skip(self), level = "debug")]
     pub fn force_allocation_maybe_sized(
         &mut self,
         place: &PlaceTy<'tcx, M::PointerTag>,
@@ -962,6 +978,7 @@ where
     ) -> InterpResult<'tcx, (MPlaceTy<'tcx, M::PointerTag>, Option<Size>)> {
         let (mplace, size) = match place.place {
             Place::Local { frame, local } => {
+                debug!("LocalPlace");
                 match M::access_local_mut(self, frame, local)? {
                     Ok(&mut local_val) => {
                         // We need to make an allocation.
@@ -975,9 +992,12 @@ where
                         let (size, align) = self
                             .size_and_align_of(&meta, &local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
+                        debug!(?size, ?align);
                         let ptr = self.allocate_ptr(size, align, MemoryKind::Stack)?;
+                        debug!("allocated ptr: {:?}", ptr);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let LocalValue::Live(Operand::Immediate(value)) = local_val {
+                            debug!("LocalValue::Live: immediate value {:?}", value);
                             // Preserve old value.
                             // We don't have to validate as we can assume the local
                             // was already valid for its type.
@@ -1037,6 +1057,7 @@ where
     }
 
     /// Writes the discriminant of the given variant.
+    #[instrument(skip(self), level = "debug")]
     pub fn write_discriminant(
         &mut self,
         variant_index: VariantIdx,

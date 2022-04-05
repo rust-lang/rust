@@ -3,29 +3,26 @@
 use std::convert::TryFrom;
 
 use rustc_hir::Mutability;
-use rustc_middle::ty::layout::HasTyCtxt;
+use rustc_middle::mir;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{
-    mir::{self, interpret::ConstAlloc},
-    ty::ScalarInt,
-};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
-use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
-    MemPlaceMeta, Scalar,
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MemPlaceMeta,
+    Scalar,
 };
 
 mod error;
 mod eval_queries;
 mod fn_queries;
 mod machine;
+mod valtrees;
 
 pub use error::*;
 pub use eval_queries::*;
 pub use fn_queries::*;
 pub use machine::*;
+pub(crate) use valtrees::{const_to_valtree, valtree_to_const_value};
 
 pub(crate) fn const_caller_location(
     tcx: TyCtxt<'_>,
@@ -39,128 +36,6 @@ pub(crate) fn const_caller_location(
         bug!("intern_const_alloc_recursive should not error in this case")
     }
     ConstValue::Scalar(Scalar::from_maybe_pointer(loc_place.ptr, &tcx))
-}
-
-/// Convert an evaluated constant to a type level constant
-pub(crate) fn const_to_valtree<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    raw: ConstAlloc<'tcx>,
-) -> Option<ty::ValTree<'tcx>> {
-    let ecx = mk_eval_cx(
-        tcx, DUMMY_SP, param_env,
-        // It is absolutely crucial for soundness that
-        // we do not read from static items or other mutable memory.
-        false,
-    );
-    let place = ecx.raw_const_to_mplace(raw).unwrap();
-    const_to_valtree_inner(&ecx, &place)
-}
-
-#[instrument(skip(ecx), level = "debug")]
-fn branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
-    place: &MPlaceTy<'tcx>,
-    n: usize,
-    variant: Option<VariantIdx>,
-) -> Option<ty::ValTree<'tcx>> {
-    let place = match variant {
-        Some(variant) => ecx.mplace_downcast(&place, variant).unwrap(),
-        None => *place,
-    };
-    let variant = variant.map(|variant| Some(ty::ValTree::Leaf(ScalarInt::from(variant.as_u32()))));
-    debug!(?place, ?variant);
-
-    let fields = (0..n).map(|i| {
-        let field = ecx.mplace_field(&place, i).unwrap();
-        const_to_valtree_inner(ecx, &field)
-    });
-    // For enums, we prepend their variant index before the variant's fields so we can figure out
-    // the variant again when just seeing a valtree.
-    let branches = variant.into_iter().chain(fields);
-    Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
-}
-
-fn slice_branches<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
-    place: &MPlaceTy<'tcx>,
-) -> Option<ty::ValTree<'tcx>> {
-    let n = place.len(&ecx.tcx()).expect(&format!("expected to use len of place {:?}", place));
-    let branches = (0..n).map(|i| {
-        let place_elem = ecx.mplace_index(place, i).unwrap();
-        const_to_valtree_inner(ecx, &place_elem)
-    });
-
-    Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
-}
-
-#[instrument(skip(ecx), level = "debug")]
-fn const_to_valtree_inner<'tcx>(
-    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
-    place: &MPlaceTy<'tcx>,
-) -> Option<ty::ValTree<'tcx>> {
-    match place.layout.ty.kind() {
-        ty::FnDef(..) => Some(ty::ValTree::zst()),
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
-            let val = ecx.read_immediate(&place.into()).unwrap();
-            let val = val.to_scalar().unwrap();
-            Some(ty::ValTree::Leaf(val.assert_int()))
-        }
-
-        // Raw pointers are not allowed in type level constants, as we cannot properly test them for
-        // equality at compile-time (see `ptr_guaranteed_eq`/`_ne`).
-        // Technically we could allow function pointers (represented as `ty::Instance`), but this is not guaranteed to
-        // agree with runtime equality tests.
-        ty::FnPtr(_) | ty::RawPtr(_) => None,
-
-        ty::Ref(_, _, _)  => {
-            let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
-            debug!(?derefd_place);
-
-            const_to_valtree_inner(ecx, &derefd_place)
-        }
-
-        ty::Str | ty::Slice(_) | ty::Array(_, _) => {
-            let valtree = slice_branches(ecx, place);
-            debug!(?valtree);
-
-            valtree
-        }
-        // Trait objects are not allowed in type level constants, as we have no concept for
-        // resolving their backing type, even if we can do that at const eval time. We may
-        // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
-        // but it is unclear if this is useful.
-        ty::Dynamic(..) => None,
-
-        ty::Tuple(substs) => branches(ecx, place, substs.len(), None),
-
-        ty::Adt(def, _) => {
-            if def.variants().is_empty() {
-                bug!("uninhabited types should have errored and never gotten converted to valtree")
-            }
-
-            let variant = ecx.read_discriminant(&place.into()).unwrap().1;
-
-            branches(ecx, place, def.variant(variant).fields.len(), def.is_enum().then_some(variant))
-        }
-
-        ty::Never
-        | ty::Error(_)
-        | ty::Foreign(..)
-        | ty::Infer(ty::FreshIntTy(_))
-        | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Projection(..)
-        | ty::Param(_)
-        | ty::Bound(..)
-        | ty::Placeholder(..)
-        // FIXME(oli-obk): we could look behind opaque types
-        | ty::Opaque(..)
-        | ty::Infer(_)
-        // FIXME(oli-obk): we can probably encode closures just like structs
-        | ty::Closure(..)
-        | ty::Generator(..)
-        | ty::GeneratorWitness(..) => None,
-    }
 }
 
 /// This function should never fail for validated constants. However, it is also invoked from the
@@ -202,6 +77,7 @@ pub(crate) fn try_destructure_const<'tcx>(
     Ok(mir::DestructuredConst { variant, fields })
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub(crate) fn deref_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
