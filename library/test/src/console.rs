@@ -103,12 +103,7 @@ impl ConsoleTestState {
         exec_time: Option<&TestExecTime>,
     ) -> io::Result<()> {
         self.write_log(|| {
-            let TestDesc {
-                name,
-                #[cfg(not(bootstrap))]
-                ignore_message,
-                ..
-            } = test;
+            let TestDesc { name, ignore_message, .. } = test;
             format!(
                 "{} {}",
                 match *result {
@@ -116,14 +111,11 @@ impl ConsoleTestState {
                     TestResult::TrFailed => "failed".to_owned(),
                     TestResult::TrFailedMsg(ref msg) => format!("failed: {msg}"),
                     TestResult::TrIgnored => {
-                        #[cfg(not(bootstrap))]
                         if let Some(msg) = ignore_message {
                             format!("ignored: {msg}")
                         } else {
                             "ignored".to_owned()
                         }
-                        #[cfg(bootstrap)]
-                        "ignored".to_owned()
                     }
                     TestResult::TrBench(ref bs) => fmt_bench_samples(bs),
                     TestResult::TrTimedFail => "failed (time limit exceeded)".to_owned(),

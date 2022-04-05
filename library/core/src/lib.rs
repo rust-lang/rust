@@ -84,7 +84,7 @@
     target_has_atomic_load_store = "ptr",
 ))]
 #![no_core]
-#![cfg_attr(not(bootstrap), rustc_coherence_is_core)]
+#![rustc_coherence_is_core]
 //
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
@@ -163,15 +163,12 @@
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_fn_floating_point_arithmetic)]
-#![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
-#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
-#![cfg_attr(bootstrap, feature(const_impl_trait))]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(derive_default_enum)]
-#![cfg_attr(not(bootstrap), feature(deprecated_suggestion))]
+#![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]
@@ -208,7 +205,6 @@
 #![feature(asm_const)]
 //
 // Target features:
-#![cfg_attr(bootstrap, feature(aarch64_target_feature))]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(cmpxchg16b_target_feature)]
@@ -220,7 +216,6 @@
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
 #![feature(wasm_target_feature)]
-#![cfg_attr(bootstrap, feature(adx_target_feature))]
 
 // allow using `core::` in intra-doc links
 #[allow(unused_extern_crates)]

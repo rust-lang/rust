@@ -2,7 +2,6 @@
 
 use crate::marker::Destruct;
 
-#[cfg_attr(bootstrap, lang = "bool")]
 impl bool {
     /// Returns `Some(t)` if the `bool` is [`true`](../std/keyword.true.html),
     /// or `None` otherwise.
@@ -18,10 +17,9 @@ impl bool {
     #[unstable(feature = "bool_to_option", issue = "80967")]
     #[rustc_const_unstable(feature = "const_bool_to_option", issue = "91917")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn then_some<T>(self, t: T) -> Option<T>
     where
-        T: ~const Drop + ~const Destruct,
+        T: ~const Destruct,
     {
         if self { Some(t) } else { None }
     }
@@ -38,11 +36,10 @@ impl bool {
     #[stable(feature = "lazy_bool_to_option", since = "1.50.0")]
     #[rustc_const_unstable(feature = "const_bool_to_option", issue = "91917")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn then<T, F>(self, f: F) -> Option<T>
     where
         F: ~const FnOnce() -> T,
-        F: ~const Drop + ~const Destruct,
+        F: ~const Destruct,
     {
         if self { Some(f()) } else { None }
     }

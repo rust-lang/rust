@@ -1,7 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![feature(link_cfg)]
-#![cfg_attr(bootstrap, feature(native_link_modifiers))]
 #![feature(native_link_modifiers_bundle)]
 #![feature(nll)]
 #![feature(staged_api)]

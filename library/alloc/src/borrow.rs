@@ -331,7 +331,6 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_deref", issue = "88955")]
-#[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
 impl<B: ?Sized + ToOwned> const Deref for Cow<'_, B>
 where
     B::Owned: ~const Borrow<B>,

@@ -349,10 +349,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_in(x: T, alloc: A) -> Self
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let mut boxed = Self::new_uninit_in(alloc);
         unsafe {
@@ -379,11 +378,10 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_in(x: T, alloc: A) -> Result<Self, AllocError>
     where
-        T: ~const Drop + ~const Destruct,
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        T: ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
         unsafe {
@@ -417,10 +415,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[must_use]
     // #[unstable(feature = "new_uninit", issue = "63291")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_uninit_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -456,10 +453,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_uninit_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate(layout)?.cast();
@@ -491,10 +487,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[cfg(not(no_global_oom_handling))]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[must_use]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn new_zeroed_in(alloc: A) -> Box<mem::MaybeUninit<T>, A>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         // NOTE: Prefer match over unwrap_or_else since closure sometimes not inlineable.
@@ -530,10 +525,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "new_uninit", issue = "63291")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn try_new_zeroed_in(alloc: A) -> Result<Box<mem::MaybeUninit<T>, A>, AllocError>
     where
-        A: ~const Allocator + ~const Drop + ~const Destruct,
+        A: ~const Allocator + ~const Destruct,
     {
         let layout = Layout::new::<mem::MaybeUninit<T>>();
         let ptr = alloc.allocate_zeroed(layout)?.cast();
@@ -547,10 +541,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[must_use]
     #[inline(always)]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn pin_in(x: T, alloc: A) -> Pin<Self>
     where
-        A: 'static + ~const Allocator + ~const Drop + ~const Destruct,
+        A: 'static + ~const Allocator + ~const Destruct,
     {
         Self::into_pin(Self::new_in(x, alloc))
     }
@@ -579,10 +572,9 @@ impl<T, A: Allocator> Box<T, A> {
     #[unstable(feature = "box_into_inner", issue = "80437")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    #[cfg_attr(not(bootstrap), allow(drop_bounds))] // FIXME remove `~const Drop` and this attr when bumping
     pub const fn into_inner(boxed: Self) -> T
     where
-        Self: ~const Drop + ~const Destruct,
+        Self: ~const Destruct,
     {
         *boxed
     }
