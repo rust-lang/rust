@@ -169,7 +169,7 @@ rustc_queries! {
     /// Tools can additionally pass in a tool filter. That will restrict the
     /// expectations to only trigger for lints starting with the listed tool
     /// name. This is useful for cases were not all linting code from rustc
-    /// was called. With the default `none` all registered lints will also
+    /// was called. With the default `None` all registered lints will also
     /// be checked for expectation fulfillment.
     query check_expectations(key: Option<Symbol>) -> () {
         eval_always
