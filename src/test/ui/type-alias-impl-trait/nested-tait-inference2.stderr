@@ -19,7 +19,7 @@ LL | |     ()
 LL | | }
    | |_^ the trait `Foo<FooX>` is not implemented for `()`
    |
-   = help: the following other types implement trait `Foo<A>`:
+   = help: the following implementations were found:
              <() as Foo<()>>
              <() as Foo<u32>>
 

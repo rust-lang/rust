@@ -11,3 +11,4 @@ fn get_vowel_count(string: &str) -> usize {
 fn main() {
     let _ = get_vowel_count("asdf");
 }
+
