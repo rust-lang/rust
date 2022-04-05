@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_macro_callsite;
+use clippy_utils::visitors::for_each_value_source;
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, PatKind, Stmt, StmtKind};
@@ -11,11 +12,18 @@ use super::LET_UNIT_VALUE;
 
 pub(super) fn check(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Local(local) = stmt.kind
+        && let Some(init) = local.init
         && !local.pat.span.from_expansion()
         && !in_external_macro(cx.sess(), stmt.span)
         && cx.typeck_results().pat_ty(local.pat).is_unit()
     {
-        if local.init.map_or(false, |e| needs_inferred_result_ty(cx, e)) {
+        let needs_inferred = for_each_value_source(init, &mut |e| if needs_inferred_result_ty(cx, e) {
+            ControlFlow::Continue(())
+        } else {
+            ControlFlow::Break(())
+        }).is_continue();
+
+        if needs_inferred {
             if !matches!(local.pat.kind, PatKind::Wild) {
                 span_lint_and_then(
                     cx,

@@ -87,4 +87,29 @@ fn _returns_generic() {
 
     let _: () = f4(vec![()]); // Lint
     let x: () = f4(vec![()]); // Lint
+
+    // Ok
+    let _: () = {
+        let x = 5;
+        f2(x)
+    };
+
+    let _: () = if true { f() } else { f2(0) }; // Ok
+    let x: () = if true { f() } else { f2(0) }; // Lint
+
+    // Ok
+    let _: () = match Some(0) {
+        None => f2(1),
+        Some(0) => f(),
+        Some(1) => f2(3),
+        Some(_) => f2('x'),
+    };
+
+    // Lint
+    let _: () = match Some(0) {
+        None => f2(1),
+        Some(0) => f(),
+        Some(1) => f2(3),
+        Some(_) => (),
+    };
 }

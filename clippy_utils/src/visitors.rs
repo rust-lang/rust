@@ -1,4 +1,5 @@
 use crate::path_to_local_id;
+use core::ops::ControlFlow;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
@@ -401,4 +402,37 @@ pub fn contains_unsafe_block<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) 
     };
     v.visit_expr(e);
     v.found_unsafe
+}
+
+/// Runs the given function for each sub-expression producing the final value consumed by the parent
+/// of the give expression.
+///
+/// e.g. for the following expression
+/// ```rust,ignore
+/// if foo {
+///     f(0)
+/// } else {
+///     1 + 1
+/// }
+/// ```
+/// this will pass both `f(0)` and `1+1` to the given function.
+pub fn for_each_value_source<'tcx, B>(
+    e: &'tcx Expr<'tcx>,
+    f: &mut impl FnMut(&'tcx Expr<'tcx>) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    match e.kind {
+        ExprKind::Block(Block { expr: Some(e), .. }, _) => for_each_value_source(e, f),
+        ExprKind::Match(_, arms, _) => {
+            for arm in arms {
+                for_each_value_source(arm.body, f)?;
+            }
+            ControlFlow::Continue(())
+        },
+        ExprKind::If(_, if_expr, Some(else_expr)) => {
+            for_each_value_source(if_expr, f)?;
+            for_each_value_source(else_expr, f)
+        },
+        ExprKind::DropTemps(e) => for_each_value_source(e, f),
+        _ => f(e),
+    }
 }
