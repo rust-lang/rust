@@ -67,6 +67,7 @@
   
       bb7: {
           StorageDead(_6);                 // scope 4 at $DIR/issue-75439.rs:10:35: 10:36
+          Deinit(_0);                      // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
           ((_0 as Some).0: [u8; 4]) = move _5; // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
           discriminant(_0) = 1;            // scope 1 at $DIR/issue-75439.rs:10:9: 10:39
           StorageDead(_5);                 // scope 1 at $DIR/issue-75439.rs:10:38: 10:39
@@ -75,6 +76,7 @@
       }
   
       bb8: {
+          Deinit(_0);                      // scope 1 at $DIR/issue-75439.rs:12:9: 12:13
           discriminant(_0) = 0;            // scope 1 at $DIR/issue-75439.rs:12:9: 12:13
           goto -> bb9;                     // scope 1 at $DIR/issue-75439.rs:9:5: 13:6
       }

@@ -22,7 +22,9 @@ fn main() -> () {
     bb0: {
         StorageLive(_1);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:9: 19:13
         StorageLive(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:38: 19:46
+        Deinit(_2);                      // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:38: 19:46
         discriminant(_2) = 2;            // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:38: 19:46
+        Deinit(_1);                      // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:16: 19:48
         (_1.0: u32) = const 51_u32;      // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:16: 19:48
         (_1.1: Test1) = move _2;         // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:16: 19:48
         StorageDead(_2);                 // scope 0 at $DIR/uninhabited_enum_branching2.rs:19:47: 19:48

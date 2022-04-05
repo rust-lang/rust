@@ -32,6 +32,7 @@
           _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:12: 8:13
           StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:15: 8:16
           _5 = _2;                         // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:15: 8:16
+          Deinit(_3);                      // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
           (_3.0: std::option::Option<u32>) = move _4; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
           (_3.1: std::option::Option<u32>) = move _5; // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:11: 8:17
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch_noopt.rs:8:16: 8:17

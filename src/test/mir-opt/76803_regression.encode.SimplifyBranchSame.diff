@@ -17,6 +17,7 @@
       }
   
       bb2: {
+          Deinit(_0);                      // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
           discriminant(_0) = 1;            // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
           goto -> bb3;                     // scope 0 at $DIR/76803_regression.rs:12:20: 12:27
       }
