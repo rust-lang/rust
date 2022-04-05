@@ -118,10 +118,27 @@ pub struct DestinationPropagation;
 
 impl<'tcx> MirPass<'tcx> for DestinationPropagation {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        //  FIXME(#79191, #82678): This is unsound.
-        //
-        // Only run at mir-opt-level=3 or higher for now (we don't fix up debuginfo and remove
-        // storage statements at the moment).
+        // FIXME(#79191, #82678):
+        //  - Dead store elimination (soundness critical, definitely the cause of #79191). The gist
+        //    of this optimization is that two distinct "variables" can reuse a local if they have
+        //    no need to use that local at the same time. We determine that this is the case by
+        //    doing a liveness analysis on the variables; however, that is only sufficient if we
+        //    then actually go and guarantee that when the variable is dead, it does not go
+        //    overwriting the current value in the local. This is ensured by a DSE pass. It is
+        //    JakobDegen's opinion that this should not be implemented as a separate `MirPass`, but
+        //    rather as a part of this one, because it is critical for soundness that the DSE be
+        //    done with the same (or at least strictly stronger) analysis facts as are used for the
+        //    rest of the optimization.
+        //  - Bad handling of unreachable blocks (soundness critical, possibly the cause of #82678).
+        //    The current MIR semantics define overlapping argument and return places for function
+        //    calls to be statically disallowed, not just UB. This means it does not suffice to
+        //    consider only reachable basic blocks in `Conflicts::Build`. There are a lot of ways to
+        //    address this.
+        //  - Double check handling of intra-statement conficts (soundness critical). This is
+        //    currently somewhat ad-hoc, and probably can't be done correctly without specifying
+        //    more MIR semantics.
+        //  - Fix debug info (non-soundness critical)
+        //  - Fix storage statements (non-soundness critical)
         sess.opts.debugging_opts.unsound_mir_opts && sess.mir_opt_level() >= 3
     }
 
