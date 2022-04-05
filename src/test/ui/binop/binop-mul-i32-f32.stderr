@@ -10,10 +10,6 @@ LL |     x * y
              <&i32 as Mul<&i32>>
              <i32 as Mul<&i32>>
              <i32 as Mul>
-             <&'a f32 as Mul<f32>>
-             <&'a f64 as Mul<f64>>
-             <&'a i128 as Mul<i128>>
-             <&'a i16 as Mul<i16>>
            and 49 others
 
 error: aborting due to previous error

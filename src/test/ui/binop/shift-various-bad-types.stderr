@@ -10,10 +10,6 @@ LL |     22 >> p.char;
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>
              <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &str`
@@ -28,10 +24,6 @@ LL |     22 >> p.str;
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>
              <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
            and 568 others
 
 error[E0277]: no implementation for `{integer} >> &Panolpy`
@@ -46,10 +38,6 @@ LL |     22 >> p;
              <&'a i128 as Shr<i16>>
              <&'a i128 as Shr<i32>>
              <&'a i128 as Shr<i64>>
-             <&'a i128 as Shr<i8>>
-             <&'a i128 as Shr<isize>>
-             <&'a i128 as Shr<u128>>
-             <&'a i128 as Shr<u16>>
            and 568 others
 
 error[E0308]: mismatched types

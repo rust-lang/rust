@@ -10,10 +10,6 @@ LL |     x + 100.0
              <&u8 as Add<&u8>>
              <u8 as Add<&u8>>
              <u8 as Add>
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
            and 48 others
 
 error[E0277]: cannot add `&str` to `f64`
@@ -28,10 +24,6 @@ LL |     x + "foo"
              <&f64 as Add<&f64>>
              <f64 as Add<&f64>>
              <f64 as Add>
-             <&'a f32 as Add<f32>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
-             <&'a i32 as Add<i32>>
            and 48 others
 
 error[E0277]: cannot add `{integer}` to `f64`
@@ -46,10 +38,6 @@ LL |     x + y
              <&f64 as Add<&f64>>
              <f64 as Add<&f64>>
              <f64 as Add>
-             <&'a f32 as Add<f32>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
-             <&'a i32 as Add<i32>>
            and 48 others
 
 error[E0277]: cannot subtract `{float}` from `u8`
@@ -64,10 +52,6 @@ LL |     x - 100.0
              <&u8 as Sub<&u8>>
              <u8 as Sub<&u8>>
              <u8 as Sub>
-             <&'a f32 as Sub<f32>>
-             <&'a f64 as Sub<f64>>
-             <&'a i128 as Sub<i128>>
-             <&'a i16 as Sub<i16>>
            and 48 others
 
 error[E0277]: cannot subtract `&str` from `f64`
@@ -82,10 +66,6 @@ LL |     x - "foo"
              <&f64 as Sub<&f64>>
              <f64 as Sub<&f64>>
              <f64 as Sub>
-             <&'a f32 as Sub<f32>>
-             <&'a i128 as Sub<i128>>
-             <&'a i16 as Sub<i16>>
-             <&'a i32 as Sub<i32>>
            and 48 others
 
 error[E0277]: cannot subtract `{integer}` from `f64`
@@ -100,10 +80,6 @@ LL |     x - y
              <&f64 as Sub<&f64>>
              <f64 as Sub<&f64>>
              <f64 as Sub>
-             <&'a f32 as Sub<f32>>
-             <&'a i128 as Sub<i128>>
-             <&'a i16 as Sub<i16>>
-             <&'a i32 as Sub<i32>>
            and 48 others
 
 error[E0277]: cannot multiply `u8` by `{float}`
@@ -118,10 +94,6 @@ LL |     x * 100.0
              <&u8 as Mul<&u8>>
              <u8 as Mul<&u8>>
              <u8 as Mul>
-             <&'a f32 as Mul<f32>>
-             <&'a f64 as Mul<f64>>
-             <&'a i128 as Mul<i128>>
-             <&'a i16 as Mul<i16>>
            and 49 others
 
 error[E0277]: cannot multiply `f64` by `&str`
@@ -136,10 +108,6 @@ LL |     x * "foo"
              <&f64 as Mul<&f64>>
              <f64 as Mul<&f64>>
              <f64 as Mul>
-             <&'a f32 as Mul<f32>>
-             <&'a i128 as Mul<i128>>
-             <&'a i16 as Mul<i16>>
-             <&'a i32 as Mul<i32>>
            and 49 others
 
 error[E0277]: cannot multiply `f64` by `{integer}`
@@ -154,10 +122,6 @@ LL |     x * y
              <&f64 as Mul<&f64>>
              <f64 as Mul<&f64>>
              <f64 as Mul>
-             <&'a f32 as Mul<f32>>
-             <&'a i128 as Mul<i128>>
-             <&'a i16 as Mul<i16>>
-             <&'a i32 as Mul<i32>>
            and 49 others
 
 error[E0277]: cannot divide `u8` by `{float}`
@@ -172,10 +136,6 @@ LL |     x / 100.0
              <&u8 as Div<&u8>>
              <u8 as Div<&u8>>
              <u8 as Div<NonZeroU8>>
-             <u8 as Div>
-             <&'a f32 as Div<f32>>
-             <&'a f64 as Div<f64>>
-             <&'a i128 as Div<i128>>
            and 54 others
 
 error[E0277]: cannot divide `f64` by `&str`
@@ -190,10 +150,6 @@ LL |     x / "foo"
              <&f64 as Div<&f64>>
              <f64 as Div<&f64>>
              <f64 as Div>
-             <&'a f32 as Div<f32>>
-             <&'a i128 as Div<i128>>
-             <&'a i16 as Div<i16>>
-             <&'a i32 as Div<i32>>
            and 54 others
 
 error[E0277]: cannot divide `f64` by `{integer}`
@@ -208,10 +164,6 @@ LL |     x / y
              <&f64 as Div<&f64>>
              <f64 as Div<&f64>>
              <f64 as Div>
-             <&'a f32 as Div<f32>>
-             <&'a i128 as Div<i128>>
-             <&'a i16 as Div<i16>>
-             <&'a i32 as Div<i32>>
            and 54 others
 
 error: aborting due to 12 previous errors

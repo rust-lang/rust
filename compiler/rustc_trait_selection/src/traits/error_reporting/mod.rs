@@ -1819,7 +1819,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         }
 
         let len = impl_candidates.len();
-        let end = if impl_candidates.len() <= 9 { impl_candidates.len() } else { 8 };
+        let end = if impl_candidates.len() <= 5 { impl_candidates.len() } else { 4 };
 
         let normalize = |candidate| {
             self.tcx.infer_ctxt().enter(|ref infcx| {

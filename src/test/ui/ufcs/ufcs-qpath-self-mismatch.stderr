@@ -10,10 +10,6 @@ LL |     <i32 as Add<u32>>::add(1, 2);
              <&i32 as Add<&i32>>
              <i32 as Add<&i32>>
              <i32 as Add>
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
            and 48 others
 
 error[E0308]: mismatched types
