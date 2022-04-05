@@ -772,14 +772,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Some((issued_span, span)),
         );
 
-        self.suggest_using_local_if_applicable(
-            &mut err,
-            location,
-            (place, span),
-            gen_borrow_kind,
-            issued_borrow,
-            explanation,
-        );
+        self.suggest_using_local_if_applicable(&mut err, location, issued_borrow, explanation);
 
         err
     }
@@ -789,8 +782,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         err: &mut Diagnostic,
         location: Location,
-        (place, span): (Place<'tcx>, Span),
-        gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
         explanation: BorrowExplanation,
     ) {
@@ -822,7 +813,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             return;
         };
         let inner_param_uses = find_all_local_uses::find(self.body, inner_param.local);
-        let Some((inner_call_loc,inner_call_term)) = inner_param_uses.into_iter().find_map(|loc| {
+        let Some((inner_call_loc, inner_call_term)) = inner_param_uses.into_iter().find_map(|loc| {
             let Either::Right(term) = self.body.stmt_at(loc) else {
                 debug!("{:?} is a statement, so it can't be a call", loc);
                 return None;
@@ -833,7 +824,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             };
             debug!("checking call args for uses of inner_param: {:?}", args);
             if args.contains(&Operand::Move(inner_param)) {
-                Some((loc,term))
+                Some((loc, term))
             } else {
                 None
             }
