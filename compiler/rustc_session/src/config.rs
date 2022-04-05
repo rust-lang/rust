@@ -2856,6 +2856,7 @@ crate mod dep_tracking {
     use crate::lint;
     use crate::options::WasiExecModel;
     use crate::utils::{NativeLib, NativeLibKind};
+    use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
     use rustc_span::edition::Edition;
     use rustc_span::RealFileName;
@@ -2948,6 +2949,7 @@ crate mod dep_tracking {
         LocationDetail,
         BranchProtection,
         OomStrategy,
+        LanguageIdentifier,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)

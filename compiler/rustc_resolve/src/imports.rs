@@ -12,7 +12,7 @@ use crate::{NameBinding, NameBindingKind, PathResult, PrivacyError, ToNameBindin
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{pluralize, struct_span_err, Applicability};
+use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, PartialRes};
 use rustc_hir::def_id::DefId;
 use rustc_middle::metadata::ModChild;
@@ -23,7 +23,7 @@ use rustc_session::lint::BuiltinLintDiagnostics;
 use rustc_span::hygiene::LocalExpnId;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 
 use tracing::*;
 
@@ -739,7 +739,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
         if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
             for message in note {
-                diag.note(&message);
+                diag.note(message);
             }
         }
 

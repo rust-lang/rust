@@ -431,6 +431,20 @@ where
     }
 }
 
+impl<'a, S: Encoder> Encodable<S> for Cow<'a, str> {
+    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
+        let val: &str = self;
+        val.encode(s)
+    }
+}
+
+impl<'a, D: Decoder> Decodable<D> for Cow<'a, str> {
+    fn decode(d: &mut D) -> Cow<'static, str> {
+        let v: String = Decodable::decode(d);
+        Cow::Owned(v)
+    }
+}
+
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for Option<T> {
     fn encode(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_option(|s| match *self {

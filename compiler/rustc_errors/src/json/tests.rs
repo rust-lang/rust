@@ -39,12 +39,16 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
     rustc_span::create_default_session_globals_then(|| {
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         sm.new_source_file(Path::new("test.rs").to_owned().into(), code.to_owned());
+        let fallback_bundle =
+            crate::fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
 
         let output = Arc::new(Mutex::new(Vec::new()));
         let je = JsonEmitter::new(
             Box::new(Shared { data: output.clone() }),
             None,
             sm,
+            None,
+            fallback_bundle,
             true,
             HumanReadableErrorType::Short(ColorConfig::Never),
             None,

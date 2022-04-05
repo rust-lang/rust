@@ -7,12 +7,15 @@ use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, ColorConfig, Handler};
-use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    error_code, fallback_fluent_bundle, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan,
+};
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 use std::str;
 
@@ -171,8 +174,17 @@ pub struct ParseSess {
 impl ParseSess {
     /// Used for testing.
     pub fn new(file_path_mapping: FilePathMapping) -> Self {
+        let fallback_bundle =
+            fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(ColorConfig::Auto, true, None, Some(sm.clone()));
+        let handler = Handler::with_tty_emitter(
+            ColorConfig::Auto,
+            true,
+            None,
+            Some(sm.clone()),
+            None,
+            fallback_bundle,
+        );
         ParseSess::with_span_handler(handler, sm)
     }
 
@@ -201,8 +213,11 @@ impl ParseSess {
     }
 
     pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
+        let fallback_bundle =
+            fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_handler = Handler::with_tty_emitter(ColorConfig::Auto, false, None, None);
+        let fatal_handler =
+            Handler::with_tty_emitter(ColorConfig::Auto, false, None, None, None, fallback_bundle);
         let handler = Handler::with_emitter(
             false,
             None,

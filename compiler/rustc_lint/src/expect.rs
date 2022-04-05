@@ -37,7 +37,7 @@ fn emit_unfulfilled_expectation_lint(
         |diag| {
             let mut diag = diag.build("this lint expectation is unfulfilled");
             if let Some(rationale) = expectation.reason {
-                diag.note(&rationale.as_str());
+                diag.note(rationale.as_str());
             }
 
             if expectation.is_unfulfilled_lint_expectations {

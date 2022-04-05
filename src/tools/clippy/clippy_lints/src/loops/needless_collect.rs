@@ -6,7 +6,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{can_move_expr_to_closure, is_trait_method, path_to_local, path_to_local_id, CaptureKind};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{Block, Expr, ExprKind, HirId, HirIdSet, Local, Mutability, Node, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
@@ -14,7 +14,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::sym;
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 
 const NEEDLESS_COLLECT_MSG: &str = "avoid using `collect()` when not needed";
 
@@ -102,7 +102,7 @@ fn check_needless_collect_indirect_usage<'tcx>(expr: &'tcx Expr<'_>, cx: &LateCo
 
                     // Suggest replacing iter_call with iter_replacement, and removing stmt
                     let mut span = MultiSpan::from_span(method_name.ident.span);
-                    span.push_span_label(iter_call.span, "the iterator could be used here instead".into());
+                    span.push_span_label(iter_call.span, "the iterator could be used here instead");
                     span_lint_hir_and_then(
                         cx,
                         super::NEEDLESS_COLLECT,

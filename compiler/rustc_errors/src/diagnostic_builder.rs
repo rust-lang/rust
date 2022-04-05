@@ -1,8 +1,10 @@
-use crate::{Diagnostic, DiagnosticId, DiagnosticStyledString, ErrorGuaranteed};
-use crate::{Handler, Level, StashKey};
+use crate::diagnostic::DiagnosticArgValue;
+use crate::{Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed};
+use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
+use std::borrow::Cow;
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
@@ -99,7 +101,10 @@ mod sealed_level_is_error {
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_guaranteeing_error<const L: Level>(handler: &'a Handler, message: &str) -> Self
+    crate fn new_guaranteeing_error<M: Into<DiagnosticMessage>, const L: Level>(
+        handler: &'a Handler,
+        message: M,
+    ) -> Self
     where
         (): sealed_level_is_error::IsError<L>,
     {
@@ -163,7 +168,11 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl<'a> DiagnosticBuilder<'a, ()> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new(handler: &'a Handler, level: Level, message: &str) -> Self {
+    crate fn new<M: Into<DiagnosticMessage>>(
+        handler: &'a Handler,
+        level: Level,
+        message: M,
+    ) -> Self {
         let diagnostic = Diagnostic::new_with_code(level, None, message);
         Self::new_diagnostic(handler, diagnostic)
     }
@@ -201,7 +210,7 @@ impl EmissionGuarantee for () {
 impl<'a> DiagnosticBuilder<'a, !> {
     /// Convenience function for internal use, clients should use one of the
     /// `struct_*` methods on [`Handler`].
-    crate fn new_fatal(handler: &'a Handler, message: &str) -> Self {
+    crate fn new_fatal(handler: &'a Handler, message: impl Into<DiagnosticMessage>) -> Self {
         let diagnostic = Diagnostic::new_with_code(Level::Fatal, None, message);
         Self::new_diagnostic_fatal(handler, diagnostic)
     }
@@ -346,7 +355,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         }
 
         // Take the `Diagnostic` by replacing it with a dummy.
-        let dummy = Diagnostic::new(Level::Allow, "");
+        let dummy = Diagnostic::new(Level::Allow, DiagnosticMessage::Str("".to_string()));
         let diagnostic = std::mem::replace(&mut *self.inner.diagnostic, dummy);
 
         // Disable the ICE on `Drop`.
@@ -399,7 +408,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// the diagnostic was constructed. However, the label span is *not* considered a
     /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
     /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<String>) -> &mut Self);
+    pub fn span_label(&mut self, span: Span, label: impl Into<DiagnosticMessage>) -> &mut Self);
 
     forward!(
     /// Labels all the given spans with the provided label.
@@ -434,25 +443,25 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         found: DiagnosticStyledString,
     ) -> &mut Self);
 
-    forward!(pub fn note(&mut self, msg: &str) -> &mut Self);
-    forward!(pub fn note_once(&mut self, msg: &str) -> &mut Self);
+    forward!(pub fn note(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
+    forward!(pub fn note_once(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_note(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn span_note_once(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> &mut Self);
-    forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
+    forward!(pub fn warn(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_warn(&mut self, sp: impl Into<MultiSpan>, msg: &str) -> &mut Self);
-    forward!(pub fn help(&mut self, msg: &str) -> &mut Self);
+    forward!(pub fn help(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_help(
         &mut self,
         sp: impl Into<MultiSpan>,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn help_use_latest_edition(&mut self,) -> &mut Self);
     forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
@@ -461,67 +470,67 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     forward!(pub fn multipart_suggestion(
         &mut self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestion_verbose(
         &mut self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn tool_only_multipart_suggestion(
         &mut self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: String,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestions(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestions: impl Iterator<Item = String>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn multipart_suggestions(
         &mut self,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestions: impl Iterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_short(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: String,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_verbose(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: String,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn span_suggestion_hidden(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: String,
         applicability: Applicability,
     ) -> &mut Self);
     forward!(pub fn tool_only_span_suggestion(
         &mut self,
         sp: Span,
-        msg: &str,
+        msg: impl Into<DiagnosticMessage>,
         suggestion: String,
         applicability: Applicability,
     ) -> &mut Self);
@@ -529,6 +538,11 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!(pub fn set_primary_message(&mut self, msg: impl Into<String>) -> &mut Self);
     forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
+    forward!(pub fn set_arg(
+        &mut self,
+        name: impl Into<Cow<'static, str>>,
+        arg: DiagnosticArgValue<'static>,
+    ) -> &mut Self);
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {
@@ -547,7 +561,9 @@ impl Drop for DiagnosticBuilderInner<'_> {
                 if !panicking() {
                     handler.emit_diagnostic(&mut Diagnostic::new(
                         Level::Bug,
-                        "the following error was constructed but not emitted",
+                        DiagnosticMessage::Str(
+                            "the following error was constructed but not emitted".to_string(),
+                        ),
                     ));
                     handler.emit_diagnostic(&mut self.diagnostic);
                     panic!();

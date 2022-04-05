@@ -143,6 +143,8 @@ crate fn new_handler(
     source_map: Option<Lrc<source_map::SourceMap>>,
     debugging_opts: &DebuggingOptions,
 ) -> rustc_errors::Handler {
+    let fallback_bundle =
+        rustc_errors::fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
@@ -150,6 +152,8 @@ crate fn new_handler(
                 EmitterWriter::stderr(
                     color_config,
                     source_map.map(|sm| sm as _),
+                    None,
+                    fallback_bundle,
                     short,
                     debugging_opts.teach,
                     debugging_opts.terminal_width,
@@ -166,6 +170,8 @@ crate fn new_handler(
                 JsonEmitter::stderr(
                     None,
                     source_map,
+                    None,
+                    fallback_bundle,
                     pretty,
                     json_rendered,
                     debugging_opts.terminal_width,

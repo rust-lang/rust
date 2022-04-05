@@ -22,6 +22,7 @@ crate fn early_resolve_intra_doc_links(
     resolver: &mut Resolver<'_>,
     krate: &ast::Crate,
     externs: Externs,
+    document_private_items: bool,
 ) -> ResolverCaches {
     let mut loader = IntraLinkCrateLoader {
         resolver,
@@ -30,6 +31,7 @@ crate fn early_resolve_intra_doc_links(
         traits_in_scope: Default::default(),
         all_traits: Default::default(),
         all_trait_impls: Default::default(),
+        document_private_items,
     };
 
     // Overridden `visit_item` below doesn't apply to the crate root,
@@ -61,6 +63,7 @@ struct IntraLinkCrateLoader<'r, 'ra> {
     traits_in_scope: DefIdMap<Vec<TraitCandidate>>,
     all_traits: Vec<DefId>,
     all_trait_impls: Vec<DefId>,
+    document_private_items: bool,
 }
 
 impl IntraLinkCrateLoader<'_, '_> {
@@ -167,7 +170,7 @@ impl IntraLinkCrateLoader<'_, '_> {
         }
 
         for child in self.resolver.module_children_or_reexports(module_id) {
-            if child.vis == Visibility::Public {
+            if child.vis == Visibility::Public || self.document_private_items {
                 if let Some(def_id) = child.res.opt_def_id() {
                     self.add_traits_in_parent_scope(def_id);
                 }
