@@ -88,7 +88,7 @@ evaluation. `_0` always refers to that location directly.
 
 After the evaluation is done, the return value is converted from [`Operand`] to
 [`ConstValue`] by [`op_to_const`]: the former representation is geared towards
-what is needed *during* cost evaluation, while [`ConstValue`] is shaped by the
+what is needed *during* const evaluation, while [`ConstValue`] is shaped by the
 needs of the remaining parts of the compiler that consume the results of const
 evaluation.  As part of this conversion, for types with scalar values, even if
 the resulting [`Operand`] is `Indirect`, it will return an immediate
