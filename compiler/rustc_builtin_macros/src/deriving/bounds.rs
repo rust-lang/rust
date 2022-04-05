@@ -17,6 +17,7 @@ pub fn expand_deriving_copy(
         span,
         attributes: Vec::new(),
         path: path_std!(marker::Copy),
+        bound_current_trait: true,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,

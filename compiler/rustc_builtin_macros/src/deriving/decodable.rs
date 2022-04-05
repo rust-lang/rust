@@ -24,6 +24,7 @@ pub fn expand_deriving_rustc_decodable(
         span,
         attributes: Vec::new(),
         path: Path::new_(vec![krate, sym::Decodable], None, vec![], PathKind::Global),
+        bound_current_trait: true,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,

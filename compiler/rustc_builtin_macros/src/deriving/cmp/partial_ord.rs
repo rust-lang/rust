@@ -44,6 +44,7 @@ pub fn expand_deriving_partial_ord(
         span,
         attributes: vec![],
         path: path_std!(cmp::PartialOrd),
+        bound_current_trait: true,
         additional_bounds: vec![],
         generics: Bounds::empty(),
         is_unsafe: false,

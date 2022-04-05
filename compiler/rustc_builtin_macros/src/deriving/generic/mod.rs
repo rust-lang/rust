@@ -205,6 +205,8 @@ pub struct TraitDef<'a> {
     /// Path of the trait, including any type parameters
     pub path: Path,
 
+    pub bound_current_trait: bool,
+
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
     pub additional_bounds: Vec<Ty>,
@@ -591,7 +593,7 @@ impl<'a> TraitDef<'a> {
                         cx.trait_bound(p.to_path(cx, self.span, type_ident, generics))
                     }).chain(
                         // require the current trait
-                        iter::once(cx.trait_bound(trait_path.clone()))
+                        self.bound_current_trait.then(|| cx.trait_bound(trait_path.clone()))
                     ).chain(
                         // also add in any bounds from the declaration
                         param.bounds.iter().cloned()
@@ -671,8 +673,10 @@ impl<'a> TraitDef<'a> {
                             .map(|p| cx.trait_bound(p.to_path(cx, self.span, type_ident, generics)))
                             .collect();
 
-                        // require the current trait
-                        bounds.push(cx.trait_bound(trait_path.clone()));
+                        if self.bound_current_trait {
+                            // require the current trait
+                            bounds.push(cx.trait_bound(trait_path.clone()));
+                        }
 
                         let predicate = ast::WhereBoundPredicate {
                             span: self.span,

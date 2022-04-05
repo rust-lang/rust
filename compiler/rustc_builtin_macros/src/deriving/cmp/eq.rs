@@ -25,6 +25,7 @@ pub fn expand_deriving_eq(
         span,
         attributes: Vec::new(),
         path: path_std!(cmp::Eq),
+        bound_current_trait: true,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,

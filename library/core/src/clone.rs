@@ -172,6 +172,42 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
     _field: crate::marker::PhantomData<T>,
 }
 
+#[doc(hidden)]
+#[unstable(
+    feature = "derive_clone_copy",
+    reason = "deriving hack, should not be public",
+    issue = "none"
+)]
+pub trait DerivedClone: Sized {
+    fn clone(&self) -> Self;
+}
+
+#[doc(hidden)]
+#[unstable(
+    feature = "derive_clone_copy",
+    reason = "deriving hack, should not be public",
+    issue = "none"
+)]
+pub fn try_copy<T: Clone>(x: &T, clone: fn(&T) -> T) -> T {
+    trait TryCopy {
+        fn try_copy(&self, clone: fn(&Self) -> Self) -> Self;
+    }
+
+    impl<X: Clone> TryCopy for X {
+        default fn try_copy(&self, clone: fn(&Self) -> Self) -> Self {
+            clone(self)
+        }
+    }
+
+    impl<X: Copy> TryCopy for X {
+        fn try_copy(&self, _clone: fn(&Self) -> Self) -> Self {
+            *self
+        }
+    }
+
+    TryCopy::try_copy(x, clone)
+}
+
 /// Implementations of `Clone` for primitive types.
 ///
 /// Implementations that cannot be described in Rust

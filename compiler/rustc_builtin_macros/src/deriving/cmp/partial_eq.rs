@@ -100,6 +100,7 @@ pub fn expand_deriving_partial_eq(
         span,
         attributes: Vec::new(),
         path: path_std!(cmp::PartialEq),
+        bound_current_trait: true,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,

@@ -109,6 +109,7 @@ pub fn expand_deriving_rustc_encodable(
         span,
         attributes: Vec::new(),
         path: Path::new_(vec![krate, sym::Encodable], None, vec![], PathKind::Global),
+        bound_current_trait: true,
         additional_bounds: Vec::new(),
         generics: Bounds::empty(),
         is_unsafe: false,
