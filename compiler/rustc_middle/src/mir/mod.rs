@@ -1590,6 +1590,8 @@ pub enum StatementKind<'tcx> {
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
 
+    Deinit(Box<Place<'tcx>>),
+
     /// Start a live range for the storage of the local.
     StorageLive(Local),
 
@@ -1739,6 +1741,7 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
+            Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }

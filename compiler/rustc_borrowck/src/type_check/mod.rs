@@ -1303,28 +1303,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::SetDiscriminant { ref place, variant_index } => {
-                let place_type = place.ty(body, tcx).ty;
-                let adt = match place_type.kind() {
-                    ty::Adt(adt, _) if adt.is_enum() => adt,
-                    _ => {
-                        span_bug!(
-                            stmt.source_info.span,
-                            "bad set discriminant ({:?} = {:?}): lhs is not an enum",
-                            place,
-                            variant_index
-                        );
-                    }
-                };
-                if variant_index.as_usize() >= adt.variants().len() {
-                    span_bug!(
-                        stmt.source_info.span,
-                        "bad set discriminant ({:?} = {:?}): value of of range",
-                        place,
-                        variant_index
-                    );
-                };
-            }
             StatementKind::AscribeUserType(box (ref place, ref projection), variance) => {
                 let place_ty = place.ty(body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
@@ -1358,6 +1336,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | StatementKind::Retag { .. }
             | StatementKind::Coverage(..)
             | StatementKind::Nop => {}
+            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+                bug!("Statement not allowed in this MIR phase")
+            }
         }
     }
 
