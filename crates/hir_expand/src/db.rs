@@ -8,7 +8,6 @@ use limit::Limit;
 use mbe::syntax_node_to_token_tree;
 use rustc_hash::FxHashSet;
 use syntax::{
-    algo::diff,
     ast::{self, HasAttrs, HasDocComments},
     AstNode, GreenNode, Parse, SyntaxNode, SyntaxToken, T,
 };
@@ -283,28 +282,7 @@ fn parse_macro_expansion(
 
     let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
 
-    match result.err {
-        Some(err) => {
-            // Safety check for recursive identity macro.
-            let node = parse.syntax_node();
-            let file: HirFileId = macro_file.into();
-            let call_node = match file.call_node(db) {
-                Some(it) => it,
-                None => {
-                    return ExpandResult::only_err(err);
-                }
-            };
-            if is_self_replicating(&node, &call_node.value) {
-                ExpandResult::only_err(err)
-            } else {
-                ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: Some(err) }
-            }
-        }
-        None => {
-            tracing::debug!("parse = {:?}", parse.syntax_node().kind());
-            ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: None }
-        }
-    }
+    ExpandResult { value: Some((parse, Arc::new(rev_token_map))), err: result.err }
 }
 
 fn macro_arg(
@@ -505,23 +483,6 @@ fn expand_proc_macro(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<tt::
     };
 
     expander.expand(db, loc.krate, &macro_arg.0, attr_arg.as_ref())
-}
-
-fn is_self_replicating(from: &SyntaxNode, to: &SyntaxNode) -> bool {
-    if diff(from, to).is_empty() {
-        return true;
-    }
-    if let Some(stmts) = ast::MacroStmts::cast(from.clone()) {
-        if stmts.statements().any(|stmt| diff(stmt.syntax(), to).is_empty()) {
-            return true;
-        }
-        if let Some(expr) = stmts.expr() {
-            if diff(expr.syntax(), to).is_empty() {
-                return true;
-            }
-        }
-    }
-    false
 }
 
 fn hygiene_frame(db: &dyn AstDatabase, file_id: HirFileId) -> Arc<HygieneFrame> {
