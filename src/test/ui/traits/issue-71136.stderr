@@ -9,6 +9,10 @@ LL |     the_foos: Vec<Foo>,
    |
    = note: required because of the requirements on the impl of `Clone` for `Vec<Foo>`
    = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
 
 error: aborting due to previous error
 
