@@ -10,7 +10,7 @@ note: struct defined here, with at most 2 generic parameters: `T`, `A`
   --> $DIR/generic-impl-more-params-with-defaults.rs:5:8
    |
 LL | struct Vec<T, A = Heap>(
-   |        ^^^ -  -
+   |        ^^^ -  --------
 
 error: aborting due to previous error
 

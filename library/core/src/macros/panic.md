@@ -1,8 +1,7 @@
 Panics the current thread.
 
 This allows a program to terminate immediately and provide feedback
-to the caller of the program. `panic!` should be used when a program reaches
-an unrecoverable state.
+to the caller of the program.
 
 This macro is the perfect way to assert conditions in example code and in
 tests. `panic!` is closely tied with the `unwrap` method of both
@@ -21,12 +20,24 @@ Inside the hook a panic can be accessed as a `&dyn Any + Send`,
 which contains either a `&str` or `String` for regular `panic!()` invocations.
 To panic with a value of another other type, [`panic_any`] can be used.
 
-[`Result`] enum is often a better solution for recovering from errors than
-using the `panic!` macro. This macro should be used to avoid proceeding using
-incorrect values, such as from external sources. Detailed information about
-error handling is found in the [book].
-
 See also the macro [`compile_error!`], for raising errors during compilation.
+
+# When to use `panic!` vs `Result`
+
+The Rust model of error handling groups errors into two major categories:
+recoverable and unrecoverable errors. For a recoverable error, such as a file
+not found error, it’s reasonable to report the problem to the user and retry
+the operation. Unrecoverable errors are always symptoms of bugs, like trying to
+access a location beyond the end of an array.
+
+The Rust language and standard library provides `Result` and `panic!` as parts
+of two complementary systems for representing, reporting, propagating, reacting
+to, and discarding errors for in these two categories.
+
+The `panic!` macro is provided to represent unrecoverable errors, whereas the
+`Result` enum is provided to represent recoverable errors. For more detailed
+information about error handling check out the [book] or the [`std::result`]
+module docs.
 
 [ounwrap]: Option::unwrap
 [runwrap]: Result::unwrap
@@ -36,6 +47,7 @@ See also the macro [`compile_error!`], for raising errors during compilation.
 [`Any`]: crate::any::Any
 [`format!`]: ../std/macro.format.html
 [book]: ../book/ch09-00-error-handling.html
+[`std::result`]: ../std/result/index.html
 
 # Current implementation
 
