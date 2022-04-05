@@ -202,6 +202,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         normalized_ty.ty().unwrap()
     }
 
+    #[inline(always)]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
