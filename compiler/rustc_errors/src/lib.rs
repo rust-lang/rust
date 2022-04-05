@@ -426,10 +426,10 @@ struct HandlerInner {
 
     future_breakage_diagnostics: Vec<Diagnostic>,
 
-    /// The [`unstable_expect_diagnostics`] should be empty when this struct is
+    /// The [`Self::unstable_expect_diagnostics`] should be empty when this struct is
     /// dropped. However, it can have values if the compilation is stopped early
     /// or is only partially executed. To avoid ICEs, like in rust#94953 we only
-    /// check if [`unstable_expect_diagnostics`] is empty, if the expectation ids
+    /// check if [`Self::unstable_expect_diagnostics`] is empty, if the expectation ids
     /// have been converted.
     check_unstable_expect_diagnostics: bool,
 

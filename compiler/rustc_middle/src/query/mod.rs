@@ -162,14 +162,14 @@ rustc_queries! {
     /// to ensure that all expectations can be fulfilled.
     ///
     /// This is an extra query to enable other drivers (like rustdoc) to
-    /// only execute a small subset of the [`analysis`] query, while allowing
+    /// only execute a small subset of the `analysis` query, while allowing
     /// lints to be expected. In rustc, this query will be executed as part of
-    /// the [`analysis`] query and doesn't have to be called a second time.
+    /// the `analysis` query and doesn't have to be called a second time.
     ///
     /// Tools can additionally pass in a tool filter. That will restrict the
     /// expectations to only trigger for lints starting with the listed tool
     /// name. This is useful for cases were not all linting code from rustc
-    /// was called. With the default `none` all registered lints will also
+    /// was called. With the default `None` all registered lints will also
     /// be checked for expectation fulfillment.
     query check_expectations(key: Option<Symbol>) -> () {
         eval_always
