@@ -41,6 +41,7 @@ use rustc_middle::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use rustc_middle::ty::{self, PolyProjectionPredicate, ToPolyTraitRef, ToPredicate};
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable};
 use rustc_span::symbol::sym;
+use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -1360,7 +1361,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection_obligation_against_definition_bounds(
         &mut self,
         obligation: &TraitObligation<'tcx>,
-    ) -> smallvec::SmallVec<[usize; 2]> {
+    ) -> SmallVec<[usize; 2]> {
         let poly_trait_predicate = self.infcx().resolve_vars_if_possible(obligation.predicate);
         let placeholder_trait_predicate =
             self.infcx().replace_bound_vars_with_placeholders(poly_trait_predicate);
@@ -2016,7 +2017,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         recursion_depth: usize,
         trait_def_id: DefId,
         types: ty::Binder<'tcx, Vec<Ty<'tcx>>>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+        out: &mut Vec<PredicateObligation<'tcx>>,
+    ) {
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
         // regions. For example, `for<'a> Foo<&'a i32> : Copy` would
@@ -2030,17 +2032,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         //    `for<'a> &'a i32` becomes `&0 i32`.
         // 2. Produce something like `&'0 i32 : Copy`
         // 3. Re-bind the regions back to `for<'a> &'a i32 : Copy`
-
+        //
+        // This function is called enough that it's better to append to a `&mut
+        // Vec` than return a `Vec`, to avoid allocations.
         types
             .as_ref()
             .skip_binder() // binder moved -\
             .iter()
-            .flat_map(|ty| {
+            .for_each(|ty| {
                 let ty: ty::Binder<'tcx, Ty<'tcx>> = types.rebind(*ty); // <----/
 
                 self.infcx.commit_unconditionally(|_| {
                     let placeholder_ty = self.infcx.replace_bound_vars_with_placeholders(ty);
-                    let Normalized { value: normalized_ty, mut obligations } =
+                    // `obligations` is almost always empty.
+                    let Normalized { value: normalized_ty, obligations } =
                         ensure_sufficient_stack(|| {
                             project::normalize_with_depth(
                                 self,
@@ -2050,6 +2055,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 placeholder_ty,
                             )
                         });
+                    out.extend(obligations);
                     let placeholder_obligation = predicate_for_trait_def(
                         self.tcx(),
                         param_env,
@@ -2059,11 +2065,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         normalized_ty,
                         &[],
                     );
-                    obligations.push(placeholder_obligation);
-                    obligations
+                    out.push(placeholder_obligation);
                 })
-            })
-            .collect()
+            });
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -2337,7 +2341,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         def_id: DefId,           // of impl or trait
         substs: SubstsRef<'tcx>, // for impl or trait
         parent_trait_pred: ty::Binder<'tcx, ty::TraitPredicate<'tcx>>,
-    ) -> Vec<PredicateObligation<'tcx>> {
+        out: &mut Vec<PredicateObligation<'tcx>>,
+    ) {
         let tcx = self.tcx();
 
         // To allow for one-pass evaluation of the nested obligation,
@@ -2357,7 +2362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let predicates = tcx.predicates_of(def_id);
         debug!(?predicates);
         assert_eq!(predicates.parent, None);
-        let mut obligations = Vec::with_capacity(predicates.predicates.len());
+        out.reserve(predicates.predicates.len());
         let parent_code = cause.clone_code();
         for (predicate, span) in predicates.predicates {
             let span = *span;
@@ -2375,12 +2380,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 cause.clone(),
                 recursion_depth,
                 predicate.subst(tcx, substs),
-                &mut obligations,
+                out,
             );
-            obligations.push(Obligation { cause, recursion_depth, param_env, predicate });
+            out.push(Obligation { cause, recursion_depth, param_env, predicate });
         }
-
-        obligations
     }
 }
 

@@ -253,7 +253,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?obligation, ?has_nested, "confirm_builtin_candidate");
 
         let lang_items = self.tcx().lang_items();
-        let obligations = if has_nested {
+        let mut obligations = vec![];
+        if has_nested {
             let trait_def = obligation.predicate.def_id();
             let conditions = if Some(trait_def) == lang_items.sized_trait() {
                 self.sized_conditions(obligation)
@@ -276,10 +277,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.recursion_depth + 1,
                     trait_def,
                     nested,
+                    &mut obligations,
                 )
             })
-        } else {
-            vec![]
         };
 
         debug!(?obligations);
@@ -315,31 +315,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ensure_sufficient_stack(|| {
             let cause = obligation.derived_cause(BuiltinDerivedObligation);
 
-            let trait_obligations: Vec<PredicateObligation<'_>> =
-                self.infcx.commit_unconditionally(|_| {
-                    let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
-                    let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
-                    self.impl_or_trait_obligations(
-                        &cause,
-                        obligation.recursion_depth + 1,
-                        obligation.param_env,
-                        trait_def_id,
-                        &trait_ref.substs,
-                        obligation.predicate,
-                    )
-                });
+            let mut obligations = vec![];
+            self.infcx.commit_unconditionally(|_| {
+                let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
+                let trait_ref = self.infcx.replace_bound_vars_with_placeholders(poly_trait_ref);
+                // Adds the predicates from the trait. Note that this contains a `Self: Trait`
+                // predicate as usual. It will have no effect because auto traits are coinductive.
+                self.impl_or_trait_obligations(
+                    &cause,
+                    obligation.recursion_depth + 1,
+                    obligation.param_env,
+                    trait_def_id,
+                    &trait_ref.substs,
+                    obligation.predicate,
+                    &mut obligations,
+                )
+            });
 
-            let mut obligations = self.collect_predicates_for_types(
+            self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
                 obligation.recursion_depth + 1,
                 trait_def_id,
                 nested,
+                &mut obligations,
             );
-
-            // Adds the predicates from the trait.  Note that this contains a `Self: Trait`
-            // predicate as usual.  It won't have any effect since auto traits are coinductive.
-            obligations.extend(trait_obligations);
 
             debug!(?obligations, "vtable_auto_impl");
 
@@ -383,13 +383,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) -> ImplSourceUserDefinedData<'tcx, PredicateObligation<'tcx>> {
         debug!(?impl_def_id, ?substs, ?recursion_depth, "vtable_impl");
 
-        let mut impl_obligations = self.impl_or_trait_obligations(
+        let mut impl_obligations = vec![];
+        self.impl_or_trait_obligations(
             cause,
             recursion_depth,
             param_env,
             impl_def_id,
             &substs.value,
             parent_trait_pred,
+            &mut impl_obligations,
         );
 
         debug!(?impl_obligations, "vtable_impl");
@@ -623,13 +625,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let trait_def_id = trait_ref.def_id;
             let substs = trait_ref.substs;
 
-            let trait_obligations = self.impl_or_trait_obligations(
+            let mut trait_obligations = vec![];
+            self.impl_or_trait_obligations(
                 &obligation.cause,
                 obligation.recursion_depth,
                 obligation.param_env,
                 trait_def_id,
                 &substs,
                 obligation.predicate,
+                &mut trait_obligations,
             );
 
             debug!(?trait_def_id, ?trait_obligations, "trait alias obligations");
