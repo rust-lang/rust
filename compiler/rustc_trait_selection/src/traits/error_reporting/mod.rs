@@ -1772,11 +1772,12 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             if candidates.len() == 1 {
                 err.highlighted_help(vec![
                     (
-                        format!("the trait `{}` ", candidates[0].print_only_trait_path()),
+                        format!(
+                            "the trait `{}` is implemented for `",
+                            candidates[0].print_only_trait_path()
+                        ),
                         Style::NoStyle,
                     ),
-                    ("is".to_string(), Style::Highlight),
-                    (" implemented for `".to_string(), Style::NoStyle),
                     (candidates[0].self_ty().to_string(), Style::Highlight),
                     ("`".to_string(), Style::NoStyle),
                 ]);
