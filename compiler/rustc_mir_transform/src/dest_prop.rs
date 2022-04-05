@@ -97,11 +97,11 @@ use rustc_index::{
     bit_set::{BitMatrix, BitSet},
     vec::IndexVec,
 };
-use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{MutVisitor, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, PlaceElem,
-    Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
+    traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
+    PlaceElem, Rvalue, Statement, StatementKind, Terminator, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -368,6 +368,12 @@ struct Conflicts<'a> {
 }
 
 impl<'a> Conflicts<'a> {
+    /// Build the conflicts table from the MIR body
+    ///
+    /// This will mark two locals as conflicting, if they are ever live at the same time with a
+    /// single exception: Assign statements with `use` rvalues. If the optimization merges two
+    /// places, then it must promise to remove all assignments between those places in either
+    /// direction.
     fn build<'tcx>(
         tcx: TyCtxt<'tcx>,
         body: &'_ Body<'tcx>,
@@ -488,10 +494,36 @@ impl<'a> Conflicts<'a> {
     /// and must not be merged.
     fn record_statement_conflicts(&mut self, stmt: &Statement<'_>) {
         match &stmt.kind {
-            // While the left and right sides of an assignment must not overlap, we do not mark
-            // conflicts here as that would make this optimization useless. When we optimize, we
-            // eliminate the resulting self-assignments automatically.
-            StatementKind::Assign(_) => {}
+            StatementKind::Assign(v) => {
+                let p = v.0;
+                let rvalue = &v.1;
+                if p.is_indirect() {
+                    return;
+                }
+                let lhs_local = p.local;
+
+                struct RvalueVisitor<'a, 'b>(&'a mut Conflicts<'b>, Local);
+
+                impl<'a, 'b, 'tcx> Visitor<'tcx> for RvalueVisitor<'a, 'b> {
+                    fn visit_local(&mut self, local: &Local, _: PlaceContext, _: Location) {
+                        self.0.record_local_conflict(self.1, *local, "intra-assignment");
+                    }
+                }
+
+                let mut v = RvalueVisitor(self, lhs_local);
+                let location = Location { block: BasicBlock::MAX, statement_index: 0 };
+                if let Rvalue::Use(op) = rvalue {
+                    if let Some(rhs_place) = op.place() {
+                        v.visit_projection(
+                            rhs_place.as_ref(),
+                            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                            location,
+                        );
+                    }
+                } else {
+                    v.visit_rvalue(rvalue, location);
+                }
+            }
 
             StatementKind::SetDiscriminant { .. }
             | StatementKind::StorageLive(..)
@@ -507,23 +539,6 @@ impl<'a> Conflicts<'a> {
 
     fn record_terminator_conflicts(&mut self, term: &Terminator<'_>) {
         match &term.kind {
-            TerminatorKind::DropAndReplace {
-                place: dropped_place,
-                value,
-                target: _,
-                unwind: _,
-            } => {
-                if let Some(place) = value.place()
-                    && !place.is_indirect()
-                    && !dropped_place.is_indirect()
-                {
-                    self.record_local_conflict(
-                        place.local,
-                        dropped_place.local,
-                        "DropAndReplace operand overlap",
-                    );
-                }
-            }
             TerminatorKind::Yield { value, resume: _, resume_arg, drop: _ } => {
                 if let Some(place) = value.place() {
                     if !place.is_indirect() && !resume_arg.is_indirect() {
@@ -654,6 +669,7 @@ impl<'a> Conflicts<'a> {
             }
 
             TerminatorKind::Goto { .. }
+            | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { destination: None, .. }
             | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Resume
