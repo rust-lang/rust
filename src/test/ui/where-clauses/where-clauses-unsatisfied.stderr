@@ -9,6 +9,10 @@ note: required by a bound in `equal`
    |
 LL | fn equal<T>(a: &T, b: &T) -> bool where T : Eq { a == b }
    |                                             ^^ required by this bound in `equal`
+help: consider annotating `Struct` with `#[derive(Eq)]`
+   |
+LL | #[derive(Eq)]
+   |
 
 error: aborting due to previous error
 

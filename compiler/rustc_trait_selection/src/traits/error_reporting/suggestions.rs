@@ -189,6 +189,13 @@ pub trait InferCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_ref: &ty::PolyTraitRef<'tcx>,
     );
+
+    fn suggest_derive(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: String) -> (Span, String) {
@@ -2649,6 +2656,68 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
             }
             _ => {}
+        }
+    }
+
+    fn suggest_derive(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let Some(diagnostic_name) = self.tcx.get_diagnostic_name(trait_pred.def_id()) else {
+            return;
+        };
+        let (adt, substs) = match trait_pred.skip_binder().self_ty().kind() {
+            ty::Adt(adt, substs) if adt.did().is_local() => (adt, substs),
+            _ => return,
+        };
+        let can_derive = {
+            let is_derivable_trait = match diagnostic_name {
+                sym::Default => !adt.is_enum(),
+                sym::PartialEq | sym::PartialOrd => {
+                    let rhs_ty = trait_pred.skip_binder().trait_ref.substs.type_at(1);
+                    trait_pred.skip_binder().self_ty() == rhs_ty
+                }
+                sym::Eq | sym::Ord | sym::Clone | sym::Copy | sym::Hash | sym::Debug => true,
+                _ => false,
+            };
+            is_derivable_trait &&
+                // Ensure all fields impl the trait.
+                adt.all_fields().all(|field| {
+                    let field_ty = field.ty(self.tcx, substs);
+                    let trait_substs = match diagnostic_name {
+                        sym::PartialEq | sym::PartialOrd => {
+                            self.tcx.mk_substs_trait(field_ty, &[field_ty.into()])
+                        }
+                        _ => self.tcx.mk_substs_trait(field_ty, &[]),
+                    };
+                    let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
+                        trait_ref: ty::TraitRef {
+                            substs: trait_substs,
+                            ..trait_pred.skip_binder().trait_ref
+                        },
+                        ..*tr
+                    });
+                    let field_obl = Obligation::new(
+                        obligation.cause.clone(),
+                        obligation.param_env,
+                        trait_pred.to_predicate(self.tcx),
+                    );
+                    self.predicate_must_hold_modulo_regions(&field_obl)
+                })
+        };
+        if can_derive {
+            err.span_suggestion_verbose(
+                self.tcx.def_span(adt.did()).shrink_to_lo(),
+                &format!(
+                    "consider annotating `{}` with `#[derive({})]`",
+                    trait_pred.skip_binder().self_ty(),
+                    diagnostic_name.to_string(),
+                ),
+                format!("#[derive({})]\n", diagnostic_name.to_string()),
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
