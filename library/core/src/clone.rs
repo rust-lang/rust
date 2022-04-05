@@ -178,6 +178,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
     reason = "deriving hack, should not be public",
     issue = "none"
 )]
+#[rustc_diagnostic_item = "DerivedClone"]
 pub trait DerivedClone: Sized {
     fn clone(&self) -> Self;
 }

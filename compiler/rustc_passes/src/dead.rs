@@ -268,6 +268,11 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     }
                     return true;
                 }
+
+                // ignore generated `DerivedClone` but do not expose this to users.
+                if Some(trait_of) == self.tcx.get_diagnostic_item(sym::DerivedClone) {
+                    return true;
+                }
             }
         }
 
