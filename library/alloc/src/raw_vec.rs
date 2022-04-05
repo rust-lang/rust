@@ -170,6 +170,13 @@ impl<T, A: Allocator> RawVec<T, A> {
     fn allocate_in(capacity: usize, init: AllocInit, alloc: A) -> Self {
         if mem::size_of::<T>() == 0 {
             Self::new_in(alloc)
+        } else if capacity == 0 {
+            // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
+            Self {
+                ptr: unsafe { Unique::new_unchecked(NonNull::dangling().as_ptr()) },
+                cap: capacity,
+                alloc,
+            }
         } else {
             // We avoid `unwrap_or_else` here because it bloats the amount of
             // LLVM IR generated.
