@@ -53,7 +53,7 @@ error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:28:10
    |
 LL |     call(foo_unsafe);
-   |     ---- ^^^^^^^^^^ expected an `Fn<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     ---- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
@@ -70,7 +70,7 @@ error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:30:14
    |
 LL |     call_mut(foo_unsafe);
-   |     -------- ^^^^^^^^^^ expected an `FnMut<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     -------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
@@ -87,7 +87,7 @@ error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:32:15
    |
 LL |     call_once(foo_unsafe);
-   |     --------- ^^^^^^^^^^ expected an `FnOnce<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     --------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
