@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-cell-is-invariant.rs:14:12
+  --> $DIR/variance-cell-is-invariant.rs:18:12
    |
 LL | fn use_<'short,'long>(c: Foo<'short>,
    |         ------ ----- lifetime `'long` defined here

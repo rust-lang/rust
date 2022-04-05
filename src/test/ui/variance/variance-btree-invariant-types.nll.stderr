@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:4:5
+  --> $DIR/variance-btree-invariant-types.rs:8:5
    |
 LL | fn iter_cov_key<'a, 'new>(v: IterMut<'a, &'static (), ()>) -> IterMut<'a, &'new (), ()> {
    |                     ---- lifetime `'new` defined here
@@ -11,7 +11,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:7:5
+  --> $DIR/variance-btree-invariant-types.rs:13:5
    |
 LL | fn iter_cov_val<'a, 'new>(v: IterMut<'a, (), &'static ()>) -> IterMut<'a, (), &'new ()> {
    |                     ---- lifetime `'new` defined here
@@ -23,7 +23,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:10:5
+  --> $DIR/variance-btree-invariant-types.rs:18:5
    |
 LL | fn iter_contra_key<'a, 'new>(v: IterMut<'a, &'new (), ()>) -> IterMut<'a, &'static (), ()> {
    |                        ---- lifetime `'new` defined here
@@ -35,7 +35,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:13:5
+  --> $DIR/variance-btree-invariant-types.rs:23:5
    |
 LL | fn iter_contra_val<'a, 'new>(v: IterMut<'a, (), &'new ()>) -> IterMut<'a, (), &'static ()> {
    |                        ---- lifetime `'new` defined here
@@ -47,7 +47,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:17:5
+  --> $DIR/variance-btree-invariant-types.rs:29:5
    |
 LL | fn range_cov_key<'a, 'new>(v: RangeMut<'a, &'static (), ()>) -> RangeMut<'a, &'new (), ()> {
    |                      ---- lifetime `'new` defined here
@@ -59,7 +59,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:20:5
+  --> $DIR/variance-btree-invariant-types.rs:34:5
    |
 LL | fn range_cov_val<'a, 'new>(v: RangeMut<'a, (), &'static ()>) -> RangeMut<'a, (), &'new ()> {
    |                      ---- lifetime `'new` defined here
@@ -71,7 +71,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:23:5
+  --> $DIR/variance-btree-invariant-types.rs:39:5
    |
 LL | fn range_contra_key<'a, 'new>(v: RangeMut<'a, &'new (), ()>) -> RangeMut<'a, &'static (), ()> {
    |                         ---- lifetime `'new` defined here
@@ -83,7 +83,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:26:5
+  --> $DIR/variance-btree-invariant-types.rs:44:5
    |
 LL | fn range_contra_val<'a, 'new>(v: RangeMut<'a, (), &'new ()>) -> RangeMut<'a, (), &'static ()> {
    |                         ---- lifetime `'new` defined here
@@ -95,7 +95,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:31:5
+  --> $DIR/variance-btree-invariant-types.rs:51:5
    |
 LL | fn occ_cov_key<'a, 'new>(v: OccupiedEntry<'a, &'static (), ()>)
    |                    ---- lifetime `'new` defined here
@@ -108,7 +108,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:35:5
+  --> $DIR/variance-btree-invariant-types.rs:57:5
    |
 LL | fn occ_cov_val<'a, 'new>(v: OccupiedEntry<'a, (), &'static ()>)
    |                    ---- lifetime `'new` defined here
@@ -121,7 +121,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:39:5
+  --> $DIR/variance-btree-invariant-types.rs:63:5
    |
 LL | fn occ_contra_key<'a, 'new>(v: OccupiedEntry<'a, &'new (), ()>)
    |                       ---- lifetime `'new` defined here
@@ -134,7 +134,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:43:5
+  --> $DIR/variance-btree-invariant-types.rs:69:5
    |
 LL | fn occ_contra_val<'a, 'new>(v: OccupiedEntry<'a, (), &'new ()>)
    |                       ---- lifetime `'new` defined here
@@ -147,7 +147,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:48:5
+  --> $DIR/variance-btree-invariant-types.rs:76:5
    |
 LL | fn vac_cov_key<'a, 'new>(v: VacantEntry<'a, &'static (), ()>)
    |                    ---- lifetime `'new` defined here
@@ -160,7 +160,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:52:5
+  --> $DIR/variance-btree-invariant-types.rs:82:5
    |
 LL | fn vac_cov_val<'a, 'new>(v: VacantEntry<'a, (), &'static ()>)
    |                    ---- lifetime `'new` defined here
@@ -173,7 +173,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:56:5
+  --> $DIR/variance-btree-invariant-types.rs:88:5
    |
 LL | fn vac_contra_key<'a, 'new>(v: VacantEntry<'a, &'new (), ()>)
    |                       ---- lifetime `'new` defined here
@@ -186,7 +186,7 @@ LL |     v
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
-  --> $DIR/variance-btree-invariant-types.rs:60:5
+  --> $DIR/variance-btree-invariant-types.rs:94:5
    |
 LL | fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
    |                       ---- lifetime `'new` defined here

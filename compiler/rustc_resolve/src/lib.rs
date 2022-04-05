@@ -3298,7 +3298,9 @@ impl<'a> Resolver<'a> {
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                 Some(path_res.base_res())
             }
-            PathResult::NonModule(..) | PathResult::Failed { .. } => None,
+            PathResult::Module(ModuleOrUniformRoot::ExternPrelude)
+            | PathResult::NonModule(..)
+            | PathResult::Failed { .. } => None,
             PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
         }
     }

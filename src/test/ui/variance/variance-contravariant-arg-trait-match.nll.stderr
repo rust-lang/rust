@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/variance-contravariant-arg-trait-match.rs:13:5
+  --> $DIR/variance-contravariant-arg-trait-match.rs:17:5
    |
 LL | fn get_min_from_max<'min, 'max, G>()
    |                     ----  ---- lifetime `'max` defined here
@@ -12,7 +12,7 @@ LL |     impls_get::<G,&'min i32>()
    = help: consider adding the following bound: `'min: 'max`
 
 error: lifetime may not live long enough
-  --> $DIR/variance-contravariant-arg-trait-match.rs:21:5
+  --> $DIR/variance-contravariant-arg-trait-match.rs:27:5
    |
 LL | fn get_max_from_min<'min, 'max, G>()
    |                     ----  ---- lifetime `'max` defined here

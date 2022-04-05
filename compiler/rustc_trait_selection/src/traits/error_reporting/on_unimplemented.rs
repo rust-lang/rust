@@ -208,6 +208,15 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 flags.push((sym::_Self, Some("&[]".to_owned())));
             }
 
+            if self_ty.is_fn() {
+                let fn_sig = self_ty.fn_sig(self.tcx);
+                let shortname = match fn_sig.unsafety() {
+                    hir::Unsafety::Normal => "fn",
+                    hir::Unsafety::Unsafe => "unsafe fn",
+                };
+                flags.push((sym::_Self, Some(shortname.to_owned())));
+            }
+
             if let ty::Array(aty, len) = self_ty.kind() {
                 flags.push((sym::_Self, Some("[]".to_owned())));
                 flags.push((sym::_Self, Some(format!("[{}]", aty))));

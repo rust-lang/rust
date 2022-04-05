@@ -40,6 +40,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
         self.suggest_missing_parentheses(err, expr);
         self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected);
+        self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.report_closure_inferred_return_type(err, expected);
@@ -630,7 +631,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Applicability::MachineApplicable,
                                     true,
                                 ));
-
                     }
                 }
                 _ => {}

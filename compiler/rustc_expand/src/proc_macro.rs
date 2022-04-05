@@ -24,6 +24,8 @@ impl base::ProcMacro for BangProcMacro {
         span: Span,
         input: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
+        let _timer =
+            ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace).map_err(|e| {
@@ -48,6 +50,8 @@ impl base::AttrProcMacro for AttrProcMacro {
         annotation: TokenStream,
         annotated: TokenStream,
     ) -> Result<TokenStream, ErrorGuaranteed> {
+        let _timer =
+            ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
         let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
         let server = proc_macro_server::Rustc::new(ecx);
         self.client
@@ -97,17 +101,21 @@ impl MultiItemModifier for ProcMacroDerive {
             nt_to_tokenstream(&item, &ecx.sess.parse_sess, CanSynthesizeMissingTokens::No)
         };
 
-        let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
-        let server = proc_macro_server::Rustc::new(ecx);
-        let stream = match self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace) {
-            Ok(stream) => stream,
-            Err(e) => {
-                let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
-                if let Some(s) = e.as_str() {
-                    err.help(&format!("message: {}", s));
+        let stream = {
+            let _timer =
+                ecx.sess.prof.generic_activity_with_arg("expand_proc_macro", ecx.expansion_descr());
+            let proc_macro_backtrace = ecx.ecfg.proc_macro_backtrace;
+            let server = proc_macro_server::Rustc::new(ecx);
+            match self.client.run(&EXEC_STRATEGY, server, input, proc_macro_backtrace) {
+                Ok(stream) => stream,
+                Err(e) => {
+                    let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
+                    if let Some(s) = e.as_str() {
+                        err.help(&format!("message: {}", s));
+                    }
+                    err.emit();
+                    return ExpandResult::Ready(vec![]);
                 }
-                err.emit();
-                return ExpandResult::Ready(vec![]);
             }
         };
 
