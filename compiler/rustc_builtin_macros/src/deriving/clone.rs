@@ -17,7 +17,6 @@ pub fn expand_deriving_clone(
 ) {
     let bounds;
     let substructure;
-    let is_union;
     let is_shallow;
     match *item {
         Annotatable::Item(ref annitem) => match annitem.kind {
@@ -40,7 +39,7 @@ pub fn expand_deriving_clone(
                         cs_clone_shallow(c, s, sub, false)
                     }));
                 } else {
-                    bounds = vec![];
+                    bounds = vec![Literal(path_std!(clone::Clone))];
                     is_shallow = false;
                     substructure = combine_substructure(Box::new(|c, s, sub| cs_clone(c, s, sub)));
                 }
@@ -52,7 +51,7 @@ pub fn expand_deriving_clone(
                     combine_substructure(Box::new(|c, s, sub| cs_clone_shallow(c, s, sub, true)));
             }
             _ => {
-                bounds = vec![];
+                bounds = vec![Literal(path_std!(clone::Clone))];
                 is_shallow = false;
                 substructure = combine_substructure(Box::new(|c, s, sub| cs_clone(c, s, sub)));
             }
