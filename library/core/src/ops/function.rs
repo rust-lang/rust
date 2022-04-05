@@ -61,6 +61,7 @@
     ),
     on(
         _Self = "unsafe fn",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         note = "unsafe functions must be wrapped in closures: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{Fn}<{Args}>` closure, found `{Self}`",
@@ -145,6 +146,7 @@ pub trait Fn<Args>: FnMut<Args> {
     ),
     on(
         _Self = "unsafe fn",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         note = "unsafe functions must be wrapped in closures: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{FnMut}<{Args}>` closure, found `{Self}`",
@@ -221,6 +223,7 @@ pub trait FnMut<Args>: FnOnce<Args> {
     ),
     on(
         _Self = "unsafe fn",
+        // SAFETY: tidy is not smart enough to tell that the below unsafe block is a string
         note = "unsafe functions must be wrapped in closures: `|| unsafe {{ /* code */ }}`"
     ),
     message = "expected a `{FnOnce}<{Args}>` closure, found `{Self}`",
