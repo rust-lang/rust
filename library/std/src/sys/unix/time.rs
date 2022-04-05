@@ -9,8 +9,8 @@ use crate::convert::TryInto;
 const NSEC_PER_SEC: u64 = 1_000_000_000;
 
 #[derive(Copy, Clone)]
-struct Timespec {
-    t: libc::timespec,
+pub(in crate::sys::unix) struct Timespec {
+    pub t: libc::timespec,
 }
 
 impl Timespec {
@@ -18,7 +18,7 @@ impl Timespec {
         Timespec { t: libc::timespec { tv_sec: 0, tv_nsec: 0 } }
     }
 
-    fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
+    pub fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         if self >= other {
             // NOTE(eddyb) two aspects of this `if`-`else` are required for LLVM
             // to optimize it into a branchless form (see also #75545):
@@ -51,7 +51,7 @@ impl Timespec {
         }
     }
 
-    fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `libc::time_t`
@@ -68,7 +68,7 @@ impl Timespec {
         Some(Timespec { t: libc::timespec { tv_sec: secs, tv_nsec: nsec as _ } })
     }
 
-    fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
+    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
         let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `libc::time_t`
@@ -266,6 +266,7 @@ mod inner {
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod inner {
     use crate::fmt;
+    use crate::mem::MaybeUninit;
     use crate::sys::cvt;
     use crate::time::Duration;
 
@@ -285,7 +286,7 @@ mod inner {
 
     impl Instant {
         pub fn now() -> Instant {
-            Instant { t: now(libc::CLOCK_MONOTONIC) }
+            Instant { t: Timespec::now(libc::CLOCK_MONOTONIC) }
         }
 
         pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
@@ -312,7 +313,7 @@ mod inner {
 
     impl SystemTime {
         pub fn now() -> SystemTime {
-            SystemTime { t: now(libc::CLOCK_REALTIME) }
+            SystemTime { t: Timespec::now(libc::CLOCK_REALTIME) }
         }
 
         pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
@@ -348,9 +349,11 @@ mod inner {
     #[cfg(any(target_os = "dragonfly", target_os = "espidf"))]
     pub type clock_t = libc::c_ulong;
 
-    fn now(clock: clock_t) -> Timespec {
-        let mut t = Timespec { t: libc::timespec { tv_sec: 0, tv_nsec: 0 } };
-        cvt(unsafe { libc::clock_gettime(clock, &mut t.t) }).unwrap();
-        t
+    impl Timespec {
+        pub fn now(clock: clock_t) -> Timespec {
+            let mut t = MaybeUninit::uninit();
+            cvt(unsafe { libc::clock_gettime(clock, t.as_mut_ptr()) }).unwrap();
+            Timespec { t: unsafe { t.assume_init() } }
+        }
     }
 }

@@ -4,31 +4,46 @@
     all(target_os = "emscripten", target_feature = "atomics")
 ))]
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::convert::TryInto;
-#[cfg(any(target_os = "linux", target_os = "android"))]
-use crate::ptr::null;
 use crate::sync::atomic::AtomicI32;
 use crate::time::Duration;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
-    let timespec = timeout.and_then(|d| {
-        Some(libc::timespec {
-            // Sleep forever if the timeout is longer than fits in a timespec.
-            tv_sec: d.as_secs().try_into().ok()?,
-            // This conversion never truncates, as subsec_nanos is always <1e9.
-            tv_nsec: d.subsec_nanos() as _,
-        })
-    });
-    unsafe {
-        libc::syscall(
-            libc::SYS_futex,
-            futex as *const AtomicI32,
-            libc::FUTEX_WAIT | libc::FUTEX_PRIVATE_FLAG,
-            expected,
-            timespec.as_ref().map_or(null(), |d| d as *const libc::timespec),
-        );
+pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -> bool {
+    use super::time::Timespec;
+    use crate::ptr::null;
+    use crate::sync::atomic::Ordering::Relaxed;
+
+    // Calculate the timeout as an absolute timespec.
+    //
+    // Overflows are rounded up to an infinite timeout (None).
+    let timespec =
+        timeout.and_then(|d| Some(Timespec::now(libc::CLOCK_MONOTONIC).checked_add_duration(&d)?));
+
+    loop {
+        // No need to wait if the value already changed.
+        if futex.load(Relaxed) != expected {
+            return true;
+        }
+
+        // Use FUTEX_WAIT_BITSET rather than FUTEX_WAIT to be able to give an
+        // absolute time rather than a relative time.
+        let r = unsafe {
+            libc::syscall(
+                libc::SYS_futex,
+                futex as *const AtomicI32,
+                libc::FUTEX_WAIT_BITSET | libc::FUTEX_PRIVATE_FLAG,
+                expected,
+                timespec.as_ref().map_or(null(), |t| &t.t as *const libc::timespec),
+                null::<u32>(), // This argument is unused for FUTEX_WAIT_BITSET.
+                !0u32,         // A full bitmask, to make it behave like a regular FUTEX_WAIT.
+            )
+        };
+
+        match (r < 0).then(super::os::errno) {
+            Some(libc::ETIMEDOUT) => return false,
+            Some(libc::EINTR) => continue,
+            _ => return true,
+        }
     }
 }
 
@@ -61,6 +76,18 @@ pub fn futex_wake(futex: &AtomicI32) {
             futex as *const AtomicI32,
             libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
             1,
+        );
+    }
+}
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub fn futex_wake_all(futex: &AtomicI32) {
+    unsafe {
+        libc::syscall(
+            libc::SYS_futex,
+            futex as *const AtomicI32,
+            libc::FUTEX_WAKE | libc::FUTEX_PRIVATE_FLAG,
+            i32::MAX,
         );
     }
 }
