@@ -2068,7 +2068,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::GenericParam {
             hir_id,
             name,
-            span: self.lower_span(param.ident.span),
+            span: self.lower_span(param.span()),
             pure_wrt_drop: self.sess.contains_name(&param.attrs, sym::may_dangle),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,

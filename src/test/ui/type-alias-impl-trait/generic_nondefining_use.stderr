@@ -26,10 +26,10 @@ LL |     7u32
    |     ^^^^
    |
 note: used non-generic constant `123_usize` for generic parameter
-  --> $DIR/generic_nondefining_use.rs:11:21
+  --> $DIR/generic_nondefining_use.rs:11:15
    |
 LL | type OneConst<const X: usize> = impl Debug;
-   |                     ^
+   |               ^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

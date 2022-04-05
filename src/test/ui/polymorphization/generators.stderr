@@ -23,7 +23,7 @@ error: item has unused generic parameters
   --> $DIR/generators.rs:60:5
    |
 LL |   pub fn unused_const<const T: u32>() -> impl Generator<(), Yield = u32, Return = u32> + Unpin {
-   |                             - generic parameter `T` is unused
+   |                       ------------ generic parameter `T` is unused
 LL | /     || {
 LL | |
 LL | |         yield 1;
