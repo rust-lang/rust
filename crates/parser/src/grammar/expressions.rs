@@ -552,7 +552,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
         }
         T![!] if !p.at(T![!=]) => {
             let block_like = items::macro_call_after_excl(p);
-            (m.complete(p, MACRO_CALL), block_like)
+            (m.complete(p, MACRO_CALL).precede(p).complete(p, MACRO_EXPR), block_like)
         }
         _ => (m.complete(p, PATH_EXPR), BlockLike::NotBlock),
     }

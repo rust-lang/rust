@@ -13,22 +13,23 @@ SOURCE_FILE
         L_CURLY "{"
         WHITESPACE " "
         EXPR_STMT
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "try"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
-              IDENT "Ok"
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "try"
+              BANG "!"
               TOKEN_TREE
                 L_PAREN "("
+                IDENT "Ok"
                 TOKEN_TREE
                   L_PAREN "("
+                  TOKEN_TREE
+                    L_PAREN "("
+                    R_PAREN ")"
                   R_PAREN ")"
                 R_PAREN ")"
-              R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE " "
         R_CURLY "}"

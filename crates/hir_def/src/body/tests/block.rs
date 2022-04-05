@@ -371,3 +371,27 @@ fn outer() {
         "#]],
     );
 }
+
+#[test]
+fn stmt_macro_expansion_with_trailing_expr() {
+    cov_mark::check!(macro_stmt_with_trailing_macro_expr);
+    check_at(
+        r#"
+macro_rules! mac {
+    () => { mac!($) };
+    ($x:tt) => { fn inner() {} };
+}
+fn foo() {
+    mac!();
+    $0
+}
+        "#,
+        expect![[r#"
+            block scope
+            inner: v
+
+            crate
+            foo: v
+        "#]],
+    )
+}

@@ -35,7 +35,7 @@ SOURCE_FILE
           SEMICOLON ";"
         WHITESPACE "\n    "
         EXPR_STMT
-          MACRO_CALL
+          MACRO_EXPR
             ATTR
               POUND "#"
               L_BRACK "["
@@ -46,14 +46,15 @@ SOURCE_FILE
                       IDENT "B"
               R_BRACK "]"
             WHITESPACE " "
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "bar"
-            BANG "!"
-            TOKEN_TREE
-              L_CURLY "{"
-              R_CURLY "}"
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "bar"
+              BANG "!"
+              TOKEN_TREE
+                L_CURLY "{"
+                R_CURLY "}"
         WHITESPACE "\n    "
         EXPR_STMT
           BLOCK_EXPR

@@ -156,7 +156,7 @@ fn highlight_exit_points(
                     highlights.push(HighlightedRange { category: None, range: token.text_range() });
                 }
             }
-            ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroCall(_) => {
+            ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroExpr(_) => {
                 if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) {
                     highlights.push(HighlightedRange {
                         category: None,

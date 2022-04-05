@@ -506,7 +506,8 @@ impl ExprCollector<'_> {
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
-            ast::Expr::MacroCall(e) => {
+            ast::Expr::MacroExpr(e) => {
+                let e = e.macro_call()?;
                 let macro_ptr = AstPtr::new(&e);
                 let id = self.collect_macro_call(e, macro_ptr.clone(), true, |this, expansion| {
                     expansion.map(|it| this.collect_expr(it))
@@ -629,7 +630,11 @@ impl ExprCollector<'_> {
                 }
                 let has_semi = stmt.semicolon_token().is_some();
                 // Note that macro could be expended to multiple statements
-                if let Some(ast::Expr::MacroCall(m)) = stmt.expr() {
+                if let Some(ast::Expr::MacroExpr(e)) = stmt.expr() {
+                    let m = match e.macro_call() {
+                        Some(it) => it,
+                        None => return,
+                    };
                     let macro_ptr = AstPtr::new(&m);
                     let syntax_ptr = AstPtr::new(&stmt.expr().unwrap());
 

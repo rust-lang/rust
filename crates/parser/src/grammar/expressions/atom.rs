@@ -605,6 +605,7 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
     if p.nth_at(1, T![!]) {
         // test try_macro_fallback
         // fn foo() { try!(Ok(())); }
+        let macro_call = p.start();
         let path = p.start();
         let path_segment = p.start();
         let name_ref = p.start();
@@ -613,7 +614,8 @@ fn try_block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
         path_segment.complete(p, PATH_SEGMENT);
         path.complete(p, PATH);
         let _block_like = items::macro_call_after_excl(p);
-        return m.complete(p, MACRO_CALL);
+        macro_call.complete(p, MACRO_CALL);
+        return m.complete(p, MACRO_EXPR);
     }
 
     p.bump(T![try]);

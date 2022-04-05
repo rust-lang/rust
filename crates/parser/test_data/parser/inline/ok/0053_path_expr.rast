@@ -81,15 +81,16 @@ SOURCE_FILE
           WHITESPACE " "
           EQ "="
           WHITESPACE " "
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "format"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
-              R_PAREN ")"
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "format"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"

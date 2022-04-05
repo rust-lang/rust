@@ -38,15 +38,16 @@ SOURCE_FILE
                           IDENT "B"
                   R_BRACK "]"
                 WHITESPACE " "
-                MACRO_CALL
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "bar"
-                  BANG "!"
-                  TOKEN_TREE
-                    L_PAREN "("
-                    R_PAREN ")"
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "bar"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      R_PAREN ")"
                 QUESTION "?"
               WHITESPACE " "
               R_CURLY "}"

@@ -111,7 +111,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext) ->
                     | ast::Expr::ForExpr(_)
                     | ast::Expr::IfExpr(_)
                     | ast::Expr::LoopExpr(_)
-                    | ast::Expr::MacroCall(_)
+                    | ast::Expr::MacroExpr(_)
                     | ast::Expr::MatchExpr(_)
                     | ast::Expr::PrefixExpr(_)
                     | ast::Expr::RangeExpr(_)

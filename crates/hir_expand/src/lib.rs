@@ -885,6 +885,16 @@ impl ExpandTo {
             None => return ExpandTo::Statements,
         };
 
+        // FIXME: macros in statement position are treated as expression statements, they should
+        // probably be their own statement kind. The *grand*parent indicates what's valid.
+        if parent.kind() == MACRO_EXPR
+            && parent
+                .parent()
+                .map_or(true, |p| matches!(p.kind(), EXPR_STMT | STMT_LIST | MACRO_STMTS))
+        {
+            return ExpandTo::Statements;
+        }
+
         match parent.kind() {
             MACRO_ITEMS | SOURCE_FILE | ITEM_LIST => ExpandTo::Items,
             MACRO_STMTS | EXPR_STMT | STMT_LIST => ExpandTo::Statements,
@@ -895,23 +905,10 @@ impl ExpandTo {
             | CLOSURE_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR | INDEX_EXPR | LET_EXPR
             | MATCH_ARM | MATCH_EXPR | MATCH_GUARD | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR
             | PREFIX_EXPR | RANGE_EXPR | RECORD_EXPR_FIELD | REF_EXPR | RETURN_EXPR | TRY_EXPR
-            | TUPLE_EXPR | WHILE_EXPR => ExpandTo::Expr,
+            | TUPLE_EXPR | WHILE_EXPR | MACRO_EXPR => ExpandTo::Expr,
             _ => {
-                match ast::LetStmt::cast(parent) {
-                    Some(let_stmt) => {
-                        if let Some(true) = let_stmt.initializer().map(|it| it.syntax() == syn) {
-                            ExpandTo::Expr
-                        } else if let Some(true) = let_stmt.ty().map(|it| it.syntax() == syn) {
-                            ExpandTo::Type
-                        } else {
-                            ExpandTo::Pattern
-                        }
-                    }
-                    None => {
-                        // Unknown , Just guess it is `Items`
-                        ExpandTo::Items
-                    }
-                }
+                // Unknown , Just guess it is `Items`
+                ExpandTo::Items
             }
         }
     }

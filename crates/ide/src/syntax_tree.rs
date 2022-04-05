@@ -163,19 +163,20 @@ fn test() {
                         L_CURLY@10..11 "{"
                         WHITESPACE@11..16 "\n    "
                         EXPR_STMT@16..58
-                          MACRO_CALL@16..57
-                            PATH@16..22
-                              PATH_SEGMENT@16..22
-                                NAME_REF@16..22
-                                  IDENT@16..22 "assert"
-                            BANG@22..23 "!"
-                            TOKEN_TREE@23..57
-                              L_PAREN@23..24 "("
-                              STRING@24..52 "\"\n    fn foo() {\n     ..."
-                              COMMA@52..53 ","
-                              WHITESPACE@53..54 " "
-                              STRING@54..56 "\"\""
-                              R_PAREN@56..57 ")"
+                          MACRO_EXPR@16..57
+                            MACRO_CALL@16..57
+                              PATH@16..22
+                                PATH_SEGMENT@16..22
+                                  NAME_REF@16..22
+                                    IDENT@16..22 "assert"
+                              BANG@22..23 "!"
+                              TOKEN_TREE@23..57
+                                L_PAREN@23..24 "("
+                                STRING@24..52 "\"\n    fn foo() {\n     ..."
+                                COMMA@52..53 ","
+                                WHITESPACE@53..54 " "
+                                STRING@54..56 "\"\""
+                                R_PAREN@56..57 ")"
                           SEMICOLON@57..58 ";"
                         WHITESPACE@58..59 "\n"
                         R_CURLY@59..60 "}"
@@ -214,19 +215,20 @@ fn test() {
 }"#,
             expect![[r#"
                 EXPR_STMT@16..58
-                  MACRO_CALL@16..57
-                    PATH@16..22
-                      PATH_SEGMENT@16..22
-                        NAME_REF@16..22
-                          IDENT@16..22 "assert"
-                    BANG@22..23 "!"
-                    TOKEN_TREE@23..57
-                      L_PAREN@23..24 "("
-                      STRING@24..52 "\"\n    fn foo() {\n     ..."
-                      COMMA@52..53 ","
-                      WHITESPACE@53..54 " "
-                      STRING@54..56 "\"\""
-                      R_PAREN@56..57 ")"
+                  MACRO_EXPR@16..57
+                    MACRO_CALL@16..57
+                      PATH@16..22
+                        PATH_SEGMENT@16..22
+                          NAME_REF@16..22
+                            IDENT@16..22 "assert"
+                      BANG@22..23 "!"
+                      TOKEN_TREE@23..57
+                        L_PAREN@23..24 "("
+                        STRING@24..52 "\"\n    fn foo() {\n     ..."
+                        COMMA@52..53 ","
+                        WHITESPACE@53..54 " "
+                        STRING@54..56 "\"\""
+                        R_PAREN@56..57 ")"
                   SEMICOLON@57..58 ";"
             "#]],
         );

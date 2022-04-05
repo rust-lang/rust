@@ -80,6 +80,34 @@ fn main() { n_nuple!(1,2,3); }
 }
 
 #[test]
+fn issue_3642_bad_macro_stackover() {
+    lower(
+        r#"
+#[macro_export]
+macro_rules! match_ast {
+    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+
+    (match ($node:expr) {
+        $( ast::$ast:ident($it:ident) => $res:expr, )*
+        _ => $catch_all:expr $(,)?
+    }) => {{
+        $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
+        { $catch_all }
+    }};
+}
+
+fn main() {
+    let anchor = match_ast! {
+        match parent {
+            as => {},
+            _ => return None
+        }
+    };
+}"#,
+    );
+}
+
+#[test]
 fn macro_resolve() {
     // Regression test for a path resolution bug introduced with inner item handling.
     lower(

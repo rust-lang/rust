@@ -445,34 +445,6 @@ fn test() {
 }
 
 #[test]
-fn issue_3642_bad_macro_stackover() {
-    check_no_mismatches(
-        r#"
-#[macro_export]
-macro_rules! match_ast {
-    (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
-
-    (match ($node:expr) {
-        $( ast::$ast:ident($it:ident) => $res:expr, )*
-        _ => $catch_all:expr $(,)?
-    }) => {{
-        $( if let Some($it) = ast::$ast::cast($node.clone()) { $res } else )*
-        { $catch_all }
-    }};
-}
-
-fn main() {
-    let anchor = match_ast! {
-        match parent {
-            as => {},
-            _ => return None
-        }
-    };
-}"#,
-    );
-}
-
-#[test]
 fn issue_3999_slice() {
     check_infer(
         r#"

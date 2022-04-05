@@ -62,11 +62,6 @@ pub fn preorder_expr(start: &ast::Expr, cb: &mut dyn FnMut(WalkEvent<ast::Expr>)
         match ast::Stmt::cast(node.clone()) {
             // Don't skip subtree since we want to process the expression child next
             Some(ast::Stmt::ExprStmt(_)) | Some(ast::Stmt::LetStmt(_)) => (),
-            // This might be an expression
-            Some(ast::Stmt::Item(ast::Item::MacroCall(mcall))) => {
-                cb(WalkEvent::Enter(ast::Expr::MacroCall(mcall)));
-                preorder.skip_subtree();
-            }
             // skip inner items which might have their own expressions
             Some(ast::Stmt::Item(_)) => preorder.skip_subtree(),
             None => {
@@ -319,7 +314,7 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::ForExpr(_)
         | ast::Expr::IndexExpr(_)
         | ast::Expr::Literal(_)
-        | ast::Expr::MacroCall(_)
+        | ast::Expr::MacroExpr(_)
         | ast::Expr::MacroStmts(_)
         | ast::Expr::MethodCallExpr(_)
         | ast::Expr::ParenExpr(_)

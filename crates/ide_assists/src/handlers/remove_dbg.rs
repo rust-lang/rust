@@ -39,15 +39,16 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext) -> Option<()> {
         .map(|mut tokens| syntax::hacks::parse_expr_from_str(&tokens.join("")))
         .collect::<Option<Vec<ast::Expr>>>()?;
 
-    let parent = macro_call.syntax().parent()?;
+    let macro_expr = ast::MacroExpr::cast(macro_call.syntax().parent()?)?;
+    let parent = macro_expr.syntax().parent()?;
     let (range, text) = match &*input_expressions {
         // dbg!()
         [] => {
             match_ast! {
                 match parent {
                     ast::StmtList(__) => {
-                        let range = macro_call.syntax().text_range();
-                        let range = match whitespace_start(macro_call.syntax().prev_sibling_or_token()) {
+                        let range = macro_expr.syntax().text_range();
+                        let range = match whitespace_start(macro_expr.syntax().prev_sibling_or_token()) {
                             Some(start) => range.cover_offset(start),
                             None => range,
                         };

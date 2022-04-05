@@ -602,6 +602,17 @@ sdasdasdasdasd
     }
 
     #[test]
+    fn noop_in_item_position_with_macro() {
+        type_char_noop('{', r#"$0println!();"#);
+        type_char_noop(
+            '{',
+            r#"
+fn main() $0println!("hello");
+}"#,
+        );
+    }
+
+    #[test]
     fn adds_closing_brace_for_use_tree() {
         type_char(
             '{',
