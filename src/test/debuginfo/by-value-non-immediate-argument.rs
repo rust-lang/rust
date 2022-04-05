@@ -1,5 +1,5 @@
-// ignore-test // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 // min-lldb-version: 310
+// ignore-lldb
 
 // compile-flags:-g
 

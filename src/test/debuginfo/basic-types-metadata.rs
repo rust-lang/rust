@@ -1,5 +1,4 @@
 // min-lldb-version: 310
-// ignore-gdb // Test temporarily ignored due to debuginfo tests being disabled, see PR 47155
 
 // compile-flags:-g
 // gdb-command:run
@@ -10,7 +9,7 @@
 // gdb-command:whatis i
 // gdb-check:type = isize
 // gdb-command:whatis c
-// gdb-check:type = char
+// gdb-check:type = char32_t
 // gdb-command:whatis i8
 // gdb-check:type = i8
 // gdb-command:whatis i16
@@ -34,12 +33,12 @@
 // gdb-command:whatis f64
 // gdb-check:type = f64
 // gdb-command:whatis fnptr
-// gdb-check:type = [...] (*)([...])
+// gdb-check:type = *mut fn ()
 // gdb-command:info functions _yyy
 // gdbg-check:[...]![...]_yyy([...]);
-// gdbr-check:static fn basic_types_metadata::_yyy() -> !;
+// gdbr-check:static fn basic_types_metadata::_yyy();
 // gdb-command:ptype closure_0
-// gdbr-check: type = struct closure
+// gdbr-check: type = struct basic_types_metadata::main::{closure_env#0}
 // gdbg-check: type = struct closure {
 // gdbg-check:     <no data fields>
 // gdbg-check: }
@@ -47,18 +46,18 @@
 // gdbg-check: type = struct closure {
 // gdbg-check:     bool *__0;
 // gdbg-check: }
-// gdbr-check: type = struct closure (
-// gdbr-check:     bool *,
-// gdbr-check: )
+// gdbr-check: type = struct basic_types_metadata::main::{closure_env#1} {
+// gdbr-check:     _ref__b: *mut bool,
+// gdbr-check: }
 // gdb-command:ptype closure_2
 // gdbg-check: type = struct closure {
 // gdbg-check:     bool *__0;
 // gdbg-check:     isize *__1;
 // gdbg-check: }
-// gdbr-check: type = struct closure (
-// gdbr-check:     bool *,
-// gdbr-check:     isize *,
-// gdbr-check: )
+// gdbr-check: type = struct basic_types_metadata::main::{closure_env#2} {
+// gdbr-check:     _ref__b: *mut bool,
+// gdbr-check:     _ref__i: *mut isize,
+// gdbr-check: }
 
 //
 // gdb-command:continue
