@@ -44,19 +44,16 @@ pub fn expand_deriving_clone(
                     is_shallow = false;
                     substructure = combine_substructure(Box::new(|c, s, sub| cs_clone(c, s, sub)));
                 }
-                is_union = false;
             }
             ItemKind::Union(..) => {
                 bounds = vec![Literal(path_std!(marker::Copy))];
                 is_shallow = true;
                 substructure =
                     combine_substructure(Box::new(|c, s, sub| cs_clone_shallow(c, s, sub, true)));
-                is_union = true;
             }
             _ => {
                 bounds = vec![];
                 is_shallow = false;
-                is_union = false;
                 substructure = combine_substructure(Box::new(|c, s, sub| cs_clone(c, s, sub)));
             }
         },
@@ -69,7 +66,7 @@ pub fn expand_deriving_clone(
     let trait_def = TraitDef {
         span,
         attributes: Vec::new(),
-        path: if is_union { path_std!(clone::Clone) } else { path_std!(clone::DerivedClone) },
+        path: if is_shallow { path_std!(clone::Clone) } else { path_std!(clone::DerivedClone) },
         bound_current_trait: false,
         additional_bounds: bounds,
         generics: Bounds::empty(),
@@ -91,7 +88,7 @@ pub fn expand_deriving_clone(
 
     trait_def.expand_ext(cx, mitem, item, push, is_shallow);
 
-    if !is_union {
+    if !is_shallow {
         TraitDef {
             span,
             attributes: Vec::new(),
