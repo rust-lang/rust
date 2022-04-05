@@ -1014,6 +1014,7 @@ impl CheckAttrVisitor<'_> {
                         }
 
                         sym::html_favicon_url
+                        | sym::html_in_header
                         | sym::html_logo_url
                         | sym::html_playground_url
                         | sym::issue_tracker_base_url
@@ -1054,6 +1055,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::cfg_hide
                         | sym::hidden
                         | sym::html_favicon_url
+                        | sym::html_in_header
                         | sym::html_logo_url
                         | sym::html_no_source
                         | sym::html_playground_url

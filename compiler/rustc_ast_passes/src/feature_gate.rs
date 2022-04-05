@@ -385,6 +385,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_doc!(
                     cfg => doc_cfg
                     cfg_hide => doc_cfg_hide
+                    html_in_header => doc_html_in_header
                     masked => doc_masked
                     notable_trait => doc_notable_trait
                 );

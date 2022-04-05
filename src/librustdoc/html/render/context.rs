@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::io;
+use std::fs::File;
+use std::io::{self, prelude::*};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::mpsc::{channel, Receiver};
@@ -440,6 +441,16 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             match (attr.name_or_empty(), attr.value_str()) {
                 (sym::html_favicon_url, Some(s)) => {
                     layout.favicon = s.to_string();
+                }
+                (sym::html_in_header, Some(s)) => {
+                    let html_in_header_path = src_root.join(s.as_str());
+                    let mut html_in_header_file =
+                        File::open(&html_in_header_path).map_err(|_| {
+                            Error::new("could not include html in header", &html_in_header_path)
+                        })?;
+                    html_in_header_file
+                        .read_to_string(&mut layout.external_html.in_header)
+                        .map_err(|_| Error::new("could not include html in header", html_in_header_path))?;
                 }
                 (sym::html_logo_url, Some(s)) => {
                     layout.logo = s.to_string();

@@ -373,6 +373,8 @@ declare_features! (
     (active, doc_cfg, "1.21.0", Some(43781), None),
     /// Allows `#[doc(cfg_hide(...))]`.
     (active, doc_cfg_hide, "1.57.0", Some(43781), None),
+    /// Allows `#![doc(html_in_header = "...")]
+    (active, doc_html_in_header, "1.62.0", None, None),
     /// Allows `#[doc(masked)]`.
     (active, doc_masked, "1.21.0", Some(44027), None),
     /// Allows `X..Y` patterns.
