@@ -83,19 +83,20 @@ fn on_char_typed_inner(
     offset: TextSize,
     char_typed: char,
 ) -> Option<ExtendedTextEdit> {
-    fn conv(text_edit: Option<TextEdit>) -> Option<ExtendedTextEdit> {
-        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
-    }
     if !stdx::always!(TRIGGER_CHARS.contains(char_typed)) {
         return None;
     }
-    match char_typed {
+    return match char_typed {
         '.' => conv(on_dot_typed(&file.tree(), offset)),
         '=' => conv(on_eq_typed(&file.tree(), offset)),
         '<' => on_left_angle_typed(&file.tree(), offset),
         '>' => conv(on_right_angle_typed(&file.tree(), offset)),
         '{' => conv(on_opening_brace_typed(file, offset)),
         _ => unreachable!(),
+    };
+
+    fn conv(text_edit: Option<TextEdit>) -> Option<ExtendedTextEdit> {
+        Some(ExtendedTextEdit { edit: text_edit?, is_snippet: false })
     }
 }
 
@@ -319,8 +320,17 @@ fn on_left_angle_typed(file: &SourceFile, offset: TextSize) -> Option<ExtendedTe
     if !stdx::always!(file_text.char_at(offset) == Some('<')) {
         return None;
     }
-    let range = TextRange::at(offset, TextSize::of('<'));
 
+    // Find the next non-whitespace char in the line.
+    let mut next_offset = offset + TextSize::of('<');
+    while file_text.char_at(next_offset) == Some(' ') {
+        next_offset += TextSize::of(' ')
+    }
+    if file_text.char_at(next_offset) == Some('>') {
+        return None;
+    }
+
+    let range = TextRange::at(offset, TextSize::of('<'));
     if let Some(t) = file.syntax().token_at_offset(offset).left_biased() {
         if T![impl] == t.kind() {
             return Some(ExtendedTextEdit {
@@ -1077,6 +1087,92 @@ fn main() {
     let foo = 42;
     foo $0
 }
+            "#,
+        );
+    }
+
+    #[test]
+    fn dont_add_closing_angle_bracket_if_it_is_already_there() {
+        type_char_noop(
+            '<',
+            r#"
+fn foo() {
+    bar::$0>
+}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+fn foo(bar: &[u64]) {
+    bar.iter().collect::$0   >();
+}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+fn foo$0>() {}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+fn foo$0>
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+struct Foo$0> {}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+struct Foo$0>();
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+struct Foo$0>
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+enum Foo$0>
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+trait Foo$0>
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+type Foo$0> = Bar;
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+impl$0> Foo {}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+impl<T> Foo$0> {}
+            "#,
+        );
+        type_char_noop(
+            '<',
+            r#"
+impl Foo$0> {}
             "#,
         );
     }
