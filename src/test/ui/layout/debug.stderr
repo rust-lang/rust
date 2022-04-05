@@ -10,7 +10,7 @@ error: layout_of(E) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I32,
                        false,
@@ -86,13 +86,11 @@ error: layout_of(E) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I32,
-                           false,
-                       ),
-                       valid_range: 0..=0,
-                   },
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=0,
                },
            ),
            align: AbiAndPrefAlign {
@@ -133,14 +131,14 @@ error: layout_of(S) = Layout {
                index: 0,
            },
            abi: ScalarPair(
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        true,
                    ),
                    valid_range: 0..=4294967295,
                },
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        true,
@@ -202,7 +200,7 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                ],
            },
            variants: Multiple {
-               tag: Scalar {
+               tag: Initialized {
                    value: Int(
                        I32,
                        false,
@@ -271,14 +269,14 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                ],
            },
            abi: ScalarPair(
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        false,
                    ),
                    valid_range: 0..=1,
                },
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        true,
@@ -291,13 +289,11 @@ error: layout_of(std::result::Result<i32, i32>) = Layout {
                    offset: Size {
                        raw: 0,
                    },
-                   scalar: Scalar {
-                       value: Int(
-                           I32,
-                           false,
-                       ),
-                       valid_range: 0..=1,
-                   },
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=1,
                },
            ),
            align: AbiAndPrefAlign {
@@ -321,7 +317,7 @@ error: layout_of(i32) = Layout {
                index: 0,
            },
            abi: Scalar(
-               Scalar {
+               Initialized {
                    value: Int(
                        I32,
                        true,

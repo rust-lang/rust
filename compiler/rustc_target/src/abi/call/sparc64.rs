@@ -20,7 +20,7 @@ where
 {
     let dl = cx.data_layout();
 
-    if scalar.value != abi::F32 && scalar.value != abi::F64 {
+    if !scalar.primitive().is_float() {
         return data;
     }
 
@@ -56,7 +56,7 @@ where
         return data;
     }
 
-    if scalar.value == abi::F32 {
+    if scalar.primitive() == abi::F32 {
         data.arg_attribute = ArgAttribute::InReg;
         data.prefix[data.prefix_index] = Some(Reg::f32());
         data.last_offset = offset + Reg::f32().size;
@@ -79,17 +79,15 @@ where
     C: HasDataLayout,
 {
     data = arg_scalar(cx, &scalar1, offset, data);
-    if scalar1.value == abi::F32 {
-        offset += Reg::f32().size;
-    } else if scalar2.value == abi::F64 {
-        offset += Reg::f64().size;
-    } else if let abi::Int(i, _signed) = scalar1.value {
-        offset += i.size();
-    } else if scalar1.value == abi::Pointer {
-        offset = offset + Reg::i64().size;
+    match (scalar1.primitive(), scalar2.primitive()) {
+        (abi::F32, _) => offset += Reg::f32().size,
+        (_, abi::F64) => offset += Reg::f64().size,
+        (abi::Int(i, _signed), _) => offset += i.size(),
+        (abi::Pointer, _) => offset += Reg::i64().size,
+        _ => {}
     }
 
-    if (offset.raw % 4) != 0 && (scalar2.value == abi::F32 || scalar2.value == abi::F64) {
+    if (offset.raw % 4) != 0 && scalar2.primitive().is_float() {
         offset.raw += 4 - (offset.raw % 4);
     }
     data = arg_scalar(cx, &scalar2, offset, data);

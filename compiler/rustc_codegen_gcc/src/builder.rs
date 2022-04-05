@@ -694,11 +694,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         fn scalar_load_metadata<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, load: RValue<'gcc>, scalar: &abi::Scalar) {
-            let vr = scalar.valid_range.clone();
-            match scalar.value {
+            let vr = scalar.valid_range(bx);
+            match scalar.primitive() {
                 abi::Int(..) => {
                     if !scalar.is_always_valid(bx) {
-                        bx.range_metadata(load, scalar.valid_range);
+                        bx.range_metadata(load, vr);
                     }
                 }
                 abi::Pointer if vr.start < vr.end && !vr.contains(0) => {
@@ -720,7 +720,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
                 OperandValue::Immediate(self.to_immediate(load, place.layout))
             }
             else if let abi::Abi::ScalarPair(ref a, ref b) = place.layout.abi {
-                let b_offset = a.value.size(self).align_to(b.value.align(self).abi);
+                let b_offset = a.size(self).align_to(b.align(self).abi);
                 let pair_type = place.layout.gcc_type(self, false);
 
                 let mut load = |i, scalar: &abi::Scalar, align| {

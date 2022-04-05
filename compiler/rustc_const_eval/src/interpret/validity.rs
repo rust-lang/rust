@@ -629,12 +629,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         op: &OpTy<'tcx, M::PointerTag>,
         scalar_layout: ScalarAbi,
     ) -> InterpResult<'tcx> {
-        if scalar_layout.valid_range.is_full_for(op.layout.size) {
+        if scalar_layout.valid_range(self.ecx).is_full_for(op.layout.size) {
             // Nothing to check
             return Ok(());
         }
         // At least one value is excluded.
-        let valid_range = scalar_layout.valid_range;
+        let valid_range = scalar_layout.valid_range(self.ecx);
         let WrappingRange { start, end } = valid_range;
         let max_value = op.layout.size.unsigned_int_max();
         assert!(end <= max_value);

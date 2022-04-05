@@ -464,13 +464,13 @@ fn push_debuginfo_type_name<'tcx>(
 
             // calculate the range of values for the dataful variant
             let dataful_discriminant_range =
-                dataful_variant_layout.largest_niche().unwrap().scalar.valid_range;
+                dataful_variant_layout.largest_niche().unwrap().valid_range;
 
             let min = dataful_discriminant_range.start;
-            let min = tag.value.size(&tcx).truncate(min);
+            let min = tag.size(&tcx).truncate(min);
 
             let max = dataful_discriminant_range.end;
-            let max = tag.value.size(&tcx).truncate(max);
+            let max = tag.size(&tcx).truncate(max);
 
             let dataful_variant_name = variant_name(*dataful_variant);
             write!(output, ", {}, {}, {}", min, max, dataful_variant_name).unwrap();

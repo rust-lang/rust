@@ -309,7 +309,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         scalar: Scalar,
         offset: Size,
     ) -> &'a Type {
-        match scalar.value {
+        match scalar.primitive() {
             Int(i, _) => cx.type_from_integer(i),
             F32 => cx.type_f32(),
             F64 => cx.type_f64(),
@@ -362,8 +362,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             return cx.type_i1();
         }
 
-        let offset =
-            if index == 0 { Size::ZERO } else { a.value.size(cx).align_to(b.value.align(cx).abi) };
+        let offset = if index == 0 { Size::ZERO } else { a.size(cx).align_to(b.align(cx).abi) };
         self.scalar_llvm_type_at(cx, scalar, offset)
     }
 
