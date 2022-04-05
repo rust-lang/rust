@@ -329,8 +329,8 @@ impl CargoActor {
             Ok(output) if output.status.success() => Ok(()),
             Ok(output)  => {
                 Err(io::Error::new(io::ErrorKind::Other, format!(
-                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})",
-                    output.status
+                    "Cargo watcher failed, the command produced no valid metadata (exit code: {:?})\nCargo's stderr output:\n{}",
+                    output.status, error
                 )))
             }
             Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
