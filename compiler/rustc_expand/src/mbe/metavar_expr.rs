@@ -128,13 +128,15 @@ fn parse_ident<'sess>(
     sess: &'sess ParseSess,
     span: Span,
 ) -> PResult<'sess, Ident> {
-    let err_fn = |msg| sess.span_diagnostic.struct_span_err(span, msg);
     if let Some(tt) = iter.next() && let TokenTree::Token(token) = tt {
         if let Some((elem, false)) = token.ident() {
             return Ok(elem);
         }
         let token_str = pprust::token_to_string(&token);
-        let mut err = err_fn(&format!("expected identifier, found `{}`", &token_str));
+        let mut err = sess.span_diagnostic.struct_span_err(
+            span,
+            &format!("expected identifier, found `{}`", &token_str)
+        );
         err.span_suggestion(
             token.span,
             &format!("try removing `{}`", &token_str),
@@ -143,7 +145,7 @@ fn parse_ident<'sess>(
         );
         return Err(err);
     }
-    Err(err_fn("expected identifier"))
+    Err(sess.span_diagnostic.struct_span_err(span, "expected identifier"))
 }
 
 /// Tries to move the iterator forward returning `true` if there is a comma. If not, then the

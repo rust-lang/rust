@@ -1,7 +1,7 @@
 use either::Either;
 use rustc_const_eval::util::CallKind;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind};
@@ -15,7 +15,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, subst::Subst, suggest_constraining_type_params, PredicateKind, Ty};
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
 use rustc_span::symbol::sym;
-use rustc_span::{BytePos, MultiSpan, Span};
+use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::TraitEngineExt as _;
 

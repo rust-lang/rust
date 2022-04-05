@@ -14,6 +14,7 @@ use rustc_ast_pretty::pprust::path_segment_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
@@ -25,7 +26,7 @@ use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, MultiSpan, Span, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
 use std::iter;
 use std::ops::Deref;
@@ -1106,7 +1107,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .collect();
 
                     if non_visible_spans.len() > 0 {
-                        let mut m: rustc_span::MultiSpan = non_visible_spans.clone().into();
+                        let mut m: MultiSpan = non_visible_spans.clone().into();
                         non_visible_spans
                             .into_iter()
                             .for_each(|s| m.push_span_label(s, "private field".to_string()));
@@ -1139,7 +1140,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         }
                         err.span_suggestion(
                             span,
-                            &"use this syntax instead",
+                            "use this syntax instead",
                             path_str.to_string(),
                             Applicability::MaybeIncorrect,
                         );

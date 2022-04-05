@@ -3,11 +3,12 @@ use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_lang_ctor, is_unit_expr, path_to_local, peel_blocks_with_stmt, peel_ref_operators, SpanlessEq};
 use if_chain::if_chain;
+use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, Guard, HirId, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{MultiSpan, Span};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -129,8 +130,8 @@ fn check_arm<'tcx>(
                 &msg,
                 |diag| {
                     let mut help_span = MultiSpan::from_spans(vec![binding_span, inner_then_pat.span]);
-                    help_span.push_span_label(binding_span, "replace this binding".into());
-                    help_span.push_span_label(inner_then_pat.span, "with this pattern".into());
+                    help_span.push_span_label(binding_span, "replace this binding");
+                    help_span.push_span_label(inner_then_pat.span, "with this pattern");
                     diag.span_help(help_span, "the outer pattern can be modified to include the inner pattern");
                 },
             );

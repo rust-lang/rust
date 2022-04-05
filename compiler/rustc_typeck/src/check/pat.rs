@@ -4,6 +4,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
     pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -18,7 +19,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
-use rustc_span::{BytePos, MultiSpan, DUMMY_SP};
+use rustc_span::{BytePos, DUMMY_SP};
 use rustc_trait_selection::autoderef::Autoderef;
 use rustc_trait_selection::traits::{ObligationCause, Pattern};
 use ty::VariantDef;

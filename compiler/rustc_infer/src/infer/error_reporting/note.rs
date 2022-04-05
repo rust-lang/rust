@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, Region};
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub(super) fn note_region_origin(&self, err: &mut Diagnostic, origin: &SubregionOrigin<'tcx>) {
-        let mut label_or_note = |span, msg| {
+        let mut label_or_note = |span, msg: &str| {
             let sub_count = err.children.iter().filter(|d| d.span.is_dummy()).count();
             let expanded_sub_count = err.children.iter().filter(|d| !d.span.is_dummy()).count();
             let span_is_primary = err.span.primary_spans().iter().all(|&sp| sp == span);

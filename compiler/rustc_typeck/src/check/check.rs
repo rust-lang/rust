@@ -4,7 +4,7 @@ use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_
 use super::*;
 
 use rustc_attr as attr;
-use rustc_errors::{Applicability, ErrorGuaranteed};
+use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -20,7 +20,7 @@ use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
-use rustc_span::{self, MultiSpan, Span};
+use rustc_span::{self, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;

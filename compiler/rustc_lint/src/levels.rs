@@ -3,7 +3,7 @@ use crate::late::unerased_lint_store;
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::{intravisit, HirId};
 use rustc_middle::hir::nested_filter;
@@ -20,7 +20,7 @@ use rustc_session::lint::{
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{source_map::MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 use tracing::debug;
 
 fn lint_levels(tcx: TyCtxt<'_>, (): ()) -> LintLevelMap {

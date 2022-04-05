@@ -165,9 +165,13 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     // Separate the output with an empty line
     eprintln!();
 
+    let fallback_bundle = rustc_errors::fallback_fluent_bundle(false)
+        .expect("failed to load fallback fluent bundle");
     let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
         rustc_errors::ColorConfig::Auto,
         None,
+        None,
+        fallback_bundle,
         false,
         false,
         None,
@@ -191,7 +195,7 @@ fn report_clippy_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
     ];
 
     for note in &xs {
-        handler.note_without_error(note);
+        handler.note_without_error(note.as_ref());
     }
 
     // If backtraces are enabled, also print the query stack

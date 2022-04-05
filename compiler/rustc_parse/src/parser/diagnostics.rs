@@ -18,10 +18,12 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, EmissionGuarantee, ErrorGuaranteed};
-use rustc_errors::{Applicability, DiagnosticBuilder, Handler, PResult};
+use rustc_errors::{
+    Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{MultiSpan, Span, SpanSnippetError, DUMMY_SP};
+use rustc_span::{Span, SpanSnippetError, DUMMY_SP};
 use std::ops::{Deref, DerefMut};
 
 use std::mem::take;
@@ -273,12 +275,12 @@ impl<'a> Parser<'a> {
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
-        m: &str,
+        m: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
     }
 
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
+    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: impl Into<DiagnosticMessage>) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
@@ -584,16 +586,22 @@ impl<'a> Parser<'a> {
                     //     field: value,
                     // } }
                     err.delay_as_bug();
-                    self.struct_span_err(expr.span, "struct literal body without path")
-                        .multipart_suggestion(
-                            "you might have forgotten to add the struct literal inside the block",
-                            vec![
-                                (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
-                                (expr.span.shrink_to_hi(), " }".to_string()),
-                            ],
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                    self.struct_span_err(
+                        expr.span,
+                        DiagnosticMessage::fluent("parser-struct-literal-body-without-path"),
+                    )
+                    .multipart_suggestion(
+                        DiagnosticMessage::fluent_attr(
+                            "parser-struct-literal-body-without-path",
+                            "suggestion",
+                        ),
+                        vec![
+                            (expr.span.shrink_to_lo(), "{ SomeStruct ".to_string()),
+                            (expr.span.shrink_to_hi(), " }".to_string()),
+                        ],
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
                     self.restore_snapshot(snapshot);
                     let mut tail = self.mk_block(
                         vec![self.mk_stmt_err(expr.span)],

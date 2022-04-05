@@ -3,11 +3,11 @@ use crate::ty::diagnostics::suggest_constraining_type_param;
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
-use rustc_errors::{pluralize, Diagnostic};
+use rustc_errors::{pluralize, Diagnostic, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::{BytePos, MultiSpan, Span};
+use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;

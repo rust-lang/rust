@@ -109,7 +109,7 @@ impl RegionName {
                     *span,
                     format!("lifetime `{}` represents this closure's body", self),
                 );
-                diag.note(&note);
+                diag.note(note);
             }
             RegionNameSource::AnonRegionFromArgument(RegionNameHighlight::CannotMatchHirTy(
                 span,

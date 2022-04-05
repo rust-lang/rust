@@ -7,10 +7,11 @@ pub use self::Level::*;
 use rustc_ast::node_id::{NodeId, NodeMap};
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_error_messages::MultiSpan;
 use rustc_hir::HirId;
 use rustc_serialize::json::Json;
 use rustc_span::edition::Edition;
-use rustc_span::{sym, symbol::Ident, MultiSpan, Span, Symbol};
+use rustc_span::{sym, symbol::Ident, Span, Symbol};
 use rustc_target::spec::abi::Abi;
 
 pub mod builtin;

@@ -109,10 +109,11 @@ use crate::mbe::{KleeneToken, TokenTree};
 use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::MultiSpan;
 use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
-use rustc_span::{symbol::MacroRulesNormalizedIdent, MultiSpan, Span};
+use rustc_span::{symbol::MacroRulesNormalizedIdent, Span};
 
 use smallvec::SmallVec;
 
@@ -249,7 +250,7 @@ fn check_binders(
             if let Some(prev_info) = binders.get(&name) {
                 // 1. The meta-variable is already bound in the current LHS: This is an error.
                 let mut span = MultiSpan::from_span(span);
-                span.push_span_label(prev_info.span, "previous declaration".into());
+                span.push_span_label(prev_info.span, "previous declaration");
                 buffer_lint(sess, span, node_id, "duplicate matcher binding");
             } else if get_binder_info(macros, binders, name).is_none() {
                 // 2. The meta-variable is free: This is a binder.
@@ -621,7 +622,7 @@ fn ops_is_prefix(
     for (i, binder) in binder_ops.iter().enumerate() {
         if i >= occurrence_ops.len() {
             let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition".into());
+            span.push_span_label(binder.span, "expected repetition");
             let message = &format!("variable '{}' is still repeating at this depth", name);
             buffer_lint(sess, span, node_id, message);
             return;
@@ -629,8 +630,8 @@ fn ops_is_prefix(
         let occurrence = &occurrence_ops[i];
         if occurrence.op != binder.op {
             let mut span = MultiSpan::from_span(span);
-            span.push_span_label(binder.span, "expected repetition".into());
-            span.push_span_label(occurrence.span, "conflicting repetition".into());
+            span.push_span_label(binder.span, "expected repetition");
+            span.push_span_label(occurrence.span, "conflicting repetition");
             let message = "meta-variable repeats with different Kleene operator";
             buffer_lint(sess, span, node_id, message);
             return;

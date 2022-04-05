@@ -1239,6 +1239,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluent-bundle"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e242c601dec9711505f6d5bbff5bedd4b61b2469f2e8bb8e57ee7c9747a87ffd"
+dependencies = [
+ "fluent-langneg",
+ "fluent-syntax",
+ "intl-memoizer",
+ "intl_pluralrules",
+ "rustc-hash",
+ "self_cell",
+ "smallvec",
+ "unic-langid",
+]
+
+[[package]]
+name = "fluent-langneg"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2c4ad0989667548f06ccd0e306ed56b61bd4d35458d54df5ec7587c0e8ed5e94"
+dependencies = [
+ "unic-langid",
+]
+
+[[package]]
+name = "fluent-syntax"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0abed97648395c902868fee9026de96483933faa54ea3b40d652f7dfe61ca78"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1780,6 +1814,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if 1.0.0",
+]
+
+[[package]]
+name = "intl-memoizer"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c310433e4a310918d6ed9243542a6b83ec1183df95dff8f23f87bb88a264a66f"
+dependencies = [
+ "type-map",
+ "unic-langid",
+]
+
+[[package]]
+name = "intl_pluralrules"
+version = "7.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b18f988384267d7066cc2be425e6faf352900652c046b6971d2e228d3b1c5ecf"
+dependencies = [
+ "tinystr",
+ "unic-langid",
 ]
 
 [[package]]
@@ -2813,6 +2867,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "proc-macro-hack"
+version = "0.5.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3646,12 +3706,28 @@ name = "rustc_error_codes"
 version = "0.0.0"
 
 [[package]]
+name = "rustc_error_messages"
+version = "0.0.0"
+dependencies = [
+ "fluent-bundle",
+ "fluent-syntax",
+ "intl-memoizer",
+ "rustc_data_structures",
+ "rustc_macros",
+ "rustc_serialize",
+ "rustc_span",
+ "tracing",
+ "unic-langid",
+]
+
+[[package]]
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
  "annotate-snippets",
  "atty",
  "rustc_data_structures",
+ "rustc_error_messages",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",
@@ -3708,6 +3784,7 @@ dependencies = [
  "odht",
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_error_messages",
  "rustc_feature",
  "rustc_index",
  "rustc_macros",
@@ -3864,6 +3941,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_error_messages",
  "rustc_hir",
  "rustc_macros",
  "rustc_serialize",
@@ -4574,6 +4652,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "self_cell"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ef965a420fe14fdac7dd018862966a4c14094f900e1650bbc71ddd7d580c8af"
+
+[[package]]
 name = "semver"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5105,6 +5189,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "tinystr"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29738eedb4388d9ea620eeab9384884fc3f06f586a2eddb56bedc5885126c7c1"
+
+[[package]]
 name = "tinyvec"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5263,6 +5353,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "type-map"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6d3364c5e96cb2ad1603037ab253ddd34d7fb72a58bdddf4b7350760fc69a46"
+dependencies = [
+ "rustc-hash",
+]
+
+[[package]]
 name = "typenum"
 version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5314,6 +5413,49 @@ dependencies = [
  "unic-char-property",
  "unic-char-range",
  "unic-ucd-version",
+]
+
+[[package]]
+name = "unic-langid"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "73328fcd730a030bdb19ddf23e192187a6b01cd98be6d3140622a89129459ce5"
+dependencies = [
+ "unic-langid-impl",
+ "unic-langid-macros",
+]
+
+[[package]]
+name = "unic-langid-impl"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a4a8eeaf0494862c1404c95ec2f4c33a2acff5076f64314b465e3ddae1b934d"
+dependencies = [
+ "tinystr",
+]
+
+[[package]]
+name = "unic-langid-macros"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18f980d6d87e8805f2836d64b4138cc95aa7986fa63b1f51f67d5fbff64dd6e5"
+dependencies = [
+ "proc-macro-hack",
+ "tinystr",
+ "unic-langid-impl",
+ "unic-langid-macros-impl",
+]
+
+[[package]]
+name = "unic-langid-macros-impl"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29396ffd97e27574c3e01368b1a64267d3064969e4848e2e130ff668be9daa9f"
+dependencies = [
+ "proc-macro-hack",
+ "quote",
+ "syn",
+ "unic-langid-impl",
 ]
 
 [[package]]

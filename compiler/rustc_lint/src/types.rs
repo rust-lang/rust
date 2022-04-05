@@ -154,7 +154,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
                     let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                     err.span_suggestion(
                         parent_expr.span,
-                        &"use an inclusive range instead",
+                        "use an inclusive range instead",
                         suggestion,
                         Applicability::MachineApplicable,
                     );
@@ -399,7 +399,7 @@ fn lint_uint_literal<'tcx>(
                             lint.build("only `u8` can be cast into `char`")
                                 .span_suggestion(
                                     par_e.span,
-                                    &"use a `char` literal instead",
+                                    "use a `char` literal instead",
                                     format!("'\\u{{{:X}}}'", lit_val),
                                     Applicability::MachineApplicable,
                                 )
