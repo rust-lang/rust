@@ -110,8 +110,8 @@ impl SourceAnalyzer {
 
     fn expr_id(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<ExprId> {
         let src = match expr {
-            ast::Expr::MacroCall(call) => {
-                self.expand_expr(db, InFile::new(self.file_id, call.clone()))?
+            ast::Expr::MacroExpr(expr) => {
+                self.expand_expr(db, InFile::new(self.file_id, expr.macro_call()?.clone()))?
             }
             _ => InFile::new(self.file_id, expr.clone()),
         };

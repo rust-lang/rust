@@ -919,6 +919,14 @@ impl LoopExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MacroExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MacroExpr {
+    pub fn macro_call(&self) -> Option<MacroCall> { support::child(&self.syntax) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1518,7 +1526,7 @@ pub enum Expr {
     IndexExpr(IndexExpr),
     Literal(Literal),
     LoopExpr(LoopExpr),
-    MacroCall(MacroCall),
+    MacroExpr(MacroExpr),
     MacroStmts(MacroStmts),
     MatchExpr(MatchExpr),
     MethodCallExpr(MethodCallExpr),
@@ -2532,6 +2540,17 @@ impl AstNode for LoopExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for MacroExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MACRO_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for MatchExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == MATCH_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3313,8 +3332,8 @@ impl From<Literal> for Expr {
 impl From<LoopExpr> for Expr {
     fn from(node: LoopExpr) -> Expr { Expr::LoopExpr(node) }
 }
-impl From<MacroCall> for Expr {
-    fn from(node: MacroCall) -> Expr { Expr::MacroCall(node) }
+impl From<MacroExpr> for Expr {
+    fn from(node: MacroExpr) -> Expr { Expr::MacroExpr(node) }
 }
 impl From<MacroStmts> for Expr {
     fn from(node: MacroStmts) -> Expr { Expr::MacroStmts(node) }
@@ -3369,7 +3388,7 @@ impl AstNode for Expr {
         match kind {
             ARRAY_EXPR | AWAIT_EXPR | BIN_EXPR | BLOCK_EXPR | BOX_EXPR | BREAK_EXPR | CALL_EXPR
             | CAST_EXPR | CLOSURE_EXPR | CONTINUE_EXPR | FIELD_EXPR | FOR_EXPR | IF_EXPR
-            | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_CALL | MACRO_STMTS | MATCH_EXPR
+            | INDEX_EXPR | LITERAL | LOOP_EXPR | MACRO_EXPR | MACRO_STMTS | MATCH_EXPR
             | METHOD_CALL_EXPR | PAREN_EXPR | PATH_EXPR | PREFIX_EXPR | RANGE_EXPR
             | RECORD_EXPR | REF_EXPR | RETURN_EXPR | TRY_EXPR | TUPLE_EXPR | WHILE_EXPR
             | YIELD_EXPR | LET_EXPR | UNDERSCORE_EXPR => true,
@@ -3394,7 +3413,7 @@ impl AstNode for Expr {
             INDEX_EXPR => Expr::IndexExpr(IndexExpr { syntax }),
             LITERAL => Expr::Literal(Literal { syntax }),
             LOOP_EXPR => Expr::LoopExpr(LoopExpr { syntax }),
-            MACRO_CALL => Expr::MacroCall(MacroCall { syntax }),
+            MACRO_EXPR => Expr::MacroExpr(MacroExpr { syntax }),
             MACRO_STMTS => Expr::MacroStmts(MacroStmts { syntax }),
             MATCH_EXPR => Expr::MatchExpr(MatchExpr { syntax }),
             METHOD_CALL_EXPR => Expr::MethodCallExpr(MethodCallExpr { syntax }),
@@ -3433,7 +3452,7 @@ impl AstNode for Expr {
             Expr::IndexExpr(it) => &it.syntax,
             Expr::Literal(it) => &it.syntax,
             Expr::LoopExpr(it) => &it.syntax,
-            Expr::MacroCall(it) => &it.syntax,
+            Expr::MacroExpr(it) => &it.syntax,
             Expr::MacroStmts(it) => &it.syntax,
             Expr::MatchExpr(it) => &it.syntax,
             Expr::MethodCallExpr(it) => &it.syntax,
@@ -4502,6 +4521,11 @@ impl std::fmt::Display for Literal {
     }
 }
 impl std::fmt::Display for LoopExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MacroExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

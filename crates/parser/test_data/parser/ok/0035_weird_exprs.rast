@@ -396,24 +396,25 @@ SOURCE_FILE
           SEMICOLON ";"
         WHITESPACE "\n    "
         EXPR_STMT
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "assert"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert"
+              BANG "!"
               TOKEN_TREE
                 L_PAREN "("
-                IDENT "i"
-                DOT "."
-                IDENT "get"
                 TOKEN_TREE
                   L_PAREN "("
+                  IDENT "i"
+                  DOT "."
+                  IDENT "get"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    R_PAREN ")"
                   R_PAREN ")"
                 R_PAREN ")"
-              R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
@@ -887,24 +888,7 @@ SOURCE_FILE
           PAREN_EXPR
             L_PAREN "("
             BIN_EXPR
-              MACRO_CALL
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "assert"
-                BANG "!"
-                TOKEN_TREE
-                  L_PAREN "("
-                  TOKEN_TREE
-                    L_PAREN "("
-                    TRUE_KW "true"
-                    R_PAREN ")"
-                  R_PAREN ")"
-              WHITESPACE " "
-              EQ2 "=="
-              WHITESPACE " "
-              PAREN_EXPR
-                L_PAREN "("
+              MACRO_EXPR
                 MACRO_CALL
                   PATH
                     PATH_SEGMENT
@@ -913,11 +897,30 @@ SOURCE_FILE
                   BANG "!"
                   TOKEN_TREE
                     L_PAREN "("
-                    IDENT "p"
                     TOKEN_TREE
                       L_PAREN "("
+                      TRUE_KW "true"
                       R_PAREN ")"
                     R_PAREN ")"
+              WHITESPACE " "
+              EQ2 "=="
+              WHITESPACE " "
+              PAREN_EXPR
+                L_PAREN "("
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "assert"
+                    BANG "!"
+                    TOKEN_TREE
+                      L_PAREN "("
+                      IDENT "p"
+                      TOKEN_TREE
+                        L_PAREN "("
+                        R_PAREN ")"
+                      R_PAREN ")"
                 R_PAREN ")"
             R_PAREN ")"
           SEMICOLON ";"
@@ -934,22 +937,23 @@ SOURCE_FILE
           PAREN_EXPR
             L_PAREN "("
             BIN_EXPR
-              MACRO_CALL
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "assert"
-                BANG "!"
-                TOKEN_TREE
-                  L_PAREN "("
+              MACRO_EXPR
+                MACRO_CALL
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "assert"
+                  BANG "!"
                   TOKEN_TREE
                     L_PAREN "("
-                    IDENT "p"
                     TOKEN_TREE
                       L_PAREN "("
+                      IDENT "p"
+                      TOKEN_TREE
+                        L_PAREN "("
+                        R_PAREN ")"
                       R_PAREN ")"
                     R_PAREN ")"
-                  R_PAREN ")"
               WHITESPACE " "
               EQ2 "=="
               WHITESPACE " "
@@ -978,19 +982,20 @@ SOURCE_FILE
           PAREN_EXPR
             L_PAREN "("
             BIN_EXPR
-              MACRO_CALL
-                PATH
-                  PATH_SEGMENT
-                    NAME_REF
-                      IDENT "println"
-                BANG "!"
-                TOKEN_TREE
-                  L_PAREN "("
-                  STRING "\"{}\""
-                  COMMA ","
-                  WHITESPACE " "
-                  INT_NUMBER "0"
-                  R_PAREN ")"
+              MACRO_EXPR
+                MACRO_CALL
+                  PATH
+                    PATH_SEGMENT
+                      NAME_REF
+                        IDENT "println"
+                  BANG "!"
+                  TOKEN_TREE
+                    L_PAREN "("
+                    STRING "\"{}\""
+                    COMMA ","
+                    WHITESPACE " "
+                    INT_NUMBER "0"
+                    R_PAREN ")"
               WHITESPACE " "
               EQ2 "=="
               WHITESPACE " "
@@ -1130,16 +1135,17 @@ SOURCE_FILE
                             WHITESPACE " "
                             FAT_ARROW "=>"
                             WHITESPACE " "
-                            MACRO_CALL
-                              PATH
-                                PATH_SEGMENT
-                                  NAME_REF
-                                    IDENT "panic"
-                              BANG "!"
-                              TOKEN_TREE
-                                L_PAREN "("
-                                STRING "\"wat\""
-                                R_PAREN ")"
+                            MACRO_EXPR
+                              MACRO_CALL
+                                PATH
+                                  PATH_SEGMENT
+                                    NAME_REF
+                                      IDENT "panic"
+                                BANG "!"
+                                TOKEN_TREE
+                                  L_PAREN "("
+                                  STRING "\"wat\""
+                                  R_PAREN ")"
                           WHITESPACE " "
                           R_CURLY "}"
                       WHITESPACE " "
@@ -1176,16 +1182,17 @@ SOURCE_FILE
           WHITESPACE " "
           EQ "="
           WHITESPACE " "
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "println"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
-              STRING "\"lincoln\""
-              R_PAREN ")"
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "println"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                STRING "\"lincoln\""
+                R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE " "
         R_CURLY "}"
@@ -1204,107 +1211,108 @@ SOURCE_FILE
         L_CURLY "{"
         WHITESPACE "\n    "
         EXPR_STMT
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "assert_eq"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
-              IDENT "String"
-              COLON ":"
-              COLON ":"
-              IDENT "from"
-              TOKEN_TREE
-                L_PAREN "("
-                STRING "\"..................................................\""
-                R_PAREN ")"
-              COMMA ","
-              WHITESPACE "\n               "
-              IDENT "format"
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert_eq"
               BANG "!"
               TOKEN_TREE
                 L_PAREN "("
-                STRING "\"{:?}\""
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"..................................................\""
+                  R_PAREN ")"
                 COMMA ","
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE "\n                               "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
-                WHITESPACE " "
-                DOT "."
-                DOT "."
+                WHITESPACE "\n               "
+                IDENT "format"
+                BANG "!"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"{:?}\""
+                  COMMA ","
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE "\n                               "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  WHITESPACE " "
+                  DOT "."
+                  DOT "."
+                  R_PAREN ")"
                 R_PAREN ")"
-              R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
@@ -1353,141 +1361,142 @@ SOURCE_FILE
               L_CURLY "{"
               WHITESPACE "\n        "
               EXPR_STMT
-                MACRO_CALL
-                  PATH
-                    PATH_SEGMENT
-                      NAME_REF
-                        IDENT "assert_eq"
-                  BANG "!"
-                  TOKEN_TREE
-                    L_PAREN "("
-                    INT_NUMBER "8u8"
-                    COMMA ","
-                    WHITESPACE " "
+                MACRO_EXPR
+                  MACRO_CALL
+                    PATH
+                      PATH_SEGMENT
+                        NAME_REF
+                          IDENT "assert_eq"
+                    BANG "!"
                     TOKEN_TREE
-                      L_CURLY "{"
-                      WHITESPACE "\n            "
-                      IDENT "macro_rules"
-                      BANG "!"
-                      WHITESPACE " "
-                      IDENT "u8"
+                      L_PAREN "("
+                      INT_NUMBER "8u8"
+                      COMMA ","
                       WHITESPACE " "
                       TOKEN_TREE
                         L_CURLY "{"
-                        WHITESPACE "\n                "
-                        TOKEN_TREE
-                          L_PAREN "("
-                          IDENT "u8"
-                          R_PAREN ")"
+                        WHITESPACE "\n            "
+                        IDENT "macro_rules"
+                        BANG "!"
                         WHITESPACE " "
-                        EQ "="
-                        R_ANGLE ">"
+                        IDENT "u8"
                         WHITESPACE " "
                         TOKEN_TREE
                           L_CURLY "{"
-                          WHITESPACE "\n                    "
-                          MOD_KW "mod"
+                          WHITESPACE "\n                "
+                          TOKEN_TREE
+                            L_PAREN "("
+                            IDENT "u8"
+                            R_PAREN ")"
                           WHITESPACE " "
-                          IDENT "u8"
+                          EQ "="
+                          R_ANGLE ">"
                           WHITESPACE " "
                           TOKEN_TREE
                             L_CURLY "{"
-                            WHITESPACE "\n                        "
-                            PUB_KW "pub"
-                            WHITESPACE " "
-                            FN_KW "fn"
-                            WHITESPACE " "
-                            IDENT "u8"
-                            L_ANGLE "<"
-                            LIFETIME_IDENT "'u8"
-                            COLON ":"
-                            WHITESPACE " "
-                            LIFETIME_IDENT "'u8"
-                            WHITESPACE " "
-                            PLUS "+"
-                            WHITESPACE " "
-                            LIFETIME_IDENT "'u8"
-                            R_ANGLE ">"
-                            TOKEN_TREE
-                              L_PAREN "("
-                              IDENT "u8"
-                              COLON ":"
-                              WHITESPACE " "
-                              AMP "&"
-                              LIFETIME_IDENT "'u8"
-                              WHITESPACE " "
-                              IDENT "u8"
-                              R_PAREN ")"
-                            WHITESPACE " "
-                            MINUS "-"
-                            R_ANGLE ">"
-                            WHITESPACE " "
-                            AMP "&"
-                            LIFETIME_IDENT "'u8"
+                            WHITESPACE "\n                    "
+                            MOD_KW "mod"
                             WHITESPACE " "
                             IDENT "u8"
                             WHITESPACE " "
                             TOKEN_TREE
                               L_CURLY "{"
-                              WHITESPACE "\n                            "
-                              STRING "\"u8\""
-                              SEMICOLON ";"
-                              WHITESPACE "\n                            "
-                              IDENT "u8"
                               WHITESPACE "\n                        "
+                              PUB_KW "pub"
+                              WHITESPACE " "
+                              FN_KW "fn"
+                              WHITESPACE " "
+                              IDENT "u8"
+                              L_ANGLE "<"
+                              LIFETIME_IDENT "'u8"
+                              COLON ":"
+                              WHITESPACE " "
+                              LIFETIME_IDENT "'u8"
+                              WHITESPACE " "
+                              PLUS "+"
+                              WHITESPACE " "
+                              LIFETIME_IDENT "'u8"
+                              R_ANGLE ">"
+                              TOKEN_TREE
+                                L_PAREN "("
+                                IDENT "u8"
+                                COLON ":"
+                                WHITESPACE " "
+                                AMP "&"
+                                LIFETIME_IDENT "'u8"
+                                WHITESPACE " "
+                                IDENT "u8"
+                                R_PAREN ")"
+                              WHITESPACE " "
+                              MINUS "-"
+                              R_ANGLE ">"
+                              WHITESPACE " "
+                              AMP "&"
+                              LIFETIME_IDENT "'u8"
+                              WHITESPACE " "
+                              IDENT "u8"
+                              WHITESPACE " "
+                              TOKEN_TREE
+                                L_CURLY "{"
+                                WHITESPACE "\n                            "
+                                STRING "\"u8\""
+                                SEMICOLON ";"
+                                WHITESPACE "\n                            "
+                                IDENT "u8"
+                                WHITESPACE "\n                        "
+                                R_CURLY "}"
+                              WHITESPACE "\n                    "
                               R_CURLY "}"
-                            WHITESPACE "\n                    "
+                            WHITESPACE "\n                "
                             R_CURLY "}"
-                          WHITESPACE "\n                "
+                          SEMICOLON ";"
+                          WHITESPACE "\n            "
                           R_CURLY "}"
+                        WHITESPACE "\n\n            "
+                        IDENT "u8"
+                        BANG "!"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          IDENT "u8"
+                          R_PAREN ")"
                         SEMICOLON ";"
                         WHITESPACE "\n            "
-                        R_CURLY "}"
-                      WHITESPACE "\n\n            "
-                      IDENT "u8"
-                      BANG "!"
-                      TOKEN_TREE
-                        L_PAREN "("
-                        IDENT "u8"
-                        R_PAREN ")"
-                      SEMICOLON ";"
-                      WHITESPACE "\n            "
-                      LET_KW "let"
-                      WHITESPACE " "
-                      AMP "&"
-                      IDENT "u8"
-                      COLON ":"
-                      WHITESPACE " "
-                      AMP "&"
-                      IDENT "u8"
-                      WHITESPACE " "
-                      EQ "="
-                      WHITESPACE " "
-                      IDENT "u8"
-                      COLON ":"
-                      COLON ":"
-                      IDENT "u8"
-                      TOKEN_TREE
-                        L_PAREN "("
+                        LET_KW "let"
+                        WHITESPACE " "
                         AMP "&"
-                        INT_NUMBER "8u8"
-                        R_PAREN ")"
-                      SEMICOLON ";"
-                      WHITESPACE "\n            "
-                      CRATE_KW "crate"
-                      COLON ":"
-                      COLON ":"
-                      IDENT "u8"
-                      TOKEN_TREE
-                        L_PAREN "("
-                        INT_NUMBER "0u8"
-                        R_PAREN ")"
-                      SEMICOLON ";"
-                      WHITESPACE "\n            "
-                      IDENT "u8"
-                      WHITESPACE "\n        "
-                      R_CURLY "}"
-                    R_PAREN ")"
+                        IDENT "u8"
+                        COLON ":"
+                        WHITESPACE " "
+                        AMP "&"
+                        IDENT "u8"
+                        WHITESPACE " "
+                        EQ "="
+                        WHITESPACE " "
+                        IDENT "u8"
+                        COLON ":"
+                        COLON ":"
+                        IDENT "u8"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          AMP "&"
+                          INT_NUMBER "8u8"
+                          R_PAREN ")"
+                        SEMICOLON ";"
+                        WHITESPACE "\n            "
+                        CRATE_KW "crate"
+                        COLON ":"
+                        COLON ":"
+                        IDENT "u8"
+                        TOKEN_TREE
+                          L_PAREN "("
+                          INT_NUMBER "0u8"
+                          R_PAREN ")"
+                        SEMICOLON ";"
+                        WHITESPACE "\n            "
+                        IDENT "u8"
+                        WHITESPACE "\n        "
+                        R_CURLY "}"
+                      R_PAREN ")"
                 SEMICOLON ";"
               WHITESPACE "\n    "
               R_CURLY "}"
@@ -1508,69 +1517,70 @@ SOURCE_FILE
         L_CURLY "{"
         WHITESPACE "\n    "
         EXPR_STMT
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "assert_eq"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
-              IDENT "String"
-              COLON ":"
-              COLON ":"
-              IDENT "from"
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert_eq"
+              BANG "!"
               TOKEN_TREE
                 L_PAREN "("
-                STRING "\"><>\""
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"><>\""
+                  R_PAREN ")"
+                COMMA ","
+                WHITESPACE "\n               "
+                IDENT "String"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                COLON ":"
+                COLON ":"
+                IDENT "from"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  STRING "\"><>\""
+                  R_PAREN ")"
+                DOT "."
+                IDENT "chars"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+                DOT "."
+                IDENT "rev"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
+                DOT "."
+                IDENT "collect"
+                COLON ":"
+                COLON ":"
+                L_ANGLE "<"
+                IDENT "String"
+                R_ANGLE ">"
+                TOKEN_TREE
+                  L_PAREN "("
+                  R_PAREN ")"
                 R_PAREN ")"
-              COMMA ","
-              WHITESPACE "\n               "
-              IDENT "String"
-              COLON ":"
-              COLON ":"
-              L_ANGLE "<"
-              R_ANGLE ">"
-              COLON ":"
-              COLON ":"
-              IDENT "from"
-              COLON ":"
-              COLON ":"
-              L_ANGLE "<"
-              R_ANGLE ">"
-              TOKEN_TREE
-                L_PAREN "("
-                STRING "\"><>\""
-                R_PAREN ")"
-              DOT "."
-              IDENT "chars"
-              COLON ":"
-              COLON ":"
-              L_ANGLE "<"
-              R_ANGLE ">"
-              TOKEN_TREE
-                L_PAREN "("
-                R_PAREN ")"
-              DOT "."
-              IDENT "rev"
-              COLON ":"
-              COLON ":"
-              L_ANGLE "<"
-              R_ANGLE ">"
-              TOKEN_TREE
-                L_PAREN "("
-                R_PAREN ")"
-              DOT "."
-              IDENT "collect"
-              COLON ":"
-              COLON ":"
-              L_ANGLE "<"
-              IDENT "String"
-              R_ANGLE ">"
-              TOKEN_TREE
-                L_PAREN "("
-                R_PAREN ")"
-              R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
@@ -1741,17 +1751,18 @@ SOURCE_FILE
           SEMICOLON ";"
         WHITESPACE "\n    "
         EXPR_STMT
-          MACRO_CALL
-            PATH
-              PATH_SEGMENT
-                NAME_REF
-                  IDENT "assert"
-            BANG "!"
-            TOKEN_TREE
-              L_PAREN "("
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "assert"
               BANG "!"
-              IDENT "val"
-              R_PAREN ")"
+              TOKEN_TREE
+                L_PAREN "("
+                BANG "!"
+                IDENT "val"
+                R_PAREN ")"
           SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"

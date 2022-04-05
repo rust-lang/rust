@@ -249,8 +249,7 @@ macro_rules! format_args {
 
 fn main() {
     let _ =
-        // +errors
-        format_args!("{} {:?}", a.);
+        format_args!/*+errors*/("{} {:?}", a.);
 }
 "#,
         expect![[r##"

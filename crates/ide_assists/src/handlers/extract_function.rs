@@ -649,8 +649,8 @@ impl FunctionBody {
             ast::Expr::PathExpr(path_expr) => {
                 cb(path_expr.path().and_then(|it| it.as_single_name_ref()))
             }
-            ast::Expr::MacroCall(call) => {
-                if let Some(tt) = call.token_tree() {
+            ast::Expr::MacroExpr(expr) => {
+                if let Some(tt) = expr.macro_call().and_then(|call| call.token_tree()) {
                     tt.syntax()
                         .children_with_tokens()
                         .flat_map(SyntaxElement::into_token)
@@ -923,7 +923,7 @@ fn reference_is_exclusive(
 
 /// checks if this expr requires `&mut` access, recurses on field access
 fn expr_require_exclusive_access(ctx: &AssistContext, expr: &ast::Expr) -> Option<bool> {
-    if let ast::Expr::MacroCall(_) = expr {
+    if let ast::Expr::MacroExpr(_) = expr {
         // FIXME: expand macro and check output for mutable usages of the variable?
         return None;
     }
@@ -1015,7 +1015,7 @@ fn path_element_of_reference(
         None
     })?;
     stdx::always!(
-        matches!(path, ast::Expr::PathExpr(_) | ast::Expr::MacroCall(_)),
+        matches!(path, ast::Expr::PathExpr(_) | ast::Expr::MacroExpr(_)),
         "unexpected expression type for variable usage: {:?}",
         path
     );

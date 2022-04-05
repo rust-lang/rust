@@ -48,21 +48,32 @@ impl<'a> Ctx<'a> {
     pub(super) fn lower_macro_stmts(mut self, stmts: ast::MacroStmts) -> ItemTree {
         self.tree.top_level = stmts
             .statements()
-            .filter_map(|stmt| match stmt {
-                ast::Stmt::Item(item) => Some(item),
-                // Macro calls can be both items and expressions. The syntax library always treats
-                // them as expressions here, so we undo that.
-                ast::Stmt::ExprStmt(es) => match es.expr()? {
-                    ast::Expr::MacroCall(call) => {
-                        cov_mark::hit!(macro_call_in_macro_stmts_is_added_to_item_tree);
-                        Some(call.into())
-                    }
+            .filter_map(|stmt| {
+                match stmt {
+                    ast::Stmt::Item(item) => Some(item),
+                    // Macro calls can be both items and expressions. The syntax library always treats
+                    // them as expressions here, so we undo that.
+                    ast::Stmt::ExprStmt(es) => match es.expr()? {
+                        ast::Expr::MacroExpr(expr) => {
+                            cov_mark::hit!(macro_call_in_macro_stmts_is_added_to_item_tree);
+                            Some(expr.macro_call()?.into())
+                        }
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
+                }
             })
             .flat_map(|item| self.lower_mod_item(&item))
             .collect();
+
+        if let Some(ast::Expr::MacroExpr(tail_macro)) = stmts.expr() {
+            if let Some(call) = tail_macro.macro_call() {
+                cov_mark::hit!(macro_stmt_with_trailing_macro_expr);
+                if let Some(mod_item) = self.lower_mod_item(&call.into()) {
+                    self.tree.top_level.push(mod_item);
+                }
+            }
+        }
 
         self.tree
     }
@@ -75,7 +86,7 @@ impl<'a> Ctx<'a> {
                 // Macro calls can be both items and expressions. The syntax library always treats
                 // them as expressions here, so we undo that.
                 ast::Stmt::ExprStmt(es) => match es.expr()? {
-                    ast::Expr::MacroCall(call) => self.lower_mod_item(&call.into()),
+                    ast::Expr::MacroExpr(expr) => self.lower_mod_item(&expr.macro_call()?.into()),
                     _ => None,
                 },
                 _ => None,

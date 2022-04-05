@@ -342,7 +342,7 @@ Expr =
 | IndexExpr
 | Literal
 | LoopExpr
-| MacroCall
+| MacroExpr
 | MacroStmts
 | MatchExpr
 | MethodCallExpr
@@ -359,6 +359,9 @@ Expr =
 | YieldExpr
 | LetExpr
 | UnderscoreExpr
+
+MacroExpr =
+  MacroCall
 
 Literal =
   Attr* value:(

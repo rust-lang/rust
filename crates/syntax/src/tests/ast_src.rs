@@ -144,6 +144,7 @@ pub(crate) const KINDS_SRC: KindsSrc = KindsSrc {
         "YIELD_EXPR",
         "LET_EXPR",
         "UNDERSCORE_EXPR",
+        "MACRO_EXPR",
         "MATCH_EXPR",
         "MATCH_ARM_LIST",
         "MATCH_ARM",

@@ -104,15 +104,16 @@ SOURCE_FILE
                         IDENT "entries"
                       COLON ":"
                       WHITESPACE " "
-                      MACRO_CALL
-                        PATH
-                          PATH_SEGMENT
-                            NAME_REF
-                              IDENT "vec"
-                        BANG "!"
-                        TOKEN_TREE
-                          L_BRACK "["
-                          R_BRACK "]"
+                      MACRO_EXPR
+                        MACRO_CALL
+                          PATH
+                            PATH_SEGMENT
+                              NAME_REF
+                                IDENT "vec"
+                          BANG "!"
+                          TOKEN_TREE
+                            L_BRACK "["
+                            R_BRACK "]"
                     WHITESPACE " "
                     R_CURLY "}"
                 R_PAREN ")"

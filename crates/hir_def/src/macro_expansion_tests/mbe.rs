@@ -530,8 +530,7 @@ macro_rules! m {
 }
 
 fn f() -> i32 {
-    // +tree
-    m!{}
+    m!/*+tree*/{}
 }
 "#,
         expect![[r#"
