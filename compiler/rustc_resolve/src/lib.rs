@@ -3270,12 +3270,21 @@ impl<'a> Resolver<'a> {
         &mut self,
         path_str: &str,
         ns: Namespace,
-        module_id: DefId,
+        mut module_id: DefId,
     ) -> Option<Res> {
         let mut segments =
             Vec::from_iter(path_str.split("::").map(Ident::from_str).map(Segment::from_ident));
-        if path_str.starts_with("::") {
-            segments[0].ident.name = kw::PathRoot;
+        if let Some(segment) = segments.first_mut() {
+            if segment.ident.name == kw::Crate {
+                // FIXME: `resolve_path` always resolves `crate` to the current crate root, but
+                // rustdoc wants it to resolve to the `module_id`'s crate root. This trick of
+                // replacing `crate` with `self` and changing the current module should achieve
+                // the same effect.
+                segment.ident.name = kw::SelfLower;
+                module_id = module_id.krate.as_def_id();
+            } else if segment.ident.name == kw::Empty {
+                segment.ident.name = kw::PathRoot;
+            }
         }
 
         let module = self.expect_module(module_id);
