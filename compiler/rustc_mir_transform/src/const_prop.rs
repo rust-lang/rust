@@ -184,8 +184,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     type MemoryKind = !;
 
-    type MemoryExtra = ();
-
     fn load_mir(
         _ecx: &InterpCx<'mir, 'tcx, Self>,
         _instance: ty::InstanceDef<'tcx>,
@@ -267,7 +265,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn before_access_global(
-        _memory_extra: &(),
+        _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx, Self::PointerTag, Self::AllocExtra>,
         _static_def_id: Option<DefId>,
@@ -377,7 +375,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             span,
             param_env,
             ConstPropMachine::new(only_propagate_inside_block_locals, can_const_prop),
-            (),
         );
 
         let ret = ecx

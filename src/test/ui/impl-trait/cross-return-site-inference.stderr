@@ -7,6 +7,7 @@ LL |     Err("whoops")?;
    |                  ^ the trait `From<&str>` is not implemented for `impl Debug`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
+   = help: the trait `FromResidual<Result<Infallible, E>>` is implemented for `Result<T, F>`
    = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, &str>>` for `Result<(), impl Debug>`
 
 error[E0277]: the trait bound `impl Debug: From<&str>` is not satisfied

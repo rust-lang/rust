@@ -4,8 +4,7 @@ error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
 LL | fn foo() -> impl Foo<FooX> {
    |             ^^^^^^^^^^^^^^ the trait `Foo<FooX>` is not implemented for `()`
    |
-   = help: the following implementations were found:
-             <() as Foo<()>>
+   = help: the trait `Foo<()>` is implemented for `()`
 
 error[E0277]: the trait bound `(): Foo<FooX>` is not satisfied
   --> $DIR/nested-tait-inference.rs:12:28
@@ -19,8 +18,7 @@ LL | |     ()
 LL | | }
    | |_^ the trait `Foo<FooX>` is not implemented for `()`
    |
-   = help: the following implementations were found:
-             <() as Foo<()>>
+   = help: the trait `Foo<()>` is implemented for `()`
 
 error: aborting due to 2 previous errors
 

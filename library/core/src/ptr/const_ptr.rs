@@ -152,9 +152,17 @@ impl<T: ?Sized> *const T {
 
     /// Gets the "address" portion of the pointer.
     ///
-    /// This is equivalent to `self as usize`, which semantically discards
-    /// *provenance* and *address-space* information. To properly restore that information,
-    /// use [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    /// This is similar to `self as usize`, which semantically discards *provenance* and
+    /// *address-space* information. However, unlike `self as usize`, casting the returned address
+    /// back to a pointer yields [`invalid`][], which is undefined behavior to dereference. To
+    /// properly restore the lost information and obtain a dereferencable pointer, use
+    /// [`with_addr`][pointer::with_addr] or [`map_addr`][pointer::map_addr].
+    ///
+    /// If using those APIs is not possible because there is no way to preserve a pointer with the
+    /// required provenance, use [`expose_addr`][pointer::expose_addr] and
+    /// [`from_exposed_addr`][from_exposed_addr] instead. However, note that this makes
+    /// your code less portable and less amenable to tools that check for compliance with the Rust
+    /// memory model.
     ///
     /// On most platforms this will produce a value with the same bytes as the original
     /// pointer, because all the bytes are dedicated to describing the address.
@@ -162,12 +170,48 @@ impl<T: ?Sized> *const T {
     /// perform a change of representation to produce a value containing only the address
     /// portion of the pointer. What that means is up to the platform to define.
     ///
-    /// This API and its claimed semantics are part of the Strict Provenance experiment,
-    /// see the [module documentation][crate::ptr] for details.
+    /// This API and its claimed semantics are part of the Strict Provenance experiment, and as such
+    /// might change in the future (including possibly weakening this so it becomes wholly
+    /// equivalent to `self as usize`). See the [module documentation][crate::ptr] for details.
     #[must_use]
     #[inline]
     #[unstable(feature = "strict_provenance", issue = "95228")]
     pub fn addr(self) -> usize
+    where
+        T: Sized,
+    {
+        // FIXME(strict_provenance_magic): I am magic and should be a compiler intrinsic.
+        self as usize
+    }
+
+    /// Gets the "address" portion of the pointer, and 'exposes' the "provenance" part for future
+    /// use in [`from_exposed_addr`][].
+    ///
+    /// This is equivalent to `self as usize`, which semantically discards *provenance* and
+    /// *address-space* information. Furthermore, this (like the `as` cast) has the implicit
+    /// side-effect of marking the provenance as 'exposed', so on platforms that support it you can
+    /// later call [`from_exposed_addr`][] to reconstitute the original pointer including its
+    /// provenance. (Reconstructing address space information, if required, is your responsibility.)
+    ///
+    /// Using this method means that code is *not* following Strict Provenance rules. Supporting
+    /// [`from_exposed_addr`][] complicates specification and reasoning and may not be supported by
+    /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
+    /// use [`addr`][pointer::addr] wherever possible.
+    ///
+    /// On most platforms this will produce a value with the same bytes as the original pointer,
+    /// because all the bytes are dedicated to describing the address. Platforms which need to store
+    /// additional information in the pointer may not support this operation, since the 'expose'
+    /// side-effect which is required for [`from_exposed_addr`][] to work is typically not
+    /// available.
+    ///
+    /// This API and its claimed semantics are part of the Strict Provenance experiment, see the
+    /// [module documentation][crate::ptr] for details.
+    ///
+    /// [`from_exposed_addr`]: from_exposed_addr
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "strict_provenance", issue = "95228")]
+    pub fn expose_addr(self) -> usize
     where
         T: Sized,
     {

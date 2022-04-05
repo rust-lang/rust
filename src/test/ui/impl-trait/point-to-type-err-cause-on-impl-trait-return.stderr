@@ -103,13 +103,16 @@ LL | fn hat() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL ~ fn hat() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL |         0 => {
-LL ~             return Box::new(0i32);
-LL |         }
-LL |         _ => {
- ...
+LL | fn hat() -> Box<dyn std::fmt::Display> {
+   |             ++++                     +
+help: ... and box this value
+   |
+LL |             return Box::new(0i32);
+   |                    +++++++++    +
+help: ... and box this value
+   |
+LL |             Box::new(1u32)
+   |             +++++++++    +
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:80:14
@@ -135,12 +138,20 @@ LL | fn pug() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL ~ fn pug() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
-LL ~         0 => Box::new(0i32),
-LL ~         1 => Box::new(1u32),
-LL ~         _ => Box::new(2u32),
+LL | fn pug() -> Box<dyn std::fmt::Display> {
+   |             ++++                     +
+help: ... and box this value
    |
+LL |         0 => Box::new(0i32),
+   |              +++++++++    +
+help: ... and box this value
+   |
+LL |         1 => Box::new(1u32),
+   |              +++++++++    +
+help: ... and box this value
+   |
+LL |         _ => Box::new(2u32),
+   |              +++++++++    +
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:9
@@ -166,12 +177,16 @@ LL | fn man() -> dyn std::fmt::Display {
    = note: you can create a new `enum` with a variant for each returned type
 help: return a boxed trait object instead
    |
-LL ~ fn man() -> Box<dyn std::fmt::Display> {
-LL |     if false {
-LL ~         Box::new(0i32)
-LL |     } else {
-LL ~         Box::new(1u32)
+LL | fn man() -> Box<dyn std::fmt::Display> {
+   |             ++++                     +
+help: ... and box this value
    |
+LL |         Box::new(0i32)
+   |         +++++++++    +
+help: ... and box this value
+   |
+LL |         Box::new(1u32)
+   |         +++++++++    +
 
 error: aborting due to 14 previous errors
 
