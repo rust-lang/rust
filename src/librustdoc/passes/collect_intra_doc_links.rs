@@ -2,13 +2,11 @@
 //!
 //! [RFC 1946]: https://github.com/rust-lang/rfcs/blob/master/text/1946-intra-rustdoc-links.md
 
+use pulldown_cmark::LinkType;
 use rustc_data_structures::{fx::FxHashMap, intern::Interned, stable_set::FxHashSet};
 use rustc_errors::{Applicability, Diagnostic};
-use rustc_hir::def::{
-    DefKind,
-    Namespace::{self, *},
-    PerNS,
-};
+use rustc_hir::def::Namespace::*;
+use rustc_hir::def::{DefKind, Namespace, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
 use rustc_hir::Mutability;
 use rustc_middle::ty::{DefIdTree, Ty, TyCtxt};
@@ -19,10 +17,7 @@ use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use pulldown_cmark::LinkType;
-
 use std::borrow::Cow;
-use std::convert::{TryFrom, TryInto};
 use std::fmt::Write;
 use std::mem;
 use std::ops::Range;
@@ -487,25 +482,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         item_id: ItemId,
         module_id: DefId,
     ) -> Result<Res, ResolutionFailure<'a>> {
-        self.cx.enter_resolver(|resolver| {
-            // NOTE: this needs 2 separate lookups because `resolve_rustdoc_path` doesn't take
-            // lexical scope into account (it ignores all macros not defined at the mod-level)
-            debug!("resolving {} as a macro in the module {:?}", path_str, module_id);
-            if let Some(res) = resolver.resolve_rustdoc_path(path_str, MacroNS, module_id) {
-                // don't resolve builtins like `#[derive]`
-                if let Ok(res) = res.try_into() {
-                    return Ok(res);
-                }
-            }
-            if let Some(&res) = resolver.all_macros().get(&Symbol::intern(path_str)) {
-                return Ok(res.try_into().unwrap());
-            }
-            Err(ResolutionFailure::NotResolved {
+        self.resolve_path(path_str, MacroNS, item_id, module_id).ok_or_else(|| {
+            ResolutionFailure::NotResolved {
                 item_id,
                 module_id,
                 partial_res: None,
                 unresolved: path_str.into(),
-            })
+            }
         })
     }
 
@@ -539,6 +522,21 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             })
     }
 
+    /// HACK: Try to search the macro name in the list of all `macro_rules` items in the crate.
+    /// Used when nothing else works, may often give an incorrect result.
+    fn resolve_macro_rules(&self, path_str: &str, ns: Namespace) -> Option<Res> {
+        if ns != MacroNS {
+            return None;
+        }
+
+        self.cx
+            .resolver_caches
+            .all_macro_rules
+            .get(&Symbol::intern(path_str))
+            .copied()
+            .and_then(|res| res.try_into().ok())
+    }
+
     /// Convenience wrapper around `resolve_rustdoc_path`.
     ///
     /// This also handles resolving `true` and `false` as booleans.
@@ -560,7 +558,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             .cx
             .enter_resolver(|resolver| resolver.resolve_rustdoc_path(path_str, ns, module_id))
             .and_then(|res| res.try_into().ok())
-            .or_else(|| resolve_primitive(path_str, ns));
+            .or_else(|| resolve_primitive(path_str, ns))
+            .or_else(|| self.resolve_macro_rules(path_str, ns));
         debug!("{} resolved to {:?} in namespace {:?}", path_str, result, ns);
         result
     }

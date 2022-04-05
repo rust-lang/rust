@@ -1,4 +1,4 @@
-use crate::clean;
+use crate::clean::Attributes;
 use crate::core::ResolverCaches;
 use crate::html::markdown::markdown_links;
 use crate::passes::collect_intra_doc_links::preprocess_link;
@@ -24,7 +24,7 @@ crate fn early_resolve_intra_doc_links(
     externs: Externs,
     document_private_items: bool,
 ) -> ResolverCaches {
-    let mut loader = IntraLinkCrateLoader {
+    let mut link_resolver = EarlyDocLinkResolver {
         resolver,
         current_mod: CRATE_DEF_ID,
         visited_mods: Default::default(),
@@ -36,27 +36,28 @@ crate fn early_resolve_intra_doc_links(
 
     // Overridden `visit_item` below doesn't apply to the crate root,
     // so we have to visit its attributes and reexports separately.
-    loader.load_links_in_attrs(&krate.attrs);
-    loader.process_module_children_or_reexports(CRATE_DEF_ID.to_def_id());
-    visit::walk_crate(&mut loader, krate);
-    loader.add_foreign_traits_in_scope();
+    link_resolver.load_links_in_attrs(&krate.attrs);
+    link_resolver.process_module_children_or_reexports(CRATE_DEF_ID.to_def_id());
+    visit::walk_crate(&mut link_resolver, krate);
+    link_resolver.process_extern_impls();
 
     // FIXME: somehow rustdoc is still missing crates even though we loaded all
     // the known necessary crates. Load them all unconditionally until we find a way to fix this.
     // DO NOT REMOVE THIS without first testing on the reproducer in
     // https://github.com/jyn514/objr/commit/edcee7b8124abf0e4c63873e8422ff81beb11ebb
     for (extern_name, _) in externs.iter().filter(|(_, entry)| entry.add_prelude) {
-        loader.resolver.resolve_rustdoc_path(extern_name, TypeNS, CRATE_DEF_ID.to_def_id());
+        link_resolver.resolver.resolve_rustdoc_path(extern_name, TypeNS, CRATE_DEF_ID.to_def_id());
     }
 
     ResolverCaches {
-        traits_in_scope: loader.traits_in_scope,
-        all_traits: Some(loader.all_traits),
-        all_trait_impls: Some(loader.all_trait_impls),
+        traits_in_scope: link_resolver.traits_in_scope,
+        all_traits: Some(link_resolver.all_traits),
+        all_trait_impls: Some(link_resolver.all_trait_impls),
+        all_macro_rules: link_resolver.resolver.take_all_macro_rules(),
     }
 }
 
-struct IntraLinkCrateLoader<'r, 'ra> {
+struct EarlyDocLinkResolver<'r, 'ra> {
     resolver: &'r mut Resolver<'ra>,
     current_mod: LocalDefId,
     visited_mods: DefIdSet,
@@ -66,7 +67,7 @@ struct IntraLinkCrateLoader<'r, 'ra> {
     document_private_items: bool,
 }
 
-impl IntraLinkCrateLoader<'_, '_> {
+impl EarlyDocLinkResolver<'_, '_> {
     fn add_traits_in_scope(&mut self, def_id: DefId) {
         // Calls to `traits_in_scope` are expensive, so try to avoid them if only possible.
         // Keys in the `traits_in_scope` cache are always module IDs.
@@ -101,63 +102,82 @@ impl IntraLinkCrateLoader<'_, '_> {
     /// That pass filters impls using type-based information, but we don't yet have such
     /// information here, so we just conservatively calculate traits in scope for *all* modules
     /// having impls in them.
-    fn add_foreign_traits_in_scope(&mut self) {
-        for cnum in Vec::from_iter(self.resolver.cstore().crates_untracked()) {
-            let all_traits = Vec::from_iter(self.resolver.cstore().traits_in_crate_untracked(cnum));
-            let all_trait_impls =
-                Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
-            let all_inherent_impls =
-                Vec::from_iter(self.resolver.cstore().inherent_impls_in_crate_untracked(cnum));
-            let all_incoherent_impls =
-                Vec::from_iter(self.resolver.cstore().incoherent_impls_in_crate_untracked(cnum));
+    fn process_extern_impls(&mut self) {
+        // FIXME: Need to resolve doc links on all these impl and trait items below.
+        // Resolving links in already existing crates may trigger loading of new crates.
+        let mut start_cnum = 0;
+        loop {
+            let crates = Vec::from_iter(self.resolver.cstore().crates_untracked());
+            for &cnum in &crates[start_cnum..] {
+                let all_traits =
+                    Vec::from_iter(self.resolver.cstore().traits_in_crate_untracked(cnum));
+                let all_trait_impls =
+                    Vec::from_iter(self.resolver.cstore().trait_impls_in_crate_untracked(cnum));
+                let all_inherent_impls =
+                    Vec::from_iter(self.resolver.cstore().inherent_impls_in_crate_untracked(cnum));
+                let all_incoherent_impls = Vec::from_iter(
+                    self.resolver.cstore().incoherent_impls_in_crate_untracked(cnum),
+                );
 
-            // Querying traits in scope is expensive so we try to prune the impl and traits lists
-            // using privacy, private traits and impls from other crates are never documented in
-            // the current crate, and links in their doc comments are not resolved.
-            for &def_id in &all_traits {
-                if self.resolver.cstore().visibility_untracked(def_id) == Visibility::Public {
+                // Querying traits in scope is expensive so we try to prune the impl and traits lists
+                // using privacy, private traits and impls from other crates are never documented in
+                // the current crate, and links in their doc comments are not resolved.
+                for &def_id in &all_traits {
+                    if self.resolver.cstore().visibility_untracked(def_id) == Visibility::Public {
+                        self.add_traits_in_parent_scope(def_id);
+                    }
+                }
+                for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
+                    if self.resolver.cstore().visibility_untracked(trait_def_id)
+                        == Visibility::Public
+                        && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
+                            self.resolver.cstore().visibility_untracked(ty_def_id)
+                                == Visibility::Public
+                        })
+                    {
+                        self.add_traits_in_parent_scope(impl_def_id);
+                    }
+                }
+                for (ty_def_id, impl_def_id) in all_inherent_impls {
+                    if self.resolver.cstore().visibility_untracked(ty_def_id) == Visibility::Public
+                    {
+                        self.add_traits_in_parent_scope(impl_def_id);
+                    }
+                }
+                for def_id in all_incoherent_impls {
                     self.add_traits_in_parent_scope(def_id);
                 }
-            }
-            for &(trait_def_id, impl_def_id, simplified_self_ty) in &all_trait_impls {
-                if self.resolver.cstore().visibility_untracked(trait_def_id) == Visibility::Public
-                    && simplified_self_ty.and_then(|ty| ty.def()).map_or(true, |ty_def_id| {
-                        self.resolver.cstore().visibility_untracked(ty_def_id) == Visibility::Public
-                    })
-                {
-                    self.add_traits_in_parent_scope(impl_def_id);
-                }
-            }
-            for (ty_def_id, impl_def_id) in all_inherent_impls {
-                if self.resolver.cstore().visibility_untracked(ty_def_id) == Visibility::Public {
-                    self.add_traits_in_parent_scope(impl_def_id);
-                }
-            }
-            for def_id in all_incoherent_impls {
-                self.add_traits_in_parent_scope(def_id);
+
+                self.all_traits.extend(all_traits);
+                self.all_trait_impls
+                    .extend(all_trait_impls.into_iter().map(|(_, def_id, _)| def_id));
             }
 
-            self.all_traits.extend(all_traits);
-            self.all_trait_impls.extend(all_trait_impls.into_iter().map(|(_, def_id, _)| def_id));
+            if crates.len() > start_cnum {
+                start_cnum = crates.len();
+            } else {
+                break;
+            }
         }
     }
 
     fn load_links_in_attrs(&mut self, attrs: &[ast::Attribute]) {
-        // FIXME: this needs to consider reexport inlining.
-        let attrs = clean::Attributes::from_ast(attrs, None);
-        for (parent_module, doc) in attrs.collapsed_doc_value_by_module_level() {
-            let module_id = parent_module.unwrap_or(self.current_mod.to_def_id());
-
-            self.add_traits_in_scope(module_id);
-
+        let module_id = self.current_mod.to_def_id();
+        let mut need_traits_in_scope = false;
+        for (doc_module, doc) in
+            Attributes::from_ast(attrs, None).collapsed_doc_value_by_module_level()
+        {
+            assert_eq!(doc_module, None);
             for link in markdown_links(&doc.as_str()) {
-                let path_str = if let Some(Ok(x)) = preprocess_link(&link) {
-                    x.path_str
-                } else {
-                    continue;
-                };
-                self.resolver.resolve_rustdoc_path(&path_str, TypeNS, module_id);
+                if let Some(Ok(pinfo)) = preprocess_link(&link) {
+                    self.resolver.resolve_rustdoc_path(&pinfo.path_str, TypeNS, module_id);
+                    need_traits_in_scope = true;
+                }
             }
+        }
+
+        if need_traits_in_scope {
+            self.add_traits_in_scope(module_id);
         }
     }
 
@@ -170,32 +190,41 @@ impl IntraLinkCrateLoader<'_, '_> {
         }
 
         for child in self.resolver.module_children_or_reexports(module_id) {
-            if child.vis == Visibility::Public || self.document_private_items {
-                if let Some(def_id) = child.res.opt_def_id() {
-                    self.add_traits_in_parent_scope(def_id);
-                }
-                if let Res::Def(DefKind::Mod, module_id) = child.res {
-                    self.process_module_children_or_reexports(module_id);
+            // This condition should give a superset of `denied` from `fn clean_use_statement`.
+            if child.vis == Visibility::Public
+                || self.document_private_items
+                    && child.vis != Visibility::Restricted(module_id)
+                    && module_id.is_local()
+            {
+                if let Some(def_id) = child.res.opt_def_id() && !def_id.is_local() {
+                    // FIXME: Need to resolve doc links on all these extern items
+                    // reached through reexports.
+                    let scope_id = match child.res {
+                        Res::Def(DefKind::Variant, ..) => self.resolver.parent(def_id).unwrap(),
+                        _ => def_id,
+                    };
+                    self.add_traits_in_parent_scope(scope_id); // Outer attribute scope
+                    if let Res::Def(DefKind::Mod, ..) = child.res {
+                        self.add_traits_in_scope(def_id); // Inner attribute scope
+                    }
+                    // Traits are processed in `add_extern_traits_in_scope`.
+                    if let Res::Def(DefKind::Mod | DefKind::Enum, ..) = child.res {
+                        self.process_module_children_or_reexports(def_id);
+                    }
                 }
             }
         }
     }
 }
 
-impl Visitor<'_> for IntraLinkCrateLoader<'_, '_> {
+impl Visitor<'_> for EarlyDocLinkResolver<'_, '_> {
     fn visit_item(&mut self, item: &ast::Item) {
+        self.load_links_in_attrs(&item.attrs); // Outer attribute scope
         if let ItemKind::Mod(..) = item.kind {
             let old_mod = mem::replace(&mut self.current_mod, self.resolver.local_def_id(item.id));
-
-            // A module written with a outline doc comments will resolve traits relative
-            // to the parent module. Make sure the parent module's traits-in-scope are
-            // loaded, even if the module itself has no doc comments.
-            self.add_traits_in_parent_scope(self.current_mod.to_def_id());
-
-            self.load_links_in_attrs(&item.attrs);
+            self.load_links_in_attrs(&item.attrs); // Inner attribute scope
             self.process_module_children_or_reexports(self.current_mod.to_def_id());
             visit::walk_item(self, item);
-
             self.current_mod = old_mod;
         } else {
             match item.kind {
@@ -207,7 +236,6 @@ impl Visitor<'_> for IntraLinkCrateLoader<'_, '_> {
                 }
                 _ => {}
             }
-            self.load_links_in_attrs(&item.attrs);
             visit::walk_item(self, item);
         }
     }
