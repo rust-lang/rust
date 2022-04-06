@@ -183,12 +183,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 Some((*lo, *hi))
             }
             (Some(PatKind::Constant { value: lo }), None) => {
-                let hi = ty.numeric_max_val(self.tcx)?;
-                Some((*lo, ty::Const::from_bits(self.tcx, hi, ty::ParamEnv::empty().and(ty))))
+                Some((*lo, ty.numeric_max_val(self.tcx)?))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
-                let lo = ty.numeric_min_val(self.tcx)?;
-                Some((ty::Const::from_bits(self.tcx, lo, ty::ParamEnv::empty().and(ty)), *hi))
+                Some((ty.numeric_min_val(self.tcx)?, *hi))
             }
             _ => None,
         }

@@ -376,10 +376,6 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
                     visit::walk_pat(self, pat);
                 }
             }
-
-            fn visit_constant(&mut self, ct: mir::ConstantKind<'tcx>) {
-                self.is_poly |= ct.has_param_types_or_consts();
-            }
         }
 
         let mut is_poly_vis = IsThirPolymorphic { is_poly: false, thir: body };
