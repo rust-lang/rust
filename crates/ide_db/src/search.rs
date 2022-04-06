@@ -85,6 +85,7 @@ impl SearchScope {
         SearchScope { entries }
     }
 
+    /// Build a search scope spanning the entire crate graph of files.
     fn crate_graph(db: &RootDatabase) -> SearchScope {
         let mut entries = FxHashMap::default();
 
@@ -98,6 +99,7 @@ impl SearchScope {
         SearchScope { entries }
     }
 
+    /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
         let mut entries = FxHashMap::default();
         for rev_dep in of.transitive_reverse_dependencies(db) {
@@ -109,6 +111,7 @@ impl SearchScope {
         SearchScope { entries }
     }
 
+    /// Build a search scope spanning the given crate.
     fn krate(db: &RootDatabase, of: hir::Crate) -> SearchScope {
         let root_file = of.root_file(db);
         let source_root_id = db.file_source_root(root_file);
@@ -118,55 +121,55 @@ impl SearchScope {
         }
     }
 
-    fn module(db: &RootDatabase, module: hir::Module) -> SearchScope {
+    /// Build a search scope spanning the given module and all its submodules.
+    fn module_and_children(db: &RootDatabase, module: hir::Module) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        let mut to_visit = vec![module];
-        let mut is_first = true;
+        let (file_id, range) = {
+            let InFile { file_id, value } = module.definition_source(db);
+            if let Some((file_id, call_source)) = file_id.original_call_node(db) {
+                (file_id, Some(call_source.text_range()))
+            } else {
+                (
+                    file_id.original_file(db),
+                    match value {
+                        ModuleSource::SourceFile(_) => None,
+                        ModuleSource::Module(it) => Some(it.syntax().text_range()),
+                        ModuleSource::BlockExpr(it) => Some(it.syntax().text_range()),
+                    },
+                )
+            }
+        };
+        entries.insert(file_id, range);
+
+        let mut to_visit: Vec<_> = module.children(db).collect();
         while let Some(module) = to_visit.pop() {
-            let src = module.definition_source(db);
-            let file_id = src.file_id.original_file(db);
-            match src.value {
-                ModuleSource::Module(m) => {
-                    if is_first {
-                        let range = Some(m.syntax().text_range());
-                        entries.insert(file_id, range);
-                    } else {
-                        // We have already added the enclosing file to the search scope,
-                        // so do nothing.
-                    }
-                }
-                ModuleSource::BlockExpr(b) => {
-                    if is_first {
-                        let range = Some(b.syntax().text_range());
-                        entries.insert(file_id, range);
-                    } else {
-                        // We have already added the enclosing file to the search scope,
-                        // so do nothing.
-                    }
-                }
-                ModuleSource::SourceFile(_) => {
-                    entries.insert(file_id, None);
-                }
-            };
-            is_first = false;
+            if let InFile { file_id, value: ModuleSource::SourceFile(_) } =
+                module.definition_source(db)
+            {
+                entries.insert(file_id.original_file(db), None);
+            }
             to_visit.extend(module.children(db));
         }
         SearchScope { entries }
     }
 
+    /// Build an empty search scope.
     pub fn empty() -> SearchScope {
         SearchScope::new(FxHashMap::default())
     }
 
+    /// Build a empty search scope spanning the given file.
     pub fn single_file(file: FileId) -> SearchScope {
         SearchScope::new(std::iter::once((file, None)).collect())
     }
 
+    /// Build a empty search scope spanning the text range of the given file.
     pub fn file_range(range: FileRange) -> SearchScope {
         SearchScope::new(std::iter::once((range.file_id, Some(range.range))).collect())
     }
 
+    /// Build a empty search scope spanning the given files.
     pub fn files(files: &[FileId]) -> SearchScope {
         SearchScope::new(files.iter().map(|f| (*f, None)).collect())
     }
@@ -177,29 +180,23 @@ impl SearchScope {
             mem::swap(&mut small, &mut large)
         }
 
+        let intersect_ranges =
+            |r1: Option<TextRange>, r2: Option<TextRange>| -> Option<Option<TextRange>> {
+                match (r1, r2) {
+                    (None, r) | (r, None) => Some(r),
+                    (Some(r1), Some(r2)) => r1.intersect(r2).map(Some),
+                }
+            };
         let res = small
             .iter()
-            .filter_map(|(file_id, r1)| {
-                let r2 = large.get(file_id)?;
-                let r = intersect_ranges(*r1, *r2)?;
-                Some((*file_id, r))
+            .filter_map(|(&file_id, &r1)| {
+                let &r2 = large.get(&file_id)?;
+                let r = intersect_ranges(r1, r2)?;
+                Some((file_id, r))
             })
             .collect();
 
-        return SearchScope::new(res);
-
-        fn intersect_ranges(
-            r1: Option<TextRange>,
-            r2: Option<TextRange>,
-        ) -> Option<Option<TextRange>> {
-            match (r1, r2) {
-                (None, r) | (r, None) => Some(r),
-                (Some(r1), Some(r2)) => {
-                    let r = r1.intersect(r2)?;
-                    Some(Some(r))
-                }
-            }
-        }
+        SearchScope::new(res)
     }
 }
 
@@ -282,7 +279,8 @@ impl Definition {
                 hir::MacroKind::BuiltIn => SearchScope::crate_graph(db),
                 // FIXME: We don't actually see derives in derive attributes as these do not
                 // expand to something that references the derive macro in the output.
-                // We could get around this by emitting dummy `use DeriveMacroPathHere as _;` items maybe?
+                // We could get around this by doing pseudo expansions for proc_macro_derive like we
+                // do for the derive attribute
                 hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
                     SearchScope::reverse_dependencies(db, module.krate())
                 }
@@ -294,7 +292,7 @@ impl Definition {
             return SearchScope::reverse_dependencies(db, module.krate());
         }
         if let Some(Visibility::Module(module)) = vis {
-            return SearchScope::module(db, module.into());
+            return SearchScope::module_and_children(db, module.into());
         }
 
         let range = match module_source {
@@ -341,10 +339,12 @@ impl<'a> FindUsages<'a> {
         self
     }
 
+    /// Limit the search to a given [`SearchScope`].
     pub fn in_scope(self, scope: SearchScope) -> FindUsages<'a> {
         self.set_scope(Some(scope))
     }
 
+    /// Limit the search to a given [`SearchScope`].
     pub fn set_scope(mut self, scope: Option<SearchScope>) -> FindUsages<'a> {
         assert!(self.scope.is_none());
         self.scope = scope;
@@ -420,6 +420,7 @@ impl<'a> FindUsages<'a> {
                 Some(offset)
             })
         }
+
         fn scope_files<'a>(
             sema: &'a Semantics<RootDatabase>,
             scope: &'a SearchScope,
@@ -433,6 +434,12 @@ impl<'a> FindUsages<'a> {
             })
         }
 
+        // FIXME: There should be optimization potential here
+        // Currently we try to descend everything we find which
+        // means we call `Semantics::descend_into_macros` on
+        // every textual hit. That function is notoriously
+        // expensive even for things that do not get down mapped
+        // into macros.
         for (text, file_id, search_range) in scope_files(sema, &search_scope) {
             let tree = Lazy::new(move || sema.parse(file_id).syntax().clone());
 
@@ -463,7 +470,8 @@ impl<'a> FindUsages<'a> {
         // Search for `super` and `crate` resolving to our module
         match self.def {
             Definition::Module(module) => {
-                let scope = search_scope.intersection(&SearchScope::module(self.sema.db, module));
+                let scope = search_scope
+                    .intersection(&SearchScope::module_and_children(self.sema.db, module));
 
                 let is_crate_root = module.is_crate_root(self.sema.db);
 
