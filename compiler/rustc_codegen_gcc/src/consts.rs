@@ -328,7 +328,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAl
                 interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            abi::Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
+            abi::Scalar::Initialized { value: Primitive::Pointer, valid_range: WrappingRange::full(dl.pointer_size) },
             cx.type_i8p(),
         ));
         next_offset = offset + pointer_size;

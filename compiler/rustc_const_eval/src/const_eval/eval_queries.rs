@@ -15,7 +15,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, subst::Subst, TyCtxt};
 use rustc_span::source_map::Span;
-use rustc_target::abi::Abi;
+use rustc_target::abi::{self, Abi};
 use std::borrow::Cow;
 use std::convert::TryInto;
 
@@ -118,7 +118,7 @@ pub(super) fn op_to_const<'tcx>(
     // the usual cases of extracting e.g. a `usize`, without there being a real use case for the
     // `Undef` situation.
     let try_as_immediate = match op.layout.abi {
-        Abi::Scalar(..) => true,
+        Abi::Scalar(abi::Scalar::Initialized { .. }) => true,
         Abi::ScalarPair(..) => match op.layout.ty.kind() {
             ty::Ref(_, inner, _) => match *inner.kind() {
                 ty::Slice(elem) => elem == ecx.tcx.types.u8,

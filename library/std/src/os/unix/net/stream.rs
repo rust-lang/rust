@@ -415,7 +415,7 @@ impl UnixStream {
     ///     Ok(())
     /// }
     /// ```
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         self.0.set_passcred(passcred)
@@ -427,7 +427,7 @@ impl UnixStream {
     /// Get the socket option `SO_PASSCRED`.
     ///
     /// [`set_passcred`]: UnixStream::set_passcred
-    #[cfg(any(doc, target_os = "android", target_os = "linux",))]
+    #[cfg(any(doc, target_os = "android", target_os = "linux", target_os = "netbsd",))]
     #[unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
     pub fn passcred(&self) -> io::Result<bool> {
         self.0.passcred()

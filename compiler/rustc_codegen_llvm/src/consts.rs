@@ -109,7 +109,10 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
                 Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
+            Scalar::Initialized {
+                value: Primitive::Pointer,
+                valid_range: WrappingRange::full(dl.pointer_size),
+            },
             cx.type_i8p_ext(address_space),
         ));
         next_offset = offset + pointer_size;

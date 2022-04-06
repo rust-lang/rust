@@ -134,7 +134,7 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             sym::va_arg => {
                 match fn_abi.ret.layout.abi {
                     abi::Abi::Scalar(scalar) => {
-                        match scalar.value {
+                        match scalar.primitive() {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
                                     // `va_arg` should not be called on an integer type

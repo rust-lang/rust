@@ -1572,7 +1572,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match (src.layout.abi, dst.layout.abi) {
             (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
                 // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
-                if (src_scalar.value == abi::Pointer) == (dst_scalar.value == abi::Pointer) {
+                if (src_scalar.primitive() == abi::Pointer)
+                    == (dst_scalar.primitive() == abi::Pointer)
+                {
                     assert_eq!(src.layout.size, dst.layout.size);
 
                     // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`

@@ -44,7 +44,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     match arg_layout.abi {
-        Abi::Scalar(scalar) => match scalar.value {
+        Abi::Scalar(scalar) => match scalar.primitive() {
             abi::Int(..) | abi::Pointer => {
                 if arg_layout.size.bits() > xlen {
                     return Err(CannotUseFpConv);
@@ -298,7 +298,7 @@ fn classify_arg<'a, Ty, C>(
 
 fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
     if let Abi::Scalar(scalar) = arg.layout.abi {
-        if let abi::Int(i, _) = scalar.value {
+        if let abi::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended
             if i.size().bits() == 32 && xlen > 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {

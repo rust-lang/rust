@@ -12,7 +12,7 @@ use rustc_middle::ty::{self, AdtKind, DefIdTree, Ty, TyCtxt, TypeFoldable};
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::Abi;
+use rustc_target::abi::{Abi, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
@@ -796,14 +796,18 @@ crate fn repr_nullable_ptr<'tcx>(
         // Return the nullable type this Option-like enum can be safely represented with.
         let field_ty_abi = &cx.layout_of(field_ty).unwrap().abi;
         if let Abi::Scalar(field_ty_scalar) = field_ty_abi {
-            match (field_ty_scalar.valid_range.start, field_ty_scalar.valid_range.end) {
-                (0, x) if x == field_ty_scalar.value.size(&cx.tcx).unsigned_int_max() - 1 => {
+            match field_ty_scalar.valid_range(cx) {
+                WrappingRange { start: 0, end }
+                    if end == field_ty_scalar.size(&cx.tcx).unsigned_int_max() - 1 =>
+                {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
-                (1, _) => {
+                WrappingRange { start: 1, .. } => {
                     return Some(get_nullable_type(cx, field_ty).unwrap());
                 }
-                (start, end) => unreachable!("Unhandled start and end range: ({}, {})", start, end),
+                WrappingRange { start, end } => {
+                    unreachable!("Unhandled start and end range: ({}, {})", start, end)
+                }
             };
         }
     }
@@ -1342,7 +1346,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
                 return
             };
 
-            let tag_size = tag.value.size(&cx.tcx).bytes();
+            let tag_size = tag.size(&cx.tcx).bytes();
 
             debug!(
                 "enum `{}` is {} bytes large with layout:\n{:#?}",

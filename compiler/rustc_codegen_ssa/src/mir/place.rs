@@ -100,7 +100,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                     self.llval
                 }
                 Abi::ScalarPair(a, b)
-                    if offset == a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi) =>
+                    if offset == a.size(bx.cx()).align_to(b.align(bx.cx()).abi) =>
                 {
                     // Offset matches second field.
                     let ty = bx.backend_type(self.layout);
@@ -234,7 +234,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         // Decode the discriminant (specifically if it's niche-encoded).
         match *tag_encoding {
             TagEncoding::Direct => {
-                let signed = match tag_scalar.value {
+                let signed = match tag_scalar.primitive() {
                     // We use `i1` for bytes that are always `0` or `1`,
                     // e.g., `#[repr(i8)] enum E { A, B }`, but we can't
                     // let LLVM interpret the `i1` as signed, because
