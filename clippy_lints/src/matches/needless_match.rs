@@ -3,12 +3,12 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
-    eq_expr_value, get_parent_expr_for_hir, get_parent_node, higher, is_else_clause, is_lang_ctor,
+    eq_expr_value, get_parent_expr_for_hir, get_parent_node, higher, is_else_clause, is_lang_ctor, over,
     peel_blocks_with_stmt,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, FnRetTy, Node, Pat, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{Arm, BindingAnnotation, Expr, ExprKind, FnRetTy, Node, Pat, PatKind, Path, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
 use rustc_typeck::hir_ty_to_ty;
@@ -157,8 +157,9 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
         // Example: `Some(val) => Some(val)`
         (PatKind::TupleStruct(QPath::Resolved(_, path), tuple_params, _), ExprKind::Call(call_expr, call_params)) => {
             if let ExprKind::Path(QPath::Resolved(_, call_path)) = call_expr.kind {
-                return same_segments(path.segments, call_path.segments)
-                    && same_non_ref_symbols(tuple_params, call_params);
+                return over(path.segments, call_path.segments, |pat_seg, call_seg| {
+                    pat_seg.ident.name == call_seg.ident.name
+                }) && same_non_ref_symbols(tuple_params, call_params);
             }
         },
         // Example: `val => val`
@@ -177,7 +178,9 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
         },
         // Example: `Custom::TypeA => Custom::TypeB`, or `None => None`
         (PatKind::Path(QPath::Resolved(_, p_path)), ExprKind::Path(QPath::Resolved(_, e_path))) => {
-            return same_segments(p_path.segments, e_path.segments);
+            return over(p_path.segments, e_path.segments, |p_seg, e_seg| {
+                p_seg.ident.name == e_seg.ident.name
+            });
         },
         // Example: `5 => 5`
         (PatKind::Lit(pat_lit_expr), ExprKind::Lit(expr_spanned)) => {
@@ -189,20 +192,6 @@ fn pat_same_as_expr(pat: &Pat<'_>, expr: &Expr<'_>) -> bool {
     }
 
     false
-}
-
-fn same_segments(left_segs: &[PathSegment<'_>], right_segs: &[PathSegment<'_>]) -> bool {
-    if left_segs.len() != right_segs.len() {
-        return false;
-    }
-
-    for i in 0..left_segs.len() {
-        if left_segs[i].ident.name != right_segs[i].ident.name {
-            return false;
-        }
-    }
-
-    true
 }
 
 fn same_non_ref_symbols(pats: &[Pat<'_>], exprs: &[Expr<'_>]) -> bool {
