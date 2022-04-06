@@ -1027,7 +1027,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             res.to_rvalue()
         }
         else {
-            assert!(!signed);
             // Algorithm from: http://locklessinc.com/articles/sat_arithmetic/
             let res = self.gcc_add(lhs, rhs);
             let cond = self.gcc_icmp(IntPredicate::IntULT, res, lhs);
@@ -1098,7 +1097,6 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             res.to_rvalue()
         }
         else {
-            assert!(!signed);
             let res = self.gcc_sub(lhs, rhs);
             let comparison = self.gcc_icmp(IntPredicate::IntULE, res, lhs);
             let value = self.gcc_neg(self.gcc_int_cast(comparison, result_type));
