@@ -575,7 +575,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(approx_const::ApproxConstant::new(msrv)));
     store.register_late_pass(move || Box::new(methods::Methods::new(avoid_breaking_exported_api, msrv)));
     store.register_late_pass(move || Box::new(matches::Matches::new(msrv)));
-    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustive::new(msrv)));
+    store.register_early_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveStruct::new(msrv)));
+    store.register_late_pass(move || Box::new(manual_non_exhaustive::ManualNonExhaustiveEnum::new(msrv)));
     store.register_late_pass(move || Box::new(manual_strip::ManualStrip::new(msrv)));
     store.register_early_pass(move || Box::new(redundant_static_lifetimes::RedundantStaticLifetimes::new(msrv)));
     store.register_early_pass(move || Box::new(redundant_field_names::RedundantFieldNames::new(msrv)));
