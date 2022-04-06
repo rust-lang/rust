@@ -3,7 +3,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{self, walk_block, walk_expr, Visitor};
 use rustc_hir::{
-    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Stmt, UnOp, Unsafety,
+    Arm, Block, BlockCheckMode, Body, BodyId, Expr, ExprKind, HirId, ItemId, ItemKind, Stmt, UnOp, UnsafeSource,
+    Unsafety,
 };
 use rustc_lint::LateContext;
 use rustc_middle::hir::map::Map;
@@ -369,4 +370,35 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
     let mut v = V { cx, is_unsafe: false };
     v.visit_expr(e);
     v.is_unsafe
+}
+
+/// Checks if the given expression contains an unsafe block
+pub fn contains_unsafe_block<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> bool {
+    struct V<'cx, 'tcx> {
+        cx: &'cx LateContext<'tcx>,
+        found_unsafe: bool,
+    }
+    impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
+        type NestedFilter = nested_filter::OnlyBodies;
+        fn nested_visit_map(&mut self) -> Self::Map {
+            self.cx.tcx.hir()
+        }
+
+        fn visit_block(&mut self, b: &'tcx Block<'_>) {
+            if self.found_unsafe {
+                return;
+            }
+            if b.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided) {
+                self.found_unsafe = true;
+                return;
+            }
+            walk_block(self, b);
+        }
+    }
+    let mut v = V {
+        cx,
+        found_unsafe: false,
+    };
+    v.visit_expr(e);
+    v.found_unsafe
 }
