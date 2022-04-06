@@ -8,25 +8,25 @@ use super::waitqueue::{
 };
 use crate::mem;
 
-pub struct RWLock {
+pub struct RwLock {
     readers: SpinMutex<WaitVariable<Option<NonZeroUsize>>>,
     writer: SpinMutex<WaitVariable<bool>>,
 }
 
-pub type MovableRWLock = Box<RWLock>;
+pub type MovableRwLock = Box<RwLock>;
 
-// Check at compile time that RWLock size matches C definition (see test_c_rwlock_initializer below)
+// Check at compile time that RwLock size matches C definition (see test_c_rwlock_initializer below)
 //
 // # Safety
 // Never called, as it is a compile time check.
 #[allow(dead_code)]
-unsafe fn rw_lock_size_assert(r: RWLock) {
-    unsafe { mem::transmute::<RWLock, [u8; 144]>(r) };
+unsafe fn rw_lock_size_assert(r: RwLock) {
+    unsafe { mem::transmute::<RwLock, [u8; 144]>(r) };
 }
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock {
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock {
             readers: SpinMutex::new(WaitVariable::new(None)),
             writer: SpinMutex::new(WaitVariable::new(false)),
         }
@@ -180,7 +180,7 @@ const EINVAL: i32 = 22;
 
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
 
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }
@@ -199,7 +199,7 @@ pub unsafe extern "C" fn __rust_rwlock_wrlock(p: *mut RWLock) -> i32 {
 }
 #[cfg(not(test))]
 #[no_mangle]
-pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
+pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RwLock) -> i32 {
     if p.is_null() {
         return EINVAL;
     }

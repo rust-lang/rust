@@ -53,6 +53,7 @@ mod const_prop_lint;
 mod coverage;
 mod deaggregator;
 mod deduplicate_blocks;
+mod deref_separator;
 mod dest_prop;
 pub mod dump_mir;
 mod early_otherwise_branch;
@@ -431,6 +432,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
         // and it can help optimizations.
         &deaggregator::Deaggregator,
+        &deref_separator::Derefer,
         &Lint(const_prop_lint::ConstProp),
     ];
 
