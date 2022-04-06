@@ -2,6 +2,7 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use core::ops::ControlFlow;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -13,8 +14,8 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, Subst};
 use rustc_middle::ty::{
-    self, AdtDef, Binder, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, Ty, TyCtxt, TypeFoldable, UintTy,
-    VariantDiscr,
+    self, AdtDef, Binder, BoundRegion, FnSig, IntTy, ParamEnv, Predicate, PredicateKind, Region, RegionKind, Ty,
+    TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitor, UintTy, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
@@ -666,4 +667,31 @@ pub fn is_c_void(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     } else {
         false
     }
+}
+
+pub fn for_each_top_level_late_bound_region<B>(
+    ty: Ty<'_>,
+    f: impl FnMut(BoundRegion) -> ControlFlow<B>,
+) -> ControlFlow<B> {
+    struct V<F> {
+        index: u32,
+        f: F,
+    }
+    impl<'tcx, B, F: FnMut(BoundRegion) -> ControlFlow<B>> TypeVisitor<'tcx> for V<F> {
+        type BreakTy = B;
+        fn visit_region(&mut self, r: Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+            if let RegionKind::ReLateBound(idx, bound) = r.kind() && idx.as_u32() == self.index {
+                (self.f)(bound)
+            } else {
+                ControlFlow::Continue(())
+            }
+        }
+        fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<'tcx, T>) -> ControlFlow<Self::BreakTy> {
+            self.index += 1;
+            let res = t.super_visit_with(self);
+            self.index -= 1;
+            res
+        }
+    }
+    ty.visit_with(&mut V { index: 0, f })
 }

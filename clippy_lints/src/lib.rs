@@ -7,6 +7,7 @@
 #![feature(let_chains)]
 #![feature(let_else)]
 #![feature(lint_reasons)]
+#![feature(never_type)]
 #![feature(once_cell)]
 #![feature(rustc_private)]
 #![feature(stmt_expr_attributes)]

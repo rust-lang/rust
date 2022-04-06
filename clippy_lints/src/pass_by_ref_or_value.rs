@@ -3,17 +3,19 @@ use std::iter;
 
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
-use clippy_utils::ty::is_copy;
+use clippy_utils::ty::{for_each_top_level_late_bound_region, is_copy};
 use clippy_utils::{is_self, is_self_ty};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_ast::attr;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, RegionKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
@@ -141,50 +143,62 @@ impl<'tcx> PassByRefOrValue {
         }
 
         let fn_sig = cx.tcx.fn_sig(def_id);
-        let fn_sig = cx.tcx.erase_late_bound_regions(fn_sig);
-
         let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
 
-        for (index, (input, &ty)) in iter::zip(decl.inputs, fn_sig.inputs()).enumerate() {
+        // Gather all the lifetimes found in the output type which may affect whether
+        // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
+        let mut output_regions = FxHashSet::default();
+        for_each_top_level_late_bound_region(fn_sig.skip_binder().output(), |region| -> ControlFlow<!> {
+            output_regions.insert(region);
+            ControlFlow::Continue(())
+        });
+
+        for (index, (input, ty)) in iter::zip(
+            decl.inputs,
+            fn_sig.skip_binder().inputs().iter().map(|&ty| fn_sig.rebind(ty)),
+        )
+        .enumerate()
+        {
             // All spans generated from a proc-macro invocation are the same...
             match span {
-                Some(s) if s == input.span => return,
+                Some(s) if s == input.span => continue,
                 _ => (),
             }
 
-            match ty.kind() {
-                ty::Ref(input_lt, ty, Mutability::Not) => {
-                    // Use lifetimes to determine if we're returning a reference to the
-                    // argument. In that case we can't switch to pass-by-value as the
-                    // argument will not live long enough.
-                    let output_lts = match *fn_sig.output().kind() {
-                        ty::Ref(output_lt, _, _) => vec![output_lt],
-                        ty::Adt(_, substs) => substs.regions().collect(),
-                        _ => vec![],
-                    };
+            match *ty.skip_binder().kind() {
+                ty::Ref(lt, ty, Mutability::Not) => {
+                    match lt.kind() {
+                        RegionKind::ReLateBound(index, region)
+                            if index.as_u32() == 0 && output_regions.contains(&region) =>
+                        {
+                            continue;
+                        },
+                        // Early bound regions on functions are either from the containing item, are bounded by another
+                        // lifetime, or are used as a bound for a type or lifetime.
+                        RegionKind::ReEarlyBound(..) => continue,
+                        _ => (),
+                    }
 
-                    if_chain! {
-                        if !output_lts.contains(input_lt);
-                        if is_copy(cx, *ty);
-                        if let Some(size) = cx.layout_of(*ty).ok().map(|l| l.size.bytes());
-                        if size <= self.ref_min_size;
-                        if let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind;
-                        then {
-                            let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
-                                "self".into()
-                            } else {
-                                snippet(cx, decl_ty.span, "_").into()
-                            };
-                            span_lint_and_sugg(
-                                cx,
-                                TRIVIALLY_COPY_PASS_BY_REF,
-                                input.span,
-                                &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.ref_min_size),
-                                "consider passing by value instead",
-                                value_type,
-                                Applicability::Unspecified,
-                            );
-                        }
+                    let ty = cx.tcx.erase_late_bound_regions(fn_sig.rebind(ty));
+                    if is_copy(cx, ty)
+                        && let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes())
+                        && size <= self.ref_min_size
+                        && let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind
+                    {
+                        let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
+                            "self".into()
+                        } else {
+                            snippet(cx, decl_ty.span, "_").into()
+                        };
+                        span_lint_and_sugg(
+                            cx,
+                            TRIVIALLY_COPY_PASS_BY_REF,
+                            input.span,
+                            &format!("this argument ({} byte) is passed by reference, but would be more efficient if passed by value (limit: {} byte)", size, self.ref_min_size),
+                            "consider passing by value instead",
+                            value_type,
+                            Applicability::Unspecified,
+                        );
                     }
                 },
 
@@ -196,6 +210,7 @@ impl<'tcx> PassByRefOrValue {
                             _ => continue,
                         }
                     }
+                    let ty = cx.tcx.erase_late_bound_regions(ty);
 
                     if_chain! {
                         if is_copy(cx, ty);
