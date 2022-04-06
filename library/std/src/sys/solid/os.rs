@@ -8,7 +8,7 @@ use crate::os::{
     solid::ffi::{OsStrExt, OsStringExt},
 };
 use crate::path::{self, PathBuf};
-use crate::sys_common::rwlock::StaticRWLock;
+use crate::sys_common::rwlock::StaticRwLock;
 use crate::vec;
 
 use super::{abi, error, itron, memchr};
@@ -78,7 +78,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-static ENV_LOCK: StaticRWLock = StaticRWLock::new();
+static ENV_LOCK: StaticRwLock = StaticRwLock::new();
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
