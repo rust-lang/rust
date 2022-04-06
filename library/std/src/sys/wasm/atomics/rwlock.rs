@@ -1,13 +1,13 @@
 use crate::cell::UnsafeCell;
 use crate::sys::locks::{Condvar, Mutex};
 
-pub struct RWLock {
+pub struct RwLock {
     lock: Mutex,
     cond: Condvar,
     state: UnsafeCell<State>,
 }
 
-pub type MovableRWLock = RWLock;
+pub type MovableRwLock = RwLock;
 
 enum State {
     Unlocked,
@@ -15,8 +15,8 @@ enum State {
     Writing,
 }
 
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {}
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {}
 
 // This rwlock implementation is a relatively simple implementation which has a
 // condition variable for readers/writers as well as a mutex protecting the
@@ -26,9 +26,9 @@ unsafe impl Sync for RWLock {}
 // hopefully correct this implementation is very likely to want to be changed in
 // the future.
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock { lock: Mutex::new(), cond: Condvar::new(), state: UnsafeCell::new(State::Unlocked) }
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock { lock: Mutex::new(), cond: Condvar::new(), state: UnsafeCell::new(State::Unlocked) }
     }
 
     #[inline]

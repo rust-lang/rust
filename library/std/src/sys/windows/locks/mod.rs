@@ -3,4 +3,4 @@ mod mutex;
 mod rwlock;
 pub use condvar::{Condvar, MovableCondvar};
 pub use mutex::{MovableMutex, Mutex, ReentrantMutex};
-pub use rwlock::{MovableRWLock, RWLock};
+pub use rwlock::{MovableRwLock, RwLock};

@@ -10,7 +10,7 @@ cfg_if::cfg_if! {
         mod pthread_rwlock; // FIXME: Implement this using a futex
         pub use futex::{Mutex, MovableMutex, Condvar, MovableCondvar};
         pub use pthread_remutex::ReentrantMutex;
-        pub use pthread_rwlock::{RWLock, MovableRWLock};
+        pub use pthread_rwlock::{RwLock, MovableRwLock};
     } else {
         mod pthread_mutex;
         mod pthread_remutex;
@@ -18,7 +18,7 @@ cfg_if::cfg_if! {
         mod pthread_condvar;
         pub use pthread_mutex::{Mutex, MovableMutex};
         pub use pthread_remutex::ReentrantMutex;
-        pub use pthread_rwlock::{RWLock, MovableRWLock};
+        pub use pthread_rwlock::{RwLock, MovableRwLock};
         pub use pthread_condvar::{Condvar, MovableCondvar};
     }
 }

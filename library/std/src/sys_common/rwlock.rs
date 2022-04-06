@@ -4,14 +4,14 @@ use crate::sys::locks as imp;
 ///
 /// This rwlock does not implement poisoning.
 ///
-/// This rwlock has a const constructor ([`StaticRWLock::new`]), does not
+/// This rwlock has a const constructor ([`StaticRwLock::new`]), does not
 /// implement `Drop` to cleanup resources.
-pub struct StaticRWLock(imp::RWLock);
+pub struct StaticRwLock(imp::RwLock);
 
-impl StaticRWLock {
+impl StaticRwLock {
     /// Creates a new rwlock for use.
     pub const fn new() -> Self {
-        Self(imp::RWLock::new())
+        Self(imp::RwLock::new())
     }
 
     /// Acquires shared access to the underlying lock, blocking the current
@@ -19,9 +19,9 @@ impl StaticRWLock {
     ///
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
-    pub fn read(&'static self) -> StaticRWLockReadGuard {
+    pub fn read(&'static self) -> StaticRwLockReadGuard {
         unsafe { self.0.read() };
-        StaticRWLockReadGuard(&self.0)
+        StaticRwLockReadGuard(&self.0)
     }
 
     /// Acquires write access to the underlying lock, blocking the current thread
@@ -29,16 +29,16 @@ impl StaticRWLock {
     ///
     /// The lock is automatically unlocked when the returned guard is dropped.
     #[inline]
-    pub fn write(&'static self) -> StaticRWLockWriteGuard {
+    pub fn write(&'static self) -> StaticRwLockWriteGuard {
         unsafe { self.0.write() };
-        StaticRWLockWriteGuard(&self.0)
+        StaticRwLockWriteGuard(&self.0)
     }
 }
 
 #[must_use]
-pub struct StaticRWLockReadGuard(&'static imp::RWLock);
+pub struct StaticRwLockReadGuard(&'static imp::RwLock);
 
-impl Drop for StaticRWLockReadGuard {
+impl Drop for StaticRwLockReadGuard {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -48,9 +48,9 @@ impl Drop for StaticRWLockReadGuard {
 }
 
 #[must_use]
-pub struct StaticRWLockWriteGuard(&'static imp::RWLock);
+pub struct StaticRwLockWriteGuard(&'static imp::RwLock);
 
-impl Drop for StaticRWLockWriteGuard {
+impl Drop for StaticRwLockWriteGuard {
     #[inline]
     fn drop(&mut self) {
         unsafe {
@@ -66,15 +66,15 @@ impl Drop for StaticRWLockWriteGuard {
 ///
 /// This rwlock does not implement poisoning.
 ///
-/// This is either a wrapper around `Box<imp::RWLock>` or `imp::RWLock`,
-/// depending on the platform. It is boxed on platforms where `imp::RWLock` may
+/// This is either a wrapper around `Box<imp::RwLock>` or `imp::RwLock`,
+/// depending on the platform. It is boxed on platforms where `imp::RwLock` may
 /// not be moved.
-pub struct MovableRWLock(imp::MovableRWLock);
+pub struct MovableRwLock(imp::MovableRwLock);
 
-impl MovableRWLock {
+impl MovableRwLock {
     /// Creates a new reader-writer lock for use.
     pub fn new() -> Self {
-        Self(imp::MovableRWLock::from(imp::RWLock::new()))
+        Self(imp::MovableRwLock::from(imp::RwLock::new()))
     }
 
     /// Acquires shared access to the underlying lock, blocking the current
@@ -127,7 +127,7 @@ impl MovableRWLock {
     }
 }
 
-impl Drop for MovableRWLock {
+impl Drop for MovableRwLock {
     fn drop(&mut self) {
         unsafe { self.0.destroy() };
     }
