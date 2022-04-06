@@ -4,7 +4,6 @@ use crate::sync::atomic::{
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
-use crate::sys_common::thread_info::current_thread_unique_ptr;
 use crate::time::Duration;
 
 pub type MovableMutex = Mutex;
@@ -247,4 +246,13 @@ impl ReentrantMutex {
             self.mutex.unlock();
         }
     }
+}
+
+/// Get an address that is unique per running thread.
+///
+/// This can be used as a non-null usize-sized ID.
+pub fn current_thread_unique_ptr() -> usize {
+    // Use a non-drop type to make sure it's still available during thread destruction.
+    thread_local! { static X: u8 = 0 }
+    X.with(|x| <*const _>::addr(x))
 }
