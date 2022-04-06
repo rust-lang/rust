@@ -41,6 +41,7 @@ mod map_collect_result_unit;
 mod map_flatten;
 mod map_identity;
 mod map_unwrap_or;
+mod needless_option_as_deref;
 mod ok_expect;
 mod option_as_ref_deref;
 mod option_map_or_none;
@@ -2106,6 +2107,30 @@ declare_clippy_lint! {
     "using `.collect::<Vec<String>>().join(\"\")` on an iterator"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for no-op uses of `Option::{as_deref, as_deref_mut}`,
+    /// for example, `Option<&T>::as_deref()` returns the same type.
+    ///
+    /// ### Why is this bad?
+    /// Redundant code and improving readability.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let a = Some(&1);
+    /// let b = a.as_deref(); // goes from Option<&i32> to Option<&i32>
+    /// ```
+    /// Could be written as:
+    /// ```rust
+    /// let a = Some(&1);
+    /// let b = a;
+    /// ```
+    #[clippy::version = "1.57.0"]
+    pub NEEDLESS_OPTION_AS_DEREF,
+    complexity,
+    "no-op use of `deref` or `deref_mut` method to `Option`."
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Option<RustcVersion>,
@@ -2193,6 +2218,7 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_TO_OWNED,
     UNNECESSARY_JOIN,
     ERR_EXPECT,
+    NEEDLESS_OPTION_AS_DEREF,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2424,6 +2450,9 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 if !biom_option_linted && !biom_result_linted {
                     unnecessary_lazy_eval::check(cx, expr, recv, arg, "and");
                 }
+            },
+            ("as_deref" | "as_deref_mut", []) => {
+                needless_option_as_deref::check(cx, expr, recv, name);
             },
             ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
             ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
