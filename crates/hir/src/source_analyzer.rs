@@ -749,22 +749,23 @@ fn resolve_hir_path_qualifier(
     resolver: &Resolver,
     path: &Path,
 ) -> Option<PathResolution> {
-    let items = resolver
-        .resolve_module_path_in_items(db.upcast(), path.mod_path())
-        .take_types()
-        .map(|it| PathResolution::Def(it.into()));
-
-    if items.is_some() {
-        return items;
-    }
-
-    resolver.resolve_path_in_type_ns_fully(db.upcast(), path.mod_path()).map(|ty| match ty {
-        TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-        TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
-        TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => PathResolution::Def(Adt::from(it).into()),
-        TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
-        TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
-        TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
-        TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
-    })
+    resolver
+        .resolve_path_in_type_ns_fully(db.upcast(), path.mod_path())
+        .map(|ty| match ty {
+            TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
+            TypeNs::GenericParam(id) => PathResolution::TypeParam(id.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
+                PathResolution::Def(Adt::from(it).into())
+            }
+            TypeNs::EnumVariantId(it) => PathResolution::Def(Variant::from(it).into()),
+            TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
+            TypeNs::BuiltinType(it) => PathResolution::Def(BuiltinType::from(it).into()),
+            TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
+        })
+        .or_else(|| {
+            resolver
+                .resolve_module_path_in_items(db.upcast(), path.mod_path())
+                .take_types()
+                .map(|it| PathResolution::Def(it.into()))
+        })
 }

@@ -31,6 +31,7 @@ struct Foo;
         false,
     );
 }
+
 #[test]
 fn macros() {
     check_highlighting(
@@ -277,6 +278,10 @@ fn baz<T>(t: T)
 where
     T: Baz,
     <T as Baz>::Qux: Bar {}
+
+fn gp_shadows_trait<Baz: Bar>() {
+    Baz::bar;
+}
 
 //- /foo.rs crate:foo
 pub struct Person {
