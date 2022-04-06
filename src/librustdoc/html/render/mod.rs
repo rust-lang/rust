@@ -597,11 +597,11 @@ fn document_item_info(
 ) {
     let item_infos = short_item_info(item, cx, parent);
     if !item_infos.is_empty() {
-        w.write_str("<div class=\"item-info\">");
+        w.write_str("<span class=\"item-info\">");
         for info in item_infos {
             w.write_str(&info);
         }
-        w.write_str("</div>");
+        w.write_str("</span>");
     }
 }
 
@@ -1772,7 +1772,7 @@ pub(crate) fn render_impl_summary(
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {
         if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-            write!(w, "<div class=\"item-info\">{}</div>", portability);
+            write!(w, "<span class=\"item-info\">{}</span>", portability);
         }
     }
 
