@@ -803,6 +803,7 @@ symbols! {
         keyword,
         kind,
         kreg,
+        kreg0,
         label,
         label_break_value,
         lang,

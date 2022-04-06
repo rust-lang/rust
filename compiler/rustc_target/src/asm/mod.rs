@@ -893,7 +893,7 @@ impl InlineAsmClobberAbi {
 
                     xmm0, xmm1, xmm2, xmm3, xmm4, xmm5, xmm6, xmm7,
 
-                    k1, k2, k3, k4, k5, k6, k7,
+                    k0, k1, k2, k3, k4, k5, k6, k7,
 
                     mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
                     st0, st1, st2, st3, st4, st5, st6, st7,
@@ -908,7 +908,7 @@ impl InlineAsmClobberAbi {
                     zmm16, zmm17, zmm18, zmm19, zmm20, zmm21, zmm22, zmm23,
                     zmm24, zmm25, zmm26, zmm27, zmm28, zmm29, zmm30, zmm31,
 
-                    k1, k2, k3, k4, k5, k6, k7,
+                    k0, k1, k2, k3, k4, k5, k6, k7,
 
                     mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
                     st0, st1, st2, st3, st4, st5, st6, st7,
@@ -927,7 +927,7 @@ impl InlineAsmClobberAbi {
                     zmm16, zmm17, zmm18, zmm19, zmm20, zmm21, zmm22, zmm23,
                     zmm24, zmm25, zmm26, zmm27, zmm28, zmm29, zmm30, zmm31,
 
-                    k1, k2, k3, k4, k5, k6, k7,
+                    k0, k1, k2, k3, k4, k5, k6, k7,
 
                     mm0, mm1, mm2, mm3, mm4, mm5, mm6, mm7,
                     st0, st1, st2, st3, st4, st5, st6, st7,
