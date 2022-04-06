@@ -253,6 +253,6 @@ impl ReentrantMutex {
 /// This can be used as a non-null usize-sized ID.
 pub fn current_thread_unique_ptr() -> usize {
     // Use a non-drop type to make sure it's still available during thread destruction.
-    thread_local! { static X: u8 = 0 }
+    thread_local! { static X: u8 = const { 0 } }
     X.with(|x| <*const _>::addr(x))
 }
