@@ -368,7 +368,7 @@ declare_clippy_lint! {
     /// Checks for `.err().expect()` calls on the `Result` type.
     ///
     /// ### Why is this bad?
-    /// `.expect_err()` can be called directly to avoid the extra type conversion from `ok()`.
+    /// `.expect_err()` can be called directly to avoid the extra type conversion from `err()`.
     ///
     /// ### Example
     /// ```should_panic
