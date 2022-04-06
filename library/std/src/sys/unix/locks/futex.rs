@@ -215,6 +215,7 @@ impl ReentrantMutex {
             true
         } else if self.mutex.try_lock() {
             self.owner.store(this_thread, Relaxed);
+            debug_assert_eq!(*self.lock_count.get(), 0);
             *self.lock_count.get() = 1;
             true
         } else {
@@ -229,6 +230,7 @@ impl ReentrantMutex {
         } else {
             self.mutex.lock();
             self.owner.store(this_thread, Relaxed);
+            debug_assert_eq!(*self.lock_count.get(), 0);
             *self.lock_count.get() = 1;
         }
     }
