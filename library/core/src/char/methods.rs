@@ -804,6 +804,9 @@ impl char {
     /// ```
     /// assert!(' '.is_whitespace());
     ///
+    /// // line break
+    /// assert!('\n'.is_whitespace());
+    ///
     /// // a non-breaking space
     /// assert!('\u{A0}'.is_whitespace());
     ///
