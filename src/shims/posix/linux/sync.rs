@@ -38,6 +38,7 @@ pub fn futex<'tcx>(
     let futex_wait = this.eval_libc_i32("FUTEX_WAIT")?;
     let futex_wait_bitset = this.eval_libc_i32("FUTEX_WAIT_BITSET")?;
     let futex_wake = this.eval_libc_i32("FUTEX_WAKE")?;
+    let futex_wake_bitset = this.eval_libc_i32("FUTEX_WAKE_BITSET")?;
     let futex_realtime = this.eval_libc_i32("FUTEX_CLOCK_REALTIME")?;
 
     // FUTEX_PRIVATE enables an optimization that stops it from working across processes.
@@ -48,9 +49,13 @@ pub fn futex<'tcx>(
         // or *timeout expires. `timeout == null` for an infinite timeout.
         //
         // FUTEX_WAIT_BITSET: (int *addr, int op = FUTEX_WAIT_BITSET, int val, const timespec *timeout, int *_ignored, unsigned int bitset)
-        // When bitset is u32::MAX, this is identical to FUTEX_WAIT, except the timeout is absolute rather than relative.
+        // This is identical to FUTEX_WAIT, except:
+        //  - The timeout is absolute rather than relative.
+        //  - You can specify the bitset to selecting what WAKE operations to respond to.
         op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
+
+            let bitset;
 
             if wait_bitset {
                 if args.len() != 7 {
@@ -59,14 +64,7 @@ pub fn futex<'tcx>(
                         args.len()
                     );
                 }
-
-                let bitset = this.read_scalar(&args[6])?.to_u32()?;
-
-                if bitset != u32::MAX {
-                    throw_unsup_format!(
-                        "Miri does not support `futex` syscall with `op=FUTEX_WAIT_BITSET` with a bitset other than UINT_MAX"
-                    );
-                }
+                bitset = this.read_scalar(&args[6])?.to_u32()?;
             } else {
                 if args.len() < 5 {
                     throw_ub_format!(
@@ -74,6 +72,14 @@ pub fn futex<'tcx>(
                         args.len()
                     );
                 }
+                bitset = u32::MAX;
+            }
+
+            if bitset == 0 {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
+                return Ok(());
             }
 
             // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
@@ -141,7 +147,7 @@ pub fn futex<'tcx>(
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
-                this.futex_wait(addr_scalar.to_machine_usize(this)?, thread);
+                this.futex_wait(addr_scalar.to_machine_usize(this)?, thread, bitset);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
                 this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
@@ -173,10 +179,30 @@ pub fn futex<'tcx>(
         // Wakes at most `val` threads waiting on the futex at `addr`.
         // Returns the amount of threads woken up.
         // Does not access the futex value at *addr.
-        op if op == futex_wake => {
+        // FUTEX_WAKE_BITSET: (int *addr, int op = FUTEX_WAKE, int val, const timespect *_unused, int *_unused, unsigned int bitset)
+        // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
+        op if op == futex_wake || op == futex_wake_bitset => {
+            let bitset;
+            if op == futex_wake_bitset {
+                if args.len() != 7 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAKE_BITSET`: got {}, expected 7",
+                        args.len()
+                    );
+                }
+                bitset = this.read_scalar(&args[6])?.to_u32()?;
+            } else {
+                bitset = u32::MAX;
+            }
+            if bitset == 0 {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
+                return Ok(());
+            }
             let mut n = 0;
             for _ in 0..val {
-                if let Some(thread) = this.futex_wake(addr_scalar.to_machine_usize(this)?) {
+                if let Some(thread) = this.futex_wake(addr_scalar.to_machine_usize(this)?, bitset) {
                     this.unblock_thread(thread);
                     this.unregister_timeout_callback_if_exists(thread);
                     n += 1;

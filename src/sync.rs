@@ -144,6 +144,8 @@ struct Futex {
 struct FutexWaiter {
     /// The thread that is waiting on this futex.
     thread: ThreadId,
+    /// The bitset used by FUTEX_*_BITSET, or u32::MAX for other operations.
+    bitset: u32,
 }
 
 /// The state of all synchronization variables.
@@ -486,15 +488,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.threads.sync.condvars[id].waiters.retain(|waiter| waiter.thread != thread);
     }
 
-    fn futex_wait(&mut self, addr: u64, thread: ThreadId) {
+    fn futex_wait(&mut self, addr: u64, thread: ThreadId, bitset: u32) {
         let this = self.eval_context_mut();
         let futex = &mut this.machine.threads.sync.futexes.entry(addr).or_default();
         let waiters = &mut futex.waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(FutexWaiter { thread });
+        waiters.push_back(FutexWaiter { thread, bitset });
     }
 
-    fn futex_wake(&mut self, addr: u64) -> Option<ThreadId> {
+    fn futex_wake(&mut self, addr: u64, bitset: u32) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
         let futex = &mut this.machine.threads.sync.futexes.get_mut(&addr)?;
@@ -504,13 +506,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         if let Some(data_race) = data_race {
             data_race.validate_lock_release(&mut futex.data_race, current_thread);
         }
-        let res = futex.waiters.pop_front().map(|waiter| {
+
+        // Wake up the first thread in the queue that matches any of the bits in the bitset.
+        futex.waiters.iter().position(|w| w.bitset & bitset != 0).map(|i| {
+            let waiter = futex.waiters.remove(i).unwrap();
             if let Some(data_race) = data_race {
                 data_race.validate_lock_acquire(&futex.data_race, waiter.thread);
             }
             waiter.thread
-        });
-        res
+        })
     }
 
     fn futex_remove_waiter(&mut self, addr: u64, thread: ThreadId) {
