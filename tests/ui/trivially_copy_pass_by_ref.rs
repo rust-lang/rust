@@ -139,6 +139,18 @@ fn _unrelated_lifetimes<'a, 'b>(_x: &'a u32, y: &'b u32) -> &'b u32 {
     y
 }
 
+fn _return_ptr(x: &u32) -> *const u32 {
+    x
+}
+
+fn _return_field_ptr(x: &(u32, u32)) -> *const u32 {
+    &x.0
+}
+
+fn _return_field_ptr_addr_of(x: &(u32, u32)) -> *const u32 {
+    core::ptr::addr_of!(x.0)
+}
+
 fn main() {
     let (mut foo, bar) = (Foo(0), Bar([0; 24]));
     let (mut a, b, c, x, y, z) = (0, 0, Bar([0; 24]), 0, Foo(0), 0);

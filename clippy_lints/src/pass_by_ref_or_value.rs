@@ -14,6 +14,7 @@ use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{BindingAnnotation, Body, FnDecl, HirId, Impl, ItemKind, MutTy, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::adjustment::{Adjust, PointerCast};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, RegionKind};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -185,6 +186,20 @@ impl<'tcx> PassByRefOrValue {
                         && size <= self.ref_min_size
                         && let hir::TyKind::Rptr(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
+                        if let Some(typeck) = cx.maybe_typeck_results() {
+                            // Don't lint if an unsafe pointer is created.
+                            // TODO: Limit the check only to unsafe pointers to the argument (or part of the argument)
+                            //       which escape the current function.
+                            if typeck.node_types().iter().any(|(_, &ty)| ty.is_unsafe_ptr())
+                                || typeck
+                                    .adjustments()
+                                    .iter()
+                                    .flat_map(|(_, a)| a)
+                                    .any(|a| matches!(a.kind, Adjust::Pointer(PointerCast::UnsafeFnPointer)))
+                            {
+                                continue;
+                            }
+                        }
                         let value_type = if fn_body.and_then(|body| body.params.get(index)).map_or(false, is_self) {
                             "self".into()
                         } else {
