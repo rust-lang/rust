@@ -41,7 +41,7 @@ macro_rules! maybe_whole_expr {
                     return Ok(e);
                 }
                 token::NtPath(path) => {
-                    let path = path.clone();
+                    let path = (**path).clone();
                     $p.bump();
                     return Ok($p.mk_expr(
                         $p.prev_token.span,

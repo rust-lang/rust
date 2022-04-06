@@ -118,7 +118,7 @@ impl Annotatable {
             Annotatable::ForeignItem(item) => {
                 token::NtItem(P(item.and_then(ast::ForeignItem::into_item)))
             }
-            Annotatable::Stmt(stmt) => token::NtStmt(stmt.into_inner()),
+            Annotatable::Stmt(stmt) => token::NtStmt(stmt),
             Annotatable::Expr(expr) => token::NtExpr(expr),
             Annotatable::Arm(..)
             | Annotatable::ExprField(..)
