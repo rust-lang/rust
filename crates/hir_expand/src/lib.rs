@@ -175,15 +175,17 @@ impl HirFileId {
     /// For macro-expansion files, returns the file original source file the
     /// expansion originated from.
     pub fn original_file(self, db: &dyn db::AstDatabase) -> FileId {
-        match self.0 {
-            HirFileIdRepr::FileId(file_id) => file_id,
-            HirFileIdRepr::MacroFile(macro_file) => {
-                let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
-                let file_id = match loc.eager {
-                    Some(EagerCallInfo { included_file: Some(file), .. }) => file.into(),
-                    _ => loc.kind.file_id(),
-                };
-                file_id.original_file(db)
+        let mut file_id = self;
+        loop {
+            match file_id.0 {
+                HirFileIdRepr::FileId(id) => break id,
+                HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
+                    let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_call_id);
+                    file_id = match loc.eager {
+                        Some(EagerCallInfo { included_file: Some(file), .. }) => file.into(),
+                        _ => loc.kind.file_id(),
+                    };
+                }
             }
         }
     }
@@ -207,6 +209,24 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
                 Some(loc.kind.to_node(db))
+            }
+        }
+    }
+
+    /// If this is a macro call, returns the syntax node of the very first macro call this file resides in.
+    pub fn original_call_node(self, db: &dyn db::AstDatabase) -> Option<(FileId, SyntaxNode)> {
+        let mut call = match self.0 {
+            HirFileIdRepr::FileId(_) => return None,
+            HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
+                db.lookup_intern_macro_call(macro_call_id).kind.to_node(db)
+            }
+        };
+        loop {
+            match call.file_id.0 {
+                HirFileIdRepr::FileId(file_id) => break Some((file_id, call.value)),
+                HirFileIdRepr::MacroFile(MacroFile { macro_call_id }) => {
+                    call = db.lookup_intern_macro_call(macro_call_id).kind.to_node(db);
+                }
             }
         }
     }
@@ -675,9 +695,11 @@ impl<T> InFile<T> {
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> InFile<U> {
         InFile::new(self.file_id, f(self.value))
     }
+
     pub fn as_ref(&self) -> InFile<&T> {
         self.with_value(&self.value)
     }
+
     pub fn file_syntax(&self, db: &dyn db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")
     }
