@@ -3,7 +3,7 @@
 // Run-time:
 //   status: 0
 
-#![feature(bench_black_box, core_intrinsics, start)]
+#![feature(bench_black_box, const_black_box, core_intrinsics, start)]
 
 #![no_std]
 
@@ -18,23 +18,18 @@ fn panic_handler(_: &core::panic::PanicInfo) -> ! {
 
 #[start]
 fn main(_argc: isize, _argv: *const *const u8) -> isize {
-    let one: isize = core::hint::black_box(1);
+    use core::hint::black_box;
 
     macro_rules! check {
         ($ty:ty, $expr:expr) => {
             {
-                const EXPECTED: $ty = {
-                    #[allow(non_upper_case_globals)]
-                    #[allow(dead_code)]
-                    const one: isize = 1;
-                    $expr
-                };
+                const EXPECTED: $ty = $expr;
                 assert_eq!($expr, EXPECTED);
             }
         };
     }
 
-    check!(u32, (2220326408_u32 + one as u32) >> (32 - 6));
+    check!(u32, (2220326408_u32 + black_box(1)) >> (32 - 6));
 
     /// Generate `check!` tests for integer types at least as wide as 128 bits.
     macro_rules! check_ops128 {
@@ -42,15 +37,15 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
             check_ops64!();
 
             // Shifts.
-            check!(T, VAL1 << (one + 63) as T);
-            check!(T, VAL1 << (one + 80) as T);
-            check!(T, VAL3 << (one + 62) as T);
-            check!(T, VAL3 << (one + 63) as T);
+            check!(T, VAL1 << black_box(64));
+            check!(T, VAL1 << black_box(81));
+            check!(T, VAL3 << black_box(63));
+            check!(T, VAL3 << black_box(64));
 
-            check!(T, VAL1 >> (one + 63) as T);
-            check!(T, VAL2 >> (one + 63) as T);
-            check!(T, VAL3 >> (one + 63) as T);
-            check!(T, VAL3 >> (one + 80) as T);
+            check!(T, VAL1 >> black_box(64));
+            check!(T, VAL2 >> black_box(64));
+            check!(T, VAL3 >> black_box(64));
+            check!(T, VAL3 >> black_box(81));
         };
     }
 
@@ -60,29 +55,29 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
             check_ops32!();
 
             // Shifts.
-            check!(T, VAL2 << (one + 32) as T);
-            check!(T, VAL2 << (one + 48) as T);
-            check!(T, VAL2 << (one + 60) as T);
-            check!(T, VAL2 << (one + 62) as T);
+            check!(T, VAL2 << black_box(33));
+            check!(T, VAL2 << black_box(49));
+            check!(T, VAL2 << black_box(61));
+            check!(T, VAL2 << black_box(63));
 
-            check!(T, VAL3 << (one + 32) as T);
-            check!(T, VAL3 << (one + 48) as T);
-            check!(T, VAL3 << (one + 60) as T);
+            check!(T, VAL3 << black_box(33));
+            check!(T, VAL3 << black_box(49));
+            check!(T, VAL3 << black_box(61));
 
-            check!(T, VAL1 >> (one + 32) as T);
-            check!(T, VAL1 >> (one + 48) as T);
-            check!(T, VAL1 >> (one + 60) as T);
-            check!(T, VAL1 >> (one + 62) as T);
+            check!(T, VAL1 >> black_box(33));
+            check!(T, VAL1 >> black_box(49));
+            check!(T, VAL1 >> black_box(61));
+            check!(T, VAL1 >> black_box(63));
 
-            check!(T, VAL2 >> (one + 32) as T);
-            check!(T, VAL2 >> (one + 48) as T);
-            check!(T, VAL2 >> (one + 60) as T);
-            check!(T, VAL2 >> (one + 62) as T);
+            check!(T, VAL2 >> black_box(33));
+            check!(T, VAL2 >> black_box(49));
+            check!(T, VAL2 >> black_box(61));
+            check!(T, VAL2 >> black_box(63));
 
-            check!(T, VAL3 >> (one + 32) as T);
-            check!(T, VAL3 >> (one + 48) as T);
-            check!(T, VAL3 >> (one + 60) as T);
-            check!(T, VAL3 >> (one + 62) as T);
+            check!(T, VAL3 >> black_box(33));
+            check!(T, VAL3 >> black_box(49));
+            check!(T, VAL3 >> black_box(61));
+            check!(T, VAL3 >> black_box(63));
         };
     }
 
@@ -90,195 +85,195 @@ fn main(_argc: isize, _argv: *const *const u8) -> isize {
     macro_rules! check_ops32 {
         () => {
             // Shifts.
-            check!(T, VAL2 << one as T);
-            check!(T, VAL2 << (one as T - 1));
+            check!(T, VAL2 << black_box(1));
+            check!(T, VAL2 << black_box(0));
 
-            check!(T, VAL3 << one as T);
-            check!(T, VAL3 << (one as T - 1));
+            check!(T, VAL3 << black_box(1));
+            check!(T, VAL3 << black_box(0));
 
-            check!(T, VAL1.wrapping_shl(one as u32 - 1));
-            check!(T, VAL1.wrapping_shl(one as u32));
-            check!(T, VAL1.wrapping_shl((one + 32) as u32));
-            check!(T, VAL1.wrapping_shl((one + 48) as u32));
-            check!(T, VAL1.wrapping_shl((one + 60) as u32));
-            check!(T, VAL1.wrapping_shl((one + 62) as u32));
-            check!(T, VAL1.wrapping_shl((one + 63) as u32));
-            check!(T, VAL1.wrapping_shl((one + 80) as u32));
+            check!(T, VAL1.wrapping_shl(black_box(0)));
+            check!(T, VAL1.wrapping_shl(black_box(1)));
+            check!(T, VAL1.wrapping_shl(black_box(33)));
+            check!(T, VAL1.wrapping_shl(black_box(49)));
+            check!(T, VAL1.wrapping_shl(black_box(61)));
+            check!(T, VAL1.wrapping_shl(black_box(63)));
+            check!(T, VAL1.wrapping_shl(black_box(64)));
+            check!(T, VAL1.wrapping_shl(black_box(81)));
 
-            check!(Option<T>, VAL1.checked_shl(one as u32 - 1));
-            check!(Option<T>, VAL1.checked_shl(one as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 32) as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 48) as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 60) as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 62) as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 63) as u32));
-            check!(Option<T>, VAL1.checked_shl((one + 80) as u32));
+            check!(Option<T>, VAL1.checked_shl(black_box(0)));
+            check!(Option<T>, VAL1.checked_shl(black_box(1)));
+            check!(Option<T>, VAL1.checked_shl(black_box(33)));
+            check!(Option<T>, VAL1.checked_shl(black_box(49)));
+            check!(Option<T>, VAL1.checked_shl(black_box(61)));
+            check!(Option<T>, VAL1.checked_shl(black_box(63)));
+            check!(Option<T>, VAL1.checked_shl(black_box(64)));
+            check!(Option<T>, VAL1.checked_shl(black_box(81)));
 
-            check!(T, VAL1 >> (one as T - 1));
-            check!(T, VAL1 >> one as T);
+            check!(T, VAL1 >> black_box(0));
+            check!(T, VAL1 >> black_box(1));
 
-            check!(T, VAL2 >> one as T);
-            check!(T, VAL2 >> (one as T - 1));
+            check!(T, VAL2 >> black_box(1));
+            check!(T, VAL2 >> black_box(0));
 
-            check!(T, VAL3 >> (one as T - 1));
-            check!(T, VAL3 >> one as T);
+            check!(T, VAL3 >> black_box(0));
+            check!(T, VAL3 >> black_box(1));
 
-            check!(T, VAL1.wrapping_shr(one as u32 - 1));
-            check!(T, VAL1.wrapping_shr(one as u32));
-            check!(T, VAL1.wrapping_shr((one + 32) as u32));
-            check!(T, VAL1.wrapping_shr((one + 48) as u32));
-            check!(T, VAL1.wrapping_shr((one + 60) as u32));
-            check!(T, VAL1.wrapping_shr((one + 62) as u32));
-            check!(T, VAL1.wrapping_shr((one + 63) as u32));
-            check!(T, VAL1.wrapping_shr((one + 80) as u32));
+            check!(T, VAL1.wrapping_shr(black_box(0)));
+            check!(T, VAL1.wrapping_shr(black_box(1)));
+            check!(T, VAL1.wrapping_shr(black_box(33)));
+            check!(T, VAL1.wrapping_shr(black_box(49)));
+            check!(T, VAL1.wrapping_shr(black_box(61)));
+            check!(T, VAL1.wrapping_shr(black_box(63)));
+            check!(T, VAL1.wrapping_shr(black_box(64)));
+            check!(T, VAL1.wrapping_shr(black_box(81)));
 
-            check!(Option<T>, VAL1.checked_shr(one as u32 - 1));
-            check!(Option<T>, VAL1.checked_shr(one as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 32) as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 48) as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 60) as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 62) as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 63) as u32));
-            check!(Option<T>, VAL1.checked_shr((one + 80) as u32));
+            check!(Option<T>, VAL1.checked_shr(black_box(0)));
+            check!(Option<T>, VAL1.checked_shr(black_box(1)));
+            check!(Option<T>, VAL1.checked_shr(black_box(33)));
+            check!(Option<T>, VAL1.checked_shr(black_box(49)));
+            check!(Option<T>, VAL1.checked_shr(black_box(61)));
+            check!(Option<T>, VAL1.checked_shr(black_box(63)));
+            check!(Option<T>, VAL1.checked_shr(black_box(64)));
+            check!(Option<T>, VAL1.checked_shr(black_box(81)));
 
             // Casts
-            check!(u64, (VAL1 >> one as T) as u64);
+            check!(u64, (VAL1 >> black_box(1)) as u64);
 
             // Addition.
-            check!(T, VAL1 + one as T);
-            check!(T, VAL2 + one as T);
-            check!(T, VAL2 + (VAL2 + one as T) as T);
-            check!(T, VAL3 + one as T);
+            check!(T, VAL1 + black_box(1));
+            check!(T, VAL2 + black_box(1));
+            check!(T, VAL2 + (VAL2 + black_box(1)));
+            check!(T, VAL3 + black_box(1));
 
-            check!(Option<T>, VAL1.checked_add(one as T));
-            check!(Option<T>, VAL2.checked_add(one as T));
-            check!(Option<T>, VAL2.checked_add((VAL2 + one as T) as T));
+            check!(Option<T>, VAL1.checked_add(black_box(1)));
+            check!(Option<T>, VAL2.checked_add(black_box(1)));
+            check!(Option<T>, VAL2.checked_add(VAL2 + black_box(1)));
             check!(Option<T>, VAL3.checked_add(T::MAX));
             check!(Option<T>, VAL3.checked_add(T::MIN));
 
-            check!(T, VAL1.wrapping_add(one as T));
-            check!(T, VAL2.wrapping_add(one as T));
-            check!(T, VAL2.wrapping_add((VAL2 + one as T) as T));
+            check!(T, VAL1.wrapping_add(black_box(1)));
+            check!(T, VAL2.wrapping_add(black_box(1)));
+            check!(T, VAL2.wrapping_add(VAL2 + black_box(1)));
             check!(T, VAL3.wrapping_add(T::MAX));
             check!(T, VAL3.wrapping_add(T::MIN));
 
-            check!((T, bool), VAL1.overflowing_add(one as T));
-            check!((T, bool), VAL2.overflowing_add(one as T));
-            check!((T, bool), VAL2.overflowing_add((VAL2 + one as T) as T));
+            check!((T, bool), VAL1.overflowing_add(black_box(1)));
+            check!((T, bool), VAL2.overflowing_add(black_box(1)));
+            check!((T, bool), VAL2.overflowing_add(VAL2 + black_box(1)));
             check!((T, bool), VAL3.overflowing_add(T::MAX));
             check!((T, bool), VAL3.overflowing_add(T::MIN));
 
-            check!(T, VAL1.saturating_add(one as T));
-            check!(T, VAL2.saturating_add(one as T));
-            check!(T, VAL2.saturating_add((VAL2 + one as T) as T));
+            check!(T, VAL1.saturating_add(black_box(1)));
+            check!(T, VAL2.saturating_add(black_box(1)));
+            check!(T, VAL2.saturating_add(VAL2 + black_box(1)));
             check!(T, VAL3.saturating_add(T::MAX));
             check!(T, VAL3.saturating_add(T::MIN));
 
             // Subtraction
-            check!(T, VAL1 - one as T);
-            check!(T, VAL2 - one as T);
-            check!(T, VAL3 - one as T);
+            check!(T, VAL1 - black_box(1));
+            check!(T, VAL2 - black_box(1));
+            check!(T, VAL3 - black_box(1));
 
-            check!(Option<T>, VAL1.checked_sub(one as T));
-            check!(Option<T>, VAL2.checked_sub(one as T));
-            check!(Option<T>, VAL2.checked_sub((VAL2 + one as T) as T));
+            check!(Option<T>, VAL1.checked_sub(black_box(1)));
+            check!(Option<T>, VAL2.checked_sub(black_box(1)));
+            check!(Option<T>, VAL2.checked_sub(VAL2 + black_box(1)));
             check!(Option<T>, VAL3.checked_sub(T::MAX));
             check!(Option<T>, VAL3.checked_sub(T::MIN));
 
-            check!(T, VAL1.wrapping_sub(one as T));
-            check!(T, VAL2.wrapping_sub(one as T));
-            check!(T, VAL2.wrapping_sub((VAL2 + one as T) as T));
+            check!(T, VAL1.wrapping_sub(black_box(1)));
+            check!(T, VAL2.wrapping_sub(black_box(1)));
+            check!(T, VAL2.wrapping_sub(VAL2 + black_box(1)));
             check!(T, VAL3.wrapping_sub(T::MAX));
             check!(T, VAL3.wrapping_sub(T::MIN));
 
-            check!((T, bool), VAL1.overflowing_sub(one as T));
-            check!((T, bool), VAL2.overflowing_sub(one as T));
-            check!((T, bool), VAL2.overflowing_sub((VAL2 + one as T) as T));
+            check!((T, bool), VAL1.overflowing_sub(black_box(1)));
+            check!((T, bool), VAL2.overflowing_sub(black_box(1)));
+            check!((T, bool), VAL2.overflowing_sub(VAL2 + black_box(1)));
             check!((T, bool), VAL3.overflowing_sub(T::MAX));
             check!((T, bool), VAL3.overflowing_sub(T::MIN));
 
-            check!(T, VAL1.saturating_sub(one as T));
-            check!(T, VAL2.saturating_sub(one as T));
-            check!(T, VAL2.saturating_sub((VAL2 + one as T) as T));
+            check!(T, VAL1.saturating_sub(black_box(1)));
+            check!(T, VAL2.saturating_sub(black_box(1)));
+            check!(T, VAL2.saturating_sub(VAL2 + black_box(1)));
             check!(T, VAL3.saturating_sub(T::MAX));
             check!(T, VAL3.saturating_sub(T::MIN));
 
             // Multiplication
-            check!(T, VAL1 * (one + 1) as T);
-            check!(T, VAL1 * (one as T + VAL2));
-            check!(T, VAL2 * (one + 1) as T);
-            check!(T, VAL2 * (one as T + VAL2));
-            check!(T, VAL3 * one as T);
-            check!(T, VAL4 * (one + 1) as T);
-            check!(T, VAL5 * (one + 1) as T);
+            check!(T, VAL1 * black_box(2));
+            check!(T, VAL1 * (black_box(1) + VAL2));
+            check!(T, VAL2 * black_box(2));
+            check!(T, VAL2 * (black_box(1) + VAL2));
+            check!(T, VAL3 * black_box(1));
+            check!(T, VAL4 * black_box(2));
+            check!(T, VAL5 * black_box(2));
 
-            check!(Option<T>, VAL1.checked_mul((one + 1) as T));
-            check!(Option<T>, VAL1.checked_mul((one as T + VAL2)));
+            check!(Option<T>, VAL1.checked_mul(black_box(2)));
+            check!(Option<T>, VAL1.checked_mul(black_box(1) + VAL2));
             check!(Option<T>, VAL3.checked_mul(VAL3));
-            check!(Option<T>, VAL4.checked_mul((one + 1) as T));
-            check!(Option<T>, VAL5.checked_mul((one + 1) as T));
+            check!(Option<T>, VAL4.checked_mul(black_box(2)));
+            check!(Option<T>, VAL5.checked_mul(black_box(2)));
 
-            check!(T, VAL1.wrapping_mul((one + 1) as T));
-            check!(T, VAL1.wrapping_mul((one as T + VAL2)));
+            check!(T, VAL1.wrapping_mul(black_box(2)));
+            check!(T, VAL1.wrapping_mul((black_box(1) + VAL2)));
             check!(T, VAL3.wrapping_mul(VAL3));
-            check!(T, VAL4.wrapping_mul((one + 1) as T));
-            check!(T, VAL5.wrapping_mul((one + 1) as T));
+            check!(T, VAL4.wrapping_mul(black_box(2)));
+            check!(T, VAL5.wrapping_mul(black_box(2)));
 
-            check!((T, bool), VAL1.overflowing_mul((one + 1) as T));
-            check!((T, bool), VAL1.overflowing_mul((one as T + VAL2)));
+            check!((T, bool), VAL1.overflowing_mul(black_box(2)));
+            check!((T, bool), VAL1.overflowing_mul(black_box(1) + VAL2));
             check!((T, bool), VAL3.overflowing_mul(VAL3));
-            check!((T, bool), VAL4.overflowing_mul((one + 1) as T));
-            check!((T, bool), VAL5.overflowing_mul((one + 1) as T));
+            check!((T, bool), VAL4.overflowing_mul(black_box(2)));
+            check!((T, bool), VAL5.overflowing_mul(black_box(2)));
 
-            check!(T, VAL1.saturating_mul((one + 1) as T));
-            check!(T, VAL1.saturating_mul((one as T + VAL2)));
+            check!(T, VAL1.saturating_mul(black_box(2)));
+            check!(T, VAL1.saturating_mul(black_box(1) + VAL2));
             check!(T, VAL3.saturating_mul(VAL3));
-            check!(T, VAL4.saturating_mul((one + 1) as T));
-            check!(T, VAL5.saturating_mul((one + 1) as T));
+            check!(T, VAL4.saturating_mul(black_box(2)));
+            check!(T, VAL5.saturating_mul(black_box(2)));
 
             // Division.
-            check!(T, VAL1 / (one + 1) as T);
-            check!(T, VAL1 / (one + 2) as T);
+            check!(T, VAL1 / black_box(2));
+            check!(T, VAL1 / black_box(3));
 
-            check!(T, VAL2 / (one + 1) as T);
-            check!(T, VAL2 / (one + 2) as T);
+            check!(T, VAL2 / black_box(2));
+            check!(T, VAL2 / black_box(3));
 
-            check!(T, VAL3 / (one + 1) as T);
-            check!(T, VAL3 / (one + 2) as T);
-            check!(T, VAL3 / (one as T + VAL4));
-            check!(T, VAL3 / (one as T + VAL2));
+            check!(T, VAL3 / black_box(2));
+            check!(T, VAL3 / black_box(3));
+            check!(T, VAL3 / (black_box(1) + VAL4));
+            check!(T, VAL3 / (black_box(1) + VAL2));
 
-            check!(T, VAL4 / (one + 1) as T);
-            check!(T, VAL4 / (one + 2) as T);
+            check!(T, VAL4 / black_box(2));
+            check!(T, VAL4 / black_box(3));
 
-            check!(Option<T>, VAL1.checked_div((one + 1) as T));
-            check!(Option<T>, VAL1.checked_div((one as T + VAL2)));
+            check!(Option<T>, VAL1.checked_div(black_box(2)));
+            check!(Option<T>, VAL1.checked_div(black_box(1) + VAL2));
             check!(Option<T>, VAL3.checked_div(VAL3));
-            check!(Option<T>, VAL4.checked_div((one + 1) as T));
-            check!(Option<T>, VAL5.checked_div((one + 1) as T));
-            check!(Option<T>, (T::MIN).checked_div((0 as T).wrapping_sub(one as T)));
-            check!(Option<T>, VAL5.checked_div((one - 1) as T)); // var5 / 0
+            check!(Option<T>, VAL4.checked_div(black_box(2)));
+            check!(Option<T>, VAL5.checked_div(black_box(2)));
+            check!(Option<T>, (T::MIN).checked_div(black_box(0 as T).wrapping_sub(1)));
+            check!(Option<T>, VAL5.checked_div(black_box(0))); // var5 / 0
 
-            check!(T, VAL1.wrapping_div((one + 1) as T));
-            check!(T, VAL1.wrapping_div((one as T + VAL2)));
+            check!(T, VAL1.wrapping_div(black_box(2)));
+            check!(T, VAL1.wrapping_div(black_box(1) + VAL2));
             check!(T, VAL3.wrapping_div(VAL3));
-            check!(T, VAL4.wrapping_div((one + 1) as T));
-            check!(T, VAL5.wrapping_div((one + 1) as T));
-            check!(T, (T::MIN).wrapping_div((0 as T).wrapping_sub(one as T)));
+            check!(T, VAL4.wrapping_div(black_box(2)));
+            check!(T, VAL5.wrapping_div(black_box(2)));
+            check!(T, (T::MIN).wrapping_div(black_box(0 as T).wrapping_sub(1)));
 
-            check!((T, bool), VAL1.overflowing_div((one + 1) as T));
-            check!((T, bool), VAL1.overflowing_div((one as T + VAL2)));
+            check!((T, bool), VAL1.overflowing_div(black_box(2)));
+            check!((T, bool), VAL1.overflowing_div(black_box(1) + VAL2));
             check!((T, bool), VAL3.overflowing_div(VAL3));
-            check!((T, bool), VAL4.overflowing_div((one + 1) as T));
-            check!((T, bool), VAL5.overflowing_div((one + 1) as T));
-            check!((T, bool), (T::MIN).overflowing_div((0 as T).wrapping_sub(one as T)));
+            check!((T, bool), VAL4.overflowing_div(black_box(2)));
+            check!((T, bool), VAL5.overflowing_div(black_box(2)));
+            check!((T, bool), (T::MIN).overflowing_div(black_box(0 as T).wrapping_sub(1)));
 
-            check!(T, VAL1.saturating_div((one + 1) as T));
-            check!(T, VAL1.saturating_div((one as T + VAL2)));
+            check!(T, VAL1.saturating_div(black_box(2)));
+            check!(T, VAL1.saturating_div((black_box(1) + VAL2)));
             check!(T, VAL3.saturating_div(VAL3));
-            check!(T, VAL4.saturating_div((one + 1) as T));
-            check!(T, VAL5.saturating_div((one + 1) as T));
-            check!(T, (T::MIN).saturating_div((0 as T).wrapping_sub(one as T)));
+            check!(T, VAL4.saturating_div(black_box(2)));
+            check!(T, VAL5.saturating_div(black_box(2)));
+            check!(T, (T::MIN).saturating_div((0 as T).wrapping_sub(black_box(1))));
         };
     }
 
