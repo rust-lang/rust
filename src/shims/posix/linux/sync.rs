@@ -55,16 +55,14 @@ pub fn futex<'tcx>(
         op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
-            let bitset;
-
-            if wait_bitset {
+            let bitset = if wait_bitset {
                 if args.len() != 7 {
                     throw_ub_format!(
                         "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT_BITSET`: got {}, expected 7",
                         args.len()
                     );
                 }
-                bitset = this.read_scalar(&args[6])?.to_u32()?;
+                this.read_scalar(&args[6])?.to_u32()?
             } else {
                 if args.len() < 5 {
                     throw_ub_format!(
@@ -72,8 +70,8 @@ pub fn futex<'tcx>(
                         args.len()
                     );
                 }
-                bitset = u32::MAX;
-            }
+                u32::MAX
+            };
 
             if bitset == 0 {
                 let einval = this.eval_libc("EINVAL")?;
@@ -182,18 +180,17 @@ pub fn futex<'tcx>(
         // FUTEX_WAKE_BITSET: (int *addr, int op = FUTEX_WAKE, int val, const timespect *_unused, int *_unused, unsigned int bitset)
         // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
         op if op == futex_wake || op == futex_wake_bitset => {
-            let bitset;
-            if op == futex_wake_bitset {
+            let bitset = if op == futex_wake_bitset {
                 if args.len() != 7 {
                     throw_ub_format!(
                         "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAKE_BITSET`: got {}, expected 7",
                         args.len()
                     );
                 }
-                bitset = this.read_scalar(&args[6])?.to_u32()?;
+                this.read_scalar(&args[6])?.to_u32()?
             } else {
-                bitset = u32::MAX;
-            }
+                u32::MAX
+            };
             if bitset == 0 {
                 let einval = this.eval_libc("EINVAL")?;
                 this.set_last_error(einval)?;
