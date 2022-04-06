@@ -21,6 +21,7 @@ store.register_group(true, "clippy::complexity", Some("clippy_complexity"), vec!
     LintId::of(lifetimes::EXTRA_UNUSED_LIFETIMES),
     LintId::of(lifetimes::NEEDLESS_LIFETIMES),
     LintId::of(loops::EXPLICIT_COUNTER_LOOP),
+    LintId::of(loops::MANUAL_FIND),
     LintId::of(loops::MANUAL_FLATTEN),
     LintId::of(loops::SINGLE_ELEMENT_LOOP),
     LintId::of(loops::WHILE_LET_LOOP),
