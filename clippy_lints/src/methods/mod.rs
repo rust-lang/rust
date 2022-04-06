@@ -9,6 +9,7 @@ mod chars_next_cmp_with_unwrap;
 mod clone_on_copy;
 mod clone_on_ref_ptr;
 mod cloned_instead_of_copied;
+mod err_expect;
 mod expect_fun_call;
 mod expect_used;
 mod extend_with_drain;
@@ -360,6 +361,29 @@ declare_clippy_lint! {
     pub OK_EXPECT,
     style,
     "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `.err().expect()` calls on the `Result` type.
+    ///
+    /// ### Why is this bad?
+    /// `.expect_err()` can be called directly to avoid the extra type conversion from `err()`.
+    ///
+    /// ### Example
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.err().expect("Testing err().expect()");
+    /// ```
+    /// Use instead:
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err");
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub ERR_EXPECT,
+    style,
+    r#"using `.err().expect("")` when `.expect_err("")` can be used"#
 }
 
 declare_clippy_lint! {
@@ -2168,6 +2192,7 @@ impl_lint_pass!(Methods => [
     NEEDLESS_SPLITN,
     UNNECESSARY_TO_OWNED,
     UNNECESSARY_JOIN,
+    ERR_EXPECT,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -2431,8 +2456,10 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             },
             ("expect", [_]) => match method_call(recv) {
                 Some(("ok", [recv], _)) => ok_expect::check(cx, expr, recv),
+                Some(("err", [recv], err_span)) => err_expect::check(cx, expr, recv, msrv, span, err_span),
                 _ => expect_used::check(cx, expr, recv),
             },
+
             ("extend", [arg]) => {
                 string_extend_chars::check(cx, expr, recv, arg);
                 extend_with_drain::check(cx, expr, recv, arg);
@@ -2574,6 +2601,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                 },
             },
+
             _ => {},
         }
     }

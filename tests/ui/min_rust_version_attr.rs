@@ -145,6 +145,11 @@ fn int_from_bool() -> u8 {
     true as u8
 }
 
+fn err_expect() {
+    let x: Result<u32, &str> = Ok(10);
+    x.err().expect("Testing expect_err");
+}
+
 fn main() {
     filter_map_next();
     checked_conversion();
@@ -162,6 +167,7 @@ fn main() {
     missing_const_for_fn();
     unnest_or_patterns();
     int_from_bool();
+    err_expect();
 }
 
 mod just_under_msrv {
