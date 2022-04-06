@@ -160,6 +160,53 @@ fn wait_wake() {
     assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
+fn wait_wake_bitset() {
+    let start = Instant::now();
+
+    static FUTEX: i32 = 0;
+
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(200));
+        unsafe {
+            assert_eq!(libc::syscall(
+                libc::SYS_futex,
+                &FUTEX as *const i32,
+                libc::FUTEX_WAKE_BITSET,
+                10, // Wake up at most 10 threads.
+                0,
+                0,
+                0b1001, // bitset
+            ), 0); // Didn't match any thread.
+        }
+        thread::sleep(Duration::from_millis(200));
+        unsafe {
+            assert_eq!(libc::syscall(
+                libc::SYS_futex,
+                &FUTEX as *const i32,
+                libc::FUTEX_WAKE_BITSET,
+                10, // Wake up at most 10 threads.
+                0,
+                0,
+                0b0110, // bitset
+            ), 1); // Woken up one thread.
+        }
+    });
+
+    unsafe {
+        assert_eq!(libc::syscall(
+            libc::SYS_futex,
+            &FUTEX as *const i32,
+            libc::FUTEX_WAIT_BITSET,
+            0,
+            ptr::null::<libc::timespec>(),
+            0,
+            0b0100, // bitset
+        ), 0);
+    }
+
+    assert!((400..1000).contains(&start.elapsed().as_millis()));
+}
+
 fn main() {
     wake_nobody();
     wake_dangling();
@@ -167,4 +214,5 @@ fn main() {
     wait_timeout();
     wait_absolute_timeout();
     wait_wake();
+    wait_wake_bitset();
 }
