@@ -36,7 +36,9 @@ pub fn futex<'tcx>(
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG")?;
     let futex_wait = this.eval_libc_i32("FUTEX_WAIT")?;
+    let futex_wait_bitset = this.eval_libc_i32("FUTEX_WAIT_BITSET")?;
     let futex_wake = this.eval_libc_i32("FUTEX_WAKE")?;
+    let futex_wake_bitset = this.eval_libc_i32("FUTEX_WAKE_BITSET")?;
     let futex_realtime = this.eval_libc_i32("FUTEX_CLOCK_REALTIME")?;
 
     // FUTEX_PRIVATE enables an optimization that stops it from working across processes.
@@ -45,12 +47,37 @@ pub fn futex<'tcx>(
         // FUTEX_WAIT: (int *addr, int op = FUTEX_WAIT, int val, const timespec *timeout)
         // Blocks the thread if *addr still equals val. Wakes up when FUTEX_WAKE is called on the same address,
         // or *timeout expires. `timeout == null` for an infinite timeout.
-        op if op & !futex_realtime == futex_wait => {
-            if args.len() < 5 {
-                throw_ub_format!(
-                    "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5",
-                    args.len()
-                );
+        //
+        // FUTEX_WAIT_BITSET: (int *addr, int op = FUTEX_WAIT_BITSET, int val, const timespec *timeout, int *_ignored, unsigned int bitset)
+        // This is identical to FUTEX_WAIT, except:
+        //  - The timeout is absolute rather than relative.
+        //  - You can specify the bitset to selecting what WAKE operations to respond to.
+        op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
+            let wait_bitset = op & !futex_realtime == futex_wait_bitset;
+
+            let bitset = if wait_bitset {
+                if args.len() != 7 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT_BITSET`: got {}, expected 7",
+                        args.len()
+                    );
+                }
+                this.read_scalar(&args[6])?.to_u32()?
+            } else {
+                if args.len() < 5 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5",
+                        args.len()
+                    );
+                }
+                u32::MAX
+            };
+
+            if bitset == 0 {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
+                return Ok(());
             }
 
             // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
@@ -70,10 +97,20 @@ pub fn futex<'tcx>(
                         return Ok(());
                     }
                 };
-                Some(if op & futex_realtime != 0 {
-                    Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
+                Some(if wait_bitset {
+                    // FUTEX_WAIT_BITSET uses an absolute timestamp.
+                    if op & futex_realtime != 0 {
+                        Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
+                    } else {
+                        Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
+                    }
                 } else {
-                    Time::Monotonic(Instant::now().checked_add(duration).unwrap())
+                    // FUTEX_WAIT uses a relative timestamp.
+                    if op & futex_realtime != 0 {
+                        Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
+                    } else {
+                        Time::Monotonic(Instant::now().checked_add(duration).unwrap())
+                    }
                 })
             };
             // Check the pointer for alignment and validity.
@@ -108,7 +145,7 @@ pub fn futex<'tcx>(
             if val == futex_val {
                 // The value still matches, so we block the trait make it wait for FUTEX_WAKE.
                 this.block_thread(thread);
-                this.futex_wait(addr_scalar.to_machine_usize(this)?, thread);
+                this.futex_wait(addr_scalar.to_machine_usize(this)?, thread, bitset);
                 // Succesfully waking up from FUTEX_WAIT always returns zero.
                 this.write_scalar(Scalar::from_machine_isize(0, this), dest)?;
                 // Register a timeout callback if a timeout was specified.
@@ -140,10 +177,29 @@ pub fn futex<'tcx>(
         // Wakes at most `val` threads waiting on the futex at `addr`.
         // Returns the amount of threads woken up.
         // Does not access the futex value at *addr.
-        op if op == futex_wake => {
+        // FUTEX_WAKE_BITSET: (int *addr, int op = FUTEX_WAKE, int val, const timespect *_unused, int *_unused, unsigned int bitset)
+        // Same as FUTEX_WAKE, but allows you to specify a bitset to select which threads to wake up.
+        op if op == futex_wake || op == futex_wake_bitset => {
+            let bitset = if op == futex_wake_bitset {
+                if args.len() != 7 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAKE_BITSET`: got {}, expected 7",
+                        args.len()
+                    );
+                }
+                this.read_scalar(&args[6])?.to_u32()?
+            } else {
+                u32::MAX
+            };
+            if bitset == 0 {
+                let einval = this.eval_libc("EINVAL")?;
+                this.set_last_error(einval)?;
+                this.write_scalar(Scalar::from_machine_isize(-1, this), dest)?;
+                return Ok(());
+            }
             let mut n = 0;
             for _ in 0..val {
-                if let Some(thread) = this.futex_wake(addr_scalar.to_machine_usize(this)?) {
+                if let Some(thread) = this.futex_wake(addr_scalar.to_machine_usize(this)?, bitset) {
                     this.unblock_thread(thread);
                     this.unregister_timeout_callback_if_exists(thread);
                     n += 1;

@@ -7,6 +7,7 @@
 #![feature(rustc_private)]
 extern crate libc;
 
+use std::mem::MaybeUninit;
 use std::ptr;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -93,6 +94,42 @@ fn wait_timeout() {
     assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
+fn wait_absolute_timeout() {
+    let start = Instant::now();
+
+    // Get the current monotonic timestamp as timespec.
+    let mut timeout = unsafe {
+        let mut now: MaybeUninit<libc::timespec> = MaybeUninit::uninit();
+        assert_eq!(libc::clock_gettime(libc::CLOCK_MONOTONIC, now.as_mut_ptr()), 0);
+        now.assume_init()
+    };
+
+    // Add 200ms.
+    timeout.tv_nsec += 200_000_000;
+    if timeout.tv_nsec > 1_000_000_000 {
+        timeout.tv_nsec -= 1_000_000_000;
+        timeout.tv_sec += 1;
+    }
+
+    let futex: i32 = 123;
+
+    // Wait for 200ms from now, with nobody waking us up early.
+    unsafe {
+        assert_eq!(libc::syscall(
+            libc::SYS_futex,
+            &futex as *const i32,
+            libc::FUTEX_WAIT_BITSET,
+            123,
+            &timeout,
+            0,
+            u32::MAX,
+        ), -1);
+        assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
+    }
+
+    assert!((200..1000).contains(&start.elapsed().as_millis()));
+}
+
 fn wait_wake() {
     let start = Instant::now();
 
@@ -123,10 +160,59 @@ fn wait_wake() {
     assert!((200..1000).contains(&start.elapsed().as_millis()));
 }
 
+fn wait_wake_bitset() {
+    let start = Instant::now();
+
+    static FUTEX: i32 = 0;
+
+    thread::spawn(move || {
+        thread::sleep(Duration::from_millis(200));
+        unsafe {
+            assert_eq!(libc::syscall(
+                libc::SYS_futex,
+                &FUTEX as *const i32,
+                libc::FUTEX_WAKE_BITSET,
+                10, // Wake up at most 10 threads.
+                0,
+                0,
+                0b1001, // bitset
+            ), 0); // Didn't match any thread.
+        }
+        thread::sleep(Duration::from_millis(200));
+        unsafe {
+            assert_eq!(libc::syscall(
+                libc::SYS_futex,
+                &FUTEX as *const i32,
+                libc::FUTEX_WAKE_BITSET,
+                10, // Wake up at most 10 threads.
+                0,
+                0,
+                0b0110, // bitset
+            ), 1); // Woken up one thread.
+        }
+    });
+
+    unsafe {
+        assert_eq!(libc::syscall(
+            libc::SYS_futex,
+            &FUTEX as *const i32,
+            libc::FUTEX_WAIT_BITSET,
+            0,
+            ptr::null::<libc::timespec>(),
+            0,
+            0b0100, // bitset
+        ), 0);
+    }
+
+    assert!((400..1000).contains(&start.elapsed().as_millis()));
+}
+
 fn main() {
     wake_nobody();
     wake_dangling();
     wait_wrong_val();
     wait_timeout();
+    wait_absolute_timeout();
     wait_wake();
+    wait_wake_bitset();
 }
