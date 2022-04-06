@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
@@ -246,6 +246,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
     fn before_access_global(
+        _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         _allocation: ConstAllocation<'tcx>,
@@ -317,6 +318,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// need to mutate.
     #[inline(always)]
     fn memory_read(
+        _tcx: TyCtxt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
         _tag: Self::PointerTag,
@@ -328,6 +330,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Hook for performing extra checks on a memory write access.
     #[inline(always)]
     fn memory_written(
+        _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _tag: Self::PointerTag,
@@ -339,6 +342,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Hook for performing extra operations on a memory deallocation.
     #[inline(always)]
     fn memory_deallocated(
+        _tcx: TyCtxt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _tag: Self::PointerTag,
