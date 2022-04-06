@@ -1,6 +1,6 @@
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
@@ -471,6 +471,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn before_access_global(
+        _tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,

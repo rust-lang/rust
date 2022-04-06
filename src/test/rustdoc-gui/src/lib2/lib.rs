@@ -120,3 +120,13 @@ pub struct HasALongTraitWithParams {}
 pub trait LongTraitWithParamsBananaBananaBanana<T> {}
 
 impl LongTraitWithParamsBananaBananaBanana<usize> for HasALongTraitWithParams {}
+
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+pub struct LongItemInfo;
+
+pub trait SimpleTrait {}
+pub struct LongItemInfo2;
+
+/// Some docs.
+#[doc(cfg(any(target_os = "android", target_os = "linux", target_os = "emscripten", target_os = "dragonfly", target_os = "freebsd", target_os = "netbsd", target_os = "openbsd")))]
+impl SimpleTrait for LongItemInfo2 {}

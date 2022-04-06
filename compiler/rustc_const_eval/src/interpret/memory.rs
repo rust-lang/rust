@@ -327,6 +327,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Let the machine take some extra action
         let size = alloc.size();
         M::memory_deallocated(
+            *self.tcx,
             &mut self.machine,
             &mut alloc.extra,
             ptr.provenance,
@@ -509,7 +510,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 (self.tcx.eval_static_initializer(def_id)?, Some(def_id))
             }
         };
-        M::before_access_global(&self.machine, id, alloc, def_id, is_write)?;
+        M::before_access_global(*self.tcx, &self.machine, id, alloc, def_id, is_write)?;
         // We got tcx memory. Let the machine initialize its "extra" stuff.
         let alloc = M::init_allocation_extra(
             self,
@@ -575,7 +576,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         )?;
         if let Some((alloc_id, offset, ptr, alloc)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
-            M::memory_read(&self.machine, &alloc.extra, ptr.provenance, range)?;
+            M::memory_read(*self.tcx, &self.machine, &alloc.extra, ptr.provenance, range)?;
             Ok(Some(AllocRef { alloc, range, tcx: *self.tcx, alloc_id }))
         } else {
             // Even in this branch we have to be sure that we actually access the allocation, in
@@ -636,7 +637,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // We cannot call `get_raw_mut` inside `check_and_deref_ptr` as that would duplicate `&mut self`.
             let (alloc, machine) = self.get_alloc_raw_mut(alloc_id)?;
             let range = alloc_range(offset, size);
-            M::memory_written(machine, &mut alloc.extra, ptr.provenance, range)?;
+            M::memory_written(tcx, machine, &mut alloc.extra, ptr.provenance, range)?;
             Ok(Some(AllocRefMut { alloc, range, tcx, alloc_id }))
         } else {
             Ok(None)
@@ -1009,7 +1010,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
-        M::memory_read(&self.machine, &src_alloc.extra, src.provenance, src_range)?;
+        M::memory_read(*tcx, &self.machine, &src_alloc.extra, src.provenance, src_range)?;
         // We need the `dest` ptr for the next operation, so we get it now.
         // We already did the source checks and called the hooks so we are good to return early.
         let Some((dest_alloc_id, dest_offset, dest)) = dest_parts else {
@@ -1034,7 +1035,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Destination alloc preparations and access hooks.
         let (dest_alloc, extra) = self.get_alloc_raw_mut(dest_alloc_id)?;
         let dest_range = alloc_range(dest_offset, size * num_copies);
-        M::memory_written(extra, &mut dest_alloc.extra, dest.provenance, dest_range)?;
+        M::memory_written(*tcx, extra, &mut dest_alloc.extra, dest.provenance, dest_range)?;
         let dest_bytes = dest_alloc
             .get_bytes_mut_ptr(&tcx, dest_range)
             .map_err(|e| e.to_interp_error(dest_alloc_id))?

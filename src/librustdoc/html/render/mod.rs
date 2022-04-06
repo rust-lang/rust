@@ -1772,7 +1772,7 @@ pub(crate) fn render_impl_summary(
     let is_trait = i.inner_impl().trait_.is_some();
     if is_trait {
         if let Some(portability) = portability(&i.impl_item, Some(parent)) {
-            write!(w, "<span class=\"item-info\">{}</span>", portability);
+            write!(w, "<div class=\"item-info\">{}</div>", portability);
         }
     }
 
