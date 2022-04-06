@@ -63,7 +63,9 @@ pub fn futex<'tcx>(
                 let bitset = this.read_scalar(&args[6])?.to_u32()?;
 
                 if bitset != u32::MAX {
-                    throw_unsup_format!("Miri does not support `futex` syscall with `op=FUTEX_WAIT_BITSET` with a bitset other than UINT_MAX");
+                    throw_unsup_format!(
+                        "Miri does not support `futex` syscall with `op=FUTEX_WAIT_BITSET` with a bitset other than UINT_MAX"
+                    );
                 }
             } else {
                 if args.len() < 5 {
