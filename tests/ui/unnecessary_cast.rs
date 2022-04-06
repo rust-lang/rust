@@ -30,4 +30,10 @@ fn main() {
 
     // do not lint cast to cfg-dependant type
     1 as std::os::raw::c_char;
+
+    // do not lint cast to alias type
+    1 as I32Alias;
+    &1 as &I32Alias;
 }
+
+type I32Alias = i32;
