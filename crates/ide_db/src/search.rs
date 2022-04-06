@@ -102,12 +102,18 @@ impl SearchScope {
     /// Build a search scope spanning all the reverse dependencies of the given crate.
     fn reverse_dependencies(db: &RootDatabase, of: hir::Crate) -> SearchScope {
         let mut entries = FxHashMap::default();
-        for rev_dep in of.transitive_reverse_dependencies(db) {
-            let root_file = rev_dep.root_file(db);
-            let source_root_id = db.file_source_root(root_file);
-            let source_root = db.source_root(source_root_id);
-            entries.extend(source_root.iter().map(|id| (id, None)));
-        }
+        let mut insert_modules = |of: hir::Crate| {
+            entries.extend(of.modules(db).into_iter().filter_map(|module| {
+                match module.definition_source(db) {
+                    InFile { file_id, value: ModuleSource::SourceFile(..) } => {
+                        Some((file_id.original_file(db), None))
+                    }
+                    _ => None,
+                }
+            }));
+        };
+        insert_modules(of);
+        of.transitive_reverse_dependencies(db).into_iter().for_each(insert_modules);
         SearchScope { entries }
     }
 
