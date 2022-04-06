@@ -1,8 +1,10 @@
+use crate::cell::UnsafeCell;
 use crate::sync::atomic::{
-    AtomicI32,
+    AtomicI32, AtomicUsize,
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::futex::{futex_wait, futex_wake, futex_wake_all};
+use crate::sys_common::thread_info::current_thread_unique_ptr;
 use crate::time::Duration;
 
 pub type MovableMutex = Mutex;
@@ -160,5 +162,89 @@ impl Condvar {
         mutex.lock();
 
         r
+    }
+}
+
+/// A reentrant mutex. Used by stdout().lock() and friends.
+///
+/// The 'owner' field tracks which thread has locked the mutex.
+///
+/// We use current_thread_unique_ptr() as the thread identifier,
+/// which is just the address of a thread local variable.
+///
+/// If `owner` is set to the identifier of the current thread,
+/// we assume the mutex is already locked and instead of locking it again,
+/// we increment `lock_count`.
+///
+/// When unlocking, we decrement `lock_count`, and only unlock the mutex when
+/// it reaches zero.
+///
+/// `lock_count` is protected by the mutex and only accessed by the thread that has
+/// locked the mutex, so needs no synchronization.
+///
+/// `owner` can be checked by other threads that want to see if they already
+/// hold the lock, so needs to be atomic. If it compares equal, we're on the
+/// same thread that holds the mutex and memory access can use relaxed ordering
+/// since we're not dealing with multiple threads. If it compares unequal,
+/// synchronization is left to the mutex, making relaxed memory ordering for
+/// the `owner` field fine in all cases.
+pub struct ReentrantMutex {
+    mutex: Mutex,
+    owner: AtomicUsize,
+    lock_count: UnsafeCell<u32>,
+}
+
+unsafe impl Send for ReentrantMutex {}
+unsafe impl Sync for ReentrantMutex {}
+
+impl ReentrantMutex {
+    #[inline]
+    pub const unsafe fn uninitialized() -> Self {
+        Self { mutex: Mutex::new(), owner: AtomicUsize::new(0), lock_count: UnsafeCell::new(0) }
+    }
+
+    #[inline]
+    pub unsafe fn init(&self) {}
+
+    #[inline]
+    pub unsafe fn destroy(&self) {}
+
+    pub unsafe fn try_lock(&self) -> bool {
+        let this_thread = current_thread_unique_ptr();
+        if self.owner.load(Relaxed) == this_thread {
+            self.increment_lock_count();
+            true
+        } else if self.mutex.try_lock() {
+            self.owner.store(this_thread, Relaxed);
+            *self.lock_count.get() = 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub unsafe fn lock(&self) {
+        let this_thread = current_thread_unique_ptr();
+        if self.owner.load(Relaxed) == this_thread {
+            self.increment_lock_count();
+        } else {
+            self.mutex.lock();
+            self.owner.store(this_thread, Relaxed);
+            *self.lock_count.get() = 1;
+        }
+    }
+
+    unsafe fn increment_lock_count(&self) {
+        *self.lock_count.get() = (*self.lock_count.get())
+            .checked_add(1)
+            .expect("lock count overflow in reentrant mutex");
+    }
+
+    pub unsafe fn unlock(&self) {
+        *self.lock_count.get() -= 1;
+        if *self.lock_count.get() == 0 {
+            self.owner.store(0, Relaxed);
+            self.mutex.unlock();
+        }
     }
 }
