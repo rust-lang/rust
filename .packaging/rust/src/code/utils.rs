@@ -50,7 +50,7 @@ impl From<App> for Cli {
 }
 
 /// Used to decide which Enzyme Version should be used
-#[derive(Clone, Debug, PartialEq, Eq, clap::ArgEnum)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repo {
     /// Use the latest Enzyme stable release
     Stable,
