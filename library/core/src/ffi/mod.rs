@@ -14,7 +14,7 @@ use crate::marker::PhantomData;
 use crate::num::*;
 use crate::ops::{Deref, DerefMut};
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "core_c_str", issue = "94079")]
 pub use self::c_str::{CStr, FromBytesUntilNulError, FromBytesWithNulError};
 
 mod c_str;

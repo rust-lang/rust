@@ -83,9 +83,9 @@
 #[cfg(bootstrap)]
 #[unstable(feature = "cstr_internals", issue = "none")]
 pub use self::c_str::CStrExt;
-#[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
+#[unstable(feature = "alloc_c_string", issue = "94079")]
 pub use self::c_str::FromVecWithNulError;
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "alloc_c_string", issue = "94079")]
 pub use self::c_str::{CString, IntoStringError, NulError};
 
 mod c_str;

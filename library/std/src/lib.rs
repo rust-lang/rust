@@ -260,6 +260,7 @@
 #![feature(atomic_mut_ptr)]
 #![feature(char_error_internals)]
 #![feature(char_internals)]
+#![feature(core_c_str)]
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
@@ -288,6 +289,7 @@
 //
 // Library features (alloc):
 #![feature(alloc_layout_extra)]
+#![feature(alloc_c_string)]
 #![feature(allocator_api)]
 #![feature(get_mut_unchecked)]
 #![feature(map_try_insert)]

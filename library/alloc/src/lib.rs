@@ -86,6 +86,7 @@
 #![allow(explicit_outlives_requirements)]
 //
 // Library features:
+#![cfg_attr(not(no_global_oom_handling), feature(alloc_c_string))]
 #![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_chunks)]
@@ -105,6 +106,7 @@
 #![feature(const_maybe_uninit_write)]
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
+#![feature(core_c_str)]
 #![feature(core_intrinsics)]
 #![feature(core_ffi_c)]
 #![feature(const_eval_select)]
