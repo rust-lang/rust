@@ -274,6 +274,9 @@ pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
 pub const STATUS_DELETE_PENDING: NTSTATUS = 0xc0000056_u32 as _;
 pub const STATUS_INVALID_PARAMETER: NTSTATUS = 0xc000000d_u32 as _;
 
+pub const STATUS_PENDING: NTSTATUS = 0x103 as _;
+pub const STATUS_END_OF_FILE: NTSTATUS = 0xC0000011_u32 as _;
+
 // Equivalent to the `NT_SUCCESS` C preprocessor macro.
 // See: https://docs.microsoft.com/en-us/windows-hardware/drivers/kernel/using-ntstatus-values
 pub fn nt_success(status: NTSTATUS) -> bool {
@@ -316,20 +319,32 @@ impl Default for OBJECT_ATTRIBUTES {
     }
 }
 #[repr(C)]
-pub struct IO_STATUS_BLOCK {
-    pub Pointer: *mut c_void,
-    pub Information: usize,
+union IO_STATUS_BLOCK_union {
+    Status: NTSTATUS,
+    Pointer: *mut c_void,
 }
-impl Default for IO_STATUS_BLOCK {
+impl Default for IO_STATUS_BLOCK_union {
     fn default() -> Self {
-        Self { Pointer: ptr::null_mut(), Information: 0 }
+        Self { Pointer: ptr::null_mut() }
     }
+}
+#[repr(C)]
+#[derive(Default)]
+pub struct IO_STATUS_BLOCK {
+    u: IO_STATUS_BLOCK_union,
+    pub Information: usize,
 }
 
 pub type LPOVERLAPPED_COMPLETION_ROUTINE = unsafe extern "system" fn(
     dwErrorCode: DWORD,
     dwNumberOfBytesTransfered: DWORD,
     lpOverlapped: *mut OVERLAPPED,
+);
+
+type IO_APC_ROUTINE = unsafe extern "system" fn(
+    ApcContext: *mut c_void,
+    IoStatusBlock: *mut IO_STATUS_BLOCK,
+    Reserved: ULONG,
 );
 
 #[repr(C)]
@@ -971,13 +986,6 @@ extern "system" {
         lpOverlapped: LPOVERLAPPED,
         lpCompletionRoutine: LPOVERLAPPED_COMPLETION_ROUTINE,
     ) -> BOOL;
-    pub fn WriteFile(
-        hFile: BorrowedHandle<'_>,
-        lpBuffer: LPVOID,
-        nNumberOfBytesToWrite: DWORD,
-        lpNumberOfBytesWritten: LPDWORD,
-        lpOverlapped: LPOVERLAPPED,
-    ) -> BOOL;
     pub fn WriteFileEx(
         hFile: BorrowedHandle<'_>,
         lpBuffer: LPVOID,
@@ -1267,6 +1275,32 @@ compat_fn! {
         EaLength: ULONG
     ) -> NTSTATUS {
         panic!("`NtCreateFile` not available");
+    }
+    pub fn NtReadFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *mut crate::mem::MaybeUninit<u8>,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtReadFile` not available");
+    }
+    pub fn NtWriteFile(
+        FileHandle: BorrowedHandle<'_>,
+        Event: HANDLE,
+        ApcRoutine: Option<IO_APC_ROUTINE>,
+        ApcContext: *mut c_void,
+        IoStatusBlock: &mut IO_STATUS_BLOCK,
+        Buffer: *const u8,
+        Length: ULONG,
+        ByteOffset: Option<&LARGE_INTEGER>,
+        Key: Option<&ULONG>
+    ) -> NTSTATUS {
+        panic!("`NtWriteFile` not available");
     }
     pub fn RtlNtStatusToDosError(
         Status: NTSTATUS

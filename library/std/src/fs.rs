@@ -85,6 +85,12 @@ use crate::time::SystemTime;
 /// by different processes. Avoid assuming that holding a `&File` means that the
 /// file will not change.
 ///
+/// # Platform-specific behavior
+///
+/// On Windows, the implementation of [`Read`] and [`Write`] traits for `File`
+/// perform synchronous I/O operations. Therefore the underlying file must not
+/// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
+///
 /// [`BufReader<R>`]: io::BufReader
 /// [`sync_all`]: File::sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
