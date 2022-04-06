@@ -152,7 +152,7 @@ pub(crate) fn hover(
         let res = descended
             .iter()
             .find_map(|token| hover_type_fallback(sema, config, token, &original_token));
-        if let res @ Some(_) = res {
+        if let Some(_) = res {
             return res;
         }
     }
