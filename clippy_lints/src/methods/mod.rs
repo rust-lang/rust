@@ -2055,7 +2055,7 @@ declare_clippy_lint! {
     /// Checks for use of `.collect::<Vec<String>>().join("")` on iterators.
     ///
     /// ### Why is this bad?
-    /// `.collect::<String>()` is more concise and usually more performant
+    /// `.collect::<String>()` is more concise and might be more performant
     ///
     /// ### Example
     /// ```rust
@@ -2070,9 +2070,12 @@ declare_clippy_lint! {
     /// println!("{}", output);
     /// ```
     /// ### Known problems
-    /// While `.collect::<String>()` is more performant in most cases, there are cases where
+    /// While `.collect::<String>()` is sometimes more performant, there are cases where
     /// using `.collect::<String>()` over `.collect::<Vec<String>>().join("")`
     /// will prevent loop unrolling and will result in a negative performance impact.
+    ///
+    /// Additionlly, differences have been observed between aarch64 and x86_64 assembly output,
+    /// with aarch64 tending to producing faster assembly in more cases when using `.collect::<String>()`
     #[clippy::version = "1.61.0"]
     pub UNNECESSARY_JOIN,
     pedantic,
