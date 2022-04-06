@@ -36,6 +36,7 @@ pub fn futex<'tcx>(
 
     let futex_private = this.eval_libc_i32("FUTEX_PRIVATE_FLAG")?;
     let futex_wait = this.eval_libc_i32("FUTEX_WAIT")?;
+    let futex_wait_bitset = this.eval_libc_i32("FUTEX_WAIT_BITSET")?;
     let futex_wake = this.eval_libc_i32("FUTEX_WAKE")?;
     let futex_realtime = this.eval_libc_i32("FUTEX_CLOCK_REALTIME")?;
 
@@ -45,12 +46,32 @@ pub fn futex<'tcx>(
         // FUTEX_WAIT: (int *addr, int op = FUTEX_WAIT, int val, const timespec *timeout)
         // Blocks the thread if *addr still equals val. Wakes up when FUTEX_WAKE is called on the same address,
         // or *timeout expires. `timeout == null` for an infinite timeout.
-        op if op & !futex_realtime == futex_wait => {
-            if args.len() < 5 {
-                throw_ub_format!(
-                    "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5",
-                    args.len()
-                );
+        //
+        // FUTEX_WAIT_BITSET: (int *addr, int op = FUTEX_WAIT_BITSET, int val, const timespec *timeout, int *_ignored, unsigned int bitset)
+        // When bitset is u32::MAX, this is identical to FUTEX_WAIT, except the timeout is absolute rather than relative.
+        op if op & !futex_realtime == futex_wait || op & !futex_realtime == futex_wait_bitset => {
+            let wait_bitset = op & !futex_realtime == futex_wait_bitset;
+
+            if wait_bitset {
+                if args.len() != 7 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT_BITSET`: got {}, expected 7",
+                        args.len()
+                    );
+                }
+
+                let bitset = this.read_scalar(&args[6])?.to_u32()?;
+
+                if bitset != u32::MAX {
+                    throw_unsup_format!("Miri does not support `futex` syscall with `op=FUTEX_WAIT_BITSET` with a bitset other than UINT_MAX");
+                }
+            } else {
+                if args.len() < 5 {
+                    throw_ub_format!(
+                        "incorrect number of arguments for `futex` syscall with `op=FUTEX_WAIT`: got {}, expected at least 5",
+                        args.len()
+                    );
+                }
             }
 
             // `deref_operand` but not actually dereferencing the ptr yet (it might be NULL!).
@@ -70,10 +91,20 @@ pub fn futex<'tcx>(
                         return Ok(());
                     }
                 };
-                Some(if op & futex_realtime != 0 {
-                    Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
+                Some(if wait_bitset {
+                    // FUTEX_WAIT_BITSET uses an absolute timestamp.
+                    if op & futex_realtime != 0 {
+                        Time::RealTime(SystemTime::UNIX_EPOCH.checked_add(duration).unwrap())
+                    } else {
+                        Time::Monotonic(this.machine.time_anchor.checked_add(duration).unwrap())
+                    }
                 } else {
-                    Time::Monotonic(Instant::now().checked_add(duration).unwrap())
+                    // FUTEX_WAIT uses a relative timestamp.
+                    if op & futex_realtime != 0 {
+                        Time::RealTime(SystemTime::now().checked_add(duration).unwrap())
+                    } else {
+                        Time::Monotonic(Instant::now().checked_add(duration).unwrap())
+                    }
                 })
             };
             // Check the pointer for alignment and validity.
