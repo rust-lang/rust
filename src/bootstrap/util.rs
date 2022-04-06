@@ -308,10 +308,10 @@ pub fn is_valid_test_suite_arg<'a, P: AsRef<Path>>(
     let abs_path = builder.src.join(path);
     let exists = abs_path.is_dir() || abs_path.is_file();
     if !exists {
-        if let Some(p) = abs_path.to_str() {
-            builder.info(&format!("Warning: Skipping \"{}\": not a regular file or directory", p));
-        }
-        return None;
+        panic!(
+            "Invalid test suite filter \"{}\": file or directory does not exist",
+            abs_path.display()
+        );
     }
     // Since test suite paths are themselves directories, if we don't
     // specify a directory or file, we'll get an empty string here
