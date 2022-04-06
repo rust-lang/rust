@@ -134,9 +134,12 @@ mod num_to_bytes {
     }
 }
 
-fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
-    let _: &str = unsafe { std::mem::transmute(b) };
+fn bytes_to_str(mb: &mut [u8]) {
+    const B: &[u8] = b"";
+
+    let _: &str = unsafe { std::mem::transmute(B) };
     let _: &mut str = unsafe { std::mem::transmute(mb) };
+    const _: &str = unsafe { std::mem::transmute(B) };
 }
 
 fn main() {}
