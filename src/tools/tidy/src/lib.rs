@@ -48,6 +48,7 @@ pub mod features;
 pub mod pal;
 pub mod primitive_docs;
 pub mod style;
+pub mod symbols;
 pub mod target_specific_tests;
 pub mod ui_tests;
 pub mod unit_tests;

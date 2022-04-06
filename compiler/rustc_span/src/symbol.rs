@@ -1,6 +1,8 @@
 //! An "interner" is a data structure that associates values with usize tags and
 //! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
+// NOTE: If the symbols list is moved to another file,
+// please also update src/tools/tidy/src/symbols.rs
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
@@ -19,11 +21,73 @@ use crate::{with_session_globals, Edition, Span, DUMMY_SP};
 #[cfg(test)]
 mod tests;
 
-// The proc macro code for this is in `compiler/rustc_macros/src/symbols.rs`.
+macro_rules! symbols {
+    (@$_:ident: $lit:literal) => ($lit);
+    (@$name:ident) => (stringify!($name));
+    (
+        Keywords {
+            $($KName:ident: $KDisplay:literal),*$(,)?
+        }
+
+        Symbols {
+            $($SName:ident$(: $SDisplay:literal)?),*$(,)?
+        }
+    ) => {
+        mod all {
+            #[allow(non_camel_case_types)]
+            #[repr(u32)]
+            pub enum KSyms {
+                $(
+                    $KName,
+                )*
+                ____anchor,
+            }
+
+            #[allow(non_camel_case_types)]
+            #[repr(u32)]
+            pub enum SSyms {
+                $(
+                    $SName,
+                )*
+                ____anchor
+            }
+        }
+
+        const SYMBOL_DIGITS_BASE: u32 = all::KSyms::____anchor as u32 + all::SSyms::____anchor as u32;
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        mod kw_generated {
+            use super::{Symbol, all};
+
+            $(pub const $KName: Symbol = Symbol::new(all::KSyms::$KName as u32);)*
+        }
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        mod sym_generated {
+            use super::{Symbol, all};
+
+            $(pub const $SName: Symbol = Symbol::new(all::KSyms::____anchor as u32 + all::SSyms::$SName as u32);)*
+        }
+
+        impl Interner {
+            pub(crate) fn fresh() -> Self {
+                Interner::prefill(&[
+                    $($KDisplay,)*
+                    $(symbols!(@$SName$(: $SDisplay)?),)*
+                    "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+                ])
+            }
+        }
+    };
+}
+
 symbols! {
     // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
     // this should be rarely necessary though if the keywords are kept in alphabetic order.
     Keywords {
+        // keywords-start
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
         Empty:              "",
@@ -101,6 +165,7 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Union:              "union",
+        // keywords-end
     }
 
     // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
@@ -114,14 +179,14 @@ symbols! {
     // As well as the symbols listed, there are symbols for the strings
     // "0", "1", ..., "9", which are accessible via `sym::integer`.
     //
-    // The proc macro will abort if symbols are not in alphabetical order (as
-    // defined by `impl Ord for str`) or if any symbols are duplicated. Vim
-    // users can sort the list by selecting it and executing the command
-    // `:'<,'>!LC_ALL=C sort`.
+    // Tidy will error if symbols are not in alphabetical order (as defined by
+    // `impl Ord for str`) or if any symbols are duplicated. Vim users can sort
+    // the list by selecting it and executing the command `:'<,'>!LC_ALL=C sort`.
     //
     // There is currently no checking that all symbols are used; that would be
     // nice to have.
     Symbols {
+        // symbols-start
         AcqRel,
         Acquire,
         Alignment,
@@ -1531,6 +1596,7 @@ symbols! {
         xmm_reg,
         ymm_reg,
         zmm_reg,
+        // symbols-end
     }
 }
 

@@ -13,17 +13,11 @@ mod newtype;
 mod query;
 mod serialize;
 mod session_diagnostic;
-mod symbols;
 mod type_foldable;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
     query::rustc_queries(input)
-}
-
-#[proc_macro]
-pub fn symbols(input: TokenStream) -> TokenStream {
-    symbols::symbols(input.into()).into()
 }
 
 /// Creates a struct type `S` that can be used as an index with
