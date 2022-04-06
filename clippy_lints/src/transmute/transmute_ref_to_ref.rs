@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(
                     } else {
                         format!("std::str::from_utf8{postfix}({snippet}).unwrap()")
                     },
-                    Applicability::Unspecified,
+                    Applicability::MaybeIncorrect,
                 );
                 triggered = true;
             } else {
