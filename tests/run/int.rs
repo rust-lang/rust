@@ -3,32 +3,13 @@
 // Run-time:
 //   status: 0
 
-#![feature(arbitrary_self_types, auto_traits, core_intrinsics, lang_items, start, intrinsics)]
+#![feature(bench_black_box, const_black_box, core_intrinsics, start)]
 
 #![no_std]
 
-mod intrinsics {
-    extern "rust-intrinsic" {
-        pub fn abort() -> !;
-    }
-}
-
-/*
- * Core
- */
-
-mod libc {
-    #[link(name = "c")]
-    extern "C" {
-        pub fn puts(s: *const u8) -> i32;
-    }
-}
-
 #[panic_handler]
 fn panic_handler(_: &core::panic::PanicInfo) -> ! {
-    unsafe {
-        core::intrinsics::abort();
-    }
+    core::intrinsics::abort();
 }
 
 /*
@@ -36,118 +17,324 @@ fn panic_handler(_: &core::panic::PanicInfo) -> ! {
  */
 
 #[start]
-fn main(argc: isize, _argv: *const *const u8) -> isize {
-    let var = 134217856_u128;
-    let var2 = 10475372733397991552_u128;
-    let var3 = 193236519889708027473620326106273939584_u128;
-    let var4 = 123236519889708027473620326106273939584_u128;
-    let var5 = 153236519889708027473620326106273939584_u128;
-    let var6 = 18446744073709551616_i128;
-    let var7 = 170141183460469231731687303715884105728_u128;
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    use core::hint::black_box;
 
-    // Shifts.
-    assert_eq!(var << (argc as u128 - 1), var);
-    assert_eq!(var << argc as u128, 268435712);
-    assert_eq!(var << (argc + 32) as u128, 1152922604118474752);
-    assert_eq!(var << (argc + 48) as u128, 75557935783508361347072);
-    assert_eq!(var << (argc + 60) as u128, 309485304969250248077606912);
-    assert_eq!(var << (argc + 62) as u128, 1237941219877000992310427648);
-    assert_eq!(var << (argc + 63) as u128, 2475882439754001984620855296);
-    assert_eq!(var << (argc + 80) as u128, 324518863143436548128224745357312);
+    macro_rules! check {
+        ($ty:ty, $expr:expr) => {
+            {
+                const EXPECTED: $ty = $expr;
+                assert_eq!($expr, EXPECTED);
+            }
+        };
+    }
 
-    assert_eq!(var2 << argc as u128, 20950745466795983104);
-    assert_eq!(var2 << (argc as u128 - 1), var2);
-    assert_eq!(var2 << (argc + 32) as u128, 89982766606709001335848566784);
-    assert_eq!(var2 << (argc + 48) as u128, 5897110592337281111546171672756224);
-    assert_eq!(var2 << (argc + 60) as u128, 24154564986213503432893119171609493504);
-    assert_eq!(var2 << (argc + 62) as u128, 96618259944854013731572476686437974016);
-    assert_eq!(var2 << (argc + 63) as u128, 193236519889708027463144953372875948032);
+    check!(u32, (2220326408_u32 + black_box(1)) >> (32 - 6));
 
-    assert_eq!(var3 << argc as u128, 46190672858477591483866044780779667712);
-    assert_eq!(var3 << (argc as u128 - 1), var3);
-    assert_eq!(var3 << (argc + 32) as u128, 21267668304951024224840338247585366016);
-    assert_eq!(var3 << (argc + 48) as u128, 1335125106377253154015353231953100800);
-    assert_eq!(var3 << (argc + 60) as u128, 24154564986213503432893119171609493504);
-    assert_eq!(var3 << (argc + 62) as u128, 96618259944854013731572476686437974016);
-    assert_eq!(var3 << (argc + 63) as u128, 193236519889708027463144953372875948032);
+    /// Generate `check!` tests for integer types at least as wide as 128 bits.
+    macro_rules! check_ops128 {
+        () => {
+            check_ops64!();
 
-    assert_eq!((2220326408_u32 + argc as u32) >> (32 - 6), 33);
+            // Shifts.
+            check!(T, VAL1 << black_box(64));
+            check!(T, VAL1 << black_box(81));
+            check!(T, VAL3 << black_box(63));
+            check!(T, VAL3 << black_box(64));
 
-    assert_eq!(var >> (argc as u128 - 1), var);
-    assert_eq!(var >> argc as u128, 67108928);
-    assert_eq!(var >> (argc + 32) as u128, 0);
-    assert_eq!(var >> (argc + 48) as u128, 0);
-    assert_eq!(var >> (argc + 60) as u128, 0);
-    assert_eq!(var >> (argc + 62) as u128, 0);
-    assert_eq!(var >> (argc + 63) as u128, 0);
+            check!(T, VAL1 >> black_box(64));
+            check!(T, VAL2 >> black_box(64));
+            check!(T, VAL3 >> black_box(64));
+            check!(T, VAL3 >> black_box(81));
+        };
+    }
 
-    assert_eq!(var2 >> argc as u128, 5237686366698995776);
-    assert_eq!(var2 >> (argc as u128 - 1), var2);
-    assert_eq!(var2 >> (argc + 32) as u128, 1219493888);
-    assert_eq!(var2 >> (argc + 48) as u128, 18608);
-    assert_eq!(var2 >> (argc + 60) as u128, 4);
-    assert_eq!(var2 >> (argc + 62) as u128, 1);
-    assert_eq!(var2 >> (argc + 63) as u128, 0);
+    /// Generate `check!` tests for integer types at least as wide as 64 bits.
+    macro_rules! check_ops64 {
+        () => {
+            check_ops32!();
 
-    assert_eq!(var3 >> (argc as u128 - 1), var3);
-    assert_eq!(var3 >> argc as u128, 96618259944854013736810163053136969792);
-    assert_eq!(var3 >> (argc + 32) as u128, 22495691651677250335181635584);
-    assert_eq!(var3 >> (argc + 48) as u128, 343257013727985387194544);
-    assert_eq!(var3 >> (argc + 60) as u128, 83802981867183932420);
-    assert_eq!(var3 >> (argc + 62) as u128, 20950745466795983105);
-    assert_eq!(var3 >> (argc + 63) as u128, 10475372733397991552);
-    assert_eq!(var3 >> (argc + 80) as u128, 79920751444992);
+            // Shifts.
+            check!(T, VAL2 << black_box(33));
+            check!(T, VAL2 << black_box(49));
+            check!(T, VAL2 << black_box(61));
+            check!(T, VAL2 << black_box(63));
 
-    assert_eq!(var6 >> argc as u128, 9223372036854775808);
-    assert_eq!((var6 - 1) >> argc as u128, 9223372036854775807);
-    assert_eq!(var7 >> argc as u128, 85070591730234615865843651857942052864);
+            check!(T, VAL3 << black_box(33));
+            check!(T, VAL3 << black_box(49));
+            check!(T, VAL3 << black_box(61));
 
-    // Casts
-    assert_eq!((var >> (argc + 32) as u128) as u64, 0);
-    assert_eq!((var >> argc as u128) as u64, 67108928);
+            check!(T, VAL1 >> black_box(33));
+            check!(T, VAL1 >> black_box(49));
+            check!(T, VAL1 >> black_box(61));
+            check!(T, VAL1 >> black_box(63));
 
-    // Addition.
-    assert_eq!(var + argc as u128, 134217857);
+            check!(T, VAL2 >> black_box(33));
+            check!(T, VAL2 >> black_box(49));
+            check!(T, VAL2 >> black_box(61));
+            check!(T, VAL2 >> black_box(63));
 
-    assert_eq!(var2 + argc as u128, 10475372733397991553);
-    assert_eq!(var2 + (var2 + argc as u128) as u128, 20950745466795983105);
+            check!(T, VAL3 >> black_box(33));
+            check!(T, VAL3 >> black_box(49));
+            check!(T, VAL3 >> black_box(61));
+            check!(T, VAL3 >> black_box(63));
+        };
+    }
 
-    assert_eq!(var3 + argc as u128, 193236519889708027473620326106273939585);
+    /// Generate `check!` tests for integer types at least as wide as 32 bits.
+    macro_rules! check_ops32 {
+        () => {
+            // Shifts.
+            check!(T, VAL2 << black_box(1));
+            check!(T, VAL2 << black_box(0));
 
-    // Subtraction
-    assert_eq!(var - argc as u128, 134217855);
+            check!(T, VAL3 << black_box(1));
+            check!(T, VAL3 << black_box(0));
 
-    assert_eq!(var2 - argc as u128, 10475372733397991551);
+            check!(T, VAL1.wrapping_shl(black_box(0)));
+            check!(T, VAL1.wrapping_shl(black_box(1)));
+            check!(T, VAL1.wrapping_shl(black_box(33)));
+            check!(T, VAL1.wrapping_shl(black_box(49)));
+            check!(T, VAL1.wrapping_shl(black_box(61)));
+            check!(T, VAL1.wrapping_shl(black_box(63)));
+            check!(T, VAL1.wrapping_shl(black_box(64)));
+            check!(T, VAL1.wrapping_shl(black_box(81)));
 
-    assert_eq!(var3 - argc as u128, 193236519889708027473620326106273939583);
+            check!(Option<T>, VAL1.checked_shl(black_box(0)));
+            check!(Option<T>, VAL1.checked_shl(black_box(1)));
+            check!(Option<T>, VAL1.checked_shl(black_box(33)));
+            check!(Option<T>, VAL1.checked_shl(black_box(49)));
+            check!(Option<T>, VAL1.checked_shl(black_box(61)));
+            check!(Option<T>, VAL1.checked_shl(black_box(63)));
+            check!(Option<T>, VAL1.checked_shl(black_box(64)));
+            check!(Option<T>, VAL1.checked_shl(black_box(81)));
 
-    // Multiplication
-    assert_eq!(var * (argc + 1) as u128, 268435712);
-    assert_eq!(var * (argc as u128 + var2), 1405982069077538020949770368);
+            check!(T, VAL1 >> black_box(0));
+            check!(T, VAL1 >> black_box(1));
 
-    assert_eq!(var2 * (argc + 1) as u128, 20950745466795983104);
-    assert_eq!(var2 * (argc as u128 + var2), 109733433903618109003204073240861360256);
+            check!(T, VAL2 >> black_box(1));
+            check!(T, VAL2 >> black_box(0));
 
-    assert_eq!(var3 * argc as u128, 193236519889708027473620326106273939584);
+            check!(T, VAL3 >> black_box(0));
+            check!(T, VAL3 >> black_box(1));
 
-    assert_eq!(var4 * (argc + 1) as u128, 246473039779416054947240652212547879168);
+            check!(T, VAL1.wrapping_shr(black_box(0)));
+            check!(T, VAL1.wrapping_shr(black_box(1)));
+            check!(T, VAL1.wrapping_shr(black_box(33)));
+            check!(T, VAL1.wrapping_shr(black_box(49)));
+            check!(T, VAL1.wrapping_shr(black_box(61)));
+            check!(T, VAL1.wrapping_shr(black_box(63)));
+            check!(T, VAL1.wrapping_shr(black_box(64)));
+            check!(T, VAL1.wrapping_shr(black_box(81)));
 
-    assert_eq!(var5 * (argc + 1) as u128, 306473039779416054947240652212547879168);
+            check!(Option<T>, VAL1.checked_shr(black_box(0)));
+            check!(Option<T>, VAL1.checked_shr(black_box(1)));
+            check!(Option<T>, VAL1.checked_shr(black_box(33)));
+            check!(Option<T>, VAL1.checked_shr(black_box(49)));
+            check!(Option<T>, VAL1.checked_shr(black_box(61)));
+            check!(Option<T>, VAL1.checked_shr(black_box(63)));
+            check!(Option<T>, VAL1.checked_shr(black_box(64)));
+            check!(Option<T>, VAL1.checked_shr(black_box(81)));
 
-    // Division.
-    assert_eq!(var / (argc + 1) as u128, 67108928);
-    assert_eq!(var / (argc + 2) as u128, 44739285);
+            // Casts
+            check!(u64, (VAL1 >> black_box(1)) as u64);
 
-    assert_eq!(var2 / (argc + 1) as u128, 5237686366698995776);
-    assert_eq!(var2 / (argc + 2) as u128, 3491790911132663850);
+            // Addition.
+            check!(T, VAL1 + black_box(1));
+            check!(T, VAL2 + black_box(1));
+            check!(T, VAL2 + (VAL2 + black_box(1)));
+            check!(T, VAL3 + black_box(1));
 
-    assert_eq!(var3 / (argc + 1) as u128, 96618259944854013736810163053136969792);
-    assert_eq!(var3 / (argc + 2) as u128, 64412173296569342491206775368757979861);
-    assert_eq!(var3 / (argc as u128 + var4), 1);
-    assert_eq!(var3 / (argc as u128 + var2), 18446744073709551615);
+            check!(Option<T>, VAL1.checked_add(black_box(1)));
+            check!(Option<T>, VAL2.checked_add(black_box(1)));
+            check!(Option<T>, VAL2.checked_add(VAL2 + black_box(1)));
+            check!(Option<T>, VAL3.checked_add(T::MAX));
+            check!(Option<T>, VAL3.checked_add(T::MIN));
 
-    assert_eq!(var4 / (argc + 1) as u128, 61618259944854013736810163053136969792);
-    assert_eq!(var4 / (argc + 2) as u128, 41078839963236009157873442035424646528);
+            check!(T, VAL1.wrapping_add(black_box(1)));
+            check!(T, VAL2.wrapping_add(black_box(1)));
+            check!(T, VAL2.wrapping_add(VAL2 + black_box(1)));
+            check!(T, VAL3.wrapping_add(T::MAX));
+            check!(T, VAL3.wrapping_add(T::MIN));
+
+            check!((T, bool), VAL1.overflowing_add(black_box(1)));
+            check!((T, bool), VAL2.overflowing_add(black_box(1)));
+            check!((T, bool), VAL2.overflowing_add(VAL2 + black_box(1)));
+            check!((T, bool), VAL3.overflowing_add(T::MAX));
+            check!((T, bool), VAL3.overflowing_add(T::MIN));
+
+            check!(T, VAL1.saturating_add(black_box(1)));
+            check!(T, VAL2.saturating_add(black_box(1)));
+            check!(T, VAL2.saturating_add(VAL2 + black_box(1)));
+            check!(T, VAL3.saturating_add(T::MAX));
+            check!(T, VAL3.saturating_add(T::MIN));
+
+            // Subtraction
+            check!(T, VAL1 - black_box(1));
+            check!(T, VAL2 - black_box(1));
+            check!(T, VAL3 - black_box(1));
+
+            check!(Option<T>, VAL1.checked_sub(black_box(1)));
+            check!(Option<T>, VAL2.checked_sub(black_box(1)));
+            check!(Option<T>, VAL2.checked_sub(VAL2 + black_box(1)));
+            check!(Option<T>, VAL3.checked_sub(T::MAX));
+            check!(Option<T>, VAL3.checked_sub(T::MIN));
+
+            check!(T, VAL1.wrapping_sub(black_box(1)));
+            check!(T, VAL2.wrapping_sub(black_box(1)));
+            check!(T, VAL2.wrapping_sub(VAL2 + black_box(1)));
+            check!(T, VAL3.wrapping_sub(T::MAX));
+            check!(T, VAL3.wrapping_sub(T::MIN));
+
+            check!((T, bool), VAL1.overflowing_sub(black_box(1)));
+            check!((T, bool), VAL2.overflowing_sub(black_box(1)));
+            check!((T, bool), VAL2.overflowing_sub(VAL2 + black_box(1)));
+            check!((T, bool), VAL3.overflowing_sub(T::MAX));
+            check!((T, bool), VAL3.overflowing_sub(T::MIN));
+
+            check!(T, VAL1.saturating_sub(black_box(1)));
+            check!(T, VAL2.saturating_sub(black_box(1)));
+            check!(T, VAL2.saturating_sub(VAL2 + black_box(1)));
+            check!(T, VAL3.saturating_sub(T::MAX));
+            check!(T, VAL3.saturating_sub(T::MIN));
+
+            // Multiplication
+            check!(T, VAL1 * black_box(2));
+            check!(T, VAL1 * (black_box(1) + VAL2));
+            check!(T, VAL2 * black_box(2));
+            check!(T, VAL2 * (black_box(1) + VAL2));
+            check!(T, VAL3 * black_box(1));
+            check!(T, VAL4 * black_box(2));
+            check!(T, VAL5 * black_box(2));
+
+            check!(Option<T>, VAL1.checked_mul(black_box(2)));
+            check!(Option<T>, VAL1.checked_mul(black_box(1) + VAL2));
+            check!(Option<T>, VAL3.checked_mul(VAL3));
+            check!(Option<T>, VAL4.checked_mul(black_box(2)));
+            check!(Option<T>, VAL5.checked_mul(black_box(2)));
+
+            check!(T, VAL1.wrapping_mul(black_box(2)));
+            check!(T, VAL1.wrapping_mul((black_box(1) + VAL2)));
+            check!(T, VAL3.wrapping_mul(VAL3));
+            check!(T, VAL4.wrapping_mul(black_box(2)));
+            check!(T, VAL5.wrapping_mul(black_box(2)));
+
+            check!((T, bool), VAL1.overflowing_mul(black_box(2)));
+            check!((T, bool), VAL1.overflowing_mul(black_box(1) + VAL2));
+            check!((T, bool), VAL3.overflowing_mul(VAL3));
+            check!((T, bool), VAL4.overflowing_mul(black_box(2)));
+            check!((T, bool), VAL5.overflowing_mul(black_box(2)));
+
+            check!(T, VAL1.saturating_mul(black_box(2)));
+            check!(T, VAL1.saturating_mul(black_box(1) + VAL2));
+            check!(T, VAL3.saturating_mul(VAL3));
+            check!(T, VAL4.saturating_mul(black_box(2)));
+            check!(T, VAL5.saturating_mul(black_box(2)));
+
+            // Division.
+            check!(T, VAL1 / black_box(2));
+            check!(T, VAL1 / black_box(3));
+
+            check!(T, VAL2 / black_box(2));
+            check!(T, VAL2 / black_box(3));
+
+            check!(T, VAL3 / black_box(2));
+            check!(T, VAL3 / black_box(3));
+            check!(T, VAL3 / (black_box(1) + VAL4));
+            check!(T, VAL3 / (black_box(1) + VAL2));
+
+            check!(T, VAL4 / black_box(2));
+            check!(T, VAL4 / black_box(3));
+
+            check!(Option<T>, VAL1.checked_div(black_box(2)));
+            check!(Option<T>, VAL1.checked_div(black_box(1) + VAL2));
+            check!(Option<T>, VAL3.checked_div(VAL3));
+            check!(Option<T>, VAL4.checked_div(black_box(2)));
+            check!(Option<T>, VAL5.checked_div(black_box(2)));
+            check!(Option<T>, (T::MIN).checked_div(black_box(0 as T).wrapping_sub(1)));
+            check!(Option<T>, VAL5.checked_div(black_box(0))); // var5 / 0
+
+            check!(T, VAL1.wrapping_div(black_box(2)));
+            check!(T, VAL1.wrapping_div(black_box(1) + VAL2));
+            check!(T, VAL3.wrapping_div(VAL3));
+            check!(T, VAL4.wrapping_div(black_box(2)));
+            check!(T, VAL5.wrapping_div(black_box(2)));
+            check!(T, (T::MIN).wrapping_div(black_box(0 as T).wrapping_sub(1)));
+
+            check!((T, bool), VAL1.overflowing_div(black_box(2)));
+            check!((T, bool), VAL1.overflowing_div(black_box(1) + VAL2));
+            check!((T, bool), VAL3.overflowing_div(VAL3));
+            check!((T, bool), VAL4.overflowing_div(black_box(2)));
+            check!((T, bool), VAL5.overflowing_div(black_box(2)));
+            check!((T, bool), (T::MIN).overflowing_div(black_box(0 as T).wrapping_sub(1)));
+
+            check!(T, VAL1.saturating_div(black_box(2)));
+            check!(T, VAL1.saturating_div((black_box(1) + VAL2)));
+            check!(T, VAL3.saturating_div(VAL3));
+            check!(T, VAL4.saturating_div(black_box(2)));
+            check!(T, VAL5.saturating_div(black_box(2)));
+            check!(T, (T::MIN).saturating_div((0 as T).wrapping_sub(black_box(1))));
+        };
+    }
+
+    {
+        type T = u32;
+        const VAL1: T = 14162_u32;
+        const VAL2: T = 14556_u32;
+        const VAL3: T = 323656954_u32;
+        const VAL4: T = 2023651954_u32;
+        const VAL5: T = 1323651954_u32;
+        check_ops32!();
+    }
+
+    {
+        type T = i32;
+        const VAL1: T = 13456_i32;
+        const VAL2: T = 10475_i32;
+        const VAL3: T = 923653954_i32;
+        const VAL4: T = 993198738_i32;
+        const VAL5: T = 1023653954_i32;
+        check_ops32!();
+    }
+
+    {
+        type T = u64;
+        const VAL1: T = 134217856_u64;
+        const VAL2: T = 104753732_u64;
+        const VAL3: T = 12323651988970863954_u64;
+        const VAL4: T = 7323651988970863954_u64;
+        const VAL5: T = 8323651988970863954_u64;
+        check_ops64!();
+    }
+
+    {
+        type T = i64;
+        const VAL1: T = 134217856_i64;
+        const VAL2: T = 104753732_i64;
+        const VAL3: T = 6323651988970863954_i64;
+        const VAL4: T = 2323651988970863954_i64;
+        const VAL5: T = 3323651988970863954_i64;
+        check_ops64!();
+    }
+
+    {
+        type T = u128;
+        const VAL1: T = 134217856_u128;
+        const VAL2: T = 10475372733397991552_u128;
+        const VAL3: T = 193236519889708027473620326106273939584_u128;
+        const VAL4: T = 123236519889708027473620326106273939584_u128;
+        const VAL5: T = 153236519889708027473620326106273939584_u128;
+        check_ops128!();
+    }
+    {
+        type T = i128;
+        const VAL1: T = 134217856_i128;
+        const VAL2: T = 10475372733397991552_i128;
+        const VAL3: T = 83236519889708027473620326106273939584_i128;
+        const VAL4: T = 63236519889708027473620326106273939584_i128;
+        const VAL5: T = 73236519889708027473620326106273939584_i128;
+        check_ops128!();
+    }
 
     0
 }
