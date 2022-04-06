@@ -220,8 +220,6 @@ use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 /// then passes it to the client through the function pointer in the `run`
 /// field of `client::Client`. The client holds its copy of the `Bridge`
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
-// Note: Bridge is !Send and !Sync due to containg a `Closure`. If this
-// ever changes, make sure to preserve the !Send and !Sync property.
 #[repr(C)]
 pub struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
@@ -233,6 +231,9 @@ pub struct Bridge<'a> {
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
+
+    // Prevent Send and Sync impls
+    _marker: marker::PhantomData<*mut ()>,
 }
 
 #[forbid(unsafe_code)]
