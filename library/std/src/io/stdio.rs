@@ -402,7 +402,7 @@ impl Stdin {
     /// }
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
-    #[stable(feature = "stdin_forwarders", since = "1.61.0")]
+    #[stable(feature = "stdin_forwarders", since = "1.62.0")]
     pub fn lines(self) -> Lines<StdinLock<'static>> {
         self.lock().lines()
     }
