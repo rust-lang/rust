@@ -299,23 +299,107 @@ fn foo() {
 }
 
 #[test]
-fn test_trait_items() {
+fn doc_links_items_simple() {
+    check_doc_links(
+        r#"
+//- /main.rs crate:main deps:krate
+/// [`krate`]
+//! [`Trait`]
+//! [`function`]
+//! [`CONST`]
+//! [`STATIC`]
+//! [`Struct`]
+//! [`Enum`]
+//! [`Union`]
+//! [`Type`]
+//! [`module`]
+use self$0;
+
+const CONST: () = ();
+   // ^^^^^ CONST
+static STATIC: () = ();
+    // ^^^^^^ STATIC
+trait Trait {
+   // ^^^^^ Trait
+}
+fn function() {}
+// ^^^^^^^^ function
+struct Struct;
+    // ^^^^^^ Struct
+enum Enum {}
+  // ^^^^ Enum
+union Union {__: ()}
+   // ^^^^^ Union
+type Type = ();
+  // ^^^^ Type
+mod module {}
+ // ^^^^^^ module
+//- /krate.rs crate:krate
+// empty
+//^file krate
+"#,
+    )
+}
+
+#[test]
+fn doc_links_inherent_impl_items() {
+    check_doc_links(
+        r#"
+// /// [`Struct::CONST`]
+// /// [`Struct::function`]
+/// FIXME #9694
+struct Struct$0;
+
+impl Struct {
+    const CONST: () = ();
+    fn function() {}
+}
+"#,
+    )
+}
+
+#[test]
+fn doc_links_trait_impl_items() {
+    check_doc_links(
+        r#"
+trait Trait {
+    type Type;
+    const CONST: usize;
+    fn function();
+}
+// /// [`Struct::Type`]
+// /// [`Struct::CONST`]
+// /// [`Struct::function`]
+/// FIXME #9694
+struct Struct$0;
+
+impl Trait for Struct {
+    type Type = ();
+    const CONST: () = ();
+    fn function() {}
+}
+"#,
+    )
+}
+
+#[test]
+fn doc_links_trait_items() {
     check_doc_links(
         r#"
 /// [`Trait`]
 /// [`Trait::Type`]
 /// [`Trait::CONST`]
-/// [`Trait::func`]
+/// [`Trait::function`]
 trait Trait$0 {
    // ^^^^^ Trait
-    type Type;
-      // ^^^^ Trait::Type
-    const CONST: usize;
-       // ^^^^^ Trait::CONST
-    fn func();
-    // ^^^^ Trait::func
+type Type;
+  // ^^^^ Trait::Type
+const CONST: usize;
+   // ^^^^^ Trait::CONST
+fn function();
+// ^^^^^^^^ Trait::function
 }
-        "#,
+    "#,
     )
 }
 
