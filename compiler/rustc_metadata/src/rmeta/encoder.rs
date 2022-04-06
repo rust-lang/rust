@@ -1784,7 +1784,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let mut visitor = ImplsVisitor { tcx, impls: FxHashMap::default() };
-        tcx.hir().visit_all_item_likes(&mut visitor);
+
+        for id in tcx.hir().items() {
+            let item = tcx.hir().item(id);
+            visitor.visit_item(item);
+        }
 
         let mut all_impls: Vec<_> = visitor.impls.into_iter().collect();
 

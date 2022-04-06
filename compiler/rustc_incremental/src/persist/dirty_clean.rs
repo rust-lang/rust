@@ -147,7 +147,28 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut dirty_clean_visitor = DirtyCleanVisitor { tcx, checked_attrs: Default::default() };
-        tcx.hir().visit_all_item_likes(&mut dirty_clean_visitor);
+
+        let crate_items = tcx.hir_crate_items(());
+
+        for id in crate_items.items() {
+            let item = tcx.hir().item(id);
+            dirty_clean_visitor.check_item(item.def_id, item.span);
+        }
+
+        for id in crate_items.trait_items() {
+            let item = tcx.hir().trait_item(id);
+            dirty_clean_visitor.check_item(item.def_id, item.span);
+        }
+
+        for id in crate_items.impl_items() {
+            let item = tcx.hir().impl_item(id);
+            dirty_clean_visitor.check_item(item.def_id, item.span);
+        }
+
+        for id in crate_items.foreign_items() {
+            let item = tcx.hir().foreign_item(id);
+            dirty_clean_visitor.check_item(item.def_id, item.span);
+        }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
         tcx.hir().walk_attributes(&mut all_attrs);
