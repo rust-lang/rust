@@ -172,6 +172,7 @@ fn never() -> ! {
 }
 
 fn const_param<const FOO: usize>() -> usize {
+    const_param::<{ FOO }>();
     FOO
 }
 

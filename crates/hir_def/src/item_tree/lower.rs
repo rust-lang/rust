@@ -295,13 +295,13 @@ impl<'a> Ctx<'a> {
                         let mut pat = param.pat();
                         // FIXME: This really shouldn't be here, in fact FunctionData/ItemTree's function shouldn't know about
                         // pattern names at all
-                        let name = loop {
+                        let name = 'name: loop {
                             match pat {
                                 Some(ast::Pat::RefPat(ref_pat)) => pat = ref_pat.pat(),
                                 Some(ast::Pat::IdentPat(ident)) => {
-                                    break ident.name().map(|it| it.as_name())
+                                    break 'name ident.name().map(|it| it.as_name())
                                 }
-                                _ => break None,
+                                _ => break 'name None,
                             }
                         };
                         self.data().params.alloc(Param::Normal(name, ty))

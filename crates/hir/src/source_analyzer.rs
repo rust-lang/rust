@@ -299,45 +299,53 @@ impl SourceAnalyzer {
         let parent = || parent.clone();
 
         let mut prefer_value_ns = false;
-        if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
-            let expr_id = self.expr_id(db, &path_expr.into())?;
-            let infer = self.infer.as_ref()?;
-            if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
-                return Some(PathResolution::Def(AssocItem::from(assoc).into()));
+        let resolved = (|| {
+            if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
+                let expr_id = self.expr_id(db, &path_expr.into())?;
+                let infer = self.infer.as_ref()?;
+                if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
+                    return Some(PathResolution::Def(AssocItem::from(assoc).into()));
+                }
+                if let Some(VariantId::EnumVariantId(variant)) =
+                    infer.variant_resolution_for_expr(expr_id)
+                {
+                    return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
+                }
+                prefer_value_ns = true;
+            } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
+                let pat_id = self.pat_id(&path_pat.into())?;
+                if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
+                    return Some(PathResolution::Def(AssocItem::from(assoc).into()));
+                }
+                if let Some(VariantId::EnumVariantId(variant)) =
+                    self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+                {
+                    return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
+                }
+            } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
+                let expr_id = self.expr_id(db, &rec_lit.into())?;
+                if let Some(VariantId::EnumVariantId(variant)) =
+                    self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+                {
+                    return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
+                }
+            } else {
+                let record_pat = parent().and_then(ast::RecordPat::cast).map(ast::Pat::from);
+                let tuple_struct_pat =
+                    || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
+                if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
+                    let pat_id = self.pat_id(&pat)?;
+                    let variant_res_for_pat =
+                        self.infer.as_ref()?.variant_resolution_for_pat(pat_id);
+                    if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
+                        return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
+                    }
+                }
             }
-            if let Some(VariantId::EnumVariantId(variant)) =
-                infer.variant_resolution_for_expr(expr_id)
-            {
-                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
-            }
-            prefer_value_ns = true;
-        } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
-            let pat_id = self.pat_id(&path_pat.into())?;
-            if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
-                return Some(PathResolution::Def(AssocItem::from(assoc).into()));
-            }
-            if let Some(VariantId::EnumVariantId(variant)) =
-                self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
-            {
-                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
-            }
-        } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
-            let expr_id = self.expr_id(db, &rec_lit.into())?;
-            if let Some(VariantId::EnumVariantId(variant)) =
-                self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
-            {
-                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
-            }
-        }
-
-        let record_pat = parent().and_then(ast::RecordPat::cast).map(ast::Pat::from);
-        let tuple_struct_pat = || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
-        if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
-            let pat_id = self.pat_id(&pat)?;
-            let variant_res_for_pat = self.infer.as_ref()?.variant_resolution_for_pat(pat_id);
-            if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
-                return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
-            }
+            None
+        })();
+        if let resolved @ Some(_) = resolved {
+            return resolved;
         }
 
         // This must be a normal source file rather than macro file.
