@@ -30,6 +30,13 @@ impl ThreadInfo {
     }
 }
 
+/// Get an address that is unique per running thread.
+///
+/// This can be used as a non-null usize-sized ID.
+pub fn current_thread_unique_ptr() -> usize {
+    THREAD_INFO.with(|info| <*const _>::addr(info))
+}
+
 pub fn current_thread() -> Option<Thread> {
     ThreadInfo::with(|info| info.thread.clone())
 }
