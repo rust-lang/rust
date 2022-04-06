@@ -2,8 +2,7 @@ use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::{is_lint_allowed, meets_msrv, msrvs};
-use if_chain::if_chain;
-use rustc_ast::ast::{self, FieldDef, VisibilityKind};
+use rustc_ast::ast::{self, VisibilityKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -104,55 +103,34 @@ impl EarlyLintPass for ManualNonExhaustiveStruct {
         }
 
         if let ast::ItemKind::Struct(variant_data, _) = &item.kind {
-            if let ast::VariantData::Unit(..) = variant_data {
+            let (fields, delimiter) = match variant_data {
+                ast::VariantData::Struct(fields, _) => (&**fields, '{'),
+                ast::VariantData::Tuple(fields, _) => (&**fields, '('),
+                ast::VariantData::Unit(_) => return,
+            };
+            if fields.len() <= 1 {
                 return;
             }
-
-            check_manual_non_exhaustive_struct(cx, item, variant_data);
-        }
-    }
-
-    extract_msrv_attr!(EarlyContext);
-}
-
-fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &ast::Item, data: &ast::VariantData) {
-    fn is_private(field: &FieldDef) -> bool {
-        matches!(field.vis.kind, VisibilityKind::Inherited)
-    }
-
-    fn is_non_exhaustive_marker(field: &FieldDef) -> bool {
-        is_private(field) && field.ty.kind.is_unit() && field.ident.map_or(true, |n| n.as_str().starts_with('_'))
-    }
-
-    fn find_header_span(cx: &EarlyContext<'_>, item: &ast::Item, data: &ast::VariantData) -> Span {
-        let delimiter = match data {
-            ast::VariantData::Struct(..) => '{',
-            ast::VariantData::Tuple(..) => '(',
-            ast::VariantData::Unit(_) => unreachable!("`VariantData::Unit` is already handled above"),
-        };
-
-        cx.sess().source_map().span_until_char(item.span, delimiter)
-    }
-
-    let fields = data.fields();
-    let private_fields = fields.iter().filter(|f| is_private(f)).count();
-    let public_fields = fields.iter().filter(|f| f.vis.kind.is_pub()).count();
-
-    if_chain! {
-        if private_fields == 1 && public_fields >= 1 && public_fields == fields.len() - 1;
-        if let Some(marker) = fields.iter().find(|f| is_non_exhaustive_marker(f));
-        then {
-            span_lint_and_then(
-                cx,
-                MANUAL_NON_EXHAUSTIVE,
-                item.span,
-                "this seems like a manual implementation of the non-exhaustive pattern",
-                |diag| {
-                    if_chain! {
-                        if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive));
-                        let header_span = find_header_span(cx, item, data);
-                        if let Some(snippet) = snippet_opt(cx, header_span);
-                        then {
+            let mut iter = fields.iter().filter_map(|f| match f.vis.kind {
+                VisibilityKind::Public => None,
+                VisibilityKind::Inherited => Some(Ok(f)),
+                _ => Some(Err(())),
+            });
+            if let Some(Ok(field)) = iter.next()
+                && iter.next().is_none()
+                && field.ty.kind.is_unit()
+                && field.ident.map_or(true, |name| name.as_str().starts_with('_'))
+            {
+                span_lint_and_then(
+                    cx,
+                    MANUAL_NON_EXHAUSTIVE,
+                    item.span,
+                    "this seems like a manual implementation of the non-exhaustive pattern",
+                    |diag| {
+                        if !item.attrs.iter().any(|attr| attr.has_name(sym::non_exhaustive))
+                            && let header_span = cx.sess().source_map().span_until_char(item.span, delimiter)
+                            && let Some(snippet) = snippet_opt(cx, header_span)
+                        {
                             diag.span_suggestion(
                                 header_span,
                                 "add the attribute",
@@ -160,11 +138,14 @@ fn check_manual_non_exhaustive_struct(cx: &EarlyContext<'_>, item: &ast::Item, d
                                 Applicability::Unspecified,
                             );
                         }
+                        diag.span_help(field.span, "remove this field");
                     }
-                    diag.span_help(marker.span, "remove this field");
-                });
+                );
+            }
         }
     }
+
+    extract_msrv_attr!(EarlyContext);
 }
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustiveEnum {
