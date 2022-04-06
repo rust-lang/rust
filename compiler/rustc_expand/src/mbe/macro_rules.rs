@@ -4,7 +4,7 @@ use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstF
 use crate::mbe;
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
-use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree};
+use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
 use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
@@ -160,7 +160,7 @@ struct MacroRulesMacroExpander {
     name: Ident,
     span: Span,
     transparency: Transparency,
-    lhses: Vec<mbe::TokenTree>,
+    lhses: Vec<Vec<MatcherLoc>>,
     rhses: Vec<mbe::TokenTree>,
     valid: bool,
     is_local: bool,
@@ -211,7 +211,7 @@ fn generic_extension<'cx, 'tt>(
     name: Ident,
     transparency: Transparency,
     arg: TokenStream,
-    lhses: &'tt [mbe::TokenTree],
+    lhses: &'tt [Vec<MatcherLoc>],
     rhses: &'tt [mbe::TokenTree],
     is_local: bool,
 ) -> Box<dyn MacResult + 'cx> {
@@ -246,14 +246,6 @@ fn generic_extension<'cx, 'tt>(
     // this situation.)
     let parser = parser_from_cx(sess, arg.clone());
 
-    // A matcher is always delimited, but the delimiters are ignored.
-    let delimited_inner_tts = |tt: &'tt mbe::TokenTree| -> &'tt [mbe::TokenTree] {
-        match tt {
-            mbe::TokenTree::Delimited(_, delimited) => delimited.inner_tts(),
-            _ => cx.span_bug(sp, "malformed macro lhs"),
-        }
-    };
-
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
@@ -263,13 +255,19 @@ fn generic_extension<'cx, 'tt>(
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), delimited_inner_tts(lhs)) {
+        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
             Success(named_matches) => {
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
-                let rhs = delimited_inner_tts(&rhses[i]).to_vec().clone();
+                // Ignore the delimiters on the RHS.
+                let rhs = match &rhses[i] {
+                    mbe::TokenTree::Delimited(_, delimited) => {
+                        delimited.inner_tts().to_vec().clone()
+                    }
+                    _ => cx.span_bug(sp, "malformed macro rhs"),
+                };
                 let arm_span = rhses[i].span();
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
@@ -347,10 +345,8 @@ fn generic_extension<'cx, 'tt>(
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
         for lhs in lhses {
-            if let Success(_) = tt_parser.parse_tt(
-                &mut Cow::Borrowed(&parser_from_cx(sess, arg.clone())),
-                delimited_inner_tts(lhs),
-            ) {
+            let parser = parser_from_cx(sess, arg.clone());
+            if let Success(_) = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
                 if comma_span.is_dummy() {
                     err.note("you might be missing a comma");
                 } else {
@@ -441,6 +437,8 @@ pub fn compile_declarative_macro(
             }),
         ),
     ];
+    // Convert it into `MatcherLoc` form.
+    let argument_gram = mbe::macro_parser::compute_locs(&sess.parse_sess, &argument_gram);
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let mut tt_parser = TtParser::new(def.ident);
@@ -536,6 +534,25 @@ pub fn compile_declarative_macro(
         }
         None => {}
     }
+
+    // Convert the lhses into `MatcherLoc` form, which is better for doing the
+    // actual matching. Unless the matcher is invalid.
+    let lhses = if valid {
+        lhses
+            .iter()
+            .map(|lhs| {
+                // Ignore the delimiters around the matcher.
+                match lhs {
+                    mbe::TokenTree::Delimited(_, delimited) => {
+                        mbe::macro_parser::compute_locs(&sess.parse_sess, delimited.inner_tts())
+                    }
+                    _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "malformed macro lhs"),
+                }
+            })
+            .collect()
+    } else {
+        vec![]
+    };
 
     mk_syn_ext(Box::new(MacroRulesMacroExpander {
         name: def.ident,
