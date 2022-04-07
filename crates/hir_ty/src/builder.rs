@@ -154,6 +154,10 @@ impl TyBuilder<()> {
         TyKind::Tuple(0, Substitution::empty(Interner)).intern(Interner)
     }
 
+    pub fn usize() -> Ty {
+        TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner)
+    }
+
     pub fn fn_ptr(sig: CallableSig) -> Ty {
         TyKind::Function(sig.to_fn_ptr()).intern(Interner)
     }

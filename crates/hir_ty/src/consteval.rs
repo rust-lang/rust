@@ -20,7 +20,7 @@ use stdx::never;
 use crate::{
     db::HirDatabase, infer::InferenceContext, lower::ParamLoweringMode, to_placeholder_idx,
     utils::Generics, Const, ConstData, ConstValue, GenericArg, InferenceResult, Interner, Ty,
-    TyKind,
+    TyBuilder, TyKind,
 };
 
 /// Extension trait for [`Const`]
@@ -401,23 +401,22 @@ pub fn unknown_const(ty: Ty) -> Const {
     .intern(Interner)
 }
 
-pub fn unknown_const_usize() -> Const {
-    unknown_const(TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner))
-}
-
 pub fn unknown_const_as_generic(ty: Ty) -> GenericArg {
     GenericArgData::Const(unknown_const(ty)).intern(Interner)
 }
 
+/// Interns a constant scalar with the given type
+pub fn intern_scalar_const(value: ConstScalar, ty: Ty) -> Const {
+    ConstData { ty, value: ConstValue::Concrete(chalk_ir::ConcreteConst { interned: value }) }
+        .intern(Interner)
+}
+
 /// Interns a possibly-unknown target usize
 pub fn usize_const(value: Option<u64>) -> Const {
-    ConstData {
-        ty: TyKind::Scalar(chalk_ir::Scalar::Uint(chalk_ir::UintTy::Usize)).intern(Interner),
-        value: ConstValue::Concrete(chalk_ir::ConcreteConst {
-            interned: value.map(ConstScalar::Usize).unwrap_or(ConstScalar::Unknown),
-        }),
-    }
-    .intern(Interner)
+    intern_scalar_const(
+        value.map(ConstScalar::Usize).unwrap_or(ConstScalar::Unknown),
+        TyBuilder::usize(),
+    )
 }
 
 pub(crate) fn const_eval_recover(

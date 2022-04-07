@@ -35,17 +35,13 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Fold, Shift},
     interner::HasInterner,
-    NoSolution, UintTy,
+    NoSolution,
 };
-use hir_def::{
-    expr::ExprId,
-    type_ref::{ConstScalar, Rawness},
-    TypeOrConstParamId,
-};
+use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use itertools::Either;
 use utils::Generics;
 
-use crate::{db::HirDatabase, utils::generics};
+use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
 
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
@@ -303,17 +299,6 @@ pub fn static_lifetime() -> Lifetime {
     LifetimeData::Static.intern(Interner)
 }
 
-pub fn dummy_usize_const() -> Const {
-    let usize_ty = chalk_ir::TyKind::Scalar(Scalar::Uint(UintTy::Usize)).intern(Interner);
-    chalk_ir::ConstData {
-        ty: usize_ty,
-        value: chalk_ir::ConstValue::Concrete(chalk_ir::ConcreteConst {
-            interned: ConstScalar::Unknown,
-        }),
-    }
-    .intern(Interner)
-}
-
 pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + Fold<Interner>>(
     t: T,
     for_ty: impl FnMut(BoundVar, DebruijnIndex) -> Ty,
@@ -476,27 +461,27 @@ where
 
         fn fold_inference_const(
             &mut self,
-            _ty: Ty,
+            ty: Ty,
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(dummy_usize_const())
+                Ok(unknown_const(ty))
             }
         }
 
         fn fold_free_var_const(
             &mut self,
-            _ty: Ty,
+            ty: Ty,
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
             if cfg!(debug_assertions) {
                 Err(NoSolution)
             } else {
-                Ok(dummy_usize_const())
+                Ok(unknown_const(ty))
             }
         }
 
