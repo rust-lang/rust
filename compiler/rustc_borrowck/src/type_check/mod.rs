@@ -387,33 +387,26 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             };
             if let Some(uv) = maybe_uneval {
                 if let Some(promoted) = uv.promoted {
-                    let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
-                                     promoted: &Body<'tcx>,
-                                     ty,
-                                     san_ty| {
-                        if let Err(terr) = verifier.cx.eq_types(
-                            ty,
-                            san_ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                verifier,
-                                promoted,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                san_ty,
-                                terr
-                            );
-                        };
-                    };
-
                     if !self.errors_reported {
                         let promoted_body = &self.promoted[promoted];
                         self.sanitize_promoted(promoted_body, location);
 
                         let promoted_ty = promoted_body.return_ty();
-                        check_err(self, promoted_body, ty, promoted_ty);
+                        if let Err(terr) = self.cx.eq_types(
+                            ty,
+                            promoted_ty,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                promoted_body,
+                                "bad promoted type ({:?}: {:?}): {:?}",
+                                ty,
+                                promoted_ty,
+                                terr
+                            );
+                        };
                     }
                 } else {
                     if let Err(terr) = self.cx.fully_perform_op(
@@ -1926,7 +1919,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(_, ty) => {
+            &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),

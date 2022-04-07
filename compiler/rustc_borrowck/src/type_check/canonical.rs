@@ -89,12 +89,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) {
-        self.prove_predicates(
-            Some(ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
+        self.prove_predicate(
+            ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::NotConst,
                 polarity: ty::ImplPolarity::Positive,
-            }))),
+            }))
+            .to_predicate(self.tcx()),
             locations,
             category,
         );
