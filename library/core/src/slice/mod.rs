@@ -110,7 +110,6 @@ enum Direction {
     Back,
 }
 
-#[cfg_attr(bootstrap, lang = "slice")]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
@@ -814,7 +813,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         Chunks::new(self, chunk_size)
     }
 
@@ -852,7 +851,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
-        assert_ne!(chunk_size, 0);
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         ChunksMut::new(self, chunk_size)
     }
 

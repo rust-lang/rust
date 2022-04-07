@@ -218,12 +218,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         match *result {
             TestResult::TrOk => self.write_ok()?,
             TestResult::TrFailed | TestResult::TrFailedMsg(_) => self.write_failed()?,
-            TestResult::TrIgnored => {
-                #[cfg(not(bootstrap))]
-                self.write_ignored(desc.ignore_message)?;
-                #[cfg(bootstrap)]
-                self.write_ignored(None)?;
-            }
+            TestResult::TrIgnored => self.write_ignored(desc.ignore_message)?,
             TestResult::TrBench(ref bs) => {
                 self.write_bench()?;
                 self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;

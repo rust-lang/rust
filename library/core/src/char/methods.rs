@@ -7,7 +7,6 @@ use crate::unicode::{self, conversions};
 
 use super::*;
 
-#[cfg_attr(bootstrap, lang = "char")]
 impl char {
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
     ///
@@ -803,6 +802,9 @@ impl char {
     ///
     /// ```
     /// assert!(' '.is_whitespace());
+    ///
+    /// // line break
+    /// assert!('\n'.is_whitespace());
     ///
     /// // a non-breaking space
     /// assert!('\u{A0}'.is_whitespace());

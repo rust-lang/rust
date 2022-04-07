@@ -980,7 +980,7 @@ pub mod fast {
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             // SAFETY: See comment above (this function doc).
             if !mem::needs_drop::<T>() || unsafe { self.try_register_dtor() } {
-                // SAFETY: See comment above (his function doc).
+                // SAFETY: See comment above (this function doc).
                 Some(unsafe { self.inner.initialize(init) })
             } else {
                 None

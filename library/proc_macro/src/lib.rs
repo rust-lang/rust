@@ -20,8 +20,6 @@
 #![feature(rustc_allow_const_fn_unstable)]
 #![feature(nll)]
 #![feature(staged_api)]
-#![cfg_attr(bootstrap, feature(const_fn_trait_bound))]
-#![cfg_attr(bootstrap, feature(const_fn_fn_ptr_basics))]
 #![feature(allow_internal_unstable)]
 #![feature(decl_macro)]
 #![feature(extern_types)]

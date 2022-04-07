@@ -130,7 +130,6 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     );
 }
 
-#[cfg_attr(bootstrap, lang = "str")]
 #[cfg(not(test))]
 impl str {
     /// Returns the length of `self`.
@@ -1832,14 +1831,14 @@ impl str {
     /// Returns a string slice with leading and trailing whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
+    /// let s = "\n Hello\tworld\t\n";
     ///
     /// assert_eq!("Hello\tworld", s.trim());
     /// ```
@@ -1855,7 +1854,7 @@ impl str {
     /// Returns a string slice with leading whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Text directionality
     ///
@@ -1869,8 +1868,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
-    /// assert_eq!("Hello\tworld\t", s.trim_start());
+    /// let s = "\n Hello\tworld\t\n";
+    /// assert_eq!("Hello\tworld\t\n", s.trim_start());
     /// ```
     ///
     /// Directionality:
@@ -1894,7 +1893,7 @@ impl str {
     /// Returns a string slice with trailing whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Text directionality
     ///
@@ -1908,8 +1907,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
-    /// assert_eq!(" Hello\tworld", s.trim_end());
+    /// let s = "\n Hello\tworld\t\n";
+    /// assert_eq!("\n Hello\tworld", s.trim_end());
     /// ```
     ///
     /// Directionality:
@@ -2407,7 +2406,7 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
-        // SAFETY: safe because we transmute two types with the same layout.
+        // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
@@ -2434,7 +2433,7 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
-        // SAFETY: safe because we transmute two types with the same layout.
+        // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }

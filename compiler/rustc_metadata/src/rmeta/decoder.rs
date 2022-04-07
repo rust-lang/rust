@@ -1169,14 +1169,18 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_associated_item_def_ids(self, tcx: TyCtxt<'tcx>, id: DefIndex) -> &'tcx [DefId] {
-        if let Some(children) = self.root.tables.children.get(self, id) {
-            tcx.arena.alloc_from_iter(
-                children.decode((self, tcx.sess)).map(|child_index| self.local_def_id(child_index)),
-            )
-        } else {
-            &[]
-        }
+    fn get_associated_item_def_ids(
+        self,
+        id: DefIndex,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = DefId> + 'a {
+        self.root
+            .tables
+            .children
+            .get(self, id)
+            .unwrap_or_else(Lazy::empty)
+            .decode((self, sess))
+            .map(move |child_index| self.local_def_id(child_index))
     }
 
     fn get_associated_item(self, id: DefIndex) -> ty::AssocItem {

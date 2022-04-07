@@ -668,7 +668,7 @@ impl PartialEq<TokenKind> for Token {
 pub enum Nonterminal {
     NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt(ast::Stmt),
+    NtStmt(P<ast::Stmt>),
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
@@ -677,13 +677,13 @@ pub enum Nonterminal {
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
-    NtPath(ast::Path),
-    NtVis(ast::Visibility),
+    NtPath(P<ast::Path>),
+    NtVis(P<ast::Visibility>),
 }
 
 // `Nonterminal` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Nonterminal, 48);
+rustc_data_structures::static_assert_size!(Nonterminal, 16);
 
 #[derive(Debug, Copy, Clone, PartialEq, Encodable, Decodable)]
 pub enum NonterminalKind {

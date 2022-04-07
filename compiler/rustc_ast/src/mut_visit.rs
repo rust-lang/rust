@@ -772,7 +772,9 @@ pub fn visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: &mut 
         token::NtBlock(block) => vis.visit_block(block),
         token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
             // See reasoning above.
-            vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
+            stmt.map(|stmt| {
+                vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
+            })
         }),
         token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),

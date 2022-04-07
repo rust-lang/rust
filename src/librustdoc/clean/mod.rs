@@ -116,22 +116,14 @@ impl Clean<Option<GenericBound>> for hir::GenericBound<'_> {
                 )
             }
             hir::GenericBound::Trait(ref t, modifier) => {
-                // `T: ~const Drop` is not equivalent to `T: Drop`, and we don't currently document `~const` bounds
-                // because of its experimental status, so just don't show these.
                 // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
                 if modifier == hir::TraitBoundModifier::MaybeConst
-                    && [cx.tcx.lang_items().drop_trait(), cx.tcx.lang_items().destruct_trait()]
-                        .iter()
-                        .any(|tr| *tr == Some(t.trait_ref.trait_def_id().unwrap()))
+                    && cx.tcx.lang_items().destruct_trait()
+                        == Some(t.trait_ref.trait_def_id().unwrap())
                 {
                     return None;
                 }
 
-                #[cfg(bootstrap)]
-                {
-                    // FIXME: remove `lang_items().drop_trait()` from above logic,
-                    // as well as the comment about `~const Drop` because it was renamed to `Destruct`.
-                }
                 GenericBound::TraitBound(t.clean(cx), modifier)
             }
         })

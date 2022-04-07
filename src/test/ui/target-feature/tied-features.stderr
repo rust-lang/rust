@@ -1,5 +1,5 @@
 error: the target features paca, pacg must all be either enabled or disabled together
-  --> $DIR/tied-features.rs:13:5
+  --> $DIR/tied-features.rs:12:5
    |
 LL |     #[target_feature(enable = "pacg")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     #[target_feature(enable = "pacg")]
    = help: add the missing features in a `target_feature` attribute
 
 error: the target features paca, pacg must all be either enabled or disabled together
-  --> $DIR/tied-features.rs:25:1
+  --> $DIR/tied-features.rs:24:1
    |
 LL | #[target_feature(enable = "paca")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,18 +1,18 @@
 use crate::cell::Cell;
 
-pub struct RWLock {
+pub struct RwLock {
     // This platform has no threads, so we can use a Cell here.
     mode: Cell<isize>,
 }
 
-pub type MovableRWLock = RWLock;
+pub type MovableRwLock = RwLock;
 
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {} // no threads on this platform
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {} // no threads on this platform
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock { mode: Cell::new(0) }
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock { mode: Cell::new(0) }
     }
 
     #[inline]

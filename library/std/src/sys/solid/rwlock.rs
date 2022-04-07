@@ -7,24 +7,24 @@ use super::{
     },
 };
 
-pub struct RWLock {
+pub struct RwLock {
     /// The ID of the underlying mutex object
     rwl: SpinIdOnceCell<()>,
 }
 
-pub type MovableRWLock = RWLock;
+pub type MovableRwLock = RwLock;
 
 // Safety: `num_readers` is protected by `mtx_num_readers`
-unsafe impl Send for RWLock {}
-unsafe impl Sync for RWLock {}
+unsafe impl Send for RwLock {}
+unsafe impl Sync for RwLock {}
 
 fn new_rwl() -> Result<abi::ID, ItronError> {
     ItronError::err_if_negative(unsafe { abi::rwl_acre_rwl() })
 }
 
-impl RWLock {
-    pub const fn new() -> RWLock {
-        RWLock { rwl: SpinIdOnceCell::new() }
+impl RwLock {
+    pub const fn new() -> RwLock {
+        RwLock { rwl: SpinIdOnceCell::new() }
     }
 
     /// Get the inner mutex's ID, which is lazily created.
