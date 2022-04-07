@@ -90,7 +90,7 @@ macro_rules! span_mirbug_and_err {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         {
             span_mirbug!($context, $elem, $($message)*);
-            $context.error()
+            $context.tcx().ty_error()
         }
     })
 }
@@ -190,16 +190,10 @@ pub(crate) fn type_check<'mir, 'tcx>(
         &mut borrowck_context,
     );
 
-    let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, promoted);
-        verifier.visit_body(&body);
-        verifier.errors_reported
-    };
+    let mut verifier = TypeVerifier::new(&mut checker, promoted);
+    verifier.visit_body(&body);
 
-    if !errors_reported {
-        // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(body);
-    }
+    checker.typeck_mir(body);
 
     checker.equate_inputs_and_outputs(&body, universal_regions, &normalized_inputs_and_output);
     liveness::generate(
@@ -291,14 +285,11 @@ enum FieldAccessError {
 
 /// Verifies that MIR types are sane to not crash further checks.
 ///
-/// The sanitize_XYZ methods here take an MIR object and compute its
-/// type, calling `span_mirbug` and returning an error type if there
-/// is a problem.
+/// FIXME: Merge this with `TypeChecker`.
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     last_span: Span,
-    errors_reported: bool,
 }
 
 impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
@@ -355,27 +346,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             };
             if let Some(uv) = maybe_uneval {
                 if let Some(promoted) = uv.promoted {
-                    if !self.errors_reported {
-                        let promoted_body = &self.promoted[promoted];
-                        self.sanitize_promoted(promoted_body, location);
+                    let promoted_body = &self.promoted[promoted];
+                    self.sanitize_promoted(promoted_body, location);
 
-                        let promoted_ty = promoted_body.return_ty();
-                        if let Err(terr) = self.cx.eq_types(
+                    let promoted_ty = promoted_body.return_ty();
+                    if let Err(terr) = self.cx.eq_types(
+                        ty,
+                        promoted_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                    ) {
+                        span_mirbug!(
+                            self,
+                            promoted_body,
+                            "bad promoted type ({:?}: {:?}): {:?}",
                             ty,
                             promoted_ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                self,
-                                promoted_body,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                promoted_ty,
-                                terr
-                            );
-                        };
-                    }
+                            terr
+                        );
+                    };
                 } else {
                     if let Err(terr) = self.cx.fully_perform_op(
                         location.to_locations(),
@@ -473,9 +462,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         for local_decl in &body.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
         }
-        if self.errors_reported {
-            return;
-        }
         self.super_body(body);
     }
 }
@@ -485,7 +471,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         cx: &'a mut TypeChecker<'b, 'tcx>,
         promoted: &'b IndexVec<Promoted, Body<'tcx>>,
     ) -> Self {
-        TypeVerifier { promoted, last_span: cx.body.span, cx, errors_reported: false }
+        TypeVerifier { promoted, last_span: cx.body.span, cx }
     }
 
     fn body(&self) -> &Body<'tcx> {
@@ -519,7 +505,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         for elem in place.projection.iter() {
             if place_ty.variant_index.is_none() {
                 if place_ty.ty.references_error() {
-                    assert!(self.errors_reported);
                     return PlaceTy::from_ty(self.tcx().ty_error());
                 }
             }
@@ -590,10 +575,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         self.visit_body(&promoted_body);
 
-        if !self.errors_reported {
-            // if verifier failed, don't do further checks to avoid ICEs
-            self.cx.typeck_mir(promoted_body);
-        }
+        self.cx.typeck_mir(promoted_body);
 
         self.cx.body = parent_body;
         // Merge the outlives constraints back in, at the given location.
@@ -749,11 +731,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 PlaceTy::from_ty(fty)
             }
         }
-    }
-
-    fn error(&mut self) -> Ty<'tcx> {
-        self.errors_reported = true;
-        self.tcx().ty_error()
     }
 
     fn field_ty(
