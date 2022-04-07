@@ -32,8 +32,8 @@ fn wake_nobody() {
             &futex as *const i32,
             libc::FUTEX_WAKE,
             1,
-            0,
-            0,
+            ptr::null::<libc::timespec>(),
+            0usize,
             0,
         ), 0);
     }
@@ -121,7 +121,7 @@ fn wait_absolute_timeout() {
             libc::FUTEX_WAIT_BITSET,
             123,
             &timeout,
-            0,
+            0usize,
             u32::MAX,
         ), -1);
         assert_eq!(*libc::__errno_location(), libc::ETIMEDOUT);
@@ -173,8 +173,8 @@ fn wait_wake_bitset() {
                 &FUTEX as *const i32,
                 libc::FUTEX_WAKE_BITSET,
                 10, // Wake up at most 10 threads.
-                0,
-                0,
+                ptr::null::<libc::timespec>(),
+                0usize,
                 0b1001, // bitset
             ), 0); // Didn't match any thread.
         }
@@ -185,8 +185,8 @@ fn wait_wake_bitset() {
                 &FUTEX as *const i32,
                 libc::FUTEX_WAKE_BITSET,
                 10, // Wake up at most 10 threads.
-                0,
-                0,
+                ptr::null::<libc::timespec>(),
+                0usize,
                 0b0110, // bitset
             ), 1); // Woken up one thread.
         }
@@ -199,7 +199,7 @@ fn wait_wake_bitset() {
             libc::FUTEX_WAIT_BITSET,
             0,
             ptr::null::<libc::timespec>(),
-            0,
+            0usize,
             0b0100, // bitset
         ), 0);
     }
