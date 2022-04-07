@@ -2700,7 +2700,7 @@ fn linkage_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: &str) -> Linkage {
     // Use the names from src/llvm/docs/LangRef.rst here. Most types are only
     // applicable to variable declarations and may not really make sense for
     // Rust code in the first place but allow them anyway and trust that the
-    // user knows what s/he's doing. Who knows, unanticipated use cases may pop
+    // user knows what they're doing. Who knows, unanticipated use cases may pop
     // up in the future.
     //
     // ghost, dllimport, dllexport and linkonce_odr_autohide are not supported

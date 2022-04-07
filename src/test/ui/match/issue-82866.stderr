@@ -1,0 +1,16 @@
+error[E0425]: cannot find value `x` in this scope
+  --> $DIR/issue-82866.rs:2:11
+   |
+LL |     match x {
+   |           ^ not found in this scope
+
+error[E0412]: cannot find type `v` in this scope
+  --> $DIR/issue-82866.rs:4:16
+   |
+LL |         Some::<v>(v) => (),
+   |                ^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0412, E0425.
+For more information about an error, try `rustc --explain E0412`.
