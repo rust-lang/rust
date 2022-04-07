@@ -8,9 +8,9 @@ document.
 
 [57b3c4b...master](https://github.com/rust-lang/rust-clippy/compare/57b3c4b...master)
 
-## Rust 1.60 (beta)
+## Rust 1.60
 
-Current beta, release 2022-04-07
+Current stable, released 2022-04-07
 
 [0eff589...57b3c4b](https://github.com/rust-lang/rust-clippy/compare/0eff589...57b3c4b)
 
@@ -142,7 +142,7 @@ Current beta, release 2022-04-07
 
 ## Rust 1.59
 
-Current stable, release 2022-02-24
+Released 2022-02-24
 
 [e181011...0eff589](https://github.com/rust-lang/rust-clippy/compare/e181011...0eff589)
 
