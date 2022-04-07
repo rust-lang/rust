@@ -1,5 +1,5 @@
 use crate::hir::{ModuleItems, Owner};
-use crate::ty::TyCtxt;
+use crate::ty::{DefIdTree, TyCtxt};
 use rustc_ast as ast;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -545,13 +545,12 @@ impl<'hir> Map<'hir> {
         });
     }
 
-    pub fn ty_param_owner(self, id: HirId) -> LocalDefId {
-        match self.get(id) {
-            Node::Item(&Item { kind: ItemKind::Trait(..) | ItemKind::TraitAlias(..), .. }) => {
-                id.expect_owner()
-            }
-            Node::GenericParam(_) => self.get_parent_item(id),
-            _ => bug!("ty_param_owner: {} not a type parameter", self.node_to_string(id)),
+    pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
+        let def_kind = self.tcx.def_kind(def_id);
+        match def_kind {
+            DefKind::Trait | DefKind::TraitAlias => def_id,
+            DefKind::TyParam | DefKind::ConstParam => self.tcx.local_parent(def_id).unwrap(),
+            _ => bug!("ty_param_owner: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
 
