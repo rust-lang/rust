@@ -1,9 +1,8 @@
-use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::ty::is_copy;
-use if_chain::if_chain;
-use rustc_hir::{Expr, ExprKind};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_note};
+use clippy_utils::is_must_use_func_call;
+use clippy_utils::ty::{is_copy, is_must_use_ty, is_type_lang_item};
+use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
 
@@ -103,6 +102,75 @@ declare_clippy_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `std::mem::drop` with a value that does not implement `Drop`.
+    ///
+    /// ### Why is this bad?
+    /// Calling `std::mem::drop` is no different than dropping such a type. A different value may
+    /// have been intended.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Foo;
+    /// let x = Foo;
+    /// std::mem::drop(x);
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub DROP_NON_DROP,
+    suspicious,
+    "call to `std::mem::drop` with a value which does not implement `Drop`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `std::mem::forget` with a value that does not implement `Drop`.
+    ///
+    /// ### Why is this bad?
+    /// Calling `std::mem::forget` is no different than dropping such a type. A different value may
+    /// have been intended.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Foo;
+    /// let x = Foo;
+    /// std::mem::forget(x);
+    /// ```
+    #[clippy::version = "1.61.0"]
+    pub FORGET_NON_DROP,
+    suspicious,
+    "call to `std::mem::forget` with a value which does not implement `Drop`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Prevents the safe `std::mem::drop` function from being called on `std::mem::ManuallyDrop`.
+    ///
+    /// ### Why is this bad?
+    /// The safe `drop` function does not drop the inner value of a `ManuallyDrop`.
+    ///
+    /// ### Known problems
+    /// Does not catch cases if the user binds `std::mem::drop`
+    /// to a different name and calls it that way.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct S;
+    /// drop(std::mem::ManuallyDrop::new(S));
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// struct S;
+    /// unsafe {
+    ///     std::mem::ManuallyDrop::drop(&mut std::mem::ManuallyDrop::new(S));
+    /// }
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub UNDROPPED_MANUALLY_DROPS,
+    correctness,
+    "use of safe `std::mem::drop` function to drop a std::mem::ManuallyDrop, which will not drop the inner value"
+}
+
 const DROP_REF_SUMMARY: &str = "calls to `std::mem::drop` with a reference instead of an owned value. \
                                 Dropping a reference does nothing";
 const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value. \
@@ -111,60 +179,65 @@ const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that imp
                                  Dropping a copy leaves the original intact";
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements `Copy`. \
                                    Forgetting a copy leaves the original intact";
+const DROP_NON_DROP_SUMMARY: &str = "call to `std::mem::drop` with a value that does not implement `Drop`. \
+                                 Dropping such a type only extends it's contained lifetimes";
+const FORGET_NON_DROP_SUMMARY: &str = "call to `std::mem::forget` with a value that does not implement `Drop`. \
+                                   Forgetting such a type is the same as dropping it";
 
-declare_lint_pass!(DropForgetRef => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
+declare_lint_pass!(DropForgetRef => [
+    DROP_REF,
+    FORGET_REF,
+    DROP_COPY,
+    FORGET_COPY,
+    DROP_NON_DROP,
+    FORGET_NON_DROP,
+    UNDROPPED_MANUALLY_DROPS
+]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if_chain! {
-            if let ExprKind::Call(path, args) = expr.kind;
-            if let ExprKind::Path(ref qpath) = path.kind;
-            if args.len() == 1;
-            if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
-            then {
-                let lint;
-                let msg;
-                let arg = &args[0];
-                let arg_ty = cx.typeck_results().expr_ty(arg);
-
-                if let ty::Ref(..) = arg_ty.kind() {
-                    match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::mem_drop) => {
-                            lint = DROP_REF;
-                            msg = DROP_REF_SUMMARY.to_string();
-                        },
-                        Some(sym::mem_forget) => {
-                            lint = FORGET_REF;
-                            msg = FORGET_REF_SUMMARY.to_string();
-                        },
-                        _ => return,
-                    }
-                    span_lint_and_note(cx,
-                                       lint,
-                                       expr.span,
-                                       &msg,
-                                       Some(arg.span),
-                                       &format!("argument has type `{}`", arg_ty));
-                } else if is_copy(cx, arg_ty) {
-                    match cx.tcx.get_diagnostic_name(def_id) {
-                        Some(sym::mem_drop) => {
-                            lint = DROP_COPY;
-                            msg = DROP_COPY_SUMMARY.to_string();
-                        },
-                        Some(sym::mem_forget) => {
-                            lint = FORGET_COPY;
-                            msg = FORGET_COPY_SUMMARY.to_string();
-                        },
-                        _ => return,
-                    }
-                    span_lint_and_note(cx,
-                                       lint,
-                                       expr.span,
-                                       &msg,
-                                       Some(arg.span),
-                                       &format!("argument has type {}", arg_ty));
+        if let ExprKind::Call(path, [arg]) = expr.kind
+            && let ExprKind::Path(ref qpath) = path.kind
+            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+            && let Some(fn_name) = cx.tcx.get_diagnostic_name(def_id)
+        {
+            let arg_ty = cx.typeck_results().expr_ty(arg);
+            let (lint, msg) = match fn_name {
+                sym::mem_drop if arg_ty.is_ref() => (DROP_REF, DROP_REF_SUMMARY),
+                sym::mem_forget if arg_ty.is_ref() => (FORGET_REF, FORGET_REF_SUMMARY),
+                sym::mem_drop if is_copy(cx, arg_ty) => (DROP_COPY, DROP_COPY_SUMMARY),
+                sym::mem_forget if is_copy(cx, arg_ty) => (FORGET_COPY, FORGET_COPY_SUMMARY),
+                sym::mem_drop if is_type_lang_item(cx, arg_ty, LangItem::ManuallyDrop) => {
+                    span_lint_and_help(
+                        cx,
+                        UNDROPPED_MANUALLY_DROPS,
+                        expr.span,
+                        "the inner value of this ManuallyDrop will not be dropped",
+                        None,
+                        "to drop a `ManuallyDrop<T>`, use std::mem::ManuallyDrop::drop",
+                    );
+                    return;
                 }
-            }
+                sym::mem_drop
+                    if !(arg_ty.needs_drop(cx.tcx, cx.param_env)
+                        || is_must_use_func_call(cx, arg)
+                        || is_must_use_ty(cx, arg_ty)) =>
+                {
+                    (DROP_NON_DROP, DROP_NON_DROP_SUMMARY)
+                },
+                sym::mem_forget if !arg_ty.needs_drop(cx.tcx, cx.param_env) => {
+                    (FORGET_NON_DROP, FORGET_NON_DROP_SUMMARY)
+                },
+                _ => return,
+            };
+            span_lint_and_note(
+                cx,
+                lint,
+                expr.span,
+                msg,
+                Some(arg.span),
+                &format!("argument has type `{}`", arg_ty),
+            );
         }
     }
 }

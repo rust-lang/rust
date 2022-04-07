@@ -16,6 +16,7 @@ store.register_group(true, "clippy::restriction", Some("clippy_restriction"), ve
     LintId::of(default_union_representation::DEFAULT_UNION_REPRESENTATION),
     LintId::of(disallowed_script_idents::DISALLOWED_SCRIPT_IDENTS),
     LintId::of(else_if_without_else::ELSE_IF_WITHOUT_ELSE),
+    LintId::of(empty_structs_with_brackets::EMPTY_STRUCTS_WITH_BRACKETS),
     LintId::of(exhaustive_items::EXHAUSTIVE_ENUMS),
     LintId::of(exhaustive_items::EXHAUSTIVE_STRUCTS),
     LintId::of(exit::EXIT),

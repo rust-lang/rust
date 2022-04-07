@@ -80,6 +80,9 @@ fn option_map_unit_fn() {
 
     if let Some(ref value) = x.field { do_nothing(value + captured) }
 
-    if let Some(a) = option() { do_nothing(a) }}
+    if let Some(a) = option() { do_nothing(a) }
+
+    if let Some(value) = option() { println!("{:?}", value) }
+}
 
 fn main() {}
