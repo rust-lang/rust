@@ -94,6 +94,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Like `as_local_call_operand`, except that the argument will
     /// not be valid once `scope` ends.
+    #[instrument(level = "debug", skip(self))]
     crate fn as_operand(
         &mut self,
         mut block: BasicBlock,
@@ -101,7 +102,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         local_info: Option<Box<LocalInfo<'tcx>>>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_operand(block={:?}, expr={:?} local_info={:?})", block, expr, local_info);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let category = Category::of(&expr.kind).unwrap();
-        debug!("as_operand: category={:?} for={:?}", category, expr.kind);
+        debug!(?category, ?expr.kind);
         match category {
             Category::Constant => {
                 let constant = this.as_constant(expr);
@@ -129,13 +129,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     crate fn as_call_operand(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Operand<'tcx>> {
-        debug!("as_call_operand(block={:?}, expr={:?})", block, expr);
         let this = self;
 
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {

@@ -420,6 +420,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.expr_as_place(block, expr, Mutability::Not, None)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
@@ -427,8 +428,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
-
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);

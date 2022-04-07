@@ -31,14 +31,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
+    #[instrument(level = "debug", skip(self))]
     crate fn as_rvalue(
         &mut self,
         mut block: BasicBlock,
         scope: Option<region::Scope>,
         expr: &Expr<'tcx>,
     ) -> BlockAnd<Rvalue<'tcx>> {
-        debug!("expr_as_rvalue(block={:?}, scope={:?}, expr={:?})", block, scope, expr);
-
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);

@@ -10,6 +10,7 @@ use rustc_middle::thir::*;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
+    #[instrument(level = "debug", skip(self))]
     crate fn as_temp(
         &mut self,
         block: BasicBlock,
@@ -30,10 +31,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
-        debug!(
-            "as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
-            block, temp_lifetime, expr, mutability
-        );
         let this = self;
 
         let expr_span = expr.span;
