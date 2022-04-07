@@ -54,9 +54,9 @@ impl FunctionData {
 
         let mut flags = func.flags;
         if is_varargs {
-            flags.bits |= FnFlags::IS_VARARGS;
+            flags |= FnFlags::IS_VARARGS;
         }
-        if flags.bits & FnFlags::HAS_SELF_PARAM != 0 {
+        if flags.contains(FnFlags::HAS_SELF_PARAM) {
             // If there's a self param in the syntax, but it is cfg'd out, remove the flag.
             let is_cfgd_out = match func.params.clone().next() {
                 Some(param) => {
@@ -69,7 +69,7 @@ impl FunctionData {
             };
             if is_cfgd_out {
                 cov_mark::hit!(cfgd_out_self_param);
-                flags.bits &= !FnFlags::HAS_SELF_PARAM;
+                flags.remove(FnFlags::HAS_SELF_PARAM);
             }
         }
 
@@ -101,33 +101,33 @@ impl FunctionData {
     }
 
     pub fn has_body(&self) -> bool {
-        self.flags.bits & FnFlags::HAS_BODY != 0
+        self.flags.contains(FnFlags::HAS_BODY)
     }
 
     /// True if the first param is `self`. This is relevant to decide whether this
     /// can be called as a method.
     pub fn has_self_param(&self) -> bool {
-        self.flags.bits & FnFlags::HAS_SELF_PARAM != 0
+        self.flags.contains(FnFlags::HAS_SELF_PARAM)
     }
 
     pub fn is_default(&self) -> bool {
-        self.flags.bits & FnFlags::IS_DEFAULT != 0
+        self.flags.contains(FnFlags::IS_DEFAULT)
     }
 
     pub fn is_const(&self) -> bool {
-        self.flags.bits & FnFlags::IS_CONST != 0
+        self.flags.contains(FnFlags::IS_CONST)
     }
 
     pub fn is_async(&self) -> bool {
-        self.flags.bits & FnFlags::IS_ASYNC != 0
+        self.flags.contains(FnFlags::IS_ASYNC)
     }
 
     pub fn is_unsafe(&self) -> bool {
-        self.flags.bits & FnFlags::IS_UNSAFE != 0
+        self.flags.contains(FnFlags::IS_UNSAFE)
     }
 
     pub fn is_varargs(&self) -> bool {
-        self.flags.bits & FnFlags::IS_VARARGS != 0
+        self.flags.contains(FnFlags::IS_VARARGS)
     }
 }
 

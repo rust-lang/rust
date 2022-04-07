@@ -497,6 +497,7 @@ dependencies = [
  "anymap",
  "arrayvec",
  "base_db",
+ "bitflags",
  "cfg",
  "cov-mark",
  "dashmap",

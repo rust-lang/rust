@@ -337,22 +337,22 @@ impl<'a> Ctx<'a> {
 
         let mut flags = FnFlags::default();
         if func.body().is_some() {
-            flags.bits |= FnFlags::HAS_BODY;
+            flags |= FnFlags::HAS_BODY;
         }
         if has_self_param {
-            flags.bits |= FnFlags::HAS_SELF_PARAM;
+            flags |= FnFlags::HAS_SELF_PARAM;
         }
         if func.default_token().is_some() {
-            flags.bits |= FnFlags::IS_DEFAULT;
+            flags |= FnFlags::IS_DEFAULT;
         }
         if func.const_token().is_some() {
-            flags.bits |= FnFlags::IS_CONST;
+            flags |= FnFlags::IS_CONST;
         }
         if func.async_token().is_some() {
-            flags.bits |= FnFlags::IS_ASYNC;
+            flags |= FnFlags::IS_ASYNC;
         }
         if func.unsafe_token().is_some() {
-            flags.bits |= FnFlags::IS_UNSAFE;
+            flags |= FnFlags::IS_UNSAFE;
         }
 
         let mut res = Function {
@@ -559,7 +559,7 @@ impl<'a> Ctx<'a> {
                             let func = &mut self.data().functions[func_id.index];
                             if is_intrinsic_fn_unsafe(&func.name) {
                                 // FIXME: this breaks in macros
-                                func.flags.bits |= FnFlags::IS_UNSAFE;
+                                func.flags |= FnFlags::IS_UNSAFE;
                             }
                             func_id.into()
                         }
