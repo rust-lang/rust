@@ -59,10 +59,8 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn read(&self) {
-        if let Err(s) =
-            self.state.fetch_update(Acquire, Relaxed, |s| read_lockable(s).then(|| s + READ_LOCKED))
-        {
-            self.read_contended(s);
+        if !self.try_read() {
+            self.read_contended();
         }
     }
 
@@ -102,7 +100,9 @@ impl RwLock {
     }
 
     #[cold]
-    fn read_contended(&self, mut state: i32) {
+    fn read_contended(&self) {
+        let mut state = self.spin_read();
+
         loop {
             // If we can lock it, lock it.
             if read_lockable(state) {
@@ -133,12 +133,15 @@ impl RwLock {
             // Wait for the state to change.
             futex_wait(&self.state, state | READERS_WAITING, None);
 
-            state = self.state.load(Relaxed);
+            // Spin again after waking up.
+            state = self.spin_read();
         }
     }
 
     #[cold]
-    fn write_contended(&self, mut state: i32) {
+    fn write_contended(&self) {
+        let mut state = self.spin_write();
+
         loop {
             // If it's unlocked, we try to lock it.
             if readers(state) == 0 {
@@ -182,8 +185,8 @@ impl RwLock {
             // Wait for the state to change.
             futex_wait(&self.writer_notify, seq, None);
 
-            // Check out the new state.
-            state = self.state.load(Relaxed);
+            // Spin again after waking up.
+            state = self.spin_write();
         }
     }
 
@@ -230,5 +233,33 @@ impl RwLock {
             // Notify all readers, if any reader was waiting.
             futex_wake_all(&self.state);
         }
+    }
+
+    /// Spin for a while, but stop directly at the given condition.
+    fn spin_until(&self, f: impl Fn(i32) -> bool) -> i32 {
+        let mut spin = 100; // Chosen by fair dice roll.
+        loop {
+            let state = self.state.load(Relaxed);
+            if f(state) || spin == 0 {
+                return state;
+            }
+            crate::hint::spin_loop();
+            spin -= 1;
+        }
+    }
+
+    fn spin_write(&self) -> i32 {
+        self.spin_until(|state| {
+            // Stop spinning when we can lock it, or when there's waiting
+            // writers, to keep things somewhat fair.
+            readers(state) == 0 || writers_waiting(state)
+        })
+    }
+
+    fn spin_read(&self) -> i32 {
+        self.spin_until(|state| {
+            // Stop spinning when it's unlocked or read locked, or when there's waiting threads.
+            readers(state) != WRITE_LOCKED || readers_waiting(state) || writers_waiting(state)
+        })
     }
 }
