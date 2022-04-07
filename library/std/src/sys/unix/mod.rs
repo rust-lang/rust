@@ -253,6 +253,13 @@ pub fn cvt_nz(error: libc::c_int) -> crate::io::Result<()> {
     if error == 0 { Ok(()) } else { Err(crate::io::Error::from_raw_os_error(error)) }
 }
 
+pub fn cvt_p<T>(ptr: *mut T) -> crate::io::Result<*mut T> {
+    if ptr.is_null() {
+        return Err(crate::io::Error::last_os_error());
+    }
+    Ok(ptr)
+}
+
 // libc::abort() will run the SIGABRT handler.  That's fine because anyone who
 // installs a SIGABRT handler already has to expect it to run in Very Bad
 // situations (eg, malloc crashing).

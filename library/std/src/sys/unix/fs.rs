@@ -75,6 +75,17 @@ use libc::{
 #[cfg(any(target_os = "linux", target_os = "emscripten", target_os = "l4re"))]
 use libc::{dirent64, fstat64, ftruncate64, lseek64, lstat64, off64_t, open64, stat64};
 
+#[cfg(not(any(target_os = "redox", target_os = "espidf")))]
+mod dir_fd;
+
+// Modern implementation using openat(), unlinkat() and fdopendir()
+#[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri)))]
+pub use dir_fd::remove_dir_all;
+
+// Fallback for REDOX, ESP-IDF, Horizon and Miri
+#[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri))]
+pub use crate::sys_common::fs::remove_dir_all;
+
 pub use crate::sys_common::fs::try_exists;
 
 pub struct File(FileDesc);
@@ -522,6 +533,24 @@ impl FileType {
 impl FromInner<u32> for FilePermissions {
     fn from_inner(mode: u32) -> FilePermissions {
         FilePermissions { mode: mode as mode_t }
+    }
+}
+
+impl ReadDir {
+    fn new(dirp: Dir, root: PathBuf) -> Self {
+        let inner = InnerReadDir { dirp, root };
+        ReadDir {
+            inner: Arc::new(inner),
+            #[cfg(not(any(
+                target_os = "android",
+                target_os = "linux",
+                target_os = "solaris",
+                target_os = "illumos",
+                target_os = "fuchsia",
+                target_os = "redox",
+            )))]
+            end_of_stream: false,
+        }
     }
 }
 
@@ -1179,23 +1208,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let p = cstr(p)?;
     unsafe {
         let ptr = libc::opendir(p.as_ptr());
-        if ptr.is_null() {
-            Err(Error::last_os_error())
-        } else {
-            let inner = InnerReadDir { dirp: Dir(ptr), root };
-            Ok(ReadDir {
-                inner: Arc::new(inner),
-                #[cfg(not(any(
-                    target_os = "android",
-                    target_os = "linux",
-                    target_os = "solaris",
-                    target_os = "illumos",
-                    target_os = "fuchsia",
-                    target_os = "redox",
-                )))]
-                end_of_stream: false,
-            })
-        }
+        if ptr.is_null() { Err(Error::last_os_error()) } else { Ok(ReadDir::new(Dir(ptr), root)) }
     }
 }
 
@@ -1556,209 +1569,4 @@ pub fn chroot(dir: &Path) -> io::Result<()> {
     let dir = cstr(dir)?;
     cvt(unsafe { libc::chroot(dir.as_ptr()) })?;
     Ok(())
-}
-
-pub use remove_dir_impl::remove_dir_all;
-
-// Fallback for REDOX, ESP-ID, Horizon, and Miri
-#[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri))]
-mod remove_dir_impl {
-    pub use crate::sys_common::fs::remove_dir_all;
-}
-
-// Modern implementation using openat(), unlinkat() and fdopendir()
-#[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon", miri)))]
-mod remove_dir_impl {
-    use super::{cstr, lstat, Dir, DirEntry, InnerReadDir, ReadDir};
-    use crate::ffi::CStr;
-    use crate::io;
-    use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
-    use crate::os::unix::prelude::{OwnedFd, RawFd};
-    use crate::path::{Path, PathBuf};
-    use crate::sync::Arc;
-    use crate::sys::{cvt, cvt_r};
-
-    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64")),))]
-    use libc::{fdopendir, openat, unlinkat};
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    use macos_weak::{fdopendir, openat, unlinkat};
-
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    mod macos_weak {
-        use crate::sys::weak::weak;
-        use libc::{c_char, c_int, DIR};
-
-        fn get_openat_fn() -> Option<unsafe extern "C" fn(c_int, *const c_char, c_int) -> c_int> {
-            weak!(fn openat(c_int, *const c_char, c_int) -> c_int);
-            openat.get()
-        }
-
-        pub fn has_openat() -> bool {
-            get_openat_fn().is_some()
-        }
-
-        pub unsafe fn openat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
-            get_openat_fn().map(|openat| openat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
-                -1
-            })
-        }
-
-        pub unsafe fn fdopendir(fd: c_int) -> *mut DIR {
-            #[cfg(all(target_os = "macos", target_arch = "x86"))]
-            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64$UNIX2003");
-            #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-            weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
-            fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
-                crate::ptr::null_mut()
-            })
-        }
-
-        pub unsafe fn unlinkat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
-            weak!(fn unlinkat(c_int, *const c_char, c_int) -> c_int);
-            unlinkat.get().map(|unlinkat| unlinkat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
-                -1
-            })
-        }
-    }
-
-    pub fn openat_nofollow_dironly(parent_fd: Option<RawFd>, p: &CStr) -> io::Result<OwnedFd> {
-        let fd = cvt_r(|| unsafe {
-            openat(
-                parent_fd.unwrap_or(libc::AT_FDCWD),
-                p.as_ptr(),
-                libc::O_CLOEXEC | libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_DIRECTORY,
-            )
-        })?;
-        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
-    }
-
-    fn fdreaddir(dir_fd: OwnedFd) -> io::Result<(ReadDir, RawFd)> {
-        let ptr = unsafe { fdopendir(dir_fd.as_raw_fd()) };
-        if ptr.is_null() {
-            return Err(io::Error::last_os_error());
-        }
-        let dirp = Dir(ptr);
-        // file descriptor is automatically closed by libc::closedir() now, so give up ownership
-        let new_parent_fd = dir_fd.into_raw_fd();
-        // a valid root is not needed because we do not call any functions involving the full path
-        // of the DirEntrys.
-        let dummy_root = PathBuf::new();
-        Ok((
-            ReadDir {
-                inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
-                #[cfg(not(any(
-                    target_os = "android",
-                    target_os = "linux",
-                    target_os = "solaris",
-                    target_os = "illumos",
-                    target_os = "fuchsia",
-                    target_os = "redox",
-                )))]
-                end_of_stream: false,
-            },
-            new_parent_fd,
-        ))
-    }
-
-    #[cfg(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-    ))]
-    fn is_dir(_ent: &DirEntry) -> Option<bool> {
-        None
-    }
-
-    #[cfg(not(any(
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "haiku",
-        target_os = "vxworks",
-    )))]
-    fn is_dir(ent: &DirEntry) -> Option<bool> {
-        match ent.entry.d_type {
-            libc::DT_UNKNOWN => None,
-            libc::DT_DIR => Some(true),
-            _ => Some(false),
-        }
-    }
-
-    fn remove_dir_all_recursive(parent_fd: Option<RawFd>, path: &CStr) -> io::Result<()> {
-        // try opening as directory
-        let fd = match openat_nofollow_dironly(parent_fd, &path) {
-            Err(err) if matches!(err.raw_os_error(), Some(libc::ENOTDIR | libc::ELOOP)) => {
-                // not a directory - don't traverse further
-                // (for symlinks, older Linux kernels may return ELOOP instead of ENOTDIR)
-                return match parent_fd {
-                    // unlink...
-                    Some(parent_fd) => {
-                        cvt(unsafe { unlinkat(parent_fd, path.as_ptr(), 0) }).map(drop)
-                    }
-                    // ...unless this was supposed to be the deletion root directory
-                    None => Err(err),
-                };
-            }
-            result => result?,
-        };
-
-        // open the directory passing ownership of the fd
-        let (dir, fd) = fdreaddir(fd)?;
-        for child in dir {
-            let child = child?;
-            let child_name = child.name_cstr();
-            match is_dir(&child) {
-                Some(true) => {
-                    remove_dir_all_recursive(Some(fd), child_name)?;
-                }
-                Some(false) => {
-                    cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
-                }
-                None => {
-                    // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
-                    // if the process has the appropriate privileges. This however can causing orphaned
-                    // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
-                    // into it first instead of trying to unlink() it.
-                    remove_dir_all_recursive(Some(fd), child_name)?;
-                }
-            }
-        }
-
-        // unlink the directory after removing its contents
-        cvt(unsafe {
-            unlinkat(parent_fd.unwrap_or(libc::AT_FDCWD), path.as_ptr(), libc::AT_REMOVEDIR)
-        })?;
-        Ok(())
-    }
-
-    fn remove_dir_all_modern(p: &Path) -> io::Result<()> {
-        // We cannot just call remove_dir_all_recursive() here because that would not delete a passed
-        // symlink. No need to worry about races, because remove_dir_all_recursive() does not recurse
-        // into symlinks.
-        let attr = lstat(p)?;
-        if attr.file_type().is_symlink() {
-            crate::fs::remove_file(p)
-        } else {
-            remove_dir_all_recursive(None, &cstr(p)?)
-        }
-    }
-
-    #[cfg(not(all(target_os = "macos", not(target_arch = "aarch64"))))]
-    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        remove_dir_all_modern(p)
-    }
-
-    #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
-    pub fn remove_dir_all(p: &Path) -> io::Result<()> {
-        if macos_weak::has_openat() {
-            // openat() is available with macOS 10.10+, just like unlinkat() and fdopendir()
-            remove_dir_all_modern(p)
-        } else {
-            // fall back to classic implementation
-            crate::sys_common::fs::remove_dir_all(p)
-        }
-    }
 }
