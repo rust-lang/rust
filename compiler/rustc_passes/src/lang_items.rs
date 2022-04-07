@@ -259,7 +259,22 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     }
 
     // Collect lang items in this crate.
-    tcx.hir().visit_all_item_likes(&mut collector);
+    let crate_items = tcx.hir_crate_items(());
+
+    for id in crate_items.items() {
+        let item = tcx.hir().item(id);
+        collector.visit_item(item);
+    }
+
+    for id in crate_items.trait_items() {
+        let item = tcx.hir().trait_item(id);
+        collector.visit_trait_item(item);
+    }
+
+    for id in crate_items.impl_items() {
+        let item = tcx.hir().impl_item(id);
+        collector.visit_impl_item(item);
+    }
 
     // Extract out the found lang items.
     let LanguageItemCollector { mut items, .. } = collector;

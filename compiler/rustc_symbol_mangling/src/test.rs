@@ -6,6 +6,7 @@
 
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -23,7 +24,27 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
 
     tcx.dep_graph.with_ignore(|| {
         let mut visitor = SymbolNamesTest { tcx };
-        tcx.hir().visit_all_item_likes(&mut visitor);
+        let crate_items = tcx.hir_crate_items(());
+
+        for id in crate_items.items() {
+            let item = tcx.hir().item(id);
+            visitor.visit_item(item);
+        }
+
+        for id in crate_items.trait_items() {
+            let item = tcx.hir().trait_item(id);
+            visitor.visit_trait_item(item);
+        }
+
+        for id in crate_items.impl_items() {
+            let item = tcx.hir().impl_item(id);
+            visitor.visit_impl_item(item);
+        }
+
+        for id in crate_items.foreign_items() {
+            let item = tcx.hir().foreign_item(id);
+            visitor.visit_foreign_item(item);
+        }
     })
 }
 
