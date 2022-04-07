@@ -24,8 +24,8 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn uid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group ID of the child process. This has
@@ -33,8 +33,8 @@ pub trait CommandExt: Sealed {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command;
 
     /// Sets the supplementary group IDs for the calling process. Translates to
@@ -42,8 +42,8 @@ pub trait CommandExt: Sealed {
     #[unstable(feature = "setgroups", issue = "90747")]
     fn groups(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] groups: &[u32],
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] groups: &[u16],
     ) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
@@ -160,8 +160,8 @@ pub trait CommandExt: Sealed {
 impl CommandExt for process::Command {
     fn uid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
@@ -169,8 +169,8 @@ impl CommandExt for process::Command {
 
     fn gid(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] id: u32,
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] id: u16,
     ) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
@@ -178,8 +178,8 @@ impl CommandExt for process::Command {
 
     fn groups(
         &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
+        #[cfg(not(any(target_os = "vxworks", target_os = "espidf")))] groups: &[u32],
+        #[cfg(any(target_os = "vxworks", target_os = "espidf"))] groups: &[u16],
     ) -> &mut process::Command {
         self.as_inner_mut().groups(groups);
         self

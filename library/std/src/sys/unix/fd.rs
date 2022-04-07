@@ -109,7 +109,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as libc::off64_t,
             ))
             .map(|n| n as usize)
         }
@@ -176,7 +176,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_ptr() as *const c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as libc::off64_t,
             ))
             .map(|n| n as usize)
         }
