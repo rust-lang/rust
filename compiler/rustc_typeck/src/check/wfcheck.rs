@@ -1657,7 +1657,7 @@ fn receiver_is_valid<'fcx, 'tcx>(
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`", receiver_ty, self_ty);
-            // If he receiver already has errors reported due to it, consider it valid to avoid
+            // If the receiver already has errors reported due to it, consider it valid to avoid
             // unnecessary errors (#58712).
             return receiver_ty.references_error();
         }
