@@ -19,7 +19,8 @@ use hir_def::{
     adt::VariantData,
     expr::{Pat, PatId},
     src::HasSource,
-    AdtId, AttrDefId, ConstId, EnumId, FunctionId, Lookup, ModuleDefId, StaticId, StructId,
+    AdtId, AttrDefId, ConstId, EnumId, FunctionId, ItemContainerId, Lookup, ModuleDefId, StaticId,
+    StructId,
 };
 use hir_expand::{
     name::{AsName, Name},
@@ -198,7 +199,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_func(&mut self, func: FunctionId) {
         let data = self.db.function_data(func);
-        if data.is_in_extern_block() {
+        if matches!(func.lookup(self.db.upcast()).container, ItemContainerId::ExternBlockId(_)) {
             cov_mark::hit!(extern_func_incorrect_case_ignored);
             return;
         }
