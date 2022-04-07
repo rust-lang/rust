@@ -181,8 +181,8 @@ The following table shows known good combinations of toolchain versions.
 | Rust 1.46    |    Clang 10   |
 | Rust 1.47    |    Clang 11   |
 | Rust 1.48    |    Clang 11   |
-| Rust 1.49    |    Clang      |
-| Rust 1.50    |    Clang      |
+| Rust 1.49    |    Clang 11   |
+| Rust 1.50    |    Clang 11   |
 | Rust 1.51    |    Clang 11   |
 | Rust 1.52    |    Clang 12   |
 | Rust 1.53    |    Clang 12   |
