@@ -168,7 +168,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
            ]
    = note: late-bound region is '_#3r
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(0, 'b), ReEarlyBound(0, 'b)>>::AssocType: '_#2r
+   = note: where '_#1r: '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:83:1
@@ -185,7 +185,7 @@ LL | | }
    = note: defining type: two_regions::<'_#1r, T>
 
 error: lifetime may not live long enough
-  --> $DIR/projection-two-region-trait-bound-closure.rs:87:29
+  --> $DIR/projection-two-region-trait-bound-closure.rs:87:39
    |
 LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                --  -- lifetime `'b` defined here
@@ -193,7 +193,7 @@ LL | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
    |                lifetime `'a` defined here
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^ closure body requires that `'b` must outlive `'a`
+   |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
    |
    = help: consider adding the following bound: `'b: 'a`
 
@@ -209,7 +209,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 4
-   = note: where <T as Anything<ReEarlyBound(1, 'b), ReEarlyBound(1, 'b)>>::AssocType: '_#3r
+   = note: where '_#2r: '_#3r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:92:1
@@ -237,7 +237,7 @@ LL |     with_signature(cell, t, |cell, t| require(cell, t));
                (),
            ]
    = note: number of external vids: 3
-   = note: where <T as Anything<ReEarlyBound(0, 'a), ReEarlyBound(0, 'a)>>::AssocType: '_#2r
+   = note: where '_#1r: '_#2r
 
 note: no external requirements
   --> $DIR/projection-two-region-trait-bound-closure.rs:101:1

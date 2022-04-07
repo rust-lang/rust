@@ -2878,8 +2878,8 @@ where
 #[stable(feature = "hash_extend_copy", since = "1.4.0")]
 impl<'a, K, V, S> Extend<(&'a K, &'a V)> for HashMap<K, V, S>
 where
-    K: Eq + Hash + Copy,
-    V: Copy,
+    K: Eq + Hash + Copy + 'a,
+    V: Copy + 'a,
     S: BuildHasher,
 {
     #[inline]

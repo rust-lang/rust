@@ -400,14 +400,12 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 }
             }
 
-            if let ty::FnDef(def_id, substs) = *constant.literal.ty().kind() {
-                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, substs);
-                self.cx.normalize_and_prove_instantiated_predicates(
-                    def_id,
-                    instantiated_predicates,
-                    location.to_locations(),
-                );
-            }
+            self.cx.prove_predicate(
+                ty::Binder::dummy(ty::PredicateKind::WellFormed(constant.literal.ty().into()))
+                    .to_predicate(self.tcx()),
+                location.to_locations(),
+                ConstraintCategory::Boring,
+            );
         }
     }
 
