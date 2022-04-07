@@ -2600,7 +2600,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.partition_point(&num);
+    /// let idx = deque.partition_point(|&x| x < num);
     /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
@@ -2754,7 +2754,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.partition_point(&num);
+    /// let idx = deque.partition_point(|&x| x < num);
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
