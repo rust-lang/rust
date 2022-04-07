@@ -315,7 +315,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 /// only on the nesting depth of repetitions in the originating token tree it
 /// was derived from.
 ///
-/// In layman's terms: `NamedMatch` will form a tree representing nested matches of a particular
+/// In layperson's terms: `NamedMatch` will form a tree representing nested matches of a particular
 /// meta variable. For example, if we are matching the following macro against the following
 /// invocation...
 ///
