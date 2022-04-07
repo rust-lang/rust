@@ -1,3 +1,4 @@
+// compile-flags: -Zdeduplicate-diagnostics=yes
 // check-pass
 
 const fn foo<T>() -> usize {

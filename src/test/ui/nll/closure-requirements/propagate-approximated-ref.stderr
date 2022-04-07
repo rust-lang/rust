@@ -18,6 +18,8 @@ LL | |     });
    = note: late-bound region is '_#4r
    = note: number of external vids: 5
    = note: where '_#1r: '_#2r
+   = note: where '_#1r: '_#2r
+   = note: where '_#1r: '_#2r
 
 note: no external requirements
   --> $DIR/propagate-approximated-ref.rs:42:1

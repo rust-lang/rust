@@ -511,6 +511,15 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             place_ty = self.sanitize_projection(place_ty, elem, place, location);
         }
 
+        self.cx.prove_predicate(
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(
+                self.body().local_decls[place.local].ty.into(),
+            ))
+            .to_predicate(self.tcx()),
+            location.to_locations(),
+            ConstraintCategory::Boring,
+        );
+
         if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
             let trait_ref = ty::TraitRef {

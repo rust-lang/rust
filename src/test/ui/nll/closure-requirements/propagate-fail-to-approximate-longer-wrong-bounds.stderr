@@ -1,10 +1,11 @@
-note: no external requirements
+note: external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:39:47
    |
 LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |  _______________________________________________^
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
+LL | |
 LL | |
 LL | |     });
    | |_____^
@@ -16,17 +17,25 @@ LL | |     });
            ]
    = note: late-bound region is '_#3r
    = note: late-bound region is '_#4r
+   = note: number of external vids: 5
+   = note: where '_#1r: '_#2r
+   = note: where '_#1r: '_#2r
+   = note: where '_#1r: '_#2r
 
 error: lifetime may not live long enough
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:9
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-   |                                                ----------  ---------- has type `&'_#8r Cell<&'2 &'_#2r u32>`
+   |                                                ----------  ---------- has type `&'2 Cell<&'_#9r &'_#2r u32>`
    |                                                |
    |                                                has type `&'_#6r Cell<&'1 &'_#1r u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |
+   = note: requirement occurs because of the type `Cell<&'_#44r u32>`, which makes the generic argument `&'_#44r u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 note: no external requirements
   --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:38:1
@@ -35,12 +44,25 @@ LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
 LL | |         // Only works if 'x: 'y:
 LL | |         demand_y(x, y, x.get())
-LL | |
+...  |
 LL | |     });
 LL | | }
    | |_^
    |
    = note: defining type: supply
 
-error: aborting due to previous error
+error: lifetime may not live long enough
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:9
+   |
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+...
+LL |         demand_y(x, y, x.get())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to 2 previous errors
 

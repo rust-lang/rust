@@ -4,7 +4,7 @@
 
 fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
     x == y;
-    //~^ ERROR lifetime may not live long enough
+    //~^ ERROR explicit lifetime required in the type of `y`
     //~| ERROR lifetime may not live long enough
 }
 

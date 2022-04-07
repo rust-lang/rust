@@ -19,6 +19,7 @@ LL | |     });
    = note: late-bound region is '_#3r
    = note: number of external vids: 4
    = note: where '_#1r: '_#0r
+   = note: where '_#1r: '_#0r
 
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:31:1

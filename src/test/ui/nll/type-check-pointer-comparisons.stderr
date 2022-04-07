@@ -1,17 +1,10 @@
-error: lifetime may not live long enough
+error[E0621]: explicit lifetime required in the type of `y`
   --> $DIR/type-check-pointer-comparisons.rs:6:5
    |
 LL | fn compare_const<'a, 'b>(x: *const &mut &'a i32, y: *const &mut &'b i32) {
-   |                  --  -- lifetime `'b` defined here
-   |                  |
-   |                  lifetime `'a` defined here
+   |                                                     ------------------- help: add explicit lifetime `'a` to the type of `y`: `*const &'a mut &'b i32`
 LL |     x == y;
-   |     ^ requires that `'a` must outlive `'b`
-   |
-   = help: consider adding the following bound: `'a: 'b`
-   = note: requirement occurs because of a mutable reference to `&i32`
-   = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+   |     ^ lifetime `'a` required
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:6:10
@@ -27,8 +20,6 @@ LL |     x == y;
    = note: requirement occurs because of a mutable reference to `&i32`
    = note: mutable references are invariant over their type parameter
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
-
-help: `'a` and `'b` must be the same: replace one with the other
 
 error: lifetime may not live long enough
   --> $DIR/type-check-pointer-comparisons.rs:12:5
@@ -96,3 +87,4 @@ help: `'a` and `'b` must be the same: replace one with the other
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0621`.

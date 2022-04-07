@@ -1,3 +1,4 @@
+// compile-flags: -Zdeduplicate-diagnostics=yes
 // check-pass
 #![allow(dead_code)]
 
