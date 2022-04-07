@@ -308,7 +308,6 @@ mod needless_borrowed_ref;
 mod needless_continue;
 mod needless_for_each;
 mod needless_late_init;
-mod needless_option_as_deref;
 mod needless_pass_by_value;
 mod needless_question_mark;
 mod needless_update;
@@ -535,7 +534,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|| Box::new(ptr::Ptr));
     store.register_late_pass(|| Box::new(ptr_eq::PtrEq));
     store.register_late_pass(|| Box::new(needless_bool::NeedlessBool));
-    store.register_late_pass(|| Box::new(needless_option_as_deref::OptionNeedlessDeref));
     store.register_late_pass(|| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|| Box::new(needless_for_each::NeedlessForEach));
     store.register_late_pass(|| Box::new(misc::MiscLints));
