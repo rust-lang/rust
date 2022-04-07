@@ -737,6 +737,10 @@ h2.location a {
 	border: none;
 }
 
+.item-info {
+	display: block;
+}
+
 .content .item-info code {
 	font-size: 0.875rem;
 }

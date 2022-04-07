@@ -83,7 +83,6 @@ impl<'a> Location<'a> {
     #[stable(feature = "track_caller", since = "1.46.0")]
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[track_caller]
-    #[inline]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
     }
