@@ -286,6 +286,7 @@ store.register_lints(&[
     methods::CLONE_DOUBLE_REF,
     methods::CLONE_ON_COPY,
     methods::CLONE_ON_REF_PTR,
+    methods::ERR_EXPECT,
     methods::EXPECT_FUN_CALL,
     methods::EXPECT_USED,
     methods::EXTEND_WITH_DRAIN,
