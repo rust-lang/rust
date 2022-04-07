@@ -231,8 +231,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `Err(Unimplemented)` to `Ok(None)`. This helps us avoid
             // emitting additional spurious errors, since we're guaranteed
             // to have emitted at least one.
-            if stack.obligation.references_error() {
-                debug!("no results for error type, treating as ambiguous");
+            if stack.obligation.predicate.references_error() {
+                debug!(?stack.obligation.predicate, "found error type in predicate, treating as ambiguous");
                 return Ok(None);
             }
             return Err(Unimplemented);
