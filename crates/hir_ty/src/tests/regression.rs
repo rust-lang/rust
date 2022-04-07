@@ -1488,3 +1488,20 @@ fn test<T: Crash>() {
 "#,
     );
 }
+
+#[test]
+fn cfgd_out_self_param() {
+    cov_mark::check!(cfgd_out_self_param);
+    check_no_mismatches(
+        r#"
+struct S;
+impl S {
+    fn f(#[cfg(never)] &self) {}
+}
+
+fn f(s: S) {
+    s.f();
+}
+"#,
+    );
+}
