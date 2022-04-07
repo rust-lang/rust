@@ -165,7 +165,7 @@ impl<'a> Parser<'a> {
 
         maybe_whole!(self, NtPath, |path| {
             reject_generics_if_mod_style(self, &path);
-            path
+            path.into_inner()
         });
 
         if let token::Interpolated(nt) = &self.token.kind {

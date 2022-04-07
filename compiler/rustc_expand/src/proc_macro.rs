@@ -90,7 +90,7 @@ impl MultiItemModifier for ProcMacroDerive {
                 // A proc macro can't observe the fact that we're passing
                 // them an `NtStmt` - it can only see the underlying tokens
                 // of the wrapped item
-                token::NtStmt(stmt.into_inner())
+                token::NtStmt(stmt)
             }
             _ => unreachable!(),
         };

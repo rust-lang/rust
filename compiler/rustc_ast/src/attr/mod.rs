@@ -439,7 +439,7 @@ impl MetaItem {
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. })) => match *nt {
                 token::Nonterminal::NtMeta(ref item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(ref path) => path.clone(),
+                token::Nonterminal::NtPath(ref path) => (**path).clone(),
                 _ => return None,
             },
             _ => return None,
