@@ -34,8 +34,21 @@ pub(super) const fn utf8_is_cont_byte(byte: u8) -> bool {
 #[unstable(feature = "str_internals", issue = "none")]
 #[inline]
 pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> Option<u32> {
+    // SAFETY: `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
+    unsafe { next_code_point_val(&mut bytes.copied()) }
+}
+
+/// Reads the next code point out of a byte iterator (assuming a
+/// UTF-8-like encoding).
+///
+/// # Safety
+///
+/// `bytes` must produce a valid UTF-8-like (UTF-8 or WTF-8) string
+#[unstable(feature = "str_internals", issue = "none")]
+#[inline]
+pub unsafe fn next_code_point_val<I: Iterator<Item = u8>>(bytes: &mut I) -> Option<u32> {
     // Decode UTF-8
-    let x = *bytes.next()?;
+    let x = bytes.next()?;
     if x < 128 {
         return Some(x as u32);
     }
@@ -46,14 +59,14 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
     let init = utf8_first_byte(x, 2);
     // SAFETY: `bytes` produces an UTF-8-like string,
     // so the iterator must produce a value here.
-    let y = unsafe { *bytes.next().unwrap_unchecked() };
+    let y = unsafe { bytes.next().unwrap_unchecked() };
     let mut ch = utf8_acc_cont_byte(init, y);
     if x >= 0xE0 {
         // [[x y z] w] case
         // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
         // SAFETY: `bytes` produces an UTF-8-like string,
         // so the iterator must produce a value here.
-        let z = unsafe { *bytes.next().unwrap_unchecked() };
+        let z = unsafe { bytes.next().unwrap_unchecked() };
         let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
         ch = init << 12 | y_z;
         if x >= 0xF0 {
@@ -61,7 +74,7 @@ pub unsafe fn next_code_point<'a, I: Iterator<Item = &'a u8>>(bytes: &mut I) -> 
             // use only the lower 3 bits of `init`
             // SAFETY: `bytes` produces an UTF-8-like string,
             // so the iterator must produce a value here.
-            let w = unsafe { *bytes.next().unwrap_unchecked() };
+            let w = unsafe { bytes.next().unwrap_unchecked() };
             ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
         }
     }
