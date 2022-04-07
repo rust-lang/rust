@@ -24,7 +24,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Node as HirNode;
 use rustc_hir::{ImplItemKind, ItemKind as HirItem, TraitItemKind};
 use rustc_middle::dep_graph::{label_strs, DepNode, DepNodeExt};
@@ -406,24 +405,6 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 self.assert_loaded_from_disk(item_span, dep_node);
             }
         }
-    }
-}
-
-impl<'tcx> ItemLikeVisitor<'tcx> for DirtyCleanVisitor<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_trait_item(&mut self, item: &hir::TraitItem<'_>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_impl_item(&mut self, item: &hir::ImplItem<'_>) {
-        self.check_item(item.def_id, item.span);
-    }
-
-    fn visit_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
-        self.check_item(item.def_id, item.span);
     }
 }
 

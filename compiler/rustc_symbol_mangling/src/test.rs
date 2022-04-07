@@ -4,9 +4,7 @@
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
-use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{subst::InternalSubsts, Instance, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
@@ -23,27 +21,23 @@ pub fn report_symbol_names(tcx: TyCtxt<'_>) {
     }
 
     tcx.dep_graph.with_ignore(|| {
-        let mut visitor = SymbolNamesTest { tcx };
+        let mut symbol_names = SymbolNamesTest { tcx };
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            let item = tcx.hir().item(id);
-            visitor.visit_item(item);
+            symbol_names.process_attrs(id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            let item = tcx.hir().trait_item(id);
-            visitor.visit_trait_item(item);
+            symbol_names.process_attrs(id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            let item = tcx.hir().impl_item(id);
-            visitor.visit_impl_item(item);
+            symbol_names.process_attrs(id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            let item = tcx.hir().foreign_item(id);
-            visitor.visit_foreign_item(item);
+            symbol_names.process_attrs(id.def_id);
         }
     })
 }
@@ -77,23 +71,5 @@ impl SymbolNamesTest<'_> {
             // to test the entirety of the string, if they choose, or else just
             // some subset.
         }
-    }
-}
-
-impl<'tcx> hir::itemlikevisit::ItemLikeVisitor<'tcx> for SymbolNamesTest<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
-        self.process_attrs(item.def_id);
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
-        self.process_attrs(trait_item.def_id);
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
-        self.process_attrs(impl_item.def_id);
-    }
-
-    fn visit_foreign_item(&mut self, foreign_item: &'tcx hir::ForeignItem<'tcx>) {
-        self.process_attrs(foreign_item.def_id);
     }
 }
