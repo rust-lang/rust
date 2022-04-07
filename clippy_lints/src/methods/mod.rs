@@ -2488,7 +2488,6 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                 Some(("err", [recv], err_span)) => err_expect::check(cx, expr, recv, msrv, span, err_span),
                 _ => expect_used::check(cx, expr, recv),
             },
-
             ("extend", [arg]) => {
                 string_extend_chars::check(cx, expr, recv, arg);
                 extend_with_drain::check(cx, expr, recv, arg);
@@ -2630,7 +2629,6 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
                     unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                 },
             },
-
             _ => {},
         }
     }

@@ -8,10 +8,10 @@
 //! Thank you!
 //! ~The `INTERNAL_METADATA_COLLECTOR` lint
 
-use rustc_errors::{emitter::MAX_SUGGESTION_HIGHLIGHT_LINES, Applicability, Diagnostic};
+use rustc_errors::{emitter::MAX_SUGGESTION_HIGHLIGHT_LINES, Applicability, Diagnostic, MultiSpan};
 use rustc_hir::HirId;
 use rustc_lint::{LateContext, Lint, LintContext};
-use rustc_span::source_map::{MultiSpan, Span};
+use rustc_span::source_map::Span;
 use std::env;
 
 fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
