@@ -921,7 +921,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dirfd_op: &OpTy<'tcx, Tag>,    // Should be an `int`
         pathname_op: &OpTy<'tcx, Tag>, // Should be a `const char *`
         flags_op: &OpTy<'tcx, Tag>,    // Should be an `int`
-        mask_op: &OpTy<'tcx, Tag>,    // Should be an `unsigned int`
+        mask_op: &OpTy<'tcx, Tag>,     // Should be an `unsigned int`
         statxbuf_op: &OpTy<'tcx, Tag>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
