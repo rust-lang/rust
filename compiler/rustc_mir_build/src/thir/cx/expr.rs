@@ -1,3 +1,4 @@
+use crate::build::ExprCategory as Category;
 use crate::thir::cx::Cx;
 use crate::thir::util::UserAnnotatedTyHelpers;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -24,19 +25,25 @@ use rustc_target::abi::VariantIdx;
 impl<'tcx> Cx<'tcx> {
     crate fn mirror_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> ExprId {
         // `mirror_expr` is recursing very deep. Make sure the stack doesn't overflow.
-        ensure_sufficient_stack(|| self.mirror_expr_inner(expr))
+        ensure_sufficient_stack(|| self.mirror_expr_inner(expr, None))
     }
 
-    crate fn mirror_exprs(&mut self, exprs: &'tcx [hir::Expr<'tcx>]) -> Box<[ExprId]> {
-        exprs.iter().map(|expr| self.mirror_expr_inner(expr)).collect()
+    crate fn mirror_exprs(
+        &mut self,
+        exprs: impl Iterator<Item = (&'tcx hir::Expr<'tcx>, Option<Ty<'tcx>>)>,
+    ) -> Box<[ExprId]> {
+        exprs.map(|(expr, ty)| self.mirror_expr_inner(expr, ty)).collect()
     }
 
-    pub(super) fn mirror_expr_inner(&mut self, hir_expr: &'tcx hir::Expr<'tcx>) -> ExprId {
+    #[instrument(level = "debug", skip(self))]
+    pub(super) fn mirror_expr_inner(
+        &mut self,
+        hir_expr: &'tcx hir::Expr<'tcx>,
+        ty: Option<Ty<'tcx>>,
+    ) -> ExprId {
         let temp_lifetime = self.region_scope_tree.temporary_scope(hir_expr.hir_id.local_id);
         let expr_scope =
             region::Scope { id: hir_expr.hir_id.local_id, data: region::ScopeData::Node };
-
-        debug!("Expr::make_mirror(): id={}, span={:?}", hir_expr.hir_id, hir_expr.span);
 
         let mut expr = self.make_mirror_unadjusted(hir_expr);
 
@@ -47,10 +54,14 @@ impl<'tcx> Cx<'tcx> {
 
         // Now apply adjustments, if any.
         for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            debug!("make_mirror: expr={:?} applying adjustment={:?}", expr, adjustment);
+            debug!(?expr, ?adjustment);
             let span = expr.span;
             expr =
                 self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
+        }
+
+        if !matches!(Category::of(&expr.kind), Some(Category::Constant)) {
+            expr.ty = ty.unwrap_or(expr.ty);
         }
 
         // Next, wrap this up in the expr's scope.
@@ -172,7 +183,7 @@ impl<'tcx> Cx<'tcx> {
                 // is guaranteed to exist, since a method call always has a receiver.
                 let old_adjustment_span = self.adjustment_span.replace((args[0].hir_id, expr_span));
                 tracing::info!("Using method span: {:?}", expr.span);
-                let args = self.mirror_exprs(args);
+                let args = self.mirror_exprs(args.iter().zip(std::iter::repeat(None)));
                 self.adjustment_span = old_adjustment_span;
                 ExprKind::Call {
                     ty: expr.ty,
@@ -194,12 +205,16 @@ impl<'tcx> Cx<'tcx> {
 
                     let method = self.method_callee(expr, fun.span, None);
 
-                    let arg_tys = args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e));
+                    let arg_tys: Vec<_> =
+                        args.iter().map(|e| self.typeck_results().expr_ty_adjusted(e)).collect();
                     let tupled_args = Expr {
-                        ty: self.tcx.mk_tup(arg_tys),
+                        ty: self.tcx.mk_tup(arg_tys.iter()),
                         temp_lifetime,
                         span: expr.span,
-                        kind: ExprKind::Tuple { fields: self.mirror_exprs(args) },
+                        kind: ExprKind::Tuple {
+                            fields: self
+                                .mirror_exprs(args.iter().zip(arg_tys.into_iter().map(Some))),
+                        },
                     };
                     let tupled_args = self.thir.exprs.push(tupled_args);
 
@@ -256,7 +271,7 @@ impl<'tcx> Cx<'tcx> {
                         ExprKind::Call {
                             ty: self.typeck_results().node_type(fun.hir_id),
                             fun: self.mirror_expr(fun),
-                            args: self.mirror_exprs(args),
+                            args: self.mirror_exprs(args.iter().zip(std::iter::repeat(None))),
                             from_hir_call: true,
                             fn_span: expr.span,
                         }
@@ -763,10 +778,17 @@ impl<'tcx> Cx<'tcx> {
                 ExprKind::Use { source: self.mirror_expr(source) }
             }
             hir::ExprKind::Box(ref value) => ExprKind::Box { value: self.mirror_expr(value) },
-            hir::ExprKind::Array(ref fields) => {
-                ExprKind::Array { fields: self.mirror_exprs(fields) }
-            }
-            hir::ExprKind::Tup(ref fields) => ExprKind::Tuple { fields: self.mirror_exprs(fields) },
+            hir::ExprKind::Array(ref fields) => ExprKind::Array {
+                fields: self.mirror_exprs(
+                    fields
+                        .iter()
+                        .zip(std::iter::repeat(Some(expr_ty.sequence_element_type(self.tcx)))),
+                ),
+            },
+            hir::ExprKind::Tup(ref fields) => ExprKind::Tuple {
+                fields: self
+                    .mirror_exprs(fields.iter().zip(expr_ty.tuple_fields().iter().map(Some))),
+            },
 
             hir::ExprKind::Yield(ref v, _) => ExprKind::Yield { value: self.mirror_expr(v) },
             hir::ExprKind::Err => unreachable!(),

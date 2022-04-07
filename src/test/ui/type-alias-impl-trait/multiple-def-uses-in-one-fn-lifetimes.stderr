@@ -1,11 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:5
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:9
    |
 LL |     (i, i)
-   |     ^^^^^^
-   |     |
-   |     expected `&'a i32`, got `&'b i32`
-   |     this expression supplies two conflicting concrete types for the same opaque type
+   |         ^ expected `&'a i32`, got `&'b i32`
+   |
+note: previous use here
+  --> $DIR/multiple-def-uses-in-one-fn-lifetimes.rs:6:6
+   |
+LL |     (i, i)
+   |      ^
 
 error: aborting due to previous error
 

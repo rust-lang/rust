@@ -6,6 +6,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
+use rustc_middle::ty::Ty;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -21,7 +22,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // this is the only place in mir building that we need to truly need to worry about
         // infinite recursion. Everything else does recurse, too, but it always gets broken up
         // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
+        ensure_sufficient_stack(|| {
+            self.as_temp_inner(block, temp_lifetime, expr, mutability, expr.ty)
+        })
     }
 
     fn as_temp_inner(
@@ -30,6 +33,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         temp_lifetime: Option<region::Scope>,
         expr: &Expr<'tcx>,
         mutability: Mutability,
+        expr_ty: Ty<'tcx>,
     ) -> BlockAnd<Local> {
         let this = self;
 
@@ -37,11 +41,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = this.source_info(expr_span);
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             return this.in_scope((region_scope, source_info), lint_level, |this| {
-                this.as_temp(block, temp_lifetime, &this.thir[value], mutability)
+                this.as_temp_inner(block, temp_lifetime, &this.thir[value], mutability, expr.ty)
             });
         }
 
-        let expr_ty = expr.ty;
         let temp = {
             let mut local_decl = LocalDecl::new(expr_ty, expr_span);
             if mutability == Mutability::Not {
