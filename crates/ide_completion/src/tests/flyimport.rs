@@ -1170,3 +1170,22 @@ struct Foo;
 "#,
     );
 }
+
+#[test]
+fn flyimport_in_type_bound_omits_types() {
+    check(
+        r#"
+mod module {
+    pub struct CompletemeStruct;
+    pub type CompletemeType = ();
+    pub enum CompletemeEnum {}
+    pub trait CompletemeTrait {}
+}
+
+fn f<T>() where T: Comp$0
+"#,
+        expect![[r#"
+            tt CompletemeTrait (use module::CompletemeTrait)
+        "#]],
+    );
+}

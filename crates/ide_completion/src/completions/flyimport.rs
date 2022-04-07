@@ -1,5 +1,5 @@
 //! See [`import_on_the_fly`].
-use hir::ItemInNs;
+use hir::{ItemInNs, ModuleDef};
 use ide_db::imports::{
     import_assets::{ImportAssets, ImportCandidate, LocatedImport},
     insert_use::ImportScope,
@@ -9,6 +9,7 @@ use syntax::{AstNode, SyntaxNode, T};
 
 use crate::{
     context::{CompletionContext, PathKind},
+    patterns::ImmediateLocation,
     render::{render_resolution_with_import, RenderContext},
 };
 
@@ -170,7 +171,13 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
             (PathKind::Pat, ItemInNs::Types(_)) => true,
             (PathKind::Pat, ItemInNs::Values(def)) => matches!(def, hir::ModuleDef::Const(_)),
 
-            (PathKind::Type, ItemInNs::Types(_)) => true,
+            (PathKind::Type, ItemInNs::Types(ty)) => {
+                if matches!(ctx.completion_location, Some(ImmediateLocation::TypeBound)) {
+                    matches!(ty, ModuleDef::Trait(_))
+                } else {
+                    true
+                }
+            }
             (PathKind::Type, ItemInNs::Values(_)) => false,
 
             (PathKind::Attr { .. }, ItemInNs::Macros(mac)) => mac.is_attr(ctx.db),
