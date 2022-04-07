@@ -15,10 +15,10 @@ use hir_def::{
     path::Path,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    ConstParamId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId, TypeOrConstParamId,
-    TypeParamId,
+    ConstParamId, FunctionId, GenericDefId, ItemContainerId, Lookup, TraitId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId,
 };
-use hir_expand::name::{name, Name};
+use hir_expand::name::{known, name, Name};
 use itertools::Either;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
@@ -374,4 +374,67 @@ fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<Generic
         ItemContainerId::TraitId(it) => Some(it.into()),
         ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
     }
+}
+
+pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
+    let data = db.function_data(func);
+    if data.has_unsafe_kw() {
+        return true;
+    }
+
+    match func.lookup(db.upcast()).container {
+        hir_def::ItemContainerId::ExternBlockId(block) => {
+            // Function in an `extern` block are always unsafe to call, except when it has
+            // `"rust-intrinsic"` ABI there are a few exceptions.
+            let id = block.lookup(db.upcast()).id;
+            match id.item_tree(db.upcast())[id.value].abi.as_deref() {
+                Some("rust-intrinsic") => is_intrinsic_fn_unsafe(&data.name),
+                _ => true,
+            }
+        }
+        _ => false,
+    }
+}
+
+/// Returns `true` if the given intrinsic is unsafe to call, or false otherwise.
+fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
+    // Should be kept in sync with https://github.com/rust-lang/rust/blob/532d2b14c05f9bc20b2d27cbb5f4550d28343a36/compiler/rustc_typeck/src/check/intrinsic.rs#L72-L106
+    ![
+        known::abort,
+        known::add_with_overflow,
+        known::bitreverse,
+        known::black_box,
+        known::bswap,
+        known::caller_location,
+        known::ctlz,
+        known::ctpop,
+        known::cttz,
+        known::discriminant_value,
+        known::forget,
+        known::likely,
+        known::maxnumf32,
+        known::maxnumf64,
+        known::min_align_of,
+        known::minnumf32,
+        known::minnumf64,
+        known::mul_with_overflow,
+        known::needs_drop,
+        known::ptr_guaranteed_eq,
+        known::ptr_guaranteed_ne,
+        known::rotate_left,
+        known::rotate_right,
+        known::rustc_peek,
+        known::saturating_add,
+        known::saturating_sub,
+        known::size_of,
+        known::sub_with_overflow,
+        known::type_id,
+        known::type_name,
+        known::unlikely,
+        known::variant_count,
+        known::wrapping_add,
+        known::wrapping_mul,
+        known::wrapping_sub,
+    ]
+    .contains(name)
 }

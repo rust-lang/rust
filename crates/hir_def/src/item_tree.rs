@@ -606,10 +606,10 @@ bitflags::bitflags! {
     pub(crate) struct FnFlags: u8 {
         const HAS_SELF_PARAM = 1 << 0;
         const HAS_BODY = 1 << 1;
-        const IS_DEFAULT = 1 << 2;
-        const IS_CONST = 1 << 3;
-        const IS_ASYNC = 1 << 4;
-        const IS_UNSAFE = 1 << 5;
+        const HAS_DEFAULT_KW = 1 << 2;
+        const HAS_CONST_KW = 1 << 3;
+        const HAS_ASYNC_KW = 1 << 4;
+        const HAS_UNSAFE_KW = 1 << 5;
         const IS_VARARGS = 1 << 6;
     }
 }

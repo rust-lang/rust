@@ -26,16 +26,16 @@ impl HirDisplay for Function {
     fn hir_fmt(&self, f: &mut HirFormatter) -> Result<(), HirDisplayError> {
         let data = f.db.function_data(self.id);
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        if data.is_default() {
+        if data.has_default_kw() {
             f.write_str("default ")?;
         }
-        if data.is_const() {
+        if data.has_const_kw() {
             f.write_str("const ")?;
         }
-        if data.is_async() {
+        if data.has_async_kw() {
             f.write_str("async ")?;
         }
-        if data.is_unsafe() {
+        if self.is_unsafe_to_call(f.db) {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {
@@ -96,7 +96,7 @@ impl HirDisplay for Function {
         // `FunctionData::ret_type` will be `::core::future::Future<Output = ...>` for async fns.
         // Use ugly pattern match to strip the Future trait.
         // Better way?
-        let ret_type = if !data.is_async() {
+        let ret_type = if !data.has_async_kw() {
             &data.ret_type
         } else {
             match &*data.ret_type {

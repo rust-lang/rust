@@ -362,7 +362,7 @@ fn highlight_def(sema: &Semantics<RootDatabase>, krate: hir::Crate, def: Definit
                 }
             }
 
-            if func.is_unsafe(db) {
+            if func.is_unsafe_to_call(db) {
                 h |= HlMod::Unsafe;
             }
             if func.is_async(db) {
@@ -508,7 +508,7 @@ fn highlight_method_call(
     let mut h = SymbolKind::Function.into();
     h |= HlMod::Associated;
 
-    if func.is_unsafe(sema.db) || sema.is_unsafe_method_call(method_call) {
+    if func.is_unsafe_to_call(sema.db) || sema.is_unsafe_method_call(method_call) {
         h |= HlMod::Unsafe;
     }
     if func.is_async(sema.db) {

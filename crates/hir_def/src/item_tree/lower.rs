@@ -2,7 +2,7 @@
 
 use std::{collections::hash_map::Entry, mem, sync::Arc};
 
-use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, name::known, HirFileId};
+use hir_expand::{ast_id_map::AstIdMap, hygiene::Hygiene, HirFileId};
 use syntax::ast::{self, HasModuleItem};
 
 use crate::{
@@ -343,16 +343,16 @@ impl<'a> Ctx<'a> {
             flags |= FnFlags::HAS_SELF_PARAM;
         }
         if func.default_token().is_some() {
-            flags |= FnFlags::IS_DEFAULT;
+            flags |= FnFlags::HAS_DEFAULT_KW;
         }
         if func.const_token().is_some() {
-            flags |= FnFlags::IS_CONST;
+            flags |= FnFlags::HAS_CONST_KW;
         }
         if func.async_token().is_some() {
-            flags |= FnFlags::IS_ASYNC;
+            flags |= FnFlags::HAS_ASYNC_KW;
         }
         if func.unsafe_token().is_some() {
-            flags |= FnFlags::IS_UNSAFE;
+            flags |= FnFlags::HAS_UNSAFE_KW;
         }
 
         let mut res = Function {
@@ -554,22 +554,10 @@ impl<'a> Ctx<'a> {
                     // should be considered to be in an extern block too.
                     let attrs = RawAttrs::new(self.db, &item, self.hygiene());
                     let id: ModItem = match item {
-                        ast::ExternItem::Fn(ast) => {
-                            let func_id = self.lower_function(&ast)?;
-                            let func = &mut self.data().functions[func_id.index];
-                            if is_intrinsic_fn_unsafe(&func.name) {
-                                // FIXME: this breaks in macros
-                                func.flags |= FnFlags::IS_UNSAFE;
-                            }
-                            func_id.into()
-                        }
+                        ast::ExternItem::Fn(ast) => self.lower_function(&ast)?.into(),
                         ast::ExternItem::Static(ast) => self.lower_static(&ast)?.into(),
                         ast::ExternItem::TypeAlias(ty) => self.lower_type_alias(&ty)?.into(),
-                        ast::ExternItem::MacroCall(call) => {
-                            // FIXME: we need some way of tracking that the macro call is in an
-                            // extern block
-                            self.lower_macro_call(&call)?.into()
-                        }
+                        ast::ExternItem::MacroCall(call) => self.lower_macro_call(&call)?.into(),
                     };
                     self.add_attrs(id.into(), attrs);
                     Some(id)
@@ -714,49 +702,6 @@ enum GenericsOwner<'a> {
     Trait(&'a ast::Trait),
     TypeAlias,
     Impl,
-}
-
-/// Returns `true` if the given intrinsic is unsafe to call, or false otherwise.
-fn is_intrinsic_fn_unsafe(name: &Name) -> bool {
-    // Should be kept in sync with https://github.com/rust-lang/rust/blob/532d2b14c05f9bc20b2d27cbb5f4550d28343a36/compiler/rustc_typeck/src/check/intrinsic.rs#L72-L106
-    ![
-        known::abort,
-        known::add_with_overflow,
-        known::bitreverse,
-        known::black_box,
-        known::bswap,
-        known::caller_location,
-        known::ctlz,
-        known::ctpop,
-        known::cttz,
-        known::discriminant_value,
-        known::forget,
-        known::likely,
-        known::maxnumf32,
-        known::maxnumf64,
-        known::min_align_of,
-        known::minnumf32,
-        known::minnumf64,
-        known::mul_with_overflow,
-        known::needs_drop,
-        known::ptr_guaranteed_eq,
-        known::ptr_guaranteed_ne,
-        known::rotate_left,
-        known::rotate_right,
-        known::rustc_peek,
-        known::saturating_add,
-        known::saturating_sub,
-        known::size_of,
-        known::sub_with_overflow,
-        known::type_id,
-        known::type_name,
-        known::unlikely,
-        known::variant_count,
-        known::wrapping_add,
-        known::wrapping_mul,
-        known::wrapping_sub,
-    ]
-    .contains(name)
 }
 
 fn lower_abi(abi: ast::Abi) -> Interned<str> {

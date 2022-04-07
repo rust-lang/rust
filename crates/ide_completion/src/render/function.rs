@@ -237,7 +237,7 @@ fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
     if func.is_async(db) {
         format_to!(detail, "async ");
     }
-    if func.is_unsafe(db) {
+    if func.is_unsafe_to_call(db) {
         format_to!(detail, "unsafe ");
     }
 
