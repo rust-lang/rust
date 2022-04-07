@@ -58,10 +58,17 @@ impl FunctionData {
         }
         if flags.bits & FnFlags::HAS_SELF_PARAM != 0 {
             // If there's a self param in the syntax, but it is cfg'd out, remove the flag.
-            cov_mark::hit!(cfgd_out_self_param);
-            let param =
-                func.params.clone().next().expect("fn HAS_SELF_PARAM but no parameters allocated");
-            if !item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options) {
+            let is_cfgd_out = match func.params.clone().next() {
+                Some(param) => {
+                    !item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options)
+                }
+                None => {
+                    stdx::never!("fn HAS_SELF_PARAM but no parameters allocated");
+                    true
+                }
+            };
+            if is_cfgd_out {
+                cov_mark::hit!(cfgd_out_self_param);
                 flags.bits &= !FnFlags::HAS_SELF_PARAM;
             }
         }
