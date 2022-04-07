@@ -11,6 +11,21 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 use libc::{c_int, c_void};
 
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "l4re"
+))]
+use libc::off64_t;
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "emscripten",
+    target_os = "l4re",
+    target_os = "android"
+)))]
+use libc::off_t as off64_t;
+
 #[derive(Debug)]
 pub struct FileDesc(OwnedFd);
 
@@ -109,7 +124,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as off64_t,
             ))
             .map(|n| n as usize)
         }
@@ -176,7 +191,7 @@ impl FileDesc {
                 self.as_raw_fd(),
                 buf.as_ptr() as *const c_void,
                 cmp::min(buf.len(), READ_LIMIT),
-                offset as i64,
+                offset as off64_t,
             ))
             .map(|n| n as usize)
         }
