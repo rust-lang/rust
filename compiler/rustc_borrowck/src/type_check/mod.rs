@@ -1911,7 +1911,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
 
-            &Rvalue::NullaryOp(_, ty) => {
+            &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
                 let trait_ref = ty::TraitRef {
                     def_id: tcx.require_lang_item(LangItem::Sized, Some(self.last_span)),
                     substs: tcx.mk_substs_trait(ty, &[]),
