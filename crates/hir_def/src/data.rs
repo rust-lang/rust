@@ -56,6 +56,15 @@ impl FunctionData {
         if is_varargs {
             flags.bits |= FnFlags::IS_VARARGS;
         }
+        if flags.bits & FnFlags::HAS_SELF_PARAM != 0 {
+            // If there's a self param in the syntax, but it is cfg'd out, remove the flag.
+            cov_mark::hit!(cfgd_out_self_param);
+            let param =
+                func.params.clone().next().expect("fn HAS_SELF_PARAM but no parameters allocated");
+            if !item_tree.attrs(db, krate, param.into()).is_cfg_enabled(cfg_options) {
+                flags.bits &= !FnFlags::HAS_SELF_PARAM;
+            }
+        }
 
         let legacy_const_generics_indices = item_tree
             .attrs(db, krate, ModItem::from(loc.id.value).into())
