@@ -148,7 +148,7 @@ impl Provider for SomeConcreteType {
 fn test_provider() {
     let obj: &dyn Provider = &SomeConcreteType { some_string: "hello".to_owned() };
 
-    assert_eq!(&**request_ref::<String>(obj).unwrap(), "hello");
-    assert_eq!(&*request_value::<String>(obj).unwrap(), "bye");
-    assert_eq!(request_value::<u8>(obj), None);
+    assert_eq!(&**request_ref::<String, _>(obj).unwrap(), "hello");
+    assert_eq!(&*request_value::<String, _>(obj).unwrap(), "bye");
+    assert_eq!(request_value::<u8, _>(obj), None);
 }
