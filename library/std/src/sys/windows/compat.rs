@@ -77,6 +77,10 @@ macro_rules! compat_fn {
             static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 
             unsafe extern "C" fn init() {
+                PTR = get_f();
+            }
+
+            unsafe extern "C" fn get_f() -> Option<F> {
                 // There is no locking here. This code is executed before main() is entered, and
                 // is guaranteed to be single-threaded.
                 //
@@ -91,10 +95,11 @@ macro_rules! compat_fn {
                     match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8).addr() {
                         0 => {}
                         n => {
-                            PTR = Some(mem::transmute::<usize, F>(n));
+                            return Some(mem::transmute::<usize, F>(n));
                         }
                     }
                 }
+                return None;
             }
 
             #[allow(dead_code)]
@@ -105,10 +110,15 @@ macro_rules! compat_fn {
             #[allow(dead_code)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
                 if let Some(ptr) = PTR {
-                    ptr($($argname),*)
-                } else {
-                    $fallback_body
+                    return ptr($($argname),*);
                 }
+                if cfg!(miri) {
+                    // Miri does not run `init`, so we just call `get_f` each time.
+                    if let Some(ptr) = get_f() {
+                        return ptr($($argname),*);
+                    }
+                }
+                $fallback_body
             }
         }
 
