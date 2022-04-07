@@ -92,11 +92,10 @@ macro_rules! compat_fn {
                 let symbol_name: *const u8 = concat!(stringify!($symbol), "\0").as_ptr();
                 let module_handle = $crate::sys::c::GetModuleHandleA(module_name as *const i8);
                 if !module_handle.is_null() {
-                    match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8).addr() {
-                        0 => {}
-                        n => {
-                            return Some(mem::transmute::<usize, F>(n));
-                        }
+                    let ptr = $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8);
+                    if !ptr.is_null() {
+                        // Transmute to the right function pointer type.
+                        return Some(mem::transmute(ptr));
                     }
                 }
                 return None;
