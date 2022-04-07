@@ -128,17 +128,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
                     if !ty.references_error() {
-                        let mut err = infcx.tcx.sess.struct_span_err(
-                            concrete_type.span,
-                            "concrete type differs from previous defining opaque type use",
+                        prev.report_mismatch(
+                            &OpaqueHiddenType { ty, span: concrete_type.span },
+                            infcx.tcx,
                         );
-                        err.span_label(prev.span, format!("expected `{}`, got `{}`", prev.ty, ty));
-                        if prev.span == concrete_type.span {
-                            err.span_label(prev.span, "this expression supplies two conflicting concrete types for the same opaque type");
-                        } else {
-                            err.span_note(prev.span, "previous use here");
-                        }
-                        err.emit();
                     }
                     prev.ty = infcx.tcx.ty_error();
                 }

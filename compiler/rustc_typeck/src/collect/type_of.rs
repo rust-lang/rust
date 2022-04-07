@@ -601,21 +601,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
 
                 if let Some(prev) = self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
-                        // Found different concrete types for the opaque type.
-                        let mut err = self.tcx.sess.struct_span_err(
-                            concrete_type.span,
-                            "concrete type differs from previous defining opaque type use",
-                        );
-                        err.span_label(
-                            concrete_type.span,
-                            format!("expected `{}`, got `{}`", prev.ty, concrete_type.ty),
-                        );
-                        if prev.span == concrete_type.span {
-                            err.span_label(prev.span, "this expression supplies two conflicting concrete types for the same opaque type");
-                        } else {
-                            err.span_note(prev.span, "previous use here");
-                        }
-                        err.emit();
+                        prev.report_mismatch(&concrete_type, self.tcx);
                     }
                 } else {
                     self.found = Some(concrete_type);
