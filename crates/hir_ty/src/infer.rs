@@ -748,7 +748,7 @@ impl<'a> InferenceContext<'a> {
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
         let error_ty = &TypeRef::Error;
-        let return_ty = if data.is_async() {
+        let return_ty = if data.has_async_kw() {
             data.async_ret_type.as_deref().unwrap_or(error_ty)
         } else {
             &*data.ret_type

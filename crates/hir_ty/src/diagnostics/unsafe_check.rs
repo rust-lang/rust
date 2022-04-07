@@ -8,14 +8,16 @@ use hir_def::{
     DefWithBodyId,
 };
 
-use crate::{db::HirDatabase, InferenceResult, Interner, TyExt, TyKind};
+use crate::{
+    db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TyExt, TyKind,
+};
 
 pub fn missing_unsafe(db: &dyn HirDatabase, def: DefWithBodyId) -> Vec<ExprId> {
     let infer = db.infer(def);
     let mut res = Vec::new();
 
     let is_unsafe = match def {
-        DefWithBodyId::FunctionId(it) => db.function_data(it).is_unsafe(),
+        DefWithBodyId::FunctionId(it) => db.function_data(it).has_unsafe_kw(),
         DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_) => false,
     };
     if is_unsafe {
@@ -62,7 +64,7 @@ fn walk_unsafe(
     match expr {
         &Expr::Call { callee, .. } => {
             if let Some(func) = infer[callee].as_fn_def(db) {
-                if db.function_data(func).is_unsafe() {
+                if is_fn_unsafe_to_call(db, func) {
                     unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });
                 }
             }
@@ -79,7 +81,7 @@ fn walk_unsafe(
         Expr::MethodCall { .. } => {
             if infer
                 .method_resolution(current)
-                .map(|(func, _)| db.function_data(func).is_unsafe())
+                .map(|(func, _)| is_fn_unsafe_to_call(db, func))
                 .unwrap_or(false)
             {
                 unsafe_expr_cb(UnsafeExpr { expr: current, inside_unsafe_block });

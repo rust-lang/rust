@@ -76,7 +76,6 @@ extern "C" {
                 pub(self) static EX_STATIC: u8 = _;
 
                 #[on_extern_fn]  // AttrId { ast_index: 0 }
-                // flags = 0x20
                 pub(self) fn ex_fn() -> ();
             }
         "##]],

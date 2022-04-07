@@ -1421,16 +1421,16 @@ impl Function {
             .collect()
     }
 
-    pub fn is_unsafe(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_unsafe()
-    }
-
     pub fn is_const(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_const()
+        db.function_data(self.id).has_const_kw()
     }
 
     pub fn is_async(self, db: &dyn HirDatabase) -> bool {
-        db.function_data(self.id).is_async()
+        db.function_data(self.id).has_async_kw()
+    }
+
+    pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
+        hir_ty::is_fn_unsafe_to_call(db, self.id)
     }
 
     /// Whether this function declaration has a definition.
