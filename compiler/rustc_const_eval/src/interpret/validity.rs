@@ -312,7 +312,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
         let tail = self.ecx.tcx.struct_tail_erasing_lifetimes(pointee.ty, self.ecx.param_env);
         match tail.kind() {
             ty::Dynamic(..) => {
-                let vtable = self.ecx.scalar_to_ptr(meta.unwrap_meta());
+                let vtable = self.ecx.scalar_to_ptr(meta.unwrap_meta())?;
                 // Direct call to `check_ptr_access_align` checks alignment even on CTFE machines.
                 try_validation!(
                     self.ecx.check_ptr_access_align(
@@ -577,7 +577,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
 
                 // If we check references recursively, also check that this points to a function.
                 if let Some(_) = self.ref_tracking {
-                    let ptr = self.ecx.scalar_to_ptr(value);
+                    let ptr = self.ecx.scalar_to_ptr(value)?;
                     let _fn = try_validation!(
                         self.ecx.get_ptr_fn(ptr),
                         self.path,
@@ -590,7 +590,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // FIXME: Check if the signature matches
                 } else {
                     // Otherwise (for standalone Miri), we have to still check it to be non-null.
-                    if self.ecx.scalar_may_be_null(value) {
+                    if self.ecx.scalar_may_be_null(value)? {
                         throw_validation_failure!(self.path, { "a null function pointer" });
                     }
                 }
@@ -667,7 +667,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                 // We support 2 kinds of ranges here: full range, and excluding zero.
                 if start == 1 && end == max_value {
                     // Only null is the niche.  So make sure the ptr is NOT null.
-                    if self.ecx.scalar_may_be_null(value) {
+                    if self.ecx.scalar_may_be_null(value)? {
                         throw_validation_failure!(self.path,
                             { "a potentially null pointer" }
                             expected {

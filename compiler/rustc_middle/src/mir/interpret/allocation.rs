@@ -15,8 +15,8 @@ use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
     read_target_uint, write_target_uint, AllocId, InterpError, InterpResult, Pointer, Provenance,
-    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, UndefinedBehaviorInfo, UninitBytesAccess,
-    UnsupportedOpInfo,
+    ResourceExhaustionInfo, Scalar, ScalarMaybeUninit, ScalarSizeMismatch, UndefinedBehaviorInfo,
+    UninitBytesAccess, UnsupportedOpInfo,
 };
 use crate::ty;
 
@@ -81,6 +81,8 @@ impl<'tcx, Tag, Extra> ConstAllocation<'tcx, Tag, Extra> {
 /// is added when converting to `InterpError`.
 #[derive(Debug)]
 pub enum AllocError {
+    /// A scalar had the wrong size.
+    ScalarSizeMismatch(ScalarSizeMismatch),
     /// Encountered a pointer where we needed raw bytes.
     ReadPointerAsBytes,
     /// Partially overwriting a pointer.
@@ -90,10 +92,19 @@ pub enum AllocError {
 }
 pub type AllocResult<T = ()> = Result<T, AllocError>;
 
+impl From<ScalarSizeMismatch> for AllocError {
+    fn from(s: ScalarSizeMismatch) -> Self {
+        AllocError::ScalarSizeMismatch(s)
+    }
+}
+
 impl AllocError {
     pub fn to_interp_error<'tcx>(self, alloc_id: AllocId) -> InterpError<'tcx> {
         use AllocError::*;
         match self {
+            ScalarSizeMismatch(s) => {
+                InterpError::UndefinedBehavior(UndefinedBehaviorInfo::ScalarSizeMismatch(s))
+            }
             ReadPointerAsBytes => InterpError::Unsupported(UnsupportedOpInfo::ReadPointerAsBytes),
             PartialPointerOverwrite(offset) => InterpError::Unsupported(
                 UnsupportedOpInfo::PartialPointerOverwrite(Pointer::new(alloc_id, offset)),
@@ -425,7 +436,7 @@ impl<Tag: Provenance, Extra> Allocation<Tag, Extra> {
 
         // `to_bits_or_ptr_internal` is the right method because we just want to store this data
         // as-is into memory.
-        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size) {
+        let (bytes, provenance) = match val.to_bits_or_ptr_internal(range.size)? {
             Err(val) => {
                 let (provenance, offset) = val.into_parts();
                 (u128::from(offset.bytes()), Some(provenance))

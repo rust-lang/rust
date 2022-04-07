@@ -342,7 +342,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         op: &OpTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
-        Ok(self.scalar_to_ptr(self.read_scalar(op)?.check_init()?))
+        self.scalar_to_ptr(self.read_scalar(op)?.check_init()?)
     }
 
     // Turn the wide MPlace into a string (must already be dereferenced!)
@@ -738,7 +738,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // okay. Everything else, we conservatively reject.
                         let ptr_valid = niche_start == 0
                             && variants_start == variants_end
-                            && !self.scalar_may_be_null(tag_val);
+                            && !self.scalar_may_be_null(tag_val)?;
                         if !ptr_valid {
                             throw_ub!(InvalidTag(dbg_val))
                         }
