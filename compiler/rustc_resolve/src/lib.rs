@@ -29,7 +29,7 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, NodeId, CRATE_NODE_ID};
 use rustc_ast::{AngleBracketedArg, Crate, Expr, ExprKind, GenericArg, GenericArgs, LitKind, Path};
-use rustc_ast_lowering::ResolverAstLowering;
+use rustc_ast_lowering::{LifetimeRes, ResolverAstLowering};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
@@ -901,6 +901,8 @@ pub struct Resolver<'a> {
     import_res_map: NodeMap<PerNS<Option<Res>>>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
+    /// Resolutions for lifetimes.
+    lifetimes_res_map: NodeMap<LifetimeRes>,
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
@@ -1153,6 +1155,10 @@ impl ResolverAstLowering for Resolver<'_> {
         self.label_res_map.get(&id).cloned()
     }
 
+    fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
+        self.lifetimes_res_map.get(&id).copied()
+    }
+
     fn create_stable_hashing_context(&self) -> StableHashingContext<'_> {
         StableHashingContext::new(self.session, &self.definitions, self.crate_loader.cstore())
     }
@@ -1301,6 +1307,7 @@ impl<'a> Resolver<'a> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
+            lifetimes_res_map: Default::default(),
             extern_crate_map: Default::default(),
             reexport_map: FxHashMap::default(),
             trait_map: NodeMap::default(),

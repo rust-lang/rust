@@ -1824,7 +1824,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         for rib in self.lifetime_ribs.iter().rev() {
             match rib.kind {
-                LifetimeRibKind::Generics { span, kind } => {
+                LifetimeRibKind::Generics { parent: _, span, kind } => {
                     if !span.can_be_used_for_suggestions() && suggest_note {
                         suggest_note = false; // Avoid displaying the same help multiple times.
                         err.span_label(
