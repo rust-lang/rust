@@ -131,7 +131,7 @@ pub(super) enum MatcherLoc {
     MetaVarDecl {
         span: Span,
         bind: Ident,
-        kind: Option<NonterminalKind>,
+        kind: NonterminalKind,
         next_metavar: usize,
         seq_depth: usize,
     },
@@ -189,7 +189,7 @@ pub(super) fn compute_locs(sess: &ParseSess, matcher: &[TokenTree]) -> Vec<Match
                     locs.push(MatcherLoc::MetaVarDecl {
                         span,
                         bind,
-                        kind,
+                        kind: kind.unwrap(), // presence was checked for earlier
                         next_metavar: *next_metavar,
                         seq_depth,
                     });
@@ -409,7 +409,6 @@ impl TtParser {
     /// track of through the mps generated.
     fn parse_tt_inner(
         &mut self,
-        sess: &ParseSess,
         matcher: &[MatcherLoc],
         token: &Token,
     ) -> Option<NamedParseResult> {
@@ -508,20 +507,12 @@ impl TtParser {
                     mp.idx = idx_first;
                     self.cur_mps.push(mp);
                 }
-                &MatcherLoc::MetaVarDecl { span, kind, .. } => {
+                &MatcherLoc::MetaVarDecl { kind, .. } => {
                     // Built-in nonterminals never start with these tokens, so we can eliminate
                     // them from consideration. We use the span of the metavariable declaration
                     // to determine any edition-specific matching behavior for non-terminals.
-                    if let Some(kind) = kind {
-                        if Parser::nonterminal_may_begin_with(kind, token) {
-                            self.bb_mps.push(mp);
-                        }
-                    } else {
-                        // Both this check and the one in `nameize` are necessary, surprisingly.
-                        if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
-                            // E.g. `$e` instead of `$e:expr`.
-                            return Some(Error(span, "missing fragment specifier".to_string()));
-                        }
+                    if Parser::nonterminal_may_begin_with(kind, token) {
+                        self.bb_mps.push(mp);
                     }
                 }
                 MatcherLoc::Eof => {
@@ -547,7 +538,7 @@ impl TtParser {
                     // Need to take ownership of the matches from within the `Lrc`.
                     Lrc::make_mut(&mut eof_mp.matches);
                     let matches = Lrc::try_unwrap(eof_mp.matches).unwrap().into_iter();
-                    self.nameize(sess, matcher, matches)
+                    self.nameize(matcher, matches)
                 }
                 EofMatcherPositions::Multiple => {
                     Error(token.span, "ambiguity: multiple successful parses".to_string())
@@ -585,7 +576,7 @@ impl TtParser {
 
             // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            if let Some(res) = self.parse_tt_inner(&parser.sess, matcher, &parser.token) {
+            if let Some(res) = self.parse_tt_inner(matcher, &parser.token) {
                 return res;
             }
 
@@ -615,11 +606,7 @@ impl TtParser {
                     let mut mp = self.bb_mps.pop().unwrap();
                     let loc = &matcher[mp.idx];
                     if let &MatcherLoc::MetaVarDecl {
-                        span,
-                        kind: Some(kind),
-                        next_metavar,
-                        seq_depth,
-                        ..
+                        span, kind, next_metavar, seq_depth, ..
                     } = loc
                     {
                         // We use the span of the metavariable declaration to determine any
@@ -668,7 +655,7 @@ impl TtParser {
             .bb_mps
             .iter()
             .map(|mp| match &matcher[mp.idx] {
-                MatcherLoc::MetaVarDecl { bind, kind: Some(kind), .. } => {
+                MatcherLoc::MetaVarDecl { bind, kind, .. } => {
                     format!("{} ('{}')", kind, bind)
                 }
                 _ => unreachable!(),
@@ -692,7 +679,6 @@ impl TtParser {
 
     fn nameize<I: Iterator<Item = NamedMatch>>(
         &self,
-        sess: &ParseSess,
         matcher: &[MatcherLoc],
         mut res: I,
     ) -> NamedParseResult {
@@ -700,21 +686,13 @@ impl TtParser {
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
         for loc in matcher {
-            if let &MatcherLoc::MetaVarDecl { span, bind, kind, .. } = loc {
-                if kind.is_some() {
-                    match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
-                        Vacant(spot) => spot.insert(res.next().unwrap()),
-                        Occupied(..) => {
-                            return Error(span, format!("duplicated bind name: {}", bind));
-                        }
-                    };
-                } else {
-                    // Both this check and the one in `parse_tt_inner` are necessary, surprisingly.
-                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span).is_some() {
-                        // E.g. `$e` instead of `$e:expr`.
-                        return Error(span, "missing fragment specifier".to_string());
+            if let &MatcherLoc::MetaVarDecl { span, bind, .. } = loc {
+                match ret_val.entry(MacroRulesNormalizedIdent::new(bind)) {
+                    Vacant(spot) => spot.insert(res.next().unwrap()),
+                    Occupied(..) => {
+                        return Error(span, format!("duplicated bind name: {}", bind));
                     }
-                }
+                };
             }
         }
         Success(ret_val)

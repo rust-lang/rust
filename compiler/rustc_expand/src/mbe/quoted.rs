@@ -3,7 +3,7 @@ use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetiti
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream;
-use rustc_ast::{NodeId, DUMMY_NODE_ID};
+use rustc_ast::NodeId;
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
 use rustc_session::parse::{feature_err, ParseSess};
@@ -102,10 +102,6 @@ pub(super) fn parse(
                     }
                     tree => tree.as_ref().map_or(start_sp, tokenstream::TokenTree::span),
                 };
-                if node_id != DUMMY_NODE_ID {
-                    // Macros loaded from other crates have dummy node ids.
-                    sess.missing_fragment_specifiers.borrow_mut().insert(span, node_id);
-                }
                 result.push(TokenTree::MetaVarDecl(span, ident, None));
             }
 
