@@ -612,9 +612,6 @@ impl FnFlags {
     pub(crate) const IS_CONST: u8 = 1 << 3;
     pub(crate) const IS_ASYNC: u8 = 1 << 4;
     pub(crate) const IS_UNSAFE: u8 = 1 << 5;
-    /// Whether the function is located in an `extern` block (*not* whether it is an
-    /// `extern "abi" fn`).
-    pub(crate) const IS_IN_EXTERN_BLOCK: u8 = 1 << 6;
     pub(crate) const IS_VARARGS: u8 = 1 << 7;
 }
 

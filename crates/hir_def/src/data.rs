@@ -57,10 +57,6 @@ impl FunctionData {
             flags.bits |= FnFlags::IS_VARARGS;
         }
 
-        if matches!(loc.container, ItemContainerId::ExternBlockId(_)) {
-            flags.bits |= FnFlags::IS_IN_EXTERN_BLOCK;
-        }
-
         let legacy_const_generics_indices = item_tree
             .attrs(db, krate, ModItem::from(loc.id.value).into())
             .by_key("rustc_legacy_const_generics")
@@ -112,10 +108,6 @@ impl FunctionData {
 
     pub fn is_unsafe(&self) -> bool {
         self.flags.bits & FnFlags::IS_UNSAFE != 0
-    }
-
-    pub fn is_in_extern_block(&self) -> bool {
-        self.flags.bits & FnFlags::IS_IN_EXTERN_BLOCK != 0
     }
 
     pub fn is_varargs(&self) -> bool {
