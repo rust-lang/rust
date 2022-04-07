@@ -356,7 +356,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     let concrete_ty = tcx
                         .mir_borrowck(owner)
                         .concrete_opaque_types
-                        .get_value_matching(|(key, _)| key.def_id == def_id.to_def_id())
+                        .get(&def_id.to_def_id())
                         .copied()
                         .map(|concrete| concrete.ty)
                         .unwrap_or_else(|| {
@@ -591,31 +591,17 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
             // Use borrowck to get the type with unerased regions.
             let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
             debug!(?concrete_opaque_types);
-            for &(opaque_type_key, concrete_type) in concrete_opaque_types {
-                if opaque_type_key.def_id != self.def_id {
+            for &(def_id, concrete_type) in concrete_opaque_types {
+                if def_id != self.def_id {
                     // Ignore constraints for other opaque types.
                     continue;
                 }
 
-                debug!(?concrete_type, ?opaque_type_key.substs, "found constraint");
+                debug!(?concrete_type, "found constraint");
 
                 if let Some(prev) = self.found {
                     if concrete_type.ty != prev.ty && !(concrete_type, prev).references_error() {
-                        // Found different concrete types for the opaque type.
-                        let mut err = self.tcx.sess.struct_span_err(
-                            concrete_type.span,
-                            "concrete type differs from previous defining opaque type use",
-                        );
-                        err.span_label(
-                            concrete_type.span,
-                            format!("expected `{}`, got `{}`", prev.ty, concrete_type.ty),
-                        );
-                        if prev.span == concrete_type.span {
-                            err.span_label(prev.span, "this expression supplies two conflicting concrete types for the same opaque type");
-                        } else {
-                            err.span_note(prev.span, "previous use here");
-                        }
-                        err.emit();
+                        prev.report_mismatch(&concrete_type, self.tcx);
                     }
                 } else {
                     self.found = Some(concrete_type);
