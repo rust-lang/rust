@@ -1562,13 +1562,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return true;
         }
 
-        // Check if a bound would previously have been removed when normalizing
-        // the param_env so that it can be given the lowest priority. See
-        // #50825 for the motivation for this.
-        let is_global = |cand: &ty::PolyTraitPredicate<'tcx>| {
-            cand.is_global() && !cand.has_late_bound_regions()
-        };
-
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // `DiscriminantKindCandidate`, and `ConstDestructCandidate` to anything else.
         //
@@ -1629,10 +1622,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // global, prefer the projection or object candidate. See issue
             // #50825 and #89352.
             (ObjectCandidate(_) | ProjectionCandidate(_), ParamCandidate(ref cand)) => {
-                sized_predicate || is_global(cand)
+                sized_predicate || cand.is_global()
             }
             (ParamCandidate(ref cand), ObjectCandidate(_) | ProjectionCandidate(_)) => {
-                !(sized_predicate || is_global(cand))
+                !(sized_predicate || cand.is_global())
             }
 
             // Global bounds from the where clause should be ignored
@@ -1651,7 +1644,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinCandidate { .. }
                 | TraitAliasCandidate(..),
-            ) => !is_global(cand),
+            ) => !cand.is_global(),
             (
                 ImplCandidate(_)
                 | ClosureCandidate
@@ -1666,7 +1659,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ) => {
                 // Prefer these to a global where-clause bound
                 // (see issue #50825).
-                is_global(cand) && other.evaluation.must_apply_modulo_regions()
+                cand.is_global() && other.evaluation.must_apply_modulo_regions()
             }
 
             (ProjectionCandidate(i), ProjectionCandidate(j))
