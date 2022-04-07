@@ -113,7 +113,7 @@ pub fn is_const_evaluatable<'cx, 'tcx>(
             infcx.tcx.struct_span_lint_hir(
                 lint::builtin::CONST_EVALUATABLE_UNCHECKED,
                 infcx.tcx.hir().local_def_id_to_hir_id(local_def_id),
-                span,
+                tcx.def_span(local_def_id),
                 |err| {
                     err.build("cannot use constants which depend on generic parameters in types")
                         .emit();
