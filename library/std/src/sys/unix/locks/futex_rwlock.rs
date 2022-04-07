@@ -161,13 +161,11 @@ impl RwLock {
 
             // Set the waiting bit indicating that we're waiting on it.
             if !writers_waiting(state) {
-                match self.state.compare_exchange(state, state | WRITERS_WAITING, Relaxed, Relaxed)
+                if let Err(s) =
+                    self.state.compare_exchange(state, state | WRITERS_WAITING, Relaxed, Relaxed)
                 {
-                    Ok(_) => state |= WRITERS_WAITING,
-                    Err(s) => {
-                        state = s;
-                        continue;
-                    }
+                    state = s;
+                    continue;
                 }
             }
 
@@ -175,9 +173,10 @@ impl RwLock {
             // to make sure we don't miss any notifications.
             let seq = self.writer_notify.load(Acquire);
 
-            // Don't go to sleep if the state has already changed.
+            // Don't go to sleep if the lock has become available, or the
+            // writers waiting bit is no longer set.
             let s = self.state.load(Relaxed);
-            if state != s {
+            if readers(s) == 0 || !writers_waiting(s) {
                 state = s;
                 continue;
             }
