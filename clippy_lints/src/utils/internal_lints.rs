@@ -889,7 +889,7 @@ fn path_to_matched_type(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Ve
                     }
                 }
             },
-            Res::Def(DefKind::Const | DefKind::Static, def_id) => {
+            Res::Def(DefKind::Const | DefKind::Static(..), def_id) => {
                 if let Some(Node::Item(item)) = cx.tcx.hir().get_if_local(def_id) {
                     if let ItemKind::Const(.., body_id) | ItemKind::Static(.., body_id) = item.kind {
                         let body = cx.tcx.hir().body(body_id);

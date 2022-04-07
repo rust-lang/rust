@@ -667,7 +667,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);
                     match_as_ref::check(cx, ex, arms, expr);
-                    needless_match::check_match(cx, ex, arms);
+                    needless_match::check_match(cx, ex, arms, expr);
 
                     if self.infallible_destructuring_match_linted {
                         self.infallible_destructuring_match_linted = false;

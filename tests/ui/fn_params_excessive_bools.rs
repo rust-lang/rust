@@ -20,7 +20,7 @@ fn h(_: bool, _: bool, _: bool) {}
 fn e(_: S, _: S, _: Box<S>, _: Vec<u32>) {}
 fn t(_: S, _: S, _: Box<S>, _: Vec<u32>, _: bool, _: bool, _: bool, _: bool) {}
 
-struct S {}
+struct S;
 trait Trait {
     fn f(_: bool, _: bool, _: bool, _: bool);
     fn g(_: bool, _: bool, _: bool, _: Vec<u32>);

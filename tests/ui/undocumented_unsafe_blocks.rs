@@ -1,4 +1,8 @@
+// aux-build:proc_macro_unsafe.rs
+
 #![warn(clippy::undocumented_unsafe_blocks)]
+
+extern crate proc_macro_unsafe;
 
 // Valid comments
 
@@ -87,11 +91,6 @@ fn block_comment_newlines() {
     /* SAFETY: */
 
     unsafe {}
-}
-
-#[rustfmt::skip]
-fn inline_block_comment() {
-    /* Safety: */unsafe {}
 }
 
 fn block_comment_with_extras() {
@@ -209,7 +208,53 @@ fn local_nest() {
     let _ = [(42, unsafe {}, unsafe {}), (52, unsafe {}, unsafe {})];
 }
 
+fn in_fn_call(x: *const u32) {
+    fn f(x: u32) {}
+
+    // Safety: reason
+    f(unsafe { *x });
+}
+
+fn multi_in_fn_call(x: *const u32) {
+    fn f(x: u32, y: u32) {}
+
+    // Safety: reason
+    f(unsafe { *x }, unsafe { *x });
+}
+
+fn in_multiline_fn_call(x: *const u32) {
+    fn f(x: u32, y: u32) {}
+
+    f(
+        // Safety: reason
+        unsafe { *x },
+        0,
+    );
+}
+
+fn in_macro_call(x: *const u32) {
+    // Safety: reason
+    println!("{}", unsafe { *x });
+}
+
+fn in_multiline_macro_call(x: *const u32) {
+    println!(
+        "{}",
+        // Safety: reason
+        unsafe { *x },
+    );
+}
+
+fn from_proc_macro() {
+    proc_macro_unsafe::unsafe_block!(token);
+}
+
 // Invalid comments
+
+#[rustfmt::skip]
+fn inline_block_comment() {
+    /* Safety: */ unsafe {}
+}
 
 fn no_comment() {
     unsafe {}

@@ -62,7 +62,7 @@ trait BadTrait: Default + Clone {
 }
 
 #[derive(Default, Clone)]
-struct Life {}
+struct Life;
 
 impl T for Life {
     // this should not warn
@@ -85,7 +85,7 @@ trait Iter: Iterator {
     }
 }
 
-struct Foo {}
+struct Foo;
 
 trait FooIter: Iterator<Item = Foo> {
     fn bar()

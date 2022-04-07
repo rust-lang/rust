@@ -1,5 +1,6 @@
 // error-pattern:cargo-clippy
 
+#![feature(array_windows)]
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
@@ -190,6 +191,7 @@ mod collapsible_match;
 mod comparison_chain;
 mod copies;
 mod copy_iterator;
+mod crate_in_macro_def;
 mod create_dir;
 mod dbg_macro;
 mod default;
@@ -208,6 +210,7 @@ mod drop_forget_ref;
 mod duration_subsec;
 mod else_if_without_else;
 mod empty_enum;
+mod empty_structs_with_brackets;
 mod entry;
 mod enum_clike;
 mod enum_variants;
@@ -375,7 +378,6 @@ mod transmuting_null;
 mod try_err;
 mod types;
 mod undocumented_unsafe_blocks;
-mod undropped_manually_drops;
 mod unicode;
 mod uninit_vec;
 mod unit_hash;
@@ -812,7 +814,6 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move || Box::new(disallowed_methods::DisallowedMethods::new(disallowed_methods.clone())));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86AttSyntax));
     store.register_early_pass(|| Box::new(asm_syntax::InlineAsmX86IntelSyntax));
-    store.register_late_pass(|| Box::new(undropped_manually_drops::UndroppedManuallyDrops));
     store.register_late_pass(|| Box::new(strings::StrToString));
     store.register_late_pass(|| Box::new(strings::StringToString));
     store.register_late_pass(|| Box::new(zero_sized_map_values::ZeroSizedMapValues));
@@ -847,7 +848,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             enable_raw_pointer_heuristic_for_send,
         ))
     });
-    store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks::default()));
+    store.register_late_pass(move || Box::new(undocumented_unsafe_blocks::UndocumentedUnsafeBlocks));
     store.register_late_pass(|| Box::new(match_str_case_mismatch::MatchStrCaseMismatch));
     store.register_late_pass(move || Box::new(format_args::FormatArgs));
     store.register_late_pass(|| Box::new(trailing_empty_array::TrailingEmptyArray));
@@ -867,6 +868,8 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
             ignore_publish: cargo_ignore_publish,
         })
     });
+    store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
+    store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

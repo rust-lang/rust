@@ -410,9 +410,10 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
             if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
             then {
-                // Avoid suggesting from/to bits and dereferencing raw pointers in const contexts.
-                // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
-                // And see https://github.com/rust-lang/rust/issues/51911 for dereferencing raw pointers.
+                // Avoid suggesting non-const operations in const contexts:
+                // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
+                // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
+                // - char conversions (https://github.com/rust-lang/rust/issues/89259)
                 let const_context = in_constant(cx, e.hir_id);
 
                 let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
@@ -427,7 +428,7 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
                     | crosspointer_transmute::check(cx, e, from_ty, to_ty)
                     | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, qpath)
-                    | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
                     | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
                     | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
