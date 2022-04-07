@@ -425,13 +425,26 @@ crate fn build_impl(
         None => (
             tcx.associated_items(did)
                 .in_definition_order()
-                .filter_map(|item| {
-                    if associated_trait.is_some() || item.vis.is_public() {
-                        Some(item.clean(cx))
+                .filter(|item| {
+                    // If this is a trait impl, filter out associated items whose corresponding item
+                    // in the associated trait is marked `doc(hidden)`.
+                    // If this is an inherent impl, filter out private associated items.
+                    if let Some(associated_trait) = associated_trait {
+                        let trait_item = tcx
+                            .associated_items(associated_trait.def_id)
+                            .find_by_name_and_kind(
+                                tcx,
+                                item.ident(tcx),
+                                item.kind,
+                                associated_trait.def_id,
+                            )
+                            .unwrap(); // corresponding associated item has to exist
+                        !tcx.is_doc_hidden(trait_item.def_id)
                     } else {
-                        None
+                        item.vis.is_public()
                     }
                 })
+                .map(|item| item.clean(cx))
                 .collect::<Vec<_>>(),
             clean::enter_impl_trait(cx, |cx| {
                 clean_ty_generics(cx, tcx.generics_of(did), predicates)
