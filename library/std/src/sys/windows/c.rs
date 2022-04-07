@@ -1300,7 +1300,9 @@ compat_fn! {
         ByteOffset: Option<&LARGE_INTEGER>,
         Key: Option<&ULONG>
     ) -> NTSTATUS {
-        panic!("`NtWriteFile` not available");
+        // If we can't write to a file then it's impossible to write
+        // an error message so immediately abort.
+        crate::sys::abort_internal();
     }
     pub fn RtlNtStatusToDosError(
         Status: NTSTATUS
