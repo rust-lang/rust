@@ -17,7 +17,7 @@ error: aborting due to previous error
 For more information about this error, try `rustc --explain E0425`.
 Couldn't compile the test.
 ---- $DIR/failed-doctest-output.rs - SomeStruct (line 12) stdout ----
-Test executable failed (exit code 101).
+Test executable failed (exit status: 101).
 
 stdout:
 stdout 1
