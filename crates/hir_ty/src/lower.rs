@@ -37,11 +37,12 @@ use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use syntax::{ast, SmolStr};
 
-use crate::consteval::{path_to_const, unknown_const_as_generic, unknown_const_usize, usize_const};
+use crate::consteval::{
+    intern_scalar_const, path_to_const, unknown_const, unknown_const_as_generic,
+};
 use crate::utils::Generics;
 use crate::{all_super_traits, make_binders, Const, GenericArgData, ParamKind};
 use crate::{
-    consteval,
     db::HirDatabase,
     mapping::ToChalk,
     static_lifetime, to_assoc_type_id, to_chalk_trait_id, to_placeholder_idx,
@@ -202,6 +203,7 @@ impl<'a> TyLoweringContext<'a> {
                 let const_len = const_or_path_to_chalk(
                     self.db,
                     self.resolver,
+                    TyBuilder::usize(),
                     len,
                     self.type_param_mode,
                     || self.generics(),
@@ -677,12 +679,13 @@ impl<'a> TyLoweringContext<'a> {
             parent_params + self_params + type_params + const_params + impl_trait_params;
 
         let ty_error = GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner);
-        let const_error = GenericArgData::Const(consteval::usize_const(None)).intern(Interner);
 
-        for (_, data) in def_generics.iter().take(parent_params) {
-            match data {
-                TypeOrConstParamData::TypeParamData(_) => substs.push(ty_error.clone()),
-                TypeOrConstParamData::ConstParamData(_) => substs.push(const_error.clone()),
+        for eid in def_generics.iter_id().take(parent_params) {
+            match eid {
+                Either::Left(_) => substs.push(ty_error.clone()),
+                Either::Right(x) => {
+                    substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
+                }
             }
         }
 
@@ -722,10 +725,11 @@ impl<'a> TyLoweringContext<'a> {
                     arg,
                     &mut (),
                     |_, type_ref| self.lower_ty(type_ref),
-                    |_, c| {
+                    |_, c, ty| {
                         const_or_path_to_chalk(
                             self.db,
                             &self.resolver,
+                            ty,
                             c,
                             self.type_param_mode,
                             || self.generics(),
@@ -759,10 +763,12 @@ impl<'a> TyLoweringContext<'a> {
 
         // add placeholders for args that were not provided
         // FIXME: emit diagnostics in contexts where this is not allowed
-        for (_, data) in def_generics.iter().skip(substs.len()) {
-            match data {
-                TypeOrConstParamData::TypeParamData(_) => substs.push(ty_error.clone()),
-                TypeOrConstParamData::ConstParamData(_) => substs.push(const_error.clone()),
+        for eid in def_generics.iter_id().skip(substs.len()) {
+            match eid {
+                Either::Left(_) => substs.push(ty_error.clone()),
+                Either::Right(x) => {
+                    substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
+                }
             }
         }
         assert_eq!(substs.len(), total_len);
@@ -1642,7 +1648,7 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
     arg: &'a GenericArg,
     this: &mut T,
     for_type: impl FnOnce(&mut T, &TypeRef) -> Ty + 'a,
-    for_const: impl FnOnce(&mut T, &ConstScalarOrPath) -> Const + 'a,
+    for_const: impl FnOnce(&mut T, &ConstScalarOrPath, Ty) -> Const + 'a,
 ) -> Option<crate::GenericArg> {
     let kind = match kind_id {
         Either::Left(_) => ParamKind::Type,
@@ -1656,13 +1662,13 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
             let ty = for_type(this, type_ref);
             GenericArgData::Ty(ty).intern(Interner)
         }
-        (GenericArg::Const(c), ParamKind::Const(_)) => {
-            GenericArgData::Const(for_const(this, c)).intern(Interner)
+        (GenericArg::Const(c), ParamKind::Const(c_ty)) => {
+            GenericArgData::Const(for_const(this, c, c_ty)).intern(Interner)
         }
         (GenericArg::Const(_), ParamKind::Type) => {
             GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
         }
-        (GenericArg::Type(t), ParamKind::Const(ty)) => {
+        (GenericArg::Type(t), ParamKind::Const(c_ty)) => {
             // We want to recover simple idents, which parser detects them
             // as types. Maybe here is not the best place to do it, but
             // it works.
@@ -1671,11 +1677,13 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
                 if p.kind == PathKind::Plain {
                     if let [n] = p.segments() {
                         let c = ConstScalarOrPath::Path(n.clone());
-                        return Some(GenericArgData::Const(for_const(this, &c)).intern(Interner));
+                        return Some(
+                            GenericArgData::Const(for_const(this, &c, c_ty)).intern(Interner),
+                        );
                     }
                 }
             }
-            unknown_const_as_generic(ty)
+            unknown_const_as_generic(c_ty)
         }
         (GenericArg::Lifetime(_), _) => return None,
     })
@@ -1684,17 +1692,18 @@ pub(crate) fn generic_arg_to_chalk<'a, T>(
 pub(crate) fn const_or_path_to_chalk(
     db: &dyn HirDatabase,
     resolver: &Resolver,
+    expected_ty: Ty,
     value: &ConstScalarOrPath,
     mode: ParamLoweringMode,
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {
     match value {
-        ConstScalarOrPath::Scalar(s) => usize_const(s.as_usize()),
+        ConstScalarOrPath::Scalar(s) => intern_scalar_const(s.clone(), expected_ty),
         ConstScalarOrPath::Path(n) => {
             let path = ModPath::from_segments(PathKind::Plain, Some(n.clone()));
             path_to_const(db, resolver, &path, mode, args, debruijn)
-                .unwrap_or_else(|| unknown_const_usize())
+                .unwrap_or_else(|| unknown_const(expected_ty))
         }
     }
 }
@@ -1716,7 +1725,7 @@ fn fallback_bound_vars<T: Fold<Interner> + HasInterner<Interner = Interner>>(
         },
         |ty, bound, binders| {
             if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-                consteval::unknown_const(ty.clone())
+                unknown_const(ty.clone())
             } else {
                 bound.shifted_in_from(binders).to_const(Interner, ty)
             }

@@ -1129,10 +1129,11 @@ impl<'a> InferenceContext<'a> {
                     arg,
                     self,
                     |this, type_ref| this.make_ty(type_ref),
-                    |this, c| {
+                    |this, c, ty| {
                         const_or_path_to_chalk(
                             this.db,
                             &this.resolver,
+                            ty,
                             c,
                             ParamLoweringMode::Placeholder,
                             || generics(this.db.upcast(), (&this.resolver).generic_def().unwrap()),

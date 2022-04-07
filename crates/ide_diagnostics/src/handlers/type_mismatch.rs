@@ -317,6 +317,38 @@ fn div(x: i32, y: i32) -> Option<i32> {
     }
 
     #[test]
+    fn const_generic_type_mismatch() {
+        check_diagnostics(
+            r#"
+            pub struct Rate<const N: u32>;
+            fn f<const N: u64>() -> Rate<N> { // FIXME: add some error
+                loop {}
+            }
+            fn run(t: Rate<5>) {
+            }
+            fn main() {
+                run(f()) // FIXME: remove this error
+                  //^^^ error: expected Rate<5>, found Rate<_>
+            }
+"#,
+        );
+    }
+
+    #[test]
+    fn const_generic_unknown() {
+        check_diagnostics(
+            r#"
+            pub struct Rate<T, const NOM: u32, const DENOM: u32>(T);
+            fn run(t: Rate<u32, 1, 1>) {
+            }
+            fn main() {
+                run(Rate::<_, _, _>(5));
+            }
+"#,
+        );
+    }
+
+    #[test]
     fn test_wrap_return_type_option_tails() {
         check_fix(
             r#"
