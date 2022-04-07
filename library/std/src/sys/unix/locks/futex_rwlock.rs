@@ -75,17 +75,20 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn write(&self) {
-        if let Err(s) = self
-            .state
-            .fetch_update(Acquire, Relaxed, |s| (readers(s) == 0).then(|| s + WRITE_LOCKED))
-        {
-            self.write_contended(s);
+        if !self.try_write() {
+            self.write_contended();
         }
     }
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        if self.state.fetch_sub(READ_LOCKED, Release) == READ_LOCKED + WRITERS_WAITING {
+        let s = self.state.fetch_sub(READ_LOCKED, Release);
+
+        // It's impossible for readers to be waiting if it was read locked.
+        debug_assert!(!readers_waiting(s));
+
+        // Wake up a writer if we were the last reader and there's a writer waiting.
+        if s == READ_LOCKED + WRITERS_WAITING {
             self.wake_after_read_unlock();
         }
     }
@@ -93,6 +96,7 @@ impl RwLock {
     #[inline]
     pub unsafe fn write_unlock(&self) {
         if let Err(e) = self.state.compare_exchange(WRITE_LOCKED, 0, Release, Relaxed) {
+            // Readers or writers (or both) are waiting.
             self.write_unlock_contended(e);
         }
     }
@@ -100,6 +104,7 @@ impl RwLock {
     #[cold]
     fn read_contended(&self, mut state: i32) {
         loop {
+            // If we can lock it, lock it.
             if read_lockable(state) {
                 match self.state.compare_exchange(state, state + READ_LOCKED, Acquire, Relaxed) {
                     Ok(_) => return, // Locked!
@@ -110,6 +115,7 @@ impl RwLock {
                 }
             }
 
+            // Check for overflow.
             if readers(state) == MAX_READERS {
                 panic!("too many active read locks on RwLock");
             }
