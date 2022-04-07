@@ -1045,7 +1045,7 @@ impl<'a> Builder<'a> {
                 // Only run clippy on a very limited subset of crates (in particular, not build scripts).
                 cargo.arg("-Zunstable-options");
                 // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
-                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
+                let host_version = Command::new(&self.initial_rustc).arg("--version").output().map_err(|_| ());
                 let output = host_version.and_then(|output| {
                     if output.status.success() {
                         Ok(output)
