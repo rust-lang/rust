@@ -77,6 +77,10 @@ macro_rules! compat_fn {
             static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 
             unsafe extern "C" fn init() {
+                PTR = get_f();
+            }
+
+            unsafe extern "C" fn get_f() -> Option<F> {
                 // There is no locking here. This code is executed before main() is entered, and
                 // is guaranteed to be single-threaded.
                 //
@@ -88,13 +92,13 @@ macro_rules! compat_fn {
                 let symbol_name: *const u8 = concat!(stringify!($symbol), "\0").as_ptr();
                 let module_handle = $crate::sys::c::GetModuleHandleA(module_name as *const i8);
                 if !module_handle.is_null() {
-                    match $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8).addr() {
-                        0 => {}
-                        n => {
-                            PTR = Some(mem::transmute::<usize, F>(n));
-                        }
+                    let ptr = $crate::sys::c::GetProcAddress(module_handle, symbol_name as *const i8);
+                    if !ptr.is_null() {
+                        // Transmute to the right function pointer type.
+                        return Some(mem::transmute(ptr));
                     }
                 }
+                return None;
             }
 
             #[allow(dead_code)]
@@ -105,10 +109,15 @@ macro_rules! compat_fn {
             #[allow(dead_code)]
             pub unsafe fn call($($argname: $argtype),*) -> $rettype {
                 if let Some(ptr) = PTR {
-                    ptr($($argname),*)
-                } else {
-                    $fallback_body
+                    return ptr($($argname),*);
                 }
+                if cfg!(miri) {
+                    // Miri does not run `init`, so we just call `get_f` each time.
+                    if let Some(ptr) = get_f() {
+                        return ptr($($argname),*);
+                    }
+                }
+                $fallback_body
             }
         }
 
