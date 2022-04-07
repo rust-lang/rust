@@ -359,7 +359,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
             // group,
             Ident(group) Comma
             // "description" }
-            Literal{kind: LiteralKind::Str{..}, ..}(desc) CloseBrace
+            Literal{..}(desc) CloseBrace
         );
         lints.push(Lint::new(name, group, desc, module));
     }
@@ -397,6 +397,9 @@ fn parse_deprecated_contents(contents: &str, lints: &mut Vec<DeprecatedLint>) {
 /// Removes the line splices and surrounding quotes from a string literal
 fn remove_line_splices(s: &str) -> String {
     let s = s
+        .strip_prefix('r')
+        .unwrap_or(s)
+        .trim_matches('#')
         .strip_prefix('"')
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{}`", s));

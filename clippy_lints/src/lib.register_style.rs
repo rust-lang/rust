@@ -59,6 +59,7 @@ store.register_group(true, "clippy::style", Some("clippy_style"), vec![
     LintId::of(methods::BYTES_NTH),
     LintId::of(methods::CHARS_LAST_CMP),
     LintId::of(methods::CHARS_NEXT_CMP),
+    LintId::of(methods::ERR_EXPECT),
     LintId::of(methods::INTO_ITER_ON_REF),
     LintId::of(methods::ITER_CLONED_COLLECT),
     LintId::of(methods::ITER_NEXT_SLICE),
