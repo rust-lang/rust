@@ -1106,13 +1106,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         let drop_trait = self.tcx().require_lang_item(LangItem::Drop, None);
-        // FIXME: remove if statement below when beta is bumped
-        #[cfg(bootstrap)]
-        {}
-
-        if obligation.predicate.skip_binder().def_id() == drop_trait {
-            return Ok(ImplSourceConstDestructData { nested: vec![] });
-        }
 
         let tcx = self.tcx();
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());

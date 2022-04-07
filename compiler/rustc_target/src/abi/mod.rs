@@ -1262,7 +1262,7 @@ impl<'a> fmt::Debug for LayoutS<'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct Layout<'a>(pub Interned<'a, LayoutS<'a>>);
 
 impl<'a> fmt::Debug for Layout<'a> {

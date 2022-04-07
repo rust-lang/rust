@@ -110,7 +110,6 @@ enum Direction {
     Back,
 }
 
-#[cfg_attr(bootstrap, lang = "slice")]
 #[cfg(not(test))]
 impl<T> [T] {
     /// Returns the number of elements in the slice.

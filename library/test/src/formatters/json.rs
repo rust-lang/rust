@@ -120,22 +120,16 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                 Some(&*format!(r#""message": "{}""#, EscapedString(m))),
             ),
 
-            TestResult::TrIgnored => {
-                #[cfg(not(bootstrap))]
-                return self.write_event(
-                    "test",
-                    desc.name.as_slice(),
-                    "ignored",
-                    exec_time,
-                    stdout,
-                    desc.ignore_message
-                        .map(|msg| format!(r#""message": "{}""#, EscapedString(msg)))
-                        .as_deref(),
-                );
-
-                #[cfg(bootstrap)]
-                self.write_event("test", desc.name.as_slice(), "ignored", exec_time, stdout, None)
-            }
+            TestResult::TrIgnored => self.write_event(
+                "test",
+                desc.name.as_slice(),
+                "ignored",
+                exec_time,
+                stdout,
+                desc.ignore_message
+                    .map(|msg| format!(r#""message": "{}""#, EscapedString(msg)))
+                    .as_deref(),
+            ),
 
             TestResult::TrBench(ref bs) => {
                 let median = bs.ns_iter_summ.median as usize;

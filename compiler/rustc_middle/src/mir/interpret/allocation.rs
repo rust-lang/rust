@@ -58,7 +58,7 @@ pub struct Allocation<Tag = AllocId, Extra = ()> {
 /// means that both the inner type (`Allocation`) and the outer type
 /// (`ConstAllocation`) are used quite a bit.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
-#[cfg_attr(not(bootstrap), rustc_pass_by_value)]
+#[rustc_pass_by_value]
 pub struct ConstAllocation<'tcx, Tag = AllocId, Extra = ()>(
     pub Interned<'tcx, Allocation<Tag, Extra>>,
 );

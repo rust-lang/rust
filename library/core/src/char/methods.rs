@@ -7,7 +7,6 @@ use crate::unicode::{self, conversions};
 
 use super::*;
 
-#[cfg_attr(bootstrap, lang = "char")]
 impl char {
     /// The highest valid code point a `char` can have, `'\u{10FFFF}'`.
     ///
