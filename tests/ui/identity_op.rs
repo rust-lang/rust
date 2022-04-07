@@ -66,4 +66,13 @@ fn main() {
     let b = a << 0; // no error: non-integer
 
     1 * Meter; // no error: non-integer
+
+    2 % 3;
+    -2 % 3;
+    2 % -3 + x;
+    -2 % -3 + x;
+    x + 1 % 3;
+    (x + 1) % 3; // no error
+    4 % 3; // no error
+    4 % -3; // no error
 }

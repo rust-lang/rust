@@ -4,7 +4,8 @@ use clippy_utils::source::snippet_opt;
 use if_chain::if_chain;
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Lit, UnOp};
+use rustc_hir::def::Res;
+use rustc_hir::{Expr, ExprKind, Lit, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
@@ -18,6 +19,17 @@ pub(super) fn check(
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
 ) -> bool {
+    // skip non-primitive type cast
+    if_chain! {
+        if let ExprKind::Cast(_, cast_to) = expr.kind;
+        if let TyKind::Path(QPath::Resolved(_, path)) = &cast_to.kind;
+        if let Res::PrimTy(_) = path.res;
+        then {}
+        else {
+            return false
+        }
+    }
+
     if let Some(lit) = get_numeric_literal(cast_expr) {
         let literal_str = snippet_opt(cx, cast_expr.span).unwrap_or_default();
 

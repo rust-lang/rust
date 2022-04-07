@@ -77,19 +77,22 @@ use rustc_hir::intravisit::{walk_expr, FnKind, Visitor};
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::LangItem::{OptionNone, ResultErr, ResultOk};
 use rustc_hir::{
-    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr,
-    ExprKind, FnDecl, ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local,
-    MatchSource, Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind,
-    TraitItem, TraitItemKind, TraitRef, TyKind, UnOp,
+    def, Arm, ArrayLen, BindingAnnotation, Block, BlockCheckMode, Body, Constness, Destination, Expr, ExprKind, FnDecl,
+    ForeignItem, HirId, Impl, ImplItem, ImplItemKind, IsAsync, Item, ItemKind, LangItem, Local, MatchSource,
+    Mutability, Node, Param, Pat, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitItem, TraitItemKind,
+    TraitRef, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::{IntTy, UintTy, FloatTy};
-use rustc_middle::ty::fast_reject::SimplifiedTypeGen::*;
+use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
+    ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
+    PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
+};
 use rustc_middle::ty::{layout::IntegerExt, BorrowKind, DefIdTree, Ty, TyCtxt, TypeAndMut, TypeFoldable, UpvarCapture};
+use rustc_middle::ty::{FloatTy, IntTy, UintTy};
 use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::hygiene::{ExpnKind, MacroKind};
@@ -522,7 +525,7 @@ pub fn def_path_res(cx: &LateContext<'_>, path: &[&str]) -> Res {
     let tcx = cx.tcx;
     let starts = find_primitive(tcx, base)
         .chain(find_crate(tcx, base))
-        .flat_map(|id| item_child_by_name(tcx, id, first));
+        .filter_map(|id| item_child_by_name(tcx, id, first));
 
     for first in starts {
         let last = path

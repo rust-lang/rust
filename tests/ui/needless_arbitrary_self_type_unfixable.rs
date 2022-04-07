@@ -14,7 +14,7 @@ mod issue_6089 {
                 fn test(self: &Self);
             }
 
-            struct S1 {}
+            struct S1;
 
             impl T1 for S1 {
                 fn test(self: &Self) {}
@@ -32,7 +32,7 @@ mod issue_6089 {
         fn call_with_mut_self(&mut self);
     }
 
-    struct S2 {}
+    struct S2;
 
     // The method's signature will be expanded to:
     //  fn call_with_mut_self<'life0>(self: &'life0 mut Self) {}

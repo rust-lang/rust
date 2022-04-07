@@ -133,15 +133,23 @@ fn to_camel_case(name: &str) -> String {
 }
 
 fn get_stabilisation_version() -> String {
-    let mut command = cargo_metadata::MetadataCommand::new();
-    command.no_deps();
-    if let Ok(metadata) = command.exec() {
-        if let Some(pkg) = metadata.packages.iter().find(|pkg| pkg.name == "clippy") {
-            return format!("{}.{}.0", pkg.version.minor, pkg.version.patch);
-        }
+    fn parse_manifest(contents: &str) -> Option<String> {
+        let version = contents
+            .lines()
+            .filter_map(|l| l.split_once('='))
+            .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))?;
+        let Some(("0", version)) = version.get(1..version.len() - 1)?.split_once('.') else {
+            return None;
+        };
+        let (minor, patch) = version.split_once('.')?;
+        Some(format!(
+            "{}.{}.0",
+            minor.parse::<u32>().ok()?,
+            patch.parse::<u32>().ok()?
+        ))
     }
-
-    String::from("<TODO set version(see doc/adding_lints.md)>")
+    let contents = fs::read_to_string("Cargo.toml").expect("Unable to read `Cargo.toml`");
+    parse_manifest(&contents).expect("Unable to find package version in `Cargo.toml`")
 }
 
 fn get_test_file_contents(lint_name: &str, header_commands: Option<&str>) -> String {

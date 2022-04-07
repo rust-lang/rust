@@ -268,7 +268,7 @@ mod issue4291 {
 
 mod issue2944 {
     trait Foo {}
-    struct Bar {}
+    struct Bar;
     struct Baz<'a> {
         bar: &'a Bar,
     }
