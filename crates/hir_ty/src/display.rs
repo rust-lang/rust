@@ -172,6 +172,16 @@ impl<'a> HirFormatter<'a> {
         self.fmt.write_str(&self.buf).map_err(HirDisplayError::from)
     }
 
+    pub fn write_str(&mut self, s: &str) -> Result<(), HirDisplayError> {
+        self.fmt.write_str(s)?;
+        Ok(())
+    }
+
+    pub fn write_char(&mut self, c: char) -> Result<(), HirDisplayError> {
+        self.fmt.write_char(c)?;
+        Ok(())
+    }
+
     pub fn should_truncate(&self) -> bool {
         match self.max_size {
             Some(max_size) => self.curr_size >= max_size,
