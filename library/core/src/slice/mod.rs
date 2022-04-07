@@ -814,7 +814,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
-        assert_ne!(chunk_size, 0, "Chunks cannot have a size of zero!");
+        assert_ne!(chunk_size, 0, "chunks cannot have a size of zero");
         Chunks::new(self, chunk_size)
     }
 
