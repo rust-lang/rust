@@ -850,12 +850,65 @@ impl<'a> Resolver<'a> {
         let resolution =
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
-        if let Some(binding) = resolution.binding && let Some(path_span) = finalize {
+        if let Some(path_span) = finalize {
+            let Some(mut binding) = resolution.binding else {
+                return Err((Determined, Weak::No));
+            };
+
             if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
                 if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }
+
+            // If the primary binding is unusable, search further and return the shadowed glob
+            // binding if it exists. What we really want here is having two separate scopes in
+            // a module - one for non-globs and one for globs, but until that's done use this
+            // hack to avoid inconsistent resolution ICEs during import validation.
+            if let Some(unusable_binding) = self.unusable_binding
+                && ptr::eq(binding, unusable_binding)
+            {
+                let Some(shadowed) = resolution.shadowed_glob else {
+                    return Err((Determined, Weak::No));
+                };
+
+                if ptr::eq(shadowed, unusable_binding) {
+                    return Err((Determined, Weak::No));
+                }
+
+                binding = shadowed;
+            }
+
+            if !self.is_accessible_from(binding.vis, parent_scope.module) {
+                if self.last_import_segment {
+                    return Err((Determined, Weak::No));
+                } else {
+                    self.privacy_errors.push(PrivacyError {
+                        ident,
+                        binding,
+                        dedup_span: path_span,
+                    });
+                }
+            }
+
+            // Forbid expanded shadowing to avoid time travel.
+            if let Some(shadowed_glob) = resolution.shadowed_glob
+                && restricted_shadowing
+                && binding.expansion != LocalExpnId::ROOT
+                && binding.res() != shadowed_glob.res()
+            {
+                self.ambiguity_errors.push(AmbiguityError {
+                    kind: AmbiguityKind::GlobVsExpanded,
+                    ident,
+                    b1: binding,
+                    b2: shadowed_glob,
+                    misc1: AmbiguityErrorMisc::None,
+                    misc2: AmbiguityErrorMisc::None,
+                });
+            }
+
+            self.record_use(ident, binding, restricted_shadowing);
+            return Ok(binding);
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
@@ -867,58 +920,6 @@ impl<'a> Resolver<'a> {
             let usable = this.is_accessible_from(binding.vis, parent_scope.module);
             if usable { Ok(binding) } else { Err((Determined, Weak::No)) }
         };
-
-        if let Some(path_span) = finalize {
-            return resolution
-                .binding
-                .and_then(|binding| {
-                    // If the primary binding is unusable, search further and return the shadowed glob
-                    // binding if it exists. What we really want here is having two separate scopes in
-                    // a module - one for non-globs and one for globs, but until that's done use this
-                    // hack to avoid inconsistent resolution ICEs during import validation.
-                    if let Some(unusable_binding) = self.unusable_binding {
-                        if ptr::eq(binding, unusable_binding) {
-                            return resolution.shadowed_glob;
-                        }
-                    }
-                    Some(binding)
-                })
-                .ok_or((Determined, Weak::No))
-                .and_then(|binding| {
-                    if self.last_import_segment && check_usable(self, binding).is_err() {
-                        Err((Determined, Weak::No))
-                    } else {
-                        self.record_use(ident, binding, restricted_shadowing);
-
-                        if let Some(shadowed_glob) = resolution.shadowed_glob {
-                            // Forbid expanded shadowing to avoid time travel.
-                            if restricted_shadowing
-                                && binding.expansion != LocalExpnId::ROOT
-                                && binding.res() != shadowed_glob.res()
-                            {
-                                self.ambiguity_errors.push(AmbiguityError {
-                                    kind: AmbiguityKind::GlobVsExpanded,
-                                    ident,
-                                    b1: binding,
-                                    b2: shadowed_glob,
-                                    misc1: AmbiguityErrorMisc::None,
-                                    misc2: AmbiguityErrorMisc::None,
-                                });
-                            }
-                        }
-
-                        if !self.is_accessible_from(binding.vis, parent_scope.module) {
-                            self.privacy_errors.push(PrivacyError {
-                                ident,
-                                binding,
-                                dedup_span: path_span,
-                            });
-                        }
-
-                        Ok(binding)
-                    }
-                });
-        }
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
         if let Some(binding) = resolution.binding {
