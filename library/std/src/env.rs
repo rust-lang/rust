@@ -577,10 +577,10 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "This function's behavior is unexpected and probably not what you want. \
-              Consider using a crate from crates.io instead."
+    note = "This function's behavior is unexpected and probably not what you want. \
+            Consider using a crate from crates.io instead."
 )]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]

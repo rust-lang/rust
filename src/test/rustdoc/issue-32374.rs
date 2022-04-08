@@ -14,7 +14,7 @@
 // @matches issue_32374/struct.T.html '//*[@class="stab unstable"]' \
 //      '🔬 This is a nightly-only experimental API. \(test\s#32374\)$'
 /// Docs
-#[rustc_deprecated(since = "1.0.0", reason = "text")]
+#[deprecated(since = "1.0.0", note = "text")]
 #[unstable(feature = "test", issue = "32374")]
 pub struct T;
 
@@ -22,6 +22,6 @@ pub struct T;
 //      '👎 Deprecated since 1.0.0: deprecated'
 // @has issue_32374/struct.U.html '//*[@class="stab unstable"]' \
 //      '🔬 This is a nightly-only experimental API. (test #32374)'
-#[rustc_deprecated(since = "1.0.0", reason = "deprecated")]
+#[deprecated(since = "1.0.0", note = "deprecated")]
 #[unstable(feature = "test", issue = "32374", reason = "unstable")]
 pub struct U;

@@ -270,9 +270,9 @@ pub enum Ordering {
 /// An [`AtomicBool`] initialized to `false`.
 #[cfg(target_has_atomic_load_store = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.34.0",
-    reason = "the `new` function is now preferred",
+    note = "the `new` function is now preferred",
     suggestion = "AtomicBool::new(false)"
 )]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
@@ -550,9 +550,9 @@ impl AtomicBool {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.50.0",
-        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+        note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "8")]
     pub fn compare_and_swap(&self, current: bool, new: bool, order: Ordering) -> bool {
@@ -1234,9 +1234,9 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.50.0",
-        reason = "Use `compare_exchange` or `compare_exchange_weak` instead"
+        note = "Use `compare_exchange` or `compare_exchange_weak` instead"
     )]
     #[cfg(target_has_atomic = "ptr")]
     pub fn compare_and_swap(&self, current: *mut T, new: *mut T, order: Ordering) -> *mut T {
@@ -1487,9 +1487,9 @@ macro_rules! atomic_int {
 
         /// An atomic integer initialized to `0`.
         #[$stable_init_const]
-        #[rustc_deprecated(
+        #[deprecated(
             since = "1.34.0",
-            reason = "the `new` function is now preferred",
+            note = "the `new` function is now preferred",
             suggestion = $atomic_new,
         )]
         pub const $atomic_init: $atomic_type = $atomic_type::new(0);
@@ -1809,9 +1809,9 @@ macro_rules! atomic_int {
             /// ```
             #[inline]
             #[$stable]
-            #[rustc_deprecated(
+            #[deprecated(
                 since = "1.50.0",
-                reason = "Use `compare_exchange` or `compare_exchange_weak` instead")
+                note = "Use `compare_exchange` or `compare_exchange_weak` instead")
             ]
             #[$cfg_cas]
             pub fn compare_and_swap(&self,
@@ -3008,7 +3008,7 @@ impl<T> fmt::Pointer for AtomicPtr<T> {
 /// [`hint::spin_loop`]: crate::hint::spin_loop
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
-#[rustc_deprecated(since = "1.51.0", reason = "use hint::spin_loop instead")]
+#[deprecated(since = "1.51.0", note = "use hint::spin_loop instead")]
 pub fn spin_loop_hint() {
     spin_loop()
 }

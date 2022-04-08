@@ -79,7 +79,7 @@ impl<T, const N: usize> IntoIterator for [T; N] {
 impl<T, const N: usize> IntoIter<T, N> {
     /// Creates a new iterator over the given `array`.
     #[stable(feature = "array_value_iter", since = "1.51.0")]
-    #[rustc_deprecated(since = "1.59.0", reason = "use `IntoIterator::into_iter` instead")]
+    #[deprecated(since = "1.59.0", note = "use `IntoIterator::into_iter` instead")]
     pub fn new(array: [T; N]) -> Self {
         IntoIterator::into_iter(array)
     }
