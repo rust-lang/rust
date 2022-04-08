@@ -785,12 +785,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         issued_borrow: &BorrowData<'tcx>,
         explanation: BorrowExplanation,
     ) {
-        let used_in_call =
-            matches!(explanation, BorrowExplanation::UsedLater(LaterUseKind::Call, _call_span, _));
+        let used_in_call = matches!(
+            explanation,
+            BorrowExplanation::UsedLater(LaterUseKind::Call | LaterUseKind::Other, _call_span, _)
+        );
         if !used_in_call {
             debug!("not later used in call");
             return;
         }
+
+        let use_span =
+            if let BorrowExplanation::UsedLater(LaterUseKind::Other, use_span, _) = explanation {
+                Some(use_span)
+            } else {
+                None
+            };
 
         let outer_call_loc =
             if let TwoPhaseActivation::ActivatedAt(loc) = issued_borrow.activation_location {
@@ -835,7 +844,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("===> outer_call_loc = {:?}, inner_call_loc = {:?}", outer_call_loc, inner_call_loc);
 
         let inner_call_span = inner_call_term.source_info.span;
-        let outer_call_span = outer_call_stmt.either(|s| s.source_info, |t| t.source_info).span;
+        let outer_call_span = match use_span {
+            Some(span) => span,
+            None => outer_call_stmt.either(|s| s.source_info, |t| t.source_info).span,
+        };
         if outer_call_span == inner_call_span || !outer_call_span.contains(inner_call_span) {
             // FIXME: This stops the suggestion in some cases where it should be emitted.
             //        Fix the spans for those cases so it's emitted correctly.
@@ -845,8 +857,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
             return;
         }
-        err.span_help(inner_call_span, "try adding a local storing this argument...");
-        err.span_help(outer_call_span, "...and then using that local as the argument to this call");
+        err.span_help(
+            inner_call_span,
+            &format!(
+                "try adding a local storing this{}...",
+                if use_span.is_some() { "" } else { " argument" }
+            ),
+        );
+        err.span_help(
+            outer_call_span,
+            &format!(
+                "...and then using that local {}",
+                if use_span.is_some() { "here" } else { "as the argument to this call" }
+            ),
+        );
     }
 
     fn suggest_split_at_mut_if_applicable(
@@ -1912,10 +1936,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         } else {
             "cannot assign twice to immutable variable"
         };
-        if span != assigned_span {
-            if !from_arg {
-                err.span_label(assigned_span, format!("first assignment to {}", place_description));
-            }
+        if span != assigned_span && !from_arg {
+            err.span_label(assigned_span, format!("first assignment to {}", place_description));
         }
         if let Some(decl) = local_decl
             && let Some(name) = local_name
