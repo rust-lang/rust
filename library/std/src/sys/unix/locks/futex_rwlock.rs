@@ -77,7 +77,7 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        let state = self.state.fetch_sub(READ_LOCKED, Release) - 1;
+        let state = self.state.fetch_sub(READ_LOCKED, Release) - READ_LOCKED;
 
         // It's impossible for a reader to be waiting on a read-locked RwLock,
         // except if there is also a writer waiting.
