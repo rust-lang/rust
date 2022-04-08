@@ -5588,25 +5588,29 @@ generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i3
 
 /// Signed saturating rounding doubling multiply subtract returning high half
 name = vqrdmlsh
-multi_fn = vqsub-out-noext, a, {vqrdmulh-out-noext, b, c}
+link-aarch64 = sqrdmlsh._EXT_
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 c = 2, 2, 2, 2, 2, 2, 2, 2
 validate -1, -1, -1, -1, -1, -1, -1, -1
 
-aarch64 = sqrdmulh
-arm = vqrdmulh
+aarch64 = sqrdmlsh
+target = rdm
 generate int16x4_t, int16x8_t, int32x2_t, int32x4_t
 
 /// Signed saturating rounding doubling multiply subtract returning high half
 name = vqrdmlsh
-multi_fn = vqsub-self-noext, a, {vqrdmulh-self-noext, b, c}
+multi_fn = vdup_n-in_ntt-noext, a:in_ntt, a
+multi_fn = vdup_n-in_ntt-noext, b:in_ntt, b
+multi_fn = vdup_n-in_ntt-noext, c:in_ntt, c
+multi_fn = simd_extract, {vqrdmlsh-in_ntt-noext, a, b, c}, 0
 a = 1
 b = 1
 c = 2
 validate 1
 
-aarch64 = sqrdmulh
+aarch64 = sqrdmlsh
+target = rdm
 generate i16, i32
 
 /// Signed saturating rounding doubling multiply subtract returning high half
@@ -5614,15 +5618,16 @@ name = vqrdmlsh
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqsub-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+multi_fn = simd_shuffle-out_len-!, c:out_t, c, c, {dup-out_len-LANE as u32}
+multi_fn = vqrdmlsh-out-noext, a, b, c
 a = 1, 1, 1, 1, 1, 1, 1, 1
 b = MAX, MAX, MAX, MAX, MAX, MAX, MAX, MAX
 c = 0, 2, 0, 0, 0, 0, 0, 0
 n = 1
 validate -1, -1, -1, -1, -1, -1, -1, -1
 
-aarch64 = sqrdmulh
-arm = vqrdmulh
+aarch64 = sqrdmlsh
+target = rdm
 generate int16x4_t, int16x4_t:int16x4_t:int16x8_t:int16x4_t, int16x8_t:int16x8_t:int16x4_t:int16x8_t, int16x8_t
 generate int32x2_t, int32x2_t:int32x2_t:int32x4_t:int32x2_t, int32x4_t:int32x4_t:int32x2_t:int32x4_t, int32x4_t
 
@@ -5631,14 +5636,15 @@ name = vqrdmlsh
 in2-lane-suffixes
 constn = LANE
 multi_fn = static_assert_imm-in2_exp_len-LANE
-multi_fn = vqsub-self-noext, a, {vqrdmulh-in2lane-::<LANE>, b, c}
+multi_fn = vqrdmlsh-self-noext, a, b, {simd_extract, c, LANE as u32}
 a = 1
 b = 1
 c = 0, 2, 0, 0, 0, 0, 0, 0
 n = 1
 validate 1
 
-aarch64 = sqrdmulh
+aarch64 = sqrdmlsh
+target = rdm
 generate i16:i16:int16x4_t:i16, i16:i16:int16x8_t:i16, i32:i32:int32x2_t:i32, i32:i32:int32x4_t:i32
 
 /// Signed saturating rounding shift left
