@@ -2177,7 +2177,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.61.0"]
     pub NEEDLESS_OPTION_TAKE,
-    suspicious,
+    complexity,
     "using `.as_ref().take()` on a temporary value"
 }
 
