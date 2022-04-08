@@ -14,8 +14,8 @@ fn exitstatus_display_tests() {
 
     let t = |v, s| assert_eq!(s, format!("{}", <ExitStatus as ExitStatusExt>::from_raw(v)));
 
-    t(0x0000f, "signal: 15");
-    t(0x0008b, "signal: 11 (core dumped)");
+    t(0x0000f, "signal: SIGTERM");
+    t(0x0008b, "signal: SIGSEGV (core dumped)");
     t(0x00000, "exit status: 0");
     t(0x0ff00, "exit status: 255");
 
@@ -24,7 +24,7 @@ fn exitstatus_display_tests() {
     // The purpose of this test is to test our string formatting, not our understanding of the wait
     // status magic numbers.  So restrict these to Linux.
     if cfg!(target_os = "linux") {
-        t(0x0137f, "stopped (not terminated) by signal: 19");
+        t(0x0137f, "stopped (not terminated) by signal: SIGSTOP");
         t(0x0ffff, "continued (WIFCONTINUED)");
     }
 
