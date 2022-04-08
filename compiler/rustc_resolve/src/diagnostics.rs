@@ -1385,14 +1385,12 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
-        finalize_full: Finalize,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
         unusable_binding: Option<&'a NameBinding<'a>>,
         module: Option<ModuleOrUniformRoot<'a>>,
         i: usize,
         ident: Ident,
     ) -> (String, Option<Suggestion>) {
-        let finalize = finalize_full.path_span();
         let is_last = i == path.len() - 1;
         let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
         let module_res = match module {
@@ -1418,81 +1416,7 @@ impl<'a> Resolver<'a> {
             } else {
                 (format!("could not find `{}` in the crate root", ident), None)
             }
-        } else if i == 0 {
-            if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
-                // Check whether the name refers to an item in the value namespace.
-                let suggestion = if ribs.is_some() {
-                    let match_span = match self.resolve_ident_in_lexical_scope(
-                        ident,
-                        ValueNS,
-                        parent_scope,
-                        Finalize::No,
-                        &ribs.unwrap()[ValueNS],
-                        unusable_binding,
-                    ) {
-                        // Name matches a local variable. For example:
-                        // ```
-                        // fn f() {
-                        //     let Foo: &str = "";
-                        //     println!("{}", Foo::Bar); // Name refers to local
-                        //                               // variable `Foo`.
-                        // }
-                        // ```
-                        Some(LexicalScopeBinding::Res(Res::Local(id))) => {
-                            Some(*self.pat_span_map.get(&id).unwrap())
-                        }
-
-                        // Name matches item from a local name binding
-                        // created by `use` declaration. For example:
-                        // ```
-                        // pub Foo: &str = "";
-                        //
-                        // mod submod {
-                        //     use super::Foo;
-                        //     println!("{}", Foo::Bar); // Name refers to local
-                        //                               // binding `Foo`.
-                        // }
-                        // ```
-                        Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
-                        _ => None,
-                    };
-
-                    if let Some(span) = match_span {
-                        Some((
-                            vec![(span, String::from(""))],
-                            format!("`{}` is defined here, but is not a type", ident),
-                            Applicability::MaybeIncorrect,
-                        ))
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                };
-
-                (format!("use of undeclared type `{}`", ident), suggestion)
-            } else {
-                (
-                    format!("use of undeclared crate or module `{}`", ident),
-                    if ident.name == sym::alloc {
-                        Some((
-                            vec![],
-                            String::from("add `extern crate alloc` to use the `alloc` crate"),
-                            Applicability::MaybeIncorrect,
-                        ))
-                    } else {
-                        self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module)
-                            .map(|sugg| {
-                                (
-                                    vec![(ident.span, sugg.to_string())],
-                                    String::from("there is a crate or module with a similar name"),
-                                    Applicability::MaybeIncorrect,
-                                )
-                            })
-                    },
-                )
-            }
-        } else {
+        } else if i > 0 {
             let parent = path[i - 1].ident.name;
             let parent = match parent {
                 // ::foo is mounted at the crate root for 2015, and is the extern
@@ -1501,9 +1425,7 @@ impl<'a> Resolver<'a> {
                     "the list of imported crates".to_owned()
                 }
                 kw::PathRoot | kw::Crate => "the crate root".to_owned(),
-                _ => {
-                    format!("`{}`", parent)
-                }
+                _ => format!("`{}`", parent),
             };
 
             let mut msg = format!("could not find `{}` in {}", ident, parent);
@@ -1515,7 +1437,7 @@ impl<'a> Resolver<'a> {
                         ident,
                         ns_to_try,
                         parent_scope,
-                        finalize,
+                        None,
                         false,
                         unusable_binding,
                     ).ok()
@@ -1526,7 +1448,7 @@ impl<'a> Resolver<'a> {
                         ident,
                         ns_to_try,
                         parent_scope,
-                        finalize_full,
+                        Finalize::No,
                         &ribs[ns_to_try],
                         unusable_binding,
                     ) {
@@ -1540,8 +1462,8 @@ impl<'a> Resolver<'a> {
                         ident,
                         scopes,
                         parent_scope,
-                        finalize,
-                        finalize.is_some(),
+                        None,
+                        false,
                         false,
                         unusable_binding,
                     ).ok()
@@ -1567,6 +1489,76 @@ impl<'a> Resolver<'a> {
                 };
             }
             (msg, None)
+        } else if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+            // Check whether the name refers to an item in the value namespace.
+            let binding = if let Some(ribs) = ribs {
+                self.resolve_ident_in_lexical_scope(
+                    ident,
+                    ValueNS,
+                    parent_scope,
+                    Finalize::No,
+                    &ribs[ValueNS],
+                    unusable_binding,
+                )
+            } else {
+                None
+            };
+            let match_span = match binding {
+                // Name matches a local variable. For example:
+                // ```
+                // fn f() {
+                //     let Foo: &str = "";
+                //     println!("{}", Foo::Bar); // Name refers to local
+                //                               // variable `Foo`.
+                // }
+                // ```
+                Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                    Some(*self.pat_span_map.get(&id).unwrap())
+                }
+                // Name matches item from a local name binding
+                // created by `use` declaration. For example:
+                // ```
+                // pub Foo: &str = "";
+                //
+                // mod submod {
+                //     use super::Foo;
+                //     println!("{}", Foo::Bar); // Name refers to local
+                //                               // binding `Foo`.
+                // }
+                // ```
+                Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
+                _ => None,
+            };
+            let suggestion = if let Some(span) = match_span {
+                Some((
+                    vec![(span, String::from(""))],
+                    format!("`{}` is defined here, but is not a type", ident),
+                    Applicability::MaybeIncorrect,
+                ))
+            } else {
+                None
+            };
+
+            (format!("use of undeclared type `{}`", ident), suggestion)
+        } else {
+            let suggestion = if ident.name == sym::alloc {
+                Some((
+                    vec![],
+                    String::from("add `extern crate alloc` to use the `alloc` crate"),
+                    Applicability::MaybeIncorrect,
+                ))
+            } else {
+                self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module).map(
+                    |sugg| {
+                        (
+                            vec![(ident.span, sugg.to_string())],
+                            String::from("there is a crate or module with a similar name"),
+                            Applicability::MaybeIncorrect,
+                        )
+                    },
+                )
+            };
+            (format!("use of undeclared crate or module `{}`", ident), suggestion)
         }
     }
 }

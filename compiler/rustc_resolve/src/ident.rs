@@ -1568,7 +1568,6 @@ impl<'a> Resolver<'a> {
                             path,
                             opt_ns,
                             parent_scope,
-                            finalize_full,
                             ribs,
                             unusable_binding,
                             module,
