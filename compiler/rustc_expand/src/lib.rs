@@ -1,3 +1,4 @@
+#![allow(rustc::potential_query_instability)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
 #![feature(crate_visibility_modifier)]
@@ -5,12 +6,12 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(let_else)]
+#![feature(macro_metavar_expr)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_span)]
 #![feature(try_blocks)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate rustc_macros;
