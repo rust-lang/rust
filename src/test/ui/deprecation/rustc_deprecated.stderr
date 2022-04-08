@@ -1,0 +1,21 @@
+error: `#[rustc_deprecated]` has been removed
+  --> $DIR/rustc_deprecated.rs:6:1
+   |
+LL | / #[rustc_deprecated(
+LL | |
+LL | |     since = "1.100.0",
+LL | |     reason = "text"
+LL | |
+LL | | )]
+   | |__^
+   |
+   = help: use `#[deprecated]` instead
+
+error: `reason` has been renamed
+  --> $DIR/rustc_deprecated.rs:9:5
+   |
+LL |     reason = "text"
+   |     ^^^^^^^^^^^^^^^ help: use `note` instead: `note = "text"`
+
+error: aborting due to 2 previous errors
+

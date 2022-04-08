@@ -118,8 +118,7 @@ pub fn deprecation_in_effect(depr: &Deprecation) -> bool {
     }
 
     if !is_since_rustc_version {
-        // The `since` field doesn't have semantic purpose in the stable `deprecated`
-        // attribute, only in `rustc_deprecated`.
+        // The `since` field doesn't have semantic purpose without `#![staged_api]`.
         return true;
     }
 
@@ -336,7 +335,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // topmost deprecation. For example, if a struct is deprecated,
                 // the use of a field won't be linted.
                 //
-                // #[rustc_deprecated] however wants to emit down the whole
+                // With #![staged_api], we want to emit down the whole
                 // hierarchy.
                 let depr_attr = &depr_entry.attr;
                 if !skip || depr_attr.is_since_rustc_version {

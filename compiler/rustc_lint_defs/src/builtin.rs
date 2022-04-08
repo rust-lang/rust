@@ -2201,11 +2201,10 @@ declare_lint! {
     /// used by user code.
     ///
     /// This lint is only enabled in the standard library. It works with the
-    /// use of `#[rustc_deprecated]` with a `since` field of a version in the
-    /// future. This allows something to be marked as deprecated in a future
-    /// version, and then this lint will ensure that the item is no longer
-    /// used in the standard library. See the [stability documentation] for
-    /// more details.
+    /// use of `#[deprecated]` with a `since` field of a version in the future.
+    /// This allows something to be marked as deprecated in a future version,
+    /// and then this lint will ensure that the item is no longer used in the
+    /// standard library. See the [stability documentation] for more details.
     ///
     /// [stability documentation]: https://rustc-dev-guide.rust-lang.org/stability.html#rustc_deprecated
     pub DEPRECATED_IN_FUTURE,
