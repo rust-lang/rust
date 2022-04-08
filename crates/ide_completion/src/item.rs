@@ -132,6 +132,8 @@ pub struct CompletionRelevance {
     /// }
     /// ```
     pub is_local: bool,
+    /// This is set when trait items are completed in an impl of that trait.
+    pub is_item_from_trait: bool,
     /// Set for method completions of the `core::ops` and `core::cmp` family.
     pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
@@ -197,6 +199,7 @@ impl CompletionRelevance {
             exact_name_match,
             type_match,
             is_local,
+            is_item_from_trait,
             is_op_method,
             is_private_editable,
             postfix_match,
@@ -226,6 +229,9 @@ impl CompletionRelevance {
         };
         // slightly prefer locals
         if is_local {
+            score += 1;
+        }
+        if is_item_from_trait {
             score += 1;
         }
         if is_definite {
