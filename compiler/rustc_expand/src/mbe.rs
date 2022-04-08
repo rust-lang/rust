@@ -19,7 +19,7 @@ use rustc_span::Span;
 
 /// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiters
 /// might be `NoDelim`, but they are not represented explicitly.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: token::DelimToken,
     /// FIXME: #67062 has details about why this is sub-optimal.
@@ -38,7 +38,7 @@ impl Delimited {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
