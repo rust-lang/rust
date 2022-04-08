@@ -256,7 +256,11 @@ impl GlobalState {
         self.send(request.into());
     }
     pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
-        let handler = self.req_queue.outgoing.complete(response.id.clone());
+        let handler = self
+            .req_queue
+            .outgoing
+            .complete(response.id.clone())
+            .expect("received response for unknown request");
         handler(self, response)
     }
 
