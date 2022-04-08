@@ -201,7 +201,7 @@ fn emit_unused_generic_params_error<'tcx>(
         return;
     }
 
-    let fn_span = match tcx.opt_item_name(def_id) {
+    let fn_span = match tcx.opt_item_ident(def_id) {
         Some(ident) => ident.span,
         _ => tcx.def_span(def_id),
     };

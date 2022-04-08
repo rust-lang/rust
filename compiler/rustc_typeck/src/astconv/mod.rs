@@ -1620,8 +1620,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         debug!("find_bound_for_assoc_item: predicates={:#?}", predicates);
 
-        let param_hir_id = tcx.hir().local_def_id_to_hir_id(ty_param_def_id);
-        let param_name = tcx.hir().ty_param_name(param_hir_id);
+        let param_name = tcx.hir().ty_param_name(ty_param_def_id);
         self.one_bound_for_assoc_type(
             || {
                 traits::transitive_bounds_that_define_assoc_type(
@@ -2266,11 +2265,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.prohibit_generics(path.segments);
 
                 let def_id = def_id.expect_local();
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
                 let item_def_id = tcx.hir().ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                tcx.mk_ty_param(index, tcx.hir().name(hir_id))
+                tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
             }
             Res::SelfTy { trait_: Some(_), alias_to: None } => {
                 // `Self` in trait or type alias.
