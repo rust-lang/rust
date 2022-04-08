@@ -89,19 +89,26 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// This lint checks for functions that take immutable
-    /// references and return mutable ones.
+    /// This lint checks for functions that take immutable references and return
+    /// mutable ones. This will not trigger if no unsafe code exists as there
+    /// are multiple safe functions which will do this transformation
+    ///
+    /// To be on the conservative side, if there's at least one mutable
+    /// reference with the output lifetime, this lint will not trigger.
     ///
     /// ### Why is this bad?
-    /// This is trivially unsound, as one can create two
-    /// mutable references from the same (immutable!) source.
-    /// This [error](https://github.com/rust-lang/rust/issues/39465)
-    /// actually lead to an interim Rust release 1.15.1.
+    /// Creating a mutable reference which can be repeatably derived from an
+    /// immutable reference is unsound as it allows creating multiple live
+    /// mutable references to the same object.
+    ///
+    /// This [error](https://github.com/rust-lang/rust/issues/39465) actually
+    /// lead to an interim Rust release 1.15.1.
     ///
     /// ### Known problems
-    /// To be on the conservative side, if there's at least one
-    /// mutable reference with the output lifetime, this lint will not trigger.
-    /// In practice, this case is unlikely anyway.
+    /// This pattern is used by memory allocators to allow allocating multiple
+    /// objects while returning mutable references to each one. So long as
+    /// different mutable references are returned each time such a function may
+    /// be safe.
     ///
     /// ### Example
     /// ```ignore
