@@ -98,7 +98,7 @@ impl<'tcx, Tag: Provenance> Immediate<Tag> {
 // as input for binary and cast operations.
 #[derive(Copy, Clone, Debug)]
 pub struct ImmTy<'tcx, Tag: Provenance = AllocId> {
-    pub(crate) imm: Immediate<Tag>,
+    imm: Immediate<Tag>,
     pub layout: TyAndLayout<'tcx>,
 }
 

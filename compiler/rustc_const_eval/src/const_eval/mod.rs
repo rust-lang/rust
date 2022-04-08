@@ -121,11 +121,10 @@ fn const_to_valtree_inner<'tcx>(
                 ty::Slice(_) | ty::Str => {
                     match ecx.try_read_immediate_from_mplace(&place) {
                         Ok(Some(imm)) => {
-                            let mplace_ref = ecx.ref_to_mplace(&imm).unwrap();
                             let derefd = ecx.deref_operand(&place.into()).expect(&format!("couldnt deref {:?}", imm));
-                            debug!(?mplace_ref, ?derefd);
+                            debug!(?derefd);
 
-                            let len = match imm.imm {
+                            let len = match *imm {
                                 Immediate::ScalarPair(_, b) => {
                                     let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
                                     len
