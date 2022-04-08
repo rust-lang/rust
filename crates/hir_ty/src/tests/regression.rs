@@ -1505,3 +1505,82 @@ fn f(s: S) {
 "#,
     );
 }
+
+#[test]
+fn rust_161_option_clone() {
+    check_types(
+        r#"
+//- minicore: option, drop
+
+fn test(o: &Option<i32>) {
+    o.my_clone();
+  //^^^^^^^^^^^^ Option<i32>
+}
+
+pub trait MyClone: Sized {
+    fn my_clone(&self) -> Self;
+}
+
+impl<T> const MyClone for Option<T>
+where
+    T: ~const MyClone + ~const Drop + ~const Destruct,
+{
+    fn my_clone(&self) -> Self {
+        match self {
+            Some(x) => Some(x.my_clone()),
+            None => None,
+        }
+    }
+}
+
+impl const MyClone for i32 {
+    fn my_clone(&self) -> Self {
+        *self
+    }
+}
+
+pub trait Destruct {}
+
+impl<T: ?Sized> const Destruct for T {}
+"#,
+    );
+}
+
+#[test]
+fn rust_162_option_clone() {
+    check_types(
+        r#"
+//- minicore: option, drop
+
+fn test(o: &Option<i32>) {
+    o.my_clone();
+  //^^^^^^^^^^^^ Option<i32>
+}
+
+pub trait MyClone: Sized {
+    fn my_clone(&self) -> Self;
+}
+
+impl<T> const MyClone for Option<T>
+where
+    T: ~const MyClone + ~const Destruct,
+{
+    fn my_clone(&self) -> Self {
+        match self {
+            Some(x) => Some(x.my_clone()),
+            None => None,
+        }
+    }
+}
+
+impl const MyClone for i32 {
+    fn my_clone(&self) -> Self {
+        *self
+    }
+}
+
+#[lang = "destruct"]
+pub trait Destruct {}
+"#,
+    );
+}
