@@ -241,11 +241,14 @@ impl Test for () {
             kw fn
             kw const
             kw type
+            ta type Type1 =
+            ct const CONST1: () =
+            fn fn function1()
             kw self
             kw super
             kw crate
             md module
-            ma makro!(…)  macro_rules! makro
+            ma makro!(…)          macro_rules! makro
         "#]],
     );
 }
