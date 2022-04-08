@@ -4,7 +4,7 @@
 #![allow(clippy::blacklisted_name, unused_variables, dead_code)]
 #![allow(unused_imports)]
 
-pub struct MyStruct {}
+pub struct MyStruct;
 
 pub struct SubT<T> {
     foo: T,

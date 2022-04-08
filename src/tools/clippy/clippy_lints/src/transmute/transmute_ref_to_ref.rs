@@ -32,18 +32,20 @@ pub(super) fn check<'tcx>(
                     ""
                 };
 
+                let snippet = snippet(cx, arg.span, "..");
+
                 span_lint_and_sugg(
                     cx,
                     TRANSMUTE_BYTES_TO_STR,
                     e.span,
                     &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
                     "consider using",
-                    format!(
-                        "std::str::from_utf8{}({}).unwrap()",
-                        postfix,
-                        snippet(cx, arg.span, ".."),
-                    ),
-                    Applicability::Unspecified,
+                    if const_context {
+                        format!("std::str::from_utf8_unchecked{postfix}({snippet})")
+                    } else {
+                        format!("std::str::from_utf8{postfix}({snippet}).unwrap()")
+                    },
+                    Applicability::MaybeIncorrect,
                 );
                 triggered = true;
             } else {

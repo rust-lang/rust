@@ -756,7 +756,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for LintResolver<'a, 'hir> {
             let (expr_ty, _) = walk_ptrs_ty_depth(self.cx.typeck_results().expr_ty(expr));
             if match_type(self.cx, expr_ty, &paths::LINT);
             then {
-                if let hir::def::Res::Def(DefKind::Static, _) = path.res {
+                if let hir::def::Res::Def(DefKind::Static(..), _) = path.res {
                     let lint_name = last_path_segment(qpath).ident.name;
                     self.lints.push(sym_to_string(lint_name).to_ascii_lowercase());
                 } else if let Some(local) = get_parent_local(self.cx, expr) {

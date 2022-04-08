@@ -613,9 +613,8 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
- "cargo_metadata",
  "clippy_lints",
  "clippy_utils",
  "compiletest_rs",
@@ -642,20 +641,18 @@ dependencies = [
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
- "bytecount",
- "cargo_metadata",
  "clap 2.34.0",
  "indoc",
  "itertools",
  "opener",
- "regex",
  "shell-escape",
+ "tempfile",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
  "cargo_metadata",
  "clippy_utils",
@@ -676,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
  "arrayvec",
  "if_chain",

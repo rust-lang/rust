@@ -1,5 +1,5 @@
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:17:18
+  --> $DIR/needless_match.rs:16:18
    |
 LL |       let _: i32 = match i {
    |  __________________^
@@ -13,29 +13,7 @@ LL | |     };
    = note: `-D clippy::needless-match` implied by `-D warnings`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:23:18
-   |
-LL |       let _: i32 = match i {
-   |  __________________^
-LL | |         0 => 0,
-LL | |         1 => 1,
-LL | |         ref i => *i,
-LL | |     };
-   | |_____^ help: replace it with: `i`
-
-error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:28:22
-   |
-LL |       let mut _i_mut = match i {
-   |  ______________________^
-LL | |         0 => 0,
-LL | |         1 => 1,
-LL | |         ref mut i => *i,
-LL | |     };
-   | |_____^ help: replace it with: `i`
-
-error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:35:19
+  --> $DIR/needless_match.rs:23:19
    |
 LL |       let _: &str = match s {
    |  ___________________^
@@ -46,19 +24,19 @@ LL | |     };
    | |_____^ help: replace it with: `s`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:43:21
+  --> $DIR/needless_match.rs:32:21
    |
-LL |       let _: Choice = match se {
+LL |       let _: Simple = match se {
    |  _____________________^
-LL | |         Choice::A => Choice::A,
-LL | |         Choice::B => Choice::B,
-LL | |         Choice::C => Choice::C,
-LL | |         Choice::D => Choice::D,
+LL | |         Simple::A => Simple::A,
+LL | |         Simple::B => Simple::B,
+LL | |         Simple::C => Simple::C,
+LL | |         Simple::D => Simple::D,
 LL | |     };
    | |_____^ help: replace it with: `se`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:65:26
+  --> $DIR/needless_match.rs:54:26
    |
 LL |       let _: Option<i32> = match x {
    |  __________________________^
@@ -68,7 +46,7 @@ LL | |     };
    | |_____^ help: replace it with: `x`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:81:31
+  --> $DIR/needless_match.rs:70:31
    |
 LL |       let _: Result<i32, i32> = match Ok(1) {
    |  _______________________________^
@@ -78,7 +56,7 @@ LL | |     };
    | |_____^ help: replace it with: `Ok(1)`
 
 error: this match expression is unnecessary
-  --> $DIR/needless_match.rs:85:31
+  --> $DIR/needless_match.rs:74:31
    |
 LL |       let _: Result<i32, i32> = match func_ret_err(0_i32) {
    |  _______________________________^
@@ -88,35 +66,48 @@ LL | |     };
    | |_____^ help: replace it with: `func_ret_err(0_i32)`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:92:5
+  --> $DIR/needless_match.rs:87:13
    |
-LL |     if let Some(a) = Some(1) { Some(a) } else { None }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
+LL |     let _ = if let Some(a) = Some(1) { Some(a) } else { None };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `Some(1)`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:96:30
+  --> $DIR/needless_match.rs:110:31
    |
-LL |     let _: Result<(), i32> = if let Err(e) = x { Err(e) } else { x };
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+LL |     let _: Result<i32, i32> = if let Err(e) = x { Err(e) } else { x };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:97:30
+  --> $DIR/needless_match.rs:111:31
    |
-LL |     let _: Result<(), i32> = if let Ok(val) = x { Ok(val) } else { x };
-   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
+LL |     let _: Result<i32, i32> = if let Ok(val) = x { Ok(val) } else { x };
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `x`
 
 error: this if-let expression is unnecessary
-  --> $DIR/needless_match.rs:103:21
+  --> $DIR/needless_match.rs:117:21
    |
-LL |       let _: Choice = if let Choice::A = x {
+LL |       let _: Simple = if let Simple::A = x {
    |  _____________________^
-LL | |         Choice::A
-LL | |     } else if let Choice::B = x {
-LL | |         Choice::B
+LL | |         Simple::A
+LL | |     } else if let Simple::B = x {
+LL | |         Simple::B
 ...  |
 LL | |         x
 LL | |     };
    | |_____^ help: replace it with: `x`
 
-error: aborting due to 12 previous errors
+error: this match expression is unnecessary
+  --> $DIR/needless_match.rs:156:26
+   |
+LL |           let _: Complex = match ce {
+   |  __________________________^
+LL | |             Complex::A(a) => Complex::A(a),
+LL | |             Complex::B(a, b) => Complex::B(a, b),
+LL | |             Complex::C(a, b, c) => Complex::C(a, b, c),
+LL | |             Complex::D(E::VariantA(ea, eb), b) => Complex::D(E::VariantA(ea, eb), b),
+LL | |             Complex::D(E::VariantB(ea, eb), b) => Complex::D(E::VariantB(ea, eb), b),
+LL | |         };
+   | |_________^ help: replace it with: `ce`
+
+error: aborting due to 11 previous errors
 

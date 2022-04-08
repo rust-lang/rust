@@ -601,9 +601,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             },
                             // If the types match check for methods which exist on both types. e.g. `Vec::len` and
                             // `slice::len`
-                            ty::Adt(def, _)
-                                if def.did() == args.ty_did =>
-                            {
+                            ty::Adt(def, _) if def.did() == args.ty_did => {
                                 set_skip_flag();
                             },
                             _ => (),

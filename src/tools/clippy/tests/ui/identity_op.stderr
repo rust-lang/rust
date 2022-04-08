@@ -78,5 +78,35 @@ error: the operation is ineffective. Consider reducing it to `x`
 LL |     x >> &0;
    |     ^^^^^^^
 
-error: aborting due to 13 previous errors
+error: the operation is ineffective. Consider reducing it to `2`
+  --> $DIR/identity_op.rs:70:5
+   |
+LL |     2 % 3;
+   |     ^^^^^
+
+error: the operation is ineffective. Consider reducing it to `-2`
+  --> $DIR/identity_op.rs:71:5
+   |
+LL |     -2 % 3;
+   |     ^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `2`
+  --> $DIR/identity_op.rs:72:5
+   |
+LL |     2 % -3 + x;
+   |     ^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `-2`
+  --> $DIR/identity_op.rs:73:5
+   |
+LL |     -2 % -3 + x;
+   |     ^^^^^^^
+
+error: the operation is ineffective. Consider reducing it to `1`
+  --> $DIR/identity_op.rs:74:9
+   |
+LL |     x + 1 % 3;
+   |         ^^^^^
+
+error: aborting due to 18 previous errors
 

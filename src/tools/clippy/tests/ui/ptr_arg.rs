@@ -112,7 +112,7 @@ mod issue_5644 {
     ) {
     }
 
-    struct S {}
+    struct S;
     impl S {
         fn allowed(
             #[allow(clippy::ptr_arg)] _v: &Vec<u32>,

@@ -14,7 +14,7 @@ macro_rules! msrv_aliases {
 msrv_aliases! {
     1,53,0 { OR_PATTERNS, MANUAL_BITS }
     1,52,0 { STR_SPLIT_ONCE }
-    1,51,0 { BORROW_AS_PTR }
+    1,51,0 { BORROW_AS_PTR, UNSIGNED_ABS }
     1,50,0 { BOOL_THEN }
     1,47,0 { TAU }
     1,46,0 { CONST_IF_MATCH }
@@ -30,6 +30,6 @@ msrv_aliases! {
     1,34,0 { TRY_FROM }
     1,30,0 { ITERATOR_FIND_MAP, TOOL_ATTRIBUTES }
     1,28,0 { FROM_BOOL }
-    1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST }
+    1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
 }

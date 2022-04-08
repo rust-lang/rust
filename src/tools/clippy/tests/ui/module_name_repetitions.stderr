@@ -15,8 +15,8 @@ LL |     pub fn bar_foo() {}
 error: item name starts with its containing module's name
   --> $DIR/module_name_repetitions.rs:10:5
    |
-LL |     pub struct FooCake {}
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL |     pub struct FooCake;
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: item name ends with its containing module's name
   --> $DIR/module_name_repetitions.rs:11:5
