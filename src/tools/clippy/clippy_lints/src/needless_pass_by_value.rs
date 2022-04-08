@@ -235,12 +235,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        snippet_opt(cx, span)
+                                        &snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x)),
-                                            )
-                                            .as_ref(),
+                                            ),
                                         suggestion.into(),
                                         Applicability::Unspecified,
                                     );
@@ -265,12 +264,11 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 for (span, suggestion) in clone_spans {
                                     diag.span_suggestion(
                                         span,
-                                        snippet_opt(cx, span)
+                                        &snippet_opt(cx, span)
                                             .map_or(
                                                 "change the call to".into(),
                                                 |x| Cow::from(format!("change `{}` to", x))
-                                            )
-                                            .as_ref(),
+                                            ),
                                         suggestion.into(),
                                         Applicability::Unspecified,
                                     );

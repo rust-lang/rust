@@ -63,14 +63,9 @@ decl_derive!([TypeFoldable, attributes(type_foldable)] => type_foldable::type_fo
 decl_derive!([Lift, attributes(lift)] => lift::lift_derive);
 decl_derive!(
     [SessionDiagnostic, attributes(
-        // struct attributes
-        warning,
+        message,
+        lint,
         error,
-        note,
-        help,
-        // field attributes
-        skip_arg,
-        primary_span,
         label,
         suggestion,
         suggestion_short,

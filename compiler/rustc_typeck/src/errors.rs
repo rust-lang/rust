@@ -3,185 +3,188 @@ use rustc_macros::SessionDiagnostic;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0062", slug = "typeck-field-multiply-specified-in-initializer")]
+#[error = "E0062"]
 pub struct FieldMultiplySpecifiedInInitializer {
-    #[primary_span]
-    #[label]
+    #[message = "field `{ident}` specified more than once"]
+    #[label = "used more than once"]
     pub span: Span,
-    #[label = "previous-use-label"]
+    #[label = "first use of `{ident}`"]
     pub prev_span: Span,
     pub ident: Ident,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0092", slug = "typeck-unrecognized-atomic-operation")]
+#[error = "E0092"]
 pub struct UnrecognizedAtomicOperation<'a> {
-    #[primary_span]
-    #[label]
+    #[message = "unrecognized atomic operation function: `{op}`"]
+    #[label = "unrecognized atomic operation"]
     pub span: Span,
     pub op: &'a str,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0094", slug = "typeck-wrong-number-of-generic-arguments-to-intrinsic")]
+#[error = "E0094"]
 pub struct WrongNumberOfGenericArgumentsToIntrinsic<'a> {
-    #[primary_span]
-    #[label]
+    #[message = "intrinsic has wrong number of {descr} \
+                         parameters: found {found}, expected {expected}"]
+    #[label = "expected {expected} {descr} parameter{expected_pluralize}"]
     pub span: Span,
     pub found: usize,
     pub expected: usize,
+    pub expected_pluralize: &'a str,
     pub descr: &'a str,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0093", slug = "typeck-unrecognized-intrinsic-function")]
+#[error = "E0093"]
 pub struct UnrecognizedIntrinsicFunction {
-    #[primary_span]
-    #[label]
+    #[message = "unrecognized intrinsic function: `{name}`"]
+    #[label = "unrecognized intrinsic"]
     pub span: Span,
     pub name: Symbol,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0195", slug = "typeck-lifetimes-or-bounds-mismatch-on-trait")]
+#[error = "E0195"]
 pub struct LifetimesOrBoundsMismatchOnTrait {
-    #[primary_span]
-    #[label]
+    #[message = "lifetime parameters or bounds on {item_kind} `{ident}` do not match the trait declaration"]
+    #[label = "lifetimes do not match {item_kind} in trait"]
     pub span: Span,
-    #[label = "generics-label"]
+    #[label = "lifetimes in impl do not match this {item_kind} in trait"]
     pub generics_span: Option<Span>,
     pub item_kind: &'static str,
     pub ident: Ident,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0120", slug = "typeck-drop-impl-on-wrong-item")]
+#[error = "E0120"]
 pub struct DropImplOnWrongItem {
-    #[primary_span]
-    #[label]
+    #[message = "the `Drop` trait may only be implemented for structs, enums, and unions"]
+    #[label = "must be a struct, enum, or union"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0124", slug = "typeck-field-already-declared")]
+#[error = "E0124"]
 pub struct FieldAlreadyDeclared {
     pub field_name: Ident,
-    #[primary_span]
-    #[label]
+    #[message = "field `{field_name}` is already declared"]
+    #[label = "field already declared"]
     pub span: Span,
-    #[label = "previous-decl-label"]
+    #[label = "`{field_name}` first declared here"]
     pub prev_span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0184", slug = "typeck-copy-impl-on-type-with-dtor")]
+#[error = "E0184"]
 pub struct CopyImplOnTypeWithDtor {
-    #[primary_span]
-    #[label]
+    #[message = "the trait `Copy` may not be implemented for this type; the \
+                              type has a destructor"]
+    #[label = "Copy not allowed on types with destructors"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0203", slug = "typeck-multiple-relaxed-default-bounds")]
+#[error = "E0203"]
 pub struct MultipleRelaxedDefaultBounds {
-    #[primary_span]
+    #[message = "type parameter has more than one relaxed default bound, only one is supported"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0206", slug = "typeck-copy-impl-on-non-adt")]
+#[error = "E0206"]
 pub struct CopyImplOnNonAdt {
-    #[primary_span]
-    #[label]
+    #[message = "the trait `Copy` may not be implemented for this type"]
+    #[label = "type is not a structure or enumeration"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0224", slug = "typeck-trait-object-declared-with-no-traits")]
+#[error = "E0224"]
 pub struct TraitObjectDeclaredWithNoTraits {
-    #[primary_span]
+    #[message = "at least one trait is required for an object type"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0227", slug = "typeck-ambiguous-lifetime-bound")]
+#[error = "E0227"]
 pub struct AmbiguousLifetimeBound {
-    #[primary_span]
+    #[message = "ambiguous lifetime bound, explicit lifetime bound required"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0229", slug = "typeck-assoc-type-binding-not-allowed")]
+#[error = "E0229"]
 pub struct AssocTypeBindingNotAllowed {
-    #[primary_span]
-    #[label]
+    #[message = "associated type bindings are not allowed here"]
+    #[label = "associated type not allowed here"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0436", slug = "typeck-functional-record-update-on-non-struct")]
+#[error = "E0436"]
 pub struct FunctionalRecordUpdateOnNonStruct {
-    #[primary_span]
+    #[message = "functional record update syntax requires a struct"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0516", slug = "typeck-typeof-reserved-keyword-used")]
+#[error = "E0516"]
 pub struct TypeofReservedKeywordUsed {
-    #[primary_span]
-    #[label]
+    #[message = "`typeof` is a reserved keyword but unimplemented"]
+    #[label = "reserved keyword"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0572", slug = "typeck-return-stmt-outside-of-fn-body")]
+#[error = "E0572"]
 pub struct ReturnStmtOutsideOfFnBody {
-    #[primary_span]
+    #[message = "return statement outside of function body"]
     pub span: Span,
-    #[label = "encl-body-label"]
+    #[label = "the return is part of this body..."]
     pub encl_body_span: Option<Span>,
-    #[label = "encl-fn-label"]
+    #[label = "...not the enclosing function body"]
     pub encl_fn_span: Option<Span>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0627", slug = "typeck-yield-expr-outside-of-generator")]
+#[error = "E0627"]
 pub struct YieldExprOutsideOfGenerator {
-    #[primary_span]
+    #[message = "yield expression outside of generator literal"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0639", slug = "typeck-struct-expr-non-exhaustive")]
+#[error = "E0639"]
 pub struct StructExprNonExhaustive {
-    #[primary_span]
+    #[message = "cannot create non-exhaustive {what} using struct expression"]
     pub span: Span,
     pub what: &'static str,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0699", slug = "typeck-method-call-on-unknown-type")]
+#[error = "E0699"]
 pub struct MethodCallOnUnknownType {
-    #[primary_span]
+    #[message = "the type of this value must be known to call a method on a raw pointer on it"]
     pub span: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0719", slug = "typeck-value-of-associated-struct-already-specified")]
+#[error = "E0719"]
 pub struct ValueOfAssociatedStructAlreadySpecified {
-    #[primary_span]
-    #[label]
+    #[message = "the value of the associated type `{item_name}` (from trait `{def_path}`) is already specified"]
+    #[label = "re-bound here"]
     pub span: Span,
-    #[label = "previous-bound-label"]
+    #[label = "`{item_name}` bound here first"]
     pub prev_span: Span,
     pub item_name: Ident,
     pub def_path: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0745", slug = "typeck-address-of-temporary-taken")]
+#[error = "E0745"]
 pub struct AddressOfTemporaryTaken {
-    #[primary_span]
-    #[label]
+    #[message = "cannot take address of a temporary"]
+    #[label = "temporary value"]
     pub span: Span,
 }

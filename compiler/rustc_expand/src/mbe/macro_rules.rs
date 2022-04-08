@@ -68,18 +68,17 @@ fn emit_frag_parse_err(
     arm_span: Span,
     kind: AstFragmentKind,
 ) {
-    // FIXME(davidtwco): avoid depending on the error message text
-    if parser.token == token::Eof && e.message[0].0.expect_str().ends_with(", found `<eof>`") {
+    if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
         if !e.span.is_dummy() {
             // early end of macro arm (#52866)
             e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
         }
         let msg = &e.message[0];
         e.message[0] = (
-            rustc_errors::DiagnosticMessage::Str(format!(
+            format!(
                 "macro expansion ends with an incomplete expression: {}",
-                msg.0.expect_str().replace(", found `<eof>`", ""),
-            )),
+                msg.0.replace(", found `<eof>`", ""),
+            ),
             msg.1,
         );
     }

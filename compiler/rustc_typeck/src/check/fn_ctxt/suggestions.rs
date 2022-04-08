@@ -2,7 +2,7 @@ use super::FnCtxt;
 use crate::astconv::AstConv;
 
 use rustc_ast::util::parser::ExprPrecedence;
-use rustc_errors::{Applicability, Diagnostic, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
@@ -16,7 +16,7 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Binder, ToPredicate, Ty};
 use rustc_span::symbol::{kw, sym};
-use rustc_span::Span;
+use rustc_span::{MultiSpan, Span};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 
 use std::iter;

@@ -11,8 +11,8 @@
 #![crate_type = "lib"]
 
 extern crate rustc_span;
-use rustc_span::symbol::Ident;
 use rustc_span::Span;
+use rustc_span::symbol::Ident;
 
 extern crate rustc_macros;
 use rustc_macros::SessionDiagnostic;
@@ -26,15 +26,12 @@ use rustc_errors::Applicability;
 extern crate rustc_session;
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "hello-world")]
+#[message = "Hello, world!"]
+#[error = "E0123"]
 struct Hello {}
 
 #[derive(SessionDiagnostic)]
-#[warning(code = "E0123", slug = "hello-world")]
-struct HelloWarn {}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 //~^ ERROR `#[derive(SessionDiagnostic)]` can only be used on structs
 enum SessionDiagnosticOnEnum {
     Foo,
@@ -42,387 +39,228 @@ enum SessionDiagnosticOnEnum {
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
 #[error = "E0123"]
-//~^ ERROR `#[error = ...]` is not a valid `SessionDiagnostic` struct attribute
-struct WrongStructAttrStyle {}
+#[label = "This is in the wrong place"]
+//~^ ERROR `#[label = ...]` is not a valid SessionDiagnostic struct attribute
+struct WrongPlace {}
 
 #[derive(SessionDiagnostic)]
-#[nonsense(code = "E0123", slug = "foo")]
-//~^ ERROR `#[nonsense(...)]` is not a valid `SessionDiagnostic` struct attribute
-//~^^ ERROR diagnostic kind not specified
-//~^^^ ERROR cannot find attribute `nonsense` in this scope
-struct InvalidStructAttr {}
-
-#[derive(SessionDiagnostic)]
-#[error("E0123")]
-//~^ ERROR `#[error("...")]` is not a valid `SessionDiagnostic` struct attribute
-//~^^ ERROR `slug` not specified
-struct InvalidLitNestedAttr {}
-
-#[derive(SessionDiagnostic)]
-#[error(nonsense, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense)]` is not a valid `SessionDiagnostic` struct attribute
-struct InvalidNestedStructAttr {}
-
-#[derive(SessionDiagnostic)]
-#[error(nonsense("foo"), code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense(...))]` is not a valid `SessionDiagnostic` struct attribute
-struct InvalidNestedStructAttr1 {}
-
-#[derive(SessionDiagnostic)]
-#[error(nonsense = "...", code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
-struct InvalidNestedStructAttr2 {}
-
-#[derive(SessionDiagnostic)]
-#[error(nonsense = 4, code = "E0123", slug = "foo")]
-//~^ ERROR `#[error(nonsense = ...)]` is not a valid `SessionDiagnostic` struct attribute
-struct InvalidNestedStructAttr3 {}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct WrongPlaceField {
-    #[suggestion = "bar"]
-    //~^ ERROR `#[suggestion = ...]` is not a valid `SessionDiagnostic` field attribute
+    #[suggestion = "this is the wrong kind of attribute"]
+//~^ ERROR `#[suggestion = ...]` is not a valid SessionDiagnostic field attribute
     sp: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[error(code = "E0456", slug = "bar")] //~ ERROR `error` specified multiple times
+#[message = "Hello, world!"]
+#[error = "E0123"]
+#[error = "E0456"] //~ ERROR `error` specified multiple times
 struct ErrorSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[warning(code = "E0293", slug = "bar")]
-//~^ ERROR `warning` specified when `error` was already specified
-struct WarnSpecifiedAfterError {}
+#[message = "Hello, world!"]
+#[error = "E0123"]
+#[lint = "some_useful_lint"] //~ ERROR `lint` specified when `error` was already specified
+struct LintSpecifiedAfterError {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", code = "E0457", slug = "bar")] //~ ERROR `code` specified multiple times
-struct CodeSpecifiedTwice {}
+#[message = "Some lint message"]
+#[error = "E0123"]
+struct LintButHasErrorCode {}
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", slug = "foo", slug = "bar")] //~ ERROR `slug` specified multiple times
-struct SlugSpecifiedTwice {}
+struct ErrorCodeNotProvided {} //~ ERROR `code` not specified
+
+// FIXME: Uncomment when emitting lints is supported.
+/*
+#[derive(SessionDiagnostic)]
+#[message = "Hello, world!"]
+#[lint = "clashing_extern_declarations"]
+#[lint = "improper_ctypes"] // FIXME: ERROR `lint` specified multiple times
+struct LintSpecifiedTwice {}
 
 #[derive(SessionDiagnostic)]
-struct KindNotProvided {} //~ ERROR diagnostic kind not specified
+#[lint = "Some lint message"]
+#[message = "Some error message"]
+#[error = "E0123"] // ERROR `error` specified when `lint` was already specified
+struct ErrorSpecifiedAfterLint {}
+*/
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456")] //~ ERROR `slug` not specified
-struct SlugNotProvided {}
-
-#[derive(SessionDiagnostic)]
-#[error(slug = "foo")]
-struct CodeNotProvided {}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct MessageWrongType {
-    #[primary_span]
-    //~^ ERROR `#[primary_span]` attribute can only be applied to fields of type `Span`
-    foo: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct InvalidPathFieldAttr {
-    #[nonsense]
-    //~^ ERROR `#[nonsense]` is not a valid `SessionDiagnostic` field attribute
-    //~^^ ERROR cannot find attribute `nonsense` in this scope
-    foo: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct ErrorWithField {
     name: String,
-    #[label = "bar"]
-    span: Span,
+    #[message = "This error has a field, and references {name}"]
+    span: Span
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct ErrorWithMessageAppliedToField {
-    #[label = "bar"]
-    //~^ ERROR the `#[label = ...]` attribute can only be applied to fields of type `Span`
+    #[message = "this message is applied to a String field"]
+    //~^ ERROR the `#[message = "..."]` attribute can only be applied to fields of type Span
     name: String,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
+#[message = "This error has a field, and references {name}"]
+//~^ ERROR `name` doesn't refer to a field on this type
 struct ErrorWithNonexistentField {
-    #[suggestion(message = "bar", code = "{name}")]
-    //~^ ERROR `name` doesn't refer to a field on this type
-    suggestion: (Span, Applicability),
+    span: Span
 }
 
 #[derive(SessionDiagnostic)]
+#[error = "E0123"]
+#[message = "This is missing a closing brace: {name"]
 //~^ ERROR invalid format string: expected `'}'`
-#[error(code = "E0123", slug = "foo")]
 struct ErrorMissingClosingBrace {
-    #[suggestion(message = "bar", code = "{name")]
-    suggestion: (Span, Applicability),
     name: String,
-    val: usize,
+    span: Span
 }
 
 #[derive(SessionDiagnostic)]
+#[error = "E0123"]
+#[message = "This is missing an opening brace: name}"]
 //~^ ERROR invalid format string: unmatched `}`
-#[error(code = "E0123", slug = "foo")]
 struct ErrorMissingOpeningBrace {
-    #[suggestion(message = "bar", code = "name}")]
-    suggestion: (Span, Applicability),
     name: String,
-    val: usize,
+    span: Span
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
+#[message = "Something something"]
 struct LabelOnSpan {
-    #[label = "bar"]
-    sp: Span,
+    #[label = "See here"]
+    sp: Span
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
+#[message = "Something something"]
 struct LabelOnNonSpan {
-    #[label = "bar"]
-    //~^ ERROR the `#[label = ...]` attribute can only be applied to fields of type `Span`
+    #[label = "See here"]
+    //~^ ERROR The `#[label = ...]` attribute can only be applied to fields of type Span
     id: u32,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct Suggest {
-    #[suggestion(message = "bar", code = "This is the suggested code")]
-    #[suggestion_short(message = "qux", code = "This is the suggested code")]
-    #[suggestion_hidden(message = "foobar", code = "This is the suggested code")]
-    #[suggestion_verbose(message = "fooqux", code = "This is the suggested code")]
+    #[suggestion(message = "This is a suggestion", code = "This is the suggested code")]
+    #[suggestion_short(message = "This is a suggestion", code = "This is the suggested code")]
+    #[suggestion_hidden(message = "This is a suggestion", code = "This is the suggested code")]
+    #[suggestion_verbose(message = "This is a suggestion", code = "This is the suggested code")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithoutCode {
-    #[suggestion(message = "bar")]
+    #[suggestion(message = "This is a suggestion")]
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithBadKey {
-    #[suggestion(nonsense = "bar")]
-    //~^ ERROR `#[suggestion(nonsense = ...)]` is not a valid `SessionDiagnostic` field attribute
+    #[suggestion(nonsense = "This is nonsense")]
+    //~^ ERROR `nonsense` is not a valid key for `#[suggestion(...)]`
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithShorthandMsg {
-    #[suggestion(msg = "bar")]
-    //~^ ERROR `#[suggestion(msg = ...)]` is not a valid `SessionDiagnostic` field attribute
+    #[suggestion(msg = "This is a suggestion")]
+    //~^ ERROR `msg` is not a valid key for `#[suggestion(...)]`
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithoutMsg {
-    #[suggestion(code = "bar")]
+    #[suggestion(code = "This is suggested code")]
+    //~^ ERROR missing suggestion message
     suggestion: (Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithTypesSwapped {
-    #[suggestion(message = "bar", code = "This is suggested code")]
+    #[suggestion(message = "This is a message", code = "This is suggested code")]
     suggestion: (Applicability, Span),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithWrongTypeApplicabilityOnly {
-    #[suggestion(message = "bar", code = "This is suggested code")]
+    #[suggestion(message = "This is a message", code = "This is suggested code")]
     //~^ ERROR wrong field type for suggestion
     suggestion: Applicability,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct SuggestWithSpanOnly {
-    #[suggestion(message = "bar", code = "This is suggested code")]
+#[error = "E0123"]
+struct SuggestWithSpanOnly{
+    #[suggestion(message = "This is a message", code = "This is suggested code")]
     suggestion: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithDuplicateSpanAndApplicability {
-    #[suggestion(message = "bar", code = "This is suggested code")]
-    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one `Span`
+    #[suggestion(message = "This is a message", code = "This is suggested code")]
+    //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one Span
     suggestion: (Span, Span, Applicability),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct SuggestWithDuplicateApplicabilityAndSpan {
-    #[suggestion(message = "bar", code = "This is suggested code")]
+    #[suggestion(message = "This is a message", code = "This is suggested code")]
     //~^ ERROR type of field annotated with `#[suggestion(...)]` contains more than one
     suggestion: (Applicability, Applicability, Span),
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct WrongKindOfAnnotation {
-    #[label("bar")]
-    //~^ ERROR `#[label(...)]` is not a valid `SessionDiagnostic` field attribute
+    #[label("wrong kind of annotation for label")]
+    //~^ ERROR invalid annotation list `#[label(...)]`
     z: Span,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
+#[message = "Something something else"]
 struct OptionsInErrors {
-    #[label = "bar"]
+    #[label = "Label message"]
     label: Option<Span>,
-    #[suggestion(message = "bar")]
+    #[suggestion(message = "suggestion message")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0456", slug = "foo")]
+#[error = "E0456"]
 struct MoveOutOfBorrowError<'tcx> {
     name: Ident,
     ty: Ty<'tcx>,
-    #[primary_span]
-    #[label = "bar"]
+    #[message = "cannot move {ty} out of borrow"]
+    #[label = "cannot move out of borrow"]
     span: Span,
-    #[label = "qux"]
+    #[label = "`{ty}` first borrowed here"]
     other_span: Span,
-    #[suggestion(message = "bar", code = "{name}.clone()")]
+    #[suggestion(message = "consider cloning here", code = "{name}.clone()")]
     opt_sugg: Option<(Span, Applicability)>,
 }
 
 #[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
+#[error = "E0123"]
 struct ErrorWithLifetime<'a> {
-    #[label = "bar"]
+    #[message = "Some message that references {name}"]
     span: Span,
     name: &'a str,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithDefaultLabelAttr<'a> {
-    #[label]
-    span: Span,
-    name: &'a str,
-}
-
-#[derive(SessionDiagnostic)]
-//~^ ERROR no method named `into_diagnostic_arg` found for struct `Hello` in the current scope
-#[error(code = "E0123", slug = "foo")]
-struct ArgFieldWithoutSkip {
-    #[primary_span]
-    span: Span,
-    other: Hello,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ArgFieldWithSkip {
-    #[primary_span]
-    span: Span,
-    // `Hello` does not implement `IntoDiagnosticArg` so this would result in an error if
-    // not for `#[skip_arg]`.
-    #[skip_arg]
-    other: Hello,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithSpannedNote {
-    #[note]
-    span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithSpannedNoteCustom {
-    #[note = "bar"]
-    span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[note]
-struct ErrorWithNote {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[note = "bar"]
-struct ErrorWithNoteCustom {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithSpannedHelp {
-    #[help]
-    span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithSpannedHelpCustom {
-    #[help = "bar"]
-    span: Span,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[help]
-struct ErrorWithHelp {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[error(code = "E0123", slug = "foo")]
-#[help = "bar"]
-struct ErrorWithHelpCustom {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[help]
-//~^ ERROR `#[help]` must come after `#[error(..)]` or `#[warn(..)]`
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithHelpWrongOrder {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[help = "bar"]
-//~^ ERROR `#[help = ...]` must come after `#[error(..)]` or `#[warn(..)]`
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithHelpCustomWrongOrder {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[note]
-//~^ ERROR `#[note]` must come after `#[error(..)]` or `#[warn(..)]`
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithNoteWrongOrder {
-    val: String,
-}
-
-#[derive(SessionDiagnostic)]
-#[note = "bar"]
-//~^ ERROR `#[note = ...]` must come after `#[error(..)]` or `#[warn(..)]`
-#[error(code = "E0123", slug = "foo")]
-struct ErrorWithNoteCustomWrongOrder {
-    val: String,
 }

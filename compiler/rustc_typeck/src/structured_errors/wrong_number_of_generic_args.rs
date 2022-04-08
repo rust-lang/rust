@@ -1,14 +1,13 @@
 use crate::structured_errors::StructuredDiagnostic;
 use rustc_errors::{
     pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed,
-    MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_middle::hir::map::fn_sig;
 use rustc_middle::middle::resolve_lifetime::LifetimeScopeForPath;
 use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::Session;
-use rustc_span::def_id::DefId;
+use rustc_span::{def_id::DefId, MultiSpan};
 
 use GenericArgsInfo::*;
 
