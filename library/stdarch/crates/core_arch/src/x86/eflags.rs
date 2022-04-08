@@ -8,9 +8,9 @@ use crate::arch::asm;
 #[cfg(target_arch = "x86")]
 #[inline(always)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "See issue #51810 - use inline assembly instead"
+    note = "See issue #51810 - use inline assembly instead"
 )]
 #[doc(hidden)]
 pub unsafe fn __readeflags() -> u32 {
@@ -25,9 +25,9 @@ pub unsafe fn __readeflags() -> u32 {
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "See issue #51810 - use inline assembly instead"
+    note = "See issue #51810 - use inline assembly instead"
 )]
 #[doc(hidden)]
 pub unsafe fn __readeflags() -> u64 {
@@ -42,9 +42,9 @@ pub unsafe fn __readeflags() -> u64 {
 #[cfg(target_arch = "x86")]
 #[inline(always)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "See issue #51810 - use inline assembly instead"
+    note = "See issue #51810 - use inline assembly instead"
 )]
 #[doc(hidden)]
 pub unsafe fn __writeeflags(eflags: u32) {
@@ -57,9 +57,9 @@ pub unsafe fn __writeeflags(eflags: u32) {
 #[cfg(target_arch = "x86_64")]
 #[inline(always)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.29.0",
-    reason = "See issue #51810 - use inline assembly instead"
+    note = "See issue #51810 - use inline assembly instead"
 )]
 #[doc(hidden)]
 pub unsafe fn __writeeflags(eflags: u64) {
