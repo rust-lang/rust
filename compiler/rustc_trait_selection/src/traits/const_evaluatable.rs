@@ -8,7 +8,6 @@
 //! In this case we try to build an abstract representation of this constant using
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
-use rustc_data_structures::intern::Interned;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_index::vec::IndexVec;
@@ -414,14 +413,12 @@ impl<'a, 'tcx> AbstractConstBuilder<'a, 'tcx> {
         self.recurse_build(self.body_id)?;
 
         for n in self.nodes.iter() {
-            if let Node::Leaf(ty::Const(Interned(
-                ty::ConstS { val: ty::ConstKind::Unevaluated(ct), ty: _ },
-                _,
-            ))) = n
-            {
-                // `AbstractConst`s should not contain any promoteds as they require references which
-                // are not allowed.
-                assert_eq!(ct.promoted, None);
+            if let Node::Leaf(ct) = n {
+                if let ty::ConstKind::Unevaluated(ct) = ct.val() {
+                    // `AbstractConst`s should not contain any promoteds as they require references which
+                    // are not allowed.
+                    assert_eq!(ct.promoted, None);
+                }
             }
         }
 
