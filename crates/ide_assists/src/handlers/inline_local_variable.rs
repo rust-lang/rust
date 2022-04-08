@@ -938,4 +938,18 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn test_inline_let_unit_struct() {
+        check_assist_not_applicable(
+            inline_local_variable,
+            r#"
+struct S;
+fn f() {
+    let S$0 = S;
+    S;
+}
+"#,
+        );
+    }
 }
