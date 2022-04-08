@@ -2952,7 +2952,9 @@ pub fn provide(providers: &mut ty::query::Providers) {
     providers.maybe_unused_extern_crates =
         |tcx, ()| &tcx.resolutions(()).maybe_unused_extern_crates[..];
     providers.names_imported_by_glob_use = |tcx, id| {
-        tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default())
+        &StableSet::from(
+            tcx.arena.alloc(tcx.resolutions(()).glob_map.get(&id).cloned().unwrap_or_default()),
+        )
     };
 
     providers.extern_mod_stmt_cnum =

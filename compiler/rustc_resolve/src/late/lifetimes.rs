@@ -469,9 +469,8 @@ fn do_resolve(
     named_region_map
 }
 
-fn convert_named_region_map(named_region_map: NamedRegionMap, tcx: TyCtxt<'_>) -> ResolveLifetimes {
+fn convert_named_region_map(named_region_map: NamedRegionMap) -> ResolveLifetimes {
     let mut rl = ResolveLifetimes::default();
-    let hcx = tcx.create_stable_hashing_context();
     for (hir_id, v) in named_region_map.defs {
         let map = rl.defs.entry(hir_id.owner).or_default();
         map.insert(hir_id.local_id, v);

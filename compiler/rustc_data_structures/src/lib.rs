@@ -87,6 +87,7 @@ pub mod svh;
 pub use ena::snapshot_vec;
 pub mod memmap;
 pub mod sorted_map;
+pub mod stable_iterator;
 pub mod stable_set;
 #[macro_use]
 pub mod stable_hasher;

@@ -1,9 +1,11 @@
 pub use rustc_hash::FxHashSet;
 use std::borrow::Borrow;
+use std::collections::hash_set;
 use std::fmt;
 use std::hash::Hash;
 
 use crate::stable_hasher::{stable_hash_reduce, HashStable, StableHasher, ToStableHashKey};
+use crate::stable_iterator::{IntoStableIterator, StableIterator};
 
 /// A deterministic wrapper around FxHashSet that does not provide iteration support.
 ///
@@ -103,20 +105,8 @@ impl<T: Hash + Eq> StableSet<T> {
         self.base.contains(value)
     }
 
-    #[inline]
-    pub fn any<F>(&self, f: F) -> bool
-    where
-        F: FnMut(&T) -> bool,
-    {
-        self.base.iter().any(f)
-    }
-
-    #[inline]
-    pub fn all<F>(&self, f: F) -> bool
-    where
-        F: FnMut(&T) -> bool,
-    {
-        self.base.iter().all(f)
+    pub fn stable_iter<'a>(&'a self) -> StableIterator<hash_set::Iter<'a, T>> {
+        (&self).into_stable_iter()
     }
 }
 
@@ -140,6 +130,31 @@ where
     #[inline]
     fn from_iter<Collection: IntoIterator<Item = T>>(iter: Collection) -> Self {
         Self { base: iter.into_iter().collect() }
+    }
+}
+
+impl<T: Eq + Hash> IntoStableIterator for StableSet<T> {
+    type IntoIter = hash_set::IntoIter<T>;
+    #[inline]
+    fn into_stable_iter(self) -> StableIterator<Self::IntoIter> {
+        self.base.into_stable_iter()
+    }
+}
+
+impl<'a, T: Eq + Hash> IntoStableIterator for &'a StableSet<T> {
+    type IntoIter = hash_set::Iter<'a, T>;
+    #[inline]
+    fn into_stable_iter(self) -> StableIterator<Self::IntoIter> {
+        self.base.iter().into_stable_iter()
+    }
+}
+
+impl<T> From<FxHashSet<T>> for StableSet<T>
+where
+    T: Eq + Hash,
+{
+    fn from(base: FxHashSet<T>) -> Self {
+        Self { base: base }
     }
 }
 

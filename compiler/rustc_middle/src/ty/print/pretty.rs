@@ -2763,7 +2763,6 @@ fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
         &mut FxHashMap::default();
 
-    let hcx = tcx.create_stable_hashing_context();
     for symbol_set in tcx.resolutions(()).glob_map.values() {
         for symbol in symbol_set {
             unique_symbols_rev.insert((Namespace::TypeNS, *symbol), None);
