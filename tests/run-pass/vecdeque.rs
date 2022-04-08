@@ -26,7 +26,7 @@ fn main() {
       assert_eq!(**a, 2);
     }
 
-    // Regression test for Debug and Diaplay impl's
+    // Regression test for Debug impl's
     println!("{:?} {:?}", dst, dst.iter());
     println!("{:?}", VecDeque::<u32>::new().iter());
 

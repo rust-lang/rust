@@ -605,6 +605,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn memory_read(
+        _tcx: TyCtxt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra,
         tag: Tag,
@@ -627,6 +628,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn memory_written(
+        _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         tag: Tag,
@@ -649,6 +651,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'mir, 'tcx> {
 
     #[inline(always)]
     fn memory_deallocated(
+        _tcx: TyCtxt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra,
         tag: Tag,

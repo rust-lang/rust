@@ -23,6 +23,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Windows API stubs.
         // HANDLE = isize
+        // NTSTATUS = LONH = i32
         // DWORD = ULONG = u32
         // BOOL = i32
         // BOOLEAN = u8
@@ -62,49 +63,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 let result = this.SetCurrentDirectoryW(path)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
-            }
-
-            // File related shims
-            "GetStdHandle" => {
-                let &[ref which] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                let which = this.read_scalar(which)?.to_i32()?;
-                // We just make this the identity function, so we know later in `WriteFile`
-                // which one it is.
-                this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
-            }
-            "WriteFile" => {
-                let &[ref handle, ref buf, ref n, ref written_ptr, ref overlapped] =
-                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(overlapped)?.to_machine_usize(this)?; // this is a poiner, that we ignore
-                let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
-                let buf = this.read_pointer(buf)?;
-                let n = this.read_scalar(n)?.to_u32()?;
-                let written_place = this.deref_operand(written_ptr)?;
-                // Spec says to always write `0` first.
-                this.write_null(&written_place.into())?;
-                let written = if handle == -11 || handle == -12 {
-                    // stdout/stderr
-                    use std::io::{self, Write};
-
-                    let buf_cont = this.read_bytes_ptr(buf, Size::from_bytes(u64::from(n)))?;
-                    let res = if handle == -11 {
-                        io::stdout().write(buf_cont)
-                    } else {
-                        io::stderr().write(buf_cont)
-                    };
-                    res.ok().map(|n| n as u32)
-                } else {
-                    throw_unsup_format!(
-                        "on Windows, writing to anything except stdout/stderr is not supported"
-                    )
-                };
-                // If there was no error, write back how much was written.
-                if let Some(n) = written {
-                    this.write_scalar(Scalar::from_u32(n), &written_place.into())?;
-                }
-                // Return whether this was a success.
-                this.write_scalar(Scalar::from_i32(if written.is_some() { 1 } else { 0 }), dest)?;
             }
 
             // Allocation
@@ -333,6 +291,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // value if this call does result in switching to another thread.
                 this.write_null(dest)?;
             }
+            "GetStdHandle" => {
+                let &[ref which] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                let which = this.read_scalar(which)?.to_i32()?;
+                // We just make this the identity function, so we know later in `NtWriteFile` which
+                // one it is. This is very fake, but libtest needs it so we cannot make it a
+                // std-only shim.
+                this.write_scalar(Scalar::from_machine_isize(which.into(), this), dest)?;
+            }
 
             // Better error for attempts to create a thread
             "CreateThread" => {
@@ -348,6 +315,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "GetProcessHeap" if this.frame_in_std() => {
                 let &[] = this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
                 // Just fake a HANDLE
+                this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
+            }
+            "GetModuleHandleA" if this.frame_in_std() => {
+                #[allow(non_snake_case)]
+                let &[_lpModuleName] =
+                    this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
+                // We need to return something non-null here to make `compat_fn!` work.
                 this.write_scalar(Scalar::from_machine_isize(1, this), dest)?;
             }
             "SetConsoleTextAttribute" if this.frame_in_std() => {
