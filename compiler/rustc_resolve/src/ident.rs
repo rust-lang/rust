@@ -1459,7 +1459,7 @@ impl<'a> Resolver<'a> {
 
             enum FindBindingResult<'a> {
                 Binding(Result<&'a NameBinding<'a>, Determinacy>),
-                PathResult(PathResult<'a>),
+                Res(Res),
             }
             let find_binding_in_ns = |this: &mut Self, ns| {
                 let binding = if let Some(module) = module {
@@ -1498,10 +1498,7 @@ impl<'a> Resolver<'a> {
                         Some(LexicalScopeBinding::Res(res))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) =>
                         {
-                            record_segment_res(this, res);
-                            return FindBindingResult::PathResult(PathResult::NonModule(
-                                PartialRes::with_unresolved_segments(res, path.len() - 1),
-                            ));
+                            return FindBindingResult::Res(res);
                         }
                         _ => Err(Determinacy::determined(finalize.is_some())),
                     }
@@ -1509,7 +1506,13 @@ impl<'a> Resolver<'a> {
                 FindBindingResult::Binding(binding)
             };
             let binding = match find_binding_in_ns(self, ns) {
-                FindBindingResult::PathResult(x) => return x,
+                FindBindingResult::Res(res) => {
+                    record_segment_res(self, res);
+                    return PathResult::NonModule(PartialRes::with_unresolved_segments(
+                        res,
+                        path.len() - 1,
+                    ));
+                }
                 FindBindingResult::Binding(binding) => binding,
             };
             match binding {
