@@ -219,8 +219,13 @@ fn rename_to_self(sema: &Semantics<RootDatabase>, local: hir::Local) -> RenameRe
     let first_param = params
         .first()
         .ok_or_else(|| format_err!("Cannot rename local to self unless it is a parameter"))?;
-    if first_param.as_local(sema.db) != local {
-        bail!("Only the first parameter may be renamed to self");
+    match first_param.as_local(sema.db) {
+        Some(plocal) => {
+            if plocal != local {
+                bail!("Only the first parameter may be renamed to self");
+            }
+        }
+        None => bail!("rename_to_self invoked on destructuring parameter"),
     }
 
     let assoc_item = fn_def
