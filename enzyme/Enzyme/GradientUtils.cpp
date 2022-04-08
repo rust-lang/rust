@@ -2779,8 +2779,11 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
             // the phi unwrapping
             if (!notForAnalysis.count(B) &&
                 NB.GetInsertBlock() != origToNewForward[B]) {
-              for (auto S : successors(B)) {
-                S = origToNewForward[S];
+              for (auto S0 : successors(B)) {
+                if (!origToNewForward.count(S0))
+                  continue;
+                auto S = origToNewForward[S0];
+                assert(S);
                 for (auto I = S->begin(), E = S->end(); I != E; ++I) {
                   PHINode *orig = dyn_cast<PHINode>(&*I);
                   if (orig == nullptr)
