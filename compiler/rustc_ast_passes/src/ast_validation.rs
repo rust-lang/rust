@@ -19,6 +19,7 @@ use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiagnostics, LintBuffer};
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -753,7 +754,19 @@ impl<'a> AstValidator<'a> {
                     self.maybe_lint_missing_abi(sig_span, ty.id);
                 }
             }
-            TyKind::TraitObject(ref bounds, ..) => {
+            TyKind::TraitObject(ref bounds, syntax, ..) => {
+                if syntax == TraitObjectSyntax::DynStar
+                    && !self.session.features_untracked().dyn_star
+                {
+                    feature_err(
+                        &self.session.parse_sess,
+                        sym::dyn_star,
+                        ty.span,
+                        "dyn* trait objects are unstable",
+                    )
+                    .emit();
+                }
+
                 let mut any_lifetime_bounds = false;
                 for bound in bounds {
                     if let GenericBound::Outlives(ref lifetime) = *bound {

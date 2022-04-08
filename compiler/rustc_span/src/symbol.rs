@@ -649,6 +649,7 @@ symbols! {
         dropck_parametricity,
         dylib,
         dyn_metadata,
+        dyn_star,
         dyn_trait,
         e,
         edition_macro_pats,
