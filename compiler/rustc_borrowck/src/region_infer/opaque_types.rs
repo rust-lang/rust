@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::vec_map::VecMap;
+use rustc_hir::def_id::DefId;
 use rustc_hir::OpaqueTyOrigin;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -54,8 +55,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         opaque_ty_decls: VecMap<OpaqueTypeKey<'tcx>, (OpaqueHiddenType<'tcx>, OpaqueTyOrigin)>,
-    ) -> VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> {
-        let mut result: VecMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>> = VecMap::new();
+    ) -> VecMap<DefId, OpaqueHiddenType<'tcx>> {
+        let mut result: VecMap<DefId, OpaqueHiddenType<'tcx>> = VecMap::new();
         for (opaque_type_key, (concrete_type, origin)) in opaque_ty_decls {
             let substs = opaque_type_key.substs;
             debug!(?concrete_type, ?substs);
@@ -124,21 +125,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to `(X, Y)`
             // and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we only know that
             // once we convert the generic parameters to those of the opaque type.
-            if let Some(prev) = result.get_mut(&opaque_type_key) {
+            if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
                 if prev.ty != ty {
-                    let mut err = infcx.tcx.sess.struct_span_err(
-                        concrete_type.span,
-                        &format!("hidden type `{}` differed from previous `{}`", ty, prev.ty),
-                    );
-                    err.span_note(prev.span, "previous hidden type bound here");
-                    err.emit();
+                    if !ty.references_error() {
+                        prev.report_mismatch(
+                            &OpaqueHiddenType { ty, span: concrete_type.span },
+                            infcx.tcx,
+                        );
+                    }
                     prev.ty = infcx.tcx.ty_error();
                 }
                 // Pick a better span if there is one.
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span.substitute_dummy(concrete_type.span);
             } else {
-                result.insert(opaque_type_key, OpaqueHiddenType { ty, span: concrete_type.span });
+                result.insert(
+                    opaque_type_key.def_id,
+                    OpaqueHiddenType { ty, span: concrete_type.span },
+                );
             }
         }
         result

@@ -2408,3 +2408,10 @@ fn test_extend_from_within_panicing_clone() {
 
     assert_eq!(count.load(Ordering::SeqCst), 4);
 }
+
+#[test]
+#[should_panic = "vec len overflow"]
+fn test_into_flattened_size_overflow() {
+    let v = vec![[(); usize::MAX]; 2];
+    let _ = v.into_flattened();
+}

@@ -1112,6 +1112,26 @@ pub struct OpaqueHiddenType<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+impl<'tcx> OpaqueHiddenType<'tcx> {
+    pub fn report_mismatch(&self, other: &Self, tcx: TyCtxt<'tcx>) {
+        // Found different concrete types for the opaque type.
+        let mut err = tcx.sess.struct_span_err(
+            other.span,
+            "concrete type differs from previous defining opaque type use",
+        );
+        err.span_label(other.span, format!("expected `{}`, got `{}`", self.ty, other.ty));
+        if self.span == other.span {
+            err.span_label(
+                self.span,
+                "this expression supplies two conflicting concrete types for the same opaque type",
+            );
+        } else {
+            err.span_note(self.span, "previous use here");
+        }
+        err.emit();
+    }
+}
+
 rustc_index::newtype_index! {
     /// "Universes" are used during type- and trait-checking in the
     /// presence of `for<..>` binders to control what sets of names are

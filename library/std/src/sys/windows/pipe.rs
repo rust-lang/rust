@@ -53,6 +53,9 @@ pub struct Pipes {
 /// with `OVERLAPPED` instances, but also works out ok if it's only ever used
 /// once at a time (which we do indeed guarantee).
 pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Result<Pipes> {
+    // A 64kb pipe capacity is the same as a typical Linux default.
+    const PIPE_BUFFER_CAPACITY: u32 = 64 * 1024;
+
     // Note that we specifically do *not* use `CreatePipe` here because
     // unfortunately the anonymous pipes returned do not support overlapped
     // operations. Instead, we create a "hopefully unique" name and create a
@@ -91,8 +94,8 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                     | c::PIPE_WAIT
                     | reject_remote_clients_flag,
                 1,
-                4096,
-                4096,
+                PIPE_BUFFER_CAPACITY,
+                PIPE_BUFFER_CAPACITY,
                 0,
                 ptr::null_mut(),
             );

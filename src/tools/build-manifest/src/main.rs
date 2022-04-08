@@ -152,6 +152,7 @@ static TARGETS: &[&str] = &[
     "x86_64-unknown-linux-gnux32",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
+    "x86_64-unknown-none",
     "x86_64-unknown-redox",
     "x86_64-unknown-hermit",
 ];

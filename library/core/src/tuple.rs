@@ -5,21 +5,17 @@ use crate::cmp::*;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
-    ($(
-        $Tuple:ident {
-            $(($idx:tt) -> $T:ident)+
-        }
-    )+) => {
+    ( $( $Tuple:ident( $( $T:ident )+ ) )+ ) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) where last_type!($($T,)+): ?Sized {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
-                    $(self.$idx == other.$idx)&&+
+                    $( ${ignore(T)} self.${index()} == other.${index()} )&&+
                 }
                 #[inline]
                 fn ne(&self, other: &($($T,)+)) -> bool {
-                    $(self.$idx != other.$idx)||+
+                    $( ${ignore(T)} self.${index()} != other.${index()} )||+
                 }
             }
 
@@ -28,26 +24,28 @@ macro_rules! tuple_impls {
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
-                    where last_type!($($T,)+): ?Sized {
+            where
+                last_type!($($T,)+): ?Sized
+            {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
-                    lexical_partial_cmp!($(self.$idx, other.$idx),+)
+                    lexical_partial_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, $(self.$idx, other.$idx),+)
+                    lexical_ord!(lt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, $(self.$idx, other.$idx),+)
+                    lexical_ord!(le, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, $(self.$idx, other.$idx),+)
+                    lexical_ord!(ge, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, $(self.$idx, other.$idx),+)
+                    lexical_ord!(gt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
             }
 
@@ -55,7 +53,7 @@ macro_rules! tuple_impls {
             impl<$($T:Ord),+> Ord for ($($T,)+) where last_type!($($T,)+): ?Sized {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                    lexical_cmp!($(self.$idx, other.$idx),+)
+                    lexical_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
                 }
             }
 
@@ -108,106 +106,16 @@ macro_rules! last_type {
 }
 
 tuple_impls! {
-    Tuple1 {
-        (0) -> A
-    }
-    Tuple2 {
-        (0) -> A
-        (1) -> B
-    }
-    Tuple3 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-    }
-    Tuple4 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-    }
-    Tuple5 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-    }
-    Tuple6 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-    }
-    Tuple7 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-    }
-    Tuple8 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-        (7) -> H
-    }
-    Tuple9 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-        (7) -> H
-        (8) -> I
-    }
-    Tuple10 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-        (7) -> H
-        (8) -> I
-        (9) -> J
-    }
-    Tuple11 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-        (7) -> H
-        (8) -> I
-        (9) -> J
-        (10) -> K
-    }
-    Tuple12 {
-        (0) -> A
-        (1) -> B
-        (2) -> C
-        (3) -> D
-        (4) -> E
-        (5) -> F
-        (6) -> G
-        (7) -> H
-        (8) -> I
-        (9) -> J
-        (10) -> K
-        (11) -> L
-    }
+    Tuple1(A)
+    Tuple2(A B)
+    Tuple3(A B C)
+    Tuple4(A B C D)
+    Tuple5(A B C D E)
+    Tuple6(A B C D E F)
+    Tuple7(A B C D E F G)
+    Tuple8(A B C D E F G H)
+    Tuple9(A B C D E F G H I)
+    Tuple10(A B C D E F G H I J)
+    Tuple11(A B C D E F G H I J K)
+    Tuple12(A B C D E F G H I J K L)
 }
