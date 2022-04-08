@@ -1598,9 +1598,9 @@ pub enum StatementKind<'tcx> {
     /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
     /// without the possibility of dropping the previous value (that must be done separately, if at
     /// all). The *exact* way this works is undecided. It probably does something like evaluating
-    /// the LHS and RHS, and then doing the inverse of a place to value conversion to write the
-    /// resulting value into memory. Various parts of this may do type specific things that are more
-    /// complicated than simply copying over the bytes depending on the types.
+    /// the LHS to a place and the RHS to a value, and then storing the value to the place. Various
+    /// parts of this may do type specific things that are more complicated than simply copying
+    /// bytes.
     ///
     /// **Needs clarification**: The implication of the above idea would be that assignment implies
     /// that the resulting value is initialized. I believe we could commit to this separately from
@@ -1615,8 +1615,9 @@ pub enum StatementKind<'tcx> {
     /// interesting for optimizations? Do we want to allow such optimizations?
     ///
     /// **Needs clarification**: We currently require that the LHS place not overlap with any place
-    /// read as part of computation of the RHS. This requirement is under discussion in [#68364]. As
-    /// a part of this discussion, it is also unclear in what order the components are evaluated.
+    /// read as part of computation of the RHS for some rvalues (generally those not producing
+    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
+    /// it is also unclear in what order the components are evaluated.
     ///
     /// [#68364]: https://github.com/rust-lang/rust/issues/68364
     ///
@@ -1705,9 +1706,8 @@ pub enum StatementKind<'tcx> {
     /// **Needs clarification**: In what order are operands computed and dereferenced? It should
     /// probably match the order for assignment, but that is also undecided.
     ///
-    /// **Needs clarification**: Is this typed or not, ie is there a place to value and back
-    /// conversion involved? I vaguely remember Ralf saying somewhere that he thought it should not
-    /// be.
+    /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
+    /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
@@ -1858,41 +1858,55 @@ pub struct CopyNonOverlapping<'tcx> {
 
 /// Places roughly correspond to a "location in memory." Places in MIR are the same mathematical
 /// object as places in Rust. This of course means that what exactly they are is undecided and part
-/// of the Rust memory model. However, they will likely contain at least the following three pieces
-/// of information in some form:
+/// of the Rust memory model. However, they will likely contain at least the following pieces of
+/// information in some form:
 ///
-///  1. The part of memory that is referred to (see discussion below for details).
-///  2. The type of the place and an optional variant index. See [`PlaceTy`][tcx::PlaceTy]
-///  3. The provenance with which the place is being accessed.
+///  1. The address in memory that the place refers to.
+///  2. The provenance with which the place is being accessed.
+///  3. The type of the place and an optional variant index. See [`PlaceTy`][tcx::PlaceTy].
+///  4. Optionally, some metadata. This exists if and only if the type of the place is not `Sized`.
 ///
-/// We'll give a description below of how the first two of these three properties are computed for a
-/// place. We cannot give a description of the provenance, because that is part of the undecided
-/// aliasing model - we only include it here at all to acknowledge its existence.
+/// We'll give a description below of how all pieces of the place except for the provenance are
+/// calculated. We cannot give a description of the provenance, because that is part of the
+/// undecided aliasing model - we only include it here at all to acknowledge its existence.
 ///
-/// For a place that has no projections, ie `Place { local, projection: [] }`, the part of memory is
-/// the local's full allocation and the type is the type of the local. For any other place, we
-/// define the values as a function of the parent place, that is the place with its last
-/// [`ProjectionElem`] stripped. The way this is computed of course depends on the kind of that last
-/// projection element:
+/// Each local naturally corresponds to the place `Place { local, projection: [] }`. This place has
+/// the address of the local's allocation and the type of the local.
+///
+/// **Needs clarification:** Unsized locals seem to present a bit of an issue. Their allocation
+/// can't actually be created on `StorageLive`, because it's unclear how big to make the allocation.
+/// Furthermore, MIR produces assignments to unsized locals, although that is not permitted under
+/// `#![feature(unsized_locals)]` in Rust. Besides just putting "unsized locals are special and
+/// different" in a bunch of places, I (JakobDegen) don't know how to incorporate this behavior into
+/// the current MIR semantics in a clean way - possibly this needs some design work first.
+///
+/// For places that are not locals, ie they have a non-empty list of projections, we define the
+/// values as a function of the parent place, that is the place with its last [`ProjectionElem`]
+/// stripped. The way this is computed of course depends on the kind of that last projection
+/// element:
 ///
 ///  - [`Downcast`](ProjectionElem::Downcast): This projection sets the place's variant index to the
 ///    given one, and makes no other changes. A `Downcast` projection on a place with its variant
 ///    index already set is not well-formed.
 ///  - [`Field`](ProjectionElem::Field): `Field` projections take their parent place and create a
-///    place referring to one of the fields of the type. The referred to place in memory is where
-///    the layout places the field. The type becomes the type of the field.
+///    place referring to one of the fields of the type. The resulting address is the paren't
+///    address, plus the offset of the field. The type becomes the type of the field. If the parent
+///    was unsized and so had metadata associated with it, then the metadata is retained if the
+///    field is unsized and thrown out if it is sized.
 ///
 ///    These projections are only legal for tuples, ADTs, closures, and generators. If the ADT or
 ///    generator has more than one variant, the parent place's variant index must be set, indicating
 ///    which variant is being used. If it has just one variant, the variant index may or may not be
 ///    included - the single possible variant is inferred if it is not included.
 ///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
-///    place as described in the documentation for the `ProjectionElem`. The resulting part of
-///    memory is the location of that element of the array/slice, and the type is `T`. This is only
-///    legal if the parent place has type `[T;  N]` or `[T]` (*not* `&[T]`).
-///  - [`Subslice`](ProjectionElem::Subslice): Much like `ConstantIndex`. It is also only legal on
-///    `[T; N]` and `[T]`. However, this yields a `Place` of type `[T]`, and may refer to more than
-///    one element in the parent place.
+///    place as described in the documentation for the `ProjectionElem`. The resulting address is
+///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
+///    place has type `[T;  N]` or `[T]` (*not* `&[T]`). Since such a `T` is always sized, any
+///    resulting metadata is thrown out.
+///  - [`Subslice`](ProjectionElem::Subslice): This projection calculates an offset and a new
+///    address in a similar manner as `ConstantIndex`. It is also only legal on `[T; N]` and `[T]`.
+///    However, this yields a `Place` of type `[T]`, and additionally sets the metadata to be the
+///    length of the subslice.
 ///  - [`Index`](ProjectionElem::Index): Like `ConstantIndex`, only legal on `[T; N]` or `[T]`.
 ///    However, `Index` additionally takes a local from which the value of the index is computed at
 ///    runtime. Computing the value of the index involves interpreting the `Local` as a
@@ -1901,53 +1915,23 @@ pub struct CopyNonOverlapping<'tcx> {
 ///    have type `usize`.
 ///  - [`Deref`](ProjectionElem::Deref): Derefs are the last type of projection, and the most
 ///    complicated. They are only legal on parent places that are references, pointers, or `Box`. A
-///    `Deref` projection begins by creating a value from the parent place, as if by
+///    `Deref` projection begins by loading a value from the parent place, as if by
 ///    [`Operand::Copy`]. It then dereferences the resulting pointer, creating a place of the
-///    pointed to type.
+///    pointee's type. The resulting address is the address that was stored in the pointer. If the
+///    pointee type is unsized, the pointer additionally stored the value of the metadata.
 ///
-/// **Needs clarification**: What about metadata resulting from dereferencing wide pointers (and
-/// possibly from accessing unsized locals - not sure how those work)? That probably deserves to go
-/// on the list above and be discussed too. It is also probably necessary for making the indexing
-/// stuff less hand-wavey.
+/// Computing a place may cause UB. One possibility is that the pointer used for a `Deref` may not
+/// be suitably aligned. Another possibility is that the place is not in bouns, meaning it does not
+/// point to an actual allocation.
 ///
-/// **Needs clarification**: When it says "part of memory" what does that mean precisely, and how
-/// does it interact with the metadata?
-///
-/// One possible model that I believe makes sense is that "part of memory" is actually just the
-/// address of the beginning of the referred to range of bytes. For sized types, the size of the
-/// range is then stored in the type, and for unsized types it's stored (possibly indirectly,
-/// through a vtable) in the metadata.
-///
-/// Alternatively, the "part of memory" could be a whole range of bytes. Initially seemed more
-/// natural to me, but seems like it falls apart after a little bit.
-///
-/// More likely though, we should call this detail a part of the Rust memory model and let that deal
-/// with the precise definition of this part of a place. If we feel strongly, I don't think we *have
-/// to* though. MIR places are more flexible than Rust places, and we might be able to make a
-/// decision on the flexible parts without semi-stabilizing the source language. (end NC)
-///
-/// Computing a place may be UB - this is certainly the case with dereferencing, which requires
-/// sufficient provenance, but it may additionally be the case for some of the other field
-/// projections.
-///
-/// It is undecided when this UB kicks in. As best I can tell that is the question being discussed
-/// in [UCG#319]. Summarizing from that thread, I believe the options are:
+/// However, if this is actually UB and when the UB kicks in is undecided. This is being discussed
+/// in [UCG#319]. The options include that every place must obey those rules, that only some places
+/// must obey them, or that places impose no rules of their own.
 ///
 /// [UCG#319]: https://github.com/rust-lang/unsafe-code-guidelines/issues/319
 ///
-///  1. Each intermediate place must have provenance for the whole part of memory it refers to. This
-///     is the status quo.
-///  2. Only for intermediate place where the last projection was *not* a deref. This corresponds to
-///     "Check inbounds on place projection".
-///  3. Only on place to value conversions, assignments, and referencing operation. This corresponds
-///     to "remove the restrictions from `*` entirely."
-///  4. On each intermediate place if the place is used for a place to value conversion as part of
-///     an assignment assignment or it is used for a referencing operation. For a raw pointer
-///     computation, never. This corresponds to "magic?".
-///
-/// Hopefully I am not misrepresenting anyone's opinions - please let me know if I am. Currently,
-/// Rust chooses option 1. This is checked by MIRI and taken advantage of by codegen (via `gep
-/// inbounds`). That is possibly subject to change.
+/// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
+/// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
 pub struct Place<'tcx> {
     pub local: Local,
@@ -2321,32 +2305,30 @@ pub struct SourceScopeLocalData {
 ///
 /// [value-def]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/value-domain.md
 ///
-/// The most common way to create values is via a place to value conversion. A place to value
-/// conversion is an operation which reads the memory of the place and converts it to a value. This
-/// is a fundamentally *typed* operation. The nature of the value produced depends on the type of
-/// the conversion. Furthermore, there may be other effects: if the type has a validity constraint
-/// the place to value conversion might be UB if the validity constraint is not met.
+/// The most common way to create values is via loading a place. Loading a place is an operation
+/// which reads the memory of the place and converts it to a value. This is a fundamentally *typed*
+/// operation. The nature of the value produced depends on the type of the conversion. Furthermore,
+/// there may be other effects: if the type has a validity constraint loading the place might be UB
+/// if the validity constraint is not met.
 ///
-/// **Needs clarification:** Ralf proposes that place to value conversions not have side-effects.
+/// **Needs clarification:** Ralf proposes that loading a place not have side-effects.
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// A place to value conversion on a place that has its variant index set is not well-formed.
-/// However, note that this rule only applies to places appearing in MIR bodies. Many functions,
-/// such as [`Place::ty`], still accept such a place. If you write a function for which it might be
-/// ambiguous whether such a thing is accepted, make sure to document your choice clearly.
+/// Loading a place that has its variant index set is not well-formed. However, note that this rule
+/// only applies to places appearing in MIR bodies. Many functions, such as [`Place::ty`], still
+/// accept such a place. If you write a function for which it might be ambiguous whether such a
+/// thing is accepted, make sure to document your choice clearly.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
-    /// Creates a value by performing a place to value conversion at the given place. The type of
-    /// the place must be `Copy`
+    /// Creates a value by loading the given place. The type of the place must be `Copy`
     Copy(Place<'tcx>),
 
-    /// Creates a value by performing a place to value conversion for the place, just like the
-    /// `Copy` operand.
+    /// Creates a value by performing loading the place, just like the `Copy` operand.
     ///
     /// This *may* additionally overwrite the place with `uninit` bytes, depending on how we decide
-    /// in [UCG#188]. You should not emit MIR that may attempt a subsequent second place to value
-    /// conversion on this place without first re-initializing it.
+    /// in [UCG#188]. You should not emit MIR that may attempt a subsequent second load of this
+    /// place without first re-initializing it.
     ///
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
     Move(Place<'tcx>),
@@ -2463,7 +2445,7 @@ impl<'tcx> Operand<'tcx> {
 ///
 /// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
 /// clarification**: Which order?). These are then used to produce a "value" - the same kind of
-/// value that an [`Operand`] is.
+/// value that an [`Operand`] produces.
 pub enum Rvalue<'tcx> {
     /// Yields the operand unchanged
     Use(Operand<'tcx>),
@@ -2487,14 +2469,14 @@ pub enum Rvalue<'tcx> {
     /// `Shallow` borrows are disallowed after drop lowering.
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
 
-    /// Returns a pointer/reference to the given thread local.
+    /// Creates a pointer/reference to the given thread local.
     ///
     /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern a
     /// `*const T`, and if neither of those apply a `&T`.
     ///
     /// **Note:** This is a runtime operation that actually executes code and is in this sense more
-    /// like a function call. Also, DSEing these causes `fn main() {}` to SIGILL for some reason
-    /// that I never got a chance to look into.
+    /// like a function call. Also, eliminating dead stores of this rvalue causes `fn main() {}` to
+    /// SIGILL for some reason that I (JakobDegen) never got a chance to look into.
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
@@ -2511,9 +2493,9 @@ pub enum Rvalue<'tcx> {
 
     /// Yields the length of the place, as a `usize`.
     ///
-    /// If the type of the place is an array, this is the array length. This also works for slices
-    /// (`[T]`, not `&[T]`) through some mechanism that depends on how exactly places work (see
-    /// there for more details).
+    /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
+    /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
+    /// ill-formed for places of other types.
     Len(Place<'tcx>),
 
     /// Performs essentially all of the casts that can be performed via `as`.
@@ -2527,21 +2509,21 @@ pub enum Rvalue<'tcx> {
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
     ///   parameter may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
-    ///   raw pointers, or function pointers and return a `bool`.
+    ///   raw pointers, or function pointers of matching types and return a `bool`.
     /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
-    ///   same type and return a value of the same type as their LHS. For all other operations, the
-    ///   types of the operands must match. Like in Rust, the RHS is truncated as needed.
-    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools and return a
-    ///   value of that type.
-    /// * The remaining operations accept signed integers, unsigned integers, or floats of any
-    ///   matching type and return a value of that type.
+    ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
+    ///   truncated as needed.
+    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
+    ///   types and return a value of that type.
+    /// * The remaining operations accept signed integers, unsigned integers, or floats with
+    ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Same as `BinaryOp`, but yields `(T, bool)` instead of `T`. In addition to performing the
     /// same computation as the matching `BinaryOp`, checks if the infinite precison result would be
     /// unequal to the actual result and sets the `bool` if this is the case.
     ///
-    /// This only supports addition, subtraction, multiplication, and shift operations.
+    /// This only supports addition, subtraction, multiplication, and shift operations on integers.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
     /// Computes a value as described by the operation.
@@ -2582,7 +2564,7 @@ pub enum Rvalue<'tcx> {
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
-    /// This is different a normal transmute because dataflow analysis will treat the box as
+    /// This is different from a normal transmute because dataflow analysis will treat the box as
     /// initialized but its content as uninitialized. Like other pointer casts, this in general
     /// affects alias analysis.
     ///
