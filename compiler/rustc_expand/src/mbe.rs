@@ -17,48 +17,24 @@ use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiter itself
-/// might be `NoDelim`.
+/// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiters
+/// might be `NoDelim`, but they are not represented explicitly.
 #[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: token::DelimToken,
-    /// Note: This contains the opening and closing delimiters tokens (e.g. `(` and `)`). Note that
-    /// these could be `NoDelim`. These token kinds must match `delim`, and the methods below
-    /// debug_assert this.
-    all_tts: Vec<TokenTree>,
+    /// FIXME: #67062 has details about why this is sub-optimal.
+    tts: Vec<TokenTree>,
 }
 
 impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter. Panics if
-    /// the delimiter is `NoDelim`.
-    fn open_tt(&self) -> &TokenTree {
-        let tt = self.all_tts.first().unwrap();
-        debug_assert!(matches!(
-            tt,
-            &TokenTree::Token(token::Token { kind: token::OpenDelim(d), .. }) if d == self.delim
-        ));
-        tt
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
+    fn open_tt(&self, span: DelimSpan) -> TokenTree {
+        TokenTree::token(token::OpenDelim(self.delim), span.open)
     }
 
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter. Panics if
-    /// the delimiter is `NoDelim`.
-    fn close_tt(&self) -> &TokenTree {
-        let tt = self.all_tts.last().unwrap();
-        debug_assert!(matches!(
-            tt,
-            &TokenTree::Token(token::Token { kind: token::CloseDelim(d), .. }) if d == self.delim
-        ));
-        tt
-    }
-
-    /// Returns the tts excluding the outer delimiters.
-    ///
-    /// FIXME: #67062 has details about why this is sub-optimal.
-    fn inner_tts(&self) -> &[TokenTree] {
-        // These functions are called for the assertions within them.
-        let _open_tt = self.open_tt();
-        let _close_tt = self.close_tt();
-        &self.all_tts[1..self.all_tts.len() - 1]
+    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
+    fn close_tt(&self, span: DelimSpan) -> TokenTree {
+        TokenTree::token(token::CloseDelim(self.delim), span.close)
     }
 }
 
