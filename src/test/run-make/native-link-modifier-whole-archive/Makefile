@@ -17,7 +17,7 @@ all: $(TMPDIR)/$(call BIN,directly_linked) $(TMPDIR)/$(call BIN,indirectly_linke
 
 # Native lib linked directly into executable
 $(TMPDIR)/$(call BIN,directly_linked): $(call NATIVE_STATICLIB,c_static_lib_with_constructor)
-	$(RUSTC) directly_linked.rs -Z unstable-options -l static:+whole-archive=c_static_lib_with_constructor
+	$(RUSTC) directly_linked.rs -l static:+whole-archive=c_static_lib_with_constructor
 
 # Native lib linked into RLIB via `-l static:-bundle,+whole-archive`, RLIB linked into executable
 $(TMPDIR)/$(call BIN,indirectly_linked): $(TMPDIR)/librlib_with_cmdline_native_lib.rlib
@@ -29,7 +29,7 @@ $(TMPDIR)/$(call BIN,indirectly_linked_via_attr): $(TMPDIR)/libnative_lib_in_src
 
 # Native lib linked into rlib with via commandline
 $(TMPDIR)/librlib_with_cmdline_native_lib.rlib: $(call NATIVE_STATICLIB,c_static_lib_with_constructor)
-	$(RUSTC) rlib_with_cmdline_native_lib.rs -Z unstable-options --crate-type=rlib -l static:-bundle,+whole-archive=c_static_lib_with_constructor
+	$(RUSTC) rlib_with_cmdline_native_lib.rs --crate-type=rlib -l static:-bundle,+whole-archive=c_static_lib_with_constructor
 
 # Native lib linked into rlib via `#[link()]` attribute on extern block.
 $(TMPDIR)/libnative_lib_in_src.rlib: $(call NATIVE_STATICLIB,c_static_lib_with_constructor)

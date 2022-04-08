@@ -1952,7 +1952,7 @@ fn linker_with_args<'a, B: ArchiveBuilder<'a>>(
         add_local_native_libraries(cmd, sess, codegen_results);
     }
 
-    // Upstream rust libraries and their nobundle static libraries
+    // Upstream rust libraries and their non-bundled static libraries
     add_upstream_rust_crates::<B>(cmd, sess, codegen_results, crate_type, tmpdir);
 
     // Upstream dynamic native libraries linked with `#[link]` attributes at and `-l`
@@ -2237,7 +2237,7 @@ fn add_local_native_libraries(
     }
 }
 
-/// # Linking Rust crates and their nobundle static libraries
+/// # Linking Rust crates and their non-bundled static libraries
 ///
 /// Rust crates are not considered at all when creating an rlib output. All dependencies will be
 /// linked when producing the final output (instead of the intermediate rlib version).

@@ -169,6 +169,9 @@ declare_features! (
     (removed, sanitizer_runtime, "1.17.0", None, None, None),
     (removed, simd, "1.0.0", Some(27731), None,
      Some("removed in favor of `#[repr(simd)]`")),
+    /// Allows `#[link(kind = "static-nobundle", ...)]`.
+    (removed, static_nobundle, "1.16.0", Some(37403), None,
+     Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#)),
     (removed, struct_inherit, "1.0.0", None, None, None),
     (removed, test_removed_feature, "1.0.0", None, None, None),
     /// Allows using items which are missing stability attributes
