@@ -28,6 +28,8 @@ const QUERY = [
     "fn:aaaaa<>b",
     "->a<>b",
     "a<->",
+    "a:: a",
+    "a ::a",
 ];
 
 const PARSED = [
@@ -291,5 +293,23 @@ const PARSED = [
         typeFilter: -1,
         userQuery: 'a<->',
         error: 'Unexpected `-` after `<`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: 'a:: a',
+        returned: [],
+        typeFilter: -1,
+        userQuery: 'a:: a',
+        error: 'Paths cannot end with `::`',
+    },
+    {
+        elems: [],
+        foundElems: 0,
+        original: 'a ::a',
+        returned: [],
+        typeFilter: -1,
+        userQuery: 'a ::a',
+        error: 'Paths cannot start with `::`',
     },
 ];
