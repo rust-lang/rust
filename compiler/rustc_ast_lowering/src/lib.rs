@@ -1421,12 +1421,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         ),
                     ImplTraitContext::Universal => {
                         let span = t.span;
-                        self.create_def(
-                            self.current_hir_id_owner.def_id,
-                            *def_node_id,
-                            DefPathData::ImplTrait,
-                            span,
-                        );
 
                         // HACK: pprust breaks strings with newlines when the type
                         // gets too long. We don't want these to show up in compiler
@@ -1437,6 +1431,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             span,
                         );
 
+                        self.create_def(
+                            self.current_hir_id_owner.def_id,
+                            *def_node_id,
+                            DefPathData::TypeNs(ident.name),
+                            span,
+                        );
                         let (param, bounds, path) = self.lower_universal_param_and_bounds(
                             *def_node_id,
                             span,
