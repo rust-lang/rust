@@ -4286,6 +4286,8 @@ FnTypeInfo::knownIntegralValues(llvm::Value *val, const DominatorTree &DT,
                                 std::map<Value *, std::set<int64_t>> &intseen,
                                 ScalarEvolution &SE) const {
   if (auto constant = dyn_cast<ConstantInt>(val)) {
+    // if (constant->getValue().getSignificantBits() > 64)
+    //  return {};
     return {constant->getSExtValue()};
   }
 
