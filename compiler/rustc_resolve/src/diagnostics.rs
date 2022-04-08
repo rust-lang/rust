@@ -8,12 +8,13 @@ use rustc_errors::{
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind};
+use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::PrimTy;
 use rustc_middle::bug;
 use rustc_middle::ty::DefIdTree;
 use rustc_session::Session;
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::SourceMap;
@@ -22,10 +23,11 @@ use rustc_span::{BytePos, Span};
 use tracing::debug;
 
 use crate::imports::{Import, ImportKind, ImportResolver};
+use crate::late::Rib;
 use crate::path_names_to_string;
-use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
+use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, Finalize};
 use crate::{BindingError, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot};
-use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
+use crate::{LexicalScopeBinding, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -1375,6 +1377,196 @@ impl<'a> Resolver<'a> {
         match find_best_match_for_name(&candidates, ident, None) {
             Some(sugg) if sugg == ident => None,
             sugg => sugg,
+        }
+    }
+
+    crate fn report_path_resolution_error(
+        &mut self,
+        path: &[Segment],
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
+        parent_scope: &ParentScope<'a>,
+        finalize_full: Finalize,
+        ribs: Option<&PerNS<Vec<Rib<'a>>>>,
+        unusable_binding: Option<&'a NameBinding<'a>>,
+        module: Option<ModuleOrUniformRoot<'a>>,
+        i: usize,
+        ident: Ident,
+    ) -> (String, Option<Suggestion>) {
+        let finalize = finalize_full.path_span();
+        let is_last = i == path.len() - 1;
+        let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
+        let module_res = match module {
+            Some(ModuleOrUniformRoot::Module(module)) => module.res(),
+            _ => None,
+        };
+        if module_res == self.graph_root.res() {
+            let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
+            let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
+            candidates
+                .sort_by_cached_key(|c| (c.path.segments.len(), pprust::path_to_string(&c.path)));
+            if let Some(candidate) = candidates.get(0) {
+                (
+                    String::from("unresolved import"),
+                    Some((
+                        vec![(ident.span, pprust::path_to_string(&candidate.path))],
+                        String::from("a similar path exists"),
+                        Applicability::MaybeIncorrect,
+                    )),
+                )
+            } else if self.session.edition() == Edition::Edition2015 {
+                (format!("maybe a missing crate `{}`?", ident), None)
+            } else {
+                (format!("could not find `{}` in the crate root", ident), None)
+            }
+        } else if i == 0 {
+            if ident.name.as_str().chars().next().map_or(false, |c| c.is_ascii_uppercase()) {
+                // Check whether the name refers to an item in the value namespace.
+                let suggestion = if ribs.is_some() {
+                    let match_span = match self.resolve_ident_in_lexical_scope(
+                        ident,
+                        ValueNS,
+                        parent_scope,
+                        Finalize::No,
+                        &ribs.unwrap()[ValueNS],
+                        unusable_binding,
+                    ) {
+                        // Name matches a local variable. For example:
+                        // ```
+                        // fn f() {
+                        //     let Foo: &str = "";
+                        //     println!("{}", Foo::Bar); // Name refers to local
+                        //                               // variable `Foo`.
+                        // }
+                        // ```
+                        Some(LexicalScopeBinding::Res(Res::Local(id))) => {
+                            Some(*self.pat_span_map.get(&id).unwrap())
+                        }
+
+                        // Name matches item from a local name binding
+                        // created by `use` declaration. For example:
+                        // ```
+                        // pub Foo: &str = "";
+                        //
+                        // mod submod {
+                        //     use super::Foo;
+                        //     println!("{}", Foo::Bar); // Name refers to local
+                        //                               // binding `Foo`.
+                        // }
+                        // ```
+                        Some(LexicalScopeBinding::Item(name_binding)) => Some(name_binding.span),
+                        _ => None,
+                    };
+
+                    if let Some(span) = match_span {
+                        Some((
+                            vec![(span, String::from(""))],
+                            format!("`{}` is defined here, but is not a type", ident),
+                            Applicability::MaybeIncorrect,
+                        ))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                (format!("use of undeclared type `{}`", ident), suggestion)
+            } else {
+                (
+                    format!("use of undeclared crate or module `{}`", ident),
+                    if ident.name == sym::alloc {
+                        Some((
+                            vec![],
+                            String::from("add `extern crate alloc` to use the `alloc` crate"),
+                            Applicability::MaybeIncorrect,
+                        ))
+                    } else {
+                        self.find_similarly_named_module_or_crate(ident.name, &parent_scope.module)
+                            .map(|sugg| {
+                                (
+                                    vec![(ident.span, sugg.to_string())],
+                                    String::from("there is a crate or module with a similar name"),
+                                    Applicability::MaybeIncorrect,
+                                )
+                            })
+                    },
+                )
+            }
+        } else {
+            let parent = path[i - 1].ident.name;
+            let parent = match parent {
+                // ::foo is mounted at the crate root for 2015, and is the extern
+                // prelude for 2018+
+                kw::PathRoot if self.session.edition() > Edition::Edition2015 => {
+                    "the list of imported crates".to_owned()
+                }
+                kw::PathRoot | kw::Crate => "the crate root".to_owned(),
+                _ => {
+                    format!("`{}`", parent)
+                }
+            };
+
+            let mut msg = format!("could not find `{}` in {}", ident, parent);
+            if ns == TypeNS || ns == ValueNS {
+                let ns_to_try = if ns == TypeNS { ValueNS } else { TypeNS };
+                let binding = if let Some(module) = module {
+                    self.resolve_ident_in_module(
+                        module,
+                        ident,
+                        ns_to_try,
+                        parent_scope,
+                        finalize,
+                        false,
+                        unusable_binding,
+                    ).ok()
+                } else if let Some(ribs) = ribs
+                    && let Some(TypeNS | ValueNS) = opt_ns
+                {
+                    match self.resolve_ident_in_lexical_scope(
+                        ident,
+                        ns_to_try,
+                        parent_scope,
+                        finalize_full,
+                        &ribs[ns_to_try],
+                        unusable_binding,
+                    ) {
+                        // we found a locally-imported or available item/module
+                        Some(LexicalScopeBinding::Item(binding)) => Some(binding),
+                        _ => None,
+                    }
+                } else {
+                    let scopes = ScopeSet::All(ns_to_try, opt_ns.is_none());
+                    self.early_resolve_ident_in_lexical_scope(
+                        ident,
+                        scopes,
+                        parent_scope,
+                        finalize,
+                        finalize.is_some(),
+                        false,
+                        unusable_binding,
+                    ).ok()
+                };
+                if let Some(binding) = binding {
+                    let mut found = |what| {
+                        msg = format!(
+                            "expected {}, found {} `{}` in {}",
+                            ns.descr(),
+                            what,
+                            ident,
+                            parent
+                        )
+                    };
+                    if binding.module().is_some() {
+                        found("module")
+                    } else {
+                        match binding.res() {
+                            Res::Def(kind, id) => found(kind.descr(id)),
+                            _ => found(ns_to_try.descr()),
+                        }
+                    }
+                };
+            }
+            (msg, None)
         }
     }
 }
