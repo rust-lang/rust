@@ -30,6 +30,9 @@ mod imp {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sys::os::errno;
+
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
         // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
@@ -39,6 +42,18 @@ mod imp {
                 length: libc::size_t,
                 flags: libc::c_uint
             ) -> libc::ssize_t
+        }
+
+        // This provides the best quality random numbers available at the given moment
+        // without ever blocking, and is preferable to falling back to /dev/urandom.
+        static GRND_INSECURE_AVAILABLE: AtomicBool = AtomicBool::new(true);
+        if GRND_INSECURE_AVAILABLE.load(Ordering::Relaxed) {
+            let ret = unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_INSECURE) };
+            if ret == -1 && errno() as libc::c_int == libc::EINVAL {
+                GRND_INSECURE_AVAILABLE.store(false, Ordering::Relaxed);
+            } else {
+                return ret;
+            }
         }
 
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
