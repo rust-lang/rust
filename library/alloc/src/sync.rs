@@ -369,7 +369,7 @@ impl<T> Arc<T> {
     ///
     /// # Example
     /// ```
-    /// #![allow(dead_code)]
+    /// # #![allow(dead_code)]
     /// use std::sync::{Arc, Weak};
     ///
     /// struct Gadget {
