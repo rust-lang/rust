@@ -913,12 +913,6 @@ impl<'a> Resolver<'a> {
                 return Err((Determined, Weak::No));
             };
 
-            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
-                if let NameBindingKind::Res(_, true) = binding.kind {
-                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-                }
-            }
-
             // If the primary binding is unusable, search further and return the shadowed glob
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
@@ -963,6 +957,12 @@ impl<'a> Resolver<'a> {
                     misc1: AmbiguityErrorMisc::None,
                     misc2: AmbiguityErrorMisc::None,
                 });
+            }
+
+            if !restricted_shadowing && binding.expansion != LocalExpnId::ROOT {
+                if let NameBindingKind::Res(_, true) = binding.kind {
+                    self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
+                }
             }
 
             self.record_use(ident, binding, restricted_shadowing);
