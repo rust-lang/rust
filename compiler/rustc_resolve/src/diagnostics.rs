@@ -25,7 +25,7 @@ use crate::imports::{Import, ImportKind, ImportResolver};
 use crate::path_names_to_string;
 use crate::{AmbiguityError, AmbiguityErrorMisc, AmbiguityKind};
 use crate::{BindingError, HasGenericParams, MacroRulesScope, Module, ModuleOrUniformRoot};
-use crate::{Finalize, NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
+use crate::{NameBinding, NameBindingKind, PrivacyError, VisResolutionError};
 use crate::{ParentScope, PathResult, ResolutionError, Resolver, Scope, ScopeSet, Segment};
 
 type Res = def::Res<ast::NodeId>;
@@ -1076,6 +1076,8 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 None,
                 false,
+                false,
+                None,
             ) {
                 let desc = match binding.res() {
                     Res::Def(DefKind::Macro(MacroKind::Bang), _) => {
@@ -1422,7 +1424,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = kw::SelfLower;
-        let result = self.r.resolve_path(&path, None, parent_scope, Finalize::No);
+        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
@@ -1441,7 +1443,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Crate;
-        let result = self.r.resolve_path(&path, None, parent_scope, Finalize::No);
+        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -1472,7 +1474,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = kw::Super;
-        let result = self.r.resolve_path(&path, None, parent_scope, Finalize::No);
+        let result = self.r.maybe_resolve_path(&path, None, parent_scope);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result { Some((path, Vec::new())) } else { None }
     }
@@ -1506,7 +1508,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.
             path[0].ident.name = name;
-            let result = self.r.resolve_path(&path, None, parent_scope, Finalize::No);
+            let result = self.r.maybe_resolve_path(&path, None, parent_scope);
             debug!(
                 "make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                 name, path, result

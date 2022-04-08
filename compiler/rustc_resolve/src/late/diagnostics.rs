@@ -1271,12 +1271,11 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
 
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
-            if let Ok(binding) = self.r.resolve_ident_in_module(
+            if let Ok(binding) = self.r.maybe_resolve_ident_in_module(
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
                 &self.parent_scope,
-                None,
             ) {
                 let res = binding.res();
                 if filter_fn(res) {

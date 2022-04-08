@@ -412,7 +412,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
 
         let mut indeterminate = false;
         for ns in [TypeNS, ValueNS, MacroNS].iter().copied() {
-            match self.resolve_path(path, Some(ns), &parent_scope, Finalize::No) {
+            match self.maybe_resolve_path(path, Some(ns), &parent_scope) {
                 PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
@@ -572,7 +572,7 @@ impl<'a> Resolver<'a> {
         }
 
         let res = if path.len() > 1 {
-            let res = match self.resolve_path(&path, Some(MacroNS), parent_scope, Finalize::No) {
+            let res = match self.maybe_resolve_path(&path, Some(MacroNS), parent_scope) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     Ok(path_res.base_res())
                 }
@@ -604,6 +604,8 @@ impl<'a> Resolver<'a> {
                 parent_scope,
                 None,
                 force,
+                false,
+                None,
             );
             if let Err(Determinacy::Undetermined) = binding {
                 return Err(Determinacy::Undetermined);
@@ -672,6 +674,7 @@ impl<'a> Resolver<'a> {
                 Some(MacroNS),
                 &parent_scope,
                 Finalize::SimplePath(ast::CRATE_NODE_ID, path_span),
+                None,
             ) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                     let res = path_res.base_res();
@@ -707,6 +710,8 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 Some(ident.span),
                 true,
+                false,
+                None,
             ) {
                 Ok(binding) => {
                     let initial_res = initial_binding.map(|initial_binding| {
@@ -748,6 +753,8 @@ impl<'a> Resolver<'a> {
                 &parent_scope,
                 Some(ident.span),
                 true,
+                false,
+                None,
             );
         }
     }

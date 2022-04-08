@@ -925,13 +925,6 @@ pub struct Resolver<'a> {
     /// All non-determined imports.
     indeterminate_imports: Vec<&'a Import<'a>>,
 
-    /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
-    /// We are resolving a last import segment during import validation.
-    last_import_segment: bool,
-    /// This binding should be ignored during in-module resolution, so that we don't get
-    /// "self-confirming" import resolutions during import validation.
-    unusable_binding: Option<&'a NameBinding<'a>>,
-
     // Spans for local variables found during pattern resolution.
     // Used for suggestions during error reporting.
     pat_span_map: NodeMap<Span>,
@@ -1338,9 +1331,6 @@ impl<'a> Resolver<'a> {
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
-
-            last_import_segment: false,
-            unusable_binding: None,
 
             pat_span_map: Default::default(),
             partial_res_map: Default::default(),
@@ -2294,12 +2284,7 @@ impl<'a> Resolver<'a> {
         }
 
         let module = self.expect_module(module_id);
-        match self.resolve_path(
-            &segments,
-            Some(ns),
-            &ParentScope::module(module, self),
-            Finalize::No,
-        ) {
+        match self.maybe_resolve_path(&segments, Some(ns), &ParentScope::module(module, self)) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) => Some(module.res().unwrap()),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
                 Some(path_res.base_res())
@@ -2389,12 +2374,11 @@ impl<'a> Resolver<'a> {
         let ident = Ident::with_dummy_span(sym::main);
         let parent_scope = &ParentScope::module(module, self);
 
-        let Ok(name_binding) = self.resolve_ident_in_module(
+        let Ok(name_binding) = self.maybe_resolve_ident_in_module(
             ModuleOrUniformRoot::Module(module),
             ident,
             ValueNS,
             parent_scope,
-            None
         ) else {
             return;
         };

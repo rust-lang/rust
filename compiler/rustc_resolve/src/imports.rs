@@ -499,7 +499,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             // not define any names while resolving its module path.
             let orig_vis = import.vis.replace(ty::Visibility::Invisible);
             let path_res =
-                self.r.resolve_path(&import.module_path, None, &import.parent_scope, Finalize::No);
+                self.r.maybe_resolve_path(&import.module_path, None, &import.parent_scope);
             import.vis.set(orig_vis);
 
             match path_res {
@@ -538,6 +538,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         source,
                         ns,
                         &import.parent_scope,
+                        None,
+                        false,
                         None,
                     );
                     import.vis.set(orig_vis);
@@ -584,10 +586,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
     /// consolidate multiple unresolved import errors into a single diagnostic.
     fn finalize_import(&mut self, import: &'b Import<'b>) -> Option<UnresolvedImportError> {
         let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-        let orig_unusable_binding = match &import.kind {
-            ImportKind::Single { target_bindings, .. } => {
-                Some(mem::replace(&mut self.r.unusable_binding, target_bindings[TypeNS].get()))
-            }
+        let unusable_binding = match &import.kind {
+            ImportKind::Single { target_bindings, .. } => target_bindings[TypeNS].get(),
             _ => None,
         };
         let prev_ambiguity_errors_len = self.r.ambiguity_errors.len();
@@ -596,12 +596,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             root_span: import.root_span,
             path_span: import.span,
         };
-        let path_res =
-            self.r.resolve_path(&import.module_path, None, &import.parent_scope, finalize);
+        let path_res = self.r.resolve_path(
+            &import.module_path,
+            None,
+            &import.parent_scope,
+            finalize,
+            unusable_binding,
+        );
         let no_ambiguity = self.r.ambiguity_errors.len() == prev_ambiguity_errors_len;
-        if let Some(orig_unusable_binding) = orig_unusable_binding {
-            self.r.unusable_binding = orig_unusable_binding;
-        }
         import.vis.set(orig_vis);
         if let PathResult::Failed { .. } | PathResult::NonModule(..) = path_res {
             // Consider erroneous imports used to avoid duplicate diagnostics.
@@ -714,18 +716,15 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         self.r.per_ns(|this, ns| {
             if !type_ns_only || ns == TypeNS {
                 let orig_vis = import.vis.replace(ty::Visibility::Invisible);
-                let orig_unusable_binding =
-                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
-                let orig_last_import_segment = mem::replace(&mut this.last_import_segment, true);
                 let binding = this.resolve_ident_in_module(
                     module,
                     ident,
                     ns,
                     &import.parent_scope,
                     Some(import.span),
+                    true,
+                    target_bindings[ns].get(),
                 );
-                this.last_import_segment = orig_last_import_segment;
-                this.unusable_binding = orig_unusable_binding;
                 import.vis.set(orig_vis);
 
                 match binding {
@@ -784,6 +783,8 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         ns,
                         &import.parent_scope,
                         Some(import.span),
+                        false,
+                        None,
                     );
                     if binding.is_ok() {
                         all_ns_failed = false;
@@ -998,15 +999,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     return;
                 }
 
-                let orig_unusable_binding =
-                    mem::replace(&mut this.unusable_binding, target_bindings[ns].get());
-
                 match this.early_resolve_ident_in_lexical_scope(
                     target,
                     ScopeSet::All(ns, false),
                     &import.parent_scope,
                     None,
                     false,
+                    false,
+                    target_bindings[ns].get(),
                 ) {
                     Ok(other_binding) => {
                         is_redundant[ns] = Some(
@@ -1016,8 +1016,6 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                     Err(_) => is_redundant[ns] = Some(false),
                 }
-
-                this.unusable_binding = orig_unusable_binding;
             }
         });
 

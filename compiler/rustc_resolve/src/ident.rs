@@ -280,6 +280,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
+    #[tracing::instrument(level = "debug", skip(self, ribs))]
     crate fn resolve_ident_in_lexical_scope(
         &mut self,
         mut ident: Ident,
@@ -287,6 +288,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize_full: Finalize,
         ribs: &[Rib<'a>],
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         assert!(ns == TypeNS || ns == ValueNS);
         let orig_ident = ident;
@@ -349,6 +351,8 @@ impl<'a> Resolver<'a> {
                 ns,
                 parent_scope,
                 finalize,
+                false,
+                unusable_binding,
             );
             if let Ok(binding) = item {
                 // The ident resolves to an item.
@@ -361,6 +365,8 @@ impl<'a> Resolver<'a> {
             parent_scope,
             finalize,
             finalize.is_some(),
+            false,
+            unusable_binding,
         )
         .ok()
         .map(LexicalScopeBinding::Item)
@@ -371,6 +377,7 @@ impl<'a> Resolver<'a> {
     /// expansion and import resolution (perhaps they can be merged in the future).
     /// The function is used for resolving initial segments of macro paths (e.g., `foo` in
     /// `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
+    #[tracing::instrument(level = "debug", skip(self, scope_set))]
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
@@ -378,6 +385,8 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize: Option<Span>,
         force: bool,
+        last_import_segment: bool,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
             struct Flags: u8 {
@@ -497,6 +506,8 @@ impl<'a> Resolver<'a> {
                             ns,
                             parent_scope,
                             finalize,
+                            last_import_segment,
+                            unusable_binding,
                         );
                         match binding {
                             Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
@@ -518,6 +529,8 @@ impl<'a> Resolver<'a> {
                             adjusted_parent_scope,
                             !matches!(scope_set, ScopeSet::Late(..)),
                             finalize,
+                            last_import_segment,
+                            unusable_binding,
                         );
                         match binding {
                             Ok(binding) => {
@@ -602,6 +615,8 @@ impl<'a> Resolver<'a> {
                                 ns,
                                 parent_scope,
                                 None,
+                                last_import_segment,
+                                unusable_binding,
                             ) {
                                 if use_prelude || this.is_builtin_macro(binding.res()) {
                                     result = Ok((binding, Flags::MISC_FROM_PRELUDE));
@@ -715,6 +730,19 @@ impl<'a> Resolver<'a> {
         Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
+    crate fn maybe_resolve_ident_in_module(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        ident: Ident,
+        ns: Namespace,
+        parent_scope: &ParentScope<'a>,
+    ) -> Result<&'a NameBinding<'a>, Determinacy> {
+        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, None, false, None)
+            .map_err(|(determinacy, _)| determinacy)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
     crate fn resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -722,11 +750,25 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Span>,
+        // We are resolving a last import segment during import validation.
+        last_import_segment: bool,
+        // This binding should be ignored during in-module resolution, so that we don't get
+        // "self-confirming" import resolutions during import validation.
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        self.resolve_ident_in_module_ext(module, ident, ns, parent_scope, finalize)
-            .map_err(|(determinacy, _)| determinacy)
+        self.resolve_ident_in_module_ext(
+            module,
+            ident,
+            ns,
+            parent_scope,
+            finalize,
+            last_import_segment,
+            unusable_binding,
+        )
+        .map_err(|(determinacy, _)| determinacy)
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_ext(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -734,6 +776,8 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Span>,
+        last_import_segment: bool,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let tmp_parent_scope;
         let mut adjusted_parent_scope = parent_scope;
@@ -759,9 +803,12 @@ impl<'a> Resolver<'a> {
             adjusted_parent_scope,
             false,
             finalize,
+            last_import_segment,
+            unusable_binding,
         )
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -769,6 +816,8 @@ impl<'a> Resolver<'a> {
         ns: Namespace,
         parent_scope: &ParentScope<'a>,
         finalize: Option<Span>,
+        last_import_segment: bool,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
             module,
@@ -777,12 +826,15 @@ impl<'a> Resolver<'a> {
             parent_scope,
             false,
             finalize,
+            last_import_segment,
+            unusable_binding,
         )
         .map_err(|(determinacy, _)| determinacy)
     }
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `finalize` is `Some`, expansion and import resolution must be complete.
+    #[tracing::instrument(level = "debug", skip(self))]
     fn resolve_ident_in_module_unadjusted_ext(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
@@ -791,6 +843,8 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         restricted_shadowing: bool,
         finalize: Option<Span>,
+        last_import_segment: bool,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
@@ -802,6 +856,8 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
+                    last_import_segment,
+                    unusable_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -841,6 +897,8 @@ impl<'a> Resolver<'a> {
                     parent_scope,
                     finalize,
                     finalize.is_some(),
+                    last_import_segment,
+                    unusable_binding,
                 );
                 return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
@@ -865,7 +923,7 @@ impl<'a> Resolver<'a> {
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
             // hack to avoid inconsistent resolution ICEs during import validation.
-            if let Some(unusable_binding) = self.unusable_binding
+            if let Some(unusable_binding) = unusable_binding
                 && ptr::eq(binding, unusable_binding)
             {
                 let Some(shadowed) = resolution.shadowed_glob else {
@@ -880,7 +938,7 @@ impl<'a> Resolver<'a> {
             }
 
             if !self.is_accessible_from(binding.vis, parent_scope.module) {
-                if self.last_import_segment {
+                if last_import_segment {
                     return Err((Determined, Weak::No));
                 } else {
                     self.privacy_errors.push(PrivacyError {
@@ -912,7 +970,7 @@ impl<'a> Resolver<'a> {
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
-            if let Some(unusable_binding) = this.unusable_binding {
+            if let Some(unusable_binding) = unusable_binding {
                 if ptr::eq(binding, unusable_binding) {
                     return Err((Determined, Weak::No));
                 }
@@ -942,8 +1000,15 @@ impl<'a> Resolver<'a> {
             let ImportKind::Single { source: ident, .. } = single_import.kind else {
                 unreachable!();
             };
-            match self.resolve_ident_in_module(module, ident, ns, &single_import.parent_scope, None)
-            {
+            match self.resolve_ident_in_module(
+                module,
+                ident,
+                ns,
+                &single_import.parent_scope,
+                None,
+                last_import_segment,
+                unusable_binding,
+            ) {
                 Err(Determined) => continue,
                 Ok(binding)
                     if !self.is_accessible_from(binding.vis, single_import.parent_scope.module) =>
@@ -1018,6 +1083,8 @@ impl<'a> Resolver<'a> {
                 ns,
                 adjusted_parent_scope,
                 None,
+                last_import_segment,
+                unusable_binding,
             );
 
             match result {
@@ -1036,6 +1103,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Validate a local resolution (from ribs).
+    #[tracing::instrument(level = "debug", skip(self, all_ribs))]
     fn validate_res_from_ribs(
         &mut self,
         rib_index: usize,
@@ -1268,14 +1336,26 @@ impl<'a> Resolver<'a> {
         res
     }
 
+    #[tracing::instrument(level = "debug", skip(self))]
+    crate fn maybe_resolve_path(
+        &mut self,
+        path: &[Segment],
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
+        parent_scope: &ParentScope<'a>,
+    ) -> PathResult<'a> {
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, Finalize::No, None, None)
+    }
+
+    #[tracing::instrument(level = "debug", skip(self))]
     crate fn resolve_path(
         &mut self,
         path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         finalize: Finalize,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
-        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None)
+        self.resolve_path_with_ribs(path, opt_ns, parent_scope, finalize, None, unusable_binding)
     }
 
     crate fn resolve_path_with_ribs(
@@ -1285,6 +1365,7 @@ impl<'a> Resolver<'a> {
         parent_scope: &ParentScope<'a>,
         finalize_full: Finalize,
         ribs: Option<&PerNS<Vec<Rib<'a>>>>,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> PathResult<'a> {
         debug!("resolve_path(path={:?}, opt_ns={:?}, finalize={:?})", path, opt_ns, finalize_full);
 
@@ -1382,7 +1463,15 @@ impl<'a> Resolver<'a> {
             }
             let find_binding_in_ns = |this: &mut Self, ns| {
                 let binding = if let Some(module) = module {
-                    this.resolve_ident_in_module(module, ident, ns, parent_scope, finalize)
+                    this.resolve_ident_in_module(
+                        module,
+                        ident,
+                        ns,
+                        parent_scope,
+                        finalize,
+                        false,
+                        unusable_binding,
+                    )
                 } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
                     let scopes = ScopeSet::All(ns, opt_ns.is_none());
                     this.early_resolve_ident_in_lexical_scope(
@@ -1391,6 +1480,8 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         finalize,
                         finalize.is_some(),
+                        false,
+                        unusable_binding,
                     )
                 } else {
                     match this.resolve_ident_in_lexical_scope(
@@ -1399,6 +1490,7 @@ impl<'a> Resolver<'a> {
                         parent_scope,
                         finalize_full,
                         &ribs.unwrap()[ns],
+                        unusable_binding,
                     ) {
                         // we found a locally-imported or available item/module
                         Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -1514,6 +1606,7 @@ impl<'a> Resolver<'a> {
                                         parent_scope,
                                         Finalize::No,
                                         &ribs.unwrap()[ValueNS],
+                                        unusable_binding,
                                     ) {
                                         // Name matches a local variable. For example:
                                         // ```
