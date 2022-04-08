@@ -2504,3 +2504,19 @@ fn test_slice_from_ptr_range() {
         assert_eq!(slice::from_ptr_range(range), &arr);
     }
 }
+
+#[test]
+#[cfg(not(bootstrap))]
+#[should_panic = "slice len overflow"]
+fn test_flatten_size_overflow() {
+    let x = &[[(); usize::MAX]; 2][..];
+    let _ = x.flatten();
+}
+
+#[test]
+#[cfg(not(bootstrap))]
+#[should_panic = "slice len overflow"]
+fn test_flatten_mut_size_overflow() {
+    let x = &mut [[(); usize::MAX]; 2][..];
+    let _ = x.flatten_mut();
+}

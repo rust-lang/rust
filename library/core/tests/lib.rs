@@ -93,6 +93,7 @@
 #![feature(const_array_from_ref)]
 #![feature(const_slice_from_ref)]
 #![feature(waker_getters)]
+#![feature(slice_flatten)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 extern crate test;

@@ -1,6 +1,6 @@
 # `x86_64-unknown-none`
 
-**Tier: 3**
+**Tier: 2**
 
 Freestanding/bare-metal x86-64 binaries in ELF format: firmware, kernels, etc.
 
@@ -32,7 +32,7 @@ You can change this using the `-C code-model=` option to rustc.
 On `x86_64-unknown-none`, `extern "C"` uses the [standard System V calling
 convention](https://gitlab.com/x86-psABIs/x86-64-ABI), without red zones.
 
-This target generated binaries in the ELF format. Any alternate formats or
+This target generates binaries in the ELF format. Any alternate formats or
 special considerations for binary layout will require linker options or linker
 scripts.
 
@@ -49,15 +49,19 @@ target = ["x86_64-unknown-none"]
 
 ## Building Rust programs
 
-Rust does not yet ship pre-compiled artifacts for this target. To compile for
-this target, you will either need to build Rust with the target enabled (see
-"Building the target" above), or build your own copy of `core` by using
-`build-std` or similar.
+Starting with Rust 1.62, precompiled artifacts are provided via `rustup`:
+
+```text
+# install cross-compile toolchain
+rustup target add x86_64-unknown-none
+# target flag may be used with any cargo or rustc command
+cargo build --target x86_64-unknown-none
+```
 
 ## Testing
 
 As `x86_64-unknown-none` supports a variety of different environments and does
-not support `std`, this target does not support running the Rust testsuite.
+not support `std`, this target does not support running the Rust test suite.
 
 ## Cross-compilation toolchains and C code
 
