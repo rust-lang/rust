@@ -127,8 +127,8 @@ export function joinLines(ctx: Ctx): Cmd {
             ranges: editor.selections.map((it) => client.code2ProtocolConverter.asRange(it)),
             textDocument: ctx.client.code2ProtocolConverter.asTextDocumentIdentifier(editor.document),
         });
-        await editor.edit((builder) => {
-            client.protocol2CodeConverter.asTextEdits(items).forEach((edit: any) => {
+        await editor.edit(async (builder) => {
+            (await client.protocol2CodeConverter.asTextEdits(items)).forEach((edit: any) => {
                 builder.replace(edit.range, edit.newText);
             });
         });
@@ -157,7 +157,7 @@ export function moveItem(ctx: Ctx, direction: ra.Direction): Cmd {
 
         if (!lcEdits) return;
 
-        const edits = client.protocol2CodeConverter.asTextEdits(lcEdits);
+        const edits = await client.protocol2CodeConverter.asTextEdits(lcEdits);
         await applySnippetTextEdits(editor, edits);
     };
 }
@@ -180,7 +180,7 @@ export function onEnter(ctx: Ctx): Cmd {
         });
         if (!lcEdits) return false;
 
-        const edits = client.protocol2CodeConverter.asTextEdits(lcEdits);
+        const edits = await client.protocol2CodeConverter.asTextEdits(lcEdits);
         await applySnippetTextEdits(editor, edits);
         return true;
     }
@@ -277,12 +277,12 @@ export function ssr(ctx: Ctx): Cmd {
             location: vscode.ProgressLocation.Notification,
             title: "Structured search replace in progress...",
             cancellable: false,
-        }, async (_progress, _token) => {
+        }, async (_progress, token) => {
             const edit = await client.sendRequest(ra.ssr, {
                 query: request, parseOnly: false, textDocument, position, selections,
             });
 
-            await vscode.workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));
+            await vscode.workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(edit, token));
         });
     };
 }
@@ -728,11 +728,11 @@ export function resolveCodeAction(ctx: Ctx): Cmd {
             return;
         }
         const itemEdit = item.edit;
-        const edit = client.protocol2CodeConverter.asWorkspaceEdit(itemEdit);
+        const edit = await client.protocol2CodeConverter.asWorkspaceEdit(itemEdit);
         // filter out all text edits and recreate the WorkspaceEdit without them so we can apply
         // snippet edits on our own
         const lcFileSystemEdit = { ...itemEdit, documentChanges: itemEdit.documentChanges?.filter(change => "kind" in change) };
-        const fileSystemEdit = client.protocol2CodeConverter.asWorkspaceEdit(lcFileSystemEdit);
+        const fileSystemEdit = await client.protocol2CodeConverter.asWorkspaceEdit(lcFileSystemEdit);
         await vscode.workspace.applyEdit(fileSystemEdit);
         await applySnippetWorkspaceEdit(edit);
     };
