@@ -15,7 +15,6 @@ use rustc_middle::ty::{self, layout::LayoutOf};
 use rustc_target::abi::{Align, Size};
 
 use crate::*;
-use helpers::check_arg_count;
 use shims::os_str::os_str_to_bytes;
 use shims::time::system_time_to_duration;
 
@@ -479,16 +478,16 @@ fn maybe_sync_file(
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
     fn open(&mut self, args: &[OpTy<'tcx, Tag>]) -> InterpResult<'tcx, i32> {
-        if args.len() < 2 || args.len() > 3 {
+        if args.len() < 2 {
             throw_ub_format!(
-                "incorrect number of arguments for `open`: got {}, expected 2 or 3",
+                "incorrect number of arguments for `open`: got {}, expected at least 2",
                 args.len()
             );
         }
 
         let this = self.eval_context_mut();
 
-        let path_op = &args[0];
+        let path = this.read_pointer(&args[0])?;
         let flag = this.read_scalar(&args[1])?.to_i32()?;
 
         let mut options = OpenOptions::new();
@@ -541,7 +540,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.read_scalar(arg)?.to_u32()?
             } else {
                 throw_ub_format!(
-                    "incorrect number of arguments for `open` with `O_CREAT`: got {}, expected 3",
+                    "incorrect number of arguments for `open` with `O_CREAT`: got {}, expected at least 3",
                     args.len()
                 );
             };
@@ -572,7 +571,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path = this.read_path_from_c_str(this.read_pointer(path_op)?)?;
+        let path = this.read_path_from_c_str(path)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -614,7 +613,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // `FD_CLOEXEC` value without checking if the flag is set for the file because `std`
             // always sets this flag when opening a file. However we still need to check that the
             // file itself is open.
-            let &[_, _] = check_arg_count(args)?;
             if this.machine.file_handler.handles.contains_key(&fd) {
                 Ok(this.eval_libc_i32("FD_CLOEXEC")?)
             } else {
@@ -627,8 +625,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // because exec() isn't supported. The F_DUPFD and F_DUPFD_CLOEXEC commands only
             // differ in whether the FD_CLOEXEC flag is pre-set on the new file descriptor,
             // thus they can share the same implementation here.
-            let &[_, _, ref start] = check_arg_count(args)?;
-            let start = this.read_scalar(start)?.to_i32()?;
+            if args.len() < 3 {
+                throw_ub_format!(
+                    "incorrect number of arguments for fcntl with cmd=`F_DUPFD`/`F_DUPFD_CLOEXEC`: got {}, expected at least 3",
+                    args.len()
+                );
+            }
+            let start = this.read_scalar(&args[2])?.to_i32()?;
 
             let fh = &mut this.machine.file_handler;
 
@@ -646,7 +649,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 None => return this.handle_not_found(),
             }
         } else if this.tcx.sess.target.os == "macos" && cmd == this.eval_libc_i32("F_FULLFSYNC")? {
-            let &[_, _] = check_arg_count(args)?;
             if let Some(file_descriptor) = this.machine.file_handler.handles.get(&fd) {
                 // FIXME: Support fullfsync for all FDs
                 let FileHandle { file, writable } = file_descriptor.as_file_handle()?;
@@ -919,15 +921,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dirfd_op: &OpTy<'tcx, Tag>,    // Should be an `int`
         pathname_op: &OpTy<'tcx, Tag>, // Should be a `const char *`
         flags_op: &OpTy<'tcx, Tag>,    // Should be an `int`
-        _mask_op: &OpTy<'tcx, Tag>,    // Should be an `unsigned int`
+        mask_op: &OpTy<'tcx, Tag>,     // Should be an `unsigned int`
         statxbuf_op: &OpTy<'tcx, Tag>, // Should be a `struct statx *`
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
         this.assert_target_os("linux", "statx");
 
-        let statxbuf_ptr = this.read_pointer(statxbuf_op)?;
+        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         let pathname_ptr = this.read_pointer(pathname_op)?;
+        let flags = this.read_scalar(flags_op)?.to_i32()?;
+        let _mask = this.read_scalar(mask_op)?.to_u32()?;
+        let statxbuf_ptr = this.read_pointer(statxbuf_op)?;
 
         // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
         if this.ptr_is_null(statxbuf_ptr)? || this.ptr_is_null(pathname_ptr)? {
@@ -953,9 +958,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let path = this.read_path_from_c_str(pathname_ptr)?.into_owned();
         // See <https://github.com/rust-lang/rust/pull/79196> for a discussion of argument sizes.
-        let flags = this.read_scalar(flags_op)?.to_i32()?;
         let empty_path_flag = flags & this.eval_libc("AT_EMPTY_PATH")?.to_i32()? != 0;
-        let dirfd = this.read_scalar(dirfd_op)?.to_i32()?;
         // We only support:
         // * interpreting `path` as an absolute directory,
         // * interpreting `path` as a path relative to `dirfd` when the latter is `AT_FDCWD`, or

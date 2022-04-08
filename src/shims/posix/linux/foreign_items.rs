@@ -106,9 +106,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Threading
             "prctl" => {
-                let &[ref option, ref arg2, ref arg3, ref arg4, ref arg5] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let result = this.prctl(option, arg2, arg3, arg4, arg5)?;
+                // prctl is variadic. (It is not documented like that in the manpage, but defined like that in the libc crate.)
+                this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
+                let result = this.prctl(args)?;
                 this.write_scalar(Scalar::from_i32(result), dest)?;
             }
             "pthread_condattr_setclock" => {
@@ -130,16 +130,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // count is checked bellow.
                 this.check_abi_and_shim_symbol_clash(abi, Abi::C { unwind: false }, link_name)?;
                 // The syscall variadic function is legal to call with more arguments than needed,
-                // extra arguments are simply ignored. However, all arguments need to be scalars;
-                // other types might be treated differently by the calling convention.
-                for arg in args {
-                    if !matches!(arg.layout.abi, rustc_target::abi::Abi::Scalar(_)) {
-                        throw_ub_format!(
-                            "`syscall` arguments must all have scalar layout, but {} does not",
-                            arg.layout.ty
-                        );
-                    }
-                }
+                // extra arguments are simply ignored. The important check is that when we use an
+                // argument, we have to also check all arguments *before* it to ensure that they
+                // have the right type.
 
                 let sys_getrandom = this.eval_libc("SYS_getrandom")?.to_machine_usize(this)?;
 
@@ -181,7 +174,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     }
                     // `futex` is used by some synchonization primitives.
                     id if id == sys_futex => {
-                        futex(this, args, dest)?;
+                        futex(this, &args[1..], dest)?;
                     }
                     id => {
                         this.handle_unsupported(format!("can't execute syscall with ID {}", id))?;
