@@ -211,6 +211,10 @@ struct MatcherPos {
     /// with one element per metavar decl in the matcher. Each element records token trees matched
     /// against the relevant metavar by the black box parser. An element will be a `MatchedSeq` if
     /// the corresponding metavar decl is within a sequence.
+    ///
+    /// It is critical to performance that this is an `Lrc`, because it gets cloned frequently when
+    /// processing sequences. Mostly for sequence-ending possibilities that must be tried but end
+    /// up failing.
     matches: Lrc<Vec<NamedMatch>>,
 }
 
