@@ -1506,10 +1506,15 @@ impl Param {
         db.function_data(self.func.id).params[self.idx].0.clone()
     }
 
-    pub fn as_local(&self, db: &dyn HirDatabase) -> Local {
+    pub fn as_local(&self, db: &dyn HirDatabase) -> Option<Local> {
         let parent = DefWithBodyId::FunctionId(self.func.into());
         let body = db.body(parent);
-        Local { parent, pat_id: body.params[self.idx] }
+        let pat_id = body.params[self.idx];
+        if let Pat::Bind { .. } = &body[pat_id] {
+            Some(Local { parent, pat_id: body.params[self.idx] })
+        } else {
+            None
+        }
     }
 
     pub fn pattern_source(&self, db: &dyn HirDatabase) -> Option<ast::Pat> {

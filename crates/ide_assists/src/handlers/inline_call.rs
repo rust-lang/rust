@@ -317,30 +317,37 @@ fn inline(
             if !matches!(pat, ast::Pat::IdentPat(pat) if pat.is_simple_ident()) {
                 return Vec::new();
             }
-            usages_for_locals(param.as_local(sema.db))
-                .map(|FileReference { name, range, .. }| match name {
-                    ast::NameLike::NameRef(_) => body
-                        .syntax()
-                        .covering_element(range)
-                        .ancestors()
-                        .nth(3)
-                        .and_then(ast::PathExpr::cast),
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()
-                .unwrap_or_default()
+            // FIXME: we need to fetch all locals declared in the parameter here
+            // not only the local if it is a simple binding
+            match param.as_local(sema.db) {
+                Some(l) => usages_for_locals(l)
+                    .map(|FileReference { name, range, .. }| match name {
+                        ast::NameLike::NameRef(_) => body
+                            .syntax()
+                            .covering_element(range)
+                            .ancestors()
+                            .nth(3)
+                            .and_then(ast::PathExpr::cast),
+                        _ => None,
+                    })
+                    .collect::<Option<Vec<_>>>()
+                    .unwrap_or_default(),
+                None => Vec::new(),
+            }
         })
         .collect();
     if function.self_param(sema.db).is_some() {
         let this = || make::name_ref("this").syntax().clone_for_update();
-        usages_for_locals(params[0].2.as_local(sema.db))
-            .flat_map(|FileReference { name, range, .. }| match name {
-                ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
-                _ => None,
-            })
-            .for_each(|it| {
-                ted::replace(it, &this());
-            })
+        if let Some(self_local) = params[0].2.as_local(sema.db) {
+            usages_for_locals(self_local)
+                .flat_map(|FileReference { name, range, .. }| match name {
+                    ast::NameLike::NameRef(_) => Some(body.syntax().covering_element(range)),
+                    _ => None,
+                })
+                .for_each(|it| {
+                    ted::replace(it, &this());
+                })
+        }
     }
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
     for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arguments).rev() {
