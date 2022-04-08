@@ -910,27 +910,34 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
+        let ident = match self.get(id) {
+            // A `Ctor` doesn't have an identifier itself, but its parent
+            // struct/variant does. Compare with `hir::Map::opt_span`.
+            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+                Node::Item(item) => Some(item.ident),
+                Node::Variant(variant) => Some(variant.ident),
+                _ => unreachable!(),
+            },
+            node => node.ident(),
+        };
+        ident.map(|ident| ident.span)
+    }
+
     pub fn opt_name(self, id: HirId) -> Option<Symbol> {
-        Some(match self.get(id) {
-            Node::Item(i) => i.ident.name,
-            Node::ForeignItem(fi) => fi.ident.name,
-            Node::ImplItem(ii) => ii.ident.name,
-            Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.ident.name,
-            Node::Field(f) => f.ident.name,
-            Node::Lifetime(lt) => lt.name.ident().name,
-            Node::GenericParam(param) => param.name.ident().name,
-            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => l.name,
-            Node::Ctor(..) => self.name(HirId::make_owner(self.get_parent_item(id))),
-            _ => return None,
-        })
+        match self.get(id) {
+            Node::Binding(&Pat { kind: PatKind::Binding(_, _, l, _), .. }) => Some(l.name),
+            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+                Node::Item(item) => Some(item.ident.name),
+                Node::Variant(variant) => Some(variant.ident.name),
+                _ => unreachable!(),
+            },
+            node => node.ident().map(|i| i.name),
+        }
     }
 
     pub fn name(self, id: HirId) -> Symbol {
-        match self.opt_name(id) {
-            Some(name) => name,
-            None => bug!("no name for {}", self.node_to_string(id)),
-        }
+        self.opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.node_to_string(id)))
     }
 
     /// Given a node ID, gets a list of attributes associated with the AST
