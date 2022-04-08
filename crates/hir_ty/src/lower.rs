@@ -14,6 +14,7 @@ use chalk_ir::interner::HasInterner;
 use chalk_ir::{cast::Cast, fold::Shift, Mutability, Safety};
 use hir_def::generics::TypeOrConstParamData;
 use hir_def::intern::Interned;
+use hir_def::lang_item::lang_attr;
 use hir_def::path::{ModPath, PathKind};
 use hir_def::type_ref::ConstScalarOrPath;
 use hir_def::{
@@ -863,7 +864,23 @@ impl<'a> TyLoweringContext<'a> {
         let trait_ref = match bound {
             TypeBound::Path(path, TraitBoundModifier::None) => {
                 bindings = self.lower_trait_ref_from_path(path, Some(self_ty));
-                bindings.clone().map(WhereClause::Implemented).map(crate::wrap_empty_binders)
+                bindings
+                    .clone()
+                    .filter(|tr| {
+                        // ignore `T: Drop` or `T: Destruct` bounds.
+                        // - `T: ~const Drop` has a special meaning in Rust 1.61 that we don't implement.
+                        //   (So ideally, we'd only ignore `~const Drop` here)
+                        // - `Destruct` impls are built-in in 1.62 (current nightlies as of 08-04-2022), so until
+                        //   the builtin impls are supported by Chalk, we ignore them here.
+                        if let Some(lang) = lang_attr(self.db.upcast(), tr.hir_trait_id()) {
+                            if lang == "drop" || lang == "destruct" {
+                                return false;
+                            }
+                        }
+                        true
+                    })
+                    .map(WhereClause::Implemented)
+                    .map(crate::wrap_empty_binders)
             }
             TypeBound::Path(path, TraitBoundModifier::Maybe) => {
                 let sized_trait = self
