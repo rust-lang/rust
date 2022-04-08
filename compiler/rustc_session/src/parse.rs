@@ -140,7 +140,6 @@ pub struct ParseSess {
     pub config: CrateConfig,
     pub check_config: CrateCheckConfig,
     pub edition: Edition,
-    pub missing_fragment_specifiers: Lock<FxHashMap<Span, NodeId>>,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.
     pub raw_identifier_spans: Lock<Vec<Span>>,
@@ -195,7 +194,6 @@ impl ParseSess {
             config: FxHashSet::default(),
             check_config: CrateCheckConfig::default(),
             edition: ExpnId::root().expn_data().edition,
-            missing_fragment_specifiers: Default::default(),
             raw_identifier_spans: Lock::new(Vec::new()),
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
