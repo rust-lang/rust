@@ -1,4 +1,4 @@
-use clippy_utils::source::{snippet_opt, walk_span_to_context};
+use clippy_utils::source::{snippet_opt, span_starts_with, walk_span_to_context};
 use clippy_utils::{meets_msrv, msrvs};
 use rustc_hir::{Arm, Expr, ExprKind, Local, MatchSource, Pat};
 use rustc_lexer::{tokenize, TokenKind};
@@ -653,6 +653,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         }
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
+            if !span_starts_with(cx, expr.span, "match") {
+                return;
+            }
             if !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
                     if !(meets_msrv(self.msrv.as_ref(), &msrvs::MATCHES_MACRO)
