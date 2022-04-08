@@ -216,7 +216,7 @@ pub fn each_linked_rlib(
             Some(_) => {}
             None => return Err("could not find formats for rlibs".to_string()),
         }
-        let name = &info.crate_name[&cnum];
+        let name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
             f(cnum, &path);
@@ -467,7 +467,7 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(
     let mut all_native_libs = vec![];
 
     let res = each_linked_rlib(&codegen_results.crate_info, &mut |cnum, path| {
-        let name = &codegen_results.crate_info.crate_name[&cnum];
+        let name = codegen_results.crate_info.crate_name[&cnum];
         let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
 
         // Here when we include the rlib into our staticlib we need to make a
