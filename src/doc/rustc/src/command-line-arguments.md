@@ -84,6 +84,26 @@ The default for this modifier is `-whole-archive`. \
 NOTE: The default may currently be different in some cases for backward compatibility,
 but it is not guaranteed. If you need whole archive semantics use `+whole-archive` explicitly.
 
+### Linking modifiers: `bundle`
+
+This modifier is only compatible with the `static` linking kind.
+Using any other kind will result in a compiler error.
+
+When building a rlib or staticlib `+bundle` means that all object files from the native static
+library will be added to the rlib or staticlib archive, and then used from it during linking of
+the final binary.
+
+When building a rlib `-bundle` means that the native static library is registered as a dependency
+of that rlib "by name", and object files from it are included only during linking of the final
+binary, the file search by that name is also performed during final linking. \
+When building a staticlib `-bundle` means that the native static library is simply not included
+into the archive and some higher level build system will need to add it later during linking of
+the final binary.
+
+This modifier has no effect when building other targets like executables or dynamic libraries.
+
+The default for this modifier is `+bundle`.
+
 <a id="option-crate-type"></a>
 ## `--crate-type`: a list of types of crates for the compiler to emit
 
