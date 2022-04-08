@@ -1472,7 +1472,24 @@ impl<'a> Resolver<'a> {
                         false,
                         unusable_binding,
                     )
-                } else if ribs.is_none() || opt_ns.is_none() || opt_ns == Some(MacroNS) {
+                } else if let Some(ribs) = ribs
+                    && let Some(TypeNS | ValueNS) = opt_ns
+                {
+                    match this.resolve_ident_in_lexical_scope(
+                        ident,
+                        ns,
+                        parent_scope,
+                        finalize_full,
+                        &ribs[ns],
+                        unusable_binding,
+                    ) {
+                        // we found a locally-imported or available item/module
+                        Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
+                        // we found a local variable or type param
+                        Some(LexicalScopeBinding::Res(res)) => return FindBindingResult::Res(res),
+                        _ => Err(Determinacy::determined(finalize.is_some())),
+                    }
+                } else {
                     let scopes = ScopeSet::All(ns, opt_ns.is_none());
                     this.early_resolve_ident_in_lexical_scope(
                         ident,
@@ -1483,25 +1500,6 @@ impl<'a> Resolver<'a> {
                         false,
                         unusable_binding,
                     )
-                } else {
-                    match this.resolve_ident_in_lexical_scope(
-                        ident,
-                        ns,
-                        parent_scope,
-                        finalize_full,
-                        &ribs.unwrap()[ns],
-                        unusable_binding,
-                    ) {
-                        // we found a locally-imported or available item/module
-                        Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
-                        // we found a local variable or type param
-                        Some(LexicalScopeBinding::Res(res))
-                            if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) =>
-                        {
-                            return FindBindingResult::Res(res);
-                        }
-                        _ => Err(Determinacy::determined(finalize.is_some())),
-                    }
                 };
                 FindBindingResult::Binding(binding)
             };
