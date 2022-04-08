@@ -188,6 +188,7 @@ pub(super) fn op_to_const<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 fn turn_into_const_value<'tcx>(
     tcx: TyCtxt<'tcx>,
     constant: ConstAlloc<'tcx>,
@@ -206,6 +207,7 @@ fn turn_into_const_value<'tcx>(
         !is_static || cid.promoted.is_some(),
         "the `eval_to_const_value_raw` query should not be used for statics, use `eval_to_allocation` instead"
     );
+
     // Turn this into a proper constant.
     op_to_const(&ecx, &mplace.into())
 }

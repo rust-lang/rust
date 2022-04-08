@@ -305,18 +305,6 @@ where
         Ok(mplace)
     }
 
-    #[instrument(skip(self), level = "debug")]
-    pub fn deref_mplace(
-        &self,
-        src: &MPlaceTy<'tcx, M::PointerTag>,
-    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let val = self.try_read_immediate_from_mplace(src)?;
-        let mplace = self.ref_to_mplace(&val.unwrap())?;
-        self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
-
-        Ok(mplace)
-    }
-
     #[inline]
     pub(super) fn get_alloc(
         &self,

@@ -62,7 +62,7 @@ pub use self::closure::{
     CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, Unevaluated, ValSlice, ValTree,
+    Const, ConstInt, ConstKind, ConstS, InferConst, ScalarInt, Unevaluated, ValTree,
 };
 pub use self::context::{
     tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,

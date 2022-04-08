@@ -6,14 +6,14 @@ use rustc_hir::Mutability;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{
     mir::{self, interpret::ConstAlloc},
-    ty::{ScalarInt, Ty},
+    ty::ScalarInt,
 };
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
-    MemPlaceMeta, Scalar,
+    intern_const_alloc_recursive, ConstValue, Immediate, InternKind, InterpCx, InterpResult,
+    MPlaceTy, MemPlaceMeta, Scalar,
 };
 
 mod error;
@@ -80,19 +80,28 @@ fn branches<'tcx>(
     Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
 }
 
+fn slice_branches<'tcx>(
+    ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
+    place: &MPlaceTy<'tcx>,
+    n: u64,
+) -> Option<ty::ValTree<'tcx>> {
+    let elems = (0..n).map(|i| {
+        let place_elem = ecx.mplace_index(place, i).unwrap();
+        const_to_valtree_inner(ecx, &place_elem)
+    });
+
+    // Need `len` for the ValTree -> ConstValue conversion
+    let len = Some(Some(ty::ValTree::Leaf(ScalarInt::from(n))));
+    let branches = len.into_iter().chain(elems);
+
+    Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
+}
+
 #[instrument(skip(ecx), level = "debug")]
 fn const_to_valtree_inner<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
 ) -> Option<ty::ValTree<'tcx>> {
-    // We only want to use raw bytes in ValTrees for string slices or &[<integer_ty>]
-    let use_bytes_for_ref = |ty: Ty<'tcx>| -> bool {
-        match ty.kind() {
-            ty::Str | ty::Char | ty::Uint(_) | ty::Int(_) | ty::Bool => true,
-            _ => false,
-        }
-    };
-
     match place.layout.ty.kind() {
         ty::FnDef(..) => Some(ty::ValTree::zst()),
         ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
@@ -107,75 +116,52 @@ fn const_to_valtree_inner<'tcx>(
         // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => None,
 
-        ty::Ref(_, ref_ty, _) if place.layout.ty.is_slice() => {
-            match ecx.try_read_immediate_from_mplace(&place) {
-                Ok(Some(imm)) => {
-                    // `imm` is a ScalarPair. We try to get the underlying bytes behind that
-                    // fat pointer for string slices and slices of integer types. For any other
-                    // slice types we use `branches` to recursively construct the Valtree.
+        ty::Ref(_, inner_ty, _)  => {
+            match inner_ty.kind() {
+                ty::Slice(_) | ty::Str => {
+                    match ecx.try_read_immediate_from_mplace(&place) {
+                        Ok(Some(imm)) => {
+                            let mplace_ref = ecx.ref_to_mplace(&imm).unwrap();
+                            let derefd = ecx.deref_operand(&place.into()).expect(&format!("couldnt deref {:?}", imm));
+                            debug!(?mplace_ref, ?derefd);
 
-                    if use_bytes_for_ref(*ref_ty) {
-                        let (alloc, range) = ecx.get_alloc_from_imm_scalar_pair(imm);
-                        let alloc_bytes = match alloc.get_bytes(&ecx.tcx, range) {
-                            Ok(bytes) => bytes,
-                            Err(_e) => return None,
-                        };
-                        debug!(?alloc_bytes);
+                            let len = match imm.imm {
+                                Immediate::ScalarPair(_, b) => {
+                                    let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
+                                    len
+                                }
+                                _ => bug!("expected ScalarPair for &[T] or &str"),
+                            };
+                            debug!(?len);
 
-                        let bytes = ecx.tcx.arena.alloc_slice(alloc_bytes);
-                        let len = bytes.len();
-                        debug!(?bytes, ?len);
+                            let valtree = slice_branches(ecx, &derefd, len);
+                            debug!(?valtree);
 
-                        let slice = ty::ValSlice { bytes};
-
-                        Some(ty::ValTree::SliceOrStr(slice))
-                    } else {
-                        let derefd = ecx.deref_operand(&imm.into()).expect(&format!("couldnt deref {:?}", imm));
-                        debug!("derefd: {:?}", derefd);
-
-                        let derefd_imm = match ecx.try_read_immediate_from_mplace(&derefd) {
-                            Ok(Some(imm)) => imm,
-                            _ => return None,
-                        };
-                        debug!(?derefd_imm);
-
-                        let tcx = ecx.tcx.tcx;
-                        let scalar_len= derefd.meta.unwrap_meta();
-                        let len = match scalar_len {
-                            Scalar::Int(int) => {
-                                int.try_to_machine_usize(tcx).expect(&format!("Expected a valid ScalarInt in {:?}", scalar_len))
-                            }
-                            _ => bug!("expected a ScalarInt in meta data for {:?}", place),
-                        };
-                        debug!(?len);
-
-                        let valtree = branches(ecx, place, len.try_into().expect("BLA"), None);
-                        debug!(?valtree);
-
-                        valtree
+                            valtree
+                        }
+                        _ => {
+                            None
+                        }
                     }
                 }
                 _ => {
-                    None
+                    let imm = ecx.try_read_immediate_from_mplace(&place).unwrap_or_else(|e| bug!("couldnt read immediate from {:?}, error: {:?}", place, e));
+
+                    match imm {
+                        Some(imm) => {
+                            debug!(?imm);
+
+                            let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
+                            debug!(?derefd_place);
+
+                            const_to_valtree_inner(ecx, &derefd_place)
+                        }
+                        None => bug!("couldn't read immediate from {:?}", place),
+                    }
                 }
             }
         }
 
-        ty::Ref(_, inner_ty, _) => {
-            debug!("Ref with inner_ty: {:?}", inner_ty);
-            let imm = ecx.try_read_immediate_from_mplace(&place).unwrap_or_else(|e| bug!("couldnt read immediate from {:?}, error: {:?}", place, e));
-            match imm {
-                Some(imm) => {
-                    debug!(?imm);
-
-                    let derefd_place = ecx.deref_mplace(place).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
-                    debug!(?derefd_place);
-
-                    const_to_valtree_inner(ecx, &derefd_place)
-                }
-                None => None,
-            }
-        }
         ty::Str => {
             bug!("ty::Str should have been handled in ty::Ref branch that uses raw bytes");
         }
