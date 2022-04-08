@@ -50,7 +50,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let vtable_slot = self
             .get_ptr_alloc(vtable_slot, ptr_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
-        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?);
+        let fn_ptr = self.scalar_to_ptr(vtable_slot.read_ptr_sized(Size::ZERO)?.check_init()?)?;
         self.get_ptr_fn(fn_ptr)
     }
 
@@ -75,7 +75,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .check_init()?;
         // We *need* an instance here, no other kind of function value, to be able
         // to determine the type.
-        let drop_instance = self.get_ptr_fn(self.scalar_to_ptr(drop_fn))?.as_instance()?;
+        let drop_instance = self.get_ptr_fn(self.scalar_to_ptr(drop_fn)?)?.as_instance()?;
         trace!("Found drop fn: {:?}", drop_instance);
         let fn_sig = drop_instance.ty(*self.tcx, self.param_env).fn_sig(*self.tcx);
         let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig);
@@ -132,7 +132,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             .get_ptr_alloc(vtable_slot, pointer_size, self.tcx.data_layout.pointer_align.abi)?
             .expect("cannot be a ZST");
 
-        let new_vtable = self.scalar_to_ptr(new_vtable.read_ptr_sized(Size::ZERO)?.check_init()?);
+        let new_vtable =
+            self.scalar_to_ptr(new_vtable.read_ptr_sized(Size::ZERO)?.check_init()?)?;
 
         Ok(new_vtable)
     }

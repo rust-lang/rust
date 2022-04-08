@@ -197,8 +197,8 @@ impl interpret::MayLeak for ! {
 }
 
 impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
-    fn guaranteed_eq(&mut self, a: Scalar, b: Scalar) -> bool {
-        match (a, b) {
+    fn guaranteed_eq(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
+        Ok(match (a, b) {
             // Comparisons between integers are always known.
             (Scalar::Int { .. }, Scalar::Int { .. }) => a == b,
             // Equality with integers can never be known for sure.
@@ -207,11 +207,11 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // some things (like functions and vtables) do not have stable addresses
             // so we need to be careful around them (see e.g. #73722).
             (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
-        }
+        })
     }
 
-    fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> bool {
-        match (a, b) {
+    fn guaranteed_ne(&mut self, a: Scalar, b: Scalar) -> InterpResult<'tcx, bool> {
+        Ok(match (a, b) {
             // Comparisons between integers are always known.
             (Scalar::Int(_), Scalar::Int(_)) => a != b,
             // Comparisons of abstract pointers with null pointers are known if the pointer
@@ -219,13 +219,13 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
             // Inequality with integers other than null can never be known for sure.
             (Scalar::Int(int), ptr @ Scalar::Ptr(..))
             | (ptr @ Scalar::Ptr(..), Scalar::Int(int)) => {
-                int.is_null() && !self.scalar_may_be_null(ptr)
+                int.is_null() && !self.scalar_may_be_null(ptr)?
             }
             // FIXME: return `true` for at least some comparisons where we can reliably
             // determine the result of runtime inequality tests at compile-time.
             // Examples include comparison of addresses in different static items.
             (Scalar::Ptr(..), Scalar::Ptr(..)) => false,
-        }
+        })
     }
 }
 
@@ -329,9 +329,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 let a = ecx.read_immediate(&args[0])?.to_scalar()?;
                 let b = ecx.read_immediate(&args[1])?.to_scalar()?;
                 let cmp = if intrinsic_name == sym::ptr_guaranteed_eq {
-                    ecx.guaranteed_eq(a, b)
+                    ecx.guaranteed_eq(a, b)?
                 } else {
-                    ecx.guaranteed_ne(a, b)
+                    ecx.guaranteed_ne(a, b)?
                 };
                 ecx.write_scalar(Scalar::from_bool(cmp), dest)?;
             }
