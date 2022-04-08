@@ -3,10 +3,7 @@
 use crate::RootDatabase;
 use hir::Semantics;
 use rustc_hash::FxHashSet;
-use syntax::{
-    ast::{self, HasName},
-    AstNode,
-};
+use syntax::{ast, AstNode};
 
 /// Given the `impl` block, attempts to find the trait this `impl` corresponds to.
 pub fn resolve_target_trait(
@@ -28,32 +25,28 @@ pub fn get_missing_assoc_items(
     sema: &Semantics<RootDatabase>,
     impl_def: &ast::Impl,
 ) -> Vec<hir::AssocItem> {
+    let imp = match sema.to_def(impl_def) {
+        Some(it) => it,
+        None => return vec![],
+    };
+
     // Names must be unique between constants and functions. However, type aliases
     // may share the same name as a function or constant.
     let mut impl_fns_consts = FxHashSet::default();
     let mut impl_type = FxHashSet::default();
 
-    if let Some(item_list) = impl_def.assoc_item_list() {
-        for item in item_list.assoc_items() {
-            match item {
-                ast::AssocItem::Fn(f) => {
-                    if let Some(n) = f.name() {
-                        impl_fns_consts.insert(n.syntax().to_string());
-                    }
+    for item in imp.items(sema.db) {
+        match item {
+            hir::AssocItem::Function(it) => {
+                impl_fns_consts.insert(it.name(sema.db).to_string());
+            }
+            hir::AssocItem::Const(it) => {
+                if let Some(name) = it.name(sema.db) {
+                    impl_fns_consts.insert(name.to_string());
                 }
-
-                ast::AssocItem::TypeAlias(t) => {
-                    if let Some(n) = t.name() {
-                        impl_type.insert(n.syntax().to_string());
-                    }
-                }
-
-                ast::AssocItem::Const(c) => {
-                    if let Some(n) = c.name() {
-                        impl_fns_consts.insert(n.syntax().to_string());
-                    }
-                }
-                ast::AssocItem::MacroCall(_) => (),
+            }
+            hir::AssocItem::TypeAlias(it) => {
+                impl_type.insert(it.name(sema.db).to_string());
             }
         }
     }
@@ -217,6 +210,23 @@ pub struct Foo;
 impl Foo {
     fn bar() {$0}
 }"#,
+            expect![[r#""#]],
+        );
+
+        check_missing_assoc(
+            r#"
+trait Tr {
+    fn required();
+}
+macro_rules! m {
+    () => { fn required() {} };
+}
+impl Tr for () {
+    m!();
+    $0
+}
+
+            "#,
             expect![[r#""#]],
         );
     }
