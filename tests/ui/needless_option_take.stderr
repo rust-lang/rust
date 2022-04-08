@@ -1,0 +1,10 @@
+error: called `Option::take()` on a temporary value
+  --> $DIR/needless_option_take.rs:14:5
+   |
+LL |     x.as_ref().take();
+   |     ^^^^^^^^^^^^^^^^^ help: try: `x.as_ref()`
+   |
+   = note: `-D clippy::needless-option-take` implied by `-D warnings`
+
+error: aborting due to previous error
+
