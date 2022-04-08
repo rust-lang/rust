@@ -213,10 +213,15 @@ impl SourceToDefCtx<'_, '_> {
         src: InFile<ast::IdentPat>,
     ) -> Option<(DefWithBodyId, PatId)> {
         let container = self.find_pat_or_label_container(src.syntax())?;
-        let (_body, source_map) = self.db.body_with_source_map(container);
+        let (body, source_map) = self.db.body_with_source_map(container);
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
-        Some((container, pat_id))
+        // the pattern could resolve to a constant, verify that that is not the case
+        if let crate::Pat::Bind { .. } = body[pat_id] {
+            Some((container, pat_id))
+        } else {
+            None
+        }
     }
     pub(super) fn self_param_to_def(
         &mut self,
