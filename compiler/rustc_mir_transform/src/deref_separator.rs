@@ -26,29 +26,16 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
                             // We are adding current p_ref's projections to our
                             // temp value, excluding projections we already covered.
-                            if idx == 1 {
-                                let deref_place = Place::from(place_local)
-                                    .project_deeper(&p_ref.projection[last_len..], tcx);
-                                patch.add_assign(
-                                    loc,
-                                    Place::from(temp),
-                                    Rvalue::Use(Operand::Move(deref_place)),
-                                );
+                            let deref_place = Place::from(place_local)
+                                .project_deeper(&p_ref.projection[last_len..], tcx);
+                            patch.add_assign(
+                                loc,
+                                Place::from(temp),
+                                Rvalue::Use(Operand::Move(deref_place)),
+                            );
 
-                                place_local = temp;
-                                last_len = p_ref.projection.len();
-                            } else {
-                                let deref_place = Place::from(place_local)
-                                    .project_deeper(&p_ref.projection[last_len..], tcx);
-                                patch.add_assign(
-                                    loc,
-                                    Place::from(temp),
-                                    Rvalue::Use(Operand::Move(deref_place)),
-                                );
-
-                                place_local = temp;
-                                last_len = p_ref.projection.len();
-                            }
+                            place_local = temp;
+                            last_len = p_ref.projection.len();
 
                             // We are creating a place by using our temp value's location
                             // and copying derefed values which we need to create new statement.
