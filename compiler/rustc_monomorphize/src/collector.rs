@@ -1170,7 +1170,7 @@ impl<'v> RootCollector<'_, 'v> {
                             }
                         }
                     }
-                    _ => {}
+                    _ => bug!(),
                 }
             }
             DefKind::GlobalAsm => {
@@ -1197,8 +1197,8 @@ impl<'v> RootCollector<'_, 'v> {
                 }
             }
             DefKind::Impl => {
-                let item = self.tcx.hir().item(id);
                 if self.mode == MonoItemCollectionMode::Eager {
+                    let item = self.tcx.hir().item(id);
                     create_mono_items_for_default_impls(self.tcx, item, self.output);
                 }
             }
