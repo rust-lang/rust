@@ -9,7 +9,6 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 
-use std::convert::TryFrom;
 use std::env;
 use std::num::NonZeroU64;
 use std::path::PathBuf;

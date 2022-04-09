@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use crate::*;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_target::spec::abi::Abi;

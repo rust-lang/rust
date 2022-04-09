@@ -1,6 +1,5 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
-use std::convert::TryFrom;
 use std::ffi::OsStr;
 use std::iter;
 

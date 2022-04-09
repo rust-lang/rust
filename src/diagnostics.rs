@@ -414,11 +414,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                                 )
                             }
                         },
-                    CreatedCallId(id) => format!("function call with id {}", id),
-                    CreatedAlloc(AllocId(id)) => format!("created allocation with id {}", id),
-                    FreedAlloc(AllocId(id)) => format!("freed allocation with id {}", id),
+                    CreatedCallId(id) => format!("function call with id {id}"),
+                    CreatedAlloc(AllocId(id)) => format!("created allocation with id {id}"),
+                    FreedAlloc(AllocId(id)) => format!("freed allocation with id {id}"),
                     RejectedIsolatedOp(ref op) =>
-                        format!("{} was made to return an error due to isolation", op),
+                        format!("{op} was made to return an error due to isolation"),
                 };
 
                 let (title, diag_level) = match e {

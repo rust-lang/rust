@@ -2,7 +2,6 @@
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
-use std::convert::TryFrom;
 use std::num::TryFromIntError;
 use std::time::{Duration, Instant, SystemTime};
 
