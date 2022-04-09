@@ -310,7 +310,7 @@ define_tables! {
     promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
     thir_abstract_const: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
     impl_parent: Table<DefIndex, Lazy!(DefId)>,
-    impl_polarity: Table<DefIndex, Lazy!(ty::ImplPolarity)>,
+    impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     impl_constness: Table<DefIndex, Lazy!(hir::Constness)>,
     impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?

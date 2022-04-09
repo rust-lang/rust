@@ -76,6 +76,43 @@ impl FixedSizeEncoding for u32 {
     }
 }
 
+macro_rules! fixed_size_enum {
+    ($ty:ty { $(($($pat:tt)*))* }) => {
+        impl FixedSizeEncoding for Option<$ty> {
+            fixed_size_encoding_byte_len_and_defaults!(1);
+
+            #[inline]
+            fn from_bytes(b: &[u8]) -> Self {
+                use $ty::*;
+                if b[0] == 0 {
+                    return None;
+                }
+                match b[0] - 1 {
+                    $(${index()} => Some($($pat)*),)*
+                    _ => panic!("Unexpected ImplPolarity code: {:?}", b[0]),
+                }
+            }
+
+            #[inline]
+            fn write_to_bytes(self, b: &mut [u8]) {
+                use $ty::*;
+                b[0] = match self {
+                    None => 0,
+                    $(Some($($pat)*) => 1 + ${index()},)*
+                }
+            }
+        }
+    }
+}
+
+fixed_size_enum! {
+    ty::ImplPolarity {
+        ( Positive    )
+        ( Negative    )
+        ( Reservation )
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.

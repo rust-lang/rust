@@ -1472,7 +1472,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
 
                 let polarity = self.tcx.impl_polarity(def_id);
-                record!(self.tables.impl_polarity[def_id] <- polarity);
+                self.tables.impl_polarity.set(def_id.index, polarity);
 
                 EntryKind::Impl
             }

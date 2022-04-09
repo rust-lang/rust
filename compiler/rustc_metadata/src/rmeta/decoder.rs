@@ -292,6 +292,12 @@ trait LazyQueryDecodable<'a, 'tcx, T> {
     ) -> T;
 }
 
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<T> {
+    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, err: impl FnOnce() -> !) -> T {
+        if let Some(l) = self { l } else { err() }
+    }
+}
+
 impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<Lazy<T>>
 where
     T: Decodable<DecodeContext<'a, 'tcx>>,
