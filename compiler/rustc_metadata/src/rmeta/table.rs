@@ -200,6 +200,34 @@ impl FixedSizeEncoding for Option<DefPathHash> {
     }
 }
 
+// We directly encode RawDefId because using a `Lazy` would incur a 50% overhead in the worst case.
+impl FixedSizeEncoding for Option<RawDefId> {
+    fixed_size_encoding_byte_len_and_defaults!(2 * u32::BYTE_LEN);
+
+    #[inline]
+    fn from_bytes(b: &[u8]) -> Self {
+        let krate = u32::from_bytes(&b[0..4]);
+        let index = u32::from_bytes(&b[4..8]);
+        if krate == 0 {
+            return None;
+        }
+        Some(RawDefId { krate: krate - 1, index })
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8]) {
+        match self {
+            None => 0u32.write_to_bytes(b),
+            Some(RawDefId { krate, index }) => {
+                // CrateNum is less than `CrateNum::MAX_AS_U32`.
+                debug_assert!(krate < u32::MAX);
+                (1 + krate).write_to_bytes(&mut b[0..4]);
+                index.write_to_bytes(&mut b[4..8]);
+            }
+        }
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.

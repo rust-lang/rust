@@ -147,8 +147,7 @@ impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a
     }
 }
 
-impl<'a, 'tcx, I: Idx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a, 'tcx>>
-    for Lazy<Table<I, T>>
+impl<'a, 'tcx, I: Idx, T> Encodable<EncodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -1285,7 +1284,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.encode_ident_span(def_id, impl_item.ident(self.tcx));
         self.encode_item_type(def_id);
         if let Some(trait_item_def_id) = impl_item.trait_item_def_id {
-            record!(self.tables.trait_item_def_id[def_id] <- trait_item_def_id);
+            self.tables.trait_item_def_id.set(def_id.index, trait_item_def_id.into());
         }
         if impl_item.kind == ty::AssocKind::Fn {
             record!(self.tables.fn_sig[def_id] <- tcx.fn_sig(def_id));
@@ -1457,7 +1456,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
                     if let Some(mut an) = trait_def.ancestors(self.tcx, def_id).ok() {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
-                            record!(self.tables.impl_parent[def_id] <- parent);
+                            self.tables.impl_parent.set(def_id.index, parent.into());
                         }
                     }
 

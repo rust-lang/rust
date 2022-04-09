@@ -388,6 +388,17 @@ impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DeprecationEntry>>
     }
 }
 
+impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DefId>> for Option<RawDefId> {
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        _: TyCtxt<'tcx>,
+        _: impl FnOnce() -> !,
+    ) -> Option<DefId> {
+        self.map(|raw_def_id| raw_def_id.decode(cdata))
+    }
+}
+
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -406,8 +417,9 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.unwrap()
     }
 
+    #[inline]
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
+        self.cdata().map_encoded_cnum_to_current(cnum)
     }
 
     fn read_lazy_with_meta<T: ?Sized + LazyMeta>(&mut self, meta: T::Meta) -> Lazy<T> {
@@ -718,8 +730,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a
     }
 }
 
-impl<'a, 'tcx, I: Idx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
-    for Lazy<Table<I, T>>
+impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -854,6 +865,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     fn maybe_kind(self, item_id: DefIndex) -> Option<EntryKind> {
         self.root.tables.kind.get(self, item_id).map(|k| k.decode(self))
+    }
+
+    #[inline]
+    pub(super) fn map_encoded_cnum_to_current(self, cnum: CrateNum) -> CrateNum {
+        if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
     }
 
     fn kind(self, item_id: DefIndex) -> EntryKind {
