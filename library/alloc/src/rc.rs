@@ -393,7 +393,7 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![allow(dead_code)]
+    /// # #![allow(dead_code)]
     /// use std::rc::{Rc, Weak};
     ///
     /// struct Gadget {
