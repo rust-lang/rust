@@ -283,7 +283,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 if let Some(entry_idx) = vptr_entry_idx {
                     let entry_idx = u64::try_from(entry_idx).unwrap();
                     let (old_data, old_vptr) = val.to_scalar_pair()?;
-                    let old_vptr = self.scalar_to_ptr(old_vptr);
+                    let old_vptr = self.scalar_to_ptr(old_vptr)?;
                     let new_vptr = self
                         .read_new_vtable_after_trait_upcasting_from_vtable(old_vptr, entry_idx)?;
                     self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)

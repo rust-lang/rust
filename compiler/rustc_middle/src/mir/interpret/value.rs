@@ -12,6 +12,7 @@ use crate::ty::{Lift, ParamEnv, ScalarInt, Ty, TyCtxt};
 
 use super::{
     AllocId, AllocRange, ConstAllocation, InterpResult, Pointer, PointerArithmetic, Provenance,
+    ScalarSizeMismatch,
 };
 
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
@@ -300,16 +301,29 @@ impl<Tag> Scalar<Tag> {
     ///
     /// This method only exists for the benefit of low-level operations that truly need to treat the
     /// scalar in whatever form it is.
+    ///
+    /// This throws UB (instead of ICEing) on a size mismatch since size mismatches can arise in
+    /// Miri when someone declares a function that we shim (such as `malloc`) with a wrong type.
     #[inline]
-    pub fn to_bits_or_ptr_internal(self, target_size: Size) -> Result<u128, Pointer<Tag>> {
+    pub fn to_bits_or_ptr_internal(
+        self,
+        target_size: Size,
+    ) -> Result<Result<u128, Pointer<Tag>>, ScalarSizeMismatch> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        match self {
-            Scalar::Int(int) => Ok(int.assert_bits(target_size)),
+        Ok(match self {
+            Scalar::Int(int) => Ok(int.to_bits(target_size).map_err(|size| {
+                ScalarSizeMismatch { target_size: target_size.bytes(), data_size: size.bytes() }
+            })?),
             Scalar::Ptr(ptr, sz) => {
-                assert_eq!(target_size.bytes(), u64::from(sz));
+                if target_size.bytes() != sz.into() {
+                    return Err(ScalarSizeMismatch {
+                        target_size: target_size.bytes(),
+                        data_size: sz.into(),
+                    });
+                }
                 Err(ptr)
             }
-        }
+        })
     }
 }
 
@@ -348,10 +362,10 @@ impl<'tcx, Tag: Provenance> Scalar<Tag> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
         self.try_to_int().map_err(|_| err_unsup!(ReadPointerAsBytes))?.to_bits(target_size).map_err(
             |size| {
-                err_ub!(ScalarSizeMismatch {
+                err_ub!(ScalarSizeMismatch(ScalarSizeMismatch {
                     target_size: target_size.bytes(),
                     data_size: size.bytes(),
-                })
+                }))
                 .into()
             },
         )

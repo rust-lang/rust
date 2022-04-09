@@ -519,7 +519,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         .kind(),
                     ty::Dynamic(..)
                 ));
-                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta());
+                let vtable = self.scalar_to_ptr(receiver_place.meta.unwrap_meta())?;
                 let fn_val = self.get_vtable_slot(vtable, u64::try_from(idx).unwrap())?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
