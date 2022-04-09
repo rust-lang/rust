@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
-use rustc_data_structures::intern::Interned;
 use rustc_hir::{Expr, ExprKind, PathSegment};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
@@ -56,8 +55,8 @@ fn check_case_sensitive_file_extension_comparison(ctx: &LateContext<'_>, expr: &
                 ty::Str => {
                     return Some(span);
                 },
-                ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) => {
-                    if ctx.tcx.is_diagnostic_item(sym::String, did) {
+                ty::Adt(def, _) => {
+                    if ctx.tcx.is_diagnostic_item(sym::String, def.did()) {
                         return Some(span);
                     }
                 },
