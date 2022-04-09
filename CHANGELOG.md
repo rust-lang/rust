@@ -2,10 +2,62 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Also apply `empty_item_single_line=true` to trait definitions to match the behavior of empty functions, struct, enums, and impls [#5047](https://github.com/rust-lang/rustfmt/issues/5047)
+
 ### Fixed
 
+- Block indent line breaks for type alias impl traits (TAITs) when `version = "Two"` [#5027](https://github.com/rust-lang/rustfmt/issues/5027)
+- Retain trailing comments in module when using `#![rustfmt::skip]` [#5033](https://github.com/rust-lang/rustfmt/issues/5033)
+- Remove trailing whitespace when formatting a where clause with an empty right hand side [#5012](https://github.com/rust-lang/rustfmt/issues/5012) [#4850](https://github.com/rust-lang/rustfmt/issues/4850)
+- Fix various module resolution issues:
+  - Handle external mods imported via external->inline load hierarchy [#5063](https://github.com/rust-lang/rustfmt/issues/5063)
+  - Resolve sub modules of integration tests [#5119](https://github.com/rust-lang/rustfmt/issues/5119)
+  - Module resolution will fallback to the current search directory if a relative directory search results in a `FileNotFound` error [#5198](https://github.com/rust-lang/rustfmt/issues/5198)
+  - Give clearer error messsaeg when a module is found in two places (e.g `x.rs` and `x/mod.rs`) [#5167](https://github.com/rust-lang/rustfmt/issues/5167)
+- Prevent rustfmt from adding an `impl Trait` definition into types [#5086](https://github.com/rust-lang/rustfmt/issues/5086)
+- Correctly format associated type in macro body [#4823](https://github.com/rust-lang/rustfmt/issues/4823)
+- Fix cases where `normalize_comments=true` would de-normalizes some comments [#4909](https://github.com/rust-lang/rustfmt/issues/4909)
+- Prevent rustfmt from wrapping reference style links [#5095](https://github.com/rust-lang/rustfmt/issues/5095) and [#4933](https://github.com/rust-lang/rustfmt/issues/4933)
+- Prevent rustfmt from always adding an empty comment line when formatting itemized blocks [#5088](https://github.com/rust-lang/rustfmt/issues/5088)
+- Don't format files annotated with an inner `#![rustfmt::skip]` attribute [PR #5094](https://github.com/rust-lang/rustfmt/pull/5094)
+- Remove duplicate comma when struct pattern ends with `..` and `trailing_comma=Always` [#5066](https://github.com/rust-lang/rustfmt/issues/5066)
+- Fix static async closure qualifier order [#5149](https://github.com/rust-lang/rustfmt/issues/5149)
+- Retain qualified path when rewriting struct literal expressions [#5151](https://github.com/rust-lang/rustfmt/issues/5151)
+- Do not flatten match arm block with leading attributes [#4109](https://github.com/rust-lang/rustfmt/issues/4109)
+- Backport json emitter and stdin changes [PR #5054](https://github.com/rust-lang/rustfmt/pull/5054)
+  - Make `--check` work when running rustfmt with input from stdin [PR #3896](https://github.com/rust-lang/rustfmt/pull/3896)
+  - Fix `--check` with the `--files-with-diff` flag [PR #3910](https://github.com/rust-lang/rustfmt/pull/3910)
+  - Produce valid JSON when using the JSON emitter [PR #3953](https://github.com/rust-lang/rustfmt/pull/3953)
+  - Fix newlines in JSON output [PR #4262](https://github.com/rust-lang/rustfmt/pull/4262)
+  - Use `<stdin>` when emitting stdin as filename [PR #4298](https://github.com/rust-lang/rustfmt/pull/4298)
+- Generate output when formatting `@generated` input via stdin [#5172](https://github.com/rust-lang/rustfmt/issues/5172)
+- Fix comment indentation in empty structs [#4854](https://github.com/rust-lang/rustfmt/issues/4854)
+- Prevent adding whitespace when rewriting `ast::Param` [#5125](https://github.com/rust-lang/rustfmt/issues/5125)
+- Prevent panic when `wrap_comments=true` and non-ascii character at comment wrap boundary [#5023](https://github.com/rust-lang/rustfmt/issues/5023)
+- Retain trailing commas in inline post comments [#5042](https://github.com/rust-lang/rustfmt/issues/5042)
+- Fix `import_granularity` option when the use tree has an alias [#5131](https://github.com/rust-lang/rustfmt/issues/5131)
+- Don't merge gereric items into their doc comments [#5122](https://github.com/rust-lang/rustfmt/issues/5122)
 - Fixes issue where wrapped strings would be incorrectly indented in macro defs when `format_strings` was enabled [#4036](https://github.com/rust-lang/rustfmt/issues/4036)
+- Handle markdown block quotes when `wrap_comments=true` [#5157](https://github.com/rust-lang/rustfmt/issues/5157)
+- Long markdown headers are no longer wrapped when `wrap_comments=true` [#5238](https://github.com/rust-lang/rustfmt/issues/5238)
+- Retain trailing comma when struct fields are followed by an empty line [#4791](https://github.com/rust-lang/rustfmt/issues/4791) [#4928](https://github.com/rust-lang/rustfmt/issues/4928)
+- Fix compile error when `imports_granularity=Module` and path contains self [#4681](https://github.com/rust-lang/rustfmt/issues/4681)
 - Fixes an issue where types would be incorrectly wrapped in comments [#5260](https://github.com/rust-lang/rustfmt/issues/5260)
+- Don't duplicate parts of `const` expressions when formatting generic arguments [#5273](https://github.com/rust-lang/rustfmt/issues/5273)
+- Prevent merging derives when using `#[rustfmt::skip::attributes(derive)]` [#5270](https://github.com/rust-lang/rustfmt/issues/5270)
+- Retain trailing `;` when rewriting macro call in extern block [#5281](https://github.com/rust-lang/rustfmt/issues/5281)
+- Add a newline when formatting struct fields preceeded by doc comments and inline comments [#5215](https://github.com/rust-lang/rustfmt/issues/5215)
+
+### Added
+
+- Added `One` as a new [group_imports](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#group_imports) option to create a single group for all imports [PR #4966](https://github.com/rust-lang/rustfmt/pull/4966)
+- Add [short_array_element_width_threshold](https://rust-lang.github.io/rustfmt/?version=v1.4.38&search=#short_array_element_width_threshold) config option [PR #5228](https://github.com/rust-lang/rustfmt/pull/5228)
+
+### Removed
+
+- Remove rustfmt executable path from usage string [#5214](https://github.com/rust-lang/rustfmt/issues/5214)
 
 ## [1.4.38] 2021-10-20
 
