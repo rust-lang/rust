@@ -311,7 +311,7 @@ define_tables! {
     thir_abstract_const: Table<DefIndex, Lazy!(&'tcx [thir::abstract_const::Node<'tcx>])>,
     impl_parent: Table<DefIndex, Lazy!(DefId)>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
-    impl_constness: Table<DefIndex, Lazy!(hir::Constness)>,
+    impl_constness: Table<DefIndex, hir::Constness>,
     impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,

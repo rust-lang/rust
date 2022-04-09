@@ -113,6 +113,13 @@ fixed_size_enum! {
     }
 }
 
+fixed_size_enum! {
+    hir::Constness {
+        ( NotConst )
+        ( Const    )
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.
