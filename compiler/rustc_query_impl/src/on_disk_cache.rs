@@ -536,13 +536,18 @@ where
 {
     let start_pos = decoder.position();
 
-    let actual_tag = T::decode(decoder);
-    assert_eq!(actual_tag, expected_tag);
-    let value = V::decode(decoder);
-    let end_pos = decoder.position();
+    if cfg!(debug_assertions) {
+        let actual_tag = T::decode(decoder);
+        assert_eq!(actual_tag, expected_tag);
+    }
 
-    let expected_len: u64 = Decodable::decode(decoder);
-    assert_eq!((end_pos - start_pos) as u64, expected_len);
+    let value = V::decode(decoder);
+
+    if cfg!(debug_assertions) {
+        let end_pos = decoder.position();
+        let expected_len: u64 = Decodable::decode(decoder);
+        assert_eq!((end_pos - start_pos) as u64, expected_len);
+    }
 
     value
 }
@@ -839,11 +844,18 @@ where
     ) -> Result<(), E::Error> {
         let start_pos = self.position();
 
-        tag.encode(self)?;
+        if cfg!(debug_assertions) {
+            tag.encode(self)?;
+        }
+
         value.encode(self)?;
 
-        let end_pos = self.position();
-        ((end_pos - start_pos) as u64).encode(self)
+        if cfg!(debug_assertions) {
+            let end_pos = self.position();
+            ((end_pos - start_pos) as u64).encode(self)?;
+        }
+
+        Ok(())
     }
 }
 
