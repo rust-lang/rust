@@ -351,23 +351,31 @@ impl<T> Arc<T> {
         unsafe { Self::from_inner(Box::leak(x).into()) }
     }
 
-    /// Constructs a new `Arc<T>` using a closure `data_fn` that has access to
-    /// a weak reference to the constructing `Arc<T>`.
+    /// Constructs a new `Arc<T>` while giving you a `Weak<T>` to the allocation,
+    /// to allow you to construct a `T` which holds a weak pointer to itself.
     ///
     /// Generally, a structure circularly referencing itself, either directly or
-    /// indirectly, should not hold a strong reference to prevent a memory leak.
-    /// In `data_fn`, initialization of `T` can make use of the weak reference
-    /// by cloning and storing it inside `T` for use at a later time.
+    /// indirectly, should not hold a strong reference to itself to prevent a memory leak.
+    /// Using this function, you get access to the weak pointer during the
+    /// initialization of `T`, before the `Arc<T>` is created, such that you can
+    /// clone and store it inside the `T`.
     ///
-    /// Since the new `Arc<T>` is not fully-constructed until
-    /// `Arc<T>::new_cyclic` returns, calling [`upgrade`] on the weak
-    /// reference inside `data_fn` will fail and result in a `None` value.
+    /// `new_cyclic` first allocates the managed allocation for the `Arc<T>`,
+    /// then calls your closure, giving it a `Weak<T>` to this allocation,
+    /// and only afterwards completes the construction of the `Arc<T>` by placing
+    /// the `T` returned from your closure into the allocation.
+    ///
+    /// Since the new `Arc<T>` is not fully-constructed until `Arc<T>::new_cyclic`
+    /// returns, calling [`upgrade`] on the weak reference inside your closure will
+    /// fail and result in a `None` value.
     ///
     /// # Panics
+    ///
     /// If `data_fn` panics, the panic is propagated to the caller, and the
     /// temporary [`Weak<T>`] is dropped normally.
     ///
     /// # Example
+    ///
     /// ```
     /// #![allow(dead_code)]
     /// use std::sync::{Arc, Weak};
@@ -379,7 +387,12 @@ impl<T> Arc<T> {
     /// impl Gadget {
     ///     /// Construct a reference counted Gadget.
     ///     fn new() -> Arc<Self> {
-    ///         Arc::new_cyclic(|me| Gadget { me: me.clone() })
+    ///         // `me` is a `Weak<Gadget>` pointing at the new allocation of the
+    ///         // `Arc` we're constructing.
+    ///         Arc::new_cyclic(|me| {
+    ///             // Create the actual struct here.
+    ///             Gadget { me: me.clone() }
+    ///         })
     ///     }
     ///
     ///     /// Return a reference counted pointer to Self.
