@@ -678,6 +678,10 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
+        // SAFETY: The comparison has no side-effects, and the intrinsic
+        // does this check internally in the CTFE implementation.
+        unsafe { assert_unsafe_precondition!(self >= origin) };
+
         let pointee_size = mem::size_of::<T>();
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.

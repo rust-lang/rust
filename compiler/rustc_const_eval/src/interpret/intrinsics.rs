@@ -365,10 +365,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         } else {
                             usize_layout
                         };
-                        let a_offset = ImmTy::from_uint(a_offset.bytes(), usize_layout);
-                        let b_offset = ImmTy::from_uint(b_offset.bytes(), usize_layout);
-                        let (val, _overflowed, _ty) =
+
+                        // The subtraction is always done in `isize` to enforce
+                        // the "no more than `isize::MAX` apart" requirement.
+                        let a_offset = ImmTy::from_uint(a_offset.bytes(), isize_layout);
+                        let b_offset = ImmTy::from_uint(b_offset.bytes(), isize_layout);
+                        let (val, overflowed, _ty) =
                             self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
+                        if overflowed {
+                            throw_ub_format!("Pointers were too far apart for {}", intrinsic_name);
+                        }
+
                         let pointee_layout = self.layout_of(substs.type_at(0))?;
                         let val = ImmTy::from_scalar(val, ret_layout);
                         let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
