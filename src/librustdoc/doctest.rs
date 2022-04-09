@@ -310,7 +310,10 @@ fn run_test(
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
-    let output_file = outdir.path().join("rust_out");
+    // Make sure we emit well-formed executable names for our platform.
+    let mut output_file = outdir.path().join("rust_out");
+    output_file.set_extension(env::consts::EXE_EXTENSION);
+    let output_file = output_file;
 
     let rustc_binary = rustdoc_options
         .test_builder
