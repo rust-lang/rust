@@ -1,7 +1,6 @@
 use crate::check::method::MethodCallee;
 use crate::check::{has_expected_num_generic_args, FnCtxt, PlaceOp};
 use rustc_ast as ast;
-use rustc_data_structures::intern::Interned;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -126,9 +125,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ) = index_expr.kind
         {
             match adjusted_ty.kind() {
-                ty::Adt(ty::AdtDef(Interned(ty::AdtDefData { did, .. }, _)), _)
-                    if self.tcx.is_diagnostic_item(sym::Vec, *did) =>
-                {
+                ty::Adt(def, _) if self.tcx.is_diagnostic_item(sym::Vec, def.did()) => {
                     return self.negative_index(adjusted_ty, index_expr.span, base_expr);
                 }
                 ty::Slice(_) | ty::Array(_, _) => {

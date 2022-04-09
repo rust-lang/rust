@@ -2,7 +2,6 @@ use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
@@ -164,12 +163,6 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         for outlives_bound in outlives_bounds {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
-                OutlivesBound::RegionSubRegion(
-                    r_a @ (Region(Interned(ReEarlyBound(_), _)) | Region(Interned(ReFree(_), _))),
-                    Region(Interned(ReVar(vid_b), _)),
-                ) => {
-                    infcx.expect("no infcx provided but region vars found").add_given(r_a, *vid_b);
-                }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
                     self.region_bound_pairs_accum.push((r_a, GenericKind::Param(param_b)));
                 }
@@ -178,17 +171,23 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
                         .push((r_a, GenericKind::Projection(projection_b)));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
-                    // In principle, we could record (and take
-                    // advantage of) every relationship here, but
-                    // we are also free not to -- it simply means
-                    // strictly less that we can successfully type
-                    // check. Right now we only look for things
-                    // relationships between free regions. (It may
-                    // also be that we should revise our inference
-                    // system to be more general and to make use
-                    // of *every* relationship that arises here,
-                    // but presently we do not.)
-                    self.free_region_map.relate_regions(r_a, r_b);
+                    if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {
+                        infcx
+                            .expect("no infcx provided but region vars found")
+                            .add_given(r_a, vid_b);
+                    } else {
+                        // In principle, we could record (and take
+                        // advantage of) every relationship here, but
+                        // we are also free not to -- it simply means
+                        // strictly less that we can successfully type
+                        // check. Right now we only look for things
+                        // relationships between free regions. (It may
+                        // also be that we should revise our inference
+                        // system to be more general and to make use
+                        // of *every* relationship that arises here,
+                        // but presently we do not.)
+                        self.free_region_map.relate_regions(r_a, r_b);
+                    }
                 }
             }
         }
