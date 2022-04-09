@@ -159,11 +159,11 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
-        self.tcx.hir_crate_items(()).items.iter().map(|id| *id)
+        self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
     pub fn par_items(self, f: impl Fn(ItemId) + Sync + Send) {
-        par_for_each_in(self.tcx.hir_crate_items(()).items.to_vec(), f);
+        par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
 
     pub fn def_key(self, def_id: LocalDefId) -> DefKey {
