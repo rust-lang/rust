@@ -246,12 +246,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, _: Location) {
         // Set off any `bug!`s in the type computation code
-        let ty = place.ty(&self.body.local_decls, self.tcx);
-        if ty.variant_index.is_some() {
-            self.fail(location, "Top level places may not have their variant index set!");
-        }
+        let _ = place.ty(&self.body.local_decls, self.tcx);
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {

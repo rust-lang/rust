@@ -1921,7 +1921,7 @@ pub struct CopyNonOverlapping<'tcx> {
 ///    pointee type is unsized, the pointer additionally stored the value of the metadata.
 ///
 /// Computing a place may cause UB. One possibility is that the pointer used for a `Deref` may not
-/// be suitably aligned. Another possibility is that the place is not in bouns, meaning it does not
+/// be suitably aligned. Another possibility is that the place is not in bounds, meaning it does not
 /// point to an actual allocation.
 ///
 /// However, if this is actually UB and when the UB kicks in is undecided. This is being discussed
@@ -2315,10 +2315,9 @@ pub struct SourceScopeLocalData {
 /// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
 /// something we can even decide without knowing more about Rust's memory model?
 ///
-/// Loading a place that has its variant index set is not well-formed. However, note that this rule
-/// only applies to places appearing in MIR bodies. Many functions, such as [`Place::ty`], still
-/// accept such a place. If you write a function for which it might be ambiguous whether such a
-/// thing is accepted, make sure to document your choice clearly.
+/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// currently implements it, but it seems like this may be something to check against in the
+/// validator.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
     /// Creates a value by loading the given place. The type of the place must be `Copy`
