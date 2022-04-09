@@ -150,23 +150,19 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            let item = tcx.hir().item(id);
-            dirty_clean_visitor.check_item(item.def_id, item.span);
+            dirty_clean_visitor.check_item(id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            let item = tcx.hir().trait_item(id);
-            dirty_clean_visitor.check_item(item.def_id, item.span);
+            dirty_clean_visitor.check_item(id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            let item = tcx.hir().impl_item(id);
-            dirty_clean_visitor.check_item(item.def_id, item.span);
+            dirty_clean_visitor.check_item(id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            let item = tcx.hir().foreign_item(id);
-            dirty_clean_visitor.check_item(item.def_id, item.span);
+            dirty_clean_visitor.check_item(id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
@@ -385,7 +381,8 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         }
     }
 
-    fn check_item(&mut self, item_id: LocalDefId, item_span: Span) {
+    fn check_item(&mut self, item_id: LocalDefId) {
+        let item_span = self.tcx.def_span(item_id.to_def_id());
         let def_path_hash = self.tcx.def_path_hash(item_id.to_def_id());
         for attr in self.tcx.get_attrs(item_id.to_def_id()).iter() {
             let Some(assertion) = self.assertion_maybe(item_id, attr) else {
