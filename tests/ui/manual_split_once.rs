@@ -46,7 +46,7 @@ fn main() {
 
 fn _msrv_1_51() {
     #![clippy::msrv = "1.51"]
-    // `str::split_once` was stabilized in 1.16. Do not lint this
+    // `str::split_once` was stabilized in 1.52. Do not lint this
     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
 }
 
