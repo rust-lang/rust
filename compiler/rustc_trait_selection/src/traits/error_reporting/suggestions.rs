@@ -2064,7 +2064,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::BindingObligation(item_def_id, span) => {
                 let item_name = tcx.def_path_str(item_def_id);
                 let mut multispan = MultiSpan::from(span);
-                if let Some(ident) = tcx.opt_item_name(item_def_id) {
+                if let Some(ident) = tcx.opt_item_ident(item_def_id) {
                     let sm = tcx.sess.source_map();
                     let same_line =
                         match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
@@ -2267,7 +2267,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if !is_upvar_tys_infer_tuple {
                     let msg = format!("required because it appears within the type `{}`", ty);
                     match ty.kind() {
-                        ty::Adt(def, _) => match self.tcx.opt_item_name(def.did()) {
+                        ty::Adt(def, _) => match self.tcx.opt_item_ident(def.did()) {
                             Some(ident) => err.span_note(ident.span, &msg),
                             None => err.note(&msg),
                         },
@@ -2475,7 +2475,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 );
                 let sp = self
                     .tcx
-                    .opt_item_name(trait_item_def_id)
+                    .opt_item_ident(trait_item_def_id)
                     .map(|i| i.span)
                     .unwrap_or_else(|| self.tcx.def_span(trait_item_def_id));
                 let mut assoc_span: MultiSpan = sp.into();
@@ -2486,7 +2486,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(ident) = self
                     .tcx
                     .opt_associated_item(trait_item_def_id)
-                    .and_then(|i| self.tcx.opt_item_name(i.container.id()))
+                    .and_then(|i| self.tcx.opt_item_ident(i.container.id()))
                 {
                     assoc_span.push_span_label(ident.span, "in this trait");
                 }
@@ -2511,7 +2511,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if let Some(ident) = self
                     .tcx
                     .opt_associated_item(trait_item_def_id)
-                    .and_then(|i| self.tcx.opt_item_name(i.container.id()))
+                    .and_then(|i| self.tcx.opt_item_ident(i.container.id()))
                 {
                     assoc_span.push_span_label(ident.span, "in this trait");
                 }
