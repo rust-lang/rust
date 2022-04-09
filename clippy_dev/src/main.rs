@@ -36,13 +36,31 @@ fn main() {
             }
         },
         ("setup", Some(sub_command)) => match sub_command.subcommand() {
-            ("intellij", Some(matches)) => setup::intellij::setup_rustc_src(
-                matches
-                    .value_of("rustc-repo-path")
-                    .expect("this field is mandatory and therefore always valid"),
-            ),
-            ("git-hook", Some(matches)) => setup::git_hook::install_hook(matches.is_present("force-override")),
-            ("vscode-tasks", Some(matches)) => setup::vscode::install_tasks(matches.is_present("force-override")),
+            ("intellij", Some(matches)) => {
+                if matches.is_present("remove") {
+                    setup::intellij::remove_rustc_src();
+                } else {
+                    setup::intellij::setup_rustc_src(
+                        matches
+                            .value_of("rustc-repo-path")
+                            .expect("this field is mandatory and therefore always valid"),
+                    );
+                }
+            },
+            ("git-hook", Some(matches)) => {
+                if matches.is_present("remove") {
+                    setup::git_hook::remove_hook();
+                } else {
+                    setup::git_hook::install_hook(matches.is_present("force-override"));
+                }
+            },
+            ("vscode-tasks", Some(matches)) => {
+                if matches.is_present("remove") {
+                    setup::vscode::remove_tasks();
+                } else {
+                    setup::vscode::install_tasks(matches.is_present("force-override"));
+                }
+            },
             _ => {},
         },
         ("remove", Some(sub_command)) => match sub_command.subcommand() {
@@ -168,18 +186,31 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                     SubCommand::with_name("intellij")
                         .about("Alter dependencies so Intellij Rust can find rustc internals")
                         .arg(
+                            Arg::with_name("remove")
+                                .long("remove")
+                                .help("Remove the dependencies added with 'cargo dev setup intellij'")
+                                .required(false),
+                        )
+                        .arg(
                             Arg::with_name("rustc-repo-path")
                                 .long("repo-path")
                                 .short("r")
                                 .help("The path to a rustc repo that will be used for setting the dependencies")
                                 .takes_value(true)
                                 .value_name("path")
+                                .conflicts_with("remove")
                                 .required(true),
                         ),
                 )
                 .subcommand(
                     SubCommand::with_name("git-hook")
                         .about("Add a pre-commit git hook that formats your code to make it look pretty")
+                        .arg(
+                            Arg::with_name("remove")
+                                .long("remove")
+                                .help("Remove the pre-commit hook added with 'cargo dev setup git-hook'")
+                                .required(false),
+                        )
                         .arg(
                             Arg::with_name("force-override")
                                 .long("force-override")
@@ -191,6 +222,12 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
                 .subcommand(
                     SubCommand::with_name("vscode-tasks")
                         .about("Add several tasks to vscode for formatting, validation and testing")
+                        .arg(
+                            Arg::with_name("remove")
+                                .long("remove")
+                                .help("Remove the tasks added with 'cargo dev setup vscode-tasks'")
+                                .required(false),
+                        )
                         .arg(
                             Arg::with_name("force-override")
                                 .long("force-override")
