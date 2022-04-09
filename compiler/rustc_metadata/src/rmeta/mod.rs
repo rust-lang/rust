@@ -312,7 +312,7 @@ define_tables! {
     impl_parent: Table<DefIndex, Lazy!(DefId)>,
     impl_polarity: Table<DefIndex, ty::ImplPolarity>,
     impl_constness: Table<DefIndex, hir::Constness>,
-    impl_defaultness: Table<DefIndex, Lazy!(hir::Defaultness)>,
+    impl_defaultness: Table<DefIndex, hir::Defaultness>,
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
     mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,

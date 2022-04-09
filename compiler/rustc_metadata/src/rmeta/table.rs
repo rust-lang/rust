@@ -120,6 +120,14 @@ fixed_size_enum! {
     }
 }
 
+fixed_size_enum! {
+    hir::Defaultness {
+        ( Final                        )
+        ( Default { has_value: false } )
+        ( Default { has_value: true }  )
+    }
+}
+
 // NOTE(eddyb) there could be an impl for `usize`, which would enable a more
 // generic `Lazy<T>` impl, but in the general case we might not need / want to
 // fit every `usize` in `u32`.
