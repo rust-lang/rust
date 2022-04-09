@@ -332,9 +332,12 @@ impl CollectPrivateImplItemsVisitor<'_, '_> {
         // which are currently akin to allocator symbols.
         let codegen_attrs = self.tcx.codegen_fn_attrs(def_id);
         if codegen_attrs.contains_extern_indicator()
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
+            // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
+            // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
+            // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
             || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-            || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         {
             self.worklist.push(def_id);
         }
