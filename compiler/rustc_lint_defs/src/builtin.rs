@@ -2649,6 +2649,96 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
+    /// and a pointer.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(strict_provenance)]
+    /// #![warn(fuzzy_provenance_casts)]
+    ///
+    /// fn main() {
+    ///     let _dangling = 16_usize as *const u8;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is part of the strict provenance effort, see [issue #95228].
+    /// Casting an integer to a pointer is considered bad style, as a pointer
+    /// contains, besides the *address* also a *provenance*, indicating what
+    /// memory the pointer is allowed to read/write. Casting an integer, which
+    /// doesn't have provenance, to a pointer requires the compiler to assign
+    /// (guess) provenance. The compiler assigns "all exposed valid" (see the
+    /// docs of [`ptr::from_exposed_addr`] for more information about this
+    /// "exposing"). This penalizes the optimiser and is not well suited for
+    /// dynamic analysis/dynamic program verification (e.g. Miri or CHERI
+    /// platforms).
+    ///
+    /// It is much better to use [`ptr::with_addr`] instead to specify the
+    /// provenance you want. If using this function is not possible because the
+    /// code relies on exposed provenance then there is as an escape hatch
+    /// [`ptr::from_exposed_addr`].
+    ///
+    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
+    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/ptr/fn.with_addr
+    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr
+    pub FUZZY_PROVENANCE_CASTS,
+    Allow,
+    "a fuzzy integer to pointer cast is used",
+    @feature_gate = sym::strict_provenance;
+}
+
+declare_lint! {
+    /// The `lossy_provenance_casts` lint detects an `as` cast between a pointer
+    /// and an integer.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(strict_provenance)]
+    /// #![warn(lossy_provenance_casts)]
+    ///
+    /// fn main() {
+    ///     let x: u8 = 37;
+    ///     let _addr: usize = &x as *const u8 as usize;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is part of the strict provenance effort, see [issue #95228].
+    /// Casting a pointer to an integer is a lossy operation, because beyond
+    /// just an *address* a pointer may be associated with a particular
+    /// *provenance*. This information is used by the optimiser and for dynamic
+    /// analysis/dynamic program verification (e.g. Miri or CHERI platforms).
+    ///
+    /// Since this cast is lossy, it is considered good style to use the
+    /// [`ptr::addr`] method instead, which has a similar effect, but doesn't
+    /// "expose" the pointer provenance. This improves optimisation potential.
+    /// See the docs of [`ptr::addr`] and [`ptr::expose_addr`] for more information
+    /// about exposing pointer provenance.
+    ///
+    /// If your code can't comply with strict provenance and needs to expose
+    /// the provenance, then there is [`ptr::expose_addr`] as an escape hatch,
+    /// which preserves the behaviour of `as usize` casts while being explicit
+    /// about the semantics.
+    ///
+    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
+    /// [`ptr::addr`]: https://doc.rust-lang.org/core/ptr/fn.addr
+    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/ptr/fn.expose_addr
+    pub LOSSY_PROVENANCE_CASTS,
+    Allow,
+    "a lossy pointer to integer cast is used",
+    @feature_gate = sym::strict_provenance;
+}
+
+declare_lint! {
     /// The `const_evaluatable_unchecked` lint detects a generic constant used
     /// in a type.
     ///
@@ -3101,6 +3191,8 @@ declare_lint_pass! {
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
+        FUZZY_PROVENANCE_CASTS,
+        LOSSY_PROVENANCE_CASTS,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         MUST_NOT_SUSPEND,

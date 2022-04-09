@@ -1348,6 +1348,7 @@ symbols! {
         str_trim,
         str_trim_end,
         str_trim_start,
+        strict_provenance,
         stringify,
         stringify_macro,
         struct_field_attributes,
