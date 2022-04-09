@@ -162,7 +162,7 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_crate_items(()).items.iter().copied()
     }
 
-    pub fn par_items(self, f: impl Fn(ItemId) + Sync + Send) {
+    pub fn par_for_each_item(self, f: impl Fn(ItemId) + Sync + Send) {
         par_for_each_in(&self.tcx.hir_crate_items(()).items[..], |id| f(*id));
     }
 
