@@ -1097,8 +1097,19 @@ class RustBuild(object):
 
     def update_submodules(self):
         """Update submodules"""
-        if (not os.path.exists(os.path.join(self.rust_root, ".git"))) or \
-                self.get_toml('submodules') == "false":
+        has_git = os.path.exists(os.path.join(self.rust_root, ".git"))
+        # This just arbitrarily checks for cargo, but any workspace member in
+        # a submodule would work.
+        has_submodules = os.path.exists(os.path.join(self.rust_root, "src/tools/cargo/Cargo.toml"))
+        if not has_git and not has_submodules:
+            print("This is not a git repository, and the requisite git submodules were not found.")
+            print("If you downloaded the source from https://github.com/rust-lang/rust/releases,")
+            print("those sources will not work. Instead, consider downloading from the source")
+            print("releases linked at")
+            print("https://forge.rust-lang.org/infra/other-installation-methods.html#source-code")
+            print("or clone the repository at https://github.com/rust-lang/rust/.")
+            raise SystemExit(1)
+        if not has_git or self.get_toml('submodules') == "false":
             return
 
         default_encoding = sys.getdefaultencoding()
