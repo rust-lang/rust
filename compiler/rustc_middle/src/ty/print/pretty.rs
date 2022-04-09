@@ -2687,7 +2687,7 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
         }
 
         let item = hir.item(id);
-        if item.ident.name.as_str().is_empty() {
+        if item.ident.name == kw::Empty {
             continue;
         }
 
