@@ -168,13 +168,12 @@ impl OutlivesSuggestionBuilder {
         let fr_name = self.region_vid_to_name(mbcx, errci.fr);
         let outlived_fr_name = self.region_vid_to_name(mbcx, errci.outlived_fr);
 
-        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name) {
-            if !matches!(outlived_fr_name.source, RegionNameSource::Static) {
-                diag.help(&format!(
-                    "consider adding the following bound: `{}: {}`",
-                    fr_name, outlived_fr_name
-                ));
-            }
+        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name)
+            && !matches!(outlived_fr_name.source, RegionNameSource::Static)
+        {
+            diag.help(&format!(
+                "consider adding the following bound: `{fr_name}: {outlived_fr_name}`",
+            ));
         }
     }
 

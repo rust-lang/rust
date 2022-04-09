@@ -1102,30 +1102,38 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
 /// Machine pointer introspection.
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn scalar_to_ptr(&self, scalar: Scalar<M::PointerTag>) -> Pointer<Option<M::PointerTag>> {
+    pub fn scalar_to_ptr(
+        &self,
+        scalar: Scalar<M::PointerTag>,
+    ) -> InterpResult<'tcx, Pointer<Option<M::PointerTag>>> {
         // We use `to_bits_or_ptr_internal` since we are just implementing the method people need to
         // call to force getting out a pointer.
-        match scalar.to_bits_or_ptr_internal(self.pointer_size()) {
-            Err(ptr) => ptr.into(),
-            Ok(bits) => {
-                let addr = u64::try_from(bits).unwrap();
-                let ptr = M::ptr_from_addr(&self, addr);
-                if addr == 0 {
-                    assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
+        Ok(
+            match scalar
+                .to_bits_or_ptr_internal(self.pointer_size())
+                .map_err(|s| err_ub!(ScalarSizeMismatch(s)))?
+            {
+                Err(ptr) => ptr.into(),
+                Ok(bits) => {
+                    let addr = u64::try_from(bits).unwrap();
+                    let ptr = M::ptr_from_addr(&self, addr);
+                    if addr == 0 {
+                        assert!(ptr.provenance.is_none(), "null pointer can never have an AllocId");
+                    }
+                    ptr
                 }
-                ptr
-            }
-        }
+            },
+        )
     }
 
     /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
-    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> bool {
-        match scalar.try_to_int() {
+    pub fn scalar_may_be_null(&self, scalar: Scalar<M::PointerTag>) -> InterpResult<'tcx, bool> {
+        Ok(match scalar.try_to_int() {
             Ok(int) => int.is_null(),
             Err(_) => {
                 // Can only happen during CTFE.
-                let ptr = self.scalar_to_ptr(scalar);
+                let ptr = self.scalar_to_ptr(scalar)?;
                 match self.ptr_try_get_alloc_id(ptr) {
                     Ok((alloc_id, offset, _)) => {
                         let (size, _align) = self
@@ -1138,7 +1146,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
-        }
+        })
     }
 
     /// Turning a "maybe pointer" into a proper pointer (and some information
