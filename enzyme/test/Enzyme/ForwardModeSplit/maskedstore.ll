@@ -24,7 +24,6 @@ declare <2 x double> @__enzyme_fwdsplit.f64(...)
 
 ; CHECK: define internal void @fwddiffeloader(<2 x double>* %ptr, <2 x double>* %"ptr'", <2 x i1> %mask, <2 x double> %val, <2 x double> %"val'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   call void @llvm.masked.store.v2f64.p0v2f64(<2 x double> %"val'", <2 x double>* %"ptr'", i32 16, <2 x i1> %mask)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

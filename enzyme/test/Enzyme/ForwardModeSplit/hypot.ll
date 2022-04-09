@@ -27,7 +27,6 @@ declare double @__enzyme_fwdsplit(...)
 
 ; CHECK-LABEL: define internal double @fwddiffetester(
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* {{(nonnull )?}}%tapeArg)
 ; CHECK-NEXT:   %0 = call fast double @hypot(double %x, double %y)
 ; CHECK-NEXT:   %1 = fmul fast double %x, %"x'"
 ; CHECK-NEXT:   %2 = fmul fast double %y, %"y'"
@@ -38,7 +37,6 @@ declare double @__enzyme_fwdsplit(...)
 
 ; CHECK-LABEL: define internal double @fwddiffetester2(
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* {{(nonnull )?}}%tapeArg)
 ; CHECK-NEXT:   %0 = call fast double @hypot(double %x, double 2.000000e+00)
 ; CHECK-NEXT:   %1 = fmul fast double %x, %"x'"
 ; CHECK-NEXT:   %2 = fdiv fast double %1, %0

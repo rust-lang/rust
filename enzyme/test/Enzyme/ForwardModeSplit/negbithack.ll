@@ -20,7 +20,6 @@ declare double @__enzyme_fwdsplit(double (double)*, ...)
 
 ; CHECK: define internal double @fwddiffetester(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %0 = {{(fsub fast double \-?0.000000e\+00,|fneg fast double)}} %"x'"
 ; CHECK-NEXT:   ret double %0
 ; CHECK-NEXT: }

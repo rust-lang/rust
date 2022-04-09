@@ -20,7 +20,6 @@ declare float @__enzyme_fwdsplit(float (float, <4 x float>)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}float @fwddiffetester(float %start_value, float %"start_value'", <4 x float> %input, <4 x float> %"input'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %0 = call fast float @llvm.experimental.vector.reduce.v2.fadd.f32.v4f32(float %"start_value'", <4 x float> %"input'")
 ; CHECK-NEXT:   ret float %0
 ; CHECK-NEXT: }

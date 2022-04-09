@@ -22,6 +22,5 @@ attributes #0 = { "enzyme_inactive" }
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT: tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   ret double %"x'"
 ; CHECK-NEXT: }

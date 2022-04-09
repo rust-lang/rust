@@ -26,7 +26,6 @@ entry:
 
 ; CHECK: define internal { float, float, float } @fwddiffesquare(<4 x float> %x, <4 x float> %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:    tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:    %sq = fmul <4 x float> %x, %x
 ; CHECK-NEXT:    %0 = fmul fast <4 x float> %"x'", %x
 ; CHECK-NEXT:    %1 = fadd fast <4 x float> %0, %0

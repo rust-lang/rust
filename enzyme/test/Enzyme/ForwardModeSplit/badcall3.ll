@@ -50,7 +50,6 @@ declare dso_local double @__enzyme_fwdsplit(i8*, double*, double*, i8*) local_un
 
 ; CHECK: define internal {{(dso_local )?}}void @fwddiffef(double* nocapture %x, double* nocapture %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   call void @fwddiffesubf(double* %x, double* %"x'")
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
 ; CHECK-NEXT:   ret void

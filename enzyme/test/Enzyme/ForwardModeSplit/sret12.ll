@@ -71,7 +71,6 @@ attributes #6 = { nounwind }
 
 ; CHECK: define internal void @fwddiffe_Z6squared(%"struct.std::array"* noalias nocapture align 8 %agg.result, %"struct.std::array"* nocapture %"agg.result'", double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry: 
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %"arrayinit.begin'ipg" = getelementptr inbounds %"struct.std::array", %"struct.std::array"* %"agg.result'", i64 0, i32 0, i64 0
 ; CHECK-NEXT:   %mul = fmul double %x, %x
 ; CHECK-NEXT:   %0 = fmul fast double %"x'", %x

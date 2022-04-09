@@ -3084,9 +3084,13 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
                               MDNode::get(truetape->getContext(), {}));
 
         if (key.freeMemory) {
-          CallInst *ci = cast<CallInst>(CallInst::CreateFree(tape, BB));
-          bb.Insert(ci);
-          ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          auto size = NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(
+              aug.tapeType);
+          if (size != 0) {
+            CallInst *ci = cast<CallInst>(CallInst::CreateFree(tape, BB));
+            bb.Insert(ci);
+            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
+          }
         }
         tape = truetape;
       }
@@ -4135,10 +4139,16 @@ Function *EnzymeLogic::CreateForwardDiff(
           additionalValue = truetape;
         } else {
           if (gutils->FreeMemory) {
-            CallInst *ci = cast<CallInst>(
-                CallInst::CreateFree(additionalValue, gutils->inversionAllocs));
-            ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-            BuilderZ.Insert(ci);
+            auto size = gutils->newFunc->getParent()
+                            ->getDataLayout()
+                            .getTypeAllocSizeInBits(augmenteddata->tapeType);
+            if (size != 0) {
+              CallInst *ci = cast<CallInst>(CallInst::CreateFree(
+                  additionalValue, gutils->inversionAllocs));
+              ci->addAttribute(AttributeList::FirstArgIndex,
+                               Attribute::NonNull);
+              BuilderZ.Insert(ci);
+            }
           }
           additionalValue = UndefValue::get(augmenteddata->tapeType);
         }

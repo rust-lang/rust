@@ -21,7 +21,6 @@ declare double @__enzyme_fwdsplit(double (double, double)*, ...)
 
 ; CHECK: define internal double @fwddiffemax(double %x, double %"x'", double %y, double %"y'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %cmp = fcmp fast ogt double %x, %y
 ; CHECK-NEXT:   %0 = select {{(fast )?}}i1 %cmp, double %"x'", double %"y'"
 ; CHECK-NEXT:   ret double %0

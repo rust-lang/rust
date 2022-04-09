@@ -20,7 +20,6 @@ declare <2 x double> @__enzyme_fwdsplit(<2 x double> (<2 x double>)*, ...)
 
 ; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %0 = {{(fsub fast <2 x double> <double \-?0.000000e\+00, double \-?0.000000e\+00>,|fneg fast <2 x double>)}} %"x'"
 ; CHECK-NEXT:   ret <2 x double> %0
 ; CHECK-NEXT: }

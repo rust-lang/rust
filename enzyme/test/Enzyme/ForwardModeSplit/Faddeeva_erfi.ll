@@ -20,7 +20,6 @@ declare { double, double } @__enzyme_fwdsplit({ double, double } ({ double, doub
 
 ; CHECK: define internal { double, double } @fwddiffetester({ double, double } %in, { double, double } %"in'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %0 = extractvalue { double, double } %in, 0
 ; CHECK-NEXT:   %1 = extractvalue { double, double } %in, 1
 ; CHECK-DAG:    %[[a2:.+]] = fmul fast double %0, %0

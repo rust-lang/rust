@@ -21,7 +21,6 @@ declare double @__enzyme_fwdsplit(double (double, i32)*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}double @fwddiffetester(double %x, double %"x'", i32 %y, i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %[[ym1:.+]] = sub i32 %y, 1
 ; CHECK-NEXT:   %[[newpow:.+]] = call fast double @llvm.powi.f64{{(\.i32)?}}(double %x, i32 %[[ym1]])
 ; CHECK-DAG:    %[[sitofp:.+]] = sitofp i32 %y to double

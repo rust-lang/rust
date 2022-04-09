@@ -20,7 +20,6 @@ declare <2 x double> @__enzyme_fwdsplit(<2 x double> (<2 x double>)*, ...)
 
 ; CHECK: define internal <2 x double> @fwddiffetester(<2 x double> %x, <2 x double> %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %0 = bitcast <2 x double> %"x'" to <2 x i64>
 ; CHECK-NEXT:   %1 = extractelement <2 x i64> %0, i64 0
 ; CHECK-NEXT:   %2 = bitcast i64 %1 to double

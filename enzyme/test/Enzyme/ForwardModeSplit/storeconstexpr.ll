@@ -19,6 +19,5 @@ declare double @__enzyme_fwdsplit(i8*, ...)
 
 ; CHECK: define internal void @fwddiffecallee(i64* %from, i64* %"from'", i64* %to, i64* %"to'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -41,6 +41,5 @@ declare double @__enzyme_fwdsplit(void (double*)*, ...)
 
 ; CHECK: define {{(dso_local )?}}void @test_derivative(double* %x, double* %xp, i8* %tape)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   call void @free(i8* nonnull %tape)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }

@@ -34,7 +34,6 @@ declare double @__enzyme_fwdsplit(void (float*, float*)*, ...) #2
 
 ; CHECK: define internal void @fwddiffesum(float* %array, float* %"array'", float* %ret, float* %"ret'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   br label %do.body
 
 ; CHECK: do.body:                                          ; preds = %do.body, %entry

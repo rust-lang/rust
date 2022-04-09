@@ -21,7 +21,6 @@ declare { double, double } @__enzyme_fwdsplit(i8*, ...)
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @fwddiffesquared(double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   %mul = fmul double %x, %x
 ; CHECK-NEXT:   %0 = fmul fast double %"x'", %x
 ; CHECK-NEXT:   %1 = fadd fast double %0, %0

@@ -23,7 +23,6 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal double @fwddiffef(double* noalias nocapture %out, double* nocapture %"out'", double %x, double %"x'", i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"out'", align 8
 ; CHECK-NEXT:   ret double 0.000000e+00
 ; CHECK-NEXT: }

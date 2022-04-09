@@ -30,6 +30,5 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal void @fwddiffememcpy_ptr(double** nocapture %dst, double** nocapture %"dst'", double** nocapture readonly %src, double** nocapture %"src'", i64 %num, i8* %tapeArg)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   tail call void @free(i8* nonnull %tapeArg)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
