@@ -1207,7 +1207,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body))
                     }
                 };
-                record!(self.tables.asyncness[def_id] <- m_sig.header.asyncness);
+                self.tables.asyncness.set(def_id.index, m_sig.header.asyncness);
                 self.tables.impl_constness.set(def_id.index, hir::Constness::NotConst);
                 record!(self.tables.kind[def_id] <- EntryKind::AssocFn(self.lazy(AssocFnData {
                     container,
@@ -1265,7 +1265,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             ty::AssocKind::Fn => {
                 let hir::ImplItemKind::Fn(ref sig, body) = ast_item.kind else { bug!() };
-                record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
+                self.tables.asyncness.set(def_id.index, sig.header.asyncness);
                 record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 // Can be inside `impl const Trait`, so using sig.header.constness is not reliable
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
@@ -1394,7 +1394,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Const
             }
             hir::ItemKind::Fn(ref sig, .., body) => {
-                record!(self.tables.asyncness[def_id] <- sig.header.asyncness);
+                self.tables.asyncness.set(def_id.index, sig.header.asyncness);
                 record!(self.tables.fn_arg_names[def_id] <- self.tcx.hir().body_param_names(body));
                 self.tables.impl_constness.set(def_id.index, sig.header.constness);
                 EntryKind::Fn
@@ -1886,7 +1886,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         match nitem.kind {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
-                record!(self.tables.asyncness[def_id] <- hir::IsAsync::NotAsync);
+                self.tables.asyncness.set(def_id.index, hir::IsAsync::NotAsync);
                 record!(self.tables.fn_arg_names[def_id] <- *names);
                 let constness = if self.tcx.is_const_fn_raw(def_id) {
                     hir::Constness::Const

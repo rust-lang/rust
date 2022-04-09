@@ -317,7 +317,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, Lazy!(ty::adjustment::CoerceUnsizedInfo)>,
     mir_const_qualif: Table<DefIndex, Lazy!(mir::ConstQualifs)>,
     rendered_const: Table<DefIndex, Lazy!(String)>,
-    asyncness: Table<DefIndex, Lazy!(hir::IsAsync)>,
+    asyncness: Table<DefIndex, hir::IsAsync>,
     fn_arg_names: Table<DefIndex, Lazy!([Ident])>,
     generator_kind: Table<DefIndex, Lazy!(hir::GeneratorKind)>,
     trait_def: Table<DefIndex, Lazy!(ty::TraitDef)>,
