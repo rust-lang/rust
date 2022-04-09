@@ -136,7 +136,7 @@ able to get around this problem by setting `-Clinker=lld-link` in RUSTFLAGS
 ```sh
 rustup toolchain install --profile minimal nightly
 MINOR_VERSION=$(rustc +nightly --version | cut -d . -f 2)
-LOWER_BOUND=44
+LOWER_BOUND=61
 
 llvm_version() {
     toolchain="$1"
@@ -179,5 +179,19 @@ The following table shows known good combinations of toolchain versions.
 | Rust 1.44    |    Clang 9    |
 | Rust 1.45    |    Clang 10   |
 | Rust 1.46    |    Clang 10   |
+| Rust 1.47    |    Clang 11   |
+| Rust 1.48    |    Clang 11   |
+| Rust 1.49    |    Clang 11   |
+| Rust 1.50    |    Clang 11   |
+| Rust 1.51    |    Clang 11   |
+| Rust 1.52    |    Clang 12   |
+| Rust 1.53    |    Clang 12   |
+| Rust 1.54    |    Clang 12   |
+| Rust 1.55    |    Clang 12   |
+| Rust 1.56    |    Clang 13   |
+| Rust 1.57    |    Clang 13   |
+| Rust 1.58    |    Clang 13   |
+| Rust 1.59    |    Clang 13   |
+| Rust 1.60    |    Clang 14   |
 
 Note that the compatibility policy for this feature might change in the future.
