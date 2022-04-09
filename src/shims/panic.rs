@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
             // Push the `catch_fn` stackframe.
             let f_instance =
-                this.get_ptr_fn(this.scalar_to_ptr(catch_unwind.catch_fn))?.as_instance()?;
+                this.get_ptr_fn(this.scalar_to_ptr(catch_unwind.catch_fn)?)?.as_instance()?;
             trace!("catch_fn: {:?}", f_instance);
             let ret_place = MPlaceTy::dangling(this.machine.layouts.unit).into();
             this.call_function(

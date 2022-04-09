@@ -61,7 +61,7 @@ impl<'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'mir, 'tcx> {
                 let pointee_ty =
                     left.layout.ty.builtin_deref(true).expect("Offset called on non-ptr type").ty;
                 let ptr = self.ptr_offset_inbounds(
-                    self.scalar_to_ptr(left.to_scalar()?),
+                    self.scalar_to_ptr(left.to_scalar()?)?,
                     pointee_ty,
                     right.to_scalar()?.to_machine_isize(self)?,
                 )?;
