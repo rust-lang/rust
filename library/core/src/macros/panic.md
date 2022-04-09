@@ -24,20 +24,30 @@ See also the macro [`compile_error!`], for raising errors during compilation.
 
 # When to use `panic!` vs `Result`
 
-The Rust model of error handling groups errors into two major categories:
-recoverable and unrecoverable errors. For a recoverable error, such as a file
-not found error, it’s reasonable to report the problem to the user and retry
-the operation. Unrecoverable errors are always symptoms of bugs, like trying to
-access a location beyond the end of an array.
+The Rust language provides two complementary systems for constructing /
+representing, reporting, propagating, reacting to, and discarding errors. These
+responsibilities are collectively known as "error handling." `panic!` and
+`Result` are similar in that they are each the primary interface of their
+respective error handling systems; however, the meaning these interfaces attach
+to their errors and the responsibilities they fulfill within their respective
+error handling systems differ.
 
-The Rust language and standard library provides `Result` and `panic!` as parts
-of two complementary systems for representing, reporting, propagating, reacting
-to, and discarding errors for in these two categories.
+The `panic!` macro is used to construct errors that represent a bug that has
+been detected in your program. With `panic!` you provide a message that
+describes the bug and the language then constructs an error with that message,
+reports it, and propagates it for you.
 
-The `panic!` macro is provided to represent unrecoverable errors, whereas the
-`Result` enum is provided to represent recoverable errors. For more detailed
-information about error handling check out the [book] or the [`std::result`]
-module docs.
+`Result` on the other hand is used to wrap other types that represent either
+the successful result of some computation, `Ok(T)`, or error types that
+represent an anticipated runtime failure mode of that computation, `Err(E)`.
+`Result` is used alongside user defined types which represent the various
+anticipated runtime failure modes that the associated computation could
+encounter. `Result` must be propagated manually, often with the the help of the
+`?` operator and `Try` trait, and they must be reported manually, often with
+the help of the `Error` trait.
+
+For more detailed information about error handling check out the [book] or the
+[`std::result`] module docs.
 
 [ounwrap]: Option::unwrap
 [runwrap]: Result::unwrap
