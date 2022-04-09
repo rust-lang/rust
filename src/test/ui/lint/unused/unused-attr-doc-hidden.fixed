@@ -1,0 +1,42 @@
+#![deny(unused_attributes)]
+#![crate_type = "lib"]
+// run-rustfix
+
+pub trait Trait {
+    type It;
+    const IT: ();
+    fn it0();
+    fn it1();
+    fn it2();
+}
+
+pub struct Implementor;
+
+impl Trait for Implementor {
+    
+    type It = ();
+    //~^^ ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+
+    
+    const IT: () = ();
+    //~^^ ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+
+    #[doc(alias = "aka")]
+    fn it0() {}
+    //~^^ ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+
+    #[doc(alias = "this", )]
+    fn it1() {}
+    //~^^ ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+
+    #[doc()]
+    fn it2() {}
+    //~^^ ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+    //~|  ERROR `#[doc(hidden)]` is ignored
+    //~|  WARNING this was previously accepted
+}
