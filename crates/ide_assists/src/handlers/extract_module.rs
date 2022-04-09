@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    iter,
+};
 
 use hir::{HasSource, ModuleSource};
 use ide_db::{
@@ -207,31 +210,25 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 #[derive(Debug)]
 struct Module {
     text_range: TextRange,
-    name: String,
-    body_items: Vec<ast::Item>, // All items except use items
-    use_items: Vec<ast::Item>, // Use items are kept separately as they help when the selection is inside an impl block, we can directly take these items and keep them outside generated impl block inside generated module
+    name: &'static str,
+    /// All items except use items.
+    body_items: Vec<ast::Item>,
+    /// Use items are kept separately as they help when the selection is inside an impl block,
+    /// we can directly take these items and keep them outside generated impl block inside
+    /// generated module.
+    use_items: Vec<ast::Item>,
 }
 
 fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Module> {
-    let mut use_items = vec![];
-
-    let mut body_items: Vec<ast::Item> = node
+    let selected_nodes = node
         .children()
-        .filter(|child| selection_range.contains_range(child.text_range()))
-        .filter_map(|child| match ast::Item::cast(child) {
-            Some(it @ ast::Item::Use(_)) => {
-                use_items.push(it);
-                None
-            }
-            item => item,
-        })
-        .collect();
+        .filter(|node| selection_range.contains_range(node.text_range()))
+        .chain(iter::once(node.clone()));
+    let (use_items, body_items) = selected_nodes
+        .filter_map(ast::Item::cast)
+        .partition(|item| matches!(item, ast::Item::Use(..)));
 
-    if let Some(node_item) = ast::Item::cast(node.clone()) {
-        body_items.push(node_item);
-    }
-
-    Some(Module { text_range: selection_range, name: "modname".to_string(), body_items, use_items })
+    Some(Module { text_range: selection_range, name: "modname", body_items, use_items })
 }
 
 impl Module {
@@ -245,7 +242,7 @@ impl Module {
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
         //get updated by ADT section given below or if it is not, then we dont need to do any operation
-        self.body_items.iter().cloned().for_each(|item| {
+        for item in &self.body_items {
             match_ast! {
                 match (item.syntax()) {
                     ast::Adt(it) => {
@@ -314,7 +311,7 @@ impl Module {
                     _ => (),
                 }
             }
-        });
+        }
 
         (refs, adt_fields)
     }
@@ -323,34 +320,15 @@ impl Module {
         &self,
         ctx: &AssistContext,
         node_def: Definition,
-        refs: &mut HashMap<FileId, Vec<(TextRange, String)>>,
+        refs_in_files: &mut HashMap<FileId, Vec<(TextRange, String)>>,
     ) {
         for (file_id, references) in node_def.usages(&ctx.sema).all() {
-            if let Some(file_refs) = refs.get_mut(&file_id) {
-                let mut usages = self.expand_ref_to_usages(references, ctx, file_id);
-                file_refs.append(&mut usages);
-            } else {
-                refs.insert(file_id, self.expand_ref_to_usages(references, ctx, file_id));
-            }
+            let source_file = ctx.sema.parse(file_id);
+            let usages_in_file = references
+                .into_iter()
+                .filter_map(|usage| self.get_usage_to_be_processed(&source_file, usage));
+            refs_in_files.entry(file_id).or_default().extend(usages_in_file);
         }
-    }
-
-    fn expand_ref_to_usages(
-        &self,
-        refs: Vec<FileReference>,
-        ctx: &AssistContext,
-        file_id: FileId,
-    ) -> Vec<(TextRange, String)> {
-        let source_file = ctx.sema.parse(file_id);
-
-        let mut usages_to_be_processed_for_file = Vec::new();
-        for usage in refs {
-            if let Some(x) = self.get_usage_to_be_processed(&source_file, usage) {
-                usages_to_be_processed_for_file.push(x);
-            }
-        }
-
-        usages_to_be_processed_for_file
     }
 
     fn get_usage_to_be_processed(
@@ -380,36 +358,30 @@ impl Module {
         let (mut replacements, record_field_parents, impls) =
             get_replacements_for_visibilty_change(&mut self.body_items, false);
 
-        let mut impl_items = Vec::new();
-        for impl_ in impls {
-            let mut this_impl_items = Vec::new();
-            for node in impl_.syntax().descendants() {
-                if let Some(item) = ast::Item::cast(node) {
-                    this_impl_items.push(item);
-                }
-            }
-
-            impl_items.append(&mut this_impl_items);
-        }
+        let mut impl_items: Vec<ast::Item> = impls
+            .into_iter()
+            .flat_map(|impl_| impl_.syntax().descendants())
+            .filter_map(ast::Item::cast)
+            .collect();
 
         let (mut impl_item_replacements, _, _) =
             get_replacements_for_visibilty_change(&mut impl_items, true);
 
         replacements.append(&mut impl_item_replacements);
 
-        record_field_parents.into_iter().for_each(|x| {
-            x.1.descendants().filter_map(ast::RecordField::cast).for_each(|desc| {
+        for (_, field_owner) in record_field_parents {
+            for desc in field_owner.descendants().filter_map(ast::RecordField::cast) {
                 let is_record_field_present =
                     record_fields.clone().into_iter().any(|x| x.to_string() == desc.to_string());
                 if is_record_field_present {
                     replacements.push((desc.visibility(), desc.syntax().clone()));
                 }
-            });
-        });
+            }
+        }
 
-        replacements.into_iter().for_each(|(vis, syntax)| {
+        for (vis, syntax) in replacements {
             add_change_vis(vis, syntax.first_child_or_token());
-        });
+        }
     }
 
     fn resolve_imports(
@@ -420,8 +392,8 @@ impl Module {
         let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
         let mut node_set: HashSet<String> = HashSet::new();
 
-        self.body_items.clone().into_iter().for_each(|item| {
-            item.syntax().descendants().for_each(|x| {
+        for item in self.body_items.clone() {
+            for x in item.syntax().descendants() {
                 if let Some(name) = ast::Name::cast(x.clone()) {
                     if let Some(name_classify) = NameClass::classify(&ctx.sema, &name) {
                         //Necessary to avoid two same names going through
@@ -473,8 +445,8 @@ impl Module {
                         }
                     }
                 }
-            });
-        });
+            }
+        }
 
         import_paths_to_be_removed
     }
@@ -495,8 +467,8 @@ impl Module {
 
         let mut exists_inside_sel = false;
         let mut exists_outside_sel = false;
-        usage_res.clone().into_iter().for_each(|x| {
-            let mut non_use_nodes_itr = (&x.1).iter().filter_map(|x| {
+        for (_, refs) in usage_res.iter() {
+            let mut non_use_nodes_itr = refs.iter().filter_map(|x| {
                 if find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none() {
                     let path_opt = find_node_at_range::<ast::Path>(file.syntax(), x.range);
                     return path_opt;
@@ -514,7 +486,7 @@ impl Module {
             if non_use_nodes_itr.any(|x| selection_range.contains_range(x.syntax().text_range())) {
                 exists_inside_sel = true;
             }
-        });
+        }
 
         let source_exists_outside_sel_in_same_mod = does_source_exists_outside_sel_in_same_mod(
             def,
@@ -524,18 +496,14 @@ impl Module {
             curr_file_id,
         );
 
-        let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|x| {
-            let file_id = x.0;
-            let mut use_opt: Option<ast::Use> = None;
+        let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|(file_id, refs)| {
             if file_id == curr_file_id {
-                (&x.1).iter().for_each(|x| {
-                    let node_opt: Option<ast::Use> = find_node_at_range(file.syntax(), x.range);
-                    if let Some(node) = node_opt {
-                        use_opt = Some(node);
-                    }
-                });
+                refs.into_iter()
+                    .rev()
+                    .find_map(|fref| find_node_at_range(file.syntax(), fref.range))
+            } else {
+                None
             }
-            use_opt
         });
 
         let mut use_tree_str_opt: Option<Vec<ast::Path>> = None;
@@ -811,7 +779,7 @@ fn get_replacements_for_visibilty_change(
     let mut record_field_parents = Vec::new();
     let mut impls = Vec::new();
 
-    items.into_iter().for_each(|item| {
+    for item in items {
         if !is_clone_for_updated {
             *item = item.clone_for_update();
         }
@@ -838,7 +806,7 @@ fn get_replacements_for_visibilty_change(
             }
             _ => (),
         }
-    });
+    }
 
     (replacements, record_field_parents, impls)
 }
