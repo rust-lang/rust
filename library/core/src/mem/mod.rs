@@ -21,6 +21,12 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
+mod valid_align;
+// For now this type is left crate-local.  It could potentially make sense to expose
+// it publicly, as it would be a nice parameter type for methods which need to take
+// alignment as a parameter, such as `Layout::padding_needed_for`.
+pub(crate) use valid_align::ValidAlign;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(inline)]
 pub use crate::intrinsics::transmute;
