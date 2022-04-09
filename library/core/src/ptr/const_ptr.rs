@@ -520,9 +520,16 @@ impl<T: ?Sized> *const T {
     /// Calculates the distance between two pointers. The returned value is in
     /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
     ///
-    /// This function is the inverse of [`offset`].
+    /// This is equivalent to `(self as isize - other as isize) / (mem::size_of::<T>() as isize)`,
+    /// except that it has a lot more opportunities for UB, in exchange for the compiler
+    /// understanding what you're doing better.
     ///
-    /// [`offset`]: #method.offset
+    /// The primary motivation of this method is for computing the `len` of an array/slice
+    /// of `T` that you are currently representing as a "start" and "end" pointer
+    /// (and "end" is "one past the end" of the array).
+    /// In that case, `end.offset_from(start)` gets you the length of the array.
+    ///
+    /// All of the following safety requirements are trivially satisfied for this usecase.
     ///
     /// # Safety
     ///
@@ -560,6 +567,7 @@ impl<T: ?Sized> *const T {
     /// such large allocations either.)
     ///
     /// [`add`]: #method.add
+    /// [`offset`]: #method.offset
     /// [allocated object]: crate::ptr#allocated-object
     ///
     /// # Panics
@@ -1020,6 +1028,31 @@ impl<T: ?Sized> *const T {
 
     /// Computes the offset that needs to be applied to the pointer in order to make it aligned to
     /// `align`.
+    ///
+    /// Before getting into the precise semantics, it helps to have some context for why this
+    /// operation seems so weird on the surface. This is for two reasons:
+    ///
+    /// * It's for SIMD, specifically [`slice::align_to`]
+    /// * It wants code that uses SIMD operations to work in a `const fn`
+    ///
+    /// In particular, this operation is intended for breaking up a loop into its component
+    /// unaligned and aligned parts, so that the aligned parts can be processed using SIMD.
+    /// For that kind of pattern it's always ok to "fail" to align the pointer, because the
+    /// unaligned path can always handle all the data.
+    ///
+    /// Lots of really basic operations want to use SIMD under the hood, so it would be very
+    /// frustrating if using this pattern made it impossible for an operation to work in
+    /// const contexts. Unfortunately, observing any properties of a pointer's address
+    /// is a very dangerous and problematic operation in const contexts, because it's a huge
+    /// reproducibility issue (which has actual soundness implications with compilation units).
+    ///
+    /// Thankfully, because the precise SIMD pattern we're interested in *already* has a fallback
+    /// mode where the alignment completely fails, the compiler can just make this operation always
+    /// fail to align the pointer when doing const evaluation, and then everything is
+    /// always deterministic and reproducible (and the const evaluator is an interpreter anyway,
+    /// so you weren't actually going to get amazing SIMD speedups).
+    ///
+    /// Alright, now on to the actual semantics:
     ///
     /// If it is not possible to align the pointer, the implementation returns
     /// `usize::MAX`. It is permissible for the implementation to *always*

@@ -3406,6 +3406,28 @@ impl<T> [T] {
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
+    /// The reason this operation is slightly vague on its guarantees is because:
+    ///
+    /// * It's for SIMD, specifically [`slice::as_simd`]
+    /// * It wants code that uses SIMD operations to work in a `const fn`
+    ///
+    /// In particular, this operation is intended for breaking up a loop into its component
+    /// unaligned and aligned parts, so that the aligned parts can be processed using SIMD.
+    /// For that kind of pattern it's always ok to "fail" to align the slice, because the
+    /// unaligned path can always handle all the data.
+    ///
+    /// Lots of really basic operations want to use SIMD under the hood, so it would be very
+    /// frustrating if using this pattern made it impossible for an operation to work in
+    /// const contexts. Unfortunately, observing any properties of a pointer's address
+    /// is a very dangerous and problematic operation in const contexts, because it's a huge
+    /// reproducibility issue (which has actual soundness implications with compilation units).
+    ///
+    /// Thankfully, because the precise SIMD pattern we're interested in *already* has a fallback
+    /// mode where the alignment completely fails, the compiler can just make this operation always
+    /// fail to align the slice when doing const evaluation, and then everything is
+    /// always deterministic and reproducible (and the const evaluator is an interpreter anyway,
+    /// so you weren't actually going to get amazing SIMD speedups).
+    ///
     /// # Safety
     ///
     /// This method is essentially a `transmute` with respect to the elements in the returned
@@ -3466,6 +3488,28 @@ impl<T> [T] {
     ///
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
+    ///
+    /// The reason this operation is slightly vague on its guarantees is because:
+    ///
+    /// * It's for SIMD, specifically [`slice::as_simd_mut`]
+    /// * It wants code that uses SIMD operations to work in a `const fn`
+    ///
+    /// In particular, this operation is intended for breaking up a loop into its component
+    /// unaligned and aligned parts, so that the aligned parts can be processed using SIMD.
+    /// For that kind of pattern it's always ok to "fail" to align the slice, because the
+    /// unaligned path can always handle all the data.
+    ///
+    /// Lots of really basic operations want to use SIMD under the hood, so it would be very
+    /// frustrating if using this pattern made it impossible for an operation to work in
+    /// const contexts. Unfortunately, observing any properties of a pointer's address
+    /// is a very dangerous and problematic operation in const contexts, because it's a huge
+    /// reproducibility issue (which has actual soundness implications with compilation units).
+    ///
+    /// Thankfully, because the precise SIMD pattern we're interested in *already* has a fallback
+    /// mode where the alignment completely fails, the compiler can just make this operation always
+    /// fail to align the slice when doing const evaluation, and then everything is
+    /// always deterministic and reproducible (and the const evaluator is an interpreter anyway,
+    /// so you weren't actually going to get amazing SIMD speedups).
     ///
     /// # Safety
     ///
