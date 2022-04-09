@@ -286,7 +286,7 @@ define_tables! {
     attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
     children: Table<DefIndex, Lazy<[DefIndex]>>,
 
-    opt_def_kind: Table<DefIndex, Lazy<DefKind>>,
+    opt_def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, Lazy<ty::Visibility>>,
     def_span: Table<DefIndex, Lazy<Span>>,
     def_ident_span: Table<DefIndex, Lazy<Span>>,

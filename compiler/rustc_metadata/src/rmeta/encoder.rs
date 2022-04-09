@@ -988,7 +988,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.opt_def_kind(local_id);
             let Some(def_kind) = def_kind else { continue };
-            record!(self.tables.opt_def_kind[def_id] <- def_kind);
+            self.tables.opt_def_kind.set(def_id.index, def_kind);
             record!(self.tables.def_span[def_id] <- tcx.def_span(def_id));
             record!(self.tables.attributes[def_id] <- tcx.get_attrs(def_id));
             record!(self.tables.expn_that_defined[def_id] <- self.tcx.expn_that_defined(def_id));
@@ -1644,7 +1644,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 self.tables.proc_macro_quoted_spans.set(i, span);
             }
 
-            record!(self.tables.opt_def_kind[LOCAL_CRATE.as_def_id()] <- DefKind::Mod);
+            self.tables.opt_def_kind.set(LOCAL_CRATE.as_def_id().index, DefKind::Mod);
             record!(self.tables.def_span[LOCAL_CRATE.as_def_id()] <- tcx.def_span(LOCAL_CRATE.as_def_id()));
             record!(self.tables.attributes[LOCAL_CRATE.as_def_id()] <- tcx.get_attrs(LOCAL_CRATE.as_def_id()));
             record!(self.tables.visibility[LOCAL_CRATE.as_def_id()] <- tcx.visibility(LOCAL_CRATE.as_def_id()));
@@ -1685,7 +1685,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
-                record!(self.tables.opt_def_kind[def_id] <- DefKind::Macro(macro_kind));
+                self.tables.opt_def_kind.set(def_id.index, DefKind::Macro(macro_kind));
                 record!(self.tables.kind[def_id] <- EntryKind::ProcMacro(macro_kind));
                 record!(self.tables.attributes[def_id] <- attrs);
                 record!(self.tables.def_keys[def_id] <- def_key);

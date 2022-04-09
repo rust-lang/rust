@@ -1,8 +1,10 @@
 use crate::rmeta::*;
 
+use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
 use rustc_serialize::Encoder as _;
+use rustc_span::hygiene::MacroKind;
 use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
@@ -102,6 +104,50 @@ macro_rules! fixed_size_enum {
                 }
             }
         }
+    }
+}
+
+fixed_size_enum! {
+    DefKind {
+        ( Mod                                      )
+        ( Struct                                   )
+        ( Union                                    )
+        ( Enum                                     )
+        ( Variant                                  )
+        ( Trait                                    )
+        ( TyAlias                                  )
+        ( ForeignTy                                )
+        ( TraitAlias                               )
+        ( AssocTy                                  )
+        ( TyParam                                  )
+        ( Fn                                       )
+        ( Const                                    )
+        ( ConstParam                               )
+        ( AssocFn                                  )
+        ( AssocConst                               )
+        ( ExternCrate                              )
+        ( Use                                      )
+        ( ForeignMod                               )
+        ( AnonConst                                )
+        ( InlineConst                              )
+        ( OpaqueTy                                 )
+        ( Field                                    )
+        ( LifetimeParam                            )
+        ( GlobalAsm                                )
+        ( Impl                                     )
+        ( Closure                                  )
+        ( Generator                                )
+        ( Static(ast::Mutability::Not)             )
+        ( Static(ast::Mutability::Mut)             )
+        ( Ctor(CtorOf::Struct, CtorKind::Fn)       )
+        ( Ctor(CtorOf::Struct, CtorKind::Const)    )
+        ( Ctor(CtorOf::Struct, CtorKind::Fictive)  )
+        ( Ctor(CtorOf::Variant, CtorKind::Fn)      )
+        ( Ctor(CtorOf::Variant, CtorKind::Const)   )
+        ( Ctor(CtorOf::Variant, CtorKind::Fictive) )
+        ( Macro(MacroKind::Bang)                   )
+        ( Macro(MacroKind::Attr)                   )
+        ( Macro(MacroKind::Derive)                 )
     }
 }
 

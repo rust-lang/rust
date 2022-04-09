@@ -292,6 +292,12 @@ trait LazyQueryDecodable<'a, 'tcx, T> {
     ) -> T;
 }
 
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for T {
+    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, _: impl FnOnce() -> !) -> T {
+        self
+    }
+}
+
 impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<T> {
     fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, err: impl FnOnce() -> !) -> T {
         if let Some(l) = self { l } else { err() }
@@ -862,16 +868,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
-        self.root.tables.opt_def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(
-            || {
-                bug!(
-                    "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
-                    item_id,
-                    self.root.name,
-                    self.cnum,
-                )
-            },
-        )
+        self.root.tables.opt_def_kind.get(self, item_id).unwrap_or_else(|| {
+            bug!(
+                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
+                item_id,
+                self.root.name,
+                self.cnum,
+            )
+        })
     }
 
     fn get_span(self, index: DefIndex, sess: &Session) -> Span {
