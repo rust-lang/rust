@@ -353,7 +353,6 @@ unsafe impl TrustedRandomAccess for Bytes<'_> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccessNoCoerce for Bytes<'_> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     #[inline]

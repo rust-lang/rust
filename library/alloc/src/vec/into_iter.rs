@@ -290,7 +290,6 @@ unsafe impl<T, A: Allocator> TrustedRandomAccessNoCoerce for IntoIter<T, A>
 where
     T: NonDrop,
 {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = true;
 
     fn cleanup(&mut self, num: usize, forward: bool) {

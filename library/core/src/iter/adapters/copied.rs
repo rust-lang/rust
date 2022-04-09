@@ -157,8 +157,6 @@ unsafe impl<I> TrustedRandomAccessNoCoerce for Copied<I>
 where
     I: TrustedRandomAccessNoCoerce,
 {
-    const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
-
     const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
 
     #[inline]

@@ -511,8 +511,6 @@ macro_rules! unsafe_range_trusted_random_access_impl {
                 }
             }
 
-            const MAY_HAVE_SIDE_EFFECT: bool = false;
-
             const NEEDS_CLEANUP: bool = false;
         }
     )*)

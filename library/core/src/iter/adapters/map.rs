@@ -198,8 +198,6 @@ unsafe impl<I, F> TrustedRandomAccessNoCoerce for Map<I, F>
 where
     I: TrustedRandomAccessNoCoerce,
 {
-    const MAY_HAVE_SIDE_EFFECT: bool = true;
-
     const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
 
     #[inline]

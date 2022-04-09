@@ -1375,7 +1375,6 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -1568,7 +1567,6 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -1749,7 +1747,6 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksMut<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -1923,7 +1920,6 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -2091,7 +2087,6 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExactMut<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -2348,7 +2343,6 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N>
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunks<'a, T, N> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -2472,7 +2466,6 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T,
 #[doc(hidden)]
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunksMut<'a, T, N> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -2651,7 +2644,6 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -2835,7 +2827,6 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksMut<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -3013,7 +3004,6 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -3185,7 +3175,6 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExactMut<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
@@ -3207,7 +3196,6 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Iter<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     #[inline]
@@ -3227,7 +3215,6 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     #[inline]

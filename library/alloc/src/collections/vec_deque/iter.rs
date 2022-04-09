@@ -210,7 +210,6 @@ unsafe impl<T> TrustedRandomAccess for Iter<'_, T> {}
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<T> TrustedRandomAccessNoCoerce for Iter<'_, T> {
-    const MAY_HAVE_SIDE_EFFECT: bool = false;
     const NEEDS_CLEANUP: bool = false;
 
     fn cleanup(&mut self, num: usize, forward: bool) {
