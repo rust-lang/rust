@@ -4,6 +4,11 @@ error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
 LL |     let _: Result<(), String> = Ok();
    |                                 ^^-- an argument of type `()` is missing
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 help: provide the argument
    |
 LL |     let _: Result<(), String> = Ok(());

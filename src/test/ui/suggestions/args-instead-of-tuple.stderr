@@ -4,6 +4,11 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
 LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
    |                                    ^^
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 help: use parentheses to construct a tuple
    |
 LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
@@ -15,6 +20,11 @@ error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
 LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
    |                                              ^^^^
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 help: use parentheses to construct a tuple
    |
 LL |     let _: Option<(i32, i8, &'static str)> = Some((1, 2, "hi"));
@@ -26,6 +36,11 @@ error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
 LL |     let _: Option<()> = Some();
    |                         ^^^^-- an argument of type `()` is missing
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 help: provide the argument
    |
 LL |     let _: Option<()> = Some(());
@@ -41,6 +56,11 @@ LL |     let _: Option<(i32,)> = Some(3);
    |
    = note: expected tuple `(i32,)`
                found type `{integer}`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _: Option<(i32,)> = Some((3,));
@@ -56,6 +76,11 @@ LL |     let _: Option<(i32,)> = Some((3));
    |
    = note: expected tuple `(i32,)`
                found type `{integer}`
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _: Option<(i32,)> = Some((3,));

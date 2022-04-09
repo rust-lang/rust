@@ -4,6 +4,11 @@ error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
 LL |     let _ = Some(3, 2);
    |             ^^^^    - argument unexpected
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 help: remove the extra argument
    |
 LL |     let _ = Some(3);
@@ -17,6 +22,11 @@ LL |     let _ = Ok(3, 6, 2);
    |                   |
    |                   argument unexpected
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 help: remove the extra arguments
    |
 LL |     let _ = Ok(3);
@@ -28,6 +38,11 @@ error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
 LL |     let _ = Ok();
    |             ^^-- an argument is missing
    |
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/result.rs:LL:COL
+   |
+LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^
 help: provide the argument
    |
 LL |     let _ = Ok({_});

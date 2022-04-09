@@ -11,6 +11,11 @@ LL |         Some(true)
    |
    = note: expected type parameter `bool` (type parameter `bool`)
                         found type `bool` (`bool`)
+note: tuple variant defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
+   |     ^^^^
 
 error: aborting due to previous error
 
