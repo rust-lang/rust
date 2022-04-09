@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::*;

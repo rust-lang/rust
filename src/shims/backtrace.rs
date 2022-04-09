@@ -4,7 +4,6 @@ use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Instance};
 use rustc_span::{BytePos, Loc, Symbol};
 use rustc_target::{abi::Size, spec::abi::Abi};
-use std::convert::TryInto as _;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {

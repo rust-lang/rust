@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::convert::TryFrom;
 use std::ffi::{OsStr, OsString};
 use std::iter;
 use std::path::{Path, PathBuf};
