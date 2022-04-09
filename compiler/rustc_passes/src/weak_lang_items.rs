@@ -24,13 +24,13 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
     let crate_items = tcx.hir_crate_items(());
     for id in crate_items.foreign_items() {
         let attrs = tcx.hir().attrs(id.hir_id());
-        let span = tcx.hir().span(id.hir_id());
         if let Some((lang_item, _)) = lang_items::extract(attrs) {
             if let Some(&item) = WEAK_ITEMS_REFS.get(&lang_item) {
                 if items.require(item).is_err() {
                     items.missing.push(item);
                 }
             } else {
+                let span = tcx.def_span(id.def_id);
                 struct_span_err!(
                     tcx.sess,
                     span,
