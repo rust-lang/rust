@@ -233,10 +233,11 @@ impl<K, V> HashMap<K, V, RandomState> {
         Default::default()
     }
 
-    /// Creates an empty `HashMap` with the specified capacity.
+    /// Creates an empty `HashMap` with at least the specified capacity.
     ///
     /// The hash map will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the hash set will not allocate.
     ///
     /// # Examples
     ///
@@ -282,18 +283,19 @@ impl<K, V, S> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_hasher(hash_builder) }
     }
 
-    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
-    /// to hash the keys.
+    /// Creates an empty `HashMap` with at least the specified capacity, using
+    /// `hasher` to hash the keys.
     ///
     /// The hash map will be able to hold at least `capacity` elements without
-    /// reallocating. If `capacity` is 0, the hash map will not allocate.
+    /// reallocating. This method is allowed to allocate for more elements than
+    /// `capacity`. If `capacity` is 0, the hash map will not allocate.
     ///
-    /// Warning: `hash_builder` is normally randomly generated, and
+    /// Warning: `hasher` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
+    /// The `hasher` passed should implement the [`BuildHasher`] trait for
     /// the HashMap to be useful, see its documentation for details.
     ///
     /// # Examples
@@ -308,8 +310,8 @@ impl<K, V, S> HashMap<K, V, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hash_builder) }
+    pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashMap<K, V, S> {
+        HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hasher) }
     }
 
     /// Returns the number of elements the map can hold without reallocating.
@@ -731,8 +733,10 @@ where
     S: BuildHasher,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
-    /// in the `HashMap`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// in the `HashMap`. The collection may reserve more space to speculatively
+    /// avoid frequent reallocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Panics
     ///
@@ -752,8 +756,11 @@ where
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `HashMap<K, V>`. The collection may reserve more space to avoid
-    /// frequent reallocations.
+    /// in the `HashMap`. The collection may reserve more space to speculatively
+    /// avoid frequent reallocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional` if
+    /// it returns `Ok(())`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Errors
     ///
@@ -766,7 +773,7 @@ where
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, isize> = HashMap::new();
-    /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
+    /// map.try_reserve(10).expect("why is the test harness OOMing on a handful of bytes?");
     /// ```
     #[inline]
     #[stable(feature = "try_reserve", since = "1.57.0")]
