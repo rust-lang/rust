@@ -169,7 +169,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let exact = if mem::size_of::<T>() == 0 {
             self.end.addr().wrapping_sub(self.ptr.addr())
         } else {
-            unsafe { self.end.offset_from(self.ptr) as usize }
+            unsafe { self.end.unsigned_offset_from(self.ptr) }
         };
         (exact, Some(exact))
     }

@@ -308,7 +308,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let offset_ptr = ptr.wrapping_signed_offset(offset_bytes, self);
                 self.write_pointer(offset_ptr, dest)?;
             }
-            sym::ptr_offset_from => {
+            sym::ptr_offset_from | sym::ptr_offset_from_unsigned => {
                 let a = self.read_pointer(&args[0])?;
                 let b = self.read_pointer(&args[1])?;
 
@@ -330,8 +330,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         // Both are pointers. They must be into the same allocation.
                         if a_alloc_id != b_alloc_id {
                             throw_ub_format!(
-                                "ptr_offset_from cannot compute offset of pointers into different \
-                                allocations.",
+                                "{} cannot compute offset of pointers into different allocations.",
+                                intrinsic_name,
                             );
                         }
                         // And they must both be valid for zero-sized accesses ("in-bounds or one past the end").
@@ -348,16 +348,30 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             CheckInAllocMsg::OffsetFromTest,
                         )?;
 
+                        if intrinsic_name == sym::ptr_offset_from_unsigned && a_offset < b_offset {
+                            throw_ub_format!(
+                                "{} cannot compute a negative offset, but {} < {}",
+                                intrinsic_name,
+                                a_offset.bytes(),
+                                b_offset.bytes(),
+                            );
+                        }
+
                         // Compute offset.
                         let usize_layout = self.layout_of(self.tcx.types.usize)?;
                         let isize_layout = self.layout_of(self.tcx.types.isize)?;
+                        let ret_layout = if intrinsic_name == sym::ptr_offset_from {
+                            isize_layout
+                        } else {
+                            usize_layout
+                        };
                         let a_offset = ImmTy::from_uint(a_offset.bytes(), usize_layout);
                         let b_offset = ImmTy::from_uint(b_offset.bytes(), usize_layout);
                         let (val, _overflowed, _ty) =
                             self.overflowing_binary_op(BinOp::Sub, &a_offset, &b_offset)?;
                         let pointee_layout = self.layout_of(substs.type_at(0))?;
-                        let val = ImmTy::from_scalar(val, isize_layout);
-                        let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
+                        let val = ImmTy::from_scalar(val, ret_layout);
+                        let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
                         self.exact_div(&val, &size, dest)?;
                     }
                 }

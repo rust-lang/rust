@@ -611,6 +611,67 @@ impl<T: ?Sized> *const T {
         unsafe { intrinsics::ptr_offset_from(self, origin) }
     }
 
+    /// Calculates the distance between two pointers, *where it's known that
+    /// `self` is equal to or greater than `origin`*. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// This computes the same value that [`offset_from`](#method.offset_from)
+    /// would compute, but with the added precondition that that the offset is
+    /// guaranteed to be non-negative.  This method is equivalent to
+    /// `usize::from(self.offset_from(origin)).unwrap_unchecked()`,
+    /// but it provides slightly more information to the optimizer, which can
+    /// sometimes allow it to optimize slightly better with some backends.
+    ///
+    /// This method is the inverse of [`add`](#method.add) (and, with the parameters
+    /// in the other order, of [`sub`](#method.sub)).
+    ///
+    /// # Safety
+    ///
+    /// - The distance between the pointers must be non-negative (`self >= origin`)
+    ///
+    /// - *All* the safety conditions of [`offset_from`](#method.offset_from)
+    ///   apply to this method as well; see it for the full details.
+    ///
+    /// Importantly, despite the return type of this method being able to represent
+    /// a larger offset, it's still *not permitted* to pass pointers which differ
+    /// by more than `isize::MAX` *bytes*.  As such, the result of this method will
+    /// always be less than or equal to `isize::MAX as usize`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if `T` is a Zero-Sized Type ("ZST").
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_unsigned_offset_from)]
+    ///
+    /// let a = [0; 5];
+    /// let ptr1: *const i32 = &a[1];
+    /// let ptr2: *const i32 = &a[3];
+    /// unsafe {
+    ///     assert_eq!(ptr2.unsigned_offset_from(ptr1), 2);
+    ///     assert_eq!(ptr1.add(2), ptr2);
+    ///     assert_eq!(ptr2.sub(2), ptr1);
+    ///     assert_eq!(ptr2.unsigned_offset_from(ptr2), 0);
+    /// }
+    ///
+    /// // This would be incorrect, as the pointers are not correctly ordered:
+    /// // ptr1.offset_from(ptr2)
+    /// ```
+    #[unstable(feature = "ptr_unsigned_offset_from", issue = "88888888")]
+    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[inline]
+    pub const unsafe fn unsigned_offset_from(self, origin: *const T) -> usize
+    where
+        T: Sized,
+    {
+        let pointee_size = mem::size_of::<T>();
+        assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
+        // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
+        unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
+    }
+
     /// Returns whether two pointers are guaranteed to be equal.
     ///
     /// At runtime this function behaves like `self == other`.

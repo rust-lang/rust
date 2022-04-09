@@ -1079,6 +1079,7 @@ symbols! {
         ptr_null,
         ptr_null_mut,
         ptr_offset_from,
+        ptr_offset_from_unsigned,
         pub_macro_rules,
         pub_restricted,
         pure,
