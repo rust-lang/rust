@@ -995,11 +995,55 @@ rustc_queries! {
         desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
     }
 
-    /// The `symbol_name` query provides the symbol name for calling a
-    /// given instance from the local crate. In particular, it will also
-    /// look up the correct symbol name of instances from upstream crates.
+    /// The `symbol_name` query provides the symbol name for the given instance.
+    ///
+    /// Both `static` and `fn` instances have symbol names, whether definitions
+    /// (on the Rust side, either from the local crate or an upstream one), or
+    /// imports in a "foreign block" (`extern {...}`).
+    ///
+    /// This symbol name is the canonical one for that instance, and must be
+    /// used for both linker-level exports (definitions) and imports (uses),
+    /// of that instance (i.e. it's the sole connection the linker sees).
+    ///
+    /// By default, Rust definitions have mangled symbols, to avoid conflicts,
+    /// and to allow for many instances ("monomorphizations") of generic `fn`s.
+    /// The exact choice of mangling can vary, and not all type information from
+    /// the instance may always be present in a form that allows demangling back
+    /// to a human-readable form. See also the `symbol_mangling_version` query
+    /// and the `rustc_symbol_mangling` crate.
+    ///
+    /// Note however that `fn` lifetime parameters are erased (and so they never
+    /// participate in monomorphization), meaning mangled Rust symbol names will
+    /// never contain information about such lifetimes (mangled lifetimes only
+    /// occur for higher-ranked types, e.g. `foo::<for<'a> fn(&'a X)>`).
     query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName<'tcx> {
         desc { "computing the symbol for `{}`", key }
+        cache_on_disk_if { true }
+    }
+
+    /// The `type_id_mangling` query provides the Rust mangling of the given type,
+    /// for use in `TypeId`, as a guard against `type_id_hash` collisions.
+    ///
+    /// Unlike the `symbol_name` query, the mangling used for types doesn't vary
+    /// between crates, and encodes all the type information "structurally"
+    /// (i.e. lossy encodings such as hashing aren't allowed, as that would
+    /// effectively defeat the purpose of guarding against hash collisions).
+    ///
+    /// If this is used outside of `TypeId`, some additional caveats apply:
+    /// * it's not a full symbol, so it could collide with unrelated exports,
+    ///   if used directly as a linker symbol without a prefix and/or suffix
+    /// * mangling features such as compression (e.g. `v0` backrefs) mean that
+    ///   it cannot be trivially embedded in a larger mangled Rust symbol - for
+    ///   that usecase, prefer using `symbol_name` with an instance of a either
+    ///   a custom `InstanceDef`, or at least a generic lang item (`fn`, though
+    ///   associated `const` may work better for a type-dependent `static`)
+    /// * every Rust mangling erases most lifetimes, with the only exception
+    ///   being those found in higher-ranked types (e.g. `for<'a> fn(&'a X)`)
+    //
+    // FIXME(eddyb) this shouldn't be using `ty::SymbolName`, but `&'tcx str`,
+    // or `ty::SymbolName` should be renamed to "tcx-interned string".
+    query type_id_mangling(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> ty::SymbolName<'tcx> {
+        desc { "computing the type mangling of `{}`", key.value }
         cache_on_disk_if { true }
     }
 

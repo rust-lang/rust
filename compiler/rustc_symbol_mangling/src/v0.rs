@@ -27,16 +27,11 @@ pub(super) fn mangle<'tcx>(
     // FIXME(eddyb) this should ideally not be needed.
     let substs = tcx.normalize_erasing_regions(ty::ParamEnv::reveal_all(), instance.substs);
 
-    let prefix = "_R";
-    let mut cx = &mut SymbolMangler {
-        tcx,
-        start_offset: prefix.len(),
-        paths: FxHashMap::default(),
-        types: FxHashMap::default(),
-        consts: FxHashMap::default(),
-        binders: vec![],
-        out: String::from(prefix),
-    };
+    let mut cx = &mut SymbolMangler::new(tcx);
+
+    // The `_R` prefix indicates a Rust mangled symbol.
+    cx.push("_R");
+    cx.start_offset = cx.out.len();
 
     // Append `::{shim:...#0}` to shims that can coexist with a non-shim instance.
     let shim_kind = match instance.def {
@@ -55,6 +50,19 @@ pub(super) fn mangle<'tcx>(
         cx = cx.print_def_path(instantiating_crate.as_def_id(), &[]).unwrap();
     }
     std::mem::take(&mut cx.out)
+}
+
+pub(super) fn mangle_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> String {
+    let param_env = param_env.with_reveal_all_normalized(tcx);
+    let ty = tcx.normalize_erasing_regions(param_env, ty);
+
+    let mut cx = SymbolMangler::new(tcx);
+    cx.print_type(ty).unwrap();
+    cx.out
 }
 
 struct BinderLevel {
@@ -85,6 +93,18 @@ struct SymbolMangler<'tcx> {
 }
 
 impl<'tcx> SymbolMangler<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self {
+            tcx,
+            start_offset: 0,
+            paths: FxHashMap::default(),
+            types: FxHashMap::default(),
+            consts: FxHashMap::default(),
+            binders: vec![],
+            out: String::new(),
+        }
+    }
+
     fn push(&mut self, s: &str) {
         self.out.push_str(s);
     }

@@ -5,6 +5,7 @@ LL |     send(format_args!("{:?}", c));
    |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
    |
    = help: within `[ArgumentV1<'_>]`, the trait `Sync` is not implemented for `core::fmt::Opaque`
+   = help: the trait `Sync` is implemented for `any::OpaqueStrBytes`
    = note: required because it appears within the type `&core::fmt::Opaque`
    = note: required because it appears within the type `ArgumentV1<'_>`
    = note: required because it appears within the type `[ArgumentV1<'_>]`
@@ -23,6 +24,7 @@ LL |     sync(format_args!("{:?}", c));
    |     ^^^^ `core::fmt::Opaque` cannot be shared between threads safely
    |
    = help: within `Arguments<'_>`, the trait `Sync` is not implemented for `core::fmt::Opaque`
+   = help: the trait `Sync` is implemented for `any::OpaqueStrBytes`
    = note: required because it appears within the type `&core::fmt::Opaque`
    = note: required because it appears within the type `ArgumentV1<'_>`
    = note: required because it appears within the type `[ArgumentV1<'_>]`

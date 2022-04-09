@@ -2,16 +2,16 @@
 
 use std::convert::TryFrom;
 
+use rustc_hir::lang_items::LangItem;
 use rustc_hir::Mutability;
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_middle::{
-    mir::{self, interpret::ConstAlloc},
-    ty::ScalarInt,
-};
+use rustc_middle::mir::{self, interpret::ConstAlloc};
+use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
+use rustc_target::abi::Size;
 
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
+    self, intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
     MemPlaceMeta, Scalar,
 };
 
@@ -37,6 +37,87 @@ pub(crate) fn const_caller_location(
         bug!("intern_const_alloc_recursive should not error in this case")
     }
     ConstValue::Scalar(Scalar::from_pointer(loc_place.ptr.into_pointer_or_addr().unwrap(), &tcx))
+}
+
+pub(crate) fn const_type_id<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+) -> ConstValue<'tcx> {
+    trace!("const_type_id: {}", ty);
+
+    // Compute (logical) `TypeId` field values, before trying to encode them.
+    let hash = tcx.type_id_hash(ty);
+    let mangling = tcx.type_id_mangling(param_env.and(ty)).name;
+
+    let mut ecx = mk_eval_cx(tcx, DUMMY_SP, param_env, false);
+
+    let type_id_ty = tcx.type_of(tcx.require_lang_item(LangItem::TypeId, None));
+    let type_id_layout = ecx.layout_of(type_id_ty).unwrap();
+
+    // Encode `TypeId` field values, before putting together the allocation.
+    let hash_val = Scalar::from_u64(hash);
+    let mangling_val = {
+        let mangling_len = u64::try_from(mangling.len()).unwrap();
+        let mangling_len_val = Scalar::from_machine_usize(mangling_len, &ecx);
+
+        // The field is `mangling: &TypeManglingStr`, get `TypeManglingStr` from it.
+        let mangling_field_ty = type_id_layout.field(&ecx, 1).ty;
+        let type_mangling_str_ty = mangling_field_ty.builtin_deref(true).unwrap().ty;
+
+        // Allocate memory for `TypeManglingStr` struct.
+        let type_mangling_str_layout = ecx.layout_of(type_mangling_str_ty).unwrap();
+        let type_mangling_str_place = {
+            // NOTE(eddyb) this similar to the `ecx.allocate(...)` used below
+            // for `type_id_place`, except with an additional size for the
+            // string bytes (`mangling`) being added to the `TypeManglingStr`
+            // (which is unsized, using an `extern { type }` tail).
+            let layout = type_mangling_str_layout;
+            let size = layout.size + Size::from_bytes(mangling_len);
+            let ptr = ecx
+                .allocate_ptr(size, layout.align.abi, interpret::MemoryKind::IntrinsicGlobal)
+                .unwrap();
+            MPlaceTy::from_aligned_ptr(ptr.into(), layout)
+        };
+
+        // Initialize `TypeManglingStr` fields.
+        ecx.write_scalar(
+            mangling_len_val,
+            &ecx.mplace_field(&type_mangling_str_place, 0).unwrap().into(),
+        )
+        .unwrap();
+        ecx.write_bytes_ptr(
+            ecx.mplace_field(&type_mangling_str_place, 1).unwrap().ptr,
+            mangling.bytes(),
+        )
+        .unwrap();
+
+        // `&TypeManglingStr` has no metadata, thanks to the length being stored
+        // behind the reference (in the first field of `TypeManglingStr`).
+        type_mangling_str_place.to_ref(&ecx).to_scalar().unwrap()
+    };
+
+    // FIXME(eddyb) everything below would be unnecessary if `ConstValue` could
+    // hold a pair of `Scalar`s, or if we moved to valtrees.
+
+    // Allocate memory for `TypeId` struct.
+    let type_id_place =
+        ecx.allocate(type_id_layout, interpret::MemoryKind::IntrinsicGlobal).unwrap();
+
+    // Initialize `TypeId` fields.
+    ecx.write_scalar(hash_val, &ecx.mplace_field(&type_id_place, 0).unwrap().into()).unwrap();
+    ecx.write_scalar(mangling_val, &ecx.mplace_field(&type_id_place, 1).unwrap().into()).unwrap();
+
+    // Convert the `TypeId` allocation from being in `ecx`, to a global `ConstValue`.
+    if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &type_id_place).is_err() {
+        bug!("intern_const_alloc_recursive should not error in this case")
+    }
+    let (type_id_alloc_id, type_id_offset) =
+        type_id_place.ptr.into_pointer_or_addr().unwrap().into_parts();
+    ConstValue::ByRef {
+        alloc: tcx.global_alloc(type_id_alloc_id).unwrap_memory(),
+        offset: type_id_offset,
+    }
 }
 
 /// Convert an evaluated constant to a type level constant

@@ -1,9 +1,10 @@
-// check-pass
-//
-// This test is complement to the test in issue-73976-polymorphic.rs.
-// In that test we ensure that polymorphic use of type_id and type_name in patterns
-// will be properly rejected. This test will ensure that monomorphic use of these
-// would not be wrongly rejected in patterns.
+// NOTE(eddyb) this was the original comment before this test started erroring:
+//  > // check-pass
+//  > //
+//  > // This test is complement to the test in issue-73976-polymorphic.rs.
+//  > // In that test we ensure that polymorphic use of type_id and type_name in patterns
+//  > // will be properly rejected. This test will ensure that monomorphic use of these
+//  > // would not be wrongly rejected in patterns.
 
 #![feature(const_type_id)]
 #![feature(const_type_name)]
@@ -18,6 +19,7 @@ impl<T: 'static> GetTypeId<T> {
 
 const fn check_type_id<T: 'static>() -> bool {
     matches!(GetTypeId::<T>::VALUE, GetTypeId::<usize>::VALUE)
+    //~^ ERROR to use a constant of type
 }
 
 pub struct GetTypeNameLen<T>(T);

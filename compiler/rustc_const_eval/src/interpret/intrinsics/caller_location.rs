@@ -82,17 +82,17 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let loc_details = &self.tcx.sess.opts.debugging_opts.location_detail;
         let file = if loc_details.file {
-            self.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not)
+            self.allocate_str(filename.as_str(), MemoryKind::IntrinsicGlobal, Mutability::Not)
         } else {
             // FIXME: This creates a new allocation each time. It might be preferable to
             // perform this allocation only once, and re-use the `MPlaceTy`.
             // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-            self.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not)
+            self.allocate_str("<redacted>", MemoryKind::IntrinsicGlobal, Mutability::Not)
         };
         let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
         let col = if loc_details.column { Scalar::from_u32(col) } else { Scalar::from_u32(0) };
 
-        // Allocate memory for `CallerLocation` struct.
+        // Allocate memory for `panic::Location` struct.
         let loc_ty = self
             .tcx
             .type_of(self.tcx.require_lang_item(LangItem::PanicLocation, None))
@@ -100,7 +100,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let loc_layout = self.layout_of(loc_ty).unwrap();
         // This can fail if rustc runs out of memory right here. Trying to emit an error would be
         // pointless, since that would require allocating more memory than a Location.
-        let location = self.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
+        let location = self.allocate(loc_layout, MemoryKind::IntrinsicGlobal).unwrap();
 
         // Initialize fields.
         self.write_immediate(file.to_ref(self), &self.mplace_field(&location, 0).unwrap().into())

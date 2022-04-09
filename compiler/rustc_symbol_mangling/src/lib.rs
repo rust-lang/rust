@@ -125,13 +125,10 @@ pub fn symbol_name_for_instance_in_crate<'tcx>(
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { symbol_name: symbol_name_provider, ..*providers };
+    *providers = Providers { symbol_name, type_id_mangling, ..*providers };
 }
 
-// The `symbol_name` query provides the symbol name for calling a given
-// instance from the local crate. In particular, it will also look up the
-// correct symbol name of instances from upstream crates.
-fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+fn symbol_name<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
@@ -148,6 +145,14 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
     });
 
     ty::SymbolName::new(tcx, &symbol_name)
+}
+
+fn type_id_mangling<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    query: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
+) -> ty::SymbolName<'tcx> {
+    let (param_env, ty) = query.into_parts();
+    ty::SymbolName::new(tcx, &v0::mangle_type(tcx, param_env, ty))
 }
 
 /// This function computes the LLVM CFI typeid for the given `FnAbi`.

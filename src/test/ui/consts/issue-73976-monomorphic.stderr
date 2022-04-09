@@ -1,0 +1,8 @@
+error: to use a constant of type `any::TypeManglingStr` in a pattern, `any::TypeManglingStr` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/issue-73976-monomorphic.rs:21:37
+   |
+LL |     matches!(GetTypeId::<T>::VALUE, GetTypeId::<usize>::VALUE)
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

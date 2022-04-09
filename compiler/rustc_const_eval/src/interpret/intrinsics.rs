@@ -70,7 +70,7 @@ crate fn eval_nullary_intrinsic<'tcx>(
         }
         sym::type_id => {
             ensure_monomorphic_enough(tcx, tp_ty)?;
-            ConstValue::from_u64(tcx.type_id_hash(tp_ty))
+            crate::const_eval::const_type_id(tcx, param_env, tp_ty)
         }
         sym::variant_count => match tp_ty.kind() {
             // Correctly handles non-monomorphic calls, so there is no need for ensure_monomorphic_enough.

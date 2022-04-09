@@ -29,8 +29,8 @@ use super::{
 pub enum MemoryKind<T> {
     /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
-    /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
-    CallerLocation,
+    /// Global memory allocated by an intrinsic. Error if ever deallocated.
+    IntrinsicGlobal,
     /// Additional memory kinds a machine wishes to distinguish from the builtin ones.
     Machine(T),
 }
@@ -40,7 +40,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
     fn may_leak(self) -> bool {
         match self {
             MemoryKind::Stack => false,
-            MemoryKind::CallerLocation => true,
+            MemoryKind::IntrinsicGlobal => true,
             MemoryKind::Machine(k) => k.may_leak(),
         }
     }
@@ -50,7 +50,7 @@ impl<T: fmt::Display> fmt::Display for MemoryKind<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MemoryKind::Stack => write!(f, "stack variable"),
-            MemoryKind::CallerLocation => write!(f, "caller location"),
+            MemoryKind::IntrinsicGlobal => write!(f, "global memory (from intrinsic)"),
             MemoryKind::Machine(m) => write!(f, "{}", m),
         }
     }

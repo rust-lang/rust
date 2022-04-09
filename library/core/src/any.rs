@@ -84,8 +84,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fmt;
-use crate::intrinsics;
+use crate::cmp::Ordering;
+use crate::hash::{Hash, Hasher};
+use crate::{fmt, intrinsics, ptr, slice, str};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -582,6 +583,74 @@ impl dyn Any + Send + Sync {
 // TypeID and its methods
 ///////////////////////////////////////////////////////////////////////////////
 
+extern "C" {
+    type OpaqueStrBytes;
+}
+
+// NOTE(eddyb) these are needed because `extern { type }`s don't implement any
+// auto traits, and their absence ends up propagating to `TypeId` otherwise.
+unsafe impl Send for OpaqueStrBytes {}
+unsafe impl Sync for OpaqueStrBytes {}
+impl crate::panic::RefUnwindSafe for OpaqueStrBytes {}
+
+/// Length-prefixed string containing the Rust mangling of a type, for `TypeId`.
+///
+/// Equality checks have a fast-path for the "equal address" case, to reduce the
+/// cost of `TypeId` equality checking. Note that comparing unequal `TypeId`s will
+/// already almost never check the mangling, as the `hash` field is compared first.
+struct TypeManglingStr {
+    len: usize,
+    bytes: OpaqueStrBytes,
+}
+
+impl TypeManglingStr {
+    #[inline]
+    fn as_str(&self) -> &str {
+        // SAFETY: `&TypeManglingStr` was allocated by the `type_id` intrinsic,
+        // with valid UTF-8 starting at `&self.bytes` and `self.len` bytes long.
+        unsafe {
+            str::from_utf8_unchecked(slice::from_raw_parts(
+                ptr::addr_of!(self.bytes).cast::<u8>(),
+                self.len,
+            ))
+        }
+    }
+}
+
+impl PartialEq for TypeManglingStr {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        // FIXME(eddyb) should `likely` be used around the `ptr::eq`?
+        if ptr::eq(self, other) {
+            // Avoid comparing the bytes, if the address is the same.
+            true
+        } else {
+            self.as_str() == other.as_str()
+        }
+    }
+}
+
+impl Eq for TypeManglingStr {}
+
+impl PartialOrd for TypeManglingStr {
+    #[inline]
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TypeManglingStr {
+    #[inline]
+    fn cmp(&self, other: &Self) -> Ordering {
+        if ptr::eq(self, other) {
+            // Avoid comparing the bytes, if the address is the same.
+            Ordering::Equal
+        } else {
+            self.as_str().cmp(other.as_str())
+        }
+    }
+}
+
 /// A `TypeId` represents a globally unique identifier for a type.
 ///
 /// Each `TypeId` is an opaque object which does not allow inspection of what's
@@ -595,10 +664,35 @@ impl dyn Any + Send + Sync {
 /// noting that the hashes and ordering will vary between Rust releases. Beware
 /// of relying on them inside of your code!
 #[cfg_attr(not(bootstrap), lang = "TypeId")]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
-    t: u64,
+    hash: u64,
+
+    // NOTE(eddyb) this follows `hash`, so that the auto-derived `PartialEq`
+    // doesn't waste time comparing `mangling`, when `hash` differs.
+    #[cfg(not(bootstrap))]
+    mangling: &'static TypeManglingStr,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for TypeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // FIXME(eddyb) perhaps attempt demangling `mangling`.
+        f.debug_struct("TypeId").finish_non_exhaustive()
+    }
+}
+
+// NOTE(eddyb) this avoids hashing `mangling` for performance reasons, as the
+// `hash` field is sufficient for a lossy hashing operation, but there is a
+// second reason for doing it: code in the wild expects a single `write_u64`
+// call, and hashing the entirety of `mangling.as_str()` would break that.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for TypeId {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u64(self.hash);
+    }
 }
 
 impl TypeId {
@@ -623,7 +717,7 @@ impl TypeId {
     pub const fn of<T: ?Sized + 'static>() -> TypeId {
         #[cfg(bootstrap)]
         {
-            TypeId { t: intrinsics::type_id::<T>() }
+            TypeId { hash: intrinsics::type_id::<T>() }
         }
         #[cfg(not(bootstrap))]
         {
