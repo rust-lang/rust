@@ -1,4 +1,4 @@
-error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends it's contained lifetimes
+error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
   --> $DIR/drop_non_drop.rs:22:5
    |
 LL |     drop(Foo);
@@ -11,7 +11,7 @@ note: argument has type `main::Foo`
 LL |     drop(Foo);
    |          ^^^
 
-error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends it's contained lifetimes
+error: call to `std::mem::drop` with a value that does not implement `Drop`. Dropping such a type only extends its contained lifetimes
   --> $DIR/drop_non_drop.rs:37:5
    |
 LL |     drop(Baz(Foo));
