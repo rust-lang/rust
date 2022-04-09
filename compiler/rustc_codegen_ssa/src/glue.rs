@@ -38,8 +38,14 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let unit = layout.field(bx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
+            let (size, overflow) = bx.checked_binop(
+                OverflowOp::Mul,
+                bx.tcx().mk_mach_uint(UintTy::Usize),
+                unit.size.bytes(),
+                info.unwrap(),
+            );
             (
-                bx.mul(info.unwrap(), bx.const_usize(unit.size.bytes())),
+                bx.select(overflow, bx.const_usize(usize::MAX), size),
                 bx.const_usize(unit.align.abi.bytes()),
             )
         }
