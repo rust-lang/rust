@@ -622,8 +622,20 @@ impl<T: ?Sized> *const T {
     /// but it provides slightly more information to the optimizer, which can
     /// sometimes allow it to optimize slightly better with some backends.
     ///
-    /// This method is the inverse of [`add`](#method.add) (and, with the parameters
-    /// in the other order, of [`sub`](#method.sub)).
+    /// This method can be though of as recovering the `count` that was passed
+    /// to [`add`](#method.add) (or, with the parameters in the other order,
+    /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
+    /// that their safety preconditions are met:
+    /// ```rust
+    /// # #![feature(ptr_unsigned_offset_from)]
+    /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool {
+    /// ptr.sub_ptr(origin) == count
+    /// # &&
+    /// origin.add(count) == ptr
+    /// # &&
+    /// ptr.sub(count) == origin
+    /// # }
+    /// ```
     ///
     /// # Safety
     ///
@@ -650,10 +662,10 @@ impl<T: ?Sized> *const T {
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
     /// unsafe {
-    ///     assert_eq!(ptr2.unsigned_offset_from(ptr1), 2);
+    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
     ///     assert_eq!(ptr1.add(2), ptr2);
     ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.unsigned_offset_from(ptr2), 0);
+    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
@@ -662,7 +674,7 @@ impl<T: ?Sized> *const T {
     #[unstable(feature = "ptr_unsigned_offset_from", issue = "88888888")]
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
     #[inline]
-    pub const unsafe fn unsigned_offset_from(self, origin: *const T) -> usize
+    pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
     where
         T: Sized,
     {

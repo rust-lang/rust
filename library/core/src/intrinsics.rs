@@ -1903,7 +1903,7 @@ extern "rust-intrinsic" {
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
 
-    /// See documentation of `<*const T>::unsigned_offset_from` for details.
+    /// See documentation of `<*const T>::sub_ptr` for details.
     #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
     #[cfg(not(bootstrap))]
     pub fn ptr_offset_from_unsigned<T>(ptr: *const T, base: *const T) -> usize;

@@ -47,7 +47,7 @@ pub const OFFSET_EQUAL_INTS: isize = {
 pub const OFFSET_UNSIGNED: usize = {
     let a = ['a', 'b', 'c'];
     let ptr = a.as_ptr();
-    unsafe { ptr.add(2).unsigned_offset_from(ptr) }
+    unsafe { ptr.add(2).sub_ptr(ptr) }
 };
 
 fn main() {

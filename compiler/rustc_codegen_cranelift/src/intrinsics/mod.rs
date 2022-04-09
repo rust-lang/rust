@@ -721,7 +721,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let diff_bytes = fx.bcx.ins().isub(ptr, base);
             // FIXME this can be an exact division.
             let diff = if intrinsic == sym::ptr_offset_from_unsigned {
-                // Because diff_bytes ULT isize::MAX, this would be fine as signed,
+                // Because diff_bytes ULE isize::MAX, this would be fine as signed,
                 // but unsigned is slightly easier to codegen, so might as well.
                 fx.bcx.ins().udiv_imm(diff_bytes, pointee_size as i64)
             } else {

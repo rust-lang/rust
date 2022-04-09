@@ -10,7 +10,7 @@ pub(super) struct InPlaceDrop<T> {
 
 impl<T> InPlaceDrop<T> {
     fn len(&self) -> usize {
-        unsafe { self.dst.unsigned_offset_from(self.inner) }
+        unsafe { self.dst.sub_ptr(self.inner) }
     }
 }
 
