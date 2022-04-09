@@ -263,9 +263,7 @@ fn generic_extension<'cx, 'tt>(
 
                 // Ignore the delimiters on the RHS.
                 let rhs = match &rhses[i] {
-                    mbe::TokenTree::Delimited(_, delimited) => {
-                        delimited.inner_tts().to_vec().clone()
-                    }
+                    mbe::TokenTree::Delimited(_, delimited) => delimited.tts.to_vec(),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 let arm_span = rhses[i].span();
@@ -470,17 +468,16 @@ pub fn compile_declarative_macro(
             .iter()
             .map(|m| {
                 if let MatchedTokenTree(ref tt) = *m {
-                    let mut tts = vec![];
-                    mbe::quoted::parse(
+                    let tt = mbe::quoted::parse(
                         tt.clone().into(),
                         true,
                         &sess.parse_sess,
                         def.id,
                         features,
                         edition,
-                        &mut tts,
-                    );
-                    let tt = tts.pop().unwrap();
+                    )
+                    .pop()
+                    .unwrap();
                     valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
                     return tt;
                 }
@@ -495,17 +492,16 @@ pub fn compile_declarative_macro(
             .iter()
             .map(|m| {
                 if let MatchedTokenTree(ref tt) = *m {
-                    let mut tts = vec![];
-                    mbe::quoted::parse(
+                    return mbe::quoted::parse(
                         tt.clone().into(),
                         false,
                         &sess.parse_sess,
                         def.id,
                         features,
                         edition,
-                        &mut tts,
-                    );
-                    return tts.pop().unwrap();
+                    )
+                    .pop()
+                    .unwrap();
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
             })
@@ -544,7 +540,7 @@ pub fn compile_declarative_macro(
                 // Ignore the delimiters around the matcher.
                 match lhs {
                     mbe::TokenTree::Delimited(_, delimited) => {
-                        mbe::macro_parser::compute_locs(&sess.parse_sess, delimited.inner_tts())
+                        mbe::macro_parser::compute_locs(&sess.parse_sess, &delimited.tts)
                     }
                     _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "malformed macro lhs"),
                 }
@@ -576,7 +572,7 @@ fn check_lhs_nt_follows(
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(_, delimited) = lhs {
-        check_matcher(sess, features, def, delimited.inner_tts())
+        check_matcher(sess, features, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         sess.span_diagnostic.span_err(lhs.span(), msg);
@@ -597,7 +593,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
             TokenTree::Delimited(_, ref del) => {
-                if !check_lhs_no_empty_seq(sess, del.inner_tts()) {
+                if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
             }
@@ -692,9 +688,9 @@ impl FirstSets {
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(tt.clone());
                     }
-                    TokenTree::Delimited(_span, ref delimited) => {
-                        build_recur(sets, delimited.inner_tts());
-                        first.replace_with(delimited.open_tt().clone());
+                    TokenTree::Delimited(span, ref delimited) => {
+                        build_recur(sets, &delimited.tts);
+                        first.replace_with(delimited.open_tt(span));
                     }
                     TokenTree::Sequence(sp, ref seq_rep) => {
                         let subfirst = build_recur(sets, &seq_rep.tts);
@@ -758,8 +754,8 @@ impl FirstSets {
                     first.add_one(tt.clone());
                     return first;
                 }
-                TokenTree::Delimited(_span, ref delimited) => {
-                    first.add_one(delimited.open_tt().clone());
+                TokenTree::Delimited(span, ref delimited) => {
+                    first.add_one(delimited.open_tt(span));
                     return first;
                 }
                 TokenTree::Sequence(sp, ref seq_rep) => {
@@ -945,9 +941,9 @@ fn check_matcher_core(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(_span, ref d) => {
-                let my_suffix = TokenSet::singleton(d.close_tt().clone());
-                check_matcher_core(sess, features, def, first_sets, d.inner_tts(), &my_suffix);
+            TokenTree::Delimited(span, ref d) => {
+                let my_suffix = TokenSet::singleton(d.close_tt(span));
+                check_matcher_core(sess, features, def, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 

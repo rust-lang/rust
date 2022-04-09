@@ -10,7 +10,7 @@ use rustc_errors::{pluralize, PResult};
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
@@ -34,14 +34,8 @@ enum Frame {
 
 impl Frame {
     /// Construct a new frame around the delimited set of tokens.
-    fn new(mut tts: Vec<mbe::TokenTree>) -> Frame {
-        // Need to add empty delimiters.
-        let open_tt = mbe::TokenTree::token(token::OpenDelim(token::NoDelim), DUMMY_SP);
-        let close_tt = mbe::TokenTree::token(token::CloseDelim(token::NoDelim), DUMMY_SP);
-        tts.insert(0, open_tt);
-        tts.push(close_tt);
-
-        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, all_tts: tts });
+    fn new(tts: Vec<mbe::TokenTree>) -> Frame {
+        let forest = Lrc::new(mbe::Delimited { delim: token::NoDelim, tts });
         Frame::Delimited { forest, idx: 0, span: DelimSpan::dummy() }
     }
 }
@@ -52,7 +46,7 @@ impl Iterator for Frame {
     fn next(&mut self) -> Option<mbe::TokenTree> {
         match *self {
             Frame::Delimited { ref forest, ref mut idx, .. } => {
-                let res = forest.inner_tts().get(*idx).cloned();
+                let res = forest.tts.get(*idx).cloned();
                 *idx += 1;
                 res
             }
@@ -388,7 +382,7 @@ fn lockstep_iter_size(
     use mbe::TokenTree;
     match *tree {
         TokenTree::Delimited(_, ref delimited) => {
-            delimited.inner_tts().iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
+            delimited.tts.iter().fold(LockstepIterSize::Unconstrained, |size, tt| {
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })
         }
