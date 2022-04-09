@@ -132,6 +132,13 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = true;
+
+    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.it.cleanup(num, forward);
+    }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]

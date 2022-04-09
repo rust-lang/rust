@@ -400,6 +400,13 @@ where
     B: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = A::MAY_HAVE_SIDE_EFFECT || B::MAY_HAVE_SIDE_EFFECT;
+
+    const NEEDS_CLEANUP: bool = A::NEEDS_CLEANUP || B::NEEDS_CLEANUP;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.a.cleanup(num, forward);
+        self.b.cleanup(num, forward);
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -542,9 +549,14 @@ pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
     {
         self.size_hint().0
     }
+
     /// `true` if getting an iterator element may have side effects.
     /// Remember to take inner iterators into account.
     const MAY_HAVE_SIDE_EFFECT: bool;
+
+    const NEEDS_CLEANUP: bool;
+
+    fn cleanup(&mut self, num: usize, forward: bool);
 }
 
 /// Like `Iterator::__iterator_get_unchecked`, but doesn't require the compiler to

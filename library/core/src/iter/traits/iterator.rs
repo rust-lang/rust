@@ -94,8 +94,8 @@ pub trait Iterator {
     /// assert_eq!(None, iter.next());
     /// assert_eq!(None, iter.next());
     /// ```
-    #[lang = "next"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(bootstrap, lang = "next")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /// Returns the bounds on the remaining length of the iterator.

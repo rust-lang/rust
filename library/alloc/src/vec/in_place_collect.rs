@@ -275,6 +275,9 @@ where
                 drop_guard.dst = dst.add(1);
             }
         }
+        // FIXME: this should run the TrustedRandomAccess cleanup code.
+        //  currently not running it is ok because IntoIter only implements TRA for Copy types
+        //  but if we relax that the cleanup will be needed
         mem::forget(drop_guard);
         len
     }

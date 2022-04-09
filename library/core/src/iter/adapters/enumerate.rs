@@ -241,6 +241,13 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+
+    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.iter.cleanup(num, forward);
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]

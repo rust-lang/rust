@@ -1,48 +1,45 @@
-use crate::iter::IntoIterator as RealIntoIterator;
+use crate::iter::IntoIterator;
 use crate::iter::TrustedRandomAccessNoCoerce;
-
-#[unstable(feature = "trusted_random_access", issue = "none")]
-#[doc(hidden)]
-
-pub trait IntoIterator {
-    type IntoIter: Iterator;
-
-    #[unstable(feature = "trusted_random_access", issue = "none")]
-    // #[cfg_attr(not(bootstrap), lang = "loop_desugar")]
-    #[cfg_attr(not(bootstrap), lang = "into_iter")]
-    fn into_iter(self) -> Self::IntoIter;
-}
-
-impl<C: RealIntoIterator> IntoIterator for C {
-    type IntoIter = ForLoopDesugar<C::IntoIter>;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        ForLoopDesugar { iter: <Self as RealIntoIterator>::into_iter(self), idx: 0 }
-    }
-}
 
 #[derive(Debug)]
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
-pub struct ForLoopDesugar<I> {
+pub struct ForLoopDesugar<I: Iterator> {
     iter: I,
     idx: usize,
 }
 
-#[unstable(feature = "trusted_random_access", issue = "none")]
-impl<I: Iterator> Iterator for ForLoopDesugar<I> {
-    type Item = I::Item;
+impl<I: Iterator> ForLoopDesugar<I> {
+    #[inline]
+    #[cfg_attr(not(bootstrap), lang = "into_iter")]
+    #[cfg_attr(bootstrap, allow(dead_code))]
+    pub fn new(it: impl IntoIterator<Item = I::Item, IntoIter = I>) -> Self {
+        let mut desugar = ForLoopDesugar { iter: it.into_iter(), idx: 0 };
+        desugar.setup();
+        desugar
+    }
 
     #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        // self.iter.next_spec(&mut self.idx)
+    #[cfg_attr(not(bootstrap), lang = "next")]
+    #[cfg_attr(bootstrap, allow(dead_code))]
+    pub fn next(&mut self) -> Option<I::Item> {
         self.next_spec()
     }
 }
 
+unsafe impl<#[may_dangle] I: Iterator> Drop for ForLoopDesugar<I> {
+    #[inline]
+    fn drop(&mut self) {
+        self.cleanup();
+    }
+}
+
 trait DesugarSpec<T> {
+    fn setup(&mut self);
+
     fn next_spec(&mut self) -> Option<T>;
+
+    fn cleanup(&mut self);
 }
 
 impl<I, T> DesugarSpec<T> for ForLoopDesugar<I>
@@ -50,15 +47,26 @@ where
     I: Iterator<Item = T>,
 {
     #[inline]
+    default fn setup(&mut self) {}
+
+    #[inline]
     default fn next_spec(&mut self) -> Option<I::Item> {
         self.iter.next()
     }
+
+    #[inline]
+    default fn cleanup(&mut self) {}
 }
 
 impl<I, T> DesugarSpec<T> for ForLoopDesugar<I>
 where
     I: TrustedRandomAccessNoCoerce + Iterator<Item = T>,
 {
+    #[inline]
+    fn setup(&mut self) {
+        let _ = self.iter.advance_by(0);
+    }
+
     #[inline]
     fn next_spec(&mut self) -> Option<I::Item> {
         let idx = self.idx;
@@ -71,6 +79,13 @@ where
             }
         } else {
             None
+        }
+    }
+
+    #[inline]
+    fn cleanup(&mut self) {
+        if I::NEEDS_CLEANUP {
+            self.iter.cleanup(self.idx, true);
         }
     }
 }

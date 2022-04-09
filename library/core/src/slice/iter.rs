@@ -1376,6 +1376,15 @@ unsafe impl<'a, T> TrustedRandomAccess for Windows<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Windows<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            self.v = &self.v[num..];
+        } else {
+            self.v = &self.v[..self.v.len() - num];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -1560,6 +1569,19 @@ unsafe impl<'a, T> TrustedRandomAccess for Chunks<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Chunks<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let len = self.v.len();
+            let start = cmp::min(len, self.chunk_size * num);
+            self.v = &self.v[start..];
+        } else {
+            let remaining = self.len() - num;
+            let end = remaining * self.chunk_size;
+            self.v = &self.v[..end];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -1728,6 +1750,20 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksMut<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        let len = self.len();
+        let v = mem::replace(&mut self.v, &mut []);
+        if forward {
+            let start = self.chunk_size * num;
+            self.v = &mut v[start..];
+        } else {
+            let remaining = len - num;
+            let end = remaining * self.chunk_size;
+            self.v = &mut v[..end];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -1888,6 +1924,17 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExact<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExact<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let start = self.chunk_size * num;
+            self.v = &self.v[start..];
+        } else {
+            let end = self.v.len() - (self.chunk_size * num);
+            self.v = &self.v[..end];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -2045,6 +2092,18 @@ unsafe impl<'a, T> TrustedRandomAccess for ChunksExactMut<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for ChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        let v = mem::replace(&mut self.v, &mut []);
+        if forward {
+            let start = self.chunk_size * num;
+            self.v = &mut v[start..];
+        } else {
+            let end = v.len() - (self.chunk_size * num);
+            self.v = &mut v[..end];
+        }
+    }
 }
 
 /// A windowed iterator over a slice in overlapping chunks (`N` elements at a
@@ -2290,6 +2349,11 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunks<'a, T, N>
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunks<'a, T, N> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.iter.cleanup(num, forward);
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`N` elements
@@ -2409,6 +2473,11 @@ unsafe impl<'a, T, const N: usize> TrustedRandomAccess for ArrayChunksMut<'a, T,
 #[unstable(feature = "array_chunks", issue = "74985")]
 unsafe impl<'a, T, const N: usize> TrustedRandomAccessNoCoerce for ArrayChunksMut<'a, T, N> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.iter.cleanup(num, forward);
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -2583,6 +2652,18 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunks<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunks<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let end = self.v.len().saturating_sub(self.chunk_size * num);
+            self.v = &self.v[..end];
+        } else {
+            let remainder = self.len() - num;
+            let start = self.v.len() - remainder * self.chunk_size;
+            self.v = &self.v[start..];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -2755,6 +2836,20 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksMut<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        let len = self.len();
+        let v = mem::replace(&mut self.v, &mut []);
+        self.v = if forward {
+            let end = v.len().saturating_sub(self.chunk_size * num);
+            &mut v[..end]
+        } else {
+            let remainder = len - num;
+            let start = v.len() - remainder * self.chunk_size;
+            &mut v[start..]
+        };
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) chunks (`chunk_size` elements at a
@@ -2919,6 +3014,17 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExact<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExact<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let end = self.v.len() - (self.chunk_size * num);
+            self.v = &self.v[..end];
+        } else {
+            let start = self.chunk_size * num;
+            self.v = &self.v[start..];
+        }
+    }
 }
 
 /// An iterator over a slice in (non-overlapping) mutable chunks (`chunk_size`
@@ -3080,6 +3186,18 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for RChunksExactMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        let v = mem::replace(&mut self.v, &mut []);
+        if forward {
+            let end = v.len() - (self.chunk_size * num);
+            self.v = &mut v[..end];
+        } else {
+            let start = self.chunk_size * num;
+            self.v = &mut v[start..];
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -3090,6 +3208,16 @@ unsafe impl<'a, T> TrustedRandomAccess for Iter<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for Iter<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let _ = self.advance_by(num);
+        } else {
+            let _ = self.advance_back_by(num);
+        }
+    }
 }
 
 #[doc(hidden)]
@@ -3100,6 +3228,16 @@ unsafe impl<'a, T> TrustedRandomAccess for IterMut<'a, T> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl<'a, T> TrustedRandomAccessNoCoerce for IterMut<'a, T> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            let _ = self.advance_by(num);
+        } else {
+            let _ = self.advance_back_by(num);
+        }
+    }
 }
 
 /// An iterator over slice in (non-overlapping) chunks separated by a predicate.

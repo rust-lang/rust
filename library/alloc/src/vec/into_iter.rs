@@ -291,6 +291,31 @@ where
     T: NonDrop,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = true;
+
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if forward {
+            if mem::size_of::<T>() == 0 {
+                // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
+                // effectively results in unsigned pointers representing positions 0..usize::MAX,
+                // which is valid for ZSTs.
+                self.ptr = unsafe { arith_offset(self.ptr as *const i8, num as isize) as *mut T }
+            } else {
+                // SAFETY: the caller must guarantee that `num` is in bounds
+                self.ptr = unsafe { self.ptr.add(num) };
+            }
+        } else {
+            if mem::size_of::<T>() == 0 {
+                // SAFETY: same as above
+                self.end = unsafe {
+                    arith_offset(self.end as *const i8, num.wrapping_neg() as isize) as *mut T
+                }
+            } else {
+                // SAFETY: same as above
+                self.end = unsafe { self.end.offset(num.wrapping_neg() as isize) };
+            }
+        }
+    }
 }
 
 #[cfg(not(no_global_oom_handling))]

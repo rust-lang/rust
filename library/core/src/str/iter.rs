@@ -354,6 +354,12 @@ unsafe impl TrustedRandomAccess for Bytes<'_> {}
 #[unstable(feature = "trusted_random_access", issue = "none")]
 unsafe impl TrustedRandomAccessNoCoerce for Bytes<'_> {
     const MAY_HAVE_SIDE_EFFECT: bool = false;
+    const NEEDS_CLEANUP: bool = false;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.0.cleanup(num, forward);
+    }
 }
 
 /// This macro generates a Clone impl for string pattern API

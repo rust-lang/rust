@@ -502,7 +502,18 @@ macro_rules! unsafe_range_trusted_random_access_impl {
         #[doc(hidden)]
         #[unstable(feature = "trusted_random_access", issue = "none")]
         unsafe impl TrustedRandomAccessNoCoerce for ops::Range<$t> {
+
+            fn cleanup(&mut self, num: usize, forward: bool) {
+                if forward {
+                    let _ = self.advance_by(num);
+                } else {
+                    let _ = self.advance_back_by(num);
+                }
+            }
+
             const MAY_HAVE_SIDE_EFFECT: bool = false;
+
+            const NEEDS_CLEANUP: bool = false;
         }
     )*)
 }

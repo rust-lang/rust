@@ -174,6 +174,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
+#![feature(dropck_eyepatch)]
 #![feature(rustdoc_internals)]
 #![feature(exhaustive_patterns)]
 #![feature(doc_cfg_hide)]

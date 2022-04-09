@@ -158,6 +158,13 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+
+    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.it.cleanup(num, forward);
+    }
 }
 
 #[stable(feature = "iter_copied", since = "1.36.0")]

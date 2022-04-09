@@ -199,6 +199,13 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = true;
+
+    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        self.iter.cleanup(num, forward);
+    }
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

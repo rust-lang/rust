@@ -231,6 +231,15 @@ where
     I: TrustedRandomAccessNoCoerce,
 {
     const MAY_HAVE_SIDE_EFFECT: bool = I::MAY_HAVE_SIDE_EFFECT;
+
+    const NEEDS_CLEANUP: bool = I::NEEDS_CLEANUP;
+
+    #[inline]
+    fn cleanup(&mut self, num: usize, forward: bool) {
+        if let Some(iter) = self.iter.as_mut() {
+            iter.cleanup(num, forward);
+        }
+    }
 }
 
 /// Fuse specialization trait
