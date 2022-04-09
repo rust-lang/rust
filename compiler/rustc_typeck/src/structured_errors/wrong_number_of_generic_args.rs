@@ -497,7 +497,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                             param_names
                                 .iter()
                                 .take(num_params_to_take)
-                                .map(|p| (*p).clone())
+                                .map(|p| p.as_str())
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         } else {
