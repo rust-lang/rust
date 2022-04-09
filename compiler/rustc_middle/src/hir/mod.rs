@@ -46,17 +46,20 @@ pub struct ModuleItems {
 }
 
 impl ModuleItems {
-    pub fn items(&self) -> impl Iterator<Item = ItemId> {
-        self.items.to_vec().into_iter()
+    pub fn items(&self) -> impl Iterator<Item = ItemId> + '_ {
+        self.items.iter().copied()
     }
-    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> {
-        self.trait_items.to_vec().into_iter()
+
+    pub fn trait_items(&self) -> impl Iterator<Item = TraitItemId> + '_ {
+        self.trait_items.iter().copied()
     }
-    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> {
-        self.impl_items.to_vec().into_iter()
+
+    pub fn impl_items(&self) -> impl Iterator<Item = ImplItemId> + '_ {
+        self.impl_items.iter().copied()
     }
-    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> {
-        self.foreign_items.to_vec().into_iter()
+
+    pub fn foreign_items(&self) -> impl Iterator<Item = ForeignItemId> + '_ {
+        self.foreign_items.iter().copied()
     }
 }
 
