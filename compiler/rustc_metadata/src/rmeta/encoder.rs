@@ -1787,23 +1787,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             FxHashMap::default();
 
         for id in tcx.hir().items() {
-            match tcx.hir().def_kind(id.def_id) {
-                DefKind::Impl => {
-                    let item = tcx.hir().item(id);
-                    if let Some(trait_ref) = tcx.impl_trait_ref(item.def_id.to_def_id()) {
-                        let simplified_self_ty = fast_reject::simplify_type(
-                            self.tcx,
-                            trait_ref.self_ty(),
-                            TreatParams::AsPlaceholders,
-                        );
+            if matches!(tcx.hir().def_kind(id.def_id), DefKind::Impl) {
+                if let Some(trait_ref) = tcx.impl_trait_ref(id.def_id.to_def_id()) {
+                    let simplified_self_ty = fast_reject::simplify_type(
+                        self.tcx,
+                        trait_ref.self_ty(),
+                        TreatParams::AsPlaceholders,
+                    );
 
-                        fx_hash_map
-                            .entry(trait_ref.def_id)
-                            .or_default()
-                            .push((item.def_id.local_def_index, simplified_self_ty));
-                    }
+                    fx_hash_map
+                        .entry(trait_ref.def_id)
+                        .or_default()
+                        .push((id.def_id.local_def_index, simplified_self_ty));
                 }
-                _ => continue,
             }
         }
 
