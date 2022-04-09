@@ -2065,6 +2065,7 @@ impl Step for Crate {
     }
 }
 
+/// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
     host: TargetSelection,
@@ -2092,11 +2093,15 @@ impl Step for CrateRustdoc {
         let test_kind = self.test_kind;
         let target = self.host;
 
-        // Use the previous stage compiler to reuse the artifacts that are
-        // created when running compiletest for src/test/rustdoc. If this used
-        // `compiler`, then it would cause rustdoc to be built *again*, which
-        // isn't really necessary.
-        let compiler = builder.compiler_for(builder.top_stage, target, target);
+        let compiler = if builder.config.download_rustc {
+            builder.compiler(builder.top_stage, target)
+        } else {
+            // Use the previous stage compiler to reuse the artifacts that are
+            // created when running compiletest for src/test/rustdoc. If this used
+            // `compiler`, then it would cause rustdoc to be built *again*, which
+            // isn't really necessary.
+            builder.compiler_for(builder.top_stage, target, target)
+        };
         builder.ensure(compile::Rustc { compiler, target });
 
         let mut cargo = tool::prepare_tool_cargo(
@@ -2111,6 +2116,15 @@ impl Step for CrateRustdoc {
         );
         if test_kind.subcommand() == "test" && !builder.fail_fast {
             cargo.arg("--no-fail-fast");
+        }
+        match builder.doc_tests {
+            DocTests::Only => {
+                cargo.arg("--doc");
+            }
+            DocTests::No => {
+                cargo.args(&["--lib", "--bins", "--examples", "--tests", "--benches"]);
+            }
+            DocTests::Yes => {}
         }
 
         cargo.arg("-p").arg("rustdoc:0.0.0");
@@ -2136,6 +2150,8 @@ impl Step for CrateRustdoc {
         // sets up the dylib path for the *host* (stage1/lib), which is the
         // wrong directory.
         //
+        // Recall that we special-cased `compiler_for(top_stage)` above, so we always use stage1.
+        //
         // It should be considered to just stop running doctests on
         // librustdoc. There is only one test, and it doesn't look too
         // important. There might be other ways to avoid this, but it seems
@@ -2144,8 +2160,15 @@ impl Step for CrateRustdoc {
         // See also https://github.com/rust-lang/rust/issues/13983 where the
         // host vs target dylibs for rustdoc are consistently tricky to deal
         // with.
+        //
+        // Note that this set the host libdir for `download_rustc`, which uses a normal rust distribution.
+        let libdir = if builder.config.download_rustc {
+            builder.rustc_libdir(compiler)
+        } else {
+            builder.sysroot_libdir(compiler, target).to_path_buf()
+        };
         let mut dylib_path = dylib_path();
-        dylib_path.insert(0, PathBuf::from(&*builder.sysroot_libdir(compiler, target)));
+        dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
         if !builder.config.verbose_tests {
