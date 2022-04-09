@@ -10,16 +10,16 @@ fn proc_macro_decls_static(tcx: TyCtxt<'_>, (): ()) -> Option<LocalDefId> {
     for id in tcx.hir().items() {
         let attrs = finder.tcx.hir().attrs(id.hir_id());
         if finder.tcx.sess.contains_name(attrs, sym::rustc_proc_macro_decls) {
-            finder.decls = Some(id.hir_id());
+            finder.decls = Some(id.def_id);
         }
     }
 
-    finder.decls.map(|id| tcx.hir().local_def_id(id))
+    finder.decls
 }
 
 struct Finder<'tcx> {
     tcx: TyCtxt<'tcx>,
-    decls: Option<hir::HirId>,
+    decls: Option<hir::def_id::LocalDefId>,
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
