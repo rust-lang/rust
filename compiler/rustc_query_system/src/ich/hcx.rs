@@ -231,4 +231,12 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
     }
 }
 
+impl<'a> rustc_data_structures::intern::InternedHashingContext for StableHashingContext<'a> {
+    fn with_def_path_and_no_spans(&mut self, f: impl FnOnce(&mut Self)) {
+        self.while_hashing_spans(false, |hcx| {
+            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| f(hcx))
+        });
+    }
+}
+
 impl<'a> rustc_session::HashStableContext for StableHashingContext<'a> {}

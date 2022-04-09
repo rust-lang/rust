@@ -5,7 +5,7 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 
-use clippy_utils::consts::{constant_simple, Constant};
+use clippy_utils::consts::{constant_full_int, constant_simple, Constant, FullInt};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::{clip, unsext};
 
@@ -54,6 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for IdentityOp {
                     check(cx, left, -1, e.span, right.span);
                     check(cx, right, -1, e.span, left.span);
                 },
+                BinOpKind::Rem => check_remainder(cx, left, right, e.span, left.span),
                 _ => (),
             }
         }
@@ -70,6 +71,18 @@ fn is_allowed(cx: &LateContext<'_>, cmp: BinOp, left: &Expr<'_>, right: &Expr<'_
             && constant_simple(cx, cx.typeck_results(), left) == Some(Constant::Int(1)))
 }
 
+fn check_remainder(cx: &LateContext<'_>, left: &Expr<'_>, right: &Expr<'_>, span: Span, arg: Span) {
+    let lhs_const = constant_full_int(cx, cx.typeck_results(), left);
+    let rhs_const = constant_full_int(cx, cx.typeck_results(), right);
+    if match (lhs_const, rhs_const) {
+        (Some(FullInt::S(lv)), Some(FullInt::S(rv))) => lv.abs() < rv.abs(),
+        (Some(FullInt::U(lv)), Some(FullInt::U(rv))) => lv < rv,
+        _ => return,
+    } {
+        span_ineffective_operation(cx, span, arg);
+    }
+}
+
 fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
     if let Some(Constant::Int(v)) = constant_simple(cx, cx.typeck_results(), e).map(Constant::peel_refs) {
         let check = match *cx.typeck_results().expr_ty(e).peel_refs().kind() {
@@ -83,15 +96,19 @@ fn check(cx: &LateContext<'_>, e: &Expr<'_>, m: i8, span: Span, arg: Span) {
             1 => v == 1,
             _ => unreachable!(),
         } {
-            span_lint(
-                cx,
-                IDENTITY_OP,
-                span,
-                &format!(
-                    "the operation is ineffective. Consider reducing it to `{}`",
-                    snippet(cx, arg, "..")
-                ),
-            );
+            span_ineffective_operation(cx, span, arg);
         }
     }
+}
+
+fn span_ineffective_operation(cx: &LateContext<'_>, span: Span, arg: Span) {
+    span_lint(
+        cx,
+        IDENTITY_OP,
+        span,
+        &format!(
+            "the operation is ineffective. Consider reducing it to `{}`",
+            snippet(cx, arg, "..")
+        ),
+    );
 }

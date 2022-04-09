@@ -3,8 +3,8 @@
 set -euxo pipefail
 
 # Compile several crates to gather execution PGO profiles.
-# Arg0 => builds (Debug, Opt)
-# Arg1 => runs (Full, IncrFull, All)
+# Arg0 => profiles (Debug, Opt)
+# Arg1 => scenarios (Full, IncrFull, All)
 # Arg2 => crates (syn, cargo, ...)
 gather_profiles () {
   cd /checkout/obj
@@ -27,10 +27,10 @@ gather_profiles () {
           profile_local \
           eprintln \
           /checkout/obj/build/$PGO_HOST/stage2/bin/rustc \
-          Test \
-          --builds $1 \
+          --id Test \
+          --profiles $1 \
           --cargo /checkout/obj/build/$PGO_HOST/stage0/bin/cargo \
-          --runs $2 \
+          --scenarios $2 \
           --include $3
 
   cd /checkout/obj
@@ -64,7 +64,10 @@ RUSTC=/checkout/obj/build/$PGO_HOST/stage0/bin/rustc \
 RUSTC_BOOTSTRAP=1 \
 /checkout/obj/build/$PGO_HOST/stage0/bin/cargo build -p collector
 
-gather_profiles "Debug,Opt" "Full" "syn,cargo,serde,ripgrep,regex,clap-rs,hyper-2"
+# Here we're profiling LLVM, so we only care about `Debug` and `Opt`, because we want to stress
+# codegen. We also profile some of the most prolific crates.
+gather_profiles "Debug,Opt" "Full" \
+"syn-1.0.89,cargo-0.60.0,serde-1.0.136,ripgrep-13.0.0,regex-1.5.5,clap-3.1.6,hyper-0.14.18"
 
 # Merge the profile data we gathered for LLVM
 # Note that this uses the profdata from the clang we used to build LLVM,
@@ -83,8 +86,10 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --stage 2 library/std \
     --rust-profile-generate=/tmp/rustc-pgo
 
+# Here we're profiling the `rustc` frontend, so we also include `Check`.
+# The benchmark set includes various stress tests that put the frontend under pressure.
 gather_profiles "Check,Debug,Opt" "All" \
-  "externs,ctfe-stress-4,inflate,cargo,token-stream-stress,match-stress-enum"
+  "externs,ctfe-stress-4,cargo-0.60.0,token-stream-stress,match-stress,tuple-stress"
 
 # Merge the profile data we gathered
 ./build/$PGO_HOST/llvm/bin/llvm-profdata \

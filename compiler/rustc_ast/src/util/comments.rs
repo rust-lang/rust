@@ -52,7 +52,10 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         // when we try to compute the "horizontal trim".
         let lines = if kind == CommentKind::Block {
             // Whatever happens, we skip the first line.
-            let mut i = if lines[0].trim_start().starts_with('*') { 0 } else { 1 };
+            let mut i = lines
+                .get(0)
+                .map(|l| if l.trim_start().starts_with('*') { 0 } else { 1 })
+                .unwrap_or(0);
             let mut j = lines.len();
 
             while i < j && lines[i].trim().is_empty() {

@@ -3,7 +3,6 @@ use crate::ty::subst::{GenericArg, GenericArgKind, Subst};
 use crate::ty::{self, ConstInt, DefIdTree, ParamConst, ScalarInt, Term, Ty, TyCtxt, TypeFoldable};
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
@@ -1263,60 +1262,52 @@ pub trait PrettyPrinter<'tcx>:
         let (alloc_id, offset) = ptr.into_parts();
         match ty.kind() {
             // Byte strings (&[u8; N])
-            ty::Ref(
-                _,
-                Ty(Interned(
-                    ty::TyS {
-                        kind:
-                            ty::Array(
-                                Ty(Interned(ty::TyS { kind: ty::Uint(ty::UintTy::U8), .. }, _)),
-                                ty::Const(Interned(
-                                    ty::ConstS {
-                                        val: ty::ConstKind::Value(ConstValue::Scalar(int)),
-                                        ..
-                                    },
-                                    _,
-                                )),
-                            ),
-                        ..
-                    },
-                    _,
-                )),
-                _,
-            ) => match self.tcx().get_global_alloc(alloc_id) {
-                Some(GlobalAlloc::Memory(alloc)) => {
-                    let len = int.assert_bits(self.tcx().data_layout.pointer_size);
-                    let range = AllocRange { start: offset, size: Size::from_bytes(len) };
-                    if let Ok(byte_str) = alloc.inner().get_bytes(&self.tcx(), range) {
-                        p!(pretty_print_byte_str(byte_str))
-                    } else {
-                        p!("<too short allocation>")
+            ty::Ref(_, inner, _) => {
+                if let ty::Array(elem, len) = inner.kind() {
+                    if let ty::Uint(ty::UintTy::U8) = elem.kind() {
+                        if let ty::ConstKind::Value(ConstValue::Scalar(int)) = len.val() {
+                            match self.tcx().get_global_alloc(alloc_id) {
+                                Some(GlobalAlloc::Memory(alloc)) => {
+                                    let len = int.assert_bits(self.tcx().data_layout.pointer_size);
+                                    let range =
+                                        AllocRange { start: offset, size: Size::from_bytes(len) };
+                                    if let Ok(byte_str) =
+                                        alloc.inner().get_bytes(&self.tcx(), range)
+                                    {
+                                        p!(pretty_print_byte_str(byte_str))
+                                    } else {
+                                        p!("<too short allocation>")
+                                    }
+                                }
+                                // FIXME: for statics and functions, we could in principle print more detail.
+                                Some(GlobalAlloc::Static(def_id)) => {
+                                    p!(write("<static({:?})>", def_id))
+                                }
+                                Some(GlobalAlloc::Function(_)) => p!("<function>"),
+                                None => p!("<dangling pointer>"),
+                            }
+                            return Ok(self);
+                        }
                     }
                 }
-                // FIXME: for statics and functions, we could in principle print more detail.
-                Some(GlobalAlloc::Static(def_id)) => p!(write("<static({:?})>", def_id)),
-                Some(GlobalAlloc::Function(_)) => p!("<function>"),
-                None => p!("<dangling pointer>"),
-            },
+            }
             ty::FnPtr(_) => {
                 // FIXME: We should probably have a helper method to share code with the "Byte strings"
                 // printing above (which also has to handle pointers to all sorts of things).
-                match self.tcx().get_global_alloc(alloc_id) {
-                    Some(GlobalAlloc::Function(instance)) => {
-                        self = self.typed_value(
-                            |this| this.print_value_path(instance.def_id(), instance.substs),
-                            |this| this.print_type(ty),
-                            " as ",
-                        )?;
-                    }
-                    _ => self = self.pretty_print_const_pointer(ptr, ty, print_ty)?,
+                if let Some(GlobalAlloc::Function(instance)) = self.tcx().get_global_alloc(alloc_id)
+                {
+                    self = self.typed_value(
+                        |this| this.print_value_path(instance.def_id(), instance.substs),
+                        |this| this.print_type(ty),
+                        " as ",
+                    )?;
+                    return Ok(self);
                 }
             }
-            // Any pointer values not covered by a branch above
-            _ => {
-                self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
-            }
+            _ => {}
         }
+        // Any pointer values not covered by a branch above
+        self = self.pretty_print_const_pointer(ptr, ty, print_ty)?;
         Ok(self)
     }
 
@@ -1437,28 +1428,31 @@ pub trait PrettyPrinter<'tcx>:
 
         match (ct, ty.kind()) {
             // Byte/string slices, printed as (byte) string literals.
-            (
-                ConstValue::Slice { data, start, end },
-                ty::Ref(_, Ty(Interned(ty::TyS { kind: ty::Slice(t), .. }, _)), _),
-            ) if *t == u8_type => {
-                // The `inspect` here is okay since we checked the bounds, and there are
-                // no relocations (we have an active slice reference here). We don't use
-                // this result to affect interpreter execution.
-                let byte_str =
-                    data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                self.pretty_print_byte_str(byte_str)
-            }
-            (
-                ConstValue::Slice { data, start, end },
-                ty::Ref(_, Ty(Interned(ty::TyS { kind: ty::Str, .. }, _)), _),
-            ) => {
-                // The `inspect` here is okay since we checked the bounds, and there are no
-                // relocations (we have an active `str` reference here). We don't use this
-                // result to affect interpreter execution.
-                let slice =
-                    data.inner().inspect_with_uninit_and_ptr_outside_interpreter(start..end);
-                p!(write("{:?}", String::from_utf8_lossy(slice)));
-                Ok(self)
+            (ConstValue::Slice { data, start, end }, ty::Ref(_, inner, _)) => {
+                match inner.kind() {
+                    ty::Slice(t) => {
+                        if *t == u8_type {
+                            // The `inspect` here is okay since we checked the bounds, and there are
+                            // no relocations (we have an active slice reference here). We don't use
+                            // this result to affect interpreter execution.
+                            let byte_str = data
+                                .inner()
+                                .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                            return self.pretty_print_byte_str(byte_str);
+                        }
+                    }
+                    ty::Str => {
+                        // The `inspect` here is okay since we checked the bounds, and there are no
+                        // relocations (we have an active `str` reference here). We don't use this
+                        // result to affect interpreter execution.
+                        let slice = data
+                            .inner()
+                            .inspect_with_uninit_and_ptr_outside_interpreter(start..end);
+                        p!(write("{:?}", String::from_utf8_lossy(slice)));
+                        return Ok(self);
+                    }
+                    _ => {}
+                }
             }
             (ConstValue::ByRef { alloc, offset }, ty::Array(t, n)) if *t == u8_type => {
                 let n = n.val().try_to_bits(self.tcx().data_layout.pointer_size).unwrap();
@@ -1468,7 +1462,7 @@ pub trait PrettyPrinter<'tcx>:
                 let byte_str = alloc.inner().get_bytes(&self.tcx(), range).unwrap();
                 p!("*");
                 p!(pretty_print_byte_str(byte_str));
-                Ok(self)
+                return Ok(self);
             }
 
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
@@ -1545,22 +1539,24 @@ pub trait PrettyPrinter<'tcx>:
                     _ => unreachable!(),
                 }
 
-                Ok(self)
+                return Ok(self);
             }
 
-            (ConstValue::Scalar(scalar), _) => self.pretty_print_const_scalar(scalar, ty, print_ty),
+            (ConstValue::Scalar(scalar), _) => {
+                return self.pretty_print_const_scalar(scalar, ty, print_ty);
+            }
 
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
-            _ => {
-                // fallback
-                p!(write("{:?}", ct));
-                if print_ty {
-                    p!(": ", print(ty));
-                }
-                Ok(self)
-            }
+            _ => {}
         }
+
+        // fallback
+        p!(write("{:?}", ct));
+        if print_ty {
+            p!(": ", print(ty));
+        }
+        Ok(self)
     }
 }
 

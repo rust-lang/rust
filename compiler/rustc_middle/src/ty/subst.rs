@@ -6,7 +6,7 @@ use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeVisitor}
 use crate::ty::sty::{ClosureSubsts, GeneratorSubsts, InlineConstSubsts};
 use crate::ty::{self, Lift, List, ParamConst, Ty, TyCtxt};
 
-use rustc_data_structures::intern::Interned;
+use rustc_data_structures::intern::{Interned, WithStableHash};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_serialize::{self, Decodable, Encodable};
@@ -85,7 +85,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const ty::TyS<'tcx> as usize)
+                (TYPE_TAG, ty.0.0 as *const WithStableHash<ty::TyS<'tcx>> as usize)
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
@@ -154,7 +154,7 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const ty::RegionKind),
                 ))),
                 TYPE_TAG => GenericArgKind::Type(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::TyS<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const WithStableHash<ty::TyS<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),

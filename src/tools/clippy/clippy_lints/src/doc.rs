@@ -621,8 +621,8 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                 let filename = FileName::anon_source_code(&code);
 
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-                let fallback_bundle = rustc_errors::fallback_fluent_bundle(false)
-                    .expect("failed to load fallback fluent bundle");
+                let fallback_bundle =
+                    rustc_errors::fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
                 let emitter = EmitterWriter::new(
                     Box::new(io::sink()),
                     None,

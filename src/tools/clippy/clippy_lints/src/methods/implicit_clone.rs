@@ -48,13 +48,11 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: &str, method_def_id: hir
         "to_os_string" => is_diag_item_method(cx, method_def_id, sym::OsStr),
         "to_owned" => is_diag_trait_item(cx, method_def_id, sym::ToOwned),
         "to_path_buf" => is_diag_item_method(cx, method_def_id, sym::Path),
-        "to_vec" => {
-            cx.tcx.impl_of_method(method_def_id)
-                .filter(|&impl_did| {
-                    cx.tcx.type_of(impl_did).is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none()
-                })
-                .is_some()
-        },
+        "to_vec" => cx
+            .tcx
+            .impl_of_method(method_def_id)
+            .filter(|&impl_did| cx.tcx.type_of(impl_did).is_slice() && cx.tcx.impl_trait_ref(impl_did).is_none())
+            .is_some(),
         _ => false,
     }
 }

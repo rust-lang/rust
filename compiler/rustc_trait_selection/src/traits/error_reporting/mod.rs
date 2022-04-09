@@ -36,6 +36,7 @@ use rustc_span::symbol::{kw, sym};
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use std::iter;
+use std::ops::ControlFlow;
 
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::query::normalize::AtExt as _;
@@ -2226,9 +2227,10 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         post.dedup();
 
         if self.is_tainted_by_errors()
-            && crate_names.len() == 1
-            && ["`core`", "`alloc`", "`std`"].contains(&crate_names[0].as_str())
-            && spans.len() == 0
+            && (crate_names.len() == 1
+                && spans.len() == 0
+                && ["`core`", "`alloc`", "`std`"].contains(&crate_names[0].as_str())
+                || predicate.visit_with(&mut HasNumericInferVisitor).is_break())
         {
             // Avoid complaining about other inference issues for expressions like
             // `42 >> 1`, where the types are still `{integer}`, but we want to
@@ -2663,6 +2665,20 @@ impl ArgKind {
                 tys.iter().map(|ty| ("_".to_owned(), ty.to_string())).collect::<Vec<_>>(),
             ),
             _ => ArgKind::Arg("_".to_owned(), t.to_string()),
+        }
+    }
+}
+
+struct HasNumericInferVisitor;
+
+impl<'tcx> ty::TypeVisitor<'tcx> for HasNumericInferVisitor {
+    type BreakTy = ();
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        if matches!(ty.kind(), ty::Infer(ty::FloatVar(_) | ty::IntVar(_))) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::CONTINUE
         }
     }
 }

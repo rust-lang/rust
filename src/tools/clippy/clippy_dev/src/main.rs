@@ -4,6 +4,7 @@
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use clippy_dev::{bless, fmt, lint, new_lint, serve, setup, update_lints};
+use indoc::indoc;
 fn main() {
     let matches = get_clap_config();
 
@@ -56,8 +57,8 @@ fn main() {
             serve::run(port, lint);
         },
         ("lint", Some(matches)) => {
-            let filename = matches.value_of("filename").unwrap();
-            lint::run(filename);
+            let path = matches.value_of("path").unwrap();
+            lint::run(path);
         },
         _ => {},
     }
@@ -225,11 +226,20 @@ fn get_clap_config<'a>() -> ArgMatches<'a> {
         )
         .subcommand(
             SubCommand::with_name("lint")
-                .about("Manually run clippy on a file")
+                .about("Manually run clippy on a file or package")
+                .after_help(indoc! {"
+                    EXAMPLES
+                        Lint a single file:
+                            cargo dev lint tests/ui/attrs.rs
+
+                        Lint a package directory:
+                            cargo dev lint tests/ui-cargo/wildcard_dependencies/fail
+                            cargo dev lint ~/my-project
+                "})
                 .arg(
-                    Arg::with_name("filename")
+                    Arg::with_name("path")
                         .required(true)
-                        .help("The path to a file to lint"),
+                        .help("The path to a file or package directory to lint"),
                 ),
         )
         .get_matches()

@@ -121,4 +121,25 @@ happened a stable backport, make sure to re-merge those changes just as with the
 
 For this see the document on [how to update the changelog].
 
+If you don't have time to do a complete changelog update right away, just update
+the following parts:
+
+- Remove the `(beta)` from the new stable version:
+
+  ```markdown
+  ## Rust 1.XX (beta) -> ## Rust 1.XX
+  ```
+
+- Update the release date line of the new stable version:
+
+  ```markdown
+  Current beta, release 20YY-MM-DD -> Current stable, released 20YY-MM-DD
+  ```
+
+- Update the release date line of the previous stable version:
+
+  ```markdown
+  Current stable, released 20YY-MM-DD -> Released 20YY-MM-DD
+  ```
+
 [how to update the changelog]: https://github.com/rust-lang/rust-clippy/blob/master/doc/changelog_update.md

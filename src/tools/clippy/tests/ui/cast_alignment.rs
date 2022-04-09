@@ -1,6 +1,7 @@
 //! Test casts for alignment issues
 
 #![feature(rustc_private)]
+#![feature(core_intrinsics)]
 extern crate libc;
 
 #[warn(clippy::cast_ptr_alignment)]
@@ -34,4 +35,17 @@ fn main() {
     (&1u32 as *const u32 as *const libc::c_void) as *const u32;
     // For ZST, we should trust the user. See #4256
     (&1u32 as *const u32 as *const ()) as *const u32;
+
+    // Issue #2881
+    let mut data = [0u8, 0u8];
+    unsafe {
+        let ptr = &data as *const [u8; 2] as *const u8;
+        let _ = (ptr as *const u16).read_unaligned();
+        let _ = core::ptr::read_unaligned(ptr as *const u16);
+        let _ = core::intrinsics::unaligned_volatile_load(ptr as *const u16);
+        let ptr = &mut data as *mut [u8; 2] as *mut u8;
+        let _ = (ptr as *mut u16).write_unaligned(0);
+        let _ = core::ptr::write_unaligned(ptr as *mut u16, 0);
+        let _ = core::intrinsics::unaligned_volatile_store(ptr as *mut u16, 0);
+    }
 }

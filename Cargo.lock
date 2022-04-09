@@ -613,9 +613,8 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
- "cargo_metadata",
  "clippy_lints",
  "clippy_utils",
  "compiletest_rs",
@@ -642,20 +641,18 @@ dependencies = [
 name = "clippy_dev"
 version = "0.0.1"
 dependencies = [
- "bytecount",
- "cargo_metadata",
  "clap 2.34.0",
  "indoc",
  "itertools",
  "opener",
- "regex",
  "shell-escape",
+ "tempfile",
  "walkdir",
 ]
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
  "cargo_metadata",
  "clippy_utils",
@@ -676,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.61"
+version = "0.1.62"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -2953,9 +2950,9 @@ dependencies = [
 
 [[package]]
 name = "racer"
-version = "2.2.0"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0b4b5faaf07040474e8af74a9e19ff167d5d204df5db5c5c765edecfb900358"
+checksum = "64954e44fc0d1dcc64e0b9f2b155249ad62849eba25354b76ae1598d1e8f0fa0"
 dependencies = [
  "bitflags",
  "clap 2.34.0",

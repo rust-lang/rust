@@ -5,7 +5,6 @@ use crate::ty::subst::Subst;
 use crate::ty::{self, subst::SubstsRef, ReprOptions, Ty, TyCtxt, TypeFoldable};
 use rustc_ast as ast;
 use rustc_attr as attr;
-use rustc_data_structures::intern::Interned;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
@@ -503,42 +502,34 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                 }
 
                 // Two non-ZST fields, and they're both scalars.
-                (
-                    Some((
-                        i,
-                        &TyAndLayout {
-                            layout: Layout(Interned(&LayoutS { abi: Abi::Scalar(a), .. }, _)),
-                            ..
-                        },
-                    )),
-                    Some((
-                        j,
-                        &TyAndLayout {
-                            layout: Layout(Interned(&LayoutS { abi: Abi::Scalar(b), .. }, _)),
-                            ..
-                        },
-                    )),
-                    None,
-                ) => {
-                    // Order by the memory placement, not source order.
-                    let ((i, a), (j, b)) =
-                        if offsets[i] < offsets[j] { ((i, a), (j, b)) } else { ((j, b), (i, a)) };
-                    let pair = self.scalar_pair(a, b);
-                    let pair_offsets = match pair.fields {
-                        FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                            assert_eq!(memory_index, &[0, 1]);
-                            offsets
+                (Some((i, a)), Some((j, b)), None) => {
+                    match (a.abi, b.abi) {
+                        (Abi::Scalar(a), Abi::Scalar(b)) => {
+                            // Order by the memory placement, not source order.
+                            let ((i, a), (j, b)) = if offsets[i] < offsets[j] {
+                                ((i, a), (j, b))
+                            } else {
+                                ((j, b), (i, a))
+                            };
+                            let pair = self.scalar_pair(a, b);
+                            let pair_offsets = match pair.fields {
+                                FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
+                                    assert_eq!(memory_index, &[0, 1]);
+                                    offsets
+                                }
+                                _ => bug!(),
+                            };
+                            if offsets[i] == pair_offsets[0]
+                                && offsets[j] == pair_offsets[1]
+                                && align == pair.align
+                                && size == pair.size
+                            {
+                                // We can use `ScalarPair` only when it matches our
+                                // already computed layout (including `#[repr(C)]`).
+                                abi = pair.abi;
+                            }
                         }
-                        _ => bug!(),
-                    };
-                    if offsets[i] == pair_offsets[0]
-                        && offsets[j] == pair_offsets[1]
-                        && align == pair.align
-                        && size == pair.size
-                    {
-                        // We can use `ScalarPair` only when it matches our
-                        // already computed layout (including `#[repr(C)]`).
-                        abi = pair.abi;
+                        _ => {}
                     }
                 }
 
@@ -791,10 +782,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
                     }
 
                     // Extract the number of elements from the layout of the array field:
-                    let Ok(TyAndLayout {
-                        layout: Layout(Interned(LayoutS { fields: FieldsShape::Array { count, .. }, .. }, _)),
-                        ..
-                    }) = self.layout_of(f0_ty) else {
+                    let FieldsShape::Array { count, .. } = self.layout_of(f0_ty)?.layout.fields() else {
                         return Err(LayoutError::Unknown(ty));
                     };
 

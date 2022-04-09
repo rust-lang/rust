@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::snippet;
+use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{iter_input_pats, method_chain_args};
 use if_chain::if_chain;
@@ -217,36 +217,33 @@ fn lint_map_unit_fn(cx: &LateContext<'_>, stmt: &hir::Stmt<'_>, expr: &hir::Expr
     let fn_arg = &map_args[1];
 
     if is_unit_function(cx, fn_arg) {
+        let mut applicability = Applicability::MachineApplicable;
         let msg = suggestion_msg("function", map_type);
         let suggestion = format!(
             "if let {0}({binding}) = {1} {{ {2}({binding}) }}",
             variant,
-            snippet(cx, var_arg.span, "_"),
-            snippet(cx, fn_arg.span, "_"),
+            snippet_with_applicability(cx, var_arg.span, "_", &mut applicability),
+            snippet_with_applicability(cx, fn_arg.span, "_", &mut applicability),
             binding = let_binding_name(cx, var_arg)
         );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
-            diag.span_suggestion(stmt.span, "try this", suggestion, Applicability::MachineApplicable);
+            diag.span_suggestion(stmt.span, "try this", suggestion, applicability);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
         span_lint_and_then(cx, lint, expr.span, &msg, |diag| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
+                let mut applicability = Applicability::MachineApplicable;
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ {3} }}",
                     variant,
-                    snippet(cx, binding.pat.span, "_"),
-                    snippet(cx, var_arg.span, "_"),
-                    snippet(cx, reduced_expr_span, "_")
+                    snippet_with_applicability(cx, binding.pat.span, "_", &mut applicability),
+                    snippet_with_applicability(cx, var_arg.span, "_", &mut applicability),
+                    snippet_with_context(cx, reduced_expr_span, var_arg.span.ctxt(), "_", &mut applicability).0,
                 );
-                diag.span_suggestion(
-                    stmt.span,
-                    "try this",
-                    suggestion,
-                    Applicability::MachineApplicable, // snippet
-                );
+                diag.span_suggestion(stmt.span, "try this", suggestion, applicability);
             } else {
                 let suggestion = format!(
                     "if let {0}({1}) = {2} {{ ... }}",

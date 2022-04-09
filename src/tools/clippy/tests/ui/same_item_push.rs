@@ -120,7 +120,7 @@ fn main() {
     }
     // Fix #5979
     #[derive(Clone)]
-    struct S {}
+    struct S;
 
     trait T {}
     impl T for S {}

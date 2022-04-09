@@ -146,7 +146,7 @@ impl IntRange {
                     // straight to the result, after doing a bit of checking. (We
                     // could remove this branch and just fall through, which
                     // is more general but much slower.)
-                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size) {
+                    if let Ok(bits) = scalar.to_bits_or_ptr_internal(target_size).unwrap() {
                         return Some(bits);
                     }
                 }

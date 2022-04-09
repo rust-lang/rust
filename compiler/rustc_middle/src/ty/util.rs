@@ -6,14 +6,12 @@ use crate::ty::layout::IntegerExt;
 use crate::ty::query::TyCtxtAt;
 use crate::ty::subst::{GenericArgKind, Subst, SubstsRef};
 use crate::ty::{
-    self, Const, DebruijnIndex, DefIdTree, List, ReEarlyBound, Region, Ty, TyCtxt, TyKind::*,
-    TypeFoldable,
+    self, Const, DebruijnIndex, DefIdTree, List, ReEarlyBound, Ty, TyCtxt, TyKind::*, TypeFoldable,
 };
 use rustc_apfloat::Float as _;
 use rustc_ast as ast;
 use rustc_attr::{self as attr, SignedInt, UnsignedInt};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -423,24 +421,25 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = iter::zip(item_substs, impl_substs)
             .filter(|&(_, k)| {
                 match k.unpack() {
-                    GenericArgKind::Lifetime(Region(Interned(ReEarlyBound(ref ebr), _))) => {
-                        !impl_generics.region_param(ebr, self).pure_wrt_drop
-                    }
-                    GenericArgKind::Type(Ty(Interned(
-                        ty::TyS { kind: ty::Param(ref pt), .. },
-                        _,
-                    ))) => !impl_generics.type_param(pt, self).pure_wrt_drop,
-                    GenericArgKind::Const(Const(Interned(
-                        ty::ConstS { val: ty::ConstKind::Param(ref pc), .. },
-                        _,
-                    ))) => !impl_generics.const_param(pc, self).pure_wrt_drop,
-                    GenericArgKind::Lifetime(_)
-                    | GenericArgKind::Type(_)
-                    | GenericArgKind::Const(_) => {
-                        // Not a type, const or region param: this should be reported
-                        // as an error.
-                        false
-                    }
+                    GenericArgKind::Lifetime(region) => match region.kind() {
+                        ReEarlyBound(ref ebr) => {
+                            !impl_generics.region_param(ebr, self).pure_wrt_drop
+                        }
+                        // Error: not a region param
+                        _ => false,
+                    },
+                    GenericArgKind::Type(ty) => match ty.kind() {
+                        ty::Param(ref pt) => !impl_generics.type_param(pt, self).pure_wrt_drop,
+                        // Error: not a type param
+                        _ => false,
+                    },
+                    GenericArgKind::Const(ct) => match ct.val() {
+                        ty::ConstKind::Param(ref pc) => {
+                            !impl_generics.const_param(pc, self).pure_wrt_drop
+                        }
+                        // Error: not a const param
+                        _ => false,
+                    },
                 }
             })
             .map(|(item_param, _)| item_param)

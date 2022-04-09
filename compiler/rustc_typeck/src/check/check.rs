@@ -12,12 +12,13 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{def::Res, ItemKind, Node, PathSegment};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{self, ParamEnv, ToPredicate, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNINHABITED_STATIC, UNSUPPORTED_CALLING_CONVENTIONS};
 use rustc_span::symbol::sym;
 use rustc_span::{self, Span};
@@ -673,6 +674,13 @@ fn check_opaque_meets_bounds<'tcx>(
                 );
             }
         }
+
+        // Additionally require the hidden type to be well-formed with only the generics of the opaque type.
+        // Defining use functions may have more bounds than the opaque type, which is ok, as long as the
+        // hidden type is well formed even without those bounds.
+        let predicate =
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(hidden_type.into())).to_predicate(tcx);
+        inh.register_predicate(Obligation::new(misc_cause, param_env, predicate));
 
         // Check that all obligations are satisfied by the implementation's
         // version.

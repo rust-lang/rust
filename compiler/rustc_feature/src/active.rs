@@ -505,6 +505,8 @@ declare_features! (
     (active, static_nobundle, "1.16.0", Some(37403), None),
     /// Allows attributes on expressions and non-item statements.
     (active, stmt_expr_attributes, "1.6.0", Some(15701), None),
+    /// Allows lints part of the strict provenance effort.
+    (active, strict_provenance, "1.61.0", Some(95228), None),
     /// Allows the use of `#[target_feature]` on safe functions.
     (active, target_feature_11, "1.45.0", Some(69098), None),
     /// Allows using `#[thread_local]` on `static` items.

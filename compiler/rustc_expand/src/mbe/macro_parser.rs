@@ -151,9 +151,11 @@ pub(super) fn compute_locs(sess: &ParseSess, matcher: &[TokenTree]) -> Vec<Match
                 TokenTree::Token(token) => {
                     locs.push(MatcherLoc::Token { token: token.clone() });
                 }
-                TokenTree::Delimited(_, delimited) => {
+                TokenTree::Delimited(span, delimited) => {
                     locs.push(MatcherLoc::Delimited);
-                    inner(sess, &delimited.all_tts, locs, next_metavar, seq_depth);
+                    inner(sess, &[delimited.open_tt(*span)], locs, next_metavar, seq_depth);
+                    inner(sess, &delimited.tts, locs, next_metavar, seq_depth);
+                    inner(sess, &[delimited.close_tt(*span)], locs, next_metavar, seq_depth);
                 }
                 TokenTree::Sequence(_, seq) => {
                     // We can't determine `idx_first_after` and construct the final
@@ -293,7 +295,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
         .map(|tt| match tt {
             TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Sequence(_, seq) => seq.num_captures,
-            TokenTree::Delimited(_, delim) => count_metavar_decls(delim.inner_tts()),
+            TokenTree::Delimited(_, delim) => count_metavar_decls(&delim.tts),
             TokenTree::Token(..) => 0,
             TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         })
