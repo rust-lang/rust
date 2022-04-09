@@ -621,8 +621,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn type_metadata(&mut self, function: &'ll Value, typeid: String) {
-        let typeid_metadata = self.typeid_metadata(typeid);
+    // FIXME(eddyb) this does not belong in `Builder`, it's global.
+    fn llvm_cfi_type_metadata(&mut self, function: &'ll Value, typeid: String) {
+        let typeid_metadata = self.llvm_cfi_typeid_metadata(typeid);
         let v = [self.const_usize(0), typeid_metadata];
         unsafe {
             llvm::LLVMGlobalSetMetadata(
@@ -637,7 +638,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn typeid_metadata(&mut self, typeid: String) -> Self::Value {
+    // FIXME(eddyb) this does not belong in `Builder`, it's global.
+    fn llvm_cfi_typeid_metadata(&mut self, typeid: String) -> Self::Value {
         unsafe {
             llvm::LLVMMDStringInContext(
                 self.cx.llcx,

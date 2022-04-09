@@ -160,8 +160,10 @@ pub trait BuilderMethods<'a, 'tcx>:
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
-    fn type_metadata(&mut self, function: Self::Function, typeid: String);
-    fn typeid_metadata(&mut self, typeid: String) -> Self::Value;
+
+    // FIXME(eddyb) these do not belong in `Builder`, they're global.
+    fn llvm_cfi_type_metadata(&mut self, function: Self::Function, typeid: String);
+    fn llvm_cfi_typeid_metadata(&mut self, typeid: String) -> Self::Value;
 
     fn store(&mut self, val: Self::Value, ptr: Self::Value, align: Align) -> Self::Value;
     fn store_with_flags(

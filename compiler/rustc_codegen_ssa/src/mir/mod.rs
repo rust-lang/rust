@@ -3,7 +3,7 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TypeFoldable};
-use rustc_symbol_mangling::typeid_for_fnabi;
+use rustc_symbol_mangling::llvm_cfi_typeid_for_fn_abi;
 use rustc_target::abi::call::{FnAbi, PassMode};
 
 use std::iter;
@@ -252,8 +252,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // For backends that support CFI using type membership (i.e., testing whether a given  pointer
     // is associated with a type identifier).
     if cx.tcx().sess.is_sanitizer_cfi_enabled() {
-        let typeid = typeid_for_fnabi(cx.tcx(), fn_abi);
-        bx.type_metadata(llfn, typeid);
+        let typeid = llvm_cfi_typeid_for_fn_abi(cx.tcx(), fn_abi);
+        bx.llvm_cfi_type_metadata(llfn, typeid);
     }
 }
 
