@@ -971,7 +971,7 @@ pub enum FpCategory {
 
 #[doc(hidden)]
 trait FromStrRadixHelper:
-    PartialOrd + Copy + Default + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self>
+    PartialOrd + Copy + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self>
 {
     const MIN: Self;
     fn from_u32(u: u32) -> Self;
@@ -1039,7 +1039,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         return Err(PIE { kind: Empty });
     }
 
-    let is_signed_ty = T::default() > T::MIN;
+    let is_signed_ty = T::from_u32(0) > T::MIN;
 
     // all valid digits are ascii, so we will just iterate over the utf8 bytes
     // and cast them to chars. .to_digit() will safely return None for anything
@@ -1056,7 +1056,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         _ => (true, src),
     };
 
-    let mut result = T::default();
+    let mut result = T::from_u32(0);
 
     if can_not_overflow::<T>(radix, is_signed_ty, digits) {
         // If the len of the str is short compared to the range of the type
