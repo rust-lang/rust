@@ -239,7 +239,7 @@ Emacs support is maintained as part of the https://github.com/emacs-lsp/lsp-mode
 Prerequisites: You have installed the <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
 Not needed if the extension can install/update it on its own, coc-rust-analyzer is one example.
 
-The are several LSP client implementations for vim or neovim:
+There are several LSP client implementations for vim or neovim:
 
 ==== coc-rust-analyzer
 
