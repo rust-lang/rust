@@ -10,11 +10,18 @@ trait A {
 }
 
 impl A for [fn(&())] {
-    fn foo(&self) -> Self where Self: Copy { *(&[] as &[_]) }
+    fn foo(&self) -> Self where Self: Copy {
+        //~^ WARN where-clause bound is impossible to satisfy
+        //~| WARN where-clause bound is impossible to satisfy
+        //~| WARN where-clause bound is impossible to satisfy
+        *(&[] as &[_])
+    }
 }
 
 impl A for i32 {
-    fn foo(&self) -> Self { 3 }
+    fn foo(&self) -> Self {
+        3
+    }
 }
 
 fn main() {}

@@ -55,6 +55,10 @@ fn elision<T: Fn() -> &i32>() {
 
 struct Parameterized<'a> { x: &'a str }
 
+impl<'a> Foo for Parameterized<'a> {
+    type Item = &'a i32;
+}
+
 #[cfg(ok)]
 fn ok1<T: for<'a> Fn(&Parameterized<'a>) -> &'a i32>() {
 }

@@ -1,0 +1,29 @@
+warning: where-clause bound is impossible to satisfy
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy {
+   |                                 ^^^^^^^^^^
+   |
+   = note: the bound `[for<'r> fn(&'r ())]: Copy` was previously accepted, but it may become a hard error in a future release
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
+
+warning: where-clause bound is impossible to satisfy
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy {
+   |                                 ^^^^^^^^^^
+   |
+   = note: the bound `[for<'r> fn(&'r ())]: Clone` was previously accepted, but it may become a hard error in a future release
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
+
+warning: where-clause bound is impossible to satisfy
+  --> $DIR/issue-67696-const-prop-ice.rs:13:33
+   |
+LL |     fn foo(&self) -> Self where Self: Copy {
+   |                                 ^^^^^^^^^^
+   |
+   = note: the bound `[for<'r> fn(&'r ())]: Sized` was previously accepted, but it may become a hard error in a future release
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
+
+warning: 3 warnings emitted
+

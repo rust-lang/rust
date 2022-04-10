@@ -13,6 +13,7 @@ impl<'a> Array<'a> for () {
 impl Visit for () where
     //(): for<'a> Array<'a, Element=&'a ()>, // No ICE
     (): for<'a> Array<'a, Element=()>, // ICE
+    //~^ WARN where-clause bound is impossible to satisfy
 {}
 
 fn main() {

@@ -1,5 +1,5 @@
 error: fatal error triggered by #[rustc_error]
-  --> $DIR/bound-lifetime-in-binding-only.rs:71:1
+  --> $DIR/bound-lifetime-in-binding-only.rs:75:1
    |
 LL | fn main() { }
    | ^^^^^^^^^

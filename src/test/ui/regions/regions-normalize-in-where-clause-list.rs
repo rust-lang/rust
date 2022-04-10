@@ -23,9 +23,9 @@ where
 // Here we get an error: we need `'a: 'b`.
 fn bar<'a, 'b>()
 //~^ ERROR cannot infer
-//~| ERROR cannot infer
 where
     <() as Project<'a, 'b>>::Item: Eq,
+    //~^ ERROR cannot infer
 {
 }
 

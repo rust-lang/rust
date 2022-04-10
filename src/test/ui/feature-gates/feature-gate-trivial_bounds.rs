@@ -62,7 +62,9 @@ fn return_str() -> str where str: Sized { //~ ERROR
 
 // This is currently accepted because the function pointer isn't
 // considered global.
+// FIXME(compiler-errors): Not for long..
 fn global_hr(x: fn(&())) where fn(&()): Foo { // OK
+    //~^ WARN where-clause bound is impossible to satisfy
     x.test();
 }
 

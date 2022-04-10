@@ -1,0 +1,11 @@
+warning: where-clause bound is impossible to satisfy
+  --> $DIR/issue-69398.rs:14:28
+   |
+LL |     fn broken(&self) where Self::Assoc: Foo {
+   |                            ^^^^^^^^^^^^^^^^
+   |
+   = note: the bound `<T as Broken>::Assoc: Foo` was previously accepted, but it may become a hard error in a future release
+   = help: add `#![feature(trivial_bounds)]` to the crate attributes to allow it
+
+warning: 1 warning emitted
+
