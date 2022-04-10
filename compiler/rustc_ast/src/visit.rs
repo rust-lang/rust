@@ -214,6 +214,12 @@ pub trait Visitor<'ast>: Sized {
     fn visit_crate(&mut self, krate: &'ast Crate) {
         walk_crate(self, krate)
     }
+    fn visit_inline_asm(&mut self, asm: &'ast InlineAsm) {
+        walk_inline_asm(self, asm)
+    }
+    fn visit_inline_asm_sym(&mut self, sym: &'ast InlineAsmSym) {
+        walk_inline_asm_sym(self, sym)
+    }
 }
 
 #[macro_export]
@@ -717,13 +723,12 @@ pub fn walk_anon_const<'a, V: Visitor<'a>>(visitor: &mut V, constant: &'a AnonCo
     visitor.visit_expr(&constant.value);
 }
 
-fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) {
+pub fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) {
     for (op, _) in &asm.operands {
         match op {
             InlineAsmOperand::In { expr, .. }
             | InlineAsmOperand::Out { expr: Some(expr), .. }
-            | InlineAsmOperand::InOut { expr, .. }
-            | InlineAsmOperand::Sym { expr, .. } => visitor.visit_expr(expr),
+            | InlineAsmOperand::InOut { expr, .. } => visitor.visit_expr(expr),
             InlineAsmOperand::Out { expr: None, .. } => {}
             InlineAsmOperand::SplitInOut { in_expr, out_expr, .. } => {
                 visitor.visit_expr(in_expr);
@@ -732,8 +737,16 @@ fn walk_inline_asm<'a, V: Visitor<'a>>(visitor: &mut V, asm: &'a InlineAsm) {
                 }
             }
             InlineAsmOperand::Const { anon_const, .. } => visitor.visit_anon_const(anon_const),
+            InlineAsmOperand::Sym { sym } => visitor.visit_inline_asm_sym(sym),
         }
     }
+}
+
+pub fn walk_inline_asm_sym<'a, V: Visitor<'a>>(visitor: &mut V, sym: &'a InlineAsmSym) {
+    if let Some(ref qself) = sym.qself {
+        visitor.visit_ty(&qself.ty);
+    }
+    visitor.visit_path(&sym.path, sym.id);
 }
 
 pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {

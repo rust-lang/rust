@@ -1352,10 +1352,15 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_anon_const(anon_const);
                 }
-                hir::InlineAsmOperand::Sym { expr } => {
-                    s.word("sym");
+                hir::InlineAsmOperand::SymFn { anon_const } => {
+                    s.word("sym_fn");
                     s.space();
-                    s.print_expr(expr);
+                    s.print_anon_const(anon_const);
+                }
+                hir::InlineAsmOperand::SymStatic { path, def_id: _ } => {
+                    s.word("sym_static");
+                    s.space();
+                    s.print_qpath(path, true);
                 }
             },
             AsmArg::Options(opts) => {

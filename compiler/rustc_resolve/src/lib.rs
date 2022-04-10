@@ -273,6 +273,8 @@ enum ResolutionError<'a> {
         trait_item_span: Span,
         code: rustc_errors::DiagnosticId,
     },
+    /// Inline asm `sym` operand must refer to a `fn` or `static`.
+    InvalidAsmSym,
 }
 
 enum VisResolutionError<'a> {
@@ -2720,6 +2722,12 @@ impl<'a> Resolver<'a> {
                             }
                             return Res::Err;
                         }
+                        InlineAsmSymRibKind => {
+                            if let Some(span) = finalize {
+                                self.report_error(span, InvalidAsmSym);
+                            }
+                            return Res::Err;
+                        }
                     }
                 }
                 if let Some((span, res_err)) = res_err {
@@ -2779,6 +2787,22 @@ impl<'a> Resolver<'a> {
                                 );
                             }
                             return Res::Err;
+                        }
+                        InlineAsmSymRibKind => {
+                            let features = self.session.features_untracked();
+                            if !features.generic_const_exprs {
+                                if let Some(span) = finalize {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInNonTrivialAnonConst {
+                                            name: rib_ident.name,
+                                            is_type: true,
+                                        },
+                                    );
+                                }
+                                return Res::Err;
+                            }
+                            continue;
                         }
                     };
 
@@ -2843,6 +2867,22 @@ impl<'a> Resolver<'a> {
                                 );
                             }
                             return Res::Err;
+                        }
+                        InlineAsmSymRibKind => {
+                            let features = self.session.features_untracked();
+                            if !features.generic_const_exprs {
+                                if let Some(span) = finalize {
+                                    self.report_error(
+                                        span,
+                                        ResolutionError::ParamInNonTrivialAnonConst {
+                                            name: rib_ident.name,
+                                            is_type: false,
+                                        },
+                                    );
+                                }
+                                return Res::Err;
+                            }
+                            continue;
                         }
                     };
 

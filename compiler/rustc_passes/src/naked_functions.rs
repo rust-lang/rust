@@ -252,7 +252,9 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
             .operands
             .iter()
             .filter_map(|&(ref op, op_sp)| match op {
-                InlineAsmOperand::Const { .. } | InlineAsmOperand::Sym { .. } => None,
+                InlineAsmOperand::Const { .. }
+                | InlineAsmOperand::SymFn { .. }
+                | InlineAsmOperand::SymStatic { .. } => None,
                 InlineAsmOperand::In { .. }
                 | InlineAsmOperand::Out { .. }
                 | InlineAsmOperand::InOut { .. }

@@ -258,9 +258,14 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
+                    // TODO(@Amanieu): Additional mangling is needed on
+                    // some targets to add a leading underscore (Mach-O)
+                    // or byte count suffixes (x86 Windows).
                     constants_len += self.tcx.symbol_name(instance).name.len();
                 }
                 InlineAsmOperandRef::SymStatic { def_id } => {
+                    // TODO(@Amanieu): Additional mangling is needed on
+                    // some targets to add a leading underscore (Mach-O).
                     constants_len += self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name.len();
                 }
             }
@@ -412,13 +417,16 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::SymFn { instance } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O)
+                            // or byte count suffixes (x86 Windows).
                             let name = self.tcx.symbol_name(instance).name;
                             template_str.push_str(name);
                         }
 
                         InlineAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(@Commeownist): This may not be sufficient for all kinds of statics.
-                            // Some statics may need the `@plt` suffix, like thread-local vars.
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);
                             let name = self.tcx.symbol_name(instance).name;
                             template_str.push_str(name);
@@ -656,8 +664,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
     }
 }
 
-impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
-    fn codegen_global_asm(&self, template: &[InlineAsmTemplatePiece], operands: &[GlobalAsmOperandRef], options: InlineAsmOptions, _line_spans: &[Span]) {
+impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn codegen_global_asm(&self, template: &[InlineAsmTemplatePiece], operands: &[GlobalAsmOperandRef<'tcx>], options: InlineAsmOptions, _line_spans: &[Span]) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
         // Default to Intel syntax on x86
@@ -689,6 +697,22 @@ impl<'gcc, 'tcx> AsmMethods for CodegenCx<'gcc, 'tcx> {
                             // template. Note that we don't need to escape %
                             // here unlike normal inline assembly.
                             template_str.push_str(string);
+                        }
+
+                        GlobalAsmOperandRef::SymFn { instance } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O)
+                            // or byte count suffixes (x86 Windows).
+                            let name = self.tcx.symbol_name(instance).name;
+                            template_str.push_str(name);
+                        }
+
+                        GlobalAsmOperandRef::SymStatic { def_id } => {
+                            // TODO(@Amanieu): Additional mangling is needed on
+                            // some targets to add a leading underscore (Mach-O).
+                            let instance = Instance::mono(self.tcx, def_id);
+                            let name = self.tcx.symbol_name(instance).name;
+                            template_str.push_str(name);
                         }
                     }
                 }
