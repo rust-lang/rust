@@ -2186,11 +2186,19 @@ slice_interners!(
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Given a `fn` type, returns an equivalent `unsafe fn` type;
-    /// that is, a `fn` type that is equivalent in every way for being
+    /// that is, a `fn` type that is equivalent in every way except for being
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
         self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Unsafe, ..sig }))
+    }
+
+    /// Given a `unsafe fn` type, returns an equivalent `fn` type;
+    /// that is, a `fn` type that is equivalent in every way except for being
+    /// safe. This is unsound, but used for backwards compatibility by `#[deprecated_safe]`.
+    pub fn unsafe_to_safe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        assert_eq!(sig.unsafety(), hir::Unsafety::Unsafe);
+        self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig { unsafety: hir::Unsafety::Normal, ..sig }))
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
