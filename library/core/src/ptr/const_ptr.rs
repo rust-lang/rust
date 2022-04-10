@@ -627,7 +627,7 @@ impl<T: ?Sized> *const T {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_unsigned_offset_from)]
+    /// # #![feature(ptr_sub_ptr)]
     /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool {
     /// ptr.sub_ptr(origin) == count
     /// # &&
@@ -656,7 +656,7 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_unsigned_offset_from)]
+    /// #![feature(ptr_sub_ptr)]
     ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
@@ -671,8 +671,8 @@ impl<T: ?Sized> *const T {
     /// // This would be incorrect, as the pointers are not correctly ordered:
     /// // ptr1.offset_from(ptr2)
     /// ```
-    #[unstable(feature = "ptr_unsigned_offset_from", issue = "88888888")]
-    #[rustc_const_unstable(feature = "const_ptr_offset_from", issue = "92980")]
+    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
+    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
     #[inline]
     pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
     where

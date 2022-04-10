@@ -377,6 +377,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         }
 
                         let pointee_layout = self.layout_of(substs.type_at(0))?;
+                        // This re-interprets an isize at ret_layout, but we already checked
+                        // that if ret_layout is usize, then the result must be non-negative.
                         let val = ImmTy::from_scalar(val, ret_layout);
                         let size = ImmTy::from_int(pointee_layout.size.bytes(), ret_layout);
                         self.exact_div(&val, &size, dest)?;
