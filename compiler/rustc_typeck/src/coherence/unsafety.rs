@@ -5,6 +5,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::itemlikevisit::ItemLikeVisitor;
 use rustc_hir::Unsafety;
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
 use rustc_middle::ty::TyCtxt;
 
 pub fn check(tcx: TyCtxt<'_>) {
@@ -31,14 +32,45 @@ impl<'tcx> UnsafetyChecker<'tcx> {
             });
             match (trait_def.unsafety, unsafe_attr, unsafety, polarity) {
                 (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
-                    struct_span_err!(
-                        self.tcx.sess,
+                    // an unsafe impl of a safe trait is not allowed, except within libstd
+                    // when that trait is #[deprecated_safe] with a future version
+                    if !stability::check_deprecation_as_safe(
+                        self.tcx,
+                        trait_def.unsafety,
+                        trait_ref.def_id,
                         item.span,
-                        E0199,
-                        "implementing the trait `{}` is not unsafe",
-                        trait_ref.print_only_trait_path()
                     )
-                    .emit();
+                    .is_in_effect_in_future()
+                    {
+                        struct_span_err!(
+                            self.tcx.sess,
+                            item.span,
+                            E0199,
+                            "implementing the trait `{}` is not unsafe",
+                            trait_ref.print_only_trait_path()
+                        )
+                        .emit();
+                    }
+                }
+
+                // check if this is a safe impl of a #[deprecated_safe] trait and lint if so
+                // instead of erroring
+                (_, _, Unsafety::Normal, hir::ImplPolarity::Positive)
+                    if stability::check_deprecation_as_safe(
+                        self.tcx,
+                        trait_def.unsafety,
+                        trait_ref.def_id,
+                        item.span,
+                    )
+                    .is_in_effect() =>
+                {
+                    stability::report_deprecation_as_safe(
+                        self.tcx,
+                        DeprecationAsSafeKind::TraitImpl,
+                        trait_ref.def_id,
+                        item.hir_id(),
+                        item.span,
+                    )
                 }
 
                 (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
