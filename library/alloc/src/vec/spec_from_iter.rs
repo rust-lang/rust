@@ -1,3 +1,4 @@
+use core::marker::PhantomData;
 use core::mem::ManuallyDrop;
 use core::ptr::{self};
 
@@ -45,13 +46,14 @@ impl<T> SpecFromIter<T, IntoIter<T>> for Vec<T> {
         // is not strictly necessary as Vec's allocation behavior is intentionally unspecified.
         // But it is a conservative choice.
         let has_advanced = iterator.buf.as_ptr() as *const _ != iterator.ptr;
-        if !has_advanced || iterator.len() >= iterator.cap / 2 {
+        if !has_advanced || iterator.len() >= iterator.buf.len() / 2 {
             unsafe {
                 let it = ManuallyDrop::new(iterator);
+                let buf = core::ptr::read(&it.buf);
                 if has_advanced {
-                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
+                    ptr::copy(it.ptr, buf.as_ptr().cast::<T>() as *mut T, it.len());
                 }
-                return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
+                return Vec { buf, phantom: PhantomData, len: it.len() };
             }
         }
 

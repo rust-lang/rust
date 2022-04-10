@@ -171,7 +171,7 @@ where
                 inner.ptr,
                 inner.buf.as_ptr() as *mut T,
                 inner.end as *const T,
-                inner.cap,
+                inner.buf.len(),
             )
         };
 

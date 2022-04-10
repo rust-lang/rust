@@ -108,6 +108,7 @@ pub struct VecDeque<
     tail: usize,
     head: usize,
     buf: Box<[MaybeUninit<T>], A>,
+    phantom: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -564,7 +565,12 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
 
-        VecDeque { tail: 0, head: 0, buf: Box::new_uninit_slice_in(cap, alloc) }
+        VecDeque {
+            tail: 0,
+            head: 0,
+            buf: Box::new_uninit_slice_in(cap, alloc),
+            phantom: PhantomData,
+        }
     }
 
     /// Provides a reference to the element at the given index.
@@ -3043,7 +3049,7 @@ impl<T, A: Allocator> From<Vec<T, A>> for VecDeque<T, A> {
         unsafe {
             let (other_buf, len, capacity, alloc) = other.into_raw_parts_with_alloc();
             let buf = storage_from_raw_parts_in(other_buf.cast(), capacity, alloc);
-            VecDeque { tail: 0, head: len, buf }
+            VecDeque { tail: 0, head: len, buf, phantom: PhantomData }
         }
     }
 }

@@ -399,6 +399,7 @@ mod spec_extend;
 #[rustc_insignificant_dtor]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
     buf: Box<[MaybeUninit<T>], A>,
+    phantom: PhantomData<T>,
     len: usize,
 }
 
@@ -422,7 +423,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
-        Vec { buf: Box::<[MaybeUninit<T>]>::EMPTY, len: 0 }
+        Vec { buf: Box::<[MaybeUninit<T>]>::EMPTY, phantom: PhantomData, len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
@@ -561,7 +562,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub const fn new_in(alloc: A) -> Self {
-        Vec { buf: Box::empty_in(alloc), len: 0 }
+        Vec { buf: Box::empty_in(alloc), phantom: PhantomData, len: 0 }
     }
 
     /// Constructs a new, empty `Vec<T, A>` with the specified capacity with the provided
@@ -610,7 +611,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
-        Vec { buf: Box::new_uninit_slice_in(capacity, alloc), len: 0 }
+        Vec { buf: Box::new_uninit_slice_in(capacity, alloc), phantom: PhantomData, len: 0 }
     }
 
     /// Creates a `Vec<T, A>` directly from the raw components of another vector.
@@ -686,7 +687,13 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
-        unsafe { Vec { buf: storage_from_raw_parts_in(ptr.cast(), capacity, alloc), len: length } }
+        unsafe {
+            Vec {
+                buf: storage_from_raw_parts_in(ptr.cast(), capacity, alloc),
+                phantom: PhantomData,
+                len: length,
+            }
+        }
     }
 
     /// Decomposes a `Vec<T>` into its raw components.
@@ -2632,22 +2639,14 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     fn into_iter(self) -> IntoIter<T, A> {
         unsafe {
             let mut me = ManuallyDrop::new(self);
-            let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
+            let buf = core::ptr::read(&me.buf);
             let begin = me.as_mut_ptr();
             let end = if mem::size_of::<T>() == 0 {
                 arith_offset(begin as *const i8, me.len() as isize) as *const T
             } else {
                 begin.add(me.len()) as *const T
             };
-            let cap = me.capacity();
-            IntoIter {
-                buf: NonNull::new_unchecked(begin),
-                phantom: PhantomData,
-                cap,
-                alloc,
-                ptr: begin,
-                end,
-            }
+            IntoIter { buf, phantom: PhantomData, ptr: begin, end }
         }
     }
 }
