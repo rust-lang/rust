@@ -837,6 +837,8 @@ pub struct ClosureExpr {
 }
 impl ast::HasAttrs for ClosureExpr {}
 impl ClosureExpr {
+    pub fn for_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![for]) }
+    pub fn generic_param_list(&self) -> Option<GenericParamList> { support::child(&self.syntax) }
     pub fn static_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![static]) }
     pub fn async_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![async]) }
     pub fn move_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![move]) }

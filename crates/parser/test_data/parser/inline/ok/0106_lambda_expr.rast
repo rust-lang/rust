@@ -199,6 +199,48 @@ SOURCE_FILE
                 L_CURLY "{"
                 R_CURLY "}"
           SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            FOR_KW "for"
+            GENERIC_PARAM_LIST
+              L_ANGLE "<"
+              LIFETIME_PARAM
+                LIFETIME
+                  LIFETIME_IDENT "'a"
+              R_ANGLE ">"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          CLOSURE_EXPR
+            FOR_KW "for"
+            GENERIC_PARAM_LIST
+              L_ANGLE "<"
+              LIFETIME_PARAM
+                LIFETIME
+                  LIFETIME_IDENT "'a"
+              R_ANGLE ">"
+            WHITESPACE " "
+            MOVE_KW "move"
+            WHITESPACE " "
+            PARAM_LIST
+              PIPE "|"
+              PIPE "|"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                R_CURLY "}"
+          SEMICOLON ";"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"
