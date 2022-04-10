@@ -2368,10 +2368,6 @@ impl Step for Bootstrap {
             .current_dir(builder.src.join("src/bootstrap"))
             .env("RUSTFLAGS", "-Cdebuginfo=2")
             .env("CARGO_TARGET_DIR", builder.out.join("bootstrap"))
-            // HACK: bootstrap's tests want to know the output directory, but there's no way to set
-            // it except through config.toml. Set it through an env variable instead.
-            .env("BOOTSTRAP_OUTPUT_DIRECTORY", &builder.config.out)
-            .env("BOOTSTRAP_INITIAL_CARGO", &builder.config.initial_cargo)
             .env("RUSTC_BOOTSTRAP", "1")
             .env("RUSTC", &builder.initial_rustc);
         if let Some(flags) = option_env!("RUSTFLAGS") {

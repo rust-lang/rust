@@ -454,7 +454,7 @@ impl Build {
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| src.join("target"));
             let bootstrap_out = workspace_target_dir.join("debug");
-            if !bootstrap_out.join("rustc").exists() {
+            if !bootstrap_out.join("rustc").exists() && !cfg!(test) {
                 // this restriction can be lifted whenever https://github.com/rust-lang/rfcs/pull/3028 is implemented
                 panic!("run `cargo build --bins` before `cargo run`")
             }
