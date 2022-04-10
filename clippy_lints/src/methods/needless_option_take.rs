@@ -10,7 +10,7 @@ use super::NEEDLESS_OPTION_TAKE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     // Checks if expression type is equal to sym::Option and if the expr is not a syntactic place
-    if is_expr_option(cx, expr) && !expr.is_syntactic_place_expr() {
+    if is_expr_option(cx, recv) && !recv.is_syntactic_place_expr() {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
