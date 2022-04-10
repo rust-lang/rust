@@ -85,7 +85,7 @@ impl<'a> Iterator for Frame<'a> {
 pub(super) fn transcribe<'a>(
     cx: &ExtCtxt<'a>,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-    src: Vec<mbe::TokenTree>,
+    src: &[mbe::TokenTree],
     transparency: Transparency,
 ) -> PResult<'a, TokenStream> {
     // Nothing for us to transcribe...

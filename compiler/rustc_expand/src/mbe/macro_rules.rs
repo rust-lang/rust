@@ -263,14 +263,14 @@ fn generic_extension<'cx, 'tt>(
 
                 // Ignore the delimiters on the RHS.
                 let rhs = match &rhses[i] {
-                    mbe::TokenTree::Delimited(_, delimited) => delimited.tts.to_vec(),
+                    mbe::TokenTree::Delimited(_, delimited) => &delimited.tts,
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
                 let arm_span = rhses[i].span();
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = match transcribe(cx, &named_matches, rhs, transparency) {
+                let mut tts = match transcribe(cx, &named_matches, &rhs, transparency) {
                     Ok(tts) => tts,
                     Err(mut err) => {
                         err.emit();
