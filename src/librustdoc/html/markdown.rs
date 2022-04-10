@@ -251,7 +251,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
         }
         let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
+        let text = lines.intersperse("\n".into()).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -291,14 +291,12 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             let test = origtext
                 .lines()
                 .map(|l| map_line(l).for_code())
-                .collect::<Vec<Cow<'_, str>>>()
-                .join("\n");
+                .intersperse("\n".into())
+                .collect::<String>();
             let krate = krate.as_ref().map(|s| &**s);
             let (test, _, _) =
                 doctest::make_test(&test, krate, false, &Default::default(), edition, None);
             let channel = if test.contains("#![feature(") { "&amp;version=nightly" } else { "" };
-
-            let edition_string = format!("&amp;edition={}", edition);
 
             // These characters don't need to be escaped in a URI.
             // FIXME: use a library function for percent encoding.
@@ -325,8 +323,8 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                 }
             }
             Some(format!(
-                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}{}">Run</a>"#,
-                url, test_escaped, channel, edition_string
+                r#"<a class="test-arrow" target="_blank" href="{}?code={}{}&amp;edition={}">Run</a>"#,
+                url, test_escaped, channel, edition,
             ))
         });
 
