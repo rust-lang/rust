@@ -2460,8 +2460,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
-                tcx.sess.emit_err(TypeofReservedKeywordUsed { span: ast_ty.span });
-                tcx.type_of(tcx.hir().local_def_id(e.hir_id))
+                let ty = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let span = ast_ty.span;
+                tcx.sess.emit_err(TypeofReservedKeywordUsed {
+                    span,
+                    ty,
+                    opt_sugg: Some((span, Applicability::MachineApplicable))
+                        .filter(|_| ty.is_suggestable()),
+                });
+
+                ty
             }
             hir::TyKind::Infer => {
                 // Infer also appears as the type of arguments or return
