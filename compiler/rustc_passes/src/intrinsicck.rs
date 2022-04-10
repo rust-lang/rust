@@ -1,3 +1,4 @@
+use hir::intravisit::walk_inline_asm;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
@@ -483,7 +484,10 @@ impl<'tcx> ExprVisitor<'tcx> {
                         );
                     }
                 }
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::Sym { .. } => {}
+                // These are checked in ItemVisitor.
+                hir::InlineAsmOperand::Const { .. }
+                | hir::InlineAsmOperand::SymFn { .. }
+                | hir::InlineAsmOperand::SymStatic { .. } => {}
             }
         }
     }
@@ -497,6 +501,42 @@ impl<'tcx> Visitor<'tcx> for ItemVisitor<'tcx> {
         let typeck_results = self.tcx.typeck(owner_def_id);
         ExprVisitor { tcx: self.tcx, param_env, typeck_results }.visit_body(body);
         self.visit_body(body);
+    }
+
+    fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
+        for (op, op_sp) in asm.operands.iter() {
+            match *op {
+                // These are checked in ExprVisitor.
+                hir::InlineAsmOperand::In { .. }
+                | hir::InlineAsmOperand::Out { .. }
+                | hir::InlineAsmOperand::InOut { .. }
+                | hir::InlineAsmOperand::SplitInOut { .. } => {}
+                // No special checking is needed for these:
+                // - Typeck has checked that Const operands are integers.
+                // - AST lowering guarantees that SymStatic points to a static.
+                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymStatic { .. } => {}
+                // Check that sym actually points to a function. Later passes
+                // depend on this.
+                hir::InlineAsmOperand::SymFn { anon_const } => {
+                    let ty = self.tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                    match ty.kind() {
+                        ty::Never | ty::Error(_) => {}
+                        ty::FnDef(..) => {}
+                        _ => {
+                            let mut err =
+                                self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
+                            err.span_label(
+                                self.tcx.hir().span(anon_const.body.hir_id),
+                                &format!("is {} `{}`", ty.kind().article(), ty),
+                            );
+                            err.help("`sym` operands must refer to either a function or a static");
+                            err.emit();
+                        }
+                    };
+                }
+            }
+        }
+        walk_inline_asm(self, asm, id);
     }
 }
 

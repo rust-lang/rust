@@ -14,6 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_hir::def_id::DefId;
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, LayoutError, LayoutOfHelpers,
@@ -105,6 +106,12 @@ pub struct CodegenCx<'ll, 'tcx> {
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    /// `codegen_static` will sometimes create a second global variable with a
+    /// different type and clear the symbol name of the original global.
+    /// `global_asm!` needs to be able to find this new global so that it can
+    /// compute the correct mangled symbol name to insert into the asm.
+    pub renamed_statics: RefCell<FxHashMap<DefId, &'ll Value>>,
 }
 
 pub struct TypeLowering<'ll> {
@@ -436,6 +443,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             rust_try_fn: Cell::new(None),
             intrinsics: Default::default(),
             local_gen_sym_counter: Cell::new(0),
+            renamed_statics: Default::default(),
         }
     }
 
