@@ -149,7 +149,7 @@ impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a
 
 impl<'a, 'tcx, I: Idx, T> Encodable<EncodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
 where
-    Option<T>: FixedSizeEncoding,
+    T: FixedSizeEncoding,
 {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
         self.meta.encode(e)?;

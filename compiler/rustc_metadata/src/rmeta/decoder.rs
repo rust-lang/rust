@@ -732,7 +732,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a
 
 impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
 where
-    Option<T>: FixedSizeEncoding,
+    T: FixedSizeEncoding,
 {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
         let meta = Decodable::decode(decoder);
