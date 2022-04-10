@@ -461,16 +461,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 .chain(self.tcx.resolutions(()).proc_macros.iter().map(|p| p.local_def_index))
             {
                 let def_key = self.lazy(table.def_key(def_index));
-                let def_path_hash = self.lazy(table.def_path_hash(def_index));
+                let def_path_hash = table.def_path_hash(def_index);
                 self.tables.def_keys.set(def_index, def_key);
                 self.tables.def_path_hashes.set(def_index, def_path_hash);
             }
         } else {
             for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
-                let def_path_hash = self.lazy(def_path_hash);
                 self.tables.def_keys.set(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash);
+                self.tables.def_path_hashes.set(def_index, *def_path_hash);
             }
         }
     }

@@ -1459,9 +1459,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         index: DefIndex,
         def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
     ) -> DefPathHash {
-        *def_path_hashes.entry(index).or_insert_with(|| {
-            self.root.tables.def_path_hashes.get(self, index).unwrap().decode(self)
-        })
+        *def_path_hashes
+            .entry(index)
+            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index).unwrap())
     }
 
     #[inline]

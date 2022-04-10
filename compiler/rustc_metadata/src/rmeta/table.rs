@@ -1,5 +1,6 @@
 use crate::rmeta::*;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
@@ -178,6 +179,24 @@ fixed_size_enum! {
     hir::IsAsync {
         ( NotAsync )
         ( Async    )
+    }
+}
+
+// We directly encode `DefPathHash` because a `Lazy` would encur a 25% cost.
+impl FixedSizeEncoding for Option<DefPathHash> {
+    fixed_size_encoding_byte_len_and_defaults!(16);
+
+    #[inline]
+    fn from_bytes(b: &[u8]) -> Self {
+        Some(DefPathHash(Fingerprint::from_le_bytes(b.try_into().unwrap())))
+    }
+
+    #[inline]
+    fn write_to_bytes(self, b: &mut [u8]) {
+        let Some(DefPathHash(fingerprint)) = self else {
+            panic!("Trying to encode absent DefPathHash.")
+        };
+        b[..Self::BYTE_LEN].copy_from_slice(&fingerprint.to_le_bytes());
     }
 }
 
