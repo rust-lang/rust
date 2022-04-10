@@ -1,23 +1,58 @@
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:13
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:9:13
    |
 LL | fn foo() -> impl Bar {
    |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
+...
 LL |     5;
-   |      - consider removing this semicolon
+   |     -- help: remove this semicolon
+   |     |
+   |     this expression has type `{integer}`, which implements `Bar`
 
 error[E0277]: the trait bound `(): Bar` is not satisfied
-  --> $DIR/impl-trait-return-trailing-semicolon.rs:3:22
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:9:22
    |
 LL |   fn foo() -> impl Bar {
    |  ______________________^
+LL | |
+LL | |
+LL | |
 LL | |     5;
 LL | |
 LL | | }
    | |_^ the trait `Bar` is not implemented for `()`
    |
-   = help: the trait `Bar` is implemented for `u8`
+   = help: the following other types implement trait `Bar`:
+             Qux
+             i32
 
-error: aborting due to 2 previous errors
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:17:13
+   |
+LL | fn bar() -> impl Bar {
+   |             ^^^^^^^^ the trait `Bar` is not implemented for `()`
+   |
+   = help: the following other types implement trait `Bar`:
+             Qux
+             i32
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/impl-trait-return-trailing-semicolon.rs:17:22
+   |
+LL |   fn bar() -> impl Bar {
+   |  ______________________^
+LL | |
+LL | |
+LL | |
+LL | |
+LL | |     "";
+LL | | }
+   | |_^ the trait `Bar` is not implemented for `()`
+   |
+   = help: the following other types implement trait `Bar`:
+             Qux
+             i32
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
