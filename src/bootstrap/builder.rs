@@ -364,6 +364,19 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
+    // single alias, which does not correspond to any on-disk path
+    pub fn alias(mut self, alias: &str) -> Self {
+        assert!(
+            !self.builder.src.join(alias).exists(),
+            "use `builder.path()` for real paths: {}",
+            alias
+        );
+        self.paths.insert(PathSet::Set(
+            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
+        ));
+        self
+    }
+
     // single, non-aliased path
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
@@ -372,7 +385,17 @@ impl<'a> ShouldRun<'a> {
     // multiple aliases for the same job
     pub fn paths(mut self, paths: &[&str]) -> Self {
         self.paths.insert(PathSet::Set(
-            paths.iter().map(|p| TaskPath { path: p.into(), kind: Some(self.kind) }).collect(),
+            paths
+                .iter()
+                .map(|p| {
+                    assert!(
+                        self.builder.src.join(p).exists(),
+                        "`should_run.paths` should correspond to real on-disk paths - use `alias` if there is no relevant path: {}",
+                        p
+                    );
+                    TaskPath { path: p.into(), kind: Some(self.kind) }
+                })
+                .collect(),
         ));
         self
     }
