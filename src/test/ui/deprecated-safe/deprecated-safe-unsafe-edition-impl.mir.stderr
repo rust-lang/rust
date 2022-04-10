@@ -1,0 +1,27 @@
+error[E0200]: the trait `DeprSafe2015` requires an `unsafe impl` declaration
+  --> $DIR/deprecated-safe-unsafe-edition-impl.rs:12:1
+   |
+LL | impl DeprSafe2015 for DeprSafeImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: use of trait `deprecated_safe::DeprSafe2018` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-unsafe-edition-impl.rs:14:1
+   |
+LL | impl DeprSafe2018 for DeprSafeImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error[E0199]: implementing the trait `DeprSafe2015Future` is not unsafe
+  --> $DIR/deprecated-safe-unsafe-edition-impl.rs:18:1
+   |
+LL | unsafe impl DeprSafe2015Future for DeprSafeUnsafeImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0199, E0200.
+For more information about an error, try `rustc --explain E0199`.

@@ -1,0 +1,1134 @@
+warning: use of trait `PreviouslySafeTrait` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-third-party.rs:99:1
+   |
+LL | impl PreviouslySafeTrait for PreviouslySafeTraitImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of trait `PreviouslySafeTraitFuture` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-third-party.rs:100:1
+   |
+LL | impl PreviouslySafeTraitFuture for PreviouslySafeTraitImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of trait `PreviouslySafeTraitTbd` without an `unsafe impl` declaration has been deprecated as it is now an unsafe trait
+  --> $DIR/deprecated-safe-third-party.rs:101:1
+   |
+LL | impl PreviouslySafeTraitTbd for PreviouslySafeTraitImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this trait was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the trait's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:51:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:51:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:51:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:51:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:57:14
+   |
+LL | fn foo4() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:57:14
+   |
+LL | fn foo4() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:57:46
+   |
+LL |   fn foo4() -> impl FnOnce(OsString, OsString) {
+   |  ______________________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:67:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:67:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:73:14
+   |
+LL | fn foo6() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:73:14
+   |
+LL | fn foo6() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:73:46
+   |
+LL |   fn foo6() -> impl FnOnce(OsString, OsString) {
+   |  ______________________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:83:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:83:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:89:14
+   |
+LL | fn foo8() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:89:14
+   |
+LL | fn foo8() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:89:46
+   |
+LL |   fn foo8() -> impl FnOnce(OsString, OsString) {
+   |  ______________________________________________^
+LL | |
+LL | |
+LL | |
+...  |
+LL | |
+LL | | }
+   | |_^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:104:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var);
+   |                                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:104:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var);
+   |                                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:104:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var);
+   |                                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:107:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var);
+   |                                                       ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:107:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var);
+   |                                                       ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:109:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var);
+   |                                                        ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:109:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var);
+   |                                                        ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:112:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_future);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:112:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_future);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:112:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_future);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:115:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var_future);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:115:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var_future);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:117:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var_future);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:117:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var_future);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:120:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:120:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:120:52
+   |
+LL |     let fn_impl: Box<dyn Fn(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                    ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:123:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:123:55
+   |
+LL |     let fn_impl: Box<dyn FnMut(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                       ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:125:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:125:56
+   |
+LL |     let fn_impl: Box<dyn FnOnce(OsString, OsString)> = Box::new(set_var_tbd);
+   |                                                        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:128:5
+   |
+LL |     fn_taking_fn_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:129:5
+   |
+LL |     fn_taking_fnmut_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:130:5
+   |
+LL |     fn_taking_fnonce_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:132:5
+   |
+LL |     fn_taking_fn_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:133:5
+   |
+LL |     fn_taking_fnmut_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:134:5
+   |
+LL |     fn_taking_fnonce_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:136:5
+   |
+LL |     fn_taking_fn_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:137:5
+   |
+LL |     fn_taking_fnmut_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:138:5
+   |
+LL |     fn_taking_fnonce_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:150:50
+   |
+LL |     let set_var_fn_ptr: fn(OsString, OsString) = set_var;
+   |                                                  ^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:151:50
+   |
+LL |     let set_var_fn_ptr: fn(OsString, OsString) = set_var_future;
+   |                                                  ^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:152:50
+   |
+LL |     let set_var_fn_ptr: fn(OsString, OsString) = set_var_tbd;
+   |                                                  ^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:168:22
+   |
+LL |     fn_taking_fn_ptr(set_var);
+   |                      ^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:169:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var));
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:169:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var));
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:171:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var));
+   |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:171:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var));
+   |                              ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:173:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var));
+   |                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:173:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var));
+   |                               ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:175:5
+   |
+LL |     fn_taking_fn_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:176:5
+   |
+LL |     fn_taking_fnmut_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:177:5
+   |
+LL |     fn_taking_fnonce_impl(set_var);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:180:22
+   |
+LL |     fn_taking_fn_ptr(set_var_future);
+   |                      ^^^^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:181:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var_future));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:181:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var_future));
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:183:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var_future));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:183:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var_future));
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:185:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var_future));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:185:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var_future));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:187:5
+   |
+LL |     fn_taking_fn_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:188:5
+   |
+LL |     fn_taking_fnmut_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:189:5
+   |
+LL |     fn_taking_fnonce_impl(set_var_future);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a normal fn pointer has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:191:22
+   |
+LL |     fn_taking_fn_ptr(set_var_tbd);
+   |                      ^^^^^^^^^^^ expected normal fn pointer, found unsafe fn pointer
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:192:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var_tbd));
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:192:27
+   |
+LL |     fn_taking_dyn_fn_impl(Box::new(set_var_tbd));
+   |                           ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:194:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var_tbd));
+   |                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:194:30
+   |
+LL |     fn_taking_dyn_fnmut_impl(Box::new(set_var_tbd));
+   |                              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:196:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var_tbd));
+   |                               ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:196:31
+   |
+LL |     fn_taking_dyn_fnonce_impl(Box::new(set_var_tbd));
+   |                               ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:198:5
+   |
+LL |     fn_taking_fn_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:199:5
+   |
+LL |     fn_taking_fnmut_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:200:5
+   |
+LL |     fn_taking_fnonce_impl(set_var_tbd);
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:39:13
+   |
+LL | type Tait = impl FnOnce(OsString, OsString);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:39:13
+   |
+LL | type Tait = impl FnOnce(OsString, OsString);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:83:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:83:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:41:16
+   |
+LL | type TaitTbd = impl FnOnce(OsString, OsString);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:41:16
+   |
+LL | type TaitTbd = impl FnOnce(OsString, OsString);
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:67:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:67:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:43:19
+   |
+LL | type TaitFuture = impl FnOnce(OsString, OsString);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:43:19
+   |
+LL | type TaitFuture = impl FnOnce(OsString, OsString);
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:62:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:62:5
+   |
+LL |     set_var
+   |     ^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:57:14
+   |
+LL | fn foo4() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:57:14
+   |
+LL | fn foo4() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:78:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:78:5
+   |
+LL |     set_var_future
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:73:14
+   |
+LL | fn foo6() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:73:14
+   |
+LL | fn foo6() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:94:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:94:5
+   |
+LL |     set_var_tbd
+   |     ^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:89:14
+   |
+LL | fn foo8() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` as a closure has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:89:14
+   |
+LL | fn foo8() -> impl FnOnce(OsString, OsString) {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:141:5
+   |
+LL |     set_var("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:142:5
+   |
+LL |     set_var("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:144:5
+   |
+LL |     set_var_future("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_future` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:145:5
+   |
+LL |     set_var_future("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:147:5
+   |
+LL |     set_var_tbd("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `set_var_tbd` without an unsafe function or block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-third-party.rs:148:5
+   |
+LL |     set_var_tbd("TEST_DEPRECATED_SAFE", "set_var_safe");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since TBD
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: 111 warnings emitted
+

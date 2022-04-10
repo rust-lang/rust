@@ -1,0 +1,188 @@
+warning: use of function `deprecated_safe::depr_safe` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:19:5
+   |
+LL |     depr_safe();
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: `#[warn(deprecated_safe)]` on by default
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:25:5
+   |
+LL |     depr_safe_future();
+   |     ^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:7:9
+   |
+LL | #![warn(deprecated_safe_in_future, unused_unsafe)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error: call to unsafe function is unsafe and requires unsafe block (error E0133)
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:31:5
+   |
+LL |     depr_safe_2015();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:8:9
+   |
+LL | #![deny(unsafe_op_in_unsafe_fn)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: use of function `deprecated_safe::depr_safe_2015_future` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:37:5
+   |
+LL |     depr_safe_2015_future();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:43:5
+   |
+LL |     depr_safe_2018();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:17:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^ unnecessary `unsafe` block
+   |
+note: the lint level is defined here
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:7:36
+   |
+LL | #![warn(deprecated_safe_in_future, unused_unsafe)]
+   |                                    ^^^^^^^^^^^^^
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:22:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:28:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:34:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:40:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:46:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: use of function `deprecated_safe::depr_safe` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:53:5
+   |
+LL |     depr_safe();
+   |     ^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_future` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:59:5
+   |
+LL |     depr_safe_future();
+   |     ^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+error[E0133]: call to unsafe function is unsafe and requires unsafe block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:65:5
+   |
+LL |     depr_safe_2015();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+
+warning: use of function `deprecated_safe::depr_safe_2015_future` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:71:5
+   |
+LL |     depr_safe_2015_future();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 99.99.99
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: use of function `deprecated_safe::depr_safe_2018` without an unsafe block has been deprecated as it is now an unsafe function
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:77:5
+   |
+LL |     depr_safe_2018();
+   |     ^^^^^^^^^^^^^^^^ call to unsafe function
+   |
+   = note: this function was previously not marked unsafe, but has been marked unsafe since 1.61.0
+   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = note: reason
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:51:5
+   |
+LL |     unsafe {}
+   |     ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:56:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:62:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:68:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:74:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+warning: unnecessary `unsafe` block
+  --> $DIR/deprecated-safe-unsafe-op-in-unsafe-fn-staged.rs:80:9
+   |
+LL |         unsafe {}
+   |         ^^^^^^ unnecessary `unsafe` block
+
+error: aborting due to 2 previous errors; 20 warnings emitted
+
+For more information about this error, try `rustc --explain E0133`.

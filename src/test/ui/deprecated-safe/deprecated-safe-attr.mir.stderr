@@ -1,0 +1,76 @@
+error[E0543]: 'unsafe_edition' is invalid outside of rustc
+  --> $DIR/deprecated-safe-attr.rs:13:1
+   |
+LL | #[deprecated_safe(since = "1.61.0", unsafe_edition = "2015", note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: 'unsafe_edition' is invalid outside of rustc
+  --> $DIR/deprecated-safe-attr.rs:16:1
+   |
+LL | #[deprecated_safe(since = "1.61.0", unsafe_edition = "BAD", note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: 'unsafe_edition' is invalid outside of rustc
+  --> $DIR/deprecated-safe-attr.rs:19:1
+   |
+LL | #[deprecated_safe(since = "TBD", unsafe_edition = "BAD", note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: multiple `deprecated_safe` attributes
+  --> $DIR/deprecated-safe-attr.rs:35:1
+   |
+LL | #[deprecated_safe(note = "reason")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/deprecated-safe-attr.rs:34:1
+   |
+LL | #[deprecated_safe(since = "1.61.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0541]: unknown meta item 'extra'
+  --> $DIR/deprecated-safe-attr.rs:38:37
+   |
+LL | #[deprecated_safe(since = "1.61.0", extra = "")]
+   |                                     ^^^^^^^^^^
+
+error[E0538]: multiple 'since' items
+  --> $DIR/deprecated-safe-attr.rs:41:1
+   |
+LL | #[deprecated_safe(since = "1.61.0", since = "1.61.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0551]: incorrect meta item 'since'
+  --> $DIR/deprecated-safe-attr.rs:44:19
+   |
+LL | #[deprecated_safe(since)]
+   |                   ^^^^^
+
+error[E0565]: literal in `deprecated_safe` value must be a string
+  --> $DIR/deprecated-safe-attr.rs:47:27
+   |
+LL | #[deprecated_safe(since = 1_61_0)]
+   |                           ^^^^^^
+
+error[E0565]: item in `deprecated_safe` must be a key/value pair
+  --> $DIR/deprecated-safe-attr.rs:50:19
+   |
+LL | #[deprecated_safe(1_61_0)]
+   |                   ^^^^^^
+
+error[E0543]: this `#[deprecated_safe]` annotation has no effect
+  --> $DIR/deprecated-safe-attr.rs:53:1
+   |
+LL | #[deprecated_safe(since = "1.61.0")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: this `#[deprecated_safe]` annotation has no effect
+  --> $DIR/deprecated-safe-attr.rs:58:5
+   |
+LL |     #[deprecated_safe(since = "1.61.0", note = "reason")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0538, E0541, E0543, E0551, E0565.
+For more information about an error, try `rustc --explain E0538`.

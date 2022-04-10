@@ -1,0 +1,33 @@
+error[E0543]: item must be marked unsafe
+  --> $DIR/deprecated-safe-mismatch-staged.rs:12:1
+   |
+LL | fn foo0() {}
+   | ^^^^^^^^^^^^
+
+error[E0543]: item must be marked unsafe
+  --> $DIR/deprecated-safe-mismatch-staged.rs:15:1
+   |
+LL | trait PreviouslySafeTrait {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0543]: item must be marked unsafe
+  --> $DIR/deprecated-safe-mismatch-staged.rs:31:5
+   |
+LL |     fn foo0();
+   |     ^^^^^^^^^^
+
+error[E0543]: item must not be marked unsafe
+  --> $DIR/deprecated-safe-mismatch-staged.rs:34:5
+   |
+LL |     unsafe fn foo1();
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0543]: item must not be marked unsafe
+  --> $DIR/deprecated-safe-mismatch-staged.rs:37:5
+   |
+LL |     unsafe fn foo2();
+   |     ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0543`.
