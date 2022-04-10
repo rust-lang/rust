@@ -537,10 +537,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             let variant_index = VariantIdx::new(index);
             let dest = self.tcx.mk_place_downcast_unnamed(dest, variant_index);
             let src = self.tcx.mk_place_downcast_unnamed(src, variant_index);
-            let start_block = self.block_index_offset(0);
             let clone_block = self.block_index_offset(1);
-            cases.push((index as u128, start_block));
-            self.block(
+            let start_block = self.block(
                 vec![self.make_statement(StatementKind::SetDiscriminant {
                     place: Box::new(Place::return_place()),
                     variant_index,
@@ -548,6 +546,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 TerminatorKind::Goto { target: clone_block },
                 false,
             );
+            cases.push((index as u128, start_block));
             let _final_cleanup_block = self.clone_fields(dest, src, target, unwind, state_tys);
         }
         let discr_ty = substs.discr_ty(self.tcx);

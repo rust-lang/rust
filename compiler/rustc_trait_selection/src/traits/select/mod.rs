@@ -1943,15 +1943,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         self.infcx.shallow_resolve(substs.as_generator().tupled_upvars_ty());
                     let resolved_witness =
                         self.infcx.shallow_resolve(substs.as_generator().witness());
-                    if {
-                        matches!(resolved_upvars.kind(), ty::Infer(ty::TyVar(_)))
-                            || matches!(resolved_witness.kind(), ty::Infer(ty::TyVar(_)))
-                    } {
+                    if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
                         // Not yet resolved.
                         Ambiguous
                     } else {
-                        let mut all = substs.as_generator().upvar_tys().collect::<Vec<_>>();
-                        all.push(substs.as_generator().witness());
+                        let all = substs
+                            .as_generator()
+                            .upvar_tys()
+                            .chain(iter::once(substs.as_generator().witness()))
+                            .collect::<Vec<_>>();
                         Where(obligation.predicate.rebind(all))
                     }
                 } else {
@@ -1961,31 +1961,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::GeneratorWitness(binder) => {
                 let witness_tys = binder.skip_binder();
-                let mut iter = witness_tys.iter();
-                loop {
-                    match iter.next() {
-                        Some(witness_ty) => {
-                            let resolved = self.infcx.shallow_resolve(witness_ty);
-                            if matches!(resolved.kind(), ty::Infer(ty::TyVar(_))) {
-                                break Ambiguous;
-                            }
-                        }
-                        Option::None => {
-                            // (*) binder moved here
-                            let all_vars = self.tcx().mk_bound_variable_kinds(
-                                obligation
-                                    .predicate
-                                    .bound_vars()
-                                    .iter()
-                                    .chain(binder.bound_vars().iter()),
-                            );
-                            break Where(ty::Binder::bind_with_vars(
-                                witness_tys.to_vec(),
-                                all_vars,
-                            ));
-                        }
+                for witness_ty in witness_tys.iter() {
+                    let resolved = self.infcx.shallow_resolve(witness_ty);
+                    if resolved.is_ty_var() {
+                        return Ambiguous;
                     }
                 }
+                // (*) binder moved here
+                let all_vars = self.tcx().mk_bound_variable_kinds(
+                    obligation.predicate.bound_vars().iter().chain(binder.bound_vars().iter()),
+                );
+                Where(ty::Binder::bind_with_vars(witness_tys.to_vec(), all_vars))
             }
 
             ty::Closure(_, substs) => {
