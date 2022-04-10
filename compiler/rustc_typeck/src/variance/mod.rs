@@ -3,9 +3,8 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
-use hir::Node;
 use rustc_arena::DroplessArena;
-use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, CrateVariancesMap, TyCtxt};
@@ -38,42 +37,18 @@ fn crate_variances(tcx: TyCtxt<'_>, (): ()) -> CrateVariancesMap<'_> {
 }
 
 fn variances_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[ty::Variance] {
-    let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
-    let unsupported = || {
-        // Variance not relevant.
-        span_bug!(tcx.hir().span(id), "asked to compute variance for wrong kind of item")
-    };
-    match tcx.hir().get(id) {
-        Node::Item(item) => match item.kind {
-            hir::ItemKind::Enum(..)
-            | hir::ItemKind::Struct(..)
-            | hir::ItemKind::Union(..)
-            | hir::ItemKind::Fn(..) => {}
-
-            _ => unsupported(),
-        },
-
-        Node::TraitItem(item) => match item.kind {
-            hir::TraitItemKind::Fn(..) => {}
-
-            _ => unsupported(),
-        },
-
-        Node::ImplItem(item) => match item.kind {
-            hir::ImplItemKind::Fn(..) => {}
-
-            _ => unsupported(),
-        },
-
-        Node::ForeignItem(item) => match item.kind {
-            hir::ForeignItemKind::Fn(..) => {}
-
-            _ => unsupported(),
-        },
-
-        Node::Variant(_) | Node::Ctor(..) => {}
-
-        _ => unsupported(),
+    match tcx.def_kind(item_def_id) {
+        DefKind::Fn
+        | DefKind::AssocFn
+        | DefKind::Enum
+        | DefKind::Struct
+        | DefKind::Union
+        | DefKind::Variant
+        | DefKind::Ctor(..) => {}
+        _ => {
+            // Variance not relevant.
+            span_bug!(tcx.def_span(item_def_id), "asked to compute variance for wrong kind of item")
+        }
     }
 
     // Everything else must be inferred.

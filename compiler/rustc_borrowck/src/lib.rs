@@ -23,7 +23,6 @@ use rustc_data_structures::graph::dominators::Dominators;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::Node;
 use rustc_index::bit_set::ChunkedBitSet;
 use rustc_index::vec::IndexVec;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -288,14 +287,16 @@ fn do_mir_borrowck<'a, 'tcx>(
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
-    let def_hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-    let movable_generator = !matches!(
-        tcx.hir().get(def_hir_id),
-        Node::Expr(&hir::Expr {
-            kind: hir::ExprKind::Closure(.., Some(hir::Movability::Static)),
-            ..
-        })
-    );
+    let movable_generator =
+        // The first argument is the generator type passed by value
+        if let Some(local) = body.local_decls.raw.get(1)
+        // Get the interior types and substs which typeck computed
+        && let ty::Generator(_, _, hir::Movability::Static) = local.ty.kind()
+    {
+        false
+    } else {
+        true
+    };
 
     for (idx, move_data_results) in promoted_errors {
         let promoted_body = &promoted[idx];
@@ -385,7 +386,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         let scope = mbcx.body.source_info(location).scope;
         let lint_root = match &mbcx.body.source_scopes[scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
-            _ => def_hir_id,
+            _ => tcx.hir().local_def_id_to_hir_id(def.did),
         };
 
         // Span and message don't matter; we overwrite them below anyway

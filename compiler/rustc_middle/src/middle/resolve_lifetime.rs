@@ -64,7 +64,7 @@ pub struct ResolveLifetimes {
     /// Set of lifetime def ids that are late-bound; a region can
     /// be late-bound if (a) it does NOT appear in a where-clause and
     /// (b) it DOES appear in the arguments.
-    pub late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
+    pub late_bound: FxHashMap<LocalDefId, FxHashSet<LocalDefId>>,
 
     pub late_bound_vars: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>>,
 }
