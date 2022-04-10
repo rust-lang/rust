@@ -475,7 +475,18 @@ impl<'tcx> CloneShimBuilder<'tcx> {
     where
         I: IntoIterator<Item = Ty<'tcx>>,
     {
+        // For an iterator of length n, create 2*n + 1 blocks.
         for (i, ity) in tys.into_iter().enumerate() {
+            // Each iteration creates two blocks, referred to here as block 2*i and block 2*i + 1.
+            //
+            // Block 2*i attempts to clone the field. If successful it branches to 2*i + 2 (the
+            // next clone block). If unsuccessful it branches to the previous unwind block, which
+            // is initially the `unwind` argument passed to this function.
+            //
+            // Block 2*i + 1 is the unwind block for this iteration. It drops the cloned value
+            // created by block 2*i. We store this block in `unwind` so that the next clone block
+            // will unwind to it if cloning fails.
+
             let field = Field::new(i);
             let src_field = self.tcx.mk_place_field(src, field, ity);
 
@@ -491,6 +502,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
             );
             unwind = next_unwind;
         }
+        // If all clones succeed then we end up here.
         self.block(vec![], TerminatorKind::Goto { target }, false);
         unwind
     }
