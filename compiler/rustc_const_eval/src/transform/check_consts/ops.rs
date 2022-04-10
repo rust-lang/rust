@@ -156,7 +156,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
                     if let Ok(Some(ImplSource::UserDefined(data))) = implsrc {
                         let span =
-                            tcx.sess.source_map().guess_head_span(tcx.def_span(data.impl_def_id));
+                            tcx.source_map(()).guess_head_span(tcx.def_span(data.impl_def_id));
                         err.span_note(span, "impl defined here, but it is not `const`");
                     }
                 }
@@ -205,7 +205,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
 
                 match self_ty.kind() {
                     FnDef(def_id, ..) => {
-                        let span = tcx.sess.source_map().guess_head_span(tcx.def_span(*def_id));
+                        let span = tcx.source_map(()).guess_head_span(tcx.def_span(*def_id));
                         if ccx.tcx.is_const_fn_raw(*def_id) {
                             span_bug!(span, "calling const FnDef errored when it shouldn't");
                         }
@@ -254,7 +254,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                             }
                             let deref = "*".repeat(num_refs);
 
-                            if let Ok(call_str) = ccx.tcx.sess.source_map().span_to_snippet(span) {
+                            if let Ok(call_str) = ccx.tcx.source_map(()).span_to_snippet(span) {
                                 if let Some(eq_idx) = call_str.find("==") {
                                     if let Some(rhs_idx) =
                                         call_str[(eq_idx + 2)..].find(|c: char| !c.is_whitespace())
@@ -294,7 +294,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 err.note(&format!("attempting to deref into `{}`", deref_target_ty));
 
                 // Check first whether the source is accessible (issue #87060)
-                if tcx.sess.source_map().span_to_snippet(deref_target).is_ok() {
+                if tcx.source_map(()).span_to_snippet(deref_target).is_ok() {
                     err.span_note(deref_target, "deref defined here");
                 }
 

@@ -180,6 +180,13 @@ pub struct SourceMap {
     hash_kind: SourceFileHashAlgorithm,
 }
 
+// The query system requires a Debug impl, give them a dummy one.
+impl std::fmt::Debug for SourceMap {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SourceMap").finish_non_exhaustive()
+    }
+}
+
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
         Self::with_file_loader_and_hash_kind(

@@ -2537,7 +2537,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                 let span = tcx.def_span(def_id);
                                 format!(
                                     "[closure@{}]",
-                                    tcx.sess.source_map().span_to_diagnostic_string(span)
+                                    tcx.source_map(()).span_to_diagnostic_string(span)
                                 )
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);

@@ -792,7 +792,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
                 Some(codegen_unit_name),
             )
             // We get a path relative to the working directory from split_dwarf_path
-            .map(|f| tcx.sess.source_map().path_mapping().map_prefix(f).0)
+            .map(|f| tcx.source_map(()).path_mapping().map_prefix(f).0)
     } else {
         None
     }

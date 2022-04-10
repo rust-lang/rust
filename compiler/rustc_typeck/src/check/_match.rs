@@ -292,7 +292,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if expr.span == sp {
                     return self.get_fn_decl(hir_id).and_then(|(fn_decl, _)| {
                         let span = fn_decl.output.span();
-                        let snippet = self.tcx.sess.source_map().span_to_snippet(span).ok()?;
+                        let snippet = self.tcx.source_map(()).span_to_snippet(span).ok()?;
                         Some((span, format!("expected `{}` because of this return type", snippet)))
                     });
                 }
@@ -313,7 +313,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         else_ty: Ty<'tcx>,
         opt_suggest_box_span: Option<Span>,
     ) -> ObligationCause<'tcx> {
-        let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
+        let mut outer_sp = if self.tcx.source_map(()).is_multiline(span) {
             // The `if`/`else` isn't in one line in the output, include some context to make it
             // clear it is an if/else expression:
             // ```
@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   | |_____^ expected integer, found `()`
                 // ```
                 if outer_sp.is_some() {
-                    outer_sp = Some(self.tcx.sess.source_map().guess_head_span(span));
+                    outer_sp = Some(self.tcx.source_map(()).guess_head_span(span));
                 }
             }
             error_sp

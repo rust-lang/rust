@@ -58,7 +58,7 @@ impl<'tcx> CheckVisitor<'tcx> {
             item_id.hir_id(),
             span,
             |lint| {
-                let msg = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                let msg = if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
                     format!("unused import: `{}`", snippet)
                 } else {
                     "unused import".to_owned()
@@ -179,7 +179,7 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
                 Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
                 None => format!("use {};", item.ident.name),
             };
-            let vis = tcx.sess.source_map().span_to_snippet(item.vis.span).unwrap_or_default();
+            let vis = tcx.source_map(()).span_to_snippet(item.vis.span).unwrap_or_default();
             let add_vis = |to| if vis.is_empty() { to } else { format!("{} {}", vis, to) };
             lint.build("`extern crate` is not idiomatic in the new edition")
                 .span_suggestion_short(

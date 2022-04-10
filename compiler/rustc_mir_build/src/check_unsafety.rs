@@ -45,7 +45,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             self.warn_unused_unsafe(
                 hir_id,
                 block_span,
-                Some((self.tcx.sess.source_map().guess_head_span(enclosing_span), "block")),
+                Some((self.tcx.source_map(()).guess_head_span(enclosing_span), "block")),
             );
             f(self);
         } else {
@@ -121,7 +121,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
         block_span: Span,
         enclosing_unsafe: Option<(Span, &'static str)>,
     ) {
-        let block_span = self.tcx.sess.source_map().guess_head_span(block_span);
+        let block_span = self.tcx.source_map(()).guess_head_span(block_span);
         self.tcx.struct_span_lint_hir(UNUSED_UNSAFE, hir_id, block_span, |lint| {
             let msg = "unnecessary `unsafe` block";
             let mut db = lint.build(msg);

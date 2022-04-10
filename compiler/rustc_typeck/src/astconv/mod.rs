@@ -1578,7 +1578,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .confused_type_with_std_module
                 .keys()
                 .any(|full_span| full_span.contains(span)),
-            self.tcx().sess.source_map().span_to_snippet(span),
+            self.tcx().source_map(()).span_to_snippet(span),
         ) {
             err.span_suggestion(
                 span,
@@ -1866,7 +1866,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     if let Some(sp) = tcx.hir().span_if_local(adt_def.did()) {
-                        let sp = tcx.sess.source_map().guess_head_span(sp);
+                        let sp = tcx.source_map(()).guess_head_span(sp);
                         err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
                     }
 
@@ -2694,8 +2694,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         {
             let needs_bracket = in_path
                 && !tcx
-                    .sess
-                    .source_map()
+                    .source_map(())
                     .span_to_prev_source(self_ty.span)
                     .ok()
                     .map_or(false, |s| s.trim_end().ends_with('<'));

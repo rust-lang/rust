@@ -98,7 +98,7 @@ fn line_program_add_file(
 
 impl<'tcx> DebugContext<'tcx> {
     pub(super) fn emit_location(&mut self, entry_id: UnitEntryId, span: Span) {
-        let loc = self.tcx.sess.source_map().lookup_char_pos(span.lo());
+        let loc = self.tcx.source_map(()).lookup_char_pos(span.lo());
 
         let file_id = line_program_add_file(
             &mut self.dwarf.unit.line_program,
@@ -149,7 +149,7 @@ impl<'tcx> DebugContext<'tcx> {
                 rustc_span::hygiene::walk_chain(span, function_span.ctxt())
             };
 
-            let (file, line, col) = match tcx.sess.source_map().lookup_line(span.lo()) {
+            let (file, line, col) = match tcx.source_map(()).lookup_line(span.lo()) {
                 Ok(SourceFileAndLine { sf: file, line }) => {
                     let line_pos = file.line_begin_pos(span.lo());
 

@@ -158,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
                             err.span_note(
-                                self.tcx.sess.source_map().guess_head_span(note_span),
+                                self.tcx.source_map(()).guess_head_span(note_span),
                                 &note_str,
                             );
                         } else {
@@ -189,18 +189,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 item.def_id,
                                 sugg_span,
                                 idx,
-                                self.tcx.sess.source_map(),
+                                self.tcx.source_map(()),
                                 item.fn_has_self_parameter,
                             );
                         }
                     }
                     CandidateSource::Trait(trait_did) => {
                         let Some(item) = self.associated_value(trait_did, item_name) else { continue };
-                        let item_span = self
-                            .tcx
-                            .sess
-                            .source_map()
-                            .guess_head_span(self.tcx.def_span(item.def_id));
+                        let item_span =
+                            self.tcx.source_map(()).guess_head_span(self.tcx.def_span(item.def_id));
                         let idx = if sources.len() > 1 {
                             let msg = &format!(
                                 "candidate #{} is defined in the trait `{}`",
@@ -228,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             item.def_id,
                             sugg_span,
                             idx,
-                            self.tcx.sess.source_map(),
+                            self.tcx.source_map(()),
                             item.fn_has_self_parameter,
                         );
                     }
@@ -324,8 +321,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ExprKind::Lit(ref lit) => {
                                 // numeric literal
                                 let snippet = tcx
-                                    .sess
-                                    .source_map()
+                                    .source_map(())
                                     .span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
@@ -348,8 +344,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // local binding
                                 if let hir::def::Res::Local(hir_id) = path.res {
                                     let span = tcx.hir().span(hir_id);
-                                    let snippet = tcx.sess.source_map().span_to_snippet(span);
-                                    let filename = tcx.sess.source_map().span_to_filename(span);
+                                    let snippet = tcx.source_map(()).span_to_snippet(span);
+                                    let filename = tcx.source_map(()).span_to_filename(span);
 
                                     let parent_node =
                                         self.tcx.hir().get(self.tcx.hir().get_parent_node(hir_id));
@@ -442,7 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(span) =
                             tcx.resolutions(()).confused_type_with_std_module.get(&span)
                         {
-                            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
+                            if let Ok(snippet) = tcx.source_map(()).span_to_snippet(*span) {
                                 err.span_suggestion(
                                     *span,
                                     "you are looking for the module in `std`, \
@@ -474,7 +470,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Some(def) = actual.ty_adt_def() {
                     if let Some(full_sp) = tcx.hir().span_if_local(def.did()) {
-                        let def_sp = tcx.sess.source_map().guess_head_span(full_sp);
+                        let def_sp = tcx.source_map(()).guess_head_span(full_sp);
                         err.span_label(
                             def_sp,
                             format!(
@@ -495,7 +491,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     if let SelfSource::MethodCall(expr) = source {
-                        if let Ok(expr_string) = tcx.sess.source_map().span_to_snippet(expr.span) {
+                        if let Ok(expr_string) = tcx.source_map(()).span_to_snippet(expr.span) {
                             report_function(&mut err, expr_string);
                         } else if let ExprKind::Path(QPath::Resolved(_, path)) = expr.kind {
                             if let Some(segment) = path.segments.last() {
@@ -568,9 +564,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&format!("`count` is defined on `{iterator_trait}`, which `{actual}` does not implement"));
                     }
                 } else if !unsatisfied_predicates.is_empty() {
-                    let def_span = |def_id| {
-                        self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id))
-                    };
+                    let def_span =
+                        |def_id| self.tcx.source_map(()).guess_head_span(self.tcx.def_span(def_id));
                     let mut type_params = FxHashMap::default();
 
                     // Pick out the list of unimplemented traits on the receiver.
@@ -1301,7 +1296,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             })
             .collect::<FxHashSet<_>>();
-        let sm = self.tcx.sess.source_map();
+        let sm = self.tcx.source_map(());
         let mut spans: MultiSpan = def_ids
             .iter()
             .filter_map(|def_id| {
@@ -1983,7 +1978,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 [trait_info] if trait_info.def_id.is_local() => {
                     let span = self.tcx.hir().span_if_local(trait_info.def_id).unwrap();
                     err.span_note(
-                        self.tcx.sess.source_map().guess_head_span(span),
+                        self.tcx.source_map(()).guess_head_span(span),
                         &format!(
                             "`{}` defines an item `{}`, perhaps you need to {} it",
                             self.tcx.def_path_str(trait_info.def_id),

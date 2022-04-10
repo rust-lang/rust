@@ -1100,8 +1100,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
     // reproducible builds by compiling from the same directory. So we just
     // hash the result of the mapping instead of the mapping itself.
     let mut source_file_names: Vec<_> = tcx
-        .sess
-        .source_map()
+        .source_map(())
         .files()
         .iter()
         .filter(|source_file| source_file.cnum == LOCAL_CRATE)
@@ -1170,7 +1169,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
         })
     };
 
-    let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
+    let span_str = || map.tcx.source_map(()).span_to_snippet(map.span(id)).unwrap_or_default();
     let node_str = |prefix| format!("{} {}{}", prefix, span_str(), id_str);
 
     match map.find(id) {

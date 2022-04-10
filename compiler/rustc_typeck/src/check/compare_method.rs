@@ -38,7 +38,7 @@ crate fn compare_impl_method<'tcx>(
 ) {
     debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
-    let impl_m_span = tcx.sess.source_map().guess_head_span(impl_m_span);
+    let impl_m_span = tcx.source_map(()).guess_head_span(impl_m_span);
 
     if let Err(_) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref) {
         return;
@@ -435,14 +435,14 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let item_kind = assoc_item_kind_str(impl_m);
-        let def_span = tcx.sess.source_map().guess_head_span(span);
+        let def_span = tcx.source_map(()).guess_head_span(span);
         let span = impl_m
             .def_id
             .as_local()
             .and_then(|did| tcx.hir().get_generics(did))
             .map_or(def_span, |g| g.span);
         let generics_span = tcx.hir().span_if_local(trait_m.def_id).map(|sp| {
-            let def_sp = tcx.sess.source_map().guess_head_span(sp);
+            let def_sp = tcx.source_map(()).guess_head_span(sp);
             trait_m
                 .def_id
                 .as_local()
@@ -823,7 +823,7 @@ fn compare_synthetic_generics<'tcx>(
                         // try taking the name from the trait impl
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
-                        let new_name = tcx.sess.source_map().span_to_snippet(trait_span).ok()?;
+                        let new_name = tcx.source_map(()).span_to_snippet(trait_span).ok()?;
                         let trait_m = trait_m.def_id.as_local()?;
                         let trait_m = tcx.hir().trait_item(hir::TraitItemId { def_id: trait_m });
 
@@ -833,13 +833,13 @@ fn compare_synthetic_generics<'tcx>(
                         // in case there are no generics, take the spot between the function name
                         // and the opening paren of the argument list
                         let new_generics_span =
-                            tcx.sess.source_map().generate_fn_name_span(impl_span)?.shrink_to_hi();
+                            tcx.source_map(()).generate_fn_name_span(impl_span)?.shrink_to_hi();
                         // in case there are generics, just replace them
                         let generics_span =
                             impl_m.generics.span.substitute_dummy(new_generics_span);
                         // replace with the generics from the trait
                         let new_generics =
-                            tcx.sess.source_map().span_to_snippet(trait_m.generics.span).ok()?;
+                            tcx.source_map(()).span_to_snippet(trait_m.generics.span).ok()?;
 
                         err.multipart_suggestion(
                             "try changing the `impl Trait` argument to a generic parameter",
@@ -900,7 +900,7 @@ fn compare_synthetic_generics<'tcx>(
                                 }
                             })?;
                         let bounds = bounds.first()?.span().to(bounds.last()?.span());
-                        let bounds = tcx.sess.source_map().span_to_snippet(bounds).ok()?;
+                        let bounds = tcx.source_map(()).span_to_snippet(bounds).ok()?;
 
                         err.multipart_suggestion(
                             "try removing the generic parameter and using `impl Trait` instead",

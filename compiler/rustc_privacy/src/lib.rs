@@ -1776,7 +1776,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     struct_span_err!(self.tcx.sess, span, E0446, "{}", make_msg())
                 };
                 let vis_span =
-                    self.tcx.sess.source_map().guess_head_span(self.tcx.def_span(def_id));
+                    self.tcx.source_map(()).guess_head_span(self.tcx.def_span(def_id));
                 err.span_label(span, format!("can't leak {} {}", vis_descr, kind));
                 err.span_label(vis_span, format!("`{}` declared as {}", descr, vis_descr));
                 err.emit();

@@ -1873,8 +1873,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                             let lt_through_ty_span = lifetime.span.to(input.span.shrink_to_hi());
                             remove_use = Some(
                                 self.tcx
-                                    .sess
-                                    .source_map()
+                                    .source_map(())
                                     .span_until_non_whitespace(lt_through_ty_span),
                             );
                             break;
@@ -3295,7 +3294,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn insert_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime, def: Region) {
         debug!(
             node = ?self.tcx.hir().node_to_string(lifetime_ref.hir_id),
-            span = ?self.tcx.sess.source_map().span_to_diagnostic_string(lifetime_ref.span)
+            span = ?self.tcx.source_map(()).span_to_diagnostic_string(lifetime_ref.span)
         );
         self.map.defs.insert(lifetime_ref.hir_id, def);
 

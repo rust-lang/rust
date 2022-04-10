@@ -115,7 +115,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     crate fn location_triple_for_span(&self, span: Span) -> (Symbol, u32, u32) {
         let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        let caller = self.tcx.source_map(()).lookup_char_pos(topmost.lo());
         (
             Symbol::intern(&caller.file.name.prefer_remapped().to_string_lossy()),
             u32::try_from(caller.line).unwrap(),

@@ -360,9 +360,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Account for `foo.bar::<T>()`.
                         .map(|arg| {
                             // Skip the closing `>`.
-                            tcx.sess
-                                .source_map()
-                                .next_point(tcx.sess.source_map().next_point(arg.span()))
+                            tcx.source_map(()).next_point(tcx.source_map(()).next_point(arg.span()))
                         })
                         .unwrap_or(path_segment.ident.span),
                     &args[1..], // Skip the receiver.
@@ -375,7 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // ^^^-- supplied 0 arguments
                 // |
                 // expected 2 arguments
-                vec![tcx.sess.source_map().next_point(start_span).with_hi(call_span.hi())]
+                vec![tcx.source_map(()).next_point(start_span).with_hi(call_span.hi())]
             } else {
                 // foo(1, 2, 3)
                 // ^^^ -  -  - supplied 3 arguments
@@ -426,7 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_note(spans, &format!("{} defined here", def_kind.descr(def_id)));
             }
             if sugg_unit {
-                let sugg_span = tcx.sess.source_map().end_point(call_expr.span);
+                let sugg_span = tcx.source_map(()).end_point(call_expr.span);
                 // remove closing `)` from the span
                 let sugg_span = sugg_span.shrink_to_lo();
                 err.span_suggestion(

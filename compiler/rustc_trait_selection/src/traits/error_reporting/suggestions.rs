@@ -555,7 +555,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     Some(steps).filter(|_| self.predicate_may_hold(&obligation))
                 }) {
                     if steps > 0 {
-                        if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        if let Ok(src) = self.tcx.source_map(()).span_to_snippet(span) {
                             // Don't care about `&mut` because `DerefMut` is used less
                             // often and user will not expect autoderef happens.
                             if src.starts_with('&') && !src.starts_with("&mut ") {
@@ -772,7 +772,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             let mut_result = mk_result(self.tcx.mk_mut_ref(self.tcx.lifetimes.re_static, orig_ty));
 
             if imm_result || mut_result {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
                     // We have a very specific type of error, where just borrowing this argument
                     // might solve the problem. In cases like this, the important part is the
                     // original type obligation, not the last one that failed, which is arbitrary.
@@ -891,7 +891,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         let mut suggested = false;
-        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+        if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
             if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
@@ -918,8 +918,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if self.predicate_may_hold(&new_obligation) {
                     let sp = self
                         .tcx
-                        .sess
-                        .source_map()
+                        .source_map(())
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
 
                     let remove_refs = refs_remaining + 1;
@@ -1008,7 +1007,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         );
 
         let span = obligation.cause.span;
-        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+        if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
             let refs_number =
                 snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
             if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
@@ -1049,8 +1048,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 if suggested_ty_would_satisfy_obligation {
                     let sp = self
                         .tcx
-                        .sess
-                        .source_map()
+                        .source_map(())
                         .span_take_while(span, |c| c.is_whitespace() || *c == '&');
                     if points_at_arg && mutability == hir::Mutability::Not && refs_number > 0 {
                         err.span_suggestion_verbose(
@@ -1095,7 +1093,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             && let Some(stmt) = blk.stmts.last()
             && let hir::StmtKind::Semi(_) = stmt.kind
         {
-            let sp = self.tcx.sess.source_map().end_point(stmt.span);
+            let sp = self.tcx.source_map(()).end_point(stmt.span);
             err.span_label(sp, "consider removing this semicolon");
             return true;
         }
@@ -1232,7 +1230,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        let sm = self.tcx.sess.source_map();
+        let sm = self.tcx.source_map(());
         if !ret_ty.span.overlaps(span) {
             return false;
         }
@@ -1400,7 +1398,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ty::Generator(..) => "generator",
             _ => "function",
         };
-        let span = self.tcx.sess.source_map().guess_head_span(span);
+        let span = self.tcx.source_map(()).guess_head_span(span);
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
@@ -1754,7 +1752,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         next_code: Option<&ObligationCauseCode<'tcx>>,
     ) {
-        let source_map = self.tcx.sess.source_map();
+        let source_map = self.tcx.source_map(());
 
         let is_async = inner_generator_body
             .and_then(|body| body.generator_kind())
@@ -1780,7 +1778,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ));
 
             let original_span = err.span.primary_span().unwrap();
-            let original_span = self.tcx.sess.source_map().guess_head_span(original_span);
+            let original_span = self.tcx.source_map(()).guess_head_span(original_span);
             let mut span = MultiSpan::from_span(original_span);
 
             let message = outer_generator
@@ -2065,7 +2063,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 let item_name = tcx.def_path_str(item_def_id);
                 let mut multispan = MultiSpan::from(span);
                 if let Some(ident) = tcx.opt_item_ident(item_def_id) {
-                    let sm = tcx.sess.source_map();
+                    let sm = tcx.source_map(());
                     let same_line =
                         match (sm.lookup_line(ident.span.hi()), sm.lookup_line(span.lo())) {
                             (Ok(l), Ok(r)) => l.line == r.line,
@@ -2619,7 +2617,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                 debug!("suggest_await_before_try: try_trait_obligation {:?}", try_obligation);
                 if self.predicate_may_hold(&try_obligation)
                     && impls_future.must_apply_modulo_regions()
-                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                    && let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span)
                     && snippet.ends_with('?')
                 {
                     err.span_suggestion_verbose(

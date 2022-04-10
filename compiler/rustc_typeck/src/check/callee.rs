@@ -41,7 +41,7 @@ pub fn check_legal_trait_for_method_call(
         err.span_label(span, "explicit destructor calls not allowed");
 
         let (sp, suggestion) = receiver
-            .and_then(|s| tcx.sess.source_map().span_to_snippet(s).ok())
+            .and_then(|s| tcx.source_map(()).span_to_snippet(s).ok())
             .filter(|snippet| !snippet.is_empty())
             .map(|snippet| (expr_span, format!("drop({})", snippet)))
             .unwrap_or_else(|| (span, "drop".to_string()));
@@ -378,8 +378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let hir::ExprKind::Call(expr, _) = call_expr.kind {
                             removal_span =
                                 expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
-                            unit_variant =
-                                self.tcx.sess.source_map().span_to_snippet(expr.span).ok();
+                            unit_variant = self.tcx.source_map(()).span_to_snippet(expr.span).ok();
                         }
                     }
                 }
@@ -426,7 +425,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // itself another `ExprCall`, that's a clue that we might just be
                         // missing a semicolon (Issue #51055)
                         let call_is_multiline =
-                            self.tcx.sess.source_map().is_multiline(call_expr.span);
+                            self.tcx.source_map(()).is_multiline(call_expr.span);
                         if call_is_multiline {
                             err.span_suggestion(
                                 callee_expr.span.shrink_to_hi(),
@@ -455,8 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (Some(path), _) => Some(format!("`{}` defined here", path)),
                         (_, Some(hir::QPath::Resolved(_, path))) => self
                             .tcx
-                            .sess
-                            .source_map()
+                            .source_map(())
                             .span_to_snippet(path.span)
                             .ok()
                             .map(|p| format!("`{}` defined here returns `{}`", p, callee_ty)),

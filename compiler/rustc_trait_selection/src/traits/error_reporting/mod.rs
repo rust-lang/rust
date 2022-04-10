@@ -845,7 +845,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     ty::PredicateKind::ClosureKind(closure_def_id, closure_substs, kind) => {
                         let found_kind = self.closure_kind(closure_substs).unwrap();
                         let closure_span =
-                            self.tcx.sess.source_map().guess_head_span(
+                            self.tcx.source_map(()).guess_head_span(
                                 self.tcx.hir().span_if_local(closure_def_id).unwrap(),
                             );
                         let mut err = struct_span_err!(
@@ -974,7 +974,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
 
                 let found_span = found_did
                     .and_then(|did| self.tcx.hir().span_if_local(did))
-                    .map(|sp| self.tcx.sess.source_map().guess_head_span(sp)); // the sp could be an fn def
+                    .map(|sp| self.tcx.source_map(()).guess_head_span(sp)); // the sp could be an fn def
 
                 if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
                     // We check closures twice, with obligations flowing in different directions,
@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let mut err =
                             self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
                         let const_span = self.tcx.def_span(uv.def.did);
-                        match self.tcx.sess.source_map().span_to_snippet(const_span) {
+                        match self.tcx.source_map(()).span_to_snippet(const_span) {
                             Ok(snippet) => err.help(&format!(
                                 "try adding a `where` bound using this expression: `where [(); {}]:`",
                                 snippet
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// arguments it expects. This can be supplied to
     /// `report_arg_count_mismatch`.
     fn get_fn_like_arguments(&self, node: Node<'_>) -> Option<(Span, Vec<ArgKind>)> {
-        let sm = self.tcx.sess.source_map();
+        let sm = self.tcx.source_map(());
         let hir = self.tcx.hir();
         Some(match node {
             Node::Expr(&hir::Expr {
@@ -1220,7 +1220,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             //
             // move |_| { ... }
             // ^^^^^-- prefix
-            let prefix_span = self.tcx.sess.source_map().span_until_non_whitespace(found_span);
+            let prefix_span = self.tcx.source_map(()).span_until_non_whitespace(found_span);
             // move |_| { ... }
             //      ^^^-- pipe_span
             let pipe_span =
@@ -2073,7 +2073,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
                     Ok(ref snippet),
                     &ObligationCauseCode::BindingObligation(def_id, _),
                 ) =
-                    (self.tcx.sess.source_map().span_to_snippet(span), obligation.cause.code())
+                    (self.tcx.source_map(()).span_to_snippet(span), obligation.cause.code())
                 {
                     let generics = self.tcx.generics_of(def_id);
                     if generics.params.iter().any(|p| p.name != kw::SelfUpper)
@@ -2210,7 +2210,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
         let mut post = vec![];
         for def_id in impls {
             match self.tcx.span_of_impl(*def_id) {
-                Ok(span) => spans.push(self.tcx.sess.source_map().guess_head_span(span)),
+                Ok(span) => spans.push(self.tcx.source_map(()).guess_head_span(span)),
                 Err(name) => {
                     crates.push(name);
                     if let Some(header) = to_pretty_impl_header(self.tcx, *def_id) {
@@ -2568,7 +2568,7 @@ pub fn recursive_type_with_infinite_size_error<'tcx>(
 ) {
     assert!(type_def_id.is_local());
     let span = tcx.hir().span_if_local(type_def_id).unwrap();
-    let span = tcx.sess.source_map().guess_head_span(span);
+    let span = tcx.source_map(()).guess_head_span(span);
     let path = tcx.def_path_str(type_def_id);
     let mut err =
         struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size", path);

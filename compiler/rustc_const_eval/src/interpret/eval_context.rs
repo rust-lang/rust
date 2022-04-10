@@ -274,7 +274,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
                 write!(f, "inside `{}`", self.instance)?;
             }
             if !self.span.is_dummy() {
-                let sm = tcx.sess.source_map();
+                let sm = tcx.source_map(());
                 let lo = sm.lookup_char_pos(self.span.lo());
                 write!(
                     f,

@@ -557,13 +557,9 @@ impl MissingDoc {
         let attrs = cx.tcx.get_attrs(def_id.to_def_id());
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
-            cx.struct_span_lint(
-                MISSING_DOCS,
-                cx.tcx.sess.source_map().guess_head_span(sp),
-                |lint| {
-                    lint.build(&format!("missing documentation for {} {}", article, desc)).emit();
-                },
-            );
+            cx.struct_span_lint(MISSING_DOCS, cx.tcx.source_map(()).guess_head_span(sp), |lint| {
+                lint.build(&format!("missing documentation for {} {}", article, desc)).emit();
+            });
         }
     }
 }
@@ -1203,8 +1199,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         // account for "pub const" (#45562)
                         let start = cx
                             .tcx
-                            .sess
-                            .source_map()
+                            .source_map(())
                             .span_to_snippet(it.span)
                             .map(|snippet| snippet.find("const").unwrap_or(0))
                             .unwrap_or(0) as u32;
@@ -1393,7 +1388,7 @@ impl UnreachablePub {
                 if span.from_expansion() {
                     applicability = Applicability::MaybeIncorrect;
                 }
-                let def_span = cx.tcx.sess.source_map().guess_head_span(span);
+                let def_span = cx.tcx.source_map(()).guess_head_span(span);
                 cx.struct_span_lint(UNREACHABLE_PUB, def_span, |lint| {
                     let mut err = lint.build(&format!("unreachable `pub` {}", what));
                     let replacement = if cx.tcx.features().crate_visibility_modifier {

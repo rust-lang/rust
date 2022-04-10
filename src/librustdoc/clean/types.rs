@@ -165,7 +165,7 @@ impl ExternalCrate {
 
     crate fn src(&self, tcx: TyCtxt<'_>) -> FileName {
         let krate_span = tcx.def_span(self.def_id());
-        tcx.sess.source_map().span_to_filename(krate_span)
+        tcx.source_map(()).span_to_filename(krate_span)
     }
 
     crate fn name(&self, tcx: TyCtxt<'_>) -> Symbol {

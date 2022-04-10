@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAssert {
             let then = peel_blocks_with_stmt(then);
             if let Some(macro_call) = root_macro_call(then.span);
             if cx.tcx.item_name(macro_call.def_id) == sym::panic;
-            if !cx.tcx.sess.source_map().is_multiline(cond.span);
+            if !cx.tcx.source_map(()).is_multiline(cond.span);
             if let Some(format_args) = FormatArgsExpn::find_nested(cx, then, macro_call.expn);
             then {
                 let mut applicability = Applicability::MachineApplicable;

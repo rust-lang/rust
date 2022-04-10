@@ -161,7 +161,7 @@ crate fn source_span_for_markdown_range(
         return None;
     }
 
-    let snippet = tcx.sess.source_map().span_to_snippet(span_of_attrs(attrs)?).ok()?;
+    let snippet = tcx.source_map(()).span_to_snippet(span_of_attrs(attrs)?).ok()?;
 
     let starting_line = markdown[..md_range.start].matches('\n').count();
     let ending_line = starting_line + markdown[md_range.start..md_range.end].matches('\n').count();

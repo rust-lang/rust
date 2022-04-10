@@ -344,7 +344,7 @@ crate fn print_const_expr(tcx: TyCtxt<'_>, body: hir::BodyId) -> String {
     let value = &hir.body(body).value;
 
     let snippet = if !value.span.from_expansion() {
-        tcx.sess.source_map().span_to_snippet(value.span).ok()
+        tcx.source_map(()).span_to_snippet(value.span).ok()
     } else {
         None
     };

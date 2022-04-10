@@ -113,7 +113,7 @@ struct Instrumentor<'a, 'tcx> {
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(pass_name: &'a str, tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let source_map = tcx.sess.source_map();
+        let source_map = tcx.source_map(());
         let def_id = mir_body.source.def_id();
         let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
 
@@ -294,7 +294,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug_used_expressions: &mut debug::UsedExpressions,
     ) {
         let tcx = self.tcx;
-        let source_map = tcx.sess.source_map();
+        let source_map = tcx.source_map(());
         let body_span = self.body_span;
         let file_name = Symbol::intern(&self.source_file.name.prefer_remapped().to_string_lossy());
 

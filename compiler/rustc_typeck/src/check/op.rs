@@ -265,7 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error types are considered "builtin"
             Err(_) if lhs_ty.references_error() || rhs_ty.references_error() => self.tcx.ty_error(),
             Err(errors) => {
-                let source_map = self.tcx.sess.source_map();
+                let source_map = self.tcx.source_map(());
                 let (mut err, missing_trait, use_output) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
@@ -691,7 +691,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         );
                     }
 
-                    let sp = self.tcx.sess.source_map().start_point(ex.span);
+                    let sp = self.tcx.source_map(()).start_point(ex.span);
                     if let Some(sp) =
                         self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                     {

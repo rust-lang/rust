@@ -151,7 +151,7 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::CompareImplMethodObligation { .. }
             | ObligationCauseCode::MainFunctionType
             | ObligationCauseCode::StartFunctionType => {
-                tcx.sess.source_map().guess_head_span(self.span)
+                tcx.source_map(()).guess_head_span(self.span)
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
                 arm_span,

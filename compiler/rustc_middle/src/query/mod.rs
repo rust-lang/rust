@@ -20,6 +20,12 @@ rustc_queries! {
         desc { "trigger a delay span bug" }
     }
 
+    query source_map(_: ()) -> &'tcx rustc_span::source_map::SourceMap {
+        eval_always
+        no_hash
+        desc { "get the source map" }
+    }
+
     query resolutions(_: ()) -> &'tcx ty::ResolverOutputs {
         eval_always
         no_hash

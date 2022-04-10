@@ -371,7 +371,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         if let Ok(
                             // Issue #53280
                             snippet,
-                        ) = self.sess.source_map().span_to_snippet(sp) =>
+                        ) = self.source_map(()).span_to_snippet(sp) =>
                     {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
                             db.span_suggestion(
@@ -830,7 +830,7 @@ fn foo(&self) -> Self::T { String::new() }
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((
-                            self.sess.source_map().guess_head_span(self.def_span(item.def_id)),
+                            self.source_map(()).guess_head_span(self.def_span(item.def_id)),
                             format!("consider calling `{}`", self.def_path_str(item.def_id)),
                         ))
                     }

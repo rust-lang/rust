@@ -681,7 +681,7 @@ pub trait PrettyPrinter<'tcx>:
                             "@{}",
                             // This may end up in stderr diagnostics but it may also be emitted
                             // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_embeddable_string(span)
+                            self.tcx().source_map(()).span_to_embeddable_string(span)
                         ));
                     } else {
                         p!(write("@"), print_def_path(did, substs));
@@ -720,7 +720,7 @@ pub trait PrettyPrinter<'tcx>:
                                 "@{}",
                                 // This may end up in stderr diagnostics but it may also be emitted
                                 // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_embeddable_string(span)
+                                self.tcx().source_map(()).span_to_embeddable_string(span)
                             ));
                         }
                     } else {
@@ -1206,7 +1206,7 @@ pub trait PrettyPrinter<'tcx>:
                     _ => {
                         if def.is_local() {
                             let span = self.tcx().def_span(def.did);
-                            if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
+                            if let Ok(snip) = self.tcx().source_map(()).span_to_snippet(span) {
                                 p!(write("{}", snip))
                             } else {
                                 print_underscore!()
@@ -1721,7 +1721,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                     "<impl at {}>",
                     // This may end up in stderr diagnostics but it may also be emitted
                     // into MIR. Hence we use the remapped path if available
-                    self.tcx.sess.source_map().span_to_embeddable_string(span)
+                    self.tcx.source_map(()).span_to_embeddable_string(span)
                 )?;
                 self.empty_path = false;
 

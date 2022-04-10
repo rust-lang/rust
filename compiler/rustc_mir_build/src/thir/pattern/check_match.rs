@@ -432,7 +432,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if self.tcx.sess.source_map().span_to_snippet(span).is_ok() {
+            if self.tcx.source_map(()).span_to_snippet(span).is_ok() {
                 let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
                 let start_span = span.shrink_to_lo();
                 let end_span = semi_span.shrink_to_lo();
@@ -801,7 +801,7 @@ fn non_exhaustive_match<'p, 'tcx>(
     }
 
     let mut suggestion = None;
-    let sm = cx.tcx.sess.source_map();
+    let sm = cx.tcx.source_map(());
     match arms {
         [] if sp.ctxt() == expr_span.ctxt() => {
             // Get the span for the empty match body `{}`.

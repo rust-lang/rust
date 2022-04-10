@@ -103,8 +103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }) => "&",
                         Some(probe::AutorefOrPtrAdjustment::ToConstPtr) | None => "",
                     };
-                    if let Ok(self_expr) = self.sess().source_map().span_to_snippet(self_expr.span)
-                    {
+                    if let Ok(self_expr) = self.tcx.source_map(()).span_to_snippet(self_expr.span) {
                         let self_adjusted = if let Some(probe::AutorefOrPtrAdjustment::ToConstPtr) =
                             pick.autoref_or_ptr_adjustment
                         {
@@ -165,7 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let span = arg.span.find_ancestor_inside(sp).unwrap_or_default();
                                 format!(
                                     ", {}",
-                                    self.sess().source_map().span_to_snippet(span).unwrap()
+                                    self.tcx.source_map(()).span_to_snippet(span).unwrap()
                                 )
                             })
                             .collect::<String>();
@@ -178,8 +177,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 trait_name,
                                 segment.ident.name,
                                 if let Some(args) = segment.args.as_ref().and_then(|args| self
-                                    .sess()
-                                    .source_map()
+                                    .tcx
+                                    .source_map(())
                                     .span_to_snippet(args.span_ext)
                                     .ok())
                                 {
@@ -289,7 +288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let mut self_ty_name = self_ty_span
                 .find_ancestor_inside(span)
-                .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+                .and_then(|span| self.tcx.source_map(()).span_to_snippet(span).ok())
                 .unwrap_or_else(|| self_ty.to_string());
 
             // Get the number of generics the self type has (if an Adt) unless we can determine that
@@ -398,7 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (expr_text, precise) = if let Some(expr_text) = expr
             .span
             .find_ancestor_inside(outer)
-            .and_then(|span| self.sess().source_map().span_to_snippet(span).ok())
+            .and_then(|span| self.tcx.source_map(()).span_to_snippet(span).ok())
         {
             (expr_text, true)
         } else {

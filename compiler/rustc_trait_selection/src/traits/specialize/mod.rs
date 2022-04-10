@@ -342,8 +342,7 @@ fn report_negative_positive_conflict(
     sg: &mut specialization_graph::Graph,
 ) {
     let impl_span = tcx
-        .sess
-        .source_map()
+        .source_map(())
         .guess_head_span(tcx.span_of_impl(local_impl_def_id.to_def_id()).unwrap());
 
     let mut err = struct_span_err!(
@@ -358,7 +357,7 @@ fn report_negative_positive_conflict(
     match tcx.span_of_impl(negative_impl_def_id) {
         Ok(span) => {
             err.span_label(
-                tcx.sess.source_map().guess_head_span(span),
+                tcx.source_map(()).guess_head_span(span),
                 "negative implementation here".to_string(),
             );
         }
@@ -370,7 +369,7 @@ fn report_negative_positive_conflict(
     match tcx.span_of_impl(positive_impl_def_id) {
         Ok(span) => {
             err.span_label(
-                tcx.sess.source_map().guess_head_span(span),
+                tcx.source_map(()).guess_head_span(span),
                 "positive implementation here".to_string(),
             );
         }
@@ -390,7 +389,7 @@ fn report_conflicting_impls(
     sg: &mut specialization_graph::Graph,
 ) {
     let impl_span =
-        tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap());
+        tcx.source_map(()).guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap());
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
     // now because the struct_lint methods don't return back the DiagnosticBuilder
@@ -418,7 +417,7 @@ fn report_conflicting_impls(
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
                 err.span_label(
-                    tcx.sess.source_map().guess_head_span(span),
+                    tcx.source_map(()).guess_head_span(span),
                     "first implementation here".to_string(),
                 );
 

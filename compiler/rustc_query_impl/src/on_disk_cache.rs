@@ -226,7 +226,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.
             let (file_to_file_index, file_index_to_stable_id) = {
-                let files = tcx.sess.source_map().files();
+                let files = tcx.source_map(()).files();
                 let mut file_to_file_index =
                     FxHashMap::with_capacity_and_hasher(files.len(), Default::default());
                 let mut file_index_to_stable_id =
@@ -251,7 +251,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
                 type_shorthands: Default::default(),
                 predicate_shorthands: Default::default(),
                 interpret_allocs: Default::default(),
-                source_map: CachingSourceMapView::new(tcx.sess.source_map()),
+                source_map: CachingSourceMapView::new(tcx.source_map(())),
                 file_to_file_index,
                 hygiene_context: &hygiene_encode_context,
             };

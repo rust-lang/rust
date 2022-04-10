@@ -141,7 +141,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
         if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
             cx.struct_span_lint(OVERFLOWING_LITERALS, parent_expr.span, |lint| {
                 let mut err = lint.build(&format!("range endpoint is out of range for `{}`", ty));
-                if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                if let Ok(start) = cx.tcx.source_map(()).span_to_snippet(eps[0].span) {
                     use ast::{LitIntType, LitKind};
                     // We need to preserve the literal's suffix,
                     // as it may determine typing information.
@@ -193,7 +193,7 @@ fn uint_ty_range(uint_ty: ty::UintTy) -> (u128, u128) {
 }
 
 fn get_bin_hex_repr(cx: &LateContext<'_>, lit: &hir::Lit) -> Option<String> {
-    let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
+    let src = cx.tcx.source_map(()).span_to_snippet(lit.span).ok()?;
     let firstch = src.chars().next()?;
 
     if firstch == '0' {
@@ -357,8 +357,8 @@ fn lint_int_literal<'tcx>(
             let mut err = lint.build(&format!("literal out of range for `{}`", t.name_str()));
             err.note(&format!(
                 "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
-                cx.sess()
-                    .source_map()
+                cx.tcx
+                    .source_map(())
                     .span_to_snippet(lit.span)
                     .expect("must get snippet from literal"),
                 t.name_str(),
@@ -433,8 +433,8 @@ fn lint_uint_literal<'tcx>(
             lint.build(&format!("literal out of range for `{}`", t.name_str()))
                 .note(&format!(
                     "the literal `{}` does not fit into the type `{}` whose range is `{}..={}`",
-                    cx.sess()
-                        .source_map()
+                    cx.tcx
+                        .source_map(())
                         .span_to_snippet(lit.span)
                         .expect("must get snippet from literal"),
                     t.name_str(),
@@ -475,8 +475,8 @@ fn lint_literal<'tcx>(
                     lint.build(&format!("literal out of range for `{}`", t.name_str()))
                         .note(&format!(
                             "the literal `{}` does not fit into the type `{}` and will be converted to `{}::INFINITY`",
-                            cx.sess()
-                                .source_map()
+                            cx.tcx
+                                .source_map(())
                                 .span_to_snippet(lit.span)
                                 .expect("must get snippet from literal"),
                             t.name_str(),

@@ -346,8 +346,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
                         if let ast::LitKind::Str(name, ..) = lit.kind {
                             // Discard the double quotes surrounding the literal.
                             let sp = cx
-                                .sess()
-                                .source_map()
+                                .tcx
+                                .source_map(())
                                 .span_to_snippet(lit.span)
                                 .ok()
                                 .and_then(|snippet| {

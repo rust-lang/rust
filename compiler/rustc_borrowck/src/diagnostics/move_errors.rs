@@ -431,7 +431,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diagnostic, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                if let Ok(snippet) = self.infcx.tcx.source_map(()).span_to_snippet(span) {
                     err.span_suggestion(
                         span,
                         "consider borrowing here",
@@ -490,7 +490,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 VarBindingForm { pat_span, .. },
             )))) = bind_to.local_info
             {
-                if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
+                if let Ok(pat_snippet) = self.infcx.tcx.source_map(()).span_to_snippet(pat_span)
                 {
                     if let Some(stripped) = pat_snippet.strip_prefix('&') {
                         let pat_snippet = stripped.trim_start();

@@ -248,7 +248,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
         debug_assert!(span.lo <= span.hi);
 
         if !s.source_file_cache.0.contains(span.lo) {
-            let source_map = s.tcx.sess.source_map();
+            let source_map = s.tcx.source_map(());
             let source_file_index = source_map.lookup_source_file_idx(span.lo);
             s.source_file_cache =
                 (source_map.files()[source_file_index].clone(), source_file_index);
@@ -482,7 +482,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 
     fn encode_source_map(&mut self) -> Lazy<[rustc_span::SourceFile]> {
-        let source_map = self.tcx.sess.source_map();
+        let source_map = self.tcx.source_map(());
         let all_source_files = source_map.files();
 
         // By replacing the `Option` with `None`, we ensure that we can't
@@ -2176,7 +2176,7 @@ fn encode_metadata_impl(tcx: TyCtxt<'_>) -> EncodedMetadata {
     // Will be filled with the root position after encoding everything.
     encoder.emit_raw_bytes(&[0, 0, 0, 0]).unwrap();
 
-    let source_map_files = tcx.sess.source_map().files();
+    let source_map_files = tcx.source_map(()).files();
     let source_file_cache = (source_map_files[0].clone(), 0);
     let required_source_files = Some(GrowableBitSet::with_capacity(source_map_files.len()));
     drop(source_map_files);

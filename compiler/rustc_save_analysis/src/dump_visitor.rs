@@ -1093,7 +1093,7 @@ impl<'tcx> DumpVisitor<'tcx> {
         let qualname =
             format!("::{}", self.tcx.def_path_str(self.tcx.hir().local_def_id(id).to_def_id()));
 
-        let sm = self.tcx.sess.source_map();
+        let sm = self.tcx.source_map(());
         let krate_mod = self.tcx.hir().root_module();
         let filename = sm.span_to_filename(krate_mod.inner);
         let data_id = id_from_hir_id(id, &self.save_ctxt);

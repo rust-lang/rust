@@ -489,7 +489,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 ) => {
                     if region.to_region_vid() == needle_fr {
                         // Just grab the first character, the `&`.
-                        let source_map = self.infcx.tcx.sess.source_map();
+                        let source_map = self.infcx.tcx.source_map(());
                         let ampersand_span = source_map.start_point(hir_ty.span);
 
                         return Some(RegionNameHighlight::MatchedHirTy(ampersand_span));
@@ -686,7 +686,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
             }) => {
                 let (mut span, mut hir_ty) = match return_ty.output {
                     hir::FnRetTy::DefaultReturn(_) => {
-                        (tcx.sess.source_map().end_point(*span), None)
+                        (tcx.source_map(()).end_point(*span), None)
                     }
                     hir::FnRetTy::Return(hir_ty) => (return_ty.output.span(), Some(hir_ty)),
                 };
@@ -821,7 +821,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
         let yield_span = match tcx.hir().get(self.mir_hir_id()) {
             hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Closure(_, _, _, span, _), ..
-            }) => (tcx.sess.source_map().end_point(*span)),
+            }) => (tcx.source_map(()).end_point(*span)),
             _ => self.body.span,
         };
 

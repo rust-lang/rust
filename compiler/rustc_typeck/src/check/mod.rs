@@ -621,7 +621,7 @@ fn missing_items_err(
     // adding the associated item at the end of its body.
     let sugg_sp = full_impl_span.with_lo(hi).with_hi(hi);
     // Obtain the level of indentation ending in `sugg_sp`.
-    let indentation = tcx.sess.source_map().span_to_margin(sugg_sp).unwrap_or(0);
+    let indentation = tcx.source_map(()).span_to_margin(sugg_sp).unwrap_or(0);
     // Make the whitespace that will make the suggestion have the right indentation.
     let padding: String = " ".repeat(indentation);
 
@@ -874,8 +874,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span) {
         E0533,
         "expected unit struct, unit variant or constant, found {}{}",
         res.descr(),
-        tcx.sess
-            .source_map()
+        tcx.source_map(())
             .span_to_snippet(span)
             .map_or_else(|_| String::new(), |s| format!(" `{}`", s)),
     )

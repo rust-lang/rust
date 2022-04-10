@@ -20,7 +20,7 @@ mod unsafety;
 
 /// Obtains the span of just the impl header of `impl_def_id`.
 fn impl_header_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
-    tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap())
+    tcx.source_map(()).guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap())
 }
 
 fn check_impl(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, trait_ref: ty::TraitRef<'_>) {

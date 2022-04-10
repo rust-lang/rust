@@ -312,7 +312,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ));
 
                 // Check first whether the source is accessible (issue #87060)
-                if self.infcx.tcx.sess.source_map().span_to_snippet(deref_target).is_ok() {
+                if self.infcx.tcx.source_map(()).span_to_snippet(deref_target).is_ok() {
                     err.span_note(deref_target, "deref defined here");
                 }
             }
@@ -1456,7 +1456,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     .type_implements_trait(iter_trait, return_ty, ty_params, self.param_env)
                     .must_apply_modulo_regions()
                 {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
+                    if let Ok(snippet) = tcx.source_map(()).span_to_snippet(return_span) {
                         err.span_suggestion_hidden(
                             return_span,
                             "use `.collect()` to allocate the iterator",
@@ -1483,7 +1483,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
-        let (sugg_span, suggestion) = match tcx.sess.source_map().span_to_snippet(args_span) {
+        let (sugg_span, suggestion) = match tcx.source_map(()).span_to_snippet(args_span) {
             Ok(string) => {
                 if string.starts_with("async ") {
                     let pos = args_span.lo() + BytePos(6);

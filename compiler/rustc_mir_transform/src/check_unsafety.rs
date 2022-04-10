@@ -528,7 +528,7 @@ fn unsafety_check_result<'tcx>(
 }
 
 fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
-    let span = tcx.sess.source_map().guess_head_span(tcx.hir().span(id));
+    let span = tcx.source_map(()).guess_head_span(tcx.hir().span(id));
     tcx.struct_span_lint_hir(UNUSED_UNSAFE, id, span, |lint| {
         let msg = "unnecessary `unsafe` block";
         let mut db = lint.build(msg);
@@ -537,13 +537,13 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
             UnusedUnsafe::Unused => {}
             UnusedUnsafe::InUnsafeBlock(id) => {
                 db.span_label(
-                    tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
+                    tcx.source_map(()).guess_head_span(tcx.hir().span(id)),
                     format!("because it's nested under this `unsafe` block"),
                 );
             }
             UnusedUnsafe::InUnsafeFn(id, usage_lint_root) => {
                 db.span_label(
-                    tcx.sess.source_map().guess_head_span(tcx.hir().span(id)),
+                    tcx.source_map(()).guess_head_span(tcx.hir().span(id)),
                     format!("because it's nested under this `unsafe` fn"),
                 )
                 .note(

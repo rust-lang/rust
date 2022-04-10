@@ -830,7 +830,7 @@ impl CheckAttrVisitor<'_> {
                     );
                     if attr.style == AttrStyle::Outer && self.tcx.hir().get_parent_item(hir_id) == CRATE_DEF_ID {
                         if let Ok(mut src) =
-                            self.tcx.sess.source_map().span_to_snippet(attr.span)
+                            self.tcx.source_map(()).span_to_snippet(attr.span)
                         {
                             src.insert(1, '!');
                             err.span_suggestion_verbose(
@@ -2152,7 +2152,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
                     );
                     // Only emit an error with a suggestion if we can create a
                     // string out of the attribute span
-                    if let Ok(src) = tcx.sess.source_map().span_to_snippet(attr.span) {
+                    if let Ok(src) = tcx.source_map(()).span_to_snippet(attr.span) {
                         let replacement = src.replace("#!", "#");
                         err.span_suggestion_verbose(
                             attr.span,

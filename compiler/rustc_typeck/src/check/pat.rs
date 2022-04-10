@@ -661,7 +661,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             debug!("inner {:?} pat {:?} parent {:?}", inner, pat, binding_parent);
             match binding_parent {
                 hir::Node::Param(hir::Param { span, .. })
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) =>
+                    if let Ok(snippet) = tcx.source_map(()).span_to_snippet(inner.span) =>
                 {
                     err.span_suggestion(
                         *span,
@@ -672,7 +672,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 hir::Node::Arm(_) | hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
+                    if let Ok(snippet) = tcx.source_map(()).span_to_snippet(inner.span) {
                         err.span_suggestion(
                             pat.span,
                             "you can probably remove the explicit borrow",
@@ -798,7 +798,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::Node::Expr(expr) => {
                         if hir::is_range_literal(expr) {
                             let span = self.tcx.hir().span(body_id.hir_id);
-                            if let Ok(snip) = self.tcx.sess.source_map().span_to_snippet(span) {
+                            if let Ok(snip) = self.tcx.source_map(()).span_to_snippet(span) {
                                 e.span_suggestion_verbose(
                                     ident.span,
                                     "you may want to move the range into the match block",
@@ -908,7 +908,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         let report_unexpected_res = |res: Res| {
-            let sm = tcx.sess.source_map();
+            let sm = tcx.source_map(());
             let path_str = sm
                 .span_to_snippet(sm.span_until_char(pat.span, '('))
                 .map_or_else(|_| String::new(), |s| format!(" `{}`", s.trim_end()));
@@ -1049,10 +1049,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             last_subpat_span,
             &format!("expected {} field{}, found {}", fields.len(), fields_ending, subpats.len()),
         );
-        if self.tcx.sess.source_map().is_multiline(qpath.span().between(last_subpat_span)) {
+        if self.tcx.source_map(()).is_multiline(qpath.span().between(last_subpat_span)) {
             err.span_label(qpath.span(), "");
         }
-        if self.tcx.sess.source_map().is_multiline(def_ident_span.between(last_field_def_span)) {
+        if self.tcx.source_map(()).is_multiline(def_ident_span.between(last_field_def_span)) {
             err.span_label(def_ident_span, format!("{} defined here", res.descr()));
         }
         for span in &field_def_spans[..field_def_spans.len() - 1] {
@@ -1413,7 +1413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn error_foreign_non_exhaustive_spat(&self, pat: &Pat<'_>, descr: &str, no_fields: bool) {
         let sess = self.tcx.sess;
-        let sm = sess.source_map();
+        let sm = self.tcx.source_map(());
         let sp_brace = sm.end_point(pat.span);
         let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
         let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
@@ -1607,7 +1607,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fields
             .iter()
             .map(|field| {
-                match self.tcx.sess.source_map().span_to_snippet(field.pat.span) {
+                match self.tcx.source_map(()).span_to_snippet(field.pat.span) {
                     Ok(f) => {
                         // Field names are numbers, but numbers
                         // are not valid identifiers
@@ -2055,7 +2055,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .any(|(ty, _)| matches!(ty.kind(), ty::Slice(..) | ty::Array(..)))
         {
             if let (Some(span), true) = (ti.span, ti.origin_expr) {
-                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
                     let applicability = Autoderef::new(
                         &self.infcx,
                         self.param_env,

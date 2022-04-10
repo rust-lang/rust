@@ -64,7 +64,6 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Item, ItemKind, Node};
-use rustc_middle::dep_graph::DepContext;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self,
@@ -150,7 +149,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
     tcx: TyCtxt<'tcx>,
     region: ty::Region<'tcx>,
 ) -> (String, Span) {
-    let sm = tcx.sess.source_map();
+    let sm = tcx.source_map(());
 
     let scope = region.free_region_binding_scope(tcx).expect_local();
     match *region {
@@ -613,7 +612,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 if let Some(ty::error::ExpectedFound { found, .. }) = exp_found
                     && ty.is_box() && ty.boxed_ty() == found
-                    && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                    && let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span)
                 {
                     err.span_suggestion(
                         span,
@@ -651,7 +650,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
                         match scrut_ty {
                             Some(ty) if expected == ty => {
-                                let source_map = self.tcx.sess.source_map();
+                                let source_map = self.tcx.source_map(());
                                 err.span_suggestion(
                                     source_map.end_point(cause.span),
                                     "try removing this `?`",
@@ -669,7 +668,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         Some(ty::error::ExpectedFound { expected, .. }) => expected,
                         _ => last_ty,
                     });
-                    let source_map = self.tcx.sess.source_map();
+                    let source_map = self.tcx.source_map(());
                     let mut any_multiline_arm = source_map.is_multiline(arm_span);
                     if prior_arms.len() <= 4 {
                         for sp in prior_arms {
@@ -1664,7 +1663,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Opaque(def_id, _)) => {
-                            let sm = self.tcx.sess.source_map();
+                            let sm = self.tcx.source_map(());
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             format!(
                                 " (opaque type at <{}:{}:{}>)",
@@ -2000,7 +1999,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .find(|(_, ty)| same_type_modulo_infer(*ty, exp_found.found))
             {
                 if let ObligationCauseCode::Pattern { span: Some(span), .. } = *cause.code() {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
                         let suggestion = if expected_def.is_struct() {
                             format!("{}.{}", snippet, name)
                         } else if expected_def.is_union() {
@@ -2071,7 +2070,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             }
                         }
                         if let (Ok(snippet), true) =
-                            (self.tcx.sess.source_map().span_to_snippet(span), show_suggestion)
+                            (self.tcx.source_map(()).span_to_snippet(span), show_suggestion)
                         {
                             diag.span_suggestion(
                                 span,
@@ -2123,7 +2122,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // containing a single character, perhaps the user meant to write `'c'` to
                         // specify a character literal (issue #92479)
                         (ty::Char, ty::Ref(_, r, _)) if r.is_str() => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+                            if let Ok(code) = self.tcx.source_map(()).span_to_snippet(span)
                                 && let Some(code) = code.strip_prefix('"').and_then(|s| s.strip_suffix('"'))
                                 && code.chars().count() == 1
                             {
@@ -2138,7 +2137,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         // If a string was expected and the found expression is a character literal,
                         // perhaps the user meant to write `"s"` to specify a string literal.
                         (ty::Ref(_, r, _), ty::Char) if r.is_str() => {
-                            if let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span) {
+                            if let Ok(code) = self.tcx.source_map(()).span_to_snippet(span) {
                                 if let Some(code) =
                                     code.strip_prefix('\'').and_then(|s| s.strip_suffix('\''))
                                 {
@@ -2188,7 +2187,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return;
         }
 
-        let Ok(code) = self.tcx.sess().source_map().span_to_snippet(span)
+        let Ok(code) = self.tcx.source_map(()).span_to_snippet(span)
             else { return };
 
         let msg = "use a trailing comma to create a tuple with one element";
@@ -2350,7 +2349,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 .tcx
                                 .sess
                                 .source_map()
-                                .next_point(self.tcx.sess.source_map().next_point(sp)))
+                                .next_point(self.tcx.source_map(()).next_point(sp)))
                         } else {
                             sp
                         };

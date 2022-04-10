@@ -746,7 +746,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
                     if item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(item.span)
+                        self.tcx.source_map(()).guess_head_span(item.span)
                     } else {
                         item.ident.span
                     }
@@ -816,7 +816,7 @@ impl<'tcx> Visitor<'tcx> for DeadVisitor<'tcx> {
                     // We should probably annotate ident.span with the macro
                     // context, but that's a larger change.
                     let span = if impl_item.span.source_callee().is_some() {
-                        self.tcx.sess.source_map().guess_head_span(impl_item.span)
+                        self.tcx.source_map(()).guess_head_span(impl_item.span)
                     } else {
                         impl_item.ident.span
                     };

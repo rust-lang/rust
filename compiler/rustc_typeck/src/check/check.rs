@@ -282,7 +282,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                                 sess.span_err(span, "should have no type parameters");
                             }
                 } else {
-                    let span = sess.source_map().guess_head_span(span);
+                    let span = fcx.tcx.source_map(()).guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -321,7 +321,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                                 );
                             }
                 } else {
-                    let span = sess.source_map().guess_head_span(span);
+                    let span = fcx.tcx.source_map(()).guess_head_span(span);
                     sess.span_err(span, "function should have one argument");
                 }
             } else {
@@ -1025,12 +1025,12 @@ fn check_impl_items_against_trait<'tcx>(
         }
 
         if !missing_items.is_empty() {
-            let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
+            let impl_span = tcx.source_map(()).guess_head_span(full_impl_span);
             missing_items_err(tcx, impl_span, &missing_items, full_impl_span);
         }
 
         if let Some(missing_items) = must_implement_one_of {
-            let impl_span = tcx.sess.source_map().guess_head_span(full_impl_span);
+            let impl_span = tcx.source_map(()).guess_head_span(full_impl_span);
             let attr_span = tcx
                 .get_attrs(impl_trait_ref.def_id)
                 .iter()
@@ -1235,7 +1235,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, adt: ty::AdtD
     if !adt.repr().transparent() {
         return;
     }
-    let sp = tcx.sess.source_map().guess_head_span(sp);
+    let sp = tcx.source_map(()).guess_head_span(sp);
 
     if adt.is_union() && !tcx.features().transparent_unions {
         feature_err(

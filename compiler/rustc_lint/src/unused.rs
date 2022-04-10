@@ -358,7 +358,7 @@ impl<'tcx> LateLintPass<'tcx> for PathStatements {
                     let ty = cx.typeck_results().expr_ty(expr);
                     if ty.needs_drop(cx.tcx, cx.param_env) {
                         let mut lint = lint.build("path statement drops value");
-                        if let Ok(snippet) = cx.sess().source_map().span_to_snippet(expr.span) {
+                        if let Ok(snippet) = cx.tcx.source_map(()).span_to_snippet(expr.span) {
                             lint.span_suggestion(
                                 s.span,
                                 "use `drop` to clarify the intent",

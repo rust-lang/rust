@@ -201,7 +201,7 @@ where
                 return;
             }
 
-            let source_map = tcx.sess.source_map();
+            let source_map = tcx.source_map(());
             let file = source_map.lookup_char_pos(span.lo()).file;
             let file_path = match file.name.clone() {
                 FileName::Real(real_filename) => real_filename.into_local_path(),

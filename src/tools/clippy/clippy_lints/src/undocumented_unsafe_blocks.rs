@@ -69,7 +69,7 @@ impl LateLintPass<'_> for UndocumentedUnsafeBlocks {
             && !is_unsafe_from_proc_macro(cx, block)
             && !block_has_safety_comment(cx, block)
         {
-            let source_map = cx.tcx.sess.source_map();
+            let source_map = cx.tcx.source_map(());
             let span = if source_map.is_multiline(block.span) {
                 source_map.span_until_char(block.span, '\n')
             } else {

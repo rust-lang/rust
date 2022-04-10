@@ -226,7 +226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (&found.kind(), self.suggest_fn_call(err, expr, expected, found))
         {
             if let Some(sp) = self.tcx.hir().span_if_local(*def_id) {
-                let sp = self.sess().source_map().guess_head_span(sp);
+                let sp = self.tcx.source_map(()).guess_head_span(sp);
                 err.span_label(sp, &format!("{} defined here", found));
             }
         } else if !self.check_for_cast(err, expr, found, expected, expected_ty_expr) {
@@ -234,7 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.maybe_get_struct_pattern_shorthand_field(expr).is_some();
             let methods = self.get_conversion_methods(expr.span, expected, found, expr.hir_id);
             if !methods.is_empty() {
-                if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
+                if let Ok(expr_text) = self.tcx.source_map(()).span_to_snippet(expr.span) {
                     let mut suggestions = iter::zip(iter::repeat(&expr_text), &methods)
                         .filter_map(|(receiver, method)| {
                             let method_call = format!(".{}()", method.name);
@@ -655,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .chain(predicates_from_where)
             .filter_map(|bound| match bound {
                 GenericBound::Trait(_, _) => {
-                    self.tcx.sess.source_map().span_to_snippet(bound.span()).ok()
+                    self.tcx.source_map(()).span_to_snippet(bound.span()).ok()
                 }
                 _ => None,
             })
@@ -759,7 +759,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
     ) {
-        let sp = self.tcx.sess.source_map().start_point(expr.span);
+        let sp = self.tcx.source_map(()).start_point(expr.span);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             self.tcx.sess.parse_sess.expr_parentheses_needed(err, *sp);
@@ -810,7 +810,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && blk.stmts.is_empty()
                 && blk.rules == hir::BlockCheckMode::DefaultBlock
             {
-                let source_map = self.tcx.sess.source_map();
+                let source_map = self.tcx.source_map(());
                 if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
                     if snippet.starts_with('{') && snippet.ends_with('}') {
                         diag.multipart_suggestion_verbose(

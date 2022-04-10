@@ -1628,8 +1628,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         err.note(impl_trait_msg);
         let snippet = fcx
             .tcx
-            .sess
-            .source_map()
+            .source_map(())
             .span_to_snippet(return_sp)
             .unwrap_or_else(|_| "dyn Trait".to_string());
         let mut snippet_iter = snippet.split_whitespace();

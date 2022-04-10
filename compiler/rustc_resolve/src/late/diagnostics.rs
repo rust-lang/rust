@@ -2033,7 +2033,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     ) {
         let snippets: Vec<Option<String>> = spans_with_counts
             .iter()
-            .map(|(span, _)| self.tcx.sess.source_map().span_to_snippet(*span).ok())
+            .map(|(span, _)| self.tcx.source_map(()).span_to_snippet(*span).ok())
             .collect();
 
         // Empty generics are marked with a span of "<", but since from now on
@@ -2091,8 +2091,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                     );
                     let for_sugg = span_type.suggestion(&lt_name);
                     for param in params {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span)
-                        {
+                        if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(param.span) {
                             if snippet.starts_with('&') && !snippet.starts_with("&'") {
                                 introduce_suggestion
                                     .push((param.span, format!("&{} {}", lt_name, &snippet[1..])));
@@ -2290,7 +2289,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 }
 
                 for param in params {
-                    if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(param.span) {
+                    if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(param.span) {
                         if let Some((span, sugg)) =
                             Lifetime(param.span, snippet).suggestion("'a ".to_string())
                         {
@@ -2306,8 +2305,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
                 ) {
                     let (span, sugg) = self
                         .tcx
-                        .sess
-                        .source_map()
+                        .source_map(())
                         .span_to_snippet(span)
                         .ok()
                         .and_then(|snippet| Lifetime(span, snippet).suggestion(sugg.clone()))

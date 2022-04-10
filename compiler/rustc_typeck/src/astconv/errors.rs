@@ -45,7 +45,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
         let mut suggested = false;
         if let (Ok(snippet), true) = (
-            self.tcx().sess.source_map().span_to_snippet(span),
+            self.tcx().source_map(()).span_to_snippet(span),
             // Don't suggest setting the type params if there are some already: the order is
             // tricky to get right and the user will already know what the syntax is.
             empty_generic_args,
@@ -95,16 +95,17 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_segment: &'_ hir::PathSegment<'_>,
         is_impl: bool,
     ) {
-        if self.tcx().features().unboxed_closures {
+        let tcx = self.tcx();
+        if tcx.features().unboxed_closures {
             return;
         }
 
-        let trait_def = self.tcx().trait_def(trait_def_id);
+        let trait_def = tcx.trait_def(trait_def_id);
         if !trait_def.paren_sugar {
             if trait_segment.args().parenthesized {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
                 let mut err = feature_err(
-                    &self.tcx().sess.parse_sess,
+                    &tcx.sess.parse_sess,
                     sym::unboxed_closures,
                     span,
                     "parenthetical notation is only stable when used with `Fn`-family traits",
@@ -136,10 +137,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         hir::GenericArg::Type(ty) => match ty.kind {
                             hir::TyKind::Tup(t) => t
                                 .iter()
-                                .map(|e| sess.source_map().span_to_snippet(e.span))
+                                .map(|e| tcx.source_map(()).span_to_snippet(e.span))
                                 .collect::<Result<Vec<_>, _>>()
                                 .map(|a| a.join(", ")),
-                            _ => sess.source_map().span_to_snippet(ty.span),
+                            _ => tcx.source_map(()).span_to_snippet(ty.span),
                         }
                         .map(|s| format!("({})", s))
                         .ok(),
@@ -154,9 +155,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         (true, hir::TypeBindingKind::Equality { term }) => {
                             let span = match term {
                                 hir::Term::Ty(ty) => ty.span,
-                                hir::Term::Const(c) => self.tcx().hir().span(c.hir_id),
+                                hir::Term::Const(c) => tcx.hir().span(c.hir_id),
                             };
-                            sess.source_map().span_to_snippet(span).ok()
+                            tcx.source_map(()).span_to_snippet(span).ok()
                         }
                         _ => None,
                     })
@@ -172,9 +173,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if is_impl {
-            let trait_name = self.tcx().def_path_str(trait_def_id);
+            let trait_name = tcx.def_path_str(trait_def_id);
             struct_span_err!(
-                self.tcx().sess,
+                tcx.sess,
                 span,
                 E0183,
                 "manual implementations of `{}` are experimental",
@@ -349,12 +350,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // example would be trying to use `Iterator<isize>` instead of
                 // `Iterator<Item = isize>`.
                 for (potential, item) in iter::zip(&potential_assoc_types, assoc_items) {
-                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*potential) {
+                    if let Ok(snippet) = tcx.source_map(()).span_to_snippet(*potential) {
                         suggestions.push((*potential, format!("{} = {}", item.name, snippet)));
                     }
                 }
-            } else if let (Ok(snippet), false) =
-                (tcx.sess.source_map().span_to_snippet(*span), dupes)
+            } else if let (Ok(snippet), false) = (tcx.source_map(()).span_to_snippet(*span), dupes)
             {
                 let types: Vec<_> =
                     assoc_items.iter().map(|item| format!("{} = Type", item.name)).collect();

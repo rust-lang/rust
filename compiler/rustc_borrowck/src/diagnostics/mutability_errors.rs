@@ -287,7 +287,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         }
                     }
                     if let Ok(snippet) =
-                        self.infcx.tcx.sess.source_map().span_to_snippet(source_info.span)
+                        self.infcx.tcx.source_map(()).span_to_snippet(source_info.span)
                     {
                         if snippet.starts_with("&mut ") {
                             // We don't have access to the HIR to get accurate spans, but we can
@@ -391,7 +391,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // a local variable, then just suggest the user remove it.
             PlaceRef { local: _, projection: [] }
                 if {
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
+                    if let Ok(snippet) = self.infcx.tcx.source_map(()).span_to_snippet(span) {
                         snippet.starts_with("&mut ")
                     } else {
                         false
@@ -899,7 +899,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = arg {
                     err.span_label(span, "change this to accept `FnMut` instead of `Fn`");
                     err.span_label(func.span, "expects `Fn` instead of `FnMut`");
-                    if self.infcx.tcx.sess.source_map().is_multiline(self.body.span) {
+                    if self.infcx.tcx.source_map(()).is_multiline(self.body.span) {
                         err.span_label(self.body.span, "in this closure");
                     }
                     look_at_return = false;
@@ -970,7 +970,7 @@ fn suggest_ampmut_self<'tcx>(
     let sp = local_decl.source_info.span;
     (
         sp,
-        match tcx.sess.source_map().span_to_snippet(sp) {
+        match tcx.source_map(()).span_to_snippet(sp) {
             Ok(snippet) => {
                 let lt_pos = snippet.find('\'');
                 if let Some(lt_pos) = lt_pos {
@@ -1006,7 +1006,7 @@ fn suggest_ampmut<'tcx>(
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
     if let Some(assignment_rhs_span) = opt_assignment_rhs_span
-        && let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span)
+        && let Ok(src) = tcx.source_map(()).span_to_snippet(assignment_rhs_span)
     {
         let is_mutbl = |ty: &str| -> bool {
             if let Some(rest) = ty.strip_prefix("mut") {
@@ -1048,7 +1048,7 @@ fn suggest_ampmut<'tcx>(
         None => local_decl.source_info.span,
     };
 
-    if let Ok(src) = tcx.sess.source_map().span_to_snippet(highlight_span)
+    if let Ok(src) = tcx.source_map(()).span_to_snippet(highlight_span)
         && let (true, Some(ws_pos)) = (src.starts_with("&'"), src.find(char::is_whitespace))
     {
         let lt_name = &src[1..ws_pos];
@@ -1103,7 +1103,7 @@ fn get_mut_span_in_struct_field<'tcx>(
 
 /// If possible, suggest replacing `ref` with `ref mut`.
 fn suggest_ref_mut(tcx: TyCtxt<'_>, binding_span: Span) -> Option<String> {
-    let hi_src = tcx.sess.source_map().span_to_snippet(binding_span).ok()?;
+    let hi_src = tcx.source_map(()).span_to_snippet(binding_span).ok()?;
     if hi_src.starts_with("ref") && hi_src["ref".len()..].starts_with(rustc_lexer::is_whitespace) {
         let replacement = format!("ref mut{}", &hi_src["ref".len()..]);
         Some(replacement)

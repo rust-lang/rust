@@ -78,7 +78,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         err.span_label(span, &format!("cannot use a negative integer for indexing on `{}`", ty));
         if let (hir::ExprKind::Path(..), Ok(snippet)) =
-            (&base_expr.kind, self.tcx.sess.source_map().span_to_snippet(base_expr.span))
+            (&base_expr.kind, self.tcx.source_map(()).span_to_snippet(base_expr.span))
         {
             // `foo[-1]` to `foo[foo.len() - 1]`
             err.span_suggestion_verbose(

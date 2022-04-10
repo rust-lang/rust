@@ -129,7 +129,7 @@ enum LiveNodeKind {
 }
 
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_>) -> String {
-    let sm = tcx.sess.source_map();
+    let sm = tcx.source_map(());
     match lnk {
         UpvarNode(s) => format!("Upvar node [{}]", sm.span_to_diagnostic_string(s)),
         ExprNode(s, _) => format!("Expr node [{}]", sm.span_to_diagnostic_string(s)),

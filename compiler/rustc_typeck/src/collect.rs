@@ -2562,8 +2562,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 let snip = tcx
-                    .sess
-                    .source_map()
+                    .source_map(())
                     .span_to_snippet(ast_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{}`", s));
                 tcx.sess

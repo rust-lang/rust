@@ -747,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let local_def_id = closure_def_id.expect_local();
             let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(local_def_id);
             let closure_span = self.tcx.hir().span(closure_hir_id);
-            let closure_head_span = self.tcx.sess.source_map().guess_head_span(closure_span);
+            let closure_head_span = self.tcx.source_map(()).guess_head_span(closure_span);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
                 closure_hir_id,
@@ -833,7 +833,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         s.find_ancestor_inside(closure_span).unwrap_or(s)
                     };
 
-                    if let Ok(mut s) = self.tcx.sess.source_map().span_to_snippet(closure_body_span) {
+                    if let Ok(mut s) = self.tcx.source_map(()).span_to_snippet(closure_body_span) {
                         if s.starts_with('$') {
                             // Looks like a macro fragment. Try to find the real block.
                             if let Some(hir::Node::Expr(&hir::Expr {
@@ -843,7 +843,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
                                 // Since we know it's a block, we know we can insert the `let _ = ..` without
                                 // breaking the macro syntax.
-                                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(block.span) {
+                                if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(block.span) {
                                     closure_body_span = block.span;
                                     s = snippet;
                                 }
@@ -1708,7 +1708,7 @@ fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
             bug!("Drop location span error: need to handle more Node {:?}", owner_node);
         }
     };
-    tcx.sess.source_map().end_point(owner_span)
+    tcx.source_map(()).end_point(owner_span)
 }
 
 struct InferBorrowKind<'a, 'tcx> {

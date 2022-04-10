@@ -449,7 +449,7 @@ fn do_mir_borrowck<'a, 'tcx>(
         }
 
         tcx.struct_span_lint_hir(UNUSED_MUT, lint_root, span, |lint| {
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+            let mut_span = tcx.source_map(()).span_until_non_whitespace(span);
             lint.build("variable does not need to be mutable")
                 .span_suggestion_short(
                     mut_span,
@@ -1527,7 +1527,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             debug!("check_for_invalidation_at_exit({:?}): INVALID", place);
             // FIXME: should be talking about the region lifetime instead
             // of just a span here.
-            let span = self.infcx.tcx.sess.source_map().end_point(span);
+            let span = self.infcx.tcx.source_map(()).end_point(span);
             self.report_borrowed_value_does_not_live_long_enough(
                 location,
                 borrow,

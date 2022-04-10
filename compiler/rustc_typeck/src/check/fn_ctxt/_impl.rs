@@ -1144,7 +1144,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let span = if last_stmt.span.from_expansion() {
             let mac_call = original_sp(last_stmt.span, blk.span);
-            self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)?
+            self.tcx.source_map(()).mac_call_stmt_semi_span(mac_call)?
         } else {
             last_stmt.span.with_lo(last_stmt.span.hi() - BytePos(1))
         };

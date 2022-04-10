@@ -405,7 +405,7 @@ fn virtual_call_violation_for_method<'tcx>(
                 },
             );
         // Get the span pointing at where the `self` receiver should be.
-        let sm = tcx.sess.source_map();
+        let sm = tcx.source_map(());
         let self_span = method.ident(tcx).span.to(tcx
             .hir()
             .span_if_local(method.def_id)

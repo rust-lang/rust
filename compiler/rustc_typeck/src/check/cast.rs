@@ -240,7 +240,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     error_span,
                     format!("cannot cast `{}` as `{}`", fcx.ty_to_string(self.expr_ty), cast_ty),
                 );
-                if let Ok(snippet) = fcx.sess().source_map().span_to_snippet(self.expr.span) {
+                if let Ok(snippet) = fcx.tcx.source_map(()).span_to_snippet(self.expr.span) {
                     err.span_suggestion(
                         self.expr.span,
                         "dereference the expression",
@@ -315,7 +315,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`");
 
                 if self.expr_ty.is_numeric() {
-                    match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                    match fcx.tcx.source_map(()).span_to_snippet(self.expr.span) {
                         Ok(snippet) => {
                             err.span_suggestion(
                                 self.span,
@@ -447,8 +447,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                     let has_parens = fcx
                         .tcx
-                        .sess
-                        .source_map()
+                        .source_map(())
                         .span_to_snippet(self.expr.span)
                         .map_or(false, |snip| snip.starts_with('('));
 
@@ -481,7 +480,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 ) {
                     let mut label = true;
                     // Check `impl From<self.expr_ty> for self.cast_ty {}` for accurate suggestion:
-                    if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                    if let Ok(snippet) = fcx.tcx.source_map(()).span_to_snippet(self.expr.span) {
                         if let Some(from_trait) = fcx.tcx.get_diagnostic_item(sym::From) {
                             let ty = fcx.resolve_vars_if_possible(self.cast_ty);
                             // Erase regions to avoid panic in `prove_value` when calling
@@ -610,7 +609,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             ty::Ref(_, _, mt) => {
                 let mtstr = mt.prefix_str();
                 if self.cast_ty.is_trait() {
-                    match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
+                    match fcx.tcx.source_map(()).span_to_snippet(self.cast_span) {
                         Ok(s) => {
                             err.span_suggestion(
                                 self.cast_span,
@@ -633,7 +632,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 }
             }
             ty::Adt(def, ..) if def.is_box() => {
-                match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
+                match fcx.tcx.source_map(()).span_to_snippet(self.cast_span) {
                     Ok(s) => {
                         err.span_suggestion(
                             self.cast_span,
@@ -997,7 +996,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 ));
 
                 let msg = "use `.addr()` to obtain the address of a pointer";
-                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                if let Ok(snippet) = fcx.tcx.source_map(()).span_to_snippet(self.expr.span) {
                     let scalar_cast = match t_c {
                         ty::cast::IntTy::U(ty::UintTy::Usize) => String::new(),
                         _ => format!(" as {}", self.cast_ty),
@@ -1033,7 +1032,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.expr_ty, self.cast_ty
                 ));
                 let msg = "use `.with_addr()` to adjust a valid pointer in the same allocation, to this address";
-                if let Ok(snippet) = fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
+                if let Ok(snippet) = fcx.tcx.source_map(()).span_to_snippet(self.expr.span) {
                     err.span_suggestion(
                         self.span,
                         msg,

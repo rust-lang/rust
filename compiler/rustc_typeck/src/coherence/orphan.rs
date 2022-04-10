@@ -41,7 +41,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
     let hir::ItemKind::Impl(ref impl_) = item.kind else {
         bug!("{:?} is not an impl: {:?}", def_id, item);
     };
-    let sp = tcx.sess.source_map().guess_head_span(item.span);
+    let sp = tcx.source_map(()).guess_head_span(item.span);
     let tr = impl_.of_trait.as_ref().unwrap();
     match traits::orphan_check(tcx, item.def_id.to_def_id()) {
         Ok(()) => {}

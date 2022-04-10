@@ -149,7 +149,7 @@ where
 {
     let mut from_pos = spanview_span.lo();
     let end_pos = spanview_span.hi();
-    let source_map = tcx.sess.source_map();
+    let source_map = tcx.source_map(());
     let start = source_map.lookup_char_pos(from_pos);
     let indent_to_initial_start_col = " ".repeat(start.col.to_usize());
     debug!(
@@ -231,7 +231,7 @@ where
 
 /// Format a string showing the start line and column, and end line and column within a file.
 pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
-    let source_map = tcx.sess.source_map();
+    let source_map = tcx.source_map(());
     let start = source_map.lookup_char_pos(span.lo());
     let end = source_map.lookup_char_pos(span.hi());
     format!("{}:{}-{}:{}", start.line, start.col.to_usize() + 1, end.line, end.col.to_usize() + 1)
@@ -586,7 +586,7 @@ fn make_html_snippet<'tcx>(
     span: Span,
     some_viewable: Option<&SpanViewable>,
 ) -> Option<String> {
-    let source_map = tcx.sess.source_map();
+    let source_map = tcx.source_map(());
     let snippet = source_map
         .span_to_snippet(span)
         .unwrap_or_else(|err| bug!("span_to_snippet error for span {:?}: {:?}", span, err));
@@ -625,7 +625,7 @@ fn tooltip<'tcx>(
     statements: Vec<Statement<'tcx>>,
     terminator: &Option<Terminator<'tcx>>,
 ) -> String {
-    let source_map = tcx.sess.source_map();
+    let source_map = tcx.source_map(());
     let mut text = Vec::new();
     text.push(format!("{}: {}:", spanview_id, &source_map.span_to_embeddable_string(span)));
     for statement in statements {

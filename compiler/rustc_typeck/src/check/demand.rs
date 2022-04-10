@@ -234,8 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if primary_span != secondary_span
                     && self
                         .tcx
-                        .sess
-                        .source_map()
+                        .source_map(())
                         .is_multiline(secondary_span.shrink_to_hi().until(primary_span))
                 {
                     // We are pointing at the binding's type or initializer value, but it's pattern
@@ -308,14 +307,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 return;
                             };
                             if let Some(indent) =
-                                self.tcx.sess.source_map().indentation_before(span.shrink_to_lo())
+                                self.tcx.source_map(()).indentation_before(span.shrink_to_lo())
                             {
                                 // Add a semicolon, except after `}`.
-                                let semicolon =
-                                    match self.tcx.sess.source_map().span_to_snippet(span) {
-                                        Ok(s) if s.ends_with('}') => "",
-                                        _ => ";",
-                                    };
+                                let semicolon = match self.tcx.source_map(()).span_to_snippet(span)
+                                {
+                                    Ok(s) if s.ends_with('}') => "",
+                                    _ => ";",
+                                };
                                 err.span_suggestions(
                                     span.shrink_to_hi(),
                                     "try adding an expression at the end of the block",
@@ -496,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self_ty.starts_with("std::option::Option")
             || self_ty.starts_with("std::result::Result"))
             && (name == sym::map || name == sym::and_then);
-        match (is_as_ref_able, self.sess().source_map().span_to_snippet(method_path.ident.span)) {
+        match (is_as_ref_able, self.tcx.source_map(()).span_to_snippet(method_path.ident.span)) {
             (true, Ok(src)) => {
                 let suggestion = format!("as_ref().{}", src);
                 Some((method_path.ident.span, "consider using `as_ref` instead", suggestion))
@@ -585,6 +584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> Option<(Span, String, String, Applicability, bool /* verbose */)> {
+        let tcx = self.tcx;
         let sess = self.sess();
         let sp = expr.span;
 
@@ -592,8 +592,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if in_external_macro(sess, sp) {
             return None;
         }
-
-        let sm = sess.source_map();
 
         let replace_prefix = |s: &str, old: &str, new: &str| {
             s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
@@ -606,7 +604,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (exp.kind(), check.kind()) {
                 (&ty::Str, &ty::Array(arr, _) | &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
-                        && let Ok(src) = sm.span_to_snippet(sp)
+                        && let Ok(src) = tcx.source_map(()).span_to_snippet(sp)
                         && replace_prefix(&src, "b\"", "\"").is_some()
                     {
                                 let pos = sp.lo() + BytePos(1);
@@ -621,7 +619,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                 (&ty::Array(arr, _) | &ty::Slice(arr), &ty::Str) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.kind
-                        && let Ok(src) = sm.span_to_snippet(sp)
+                        && let Ok(src) = tcx.source_map(()).span_to_snippet(sp)
                         && replace_prefix(&src, "\"", "b\"").is_some()
                     {
                                 return Some((
@@ -672,7 +670,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sugg_sp = arg.span;
                         }
                     }
-                    if let Ok(src) = sm.span_to_snippet(sugg_sp) {
+                    if let Ok(src) = tcx.source_map(()).span_to_snippet(sugg_sp) {
                         let needs_parens = match expr.kind {
                             // parenthesize if needed (Issue #46756)
                             hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
@@ -709,7 +707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 //                                   |     |
                                 //    consider dereferencing here: `*opt`  |
                                 // expected mutable reference, found enum `Option`
-                                if sm.span_to_snippet(left_expr.span).is_ok() {
+                                if tcx.source_map(()).span_to_snippet(left_expr.span).is_ok() {
                                     return Some((
                                         left_expr.span.shrink_to_lo(),
                                         "consider dereferencing here to assign to the mutable \
@@ -749,7 +747,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) if self.infcx.can_sub(self.param_env, checked, expected).is_ok() => {
                 // We have `&T`, check if what was expected was `T`. If so,
                 // we may want to suggest removing a `&`.
-                if sm.is_imported(expr.span) {
+                if tcx.source_map(()).is_imported(expr.span) {
                     // Go through the spans from which this span was expanded,
                     // and find the one that's pointing inside `sp`.
                     //
@@ -759,7 +757,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         iter::successors(Some(expr.span), |s| s.parent_callsite())
                             .find(|&s| sp.contains(s))
                     {
-                        if sm.span_to_snippet(call_span).is_ok() {
+                        if tcx.source_map(()).span_to_snippet(call_span).is_ok() {
                             return Some((
                                 sp.with_hi(call_span.lo()),
                                 "consider removing the borrow".to_string(),
@@ -772,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return None;
                 }
                 if sp.contains(expr.span) {
-                    if sm.span_to_snippet(expr.span).is_ok() {
+                    if tcx.source_map(()).span_to_snippet(expr.span).is_ok() {
                         return Some((
                             sp.with_hi(expr.span.lo()),
                             "consider removing the borrow".to_string(),
@@ -792,7 +790,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Only suggest valid if dereferencing needed.
                     if steps > 0 {
                         // The pointer type implements `Copy` trait so the suggestion is always valid.
-                        if let Ok(src) = sm.span_to_snippet(sp) {
+                        if let Ok(src) = tcx.source_map(()).span_to_snippet(sp) {
                             let derefs = "*".repeat(steps);
                             if let Some((span, src, applicability)) = match mutbl_b {
                                 hir::Mutability::Mut => {
@@ -955,12 +953,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
     ) -> bool {
-        if self.tcx.sess.source_map().is_imported(expr.span) {
+        if self.tcx.source_map(()).is_imported(expr.span) {
             // Ignore if span is from within a macro.
             return false;
         }
 
-        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) else {
+        let Ok(src) = self.tcx.source_map(()).span_to_snippet(expr.span) else {
             return false;
         };
 
@@ -1097,12 +1095,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // can be given the suggestion "u32::from(x) > y" rather than
                 // "x > y.try_into().unwrap()".
                 let lhs_expr_and_src = expected_ty_expr.and_then(|expr| {
-                    self.tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(expr.span)
-                        .ok()
-                        .map(|src| (expr, src))
+                    self.tcx.source_map(()).span_to_snippet(expr.span).ok().map(|src| (expr, src))
                 });
                 let (msg, suggestion) = if let (Some((lhs_expr, lhs_src)), false) =
                     (lhs_expr_and_src, exp_to_found_is_fallible)

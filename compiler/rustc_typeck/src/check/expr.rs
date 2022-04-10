@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         if self.tcx().sess.verbose() {
             // make this code only run with -Zverbose because it is probably slow
-            if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
+            if let Ok(lint_str) = self.tcx.source_map(()).span_to_snippet(expr.span) {
                 if !lint_str.contains('\n') {
                     debug!("expr text: {}", lint_str);
                 } else {
@@ -378,7 +378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "type `{}` cannot be dereferenced",
                             oprnd_t,
                         );
-                        let sp = tcx.sess.source_map().start_point(expr.span);
+                        let sp = tcx.source_map(()).start_point(expr.span);
                         if let Some(sp) =
                             tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp)
                         {
@@ -777,7 +777,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     &cause,
                     &mut |db| {
                         let span = fn_decl.output.span();
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                        if let Ok(snippet) = self.tcx.source_map(()).span_to_snippet(span) {
                             db.span_label(
                                 span,
                                 format!("expected `{}` because of this return type", snippet),
@@ -1662,8 +1662,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let instead = self
                 .tcx
-                .sess
-                .source_map()
+                .source_map(())
                 .span_to_snippet(range_end.expr.span)
                 .map(|s| format!(" from `{s}`"))
                 .unwrap_or(String::new());
@@ -2118,7 +2117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 false
             };
         let expr_snippet =
-            self.tcx.sess.source_map().span_to_snippet(expr.span).unwrap_or(String::new());
+            self.tcx.source_map(()).span_to_snippet(expr.span).unwrap_or(String::new());
         let is_wrapped = expr_snippet.starts_with('(') && expr_snippet.ends_with(')');
         let after_open = expr.span.lo() + rustc_span::BytePos(1);
         let before_close = expr.span.hi() - rustc_span::BytePos(1);
@@ -2240,7 +2239,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let (Some(len), Ok(user_index)) =
             (len.try_eval_usize(self.tcx, self.param_env), field.as_str().parse::<u64>())
         {
-            if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+            if let Ok(base) = self.tcx.source_map(()).span_to_snippet(base.span) {
                 let help = "instead of using tuple indexing, use array indexing";
                 let suggestion = format!("{}[{}]", base, field);
                 let applicability = if len < user_index {
@@ -2260,7 +2259,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base: &hir::Expr<'_>,
         field: Ident,
     ) {
-        if let Ok(base) = self.tcx.sess.source_map().span_to_snippet(base.span) {
+        if let Ok(base) = self.tcx.source_map(()).span_to_snippet(base.span) {
             let msg = format!("`{}` is a raw pointer; try dereferencing it", base);
             let suggestion = format!("(*{}).{}", base, field);
             err.span_suggestion(expr.span, &msg, suggestion, Applicability::MaybeIncorrect);
@@ -2429,7 +2428,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // fixed expression:
                         if let ExprKind::Lit(ref lit) = idx.kind {
                             if let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node {
-                                let snip = self.tcx.sess.source_map().span_to_snippet(base.span);
+                                let snip = self.tcx.source_map(()).span_to_snippet(base.span);
                                 if let Ok(snip) = snip {
                                     err.span_suggestion(
                                         expr.span,
