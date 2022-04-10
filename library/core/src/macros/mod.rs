@@ -126,8 +126,6 @@ macro_rules! assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::assert_matches::assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
@@ -138,7 +136,7 @@ macro_rules! assert_ne {
 /// let c = Ok("abc".to_string());
 /// assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "1.62.0")]
 #[allow_internal_unstable(core_panic)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
@@ -300,8 +298,6 @@ macro_rules! debug_assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
 /// use std::assert_matches::debug_assert_matches;
 ///
 /// let a = 1u32.checked_add(2);
@@ -313,8 +309,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(c, Ok(x) | Err(x) if x.len() < 100);
 /// ```
 #[macro_export]
-#[unstable(feature = "assert_matches", issue = "82775")]
-#[allow_internal_unstable(assert_matches)]
+#[stable(feature = "assert_matches", since = "1.62.0")]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
@@ -330,12 +325,18 @@ pub macro debug_assert_matches($($arg:tt)*) {
 /// # Examples
 ///
 /// ```
-/// let foo = 'f';
-/// assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+/// /// Checks if the value is an ASCII alphabetic character.
+/// fn is_ascii_alphabetic(c: char) -> bool {
+///     matches!(c, 'A'..='Z' | 'a'..='z')
+/// }
 ///
-/// let bar = Some(4);
-/// assert!(matches!(bar, Some(x) if x > 2));
+/// /// Returns whether the given Option contains a value AND that value is positive.
+/// fn is_some_positive(op: Option<i32>) -> bool {
+///     matches!(op, Some(x) if x > 0)
+/// }
 /// ```
+///
+/// See also [`assert_matches!`] and [`debug_assert_matches!`].
 #[macro_export]
 #[stable(feature = "matches_macro", since = "1.42.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "matches_macro")]

@@ -1,6 +1,5 @@
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
-#![feature(assert_matches)]
 #![feature(box_syntax)]
 #![feature(cow_is_borrowed)]
 #![feature(const_box)]

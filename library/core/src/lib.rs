@@ -233,10 +233,10 @@ mod macros;
 // We don't export this through #[macro_export] for now, to avoid breakage.
 // See https://github.com/rust-lang/rust/issues/82913
 #[cfg(not(test))]
-#[unstable(feature = "assert_matches", issue = "82775")]
-/// Unstable module containing the unstable `assert_matches` macro.
+#[stable(feature = "assert_matches", since = "1.62.0")]
+/// Module containing the `assert_matches` macro.
 pub mod assert_matches {
-    #[unstable(feature = "assert_matches", issue = "82775")]
+    #[stable(feature = "assert_matches", since = "1.62.0")]
     pub use crate::macros::{assert_matches, debug_assert_matches};
 }
 
