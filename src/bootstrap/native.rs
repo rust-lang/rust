@@ -297,16 +297,14 @@ fn fix_bin_or_dylib(builder: &Builder<'_>, fname: &Path) {
 
 fn download_component(builder: &Builder<'_>, base: &str, url: &str, dest_path: &Path) {
     // Use a temporary file in case we crash while downloading, to avoid a corrupt download in cache/.
-    let tempfile = t!(tempfile::NamedTempFile::new());
-    let temppath = tempfile.path().to_owned();
-    drop(tempfile);
-    let tempfile_str = temppath.to_str().expect("tempdir must be valid unicode");
+    let tempfile = builder.tempdir().join(dest_path.file_name().unwrap());
     // FIXME: support `do_verify` (only really needed for nightly rustfmt)
-    download_with_retries(builder, tempfile_str, &format!("{}/{}", base, url));
-    builder.rename(&temppath, dest_path);
+    // FIXME: support non-utf8 paths?
+    download_with_retries(builder, tempfile.to_str().unwrap(), &format!("{}/{}", base, url));
+    t!(std::fs::rename(&tempfile, dest_path));
 }
 
-fn download_with_retries(builder: &Builder<'_>, tempdir: &str, url: &str) {
+fn download_with_retries(builder: &Builder<'_>, tempfile: &str, url: &str) {
     println!("downloading {}", url);
 
     // FIXME: check if curl is installed instead of skipping straight to powershell
@@ -318,7 +316,7 @@ fn download_with_retries(builder: &Builder<'_>, tempdir: &str, url: &str) {
                 "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;",
                 &format!(
                     "(New-Object System.Net.WebClient).DownloadFile('{}', '{}')",
-                    url, tempdir
+                    url, tempfile
                 ),
             ])) {
                 return;
@@ -338,7 +336,7 @@ fn download_with_retries(builder: &Builder<'_>, tempdir: &str, url: &str) {
             "3",
             "-Sf",
             "-o",
-            tempdir,
+            tempfile,
             url,
         ]));
     }

@@ -1577,9 +1577,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.env("RUSTC_PROFILER_SUPPORT", "1");
         }
 
-        let tmp = builder.out.join("tmp");
-        std::fs::create_dir_all(&tmp).unwrap();
-        cmd.env("RUST_TEST_TMPDIR", tmp);
+        cmd.env("RUST_TEST_TMPDIR", builder.tempdir());
 
         cmd.arg("--adb-path").arg("adb");
         cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
@@ -2259,14 +2257,13 @@ impl Step for RemoteCopyLibs {
         builder.ensure(compile::Std { compiler, target });
 
         builder.info(&format!("REMOTE copy libs to emulator ({})", target));
-        t!(fs::create_dir_all(builder.out.join("tmp")));
 
         let server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
         let mut cmd = Command::new(&tool);
-        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.out.join("tmp"));
+        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
@@ -2300,7 +2297,7 @@ impl Step for Distcheck {
     /// Runs "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder<'_>) {
         builder.info("Distcheck");
-        let dir = builder.out.join("tmp").join("distcheck");
+        let dir = builder.tempdir().join("distcheck");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 
@@ -2326,7 +2323,7 @@ impl Step for Distcheck {
 
         // Now make sure that rust-src has all of libstd's dependencies
         builder.info("Distcheck rust-src");
-        let dir = builder.out.join("tmp").join("distcheck-src");
+        let dir = builder.tempdir().join("distcheck-src");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
 

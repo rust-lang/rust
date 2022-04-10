@@ -226,7 +226,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
- "tempfile",
  "toml",
  "winapi",
  "xz2",

@@ -1391,21 +1391,14 @@ impl Build {
         paths
     }
 
-    pub fn rename(&self, src: &Path, dst: &Path) {
-        if self.config.dry_run {
-            return;
-        }
-        self.verbose_than(1, &format!("Move {:?} to {:?}", src, dst));
-        if src == dst {
-            return;
-        }
-        if let Err(e) = fs::rename(src, dst) {
-            if e.raw_os_error() == Some(libc::EXDEV) {
-                self.copy(src, dst);
-                return;
-            }
-            panic!("failed to rename `{}` to `{}`: {}", src.display(), dst.display(), e);
-        }
+    /// Create a temporary directory in `out` and return its path.
+    ///
+    /// NOTE: this temporary directory is shared between all steps;
+    /// if you need an empty directory, create a new subdirectory inside it.
+    fn tempdir(&self) -> PathBuf {
+        let tmp = self.out.join("tmp");
+        t!(fs::create_dir_all(&tmp));
+        tmp
     }
 
     /// Copies a file from `src` to `dst`
