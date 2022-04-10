@@ -63,7 +63,7 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
 trait LazyMeta {
-    type Meta: Copy + 'static;
+    type Meta: 'static;
 }
 
 impl<T> LazyMeta for T {
@@ -106,7 +106,7 @@ impl<T> LazyMeta for [T] {
 struct Lazy<T, Meta = <T as LazyMeta>::Meta>
 where
     T: ?Sized + LazyMeta<Meta = Meta>,
-    Meta: 'static + Copy,
+    Meta: 'static,
 {
     position: NonZeroUsize,
     meta: Meta,
@@ -131,10 +131,13 @@ impl<T> Lazy<[T]> {
     }
 }
 
-impl<T: ?Sized + LazyMeta> Copy for Lazy<T> {}
-impl<T: ?Sized + LazyMeta> Clone for Lazy<T> {
+impl<T: ?Sized + LazyMeta> Copy for Lazy<T> where T::Meta: Copy {}
+impl<T: ?Sized + LazyMeta> Clone for Lazy<T>
+where
+    T::Meta: Clone,
+{
     fn clone(&self) -> Self {
-        *self
+        Self { position: self.position.clone(), meta: self.meta.clone(), _marker: PhantomData }
     }
 }
 
@@ -157,7 +160,7 @@ enum LazyState {
 // manually, instead of relying on the default, to get the correct variance.
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
-    (Table<$I:ty, $T:ty>) => {Lazy<Table<$I, $T>, usize>};
+    (Table<$I:ty, $T:ty>) => {Lazy<Table<$I, $T>, (usize, Vec<u64>)>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
@@ -296,7 +299,7 @@ macro_rules! define_tables {
         }
 
         impl<'tcx> TableBuilders<'tcx> {
-            fn encode(&self, buf: &mut Encoder) -> LazyTables<'tcx> {
+            fn encode(&mut self, buf: &mut Encoder) -> LazyTables<'tcx> {
                 LazyTables {
                     $($name: self.$name.encode(buf)),+
                 }

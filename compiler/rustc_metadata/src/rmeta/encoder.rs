@@ -131,7 +131,7 @@ impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a
     for Lazy<T>
 {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_lazy_distance(*self)
+        e.emit_lazy_distance(self)
     }
 }
 
@@ -143,7 +143,7 @@ impl<'a, 'tcx, T: Encodable<EncodeContext<'a, 'tcx>>> Encodable<EncodeContext<'a
         if self.meta == 0 {
             return Ok(());
         }
-        e.emit_lazy_distance(*self)
+        e.emit_lazy_distance(self)
     }
 }
 
@@ -152,8 +152,8 @@ where
     Option<T>: FixedSizeEncoding,
 {
     fn encode(&self, e: &mut EncodeContext<'a, 'tcx>) -> opaque::EncodeResult {
-        e.emit_usize(self.meta)?;
-        e.emit_lazy_distance(*self)
+        self.meta.encode(e)?;
+        e.emit_lazy_distance(self)
     }
 }
 
@@ -402,7 +402,7 @@ macro_rules! record {
 impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn emit_lazy_distance<T: ?Sized + LazyMeta>(
         &mut self,
-        lazy: Lazy<T>,
+        lazy: &Lazy<T>,
     ) -> Result<(), <Self as Encoder>::Error> {
         let pos = lazy.position.get();
         let distance = match self.lazy_state {

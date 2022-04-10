@@ -735,8 +735,8 @@ where
     Option<T>: FixedSizeEncoding,
 {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Self {
-        let len = decoder.read_usize();
-        decoder.read_lazy_with_meta(len)
+        let meta = Decodable::decode(decoder);
+        decoder.read_lazy_with_meta(meta)
     }
 }
 
@@ -1313,7 +1313,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     /// Decodes all inherent impls in the crate (for rustdoc).
     fn get_inherent_impls(self) -> impl Iterator<Item = (DefId, DefId)> + 'a {
-        (0..self.root.tables.inherent_impls.size()).flat_map(move |i| {
+        (0..self.num_def_ids()).flat_map(move |i| {
             let ty_index = DefIndex::from_usize(i);
             let ty_def_id = self.local_def_id(ty_index);
             self.root
@@ -1863,6 +1863,7 @@ impl CrateMetadata {
     }
 
     fn num_def_ids(&self) -> usize {
+        // We use `def_keys` because we know this stable is densely populated.
         self.root.tables.def_keys.size()
     }
 

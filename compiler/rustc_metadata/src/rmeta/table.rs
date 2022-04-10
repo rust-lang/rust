@@ -1,6 +1,7 @@
 use crate::rmeta::*;
 
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def::{CtorKind, CtorOf};
 use rustc_index::vec::Idx;
 use rustc_serialize::opaque::Encoder;
@@ -252,7 +253,7 @@ pub(super) struct TableBuilder<I: Idx, T>
 where
     Option<T>: FixedSizeEncoding,
 {
-    blocks: IndexVec<I, <Option<T> as FixedSizeEncoding>::ByteArray>,
+    bytes: FxIndexMap<I, <Option<T> as FixedSizeEncoding>::ByteArray>,
     _marker: PhantomData<T>,
 }
 
@@ -261,7 +262,7 @@ where
     Option<T>: FixedSizeEncoding,
 {
     fn default() -> Self {
-        TableBuilder { blocks: Default::default(), _marker: PhantomData }
+        TableBuilder { bytes: Default::default(), _marker: PhantomData }
     }
 }
 
@@ -278,20 +279,31 @@ where
         // > Space requirements could perhaps be optimized by using the HAMT `popcnt`
         // > trick (i.e. divide things into buckets of 32 or 64 items and then
         // > store bit-masks of which item in each bucket is actually serialized).
-        self.blocks.ensure_contains_elem(i, || [0; N]);
-        Some(value).write_to_bytes(&mut self.blocks[i]);
+        let mut bytes = [0; N];
+        Some(value).write_to_bytes(&mut bytes);
+        self.bytes.insert(i, bytes);
     }
 
-    pub(crate) fn encode<const N: usize>(&self, buf: &mut Encoder) -> Lazy<Table<I, T>>
+    pub(crate) fn encode<const N: usize>(&mut self, buf: &mut Encoder) -> Lazy<Table<I, T>>
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
         let pos = buf.position();
-        for block in &self.blocks {
-            buf.emit_raw_bytes(block).unwrap();
+
+        self.bytes.sort_by(|k1, _, k2, _| k1.index().cmp(&k2.index()));
+
+        let max_index = self.bytes.last().map_or(0, |(k, _)| k.index() + 1);
+        let mut present = Vec::<u64>::with_capacity(max_index);
+        present.resize(max_index, 0u64);
+        for (idx, chunk) in &self.bytes {
+            buf.emit_raw_bytes(chunk).unwrap();
+
+            // Record presence of this chunk.
+            let idx = idx.index();
+            present[idx / 64] |= 1 << (idx % 64);
         }
-        let num_bytes = self.blocks.len() * N;
-        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), num_bytes)
+        let meta = (self.bytes.len() * N, present);
+        Lazy::from_position_and_meta(NonZeroUsize::new(pos as usize).unwrap(), meta)
     }
 }
 
@@ -299,8 +311,7 @@ impl<I: Idx, T> LazyMeta for Table<I, T>
 where
     Option<T>: FixedSizeEncoding,
 {
-    /// Number of bytes in the data stream.
-    type Meta = usize;
+    type Meta = (usize, Vec<u64>);
 }
 
 impl<I: Idx, T> Lazy<Table<I, T>>
@@ -320,10 +331,31 @@ where
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
         let start = self.position.get();
-        let bytes = &metadata.blob()[start..start + self.meta];
+        let (num_bytes, ref present) = &self.meta;
+
+        let bytes = &metadata.blob()[start..start + num_bytes];
         let (bytes, []) = bytes.as_chunks::<N>() else { panic!() };
-        let bytes = bytes.get(i.index())?;
-        FixedSizeEncoding::from_bytes(bytes)
+
+        let mut pos = 0usize;
+        let mut i = i.index();
+        for pblock in present {
+            let count = pblock.count_ones() as usize;
+            if i >= 64 {
+                pos += count;
+                i -= 64;
+                continue;
+            }
+
+            let mask = 1u64 << i;
+            if pblock & mask == 0 {
+                return None;
+            }
+
+            let count = (pblock & (mask - 1)).count_ones() as usize;
+            let bytes = bytes.get(pos + count)?;
+            return FixedSizeEncoding::from_bytes(bytes);
+        }
+        None
     }
 
     /// Size of the table in entries, including possible gaps.
@@ -331,6 +363,6 @@ where
     where
         Option<T>: FixedSizeEncoding<ByteArray = [u8; N]>,
     {
-        self.meta / N
+        self.meta.0 / N
     }
 }
