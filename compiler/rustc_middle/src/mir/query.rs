@@ -25,6 +25,9 @@ pub enum UnsafetyViolationKind {
     /// Unsafe operation in an `unsafe fn` but outside an `unsafe` block.
     /// Has to be handled as a lint for backwards compatibility.
     UnsafeFn,
+    /// Unsafe operation that was previously marked safe but has been deprecated as such.
+    /// Has to be handled as a lint for backwards compatibility.
+    DeprecatedSafe { depr_as_safe: DefId },
 }
 
 #[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
