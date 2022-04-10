@@ -970,7 +970,7 @@ impl<'a> Parser<'a> {
         }
         if fixed_crate_name {
             let fixed_name_sp = ident.span.to(idents.last().unwrap().span);
-            let mut fixed_name = format!("{}", ident.name);
+            let mut fixed_name = ident.name.to_string();
             for part in idents {
                 fixed_name.push_str(&format!("_{}", part.name));
             }
