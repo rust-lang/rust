@@ -12,6 +12,7 @@ use url::Url;
 
 use hir::{db::HirDatabase, Adt, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasAttrs};
 use ide_db::{
+    base_db::{CrateOrigin, LangCrateOrigin, SourceDatabase},
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     RootDatabase,
@@ -293,7 +294,7 @@ fn get_doc_link(db: &RootDatabase, def: Definition) -> Option<String> {
     let (target, file, frag) = filename_and_frag_for_def(db, def)?;
 
     let krate = crate_of_def(db, target)?;
-    let mut url = get_doc_base_url(db, &krate)?;
+    let mut url = get_doc_base_url(db, krate)?;
 
     if let Some(path) = mod_path_of_def(db, target) {
         url = url.join(&path).ok()?;
@@ -315,7 +316,7 @@ fn rewrite_intra_doc_link(
 
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let krate = crate_of_def(db, resolved)?;
-    let mut url = get_doc_base_url(db, &krate)?;
+    let mut url = get_doc_base_url(db, krate)?;
 
     let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
@@ -335,7 +336,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
     }
 
     let krate = crate_of_def(db, def)?;
-    let mut url = get_doc_base_url(db, &krate)?;
+    let mut url = get_doc_base_url(db, krate)?;
     let (def, file, frag) = filename_and_frag_for_def(db, def)?;
 
     if let Some(path) = mod_path_of_def(db, def) {
@@ -406,13 +407,20 @@ fn map_links<'e>(
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 /// ^^^^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-fn get_doc_base_url(db: &RootDatabase, krate: &Crate) -> Option<Url> {
+fn get_doc_base_url(db: &RootDatabase, krate: Crate) -> Option<Url> {
     let display_name = krate.display_name(db)?;
-    let base = match &**display_name.crate_name() {
+
+    let base = match db.crate_graph()[krate.into()].origin {
         // std and co do not specify `html_root_url` any longer so we gotta handwrite this ourself.
         // FIXME: Use the toolchains channel instead of nightly
-        name @ ("core" | "std" | "alloc" | "proc_macro" | "test") => {
-            format!("https://doc.rust-lang.org/nightly/{}", name)
+        CrateOrigin::Lang(
+            origin @ (LangCrateOrigin::Alloc
+            | LangCrateOrigin::Core
+            | LangCrateOrigin::ProcMacro
+            | LangCrateOrigin::Std
+            | LangCrateOrigin::Test),
+        ) => {
+            format!("https://doc.rust-lang.org/nightly/{origin}")
         }
         _ => {
             krate.get_html_root_url(db).or_else(|| {

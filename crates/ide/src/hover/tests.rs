@@ -4531,7 +4531,7 @@ foo_macro!(
 
             ---
 
-            Doc comment for [`Foo`](https://doc.rust-lang.org/nightly/test/struct.Foo.html)
+            Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
         "#]],
     );
 }
@@ -4556,7 +4556,7 @@ pub struct Foo;
 
             ---
 
-            Doc comment for [`Foo`](https://doc.rust-lang.org/nightly/test/struct.Foo.html)
+            Doc comment for [`Foo`](https://docs.rs/test/*/test/struct.Foo.html)
         "#]],
     );
 }

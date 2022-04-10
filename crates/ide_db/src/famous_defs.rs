@@ -158,13 +158,9 @@ impl FamousDefs<'_, '_> {
         let mut path = path.split(':');
         let trait_ = path.next_back()?;
         let lang_crate = path.next()?;
-        let lang_crate = match lang_crate {
-            "core" => LangCrateOrigin::Core,
-            "alloc" => LangCrateOrigin::Alloc,
-            "test" => LangCrateOrigin::Test,
-            "proc_macro" => LangCrateOrigin::ProcMacro,
-            "std" => LangCrateOrigin::Std,
-            _ => return None,
+        let lang_crate = match LangCrateOrigin::from(lang_crate) {
+            LangCrateOrigin::Other => return None,
+            lang_crate => lang_crate,
         };
         let std_crate = self.find_lang_crate(lang_crate)?;
         let mut module = std_crate.root_module(db);

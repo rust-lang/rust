@@ -153,17 +153,12 @@ pub(crate) fn def_to_moniker(
                 CrateOrigin::CratesIo { repo } => (repo?, krate.version(db)?),
                 CrateOrigin::Lang(lang) => (
                     "https://github.com/rust-lang/rust/".to_string(),
-                    format!(
-                        "https://github.com/rust-lang/rust/library/{}",
-                        match lang {
-                            LangCrateOrigin::Alloc => "alloc",
-                            LangCrateOrigin::Core => "core",
-                            LangCrateOrigin::ProcMacro => "proc_macro",
-                            LangCrateOrigin::Std => "std",
-                            LangCrateOrigin::Test => "test",
-                            LangCrateOrigin::Other => "",
+                    match lang {
+                        LangCrateOrigin::Other => {
+                            "https://github.com/rust-lang/rust/library/".into()
                         }
-                    ),
+                        lang => format!("https://github.com/rust-lang/rust/library/{lang}",),
+                    },
                 ),
             };
             PackageInformation { name, repo, version }

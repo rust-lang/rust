@@ -135,6 +135,33 @@ pub enum LangCrateOrigin {
     Other,
 }
 
+impl From<&str> for LangCrateOrigin {
+    fn from(s: &str) -> Self {
+        match s {
+            "alloc" => LangCrateOrigin::Alloc,
+            "core" => LangCrateOrigin::Core,
+            "proc-macro" => LangCrateOrigin::ProcMacro,
+            "std" => LangCrateOrigin::Std,
+            "test" => LangCrateOrigin::Test,
+            _ => LangCrateOrigin::Other,
+        }
+    }
+}
+
+impl fmt::Display for LangCrateOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let text = match self {
+            LangCrateOrigin::Alloc => "alloc",
+            LangCrateOrigin::Core => "core",
+            LangCrateOrigin::ProcMacro => "proc_macro",
+            LangCrateOrigin::Std => "std",
+            LangCrateOrigin::Test => "test",
+            LangCrateOrigin::Other => "other",
+        };
+        f.write_str(text)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateDisplayName {
     // The name we use to display various paths (with `_`).
