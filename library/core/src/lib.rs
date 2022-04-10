@@ -90,6 +90,7 @@
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![warn(deprecated_in_future)]
+#![cfg_attr(not(bootstrap), warn(deprecated_safe_in_future))]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
 #![allow(explicit_outlives_requirements)]

@@ -14,6 +14,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{self, FnSig, ForeignItem, HirId, Item, ItemKind, TraitItem, CRATE_HIR_ID};
 use rustc_hir::{MethodKind, Target};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::stability;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
@@ -128,6 +129,7 @@ impl CheckAttrVisitor<'_> {
                 | sym::unstable
                 | sym::stable
                 | sym::rustc_promotable => self.check_stability_promotable(&attr, span, target),
+                sym::deprecated_safe => self.check_deprecated_safe(hir_id, &attr, span, target),
                 _ => true,
             };
             is_valid &= attr_is_valid;
@@ -2007,6 +2009,74 @@ impl CheckAttrVisitor<'_> {
                 .note(&note)
                 .emit();
         });
+    }
+
+    fn check_deprecated_safe(
+        &self,
+        hir_id: HirId,
+        attr: &Attribute,
+        span: Span,
+        _target: Target,
+    ) -> bool {
+        let mut unsafety = None;
+
+        let node = self.tcx.hir().get(hir_id);
+        if let hir::Node::Item(item) = node {
+            if let Some(fn_sig) = node.fn_sig() {
+                unsafety = Some(fn_sig.header.unsafety);
+            } else if let hir::ItemKind::Trait(_, trait_unsafety, ..) = item.kind {
+                unsafety = Some(trait_unsafety);
+            }
+        } else if let hir::Node::TraitItem(_) = node {
+            if let Some(fn_sig) = node.fn_sig() {
+                unsafety = Some(fn_sig.header.unsafety);
+            }
+        }
+
+        let Some(unsafety) = unsafety else {
+            struct_span_err!(
+                self.tcx.sess,
+                attr.span,
+                // FIXME(skippy) wrong error code, need to create a new one
+                E0543,
+                "this `#[deprecated_safe]` annotation has no effect"
+            )
+            .emit();
+            return false;
+        };
+
+        if let Some(depr_as_safe) = stability::parse_deprecation_as_safe(
+            self.tcx,
+            self.tcx.hir().local_def_id(hir_id).to_def_id(),
+            attr,
+        ) {
+            let in_effect = stability::deprecation_as_safe_in_effect(&depr_as_safe);
+            if in_effect && unsafety == hir::Unsafety::Normal {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    // FIXME(skippy) wrong error code, need to create a new one
+                    E0543,
+                    "item must be marked unsafe"
+                )
+                .emit();
+                return false;
+            } else if !in_effect && unsafety == hir::Unsafety::Unsafe {
+                struct_span_err!(
+                    self.tcx.sess,
+                    span,
+                    // FIXME(skippy) wrong error code, need to create a new one
+                    E0543,
+                    "item must not be marked unsafe"
+                )
+                .emit();
+                return false;
+            }
+
+            true
+        } else {
+            false
+        }
     }
 }
 
