@@ -908,14 +908,7 @@ fn sysroot_to_crate_graph(
                 env,
                 proc_macro,
                 false,
-                CrateOrigin::Lang(match &*sysroot[krate].name {
-                    "alloc" => LangCrateOrigin::Alloc,
-                    "core" => LangCrateOrigin::Core,
-                    "proc_macro" => LangCrateOrigin::ProcMacro,
-                    "std" => LangCrateOrigin::Std,
-                    "test" => LangCrateOrigin::Test,
-                    _ => LangCrateOrigin::Other,
-                }),
+                CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
             );
             Some((krate, crate_id))
         })

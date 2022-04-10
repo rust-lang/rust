@@ -1368,7 +1368,7 @@ fn rust_project_hello_world_project_model() {
                         ],
                         proc_macro: [],
                         origin: Lang(
-                            ProcMacro,
+                            Other,
                         ),
                         is_proc_macro: false,
                     },
