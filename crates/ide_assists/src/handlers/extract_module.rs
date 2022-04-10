@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    iter,
+};
 
 use hir::{HasSource, ModuleSource};
 use ide_db::{
@@ -81,39 +84,36 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
     }
 
     let mut module = extract_target(&node, ctx.selection_trimmed())?;
-    if module.body_items.len() == 0 {
+    if module.body_items.is_empty() {
         return None;
     }
 
     let old_item_indent = module.body_items[0].indent_level();
-
-    //This takes place in three steps:
-    //
-    //- Firstly, we will update the references(usages) e.g. converting a
-    //  function call bar() to modname::bar(), and similarly for other items
-    //
-    //- Secondly, changing the visibility of each item inside the newly selected module
-    //  i.e. making a fn a() {} to pub(crate) fn a() {}
-    //
-    //- Thirdly, resolving all the imports this includes removing paths from imports
-    //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
-    //  new import statemnts
-
-    //We are getting item usages and record_fields together, record_fields
-    //for change_visibility and usages for first point mentioned above in the process
-    let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
-
-    let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
-    module.body_items = module.change_visibility(record_fields)?;
-    if module.body_items.len() == 0 {
-        return None;
-    }
 
     acc.add(
         AssistId("extract_module", AssistKind::RefactorExtract),
         "Extract Module",
         module.text_range,
         |builder| {
+            //This takes place in three steps:
+            //
+            //- Firstly, we will update the references(usages) e.g. converting a
+            //  function call bar() to modname::bar(), and similarly for other items
+            //
+            //- Secondly, changing the visibility of each item inside the newly selected module
+            //  i.e. making a fn a() {} to pub(crate) fn a() {}
+            //
+            //- Thirdly, resolving all the imports this includes removing paths from imports
+            //  outside the module, shifting/cloning them inside new module, or shifting the imports, or making
+            //  new import statemnts
+
+            //We are getting item usages and record_fields together, record_fields
+            //for change_visibility and usages for first point mentioned above in the process
+            let (usages_to_be_processed, record_fields) = module.get_usages_and_record_fields(ctx);
+
+            let import_paths_to_be_removed = module.resolve_imports(curr_parent_module, ctx);
+            module.change_visibility(record_fields);
+
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
             let mut new_item_indent = old_item_indent + 1;
@@ -149,17 +149,11 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
                     body = impl_body_def;
 
                     // Add the import for enum/struct corresponding to given impl block
-                    if let Some(_) = module.make_use_stmt_of_node_with_super(self_ty.syntax()) {
-                        for item in module.use_items {
-                            let mut indented_item = String::new();
-                            format_to!(
-                                indented_item,
-                                "{}{}",
-                                old_item_indent + 1,
-                                item.to_string()
-                            );
-                            body = format!("{}\n\n{}", indented_item, body);
-                        }
+                    module.make_use_stmt_of_node_with_super(self_ty.syntax());
+                    for item in module.use_items {
+                        let mut indented_item = String::new();
+                        format_to!(indented_item, "{}{}", old_item_indent + 1, item.to_string());
+                        body = format!("{}\n\n{}", indented_item, body);
                     }
                 }
             }
@@ -216,37 +210,25 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext) -> Option<(
 #[derive(Debug)]
 struct Module {
     text_range: TextRange,
-    name: String,
-    body_items: Vec<ast::Item>, // All items except use items
-    use_items: Vec<ast::Item>, // Use items are kept separately as they help when the selection is inside an impl block, we can directly take these items and keep them outside generated impl block inside generated module
+    name: &'static str,
+    /// All items except use items.
+    body_items: Vec<ast::Item>,
+    /// Use items are kept separately as they help when the selection is inside an impl block,
+    /// we can directly take these items and keep them outside generated impl block inside
+    /// generated module.
+    use_items: Vec<ast::Item>,
 }
 
 fn extract_target(node: &SyntaxNode, selection_range: TextRange) -> Option<Module> {
-    let mut use_items = vec![];
-
-    let mut body_items: Vec<ast::Item> = node
+    let selected_nodes = node
         .children()
-        .filter_map(|child| {
-            if selection_range.contains_range(child.text_range()) {
-                let child_kind = child.kind();
-                if let Some(item) = ast::Item::cast(child) {
-                    if ast::Use::can_cast(child_kind) {
-                        use_items.push(item);
-                    } else {
-                        return Some(item);
-                    }
-                }
-                return None;
-            }
-            None
-        })
-        .collect();
+        .filter(|node| selection_range.contains_range(node.text_range()))
+        .chain(iter::once(node.clone()));
+    let (use_items, body_items) = selected_nodes
+        .filter_map(ast::Item::cast)
+        .partition(|item| matches!(item, ast::Item::Use(..)));
 
-    if let Some(node_item) = ast::Item::cast(node.clone()) {
-        body_items.push(node_item);
-    }
-
-    Some(Module { text_range: selection_range, name: "modname".to_string(), body_items, use_items })
+    Some(Module { text_range: selection_range, name: "modname", body_items, use_items })
 }
 
 impl Module {
@@ -260,7 +242,7 @@ impl Module {
         //Here impl is not included as each item inside impl will be tied to the parent of
         //implementing block(a struct, enum, etc), if the parent is in selected module, it will
         //get updated by ADT section given below or if it is not, then we dont need to do any operation
-        self.body_items.iter().cloned().for_each(|item| {
+        for item in &self.body_items {
             match_ast! {
                 match (item.syntax()) {
                     ast::Adt(it) => {
@@ -329,7 +311,7 @@ impl Module {
                     _ => (),
                 }
             }
-        });
+        }
 
         (refs, adt_fields)
     }
@@ -338,34 +320,15 @@ impl Module {
         &self,
         ctx: &AssistContext,
         node_def: Definition,
-        refs: &mut HashMap<FileId, Vec<(TextRange, String)>>,
+        refs_in_files: &mut HashMap<FileId, Vec<(TextRange, String)>>,
     ) {
         for (file_id, references) in node_def.usages(&ctx.sema).all() {
-            if let Some(file_refs) = refs.get_mut(&file_id) {
-                let mut usages = self.expand_ref_to_usages(references, ctx, file_id);
-                file_refs.append(&mut usages);
-            } else {
-                refs.insert(file_id, self.expand_ref_to_usages(references, ctx, file_id));
-            }
+            let source_file = ctx.sema.parse(file_id);
+            let usages_in_file = references
+                .into_iter()
+                .filter_map(|usage| self.get_usage_to_be_processed(&source_file, usage));
+            refs_in_files.entry(file_id).or_default().extend(usages_in_file);
         }
-    }
-
-    fn expand_ref_to_usages(
-        &self,
-        refs: Vec<FileReference>,
-        ctx: &AssistContext,
-        file_id: FileId,
-    ) -> Vec<(TextRange, String)> {
-        let source_file = ctx.sema.parse(file_id);
-
-        let mut usages_to_be_processed_for_file = Vec::new();
-        for usage in refs {
-            if let Some(x) = self.get_usage_to_be_processed(&source_file, usage) {
-                usages_to_be_processed_for_file.push(x);
-            }
-        }
-
-        usages_to_be_processed_for_file
     }
 
     fn get_usage_to_be_processed(
@@ -373,9 +336,7 @@ impl Module {
         source_file: &SourceFile,
         FileReference { range, name, .. }: FileReference,
     ) -> Option<(TextRange, String)> {
-        let path: Option<ast::Path> = find_node_at_range(source_file.syntax(), range);
-
-        let path = path?;
+        let path: ast::Path = find_node_at_range(source_file.syntax(), range)?;
 
         for desc in path.syntax().descendants() {
             if desc.to_string() == name.syntax().to_string()
@@ -393,42 +354,34 @@ impl Module {
         None
     }
 
-    fn change_visibility(&self, record_fields: Vec<SyntaxNode>) -> Option<Vec<ast::Item>> {
-        let (body_items, mut replacements, record_field_parents, impls) =
-            get_replacements_for_visibilty_change(self.body_items.clone(), false);
+    fn change_visibility(&mut self, record_fields: Vec<SyntaxNode>) {
+        let (mut replacements, record_field_parents, impls) =
+            get_replacements_for_visibilty_change(&mut self.body_items, false);
 
-        let mut impl_items = Vec::new();
-        for impl_ in impls {
-            let mut this_impl_items = Vec::new();
-            for node in impl_.syntax().descendants() {
-                if let Some(item) = ast::Item::cast(node) {
-                    this_impl_items.push(item);
-                }
-            }
+        let mut impl_items: Vec<ast::Item> = impls
+            .into_iter()
+            .flat_map(|impl_| impl_.syntax().descendants())
+            .filter_map(ast::Item::cast)
+            .collect();
 
-            impl_items.append(&mut this_impl_items);
-        }
-
-        let (_, mut impl_item_replacements, _, _) =
-            get_replacements_for_visibilty_change(impl_items, true);
+        let (mut impl_item_replacements, _, _) =
+            get_replacements_for_visibilty_change(&mut impl_items, true);
 
         replacements.append(&mut impl_item_replacements);
 
-        record_field_parents.into_iter().for_each(|x| {
-            x.1.descendants().filter_map(ast::RecordField::cast).for_each(|desc| {
+        for (_, field_owner) in record_field_parents {
+            for desc in field_owner.descendants().filter_map(ast::RecordField::cast) {
                 let is_record_field_present =
                     record_fields.clone().into_iter().any(|x| x.to_string() == desc.to_string());
                 if is_record_field_present {
                     replacements.push((desc.visibility(), desc.syntax().clone()));
                 }
-            });
-        });
+            }
+        }
 
-        replacements.into_iter().for_each(|(vis, syntax)| {
+        for (vis, syntax) in replacements {
             add_change_vis(vis, syntax.first_child_or_token());
-        });
-
-        Some(body_items)
+        }
     }
 
     fn resolve_imports(
@@ -439,8 +392,8 @@ impl Module {
         let mut import_paths_to_be_removed: Vec<TextRange> = vec![];
         let mut node_set: HashSet<String> = HashSet::new();
 
-        self.body_items.clone().into_iter().for_each(|item| {
-            item.syntax().descendants().for_each(|x| {
+        for item in self.body_items.clone() {
+            for x in item.syntax().descendants() {
                 if let Some(name) = ast::Name::cast(x.clone()) {
                     if let Some(name_classify) = NameClass::classify(&ctx.sema, &name) {
                         //Necessary to avoid two same names going through
@@ -492,8 +445,8 @@ impl Module {
                         }
                     }
                 }
-            });
-        });
+            }
+        }
 
         import_paths_to_be_removed
     }
@@ -514,8 +467,8 @@ impl Module {
 
         let mut exists_inside_sel = false;
         let mut exists_outside_sel = false;
-        usage_res.clone().into_iter().for_each(|x| {
-            let mut non_use_nodes_itr = (&x.1).iter().filter_map(|x| {
+        for (_, refs) in usage_res.iter() {
+            let mut non_use_nodes_itr = refs.iter().filter_map(|x| {
                 if find_node_at_range::<ast::Use>(file.syntax(), x.range).is_none() {
                     let path_opt = find_node_at_range::<ast::Path>(file.syntax(), x.range);
                     return path_opt;
@@ -533,7 +486,7 @@ impl Module {
             if non_use_nodes_itr.any(|x| selection_range.contains_range(x.syntax().text_range())) {
                 exists_inside_sel = true;
             }
-        });
+        }
 
         let source_exists_outside_sel_in_same_mod = does_source_exists_outside_sel_in_same_mod(
             def,
@@ -543,18 +496,14 @@ impl Module {
             curr_file_id,
         );
 
-        let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|x| {
-            let file_id = x.0;
-            let mut use_opt: Option<ast::Use> = None;
+        let use_stmt_opt: Option<ast::Use> = usage_res.into_iter().find_map(|(file_id, refs)| {
             if file_id == curr_file_id {
-                (&x.1).iter().for_each(|x| {
-                    let node_opt: Option<ast::Use> = find_node_at_range(file.syntax(), x.range);
-                    if let Some(node) = node_opt {
-                        use_opt = Some(node);
-                    }
-                });
+                refs.into_iter()
+                    .rev()
+                    .find_map(|fref| find_node_at_range(file.syntax(), fref.range))
+            } else {
+                None
             }
-            use_opt
         });
 
         let mut use_tree_str_opt: Option<Vec<ast::Path>> = None;
@@ -616,15 +565,14 @@ impl Module {
 
             let use_ =
                 make::use_(None, make::use_tree(make::join_paths(use_tree_str), None, None, false));
-            if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-                self.use_items.insert(0, item);
-            }
+            let item = ast::Item::from(use_);
+            self.use_items.insert(0, item);
         }
 
         import_path_to_be_removed
     }
 
-    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> Option<ast::Item> {
+    fn make_use_stmt_of_node_with_super(&mut self, node_syntax: &SyntaxNode) -> ast::Item {
         let super_path = make::ext::ident_path("super");
         let node_path = make::ext::ident_path(&node_syntax.to_string());
         let use_ = make::use_(
@@ -632,12 +580,9 @@ impl Module {
             make::use_tree(make::join_paths(vec![super_path, node_path]), None, None, false),
         );
 
-        if let Some(item) = ast::Item::cast(use_.syntax().clone()) {
-            self.use_items.insert(0, item.clone());
-            return Some(item);
-        }
-
-        None
+        let item = ast::Item::from(use_);
+        self.use_items.insert(0, item.clone());
+        item
     }
 
     fn process_use_stmt_for_import_resolve(
@@ -823,10 +768,9 @@ fn does_source_exists_outside_sel_in_same_mod(
 }
 
 fn get_replacements_for_visibilty_change(
-    items: Vec<ast::Item>,
+    items: &mut [ast::Item],
     is_clone_for_updated: bool,
 ) -> (
-    Vec<ast::Item>,
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
     Vec<(Option<ast::Visibility>, SyntaxNode)>,
     Vec<ast::Impl>,
@@ -834,14 +778,11 @@ fn get_replacements_for_visibilty_change(
     let mut replacements = Vec::new();
     let mut record_field_parents = Vec::new();
     let mut impls = Vec::new();
-    let mut body_items = Vec::new();
 
-    items.into_iter().for_each(|item| {
-        let mut item = item;
+    for item in items {
         if !is_clone_for_updated {
-            item = item.clone_for_update();
+            *item = item.clone_for_update();
         }
-        body_items.push(item.clone());
         //Use stmts are ignored
         match item {
             ast::Item::Const(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -849,7 +790,7 @@ fn get_replacements_for_visibilty_change(
             ast::Item::ExternCrate(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Fn(it) => replacements.push((it.visibility(), it.syntax().clone())),
             //Associated item's visibility should not be changed
-            ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it),
+            ast::Item::Impl(it) if it.for_token().is_none() => impls.push(it.clone()),
             ast::Item::MacroDef(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Module(it) => replacements.push((it.visibility(), it.syntax().clone())),
             ast::Item::Static(it) => replacements.push((it.visibility(), it.syntax().clone())),
@@ -865,9 +806,9 @@ fn get_replacements_for_visibilty_change(
             }
             _ => (),
         }
-    });
+    }
 
-    (body_items, replacements, record_field_parents, impls)
+    (replacements, record_field_parents, impls)
 }
 
 fn get_use_tree_paths_from_path(
@@ -890,23 +831,13 @@ fn get_use_tree_paths_from_path(
     Some(use_tree_str)
 }
 
-fn add_change_vis(
-    vis: Option<ast::Visibility>,
-    node_or_token_opt: Option<syntax::SyntaxElement>,
-) -> Option<()> {
-    if let None = vis {
+fn add_change_vis(vis: Option<ast::Visibility>, node_or_token_opt: Option<syntax::SyntaxElement>) {
+    if vis.is_none() {
         if let Some(node_or_token) = node_or_token_opt {
             let pub_crate_vis = make::visibility_pub_crate().clone_for_update();
-            if let Some(node) = node_or_token.as_node() {
-                ted::insert(ted::Position::before(node), pub_crate_vis.syntax());
-            }
-            if let Some(token) = node_or_token.as_token() {
-                ted::insert(ted::Position::before(token), pub_crate_vis.syntax());
-            }
+            ted::insert(ted::Position::before(node_or_token), pub_crate_vis.syntax());
         }
     }
-
-    Some(())
 }
 
 fn compare_hir_and_ast_module(
