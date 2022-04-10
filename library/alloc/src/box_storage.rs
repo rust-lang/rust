@@ -233,9 +233,9 @@ pub(crate) unsafe fn storage_from_raw_parts_in<T, A: Allocator>(
     ptr: *mut T,
     len: usize,
     alloc: A,
-) -> Box<[T], A> {
+) -> Box<[MaybeUninit<T>], A> {
     unsafe {
-        let raw = core::slice::from_raw_parts_mut(ptr, len);
+        let raw = core::slice::from_raw_parts_mut(ptr.cast(), len);
         Box::from_raw_in(raw, alloc)
     }
 }
