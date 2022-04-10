@@ -1361,10 +1361,12 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           }
           IRBuilder<> B(blocks[i]);
 
-          for (auto pair : unwrap_cache[oldB])
-            unwrap_cache[blocks[i]].insert(pair);
-          for (auto pair : lookup_cache[oldB])
-            lookup_cache[blocks[i]].insert(pair);
+          if (!prevIteration.count(PB)) {
+            for (auto pair : unwrap_cache[oldB])
+              unwrap_cache[blocks[i]].insert(pair);
+            for (auto pair : lookup_cache[oldB])
+              lookup_cache[blocks[i]].insert(pair);
+          }
 
           if (auto inst =
                   dyn_cast<Instruction>(phi->getIncomingValueForBlock(PB))) {
