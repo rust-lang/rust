@@ -2574,12 +2574,7 @@ fn check_methods<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, msrv: Optio
             ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                 if let Some((Constant::Int(count), _)) = constant(cx, cx.typeck_results(), count_arg) {
                     suspicious_splitn::check(cx, name, expr, recv, count);
-                    if count == 2 && meets_msrv(msrv, &msrvs::STR_SPLIT_ONCE) {
-                        str_splitn::check_manual_split_once(cx, name, expr, recv, pat_arg);
-                    }
-                    if count >= 2 {
-                        str_splitn::check_needless_splitn(cx, name, expr, recv, pat_arg, count);
-                    }
+                    str_splitn::check(cx, name, expr, recv, pat_arg, count, msrv);
                 }
             },
             ("splitn_mut" | "rsplitn_mut", [count_arg, _]) => {
