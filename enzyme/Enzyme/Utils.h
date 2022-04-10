@@ -532,8 +532,16 @@ static inline bool isCertainPrintOrFree(llvm::Function *called) {
     return false;
 
   if (called->getName() == "printf" || called->getName() == "puts" ||
-      called->getName() == "fprintf" ||
+      called->getName() == "fprintf" || called->getName() == "putchar" ||
+      called->getName().startswith(
+          "_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_") ||
+      called->getName().startswith("_ZNSolsE") ||
+      called->getName().startswith("_ZNSo9_M_insert") ||
+      called->getName().startswith("_ZSt16__ostream_insert") ||
+      called->getName().startswith("_ZNSo3put") ||
+      called->getName().startswith("_ZSt4endl") ||
       called->getName().startswith("_ZN3std2io5stdio6_print") ||
+      called->getName().startswith("_ZNSo5flushEv") ||
       called->getName().startswith("_ZN4core3fmt") ||
       called->getName() == "vprintf" || called->getName() == "_ZdlPv" ||
       called->getName() == "_ZdlPvm" || called->getName() == "free" ||
@@ -562,30 +570,12 @@ static inline bool isCertainPrintMallocOrFree(llvm::Function *called) {
   if (called == nullptr)
     return false;
 
-  if (called->getName() == "printf" || called->getName() == "puts" ||
-      called->getName() == "fprintf" ||
-      called->getName().startswith("_ZN3std2io5stdio6_print") ||
-      called->getName().startswith("_ZN4core3fmt") ||
-      called->getName() == "vprintf" || called->getName() == "malloc" ||
-      called->getName() == "swift_allocObject" ||
-      called->getName() == "swift_release" || called->getName() == "_Znwm" ||
-      called->getName() == "_ZdlPv" || called->getName() == "_ZdlPvm" ||
-      called->getName() == "free" ||
-      shadowHandlers.find(called->getName().str()) != shadowHandlers.end())
+  if (isCertainPrintOrFree(called))
     return true;
-  switch (called->getIntrinsicID()) {
-  case llvm::Intrinsic::dbg_declare:
-  case llvm::Intrinsic::dbg_value:
-#if LLVM_VERSION_MAJOR > 6
-  case llvm::Intrinsic::dbg_label:
-#endif
-  case llvm::Intrinsic::dbg_addr:
-  case llvm::Intrinsic::lifetime_start:
-  case llvm::Intrinsic::lifetime_end:
+
+  if (isCertainMallocOrFree(called))
     return true;
-  default:
-    break;
-  }
+
   return false;
 }
 

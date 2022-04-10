@@ -4246,7 +4246,7 @@ void TypeAnalyzer::visitCallInst(CallInst &call) {
     }
 
     if (funcName == "__cxa_guard_acquire" || funcName == "printf" ||
-        funcName == "vprintf" || funcName == "puts") {
+        funcName == "vprintf" || funcName == "puts" || funcName == "fprintf") {
       updateAnalysis(&call, TypeTree(BaseType::Integer).Only(-1), &call);
     }
 

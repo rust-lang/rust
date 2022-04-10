@@ -80,7 +80,18 @@ cl::opt<bool>
 
 const char *KnownInactiveFunctionsStartingWith[] = {
     "_ZN4core3fmt", "_ZN3std2io5stdio6_print", "f90io", "$ss5print",
-    "_ZNSt7__cxx1112basic_string"};
+    "_ZNSt7__cxx1112basic_string",
+    // ostream generic <<
+    "_ZStlsISt11char_traitsIcEERSt13basic_ostreamIcT_ES5_",
+    "_ZSt16__ostream_insert", "_ZNSo9_M_insert",
+    // ostream put
+    "_ZNSo3put",
+    // std::cout
+    "_ZSt4cout",
+    // generic <<
+    "_ZNSolsE",
+    // std::endl
+    "_ZNSo5flushEv", "_ZSt4endl"};
 
 const char *KnownInactiveFunctionsContains[] = {
     "__enzyme_float", "__enzyme_double", "__enzyme_integer",
@@ -178,7 +189,6 @@ const std::set<std::string> KnownInactiveFunctions = {
     "_msize",
     "ftnio_fmt_write64",
     "f90_strcmp_klen",
-    "vprintf",
     "__swift_instantiateConcreteTypeFromMangledName"};
 
 /// Is the use of value val as an argument of call CI known to be inactive
