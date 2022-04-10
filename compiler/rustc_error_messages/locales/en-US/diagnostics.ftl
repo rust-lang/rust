@@ -62,6 +62,7 @@ typeck-functional-record-update-on-non-struct =
 
 typeck-typeof-reserved-keyword-used =
     `typeof` is a reserved keyword but unimplemented
+    .suggestion = consider replacing `typeof(...)` with an actual type
     .label = reserved keyword
 
 typeck-return-stmt-outside-of-fn-body =
