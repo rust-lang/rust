@@ -7,6 +7,7 @@
 #![feature(proc_macro_internals)]
 #![feature(macro_metavar_expr)]
 #![feature(min_specialization)]
+#![feature(slice_as_chunks)]
 #![feature(try_blocks)]
 #![feature(never_type)]
 #![recursion_limit = "256"]
