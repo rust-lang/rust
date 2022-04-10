@@ -54,6 +54,10 @@ use self::ring_slices::RingSlices;
 
 mod ring_slices;
 
+use self::spec_extend::SpecExtend;
+
+mod spec_extend;
+
 #[cfg(test)]
 mod tests;
 
@@ -2970,24 +2974,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut VecDeque<T, A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iter.into_iter() {
-        //          self.push_back(item);
-        //      }
-        let mut iter = iter.into_iter();
-        while let Some(element) = iter.next() {
-            if self.len() == self.capacity() {
-                let (lower, _) = iter.size_hint();
-                self.reserve(lower.saturating_add(1));
-            }
-
-            let head = self.head;
-            self.head = self.wrap_add(self.head, 1);
-            unsafe {
-                self.buffer_write(head, element);
-            }
-        }
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter());
     }
 
     #[inline]
@@ -3004,7 +2991,7 @@ impl<T, A: Allocator> Extend<T> for VecDeque<T, A> {
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, T: 'a + Copy, A: Allocator> Extend<&'a T> for VecDeque<T, A> {
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
+        self.spec_extend(iter.into_iter());
     }
 
     #[inline]
