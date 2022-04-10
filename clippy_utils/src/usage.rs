@@ -3,7 +3,7 @@ use crate::visitors::{expr_visitor, expr_visitor_no_bodies};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::HirIdSet;
-use rustc_hir::{Expr, ExprKind, HirId};
+use rustc_hir::{Expr, ExprKind, HirId, Node};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
@@ -169,6 +169,32 @@ pub fn contains_return_break_continue_macro(expression: &Expr<'_>) -> bool {
 
 pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr<'_>) -> bool {
     let Some(block) = utils::get_enclosing_block(cx, local_id) else { return false };
+
+    // for _ in 1..3 {
+    //    local
+    // }
+    //
+    // let closure = || local;
+    // closure();
+    // closure();
+    let in_loop_or_closure = cx
+        .tcx
+        .hir()
+        .parent_iter(after.hir_id)
+        .take_while(|&(id, _)| id != block.hir_id)
+        .any(|(_, node)| {
+            matches!(
+                node,
+                Node::Expr(Expr {
+                    kind: ExprKind::Loop(..) | ExprKind::Closure(..),
+                    ..
+                })
+            )
+        });
+    if in_loop_or_closure {
+        return true;
+    }
+
     let mut used_after_expr = false;
     let mut past_expr = false;
     expr_visitor(cx, |expr| {
@@ -178,7 +204,10 @@ pub fn local_used_after_expr(cx: &LateContext<'_>, local_id: HirId, after: &Expr
 
         if expr.hir_id == after.hir_id {
             past_expr = true;
-        } else if past_expr && utils::path_to_local_id(expr, local_id) {
+            return false;
+        }
+
+        if past_expr && utils::path_to_local_id(expr, local_id) {
             used_after_expr = true;
         }
         !used_after_expr
