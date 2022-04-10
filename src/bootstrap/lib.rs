@@ -302,7 +302,9 @@ pub struct Build {
     ar: HashMap<TargetSelection, PathBuf>,
     ranlib: HashMap<TargetSelection, PathBuf>,
     // Miscellaneous
+    // allow bidirectional lookups: both name -> path and path -> name
     crates: HashMap<Interned<String>, Crate>,
+    crate_paths: HashMap<PathBuf, Interned<String>>,
     is_sudo: bool,
     ci_env: CiEnv,
     delayed_failures: RefCell<Vec<String>>,
@@ -492,6 +494,7 @@ impl Build {
             ar: HashMap::new(),
             ranlib: HashMap::new(),
             crates: HashMap::new(),
+            crate_paths: HashMap::new(),
             is_sudo,
             ci_env: CiEnv::current(),
             delayed_failures: RefCell::new(Vec::new()),
