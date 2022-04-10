@@ -122,6 +122,28 @@ fn test_int_from_str_overflow() {
 
 #[test]
 fn test_can_not_overflow() {
+    fn can_overflow<T>(radix: u32, input: &str) -> bool
+    where
+        T: Default
+            + core::ops::Sub<Output = T>
+            + std::convert::From<bool>
+            + std::cmp::PartialOrd
+            + Copy,
+    {
+        let one = true.into();
+        let zero = <T>::default();
+        !can_not_overflow::<T>(radix, zero - one < zero, input.as_bytes())
+    }
+
+    // Positive tests:
+    assert!(!can_overflow::<i8>(16, "F"));
+    assert!(!can_overflow::<u8>(16, "FF"));
+
+    assert!(!can_overflow::<i8>(10, "9"));
+    assert!(!can_overflow::<u8>(10, "99"));
+
+    // Negative tests:
+
     // Not currently in std lib (issue: #27728)
     fn format_radix<T>(mut x: T, radix: T) -> String
     where
@@ -157,12 +179,20 @@ fn test_can_not_overflow() {
            // Calcutate the string length for the smallest overflowing number:
            let max_len_string = format_radix(num, base as u128);
            // Ensure that that string length is deemed to potentially overflow:
-           assert_eq!(can_not_overflow::<$t>(base, <$t>::default() > <$t>::MIN, max_len_string.as_bytes()), false);
+           assert!(can_overflow::<$t>(base, &max_len_string));
         }
         )*)
     }
 
     check! { i8 i16 i32 i64 i128 isize usize u8 u16 u32 u64 }
+
+    // Check u128 separately:
+    for base in 2..=36 {
+        let num = u128::MAX as u128;
+        let max_len_string = format_radix(num, base as u128);
+        // base 16 fits perfectly for u128 and won't overflow:
+        assert_eq!(can_overflow::<u128>(base, &max_len_string), base != 16);
+    }
 }
 
 #[test]

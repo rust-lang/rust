@@ -5,6 +5,7 @@
 use crate::ascii;
 use crate::intrinsics;
 use crate::mem;
+use crate::ops::{Add, Mul, Sub};
 use crate::str::FromStr;
 
 // Used because the `?` operator is not allowed in a const context.
@@ -969,14 +970,14 @@ pub enum FpCategory {
 }
 
 #[doc(hidden)]
-trait FromStrRadixHelper: PartialOrd + Copy + Default {
+trait FromStrRadixHelper:
+    PartialOrd + Copy + Default + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self>
+{
     const MIN: Self;
+    fn from_u32(u: u32) -> Self;
     fn checked_mul(&self, other: u32) -> Option<Self>;
     fn checked_sub(&self, other: u32) -> Option<Self>;
     fn checked_add(&self, other: u32) -> Option<Self>;
-    unsafe fn unchecked_mul(self, other: u32) -> Self;
-    unsafe fn unchecked_sub(self, other: u32) -> Self;
-    unsafe fn unchecked_add(self, other: u32) -> Self;
 }
 
 macro_rules! from_str_radix_int_impl {
@@ -996,6 +997,8 @@ macro_rules! impl_helper_for {
     ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
         const MIN: Self = Self::MIN;
         #[inline]
+        fn from_u32(u: u32) -> Self { u as Self }
+        #[inline]
         fn checked_mul(&self, other: u32) -> Option<Self> {
             Self::checked_mul(*self, other as Self)
         }
@@ -1006,27 +1009,6 @@ macro_rules! impl_helper_for {
         #[inline]
         fn checked_add(&self, other: u32) -> Option<Self> {
             Self::checked_add(*self, other as Self)
-        }
-        #[inline]
-        unsafe fn unchecked_mul(self, other: u32) -> Self {
-            // SAFETY:  Conditions of `Self::unchecked_mul` must be upheld by the caller.
-            unsafe {
-                Self::unchecked_mul(self, other as Self)
-            }
-        }
-        #[inline]
-        unsafe fn unchecked_sub(self, other: u32) -> Self {
-            // SAFETY:  Conditions of `Self::unchecked_sub` must be upheld by the caller.
-            unsafe {
-                Self::unchecked_sub(self, other as Self)
-            }
-        }
-        #[inline]
-        unsafe fn unchecked_add(self, other: u32) -> Self {
-            // SAFETY: Conditions of `Self::unchecked_add` must be upheld by the caller.
-            unsafe {
-                Self::unchecked_add(self, other as Self)
-            }
         }
     })*)
 }
@@ -1077,7 +1059,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     let mut result = T::default();
 
     if can_not_overflow::<T>(radix, is_signed_ty, digits) {
-        // SAFETY: If the len of the str is short compared to the range of the type
+        // If the len of the str is short compared to the range of the type
         // we are parsing into, then we can be certain that an overflow will not occur.
         // This bound is when `radix.pow(digits.len()) - 1 <= T::MAX` but the condition
         // above is a faster (conservative) approximation of this.
@@ -1085,22 +1067,20 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
         // Consider radix 16 as it has the highest information density per digit and will thus overflow the earliest:
         // `u8::MAX` is `ff` - any str of len 2 is guaranteed to not overflow.
         // `i8::MAX` is `7f` - only a str of len 1 is guaranteed to not overflow.
-        unsafe {
-            macro_rules! run_unchecked_loop {
-                ($unchecked_additive_op:ident) => {
-                    for &c in digits {
-                        result = result.unchecked_mul(radix);
-                        let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
-                        result = T::$unchecked_additive_op(result, x);
-                    }
-                };
-            }
-            if is_positive {
-                run_unchecked_loop!(unchecked_add)
-            } else {
-                run_unchecked_loop!(unchecked_sub)
+        macro_rules! run_unchecked_loop {
+            ($unchecked_additive_op:expr) => {
+                for &c in digits {
+                    result = result * T::from_u32(radix);
+                    let x = (c as char).to_digit(radix).ok_or(PIE { kind: InvalidDigit })?;
+                    result = $unchecked_additive_op(result, T::from_u32(x));
+                }
             };
         }
+        if is_positive {
+            run_unchecked_loop!(<T as core::ops::Add>::add)
+        } else {
+            run_unchecked_loop!(<T as core::ops::Sub>::sub)
+        };
     } else {
         macro_rules! run_checked_loop {
             ($checked_additive_op:ident, $overflow_err:expr) => {
