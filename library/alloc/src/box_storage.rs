@@ -356,8 +356,12 @@ pub(crate) fn allocate_in<T, A: Allocator>(
     alloc: A,
 ) -> Box<[mem::MaybeUninit<T>], A> {
     // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
-    if mem::size_of::<T>() == 0 || capacity == 0 {
+    if capacity == 0 {
         Box::empty_in(alloc)
+    } else if mem::size_of::<T>() == 0 {
+        unsafe {
+            storage_from_raw_parts_in(core::ptr::Unique::dangling().as_ptr(), capacity, alloc)
+        }
     } else {
         // We avoid `unwrap_or_else` here because it bloats the amount of
         // LLVM IR generated.
