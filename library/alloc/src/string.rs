@@ -117,27 +117,99 @@ use crate::vec::Vec;
 ///
 /// # UTF-8
 ///
-/// `String`s are always valid UTF-8. This has a few implications, the first of
-/// which is that if you need a non-UTF-8 string, consider [`OsString`]. It is
-/// similar, but without the UTF-8 constraint. The second implication is that
-/// you cannot index into a `String`:
+/// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
+/// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
+/// is a variable width encoding, `String`s are typically smaller than an array of
+/// the same `chars`:
+///
+/// ```
+/// use std::mem;
+///
+/// // `s` is ASCII which represents each `char` as one byte
+/// let s = "hello";
+/// assert_eq!(s.len(), 5);
+///
+/// // A `char` array with the same contents would be longer because
+/// // every `char` is four bytes
+/// let s = ['h', 'e', 'l', 'l', 'o'];
+/// let size: usize = s.into_iter().map(|c| mem::size_of_val(&c)).sum();
+/// assert_eq!(size, 20);
+///
+/// // However, for non-ASCII strings, the difference will be smaller
+/// // and sometimes they are the same
+/// let s = "💖💖💖💖💖";
+/// assert_eq!(s.len(), 20);
+///
+/// let s = ['💖', '💖', '💖', '💖', '💖'];
+/// let size: usize = s.into_iter().map(|c| mem::size_of_val(&c)).sum();
+/// assert_eq!(size, 20);
+/// ```
+///
+/// This raises interesting questions as to how `s[i]` should work.
+/// What should `i` be here? Several options include byte indices and
+/// `char` indices but, because of UTF-8 encoding, only byte indices
+/// would provide constant time indexing. Getting the `i`th `char`, for
+/// example, is available using [`chars`]:
+///
+/// ```
+/// let s = "hello";
+/// let third_character = s.chars().nth(2);
+/// assert_eq!(third_character, Some('l'));
+///
+/// let s = "💖💖💖💖💖";
+/// let third_character = s.chars().nth(2);
+/// assert_eq!(third_character, Some('💖'));
+/// ```
+///
+/// Next, what should `s[i]` return? Because indexing returns a reference
+/// to underlying data it could be `&u8`, `&[u8]`, or something else similar.
+/// Since we're only providing one index, `&u8` makes the most sense but that
+/// might not be what the user expects and can be explicitly achieved with
+/// [`as_bytes()`]:
+///
+/// ```
+/// // The first byte is 104 - the byte value of `'h'`
+/// let s = "hello";
+/// assert_eq!(s.as_bytes()[0], 104);
+/// // or
+/// assert_eq!(s.as_bytes()[0], b'h');
+///
+/// // The first byte is 240 which isn't obviously useful
+/// let s = "💖💖💖💖💖";
+/// assert_eq!(s.as_bytes()[0], 240);
+/// ```
+///
+/// Due to these ambiguities/restrictions, indexing with a `usize` is simply
+/// forbidden:
 ///
 /// ```compile_fail,E0277
 /// let s = "hello";
 ///
-/// println!("The first letter of s is {}", s[0]); // ERROR!!!
+/// // The following will not compile!
+/// println!("The first letter of s is {}", s[0]);
 /// ```
 ///
-/// [`OsString`]: ../../std/ffi/struct.OsString.html "ffi::OsString"
+/// It is more clear, however, how `&s[i..j]` should work (that is,
+/// indexing with a range). It should accept byte indices (to be constant-time)
+/// and return a `&str` which is UTF-8 encoded. This is also called "string slicing".
+/// Note this will panic if the byte indices provided are not character
+/// boundaries - see [`is_char_boundary`] for more details. See the implementations
+/// for [`SliceIndex<str>`] for more details on string slicing. For a non-panicking
+/// version of string slicing, see [`get`].
 ///
-/// Indexing is intended to be a constant-time operation, but UTF-8 encoding
-/// does not allow us to do this. Furthermore, it's not clear what sort of
-/// thing the index should return: a byte, a codepoint, or a grapheme cluster.
-/// The [`bytes`] and [`chars`] methods return iterators over the first
-/// two, respectively.
+/// [`OsString`]: ../../std/ffi/struct.OsString.html "ffi::OsString"
+/// [`SliceIndex<str>`]: core::slice::SliceIndex
+/// [`as_bytes()`]: str::as_bytes
+/// [`get`]: str::get
+/// [`is_char_boundary`]: str::is_char_boundary
+///
+/// The [`bytes`] and [`chars`] methods return iterators over the bytes and
+/// codepoints of the string, respectively. To iterate over codepoints along
+/// with byte indices, use [`char_indices`].
 ///
 /// [`bytes`]: str::bytes
 /// [`chars`]: str::chars
+/// [`char_indices`]: str::char_indices
 ///
 /// # Deref
 ///

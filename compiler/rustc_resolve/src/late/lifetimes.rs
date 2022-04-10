@@ -587,7 +587,7 @@ fn get_lifetime_scopes_for_path(mut scope: &Scope<'_>) -> LifetimeScopeForPath {
         match scope {
             Scope::Binder { lifetimes, s, .. } => {
                 available_lifetimes.extend(lifetimes.keys().filter_map(|p| match p {
-                    hir::ParamName::Plain(ident) => Some(ident.name.to_string()),
+                    hir::ParamName::Plain(ident) => Some(ident.name),
                     _ => None,
                 }));
                 scope = s;

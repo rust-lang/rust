@@ -20,7 +20,7 @@ use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use std::collections::hash_map::Entry;
 
@@ -536,7 +536,7 @@ impl CheckAttrVisitor<'_> {
     fn check_doc_alias_value(
         &self,
         meta: &NestedMetaItem,
-        doc_alias: &str,
+        doc_alias: Symbol,
         hir_id: HirId,
         target: Target,
         is_list: bool,
@@ -554,14 +554,17 @@ impl CheckAttrVisitor<'_> {
             );
             false
         };
-        if doc_alias.is_empty() {
+        if doc_alias == kw::Empty {
             return err_fn(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                 "attribute cannot have empty value",
             );
         }
-        if let Some(c) =
-            doc_alias.chars().find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
+
+        let doc_alias_str = doc_alias.as_str();
+        if let Some(c) = doc_alias_str
+            .chars()
+            .find(|&c| c == '"' || c == '\'' || (c.is_whitespace() && c != ' '))
         {
             self.tcx.sess.span_err(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
@@ -573,7 +576,7 @@ impl CheckAttrVisitor<'_> {
             );
             return false;
         }
-        if doc_alias.starts_with(' ') || doc_alias.ends_with(' ') {
+        if doc_alias_str.starts_with(' ') || doc_alias_str.ends_with(' ') {
             return err_fn(
                 meta.name_value_literal_span().unwrap_or_else(|| meta.span()),
                 "cannot start or end with ' '",
@@ -608,11 +611,11 @@ impl CheckAttrVisitor<'_> {
             return err_fn(meta.span(), &format!("isn't allowed on {}", err));
         }
         let item_name = self.tcx.hir().name(hir_id);
-        if item_name.as_str() == doc_alias {
+        if item_name == doc_alias {
             return err_fn(meta.span(), "is the same as the item's name");
         }
         let span = meta.span();
-        if let Err(entry) = aliases.try_insert(doc_alias.to_owned(), span) {
+        if let Err(entry) = aliases.try_insert(doc_alias_str.to_owned(), span) {
             self.tcx.struct_span_lint_hir(UNUSED_ATTRIBUTES, hir_id, span, |lint| {
                 lint.build("doc alias is duplicated")
                     .span_label(*entry.entry.get(), "first defined here")
@@ -635,14 +638,7 @@ impl CheckAttrVisitor<'_> {
                 match v.literal() {
                     Some(l) => match l.kind {
                         LitKind::Str(s, _) => {
-                            if !self.check_doc_alias_value(
-                                v,
-                                s.as_str(),
-                                hir_id,
-                                target,
-                                true,
-                                aliases,
-                            ) {
+                            if !self.check_doc_alias_value(v, s, hir_id, target, true, aliases) {
                                 errors += 1;
                             }
                         }
@@ -670,8 +666,8 @@ impl CheckAttrVisitor<'_> {
                 }
             }
             errors == 0
-        } else if let Some(doc_alias) = meta.value_str().map(|s| s.to_string()) {
-            self.check_doc_alias_value(meta, &doc_alias, hir_id, target, false, aliases)
+        } else if let Some(doc_alias) = meta.value_str() {
+            self.check_doc_alias_value(meta, doc_alias, hir_id, target, false, aliases)
         } else {
             self.tcx
                 .sess
@@ -686,8 +682,8 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn check_doc_keyword(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        let doc_keyword = meta.value_str().map(|s| s.to_string()).unwrap_or_else(String::new);
-        if doc_keyword.is_empty() {
+        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
+        if doc_keyword == kw::Empty {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
@@ -718,7 +714,7 @@ impl CheckAttrVisitor<'_> {
                 return false;
             }
         }
-        if !rustc_lexer::is_ident(&doc_keyword) {
+        if !rustc_lexer::is_ident(doc_keyword.as_str()) {
             self.tcx
                 .sess
                 .struct_span_err(
@@ -911,20 +907,20 @@ impl CheckAttrVisitor<'_> {
     ) -> bool {
         let mut is_valid = true;
 
-        if let Some(list) = attr.meta().and_then(|mi| mi.meta_item_list().map(|l| l.to_vec())) {
-            for meta in &list {
+        if let Some(mi) = attr.meta() && let Some(list) = mi.meta_item_list() {
+            for meta in list {
                 if let Some(i_meta) = meta.meta_item() {
                     match i_meta.name_or_empty() {
                         sym::alias
-                            if !self.check_attr_not_crate_level(&meta, hir_id, "alias")
-                                || !self.check_doc_alias(&meta, hir_id, target, aliases) =>
+                            if !self.check_attr_not_crate_level(meta, hir_id, "alias")
+                                || !self.check_doc_alias(meta, hir_id, target, aliases) =>
                         {
                             is_valid = false
                         }
 
                         sym::keyword
-                            if !self.check_attr_not_crate_level(&meta, hir_id, "keyword")
-                                || !self.check_doc_keyword(&meta, hir_id) =>
+                            if !self.check_attr_not_crate_level(meta, hir_id, "keyword")
+                                || !self.check_doc_keyword(meta, hir_id) =>
                         {
                             is_valid = false
                         }
@@ -936,15 +932,15 @@ impl CheckAttrVisitor<'_> {
                         | sym::html_root_url
                         | sym::html_no_source
                         | sym::test
-                            if !self.check_attr_crate_level(&attr, &meta, hir_id) =>
+                            if !self.check_attr_crate_level(attr, meta, hir_id) =>
                         {
                             is_valid = false;
                         }
 
                         sym::inline | sym::no_inline
                             if !self.check_doc_inline(
-                                &attr,
-                                &meta,
+                                attr,
+                                meta,
                                 hir_id,
                                 target,
                                 specified_inline,
@@ -976,7 +972,7 @@ impl CheckAttrVisitor<'_> {
                         | sym::plugins => {}
 
                         sym::test => {
-                            if !self.check_test_attr(&meta, hir_id) {
+                            if !self.check_test_attr(meta, hir_id) {
                                 is_valid = false;
                             }
                         }

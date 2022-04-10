@@ -147,6 +147,11 @@ impl DefKey {
         // DefPathHashes in this DefPathTable.
         DefPathHash::new(parent.stable_crate_id(), local_hash)
     }
+
+    #[inline]
+    pub fn get_opt_name(&self) -> Option<Symbol> {
+        self.disambiguated_data.data.get_opt_name()
+    }
 }
 
 /// A pair of `DefPathData` and an integer disambiguator. The integer is

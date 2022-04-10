@@ -299,8 +299,8 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_methods_on_intrinsics", since = "1.52.0")]
     #[inline]
     pub const fn to_ascii_uppercase(&self) -> u8 {
-        // Unset the fifth bit if this is a lowercase letter
-        *self & !((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
+        // Toggle the fifth bit if this is a lowercase letter
+        *self ^ ((self.is_ascii_lowercase() as u8) * ASCII_CASE_MASK)
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.

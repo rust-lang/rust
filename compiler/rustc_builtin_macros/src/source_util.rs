@@ -104,7 +104,7 @@ pub fn expand_include<'cx>(
         return DummyResult::any(sp);
     };
     // The file will be added to the code map by the parser
-    let file = match resolve_path(cx, file, sp) {
+    let file = match resolve_path(cx, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
@@ -176,7 +176,7 @@ pub fn expand_include_str(
     let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_str!") else {
         return DummyResult::any(sp);
     };
-    let file = match resolve_path(cx, file, sp) {
+    let file = match resolve_path(cx, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();
@@ -210,7 +210,7 @@ pub fn expand_include_bytes(
     let Some(file) = get_single_str_from_tts(cx, sp, tts, "include_bytes!") else {
         return DummyResult::any(sp);
     };
-    let file = match resolve_path(cx, file, sp) {
+    let file = match resolve_path(cx, file.as_str(), sp) {
         Ok(f) => f,
         Err(mut err) => {
             err.emit();

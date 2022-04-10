@@ -1221,7 +1221,7 @@ pub fn get_single_str_from_tts(
     sp: Span,
     tts: TokenStream,
     name: &str,
-) -> Option<String> {
+) -> Option<Symbol> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
@@ -1233,7 +1233,7 @@ pub fn get_single_str_from_tts(
     if p.token != token::Eof {
         cx.span_err(sp, &format!("{} takes 1 argument", name));
     }
-    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s.to_string())
+    expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
 }
 
 /// Extracts comma-separated expressions from `tts`.

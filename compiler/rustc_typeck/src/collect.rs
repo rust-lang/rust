@@ -558,10 +558,10 @@ fn type_param_predicates(
     // `where T: Foo`.
 
     let param_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let param_owner = tcx.hir().ty_param_owner(param_id);
+    let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(param_id));
+    let ty = tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id));
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner.to_def_id() {

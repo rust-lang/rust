@@ -5,7 +5,7 @@ use crate::cmp::*;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {
-    ( $( $Tuple:ident( $( $T:ident )+ ) )+ ) => {
+    ( $( ( $( $T:ident )+ ) )+ ) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:PartialEq),+> PartialEq for ($($T,)+) where last_type!($($T,)+): ?Sized {
@@ -106,16 +106,16 @@ macro_rules! last_type {
 }
 
 tuple_impls! {
-    Tuple1(A)
-    Tuple2(A B)
-    Tuple3(A B C)
-    Tuple4(A B C D)
-    Tuple5(A B C D E)
-    Tuple6(A B C D E F)
-    Tuple7(A B C D E F G)
-    Tuple8(A B C D E F G H)
-    Tuple9(A B C D E F G H I)
-    Tuple10(A B C D E F G H I J)
-    Tuple11(A B C D E F G H I J K)
-    Tuple12(A B C D E F G H I J K L)
+    (A)
+    (A B)
+    (A B C)
+    (A B C D)
+    (A B C D E)
+    (A B C D E F)
+    (A B C D E F G)
+    (A B C D E F G H)
+    (A B C D E F G H I)
+    (A B C D E F G H I J)
+    (A B C D E F G H I J K)
+    (A B C D E F G H I J K L)
 }

@@ -110,7 +110,7 @@ use rustc_ast::token::{DelimToken, Token, TokenKind};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
-use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
+use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::kw;
 use rustc_span::{symbol::MacroRulesNormalizedIdent, Span};
@@ -261,7 +261,18 @@ fn check_binders(
             }
         }
         // Similarly, this can only happen when checking a toplevel macro.
-        TokenTree::MetaVarDecl(span, name, _kind) => {
+        TokenTree::MetaVarDecl(span, name, kind) => {
+            if kind.is_none() && node_id != DUMMY_NODE_ID {
+                // FIXME: Report this as a hard error eventually and remove equivalent errors from
+                // `parse_tt_inner` and `nameize`. Until then the error may be reported twice, once
+                // as a hard error and then once as a buffered lint.
+                sess.buffer_lint(
+                    MISSING_FRAGMENT_SPECIFIER,
+                    span,
+                    node_id,
+                    &format!("missing fragment specifier"),
+                );
+            }
             if !macros.is_empty() {
                 sess.span_diagnostic.span_bug(span, "unexpected MetaVarDecl in nested lhs");
             }
