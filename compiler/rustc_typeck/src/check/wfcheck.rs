@@ -17,6 +17,7 @@ use rustc_infer::infer::outlives::obligations::TypeOutlives;
 use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{self, RegionckMode};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
+use rustc_infer::traits::TraitEngine;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts, Subst};
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
@@ -1796,7 +1797,7 @@ fn report_bivariance(
 
 /// Feature gates RFC 2056 -- trivial bounds, checking for global bounds that
 /// aren't true.
-fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirId) {
+fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, span: Span, id: hir::HirId) {
     let empty_env = ty::ParamEnv::empty();
 
     let def_id = fcx.tcx.hir().local_def_id(id);
@@ -1807,26 +1808,27 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
 
     for obligation in implied_obligations {
         let pred = obligation.predicate;
+
+        // only use the span of the predicate clause (#90869)
+        let hir_node = fcx.tcx.hir().find(id);
+        let span = if let Some(hir::Generics { where_clause, .. }) =
+            hir_node.and_then(|node| node.generics())
+        {
+            let obligation_span = obligation.cause.span(fcx.tcx);
+            where_clause
+                .predicates
+                .iter()
+                // There seems to be no better way to find out which predicate we are in
+                .find(|pred| pred.span().contains(obligation_span))
+                .map(|pred| pred.span())
+                .unwrap_or(obligation_span)
+        } else {
+            span
+        };
+
         // Match the existing behavior.
         if pred.is_global() && !pred.has_late_bound_regions() {
             let pred = fcx.normalize_associated_types_in(span, pred);
-            let hir_node = fcx.tcx.hir().find(id);
-
-            // only use the span of the predicate clause (#90869)
-
-            if let Some(hir::Generics { where_clause, .. }) =
-                hir_node.and_then(|node| node.generics())
-            {
-                let obligation_span = obligation.cause.span(fcx.tcx);
-
-                span = where_clause
-                    .predicates
-                    .iter()
-                    // There seems to be no better way to find out which predicate we are in
-                    .find(|pred| pred.span().contains(obligation_span))
-                    .map(|pred| pred.span())
-                    .unwrap_or(obligation_span);
-            }
 
             let obligation = traits::Obligation::new(
                 traits::ObligationCause::new(span, id, traits::TrivialBound),
@@ -1834,6 +1836,36 @@ fn check_false_global_bounds(fcx: &FnCtxt<'_, '_>, mut span: Span, id: hir::HirI
                 pred,
             );
             fcx.register_predicate(obligation);
+        } else {
+            let infer::InferOk { value: norm_pred, obligations } =
+                fcx.normalize_associated_types_in_as_infer_ok(span, pred);
+            if norm_pred.is_global() {
+                fcx.probe(|_| {
+                    let mut fulfillment_cx = traits::FulfillmentContext::new_in_snapshot();
+                    for obligation in obligations {
+                        fulfillment_cx.register_predicate_obligation(&fcx, obligation);
+                    }
+                    fulfillment_cx.register_predicate_obligation(&fcx, traits::Obligation::new(
+                        traits::ObligationCause::new(span, id, traits::TrivialBound),
+                        empty_env,
+                        norm_pred,
+                    ));
+                    if !fulfillment_cx.select_all_or_error(&fcx).is_empty() {
+                        let mut diag = fcx
+                        .tcx
+                        .sess
+                        // NOTE: Error for the crater run
+                        .struct_span_warn(span, "where-clause bound is impossible to satisfy");
+                        diag.note(format!("the bound `{}` was previously accepted, but it may become a hard error in a future release", pred));
+                        if fcx.sess().opts.unstable_features.is_nightly_build() {
+                            diag.help(
+                                "add `#![feature(trivial_bounds)]` to the crate attributes to allow it",
+                            );
+                        }
+                        diag.emit();
+                    }
+                })
+            }
         }
     }
 
