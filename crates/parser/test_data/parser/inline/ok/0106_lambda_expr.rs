@@ -10,4 +10,6 @@ fn foo() {
     static move || {};
     static async || {};
     static async move || {};
+    for<'a> || {};
+    for<'a> move || {};
 }

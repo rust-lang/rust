@@ -71,16 +71,8 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
     let done = match p.current() {
         T!['('] => tuple_expr(p),
         T!['['] => array_expr(p),
-        T![|] => closure_expr(p),
-        T![static] | T![async] | T![move] if la == T![|] => closure_expr(p),
-        T![static] | T![async] if la == T![move] && p.nth(2) == T![|] => closure_expr(p),
-        T![static] if la == T![async] && p.nth(2) == T![|] => closure_expr(p),
-        T![static] if la == T![async] && p.nth(2) == T![move] && p.nth(3) == T![|] => {
-            closure_expr(p)
-        }
         T![if] => if_expr(p),
         T![let] => let_expr(p),
-
         T![_] => {
             // test destructuring_assignment_wildcard_pat
             // fn foo() {
@@ -91,12 +83,16 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             p.bump(T![_]);
             m.complete(p, UNDERSCORE_EXPR)
         }
-
         T![loop] => loop_expr(p, None),
         T![box] => box_expr(p, None),
-        T![for] => for_expr(p, None),
         T![while] => while_expr(p, None),
         T![try] => try_block_expr(p, None),
+        T![match] => match_expr(p),
+        T![return] => return_expr(p),
+        T![yield] => yield_expr(p),
+        T![continue] => continue_expr(p),
+        T![break] => break_expr(p, r),
+
         LIFETIME_IDENT if la == T![:] => {
             let m = p.start();
             label(p);
@@ -121,27 +117,21 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 }
             }
         }
-        T![async] if la == T!['{'] || (la == T![move] && p.nth(2) == T!['{']) => {
+        // test effect_blocks
+        // fn f() { unsafe { } }
+        // fn f() { const { } }
+        // fn f() { async { } }
+        // fn f() { async move { } }
+        T![const] | T![unsafe] | T![async] if la == T!['{'] => {
+            let m = p.start();
+            p.bump_any();
+            stmt_list(p);
+            m.complete(p, BLOCK_EXPR)
+        }
+        T![async] if la == T![move] && p.nth(2) == T!['{'] => {
             let m = p.start();
             p.bump(T![async]);
             p.eat(T![move]);
-            stmt_list(p);
-            m.complete(p, BLOCK_EXPR)
-        }
-        T![match] => match_expr(p),
-        // test unsafe_block
-        // fn f() { unsafe { } }
-        T![unsafe] if la == T!['{'] => {
-            let m = p.start();
-            p.bump(T![unsafe]);
-            stmt_list(p);
-            m.complete(p, BLOCK_EXPR)
-        }
-        // test const_block
-        // fn f() { const { } }
-        T![const] if la == T!['{'] => {
-            let m = p.start();
-            p.bump(T![const]);
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
         }
@@ -156,10 +146,11 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
             stmt_list(p);
             m.complete(p, BLOCK_EXPR)
         }
-        T![return] => return_expr(p),
-        T![yield] => yield_expr(p),
-        T![continue] => continue_expr(p),
-        T![break] => break_expr(p, r),
+
+        T![static] | T![async] | T![move] | T![|] => closure_expr(p),
+        T![for] if la == T![<] => closure_expr(p),
+        T![for] => for_expr(p, None),
+
         _ => {
             p.err_recover("expected expression", EXPR_RECOVERY_SET);
             return None;
@@ -254,25 +245,30 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 //     static move || {};
 //     static async || {};
 //     static async move || {};
+//     for<'a> || {};
+//     for<'a> move || {};
 // }
 fn closure_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(
-        p.at(T![|])
-            || (p.at(T![move]) && p.nth(1) == T![|])
-            || (p.at(T![async]) && p.nth(1) == T![|])
-            || (p.at(T![async]) && p.nth(1) == T![move] && p.nth(2) == T![|])
-            || (p.at(T![static]) && p.nth(1) == T![|])
-            || (p.at(T![static]) && p.nth(1) == T![move] && p.nth(2) == T![|])
-            || (p.at(T![static]) && p.nth(1) == T![async] && p.nth(2) == T![|])
-            || (p.at(T![static])
-                && p.nth(1) == T![async]
-                && p.nth(2) == T![move]
-                && p.nth(3) == T![|])
-    );
+    assert!(match p.current() {
+        T![static] | T![async] | T![move] | T![|] => true,
+        T![for] => p.nth(1) == T![<],
+        _ => false,
+    });
+
     let m = p.start();
+
+    if p.at(T![for]) {
+        types::for_binder(p);
+    }
+
     p.eat(T![static]);
     p.eat(T![async]);
     p.eat(T![move]);
+
+    if !p.at(T![|]) {
+        p.error("expected `|`");
+        return m.complete(p, CLOSURE_EXPR);
+    }
     params::param_list_closure(p);
     if opt_ret_type(p) {
         // test lambda_ret_block
