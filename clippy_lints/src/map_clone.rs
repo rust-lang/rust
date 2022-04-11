@@ -143,7 +143,7 @@ fn lint_needless_cloning(cx: &LateContext<'_>, root: Span, receiver: Span) {
 impl MapClone {
     fn lint_explicit_closure(&self, cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
         let mut applicability = Applicability::MachineApplicable;
-        let message = if is_copy {
+        let message = if is_copy && meets_msrv(self.msrv.as_ref(), &msrvs::ITERATOR_COPIED) {
             "you are using an explicit closure for copying elements"
         } else {
             "you are using an explicit closure for cloning elements"
