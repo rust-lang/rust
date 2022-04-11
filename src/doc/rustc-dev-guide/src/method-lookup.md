@@ -79,33 +79,34 @@ behavior should be reconsidered in light of where clauses.
 TODO: Is this FIXME still accurate?
 
 **Extension candidates** are derived from imported traits.  If I have
-the trait `ToString` imported, and I call `to_string()` on a value of
-type `T`, then we will go off to find out whether there is an impl of
-`ToString` for `T`.  These kinds of method calls are called "extension
-methods".  They can be defined in any crate, not only the one that
-defined `T`.  Furthermore, you must import the trait to call such a
-method.
+the trait `ToString` imported, and I call `to_string()` as a method,
+then we will list the `to_string()` definition in each impl of
+`ToString` as a candidate. These kinds of method calls are called
+"extension methods".
 
 So, let's continue our example. Imagine that we were calling a method
 `foo` with the receiver `Rc<Box<[T; 3]>>` and there is a trait `Foo`
 that defines it with `&self` for the type `Rc<U>` as well as a method
-on the type `Box` that defines `Foo` but with `&mut self`. Then we
+on the type `Box` that defines `foo` but with `&mut self`. Then we
 might have two candidates:
 
-- `&Rc<Box<[T; 3]>>` from the impl of `Foo` for `Rc<U>` where `U=Box<[T; 3]>`
-- `&mut Box<[T; 3]>>` from the inherent impl on `Box<U>` where `U=[T; 3]`
+- `&Rc<U>` as an extension candidate
+- `&mut Box<U>` as an inherent candidate
 
 ### Candidate search
 
 Finally, to actually pick the method, we will search down the steps,
 trying to match the receiver type against the candidate types. At
 each step, we also consider an auto-ref and auto-mut-ref to see whether
-that makes any of the candidates match. We pick the first step where
-we find a match.
+that makes any of the candidates match. For each resulting receiver
+type, we consider inherent candidates before extension candidates.
+If there are multiple matching candidates in a group, we report an
+error, except that multiple impls of the same trait are treated as a
+single match. Otherwise we pick the first match we find.
 
 In the case of our example, the first step is `Rc<Box<[T; 3]>>`,
 which does not itself match any candidate. But when we autoref it, we
-get the type `&Rc<Box<[T; 3]>>` which does match. We would then
+get the type `&Rc<Box<[T; 3]>>` which matches `&Rc<U>`. We would then
 recursively consider all where-clauses that appear on the impl: if
 those match (or we cannot rule out that they do), then this is the
 method we would pick. Otherwise, we would continue down the series of
