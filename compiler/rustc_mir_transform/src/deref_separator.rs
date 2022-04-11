@@ -11,6 +11,8 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         for (i, stmt) in data.statements.iter_mut().enumerate() {
             match stmt.kind {
                 StatementKind::Assign(box (og_place, Rvalue::Ref(region, borrow_knd, place))) => {
+                    let mut place_local = place.local;
+                    let mut last_len = 0;
                     for (idx, (p_ref, p_elem)) in place.iter_projections().enumerate() {
                         if p_elem == ProjectionElem::Deref && !p_ref.projection.is_empty() {
                             // The type that we are derefing.
@@ -23,14 +25,17 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                             patch.add_statement(loc, StatementKind::StorageLive(temp));
 
                             // We are adding current p_ref's projections to our
-                            // temp value.
-                            let deref_place =
-                                Place::from(p_ref.local).project_deeper(p_ref.projection, tcx);
+                            // temp value, excluding projections we already covered.
+                            let deref_place = Place::from(place_local)
+                                .project_deeper(&p_ref.projection[last_len..], tcx);
                             patch.add_assign(
                                 loc,
                                 Place::from(temp),
                                 Rvalue::Use(Operand::Move(deref_place)),
                             );
+
+                            place_local = temp;
+                            last_len = p_ref.projection.len();
 
                             // We are creating a place by using our temp value's location
                             // and copying derefed values which we need to create new statement.
@@ -50,11 +55,6 @@ pub fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                             // Since our job with the temp is done it should be gone
                             let loc = Location { block: block, statement_index: i + 1 };
                             patch.add_statement(loc, StatementKind::StorageDead(temp));
-
-                            // As all projections are off the base projection, if there are
-                            // multiple derefs in the middle of projection, it might cause
-                            // unsoundness, to not let that happen we break the loop.
-                            break;
                         }
                     }
                 }

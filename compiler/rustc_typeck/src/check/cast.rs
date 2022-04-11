@@ -1012,7 +1012,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     err.help(msg);
                 }
                 err.help(
-                    "if you can't comply with strict provenance and need to expose the pointer\
+                    "if you can't comply with strict provenance and need to expose the pointer \
                     provenance you can use `.expose_addr()` instead"
                 );
 

@@ -222,7 +222,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
 
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
-        if is_async_fn(self.ccx) || body.generator.is_some() {
+        if self.ccx.is_async() || body.generator.is_some() {
             tcx.sess.delay_span_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
@@ -1056,12 +1056,8 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
     ty.is_bool() || ty.is_integral() || ty.is_char()
 }
 
-fn is_async_fn(ccx: &ConstCx<'_, '_>) -> bool {
-    ccx.fn_sig().map_or(false, |sig| sig.header.asyncness == hir::IsAsync::Async)
-}
-
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
-    let attr_span = ccx.fn_sig().map_or(ccx.body.span, |sig| sig.span.shrink_to_lo());
+    let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
     ccx.tcx
         .sess

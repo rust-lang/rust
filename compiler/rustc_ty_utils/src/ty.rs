@@ -414,12 +414,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<Ty<'_>> {
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     let node = tcx.hir().get_by_def_id(def_id.expect_local());
-
-    let fn_kind = node.fn_kind().unwrap_or_else(|| {
-        bug!("asyncness: expected fn-like node but got `{:?}`", def_id);
-    });
-
-    fn_kind.asyncness()
+    if let Some(fn_kind) = node.fn_kind() { fn_kind.asyncness() } else { hir::IsAsync::NotAsync }
 }
 
 /// Don't call this directly: use ``tcx.conservative_is_privately_uninhabited`` instead.

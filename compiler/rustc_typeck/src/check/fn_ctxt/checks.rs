@@ -936,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 err.span_suggestion_short(
                     span_semi,
-                    "consider removing this semicolon",
+                    "remove this semicolon",
                     String::new(),
                     Applicability::MachineApplicable,
                 );

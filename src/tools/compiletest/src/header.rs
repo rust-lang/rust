@@ -189,6 +189,8 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
+    // This isn't a real directive, just one that is probably mistyped often
+    pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
 
 impl TestProps {
@@ -281,6 +283,9 @@ impl TestProps {
 
                 if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
                     self.compile_flags.extend(flags.split_whitespace().map(|s| s.to_owned()));
+                }
+                if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
+                    panic!("`compiler-flags` directive should be spelled `compile-flags`");
                 }
 
                 if let Some(edition) = config.parse_edition(ln) {

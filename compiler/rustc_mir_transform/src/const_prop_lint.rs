@@ -67,7 +67,7 @@ impl<'tcx> MirLint<'tcx> for ConstProp {
         }
 
         let def_id = body.source.def_id().expect_local();
-        let is_fn_like = tcx.hir().get_by_def_id(def_id).fn_kind().is_some();
+        let is_fn_like = tcx.def_kind(def_id).is_fn_like();
         let is_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst;
 
         // Only run const prop on functions, methods, closures and associated constants

@@ -1083,20 +1083,31 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })) = node
-            && let body = hir.body(*body_id)
-            && let hir::ExprKind::Block(blk, _) = &body.value.kind
+            && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
-            && *trait_pred.self_ty().skip_binder().kind() == ty::Tuple(ty::List::empty())
-            // FIXME(estebank): When encountering a method with a trait
-            // bound not satisfied in the return type with a body that has
-            // no return, suggest removal of semicolon on last statement.
-            // Once that is added, close #54771.
+            && trait_pred.self_ty().skip_binder().is_unit()
             && let Some(stmt) = blk.stmts.last()
-            && let hir::StmtKind::Semi(_) = stmt.kind
+            && let hir::StmtKind::Semi(expr) = stmt.kind
+            // Only suggest this if the expression behind the semicolon implements the predicate
+            && let Some(typeck_results) = self.in_progress_typeck_results
+            && let Some(ty) = typeck_results.borrow().expr_ty_opt(expr)
+            && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred, ty))
         {
-            let sp = self.tcx.sess.source_map().end_point(stmt.span);
-            err.span_label(sp, "consider removing this semicolon");
+            err.span_label(
+                expr.span,
+                &format!(
+                    "this expression has type `{}`, which implements `{}`",
+                    ty,
+                    trait_pred.print_modifiers_and_trait_path()
+                )
+            );
+            err.span_suggestion(
+                self.tcx.sess.source_map().end_point(stmt.span),
+                "remove this semicolon",
+                String::new(),
+                Applicability::MachineApplicable
+            );
             return true;
         }
         false

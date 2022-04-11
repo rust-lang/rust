@@ -1,5 +1,7 @@
 //! Errors emitted by typeck.
+use rustc_errors::Applicability;
 use rustc_macros::SessionDiagnostic;
+use rustc_middle::ty::Ty;
 use rustc_span::{symbol::Ident, Span, Symbol};
 
 #[derive(SessionDiagnostic)]
@@ -127,10 +129,13 @@ pub struct FunctionalRecordUpdateOnNonStruct {
 
 #[derive(SessionDiagnostic)]
 #[error(code = "E0516", slug = "typeck-typeof-reserved-keyword-used")]
-pub struct TypeofReservedKeywordUsed {
+pub struct TypeofReservedKeywordUsed<'tcx> {
+    pub ty: Ty<'tcx>,
     #[primary_span]
     #[label]
     pub span: Span,
+    #[suggestion_verbose(message = "suggestion", code = "{ty}")]
+    pub opt_sugg: Option<(Span, Applicability)>,
 }
 
 #[derive(SessionDiagnostic)]

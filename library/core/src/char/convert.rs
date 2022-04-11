@@ -6,52 +6,10 @@ use crate::fmt;
 use crate::mem::transmute;
 use crate::str::FromStr;
 
-/// Converts a `u32` to a `char`.
-///
-/// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
-/// `as`:
-///
-/// ```
-/// let c = '💯';
-/// let i = c as u32;
-///
-/// assert_eq!(128175, i);
-/// ```
-///
-/// However, the reverse is not true: not all valid [`u32`]s are valid
-/// [`char`]s. `from_u32()` will return `None` if the input is not a valid value
-/// for a [`char`].
-///
-/// For an unsafe version of this function which ignores these checks, see
-/// [`from_u32_unchecked`].
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::char;
-///
-/// let c = char::from_u32(0x2764);
-///
-/// assert_eq!(Some('❤'), c);
-/// ```
-///
-/// Returning `None` when the input is not a valid [`char`]:
-///
-/// ```
-/// use std::char;
-///
-/// let c = char::from_u32(0x110000);
-///
-/// assert_eq!(None, c);
-/// ```
-#[doc(alias = "chr")]
+/// Converts a `u32` to a `char`. See [`char::from_u32`].
 #[must_use]
 #[inline]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
-pub const fn from_u32(i: u32) -> Option<char> {
+pub(super) const fn from_u32(i: u32) -> Option<char> {
     // FIXME: once Result::ok is const fn, use it here
     match char_try_from_u32(i) {
         Ok(c) => Some(c),
@@ -59,44 +17,11 @@ pub const fn from_u32(i: u32) -> Option<char> {
     }
 }
 
-/// Converts a `u32` to a `char`, ignoring validity.
-///
-/// Note that all [`char`]s are valid [`u32`]s, and can be cast to one with
-/// `as`:
-///
-/// ```
-/// let c = '💯';
-/// let i = c as u32;
-///
-/// assert_eq!(128175, i);
-/// ```
-///
-/// However, the reverse is not true: not all valid [`u32`]s are valid
-/// [`char`]s. `from_u32_unchecked()` will ignore this, and blindly cast to
-/// [`char`], possibly creating an invalid one.
-///
-/// # Safety
-///
-/// This function is unsafe, as it may construct invalid `char` values.
-///
-/// For a safe version of this function, see the [`from_u32`] function.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::char;
-///
-/// let c = unsafe { char::from_u32_unchecked(0x2764) };
-///
-/// assert_eq!('❤', c);
-/// ```
+/// Converts a `u32` to a `char`, ignoring validity. See [`char::from_u32_unchecked`].
+#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
 #[inline]
 #[must_use]
-#[stable(feature = "char_from_unchecked", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
-pub const unsafe fn from_u32_unchecked(i: u32) -> char {
+pub(super) const unsafe fn from_u32_unchecked(i: u32) -> char {
     // SAFETY: the caller must guarantee that `i` is a valid char value.
     if cfg!(debug_assertions) { char::from_u32(i).unwrap() } else { unsafe { transmute(i) } }
 }
@@ -317,60 +242,10 @@ impl fmt::Display for CharTryFromError {
     }
 }
 
-/// Converts a digit in the given radix to a `char`.
-///
-/// A 'radix' here is sometimes also called a 'base'. A radix of two
-/// indicates a binary number, a radix of ten, decimal, and a radix of
-/// sixteen, hexadecimal, to give some common values. Arbitrary
-/// radices are supported.
-///
-/// `from_digit()` will return `None` if the input is not a digit in
-/// the given radix.
-///
-/// # Panics
-///
-/// Panics if given a radix larger than 36.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// use std::char;
-///
-/// let c = char::from_digit(4, 10);
-///
-/// assert_eq!(Some('4'), c);
-///
-/// // Decimal 11 is a single digit in base 16
-/// let c = char::from_digit(11, 16);
-///
-/// assert_eq!(Some('b'), c);
-/// ```
-///
-/// Returning `None` when the input is not a digit:
-///
-/// ```
-/// use std::char;
-///
-/// let c = char::from_digit(20, 10);
-///
-/// assert_eq!(None, c);
-/// ```
-///
-/// Passing a large radix, causing a panic:
-///
-/// ```should_panic
-/// use std::char;
-///
-/// // this panics
-/// let c = char::from_digit(1, 37);
-/// ```
+/// Converts a digit in the given radix to a `char`. See [`char::from_digit`].
 #[inline]
 #[must_use]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
-pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
+pub(super) const fn from_digit(num: u32, radix: u32) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
     }
