@@ -190,9 +190,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let reachable_non_generics = tcx
             .exported_symbols(cdata.cnum)
             .iter()
-            .filter_map(|&(exported_symbol, export_level)| {
+            .filter_map(|&(exported_symbol, export_info)| {
                 if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
-                    Some((def_id, export_level))
+                    Some((def_id, export_info))
                 } else {
                     None
                 }

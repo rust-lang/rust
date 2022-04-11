@@ -28,6 +28,7 @@ use rustc_hir::def_id::CrateNum;
 use rustc_hir::LangItem;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::dependency_format::Dependencies;
+use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_serialize::{opaque, Decodable, Decoder, Encoder};
 use rustc_session::config::{CrateType, OutputFilenames, OutputType, RUST_CGU_EXT};
@@ -141,6 +142,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 pub struct CrateInfo {
     pub target_cpu: String,
     pub exported_symbols: FxHashMap<CrateType, Vec<String>>,
+    pub linked_symbols: FxHashMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
