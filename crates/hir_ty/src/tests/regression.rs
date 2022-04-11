@@ -1471,7 +1471,7 @@ fn regression_11688_3() {
 }
 
 #[test]
-fn gat_crash() {
+fn gat_crash_1() {
     cov_mark::check!(ignore_gats);
     check_no_mismatches(
         r#"
@@ -1484,6 +1484,26 @@ trait Crash {
 
 fn test<T: Crash>() {
     T::new();
+}
+"#,
+    );
+}
+
+#[test]
+fn gat_crash_2() {
+    check_no_mismatches(
+        r#"
+pub struct InlineStorage {}
+
+pub struct InlineStorageHandle<T: ?Sized> {}
+
+pub unsafe trait Storage {
+    type Handle<T: ?Sized>;
+    fn create<T: ?Sized>() -> Self::Handle<T>;
+}
+
+unsafe impl Storage for InlineStorage {
+    type Handle<T: ?Sized> = InlineStorageHandle<T>;
 }
 "#,
     );
