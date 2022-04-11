@@ -17,7 +17,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
             cx,
             NEEDLESS_OPTION_TAKE,
             expr.span,
-            "Called `Option::take()` on a temporary value",
+            "called `Option::take()` on a temporary value",
             "try",
             format!(
                 "{}",
