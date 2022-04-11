@@ -124,15 +124,9 @@ fn test_int_from_str_overflow() {
 fn test_can_not_overflow() {
     fn can_overflow<T>(radix: u32, input: &str) -> bool
     where
-        T: Default
-            + core::ops::Sub<Output = T>
-            + std::convert::From<bool>
-            + std::cmp::PartialOrd
-            + Copy,
+        T: std::convert::TryFrom<i8>,
     {
-        let one = true.into();
-        let zero = <T>::default();
-        !can_not_overflow::<T>(radix, zero - one < zero, input.as_bytes())
+        !can_not_overflow::<T>(radix, T::try_from(-1_i8).is_ok(), input.as_bytes())
     }
 
     // Positive tests:
