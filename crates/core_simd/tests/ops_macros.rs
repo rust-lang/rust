@@ -172,6 +172,7 @@ macro_rules! impl_common_integer_tests {
 macro_rules! impl_signed_tests {
     { $scalar:tt } => {
         mod $scalar {
+            use core_simd::simd::SimdInt;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
@@ -312,6 +313,7 @@ macro_rules! impl_signed_tests {
 macro_rules! impl_unsigned_tests {
     { $scalar:tt } => {
         mod $scalar {
+            use core_simd::simd::SimdUint;
             type Vector<const LANES: usize> = core_simd::Simd<Scalar, LANES>;
             type Scalar = $scalar;
 
