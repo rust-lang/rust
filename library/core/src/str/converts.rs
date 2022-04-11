@@ -144,11 +144,7 @@ pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
 ///
 /// # Safety
 ///
-/// This function is unsafe because it does not check that the bytes passed to
-/// it are valid UTF-8. If this constraint is violated, undefined behavior
-/// results, as the rest of Rust assumes that [`&str`]s are valid UTF-8.
-///
-/// [`&str`]: str
+/// The bytes passed in must be valid UTF-8.
 ///
 /// # Examples
 ///
