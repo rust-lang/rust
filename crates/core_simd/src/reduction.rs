@@ -12,13 +12,41 @@ macro_rules! impl_integer_reductions {
             LaneCount<LANES>: SupportedLaneCount,
         {
             /// Reducing wrapping add.  Returns the sum of the lanes of the vector, with wrapping addition.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x4;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([1, 2, 3, 4]);")]
+            /// assert_eq!(v.reduce_sum(), 10);
+            ///
+            /// // SIMD integer addition is always wrapping
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([", stringify!($scalar) ,"::MAX, 1, 0, 0]);")]
+            #[doc = concat!("assert_eq!(v.reduce_sum(), ", stringify!($scalar), "::MIN);")]
+            /// ```
             #[inline]
             pub fn reduce_sum(self) -> $scalar {
                 // Safety: `self` is an integer vector
                 unsafe { simd_reduce_add_ordered(self, 0) }
             }
 
-            /// Reducing wrapping multiply.  Returns the product of the lanes of the vector, with wrapping multiplication.
+            /// Reducing wrapping multiply. Returns the product of the lanes of the vector, with wrapping multiplication.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x4;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([1, 2, 3, 4]);")]
+            /// assert_eq!(v.reduce_product(), 24);
+            ///
+            /// // SIMD integer multiplication is always wrapping
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([", stringify!($scalar) ,"::MAX, 2, 1, 1]);")]
+            #[doc = concat!("assert!(v.reduce_product() < ", stringify!($scalar), "::MAX);")]
+            /// ```
             #[inline]
             pub fn reduce_product(self) -> $scalar {
                 // Safety: `self` is an integer vector
@@ -26,6 +54,16 @@ macro_rules! impl_integer_reductions {
             }
 
             /// Reducing maximum.  Returns the maximum lane in the vector.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x4;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([1, 2, 3, 4]);")]
+            /// assert_eq!(v.reduce_max(), 4);
+            /// ```
             #[inline]
             pub fn reduce_max(self) -> $scalar {
                 // Safety: `self` is an integer vector
@@ -33,6 +71,16 @@ macro_rules! impl_integer_reductions {
             }
 
             /// Reducing minimum.  Returns the minimum lane in the vector.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x4;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x4::from_array([1, 2, 3, 4]);")]
+            /// assert_eq!(v.reduce_min(), 1);
+            /// ```
             #[inline]
             pub fn reduce_min(self) -> $scalar {
                 // Safety: `self` is an integer vector
@@ -61,6 +109,16 @@ macro_rules! impl_float_reductions {
         {
 
             /// Reducing add.  Returns the sum of the lanes of the vector.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x2;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([1., 2.]);")]
+            /// assert_eq!(v.reduce_sum(), 3.);
+            /// ```
             #[inline]
             pub fn reduce_sum(self) -> $scalar {
                 // LLVM sum is inaccurate on i586
@@ -73,6 +131,16 @@ macro_rules! impl_float_reductions {
             }
 
             /// Reducing multiply.  Returns the product of the lanes of the vector.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x2;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([3., 4.]);")]
+            /// assert_eq!(v.reduce_product(), 12.);
+            /// ```
             #[inline]
             pub fn reduce_product(self) -> $scalar {
                 // LLVM product is inaccurate on i586
@@ -87,7 +155,30 @@ macro_rules! impl_float_reductions {
             /// Reducing maximum.  Returns the maximum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
-            /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
+            /// return either.
+            ///
+            /// This function will not return `NaN` unless all lanes are `NaN`.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x2;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([1., 2.]);")]
+            /// assert_eq!(v.reduce_max(), 2.);
+            ///
+            /// // NaN values are skipped...
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([1., ", stringify!($scalar), "::NAN]);")]
+            /// assert_eq!(v.reduce_max(), 1.);
+            ///
+            /// // ...unless all values are NaN
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([",
+                stringify!($scalar), "::NAN, ",
+                stringify!($scalar), "::NAN]);"
+            )]
+            /// assert!(v.reduce_max().is_nan());
+            /// ```
             #[inline]
             pub fn reduce_max(self) -> $scalar {
                 // Safety: `self` is a float vector
@@ -97,7 +188,30 @@ macro_rules! impl_float_reductions {
             /// Reducing minimum.  Returns the minimum lane in the vector.
             ///
             /// Returns values based on equality, so a vector containing both `0.` and `-0.` may
-            /// return either.  This function will not return `NaN` unless all lanes are `NaN`.
+            /// return either.
+            ///
+            /// This function will not return `NaN` unless all lanes are `NaN`.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// # #![feature(portable_simd)]
+            /// # use core::simd::Simd;
+            #[doc = concat!("# use core::simd::", stringify!($scalar), "x2;")]
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([3., 7.]);")]
+            /// assert_eq!(v.reduce_min(), 3.);
+            ///
+            /// // NaN values are skipped...
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([1., ", stringify!($scalar), "::NAN]);")]
+            /// assert_eq!(v.reduce_min(), 1.);
+            ///
+            /// // ...unless all values are NaN
+            #[doc = concat!("let v = ", stringify!($scalar), "x2::from_array([",
+                stringify!($scalar), "::NAN, ",
+                stringify!($scalar), "::NAN]);"
+            )]
+            /// assert!(v.reduce_min().is_nan());
+            /// ```
             #[inline]
             pub fn reduce_min(self) -> $scalar {
                 // Safety: `self` is a float vector

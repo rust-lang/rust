@@ -99,17 +99,44 @@ where
     /// Number of lanes in this vector.
     pub const LANES: usize = LANES;
 
-    /// Get the number of lanes in this vector.
+    /// Returns the number of lanes in this SIMD vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::u32x4;
+    /// let v = u32x4::splat(0);
+    /// assert_eq!(v.lanes(), 4);
+    /// ```
     pub const fn lanes(&self) -> usize {
         LANES
     }
 
-    /// Construct a SIMD vector by setting all lanes to the given value.
+    /// Constructs a new SIMD vector with all lanes set to the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::u32x4;
+    /// let v = u32x4::splat(8);
+    /// assert_eq!(v.as_array(), &[8, 8, 8, 8]);
+    /// ```
     pub const fn splat(value: T) -> Self {
         Self([value; LANES])
     }
 
     /// Returns an array reference containing the entire SIMD vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::{Simd, u64x4};
+    /// let v: u64x4 = Simd::from_array([0, 1, 2, 3]);
+    /// assert_eq!(v.as_array(), &[0, 1, 2, 3]);
+    /// ```
     pub const fn as_array(&self) -> &[T; LANES] {
         &self.0
     }
@@ -129,9 +156,21 @@ where
         self.0
     }
 
-    /// Converts a slice to a SIMD vector containing `slice[..LANES]`
+    /// Converts a slice to a SIMD vector containing `slice[..LANES]`.
+    ///
     /// # Panics
-    /// `from_slice` will panic if the slice's `len` is less than the vector's `Simd::LANES`.
+    ///
+    /// Panics if the slice's length is less than the vector's `Simd::LANES`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # use core::simd::{Simd, u32x4};
+    /// let source = vec![1, 2, 3, 4, 5, 6];
+    /// let v = u32x4::from_slice(&source);
+    /// assert_eq!(v.as_array(), &[1, 2, 3, 4]);
+    /// ```
     #[must_use]
     pub const fn from_slice(slice: &[T]) -> Self {
         assert!(
@@ -148,6 +187,7 @@ where
     }
 
     /// Performs lanewise conversion of a SIMD vector's elements to another SIMD-valid type.
+    ///
     /// This follows the semantics of Rust's `as` conversion for casting
     /// integers to unsigned integers (interpreting as the other type, so `-1` to `MAX`),
     /// and from floats to integers (truncating, or saturating at the limits) for each lane,
