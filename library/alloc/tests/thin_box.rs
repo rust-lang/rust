@@ -1,5 +1,5 @@
-use alloc::boxed::ThinBox;
 use core::mem::size_of;
+use std::boxed::ThinBox;
 
 #[test]
 fn want_niche_optimization() {
