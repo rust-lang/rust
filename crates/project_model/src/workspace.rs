@@ -256,7 +256,9 @@ impl ProjectWorkspace {
     ) -> Result<WorkspaceBuildScripts> {
         match self {
             ProjectWorkspace::Cargo { cargo, .. } => {
-                WorkspaceBuildScripts::run(config, cargo, progress)
+                WorkspaceBuildScripts::run(config, cargo, progress).with_context(|| {
+                    format!("Failed to run build scripts for {}", &cargo.workspace_root().display())
+                })
             }
             ProjectWorkspace::Json { .. } | ProjectWorkspace::DetachedFiles { .. } => {
                 Ok(WorkspaceBuildScripts::default())

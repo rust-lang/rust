@@ -119,7 +119,9 @@ fn setup_logging(log_file: Option<&Path>) -> Result<()> {
         None => None,
     };
     let filter = env::var("RA_LOG").ok();
-    logger::Logger::new(log_file, filter.as_deref()).install()?;
+    // deliberately enable all `error` logs if the user has not set RA_LOG, as there is usually useful
+    // information in there for debugging
+    logger::Logger::new(log_file, filter.as_deref().or(Some("error"))).install()?;
 
     profile::init();
 

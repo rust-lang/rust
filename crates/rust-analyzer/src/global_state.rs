@@ -190,6 +190,7 @@ impl GlobalState {
 
             for file in changed_files {
                 if !file.is_created_or_deleted() {
+                    // FIXME: https://github.com/rust-analyzer/rust-analyzer/issues/11357
                     let crates = self.analysis_host.raw_database().relevant_crates(file.file_id);
                     let crate_graph = self.analysis_host.raw_database().crate_graph();
 
@@ -255,6 +256,7 @@ impl GlobalState {
         let request = self.req_queue.outgoing.register(R::METHOD.to_string(), params, handler);
         self.send(request.into());
     }
+
     pub(crate) fn complete_request(&mut self, response: lsp_server::Response) {
         let handler = self
             .req_queue
@@ -281,6 +283,7 @@ impl GlobalState {
             .incoming
             .register(request.id.clone(), (request.method.clone(), request_received));
     }
+
     pub(crate) fn respond(&mut self, response: lsp_server::Response) {
         if let Some((method, start)) = self.req_queue.incoming.complete(response.id.clone()) {
             if let Some(err) = &response.error {
@@ -294,6 +297,7 @@ impl GlobalState {
             self.send(response.into());
         }
     }
+
     pub(crate) fn cancel(&mut self, request_id: lsp_server::RequestId) {
         if let Some(response) = self.req_queue.incoming.cancel(request_id) {
             self.send(response.into());
@@ -307,7 +311,7 @@ impl GlobalState {
 
 impl Drop for GlobalState {
     fn drop(&mut self) {
-        self.analysis_host.request_cancellation()
+        self.analysis_host.request_cancellation();
     }
 }
 
