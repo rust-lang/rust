@@ -29,21 +29,19 @@ fn apply_reductions(cx: &LateContext<'_>, nbits: u64, expr: &Expr<'_>, signed: b
         ExprKind::Block(block, _) => block.expr.map_or(nbits, |e| apply_reductions(cx, nbits, e, signed)),
         ExprKind::Binary(op, left, right) => match op.node {
             BinOpKind::Div => {
-                apply_reductions(cx, nbits, left, signed)
-                    - (if signed {
-                        0 // let's be conservative here
-                    } else {
-                        // by dividing by 1, we remove 0 bits, etc.
-                        get_constant_bits(cx, right).map_or(0, |b| b.saturating_sub(1))
-                    })
+                apply_reductions(cx, nbits, left, signed).saturating_sub(if signed {
+                    // let's be conservative here
+                    0
+                } else {
+                    // by dividing by 1, we remove 0 bits, etc.
+                    get_constant_bits(cx, right).map_or(0, |b| b.saturating_sub(1))
+                })
             },
             BinOpKind::Rem | BinOpKind::BitAnd => get_constant_bits(cx, right)
                 .unwrap_or(u64::max_value())
                 .min(apply_reductions(cx, nbits, left, signed)),
-            BinOpKind::Shr => {
-                apply_reductions(cx, nbits, left, signed)
-                    - constant_int(cx, right).map_or(0, |s| u64::try_from(s).expect("shift too high"))
-            },
+            BinOpKind::Shr => apply_reductions(cx, nbits, left, signed)
+                .saturating_sub(constant_int(cx, right).map_or(0, |s| u64::try_from(s).expect("shift too high"))),
             _ => nbits,
         },
         ExprKind::MethodCall(method, [left, right], _) => {
