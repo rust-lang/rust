@@ -18,7 +18,7 @@ use syntax::{SmolStr, SyntaxKind, TextRange};
 
 use crate::{
     context::{PathCompletionCtx, PathKind},
-    item::CompletionRelevanceTypeMatch,
+    item::{Builder, CompletionRelevanceTypeMatch},
     render::{function::render_fn, literal::render_variant_lit, macro_::render_macro},
     CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance,
 };
@@ -144,7 +144,7 @@ pub(crate) fn render_resolution(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
-) -> CompletionItem {
+) -> Builder {
     render_resolution_(ctx, local_name, None, resolution)
 }
 
@@ -152,14 +152,14 @@ pub(crate) fn render_resolution_simple(
     ctx: RenderContext<'_>,
     local_name: hir::Name,
     resolution: ScopeDef,
-) -> CompletionItem {
+) -> Builder {
     render_resolution_simple_(ctx, local_name, None, resolution)
 }
 
 pub(crate) fn render_resolution_with_import(
     ctx: RenderContext<'_>,
     import_edit: LocatedImport,
-) -> Option<CompletionItem> {
+) -> Option<Builder> {
     let resolution = ScopeDef::from(import_edit.original_item);
     let local_name = match resolution {
         ScopeDef::ModuleDef(hir::ModuleDef::Function(f)) => f.name(ctx.completion.db),
@@ -182,7 +182,7 @@ fn render_resolution_(
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
-) -> CompletionItem {
+) -> Builder {
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
@@ -211,7 +211,7 @@ fn render_resolution_simple_(
     local_name: hir::Name,
     import_to_add: Option<LocatedImport>,
     resolution: ScopeDef,
-) -> CompletionItem {
+) -> Builder {
     let _p = profile::span("render_resolution");
     use hir::ModuleDef::*;
 
@@ -292,7 +292,7 @@ fn render_resolution_simple_(
     if let Some(import_to_add) = ctx.import_to_add {
         item.add_import(import_to_add);
     }
-    item.build()
+    item
 }
 
 fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<hir::Documentation> {
@@ -625,6 +625,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_name_already_imported: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
@@ -648,6 +649,7 @@ fn main() { let _: m::Spam = S$0 }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_name_already_imported: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,
@@ -737,6 +739,7 @@ fn foo() { A { the$0 } }
                             ),
                             is_local: false,
                             is_item_from_trait: false,
+                            is_name_already_imported: false,
                             is_op_method: false,
                             is_private_editable: false,
                             postfix_match: None,

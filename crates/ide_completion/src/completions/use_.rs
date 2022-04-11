@@ -1,11 +1,13 @@
 //! Completion for use trees
 
 use hir::ScopeDef;
+use rustc_hash::FxHashSet;
 use syntax::{ast, AstNode};
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind, PathQualifierCtx},
-    Completions,
+    item::Builder,
+    CompletionRelevance, Completions,
 };
 
 pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) {
@@ -39,6 +41,22 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                 None => return,
             };
 
+            let mut already_imported_names = FxHashSet::default();
+            if let Some(list) = ctx.token.ancestors().find_map(ast::UseTreeList::cast) {
+                let use_tree = list.parent_use_tree();
+                if use_tree.path().as_ref() == Some(path) {
+                    for tree in list.use_trees() {
+                        if tree.is_simple_path() {
+                            if let Some(name) =
+                                tree.path().and_then(|path| path.as_single_name_ref())
+                            {
+                                already_imported_names.insert(name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
                     let module_scope = module.scope(ctx.db, Some(ctx.module));
@@ -50,6 +68,9 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                         )
                     };
                     for (name, def) in module_scope {
+                        let is_name_already_imported =
+                            already_imported_names.contains(name.as_text().unwrap().as_str());
+
                         let add_resolution = match def {
                             ScopeDef::Unknown if unknown_is_current(&name) => {
                                 // for `use self::foo$0`, don't suggest `foo` as a completion
@@ -61,7 +82,12 @@ pub(crate) fn complete_use_tree(acc: &mut Completions, ctx: &CompletionContext) 
                         };
 
                         if add_resolution {
-                            acc.add_resolution(ctx, name, def);
+                            let mut builder = Builder::from_resolution(ctx, name, def);
+                            builder.set_relevance(CompletionRelevance {
+                                is_name_already_imported,
+                                ..Default::default()
+                            });
+                            acc.add(builder.build());
                         }
                     }
                 }

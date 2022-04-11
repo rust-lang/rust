@@ -22,7 +22,7 @@ pub(crate) fn render_fn(
     ctx: RenderContext<'_>,
     local_name: Option<hir::Name>,
     func: hir::Function,
-) -> CompletionItem {
+) -> Builder {
     let _p = profile::span("render_fn");
     render(ctx, local_name, func, FuncKind::Function)
 }
@@ -32,7 +32,7 @@ pub(crate) fn render_method(
     receiver: Option<hir::Name>,
     local_name: Option<hir::Name>,
     func: hir::Function,
-) -> CompletionItem {
+) -> Builder {
     let _p = profile::span("render_method");
     render(ctx, local_name, func, FuncKind::Method(receiver))
 }
@@ -42,7 +42,7 @@ fn render(
     local_name: Option<hir::Name>,
     func: hir::Function,
     func_kind: FuncKind,
-) -> CompletionItem {
+) -> Builder {
     let db = completion.db;
 
     let name = local_name.unwrap_or_else(|| func.name(db));
@@ -107,7 +107,7 @@ fn render(
             }
         }
     }
-    item.build()
+    item
 }
 
 pub(super) fn add_call_parens<'b>(

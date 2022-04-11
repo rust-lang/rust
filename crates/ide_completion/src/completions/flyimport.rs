@@ -205,7 +205,8 @@ pub(crate) fn import_on_the_fly(acc: &mut Completions, ctx: &CompletionContext) 
                     &user_input_lowercased,
                 )
             })
-            .filter_map(|import| render_resolution_with_import(RenderContext::new(ctx), import)),
+            .filter_map(|import| render_resolution_with_import(RenderContext::new(ctx), import))
+            .map(|builder| builder.build()),
     );
     Some(())
 }
