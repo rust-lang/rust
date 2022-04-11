@@ -75,7 +75,13 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn read(&self) {
-        if !self.try_read() {
+        let state = self.state.load(Relaxed);
+        if !read_lockable(state)
+            || self
+                .state
+                .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+                .is_err()
+        {
             self.read_contended();
         }
     }
@@ -101,7 +107,8 @@ impl RwLock {
         loop {
             // If we can lock it, lock it.
             if read_lockable(state) {
-                match self.state.compare_exchange(state, state + READ_LOCKED, Acquire, Relaxed) {
+                match self.state.compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
+                {
                     Ok(_) => return, // Locked!
                     Err(s) => {
                         state = s;
@@ -140,7 +147,7 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn write(&self) {
-        if !self.try_write() {
+        if self.state.compare_exchange_weak(0, WRITE_LOCKED, Acquire, Relaxed).is_err() {
             self.write_contended();
         }
     }
@@ -165,7 +172,7 @@ impl RwLock {
         loop {
             // If it's unlocked, we try to lock it.
             if unlocked(state) {
-                match self.state.compare_exchange(
+                match self.state.compare_exchange_weak(
                     state,
                     state | WRITE_LOCKED | other_writers_waiting,
                     Acquire,
