@@ -126,7 +126,7 @@ impl Completions {
             cov_mark::hit!(qualified_path_doc_hidden);
             return;
         }
-        self.add(render_resolution(RenderContext::new(ctx), local_name, resolution));
+        self.add(render_resolution(RenderContext::new(ctx), local_name, resolution).build());
     }
 
     pub(crate) fn add_resolution_simple(
@@ -138,7 +138,7 @@ impl Completions {
         if ctx.is_scope_def_hidden(resolution) {
             return;
         }
-        self.add(render_resolution_simple(RenderContext::new(ctx), local_name, resolution));
+        self.add(render_resolution_simple(RenderContext::new(ctx), local_name, resolution).build());
     }
 
     pub(crate) fn add_macro(
@@ -152,11 +152,14 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(render_macro(
-            RenderContext::new(ctx).private_editable(is_private_editable),
-            local_name,
-            mac,
-        ));
+        self.add(
+            render_macro(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                local_name,
+                mac,
+            )
+            .build(),
+        );
     }
 
     pub(crate) fn add_function(
@@ -170,11 +173,14 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(render_fn(
-            RenderContext::new(ctx).private_editable(is_private_editable),
-            local_name,
-            func,
-        ));
+        self.add(
+            render_fn(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                local_name,
+                func,
+            )
+            .build(),
+        );
     }
 
     pub(crate) fn add_method(
@@ -189,12 +195,15 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(render_method(
-            RenderContext::new(ctx).private_editable(is_private_editable),
-            receiver,
-            local_name,
-            func,
-        ));
+        self.add(
+            render_method(
+                RenderContext::new(ctx).private_editable(is_private_editable),
+                receiver,
+                local_name,
+                func,
+            )
+            .build(),
+        );
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, konst: hir::Const) {
@@ -235,7 +244,11 @@ impl Completions {
         variant: hir::Variant,
         path: hir::ModPath,
     ) {
-        self.add_opt(render_variant_lit(RenderContext::new(ctx), None, variant, Some(path)));
+        if let Some(builder) =
+            render_variant_lit(RenderContext::new(ctx), None, variant, Some(path))
+        {
+            self.add(builder.build());
+        }
     }
 
     pub(crate) fn add_enum_variant(
@@ -244,7 +257,11 @@ impl Completions {
         variant: hir::Variant,
         local_name: Option<hir::Name>,
     ) {
-        self.add_opt(render_variant_lit(RenderContext::new(ctx), local_name, variant, None));
+        if let Some(builder) =
+            render_variant_lit(RenderContext::new(ctx), local_name, variant, None)
+        {
+            self.add(builder.build());
+        }
     }
 
     pub(crate) fn add_field(
@@ -275,8 +292,11 @@ impl Completions {
         path: Option<hir::ModPath>,
         local_name: Option<hir::Name>,
     ) {
-        let item = render_struct_literal(RenderContext::new(ctx), strukt, path, local_name);
-        self.add_opt(item);
+        if let Some(builder) =
+            render_struct_literal(RenderContext::new(ctx), strukt, path, local_name)
+        {
+            self.add(builder.build());
+        }
     }
 
     pub(crate) fn add_union_literal(

@@ -4,13 +4,13 @@ use hir::{Documentation, HirDisplay};
 use ide_db::SymbolKind;
 use syntax::SmolStr;
 
-use crate::{context::PathKind, item::CompletionItem, render::RenderContext};
+use crate::{
+    context::PathKind,
+    item::{Builder, CompletionItem},
+    render::RenderContext,
+};
 
-pub(crate) fn render_macro(
-    ctx: RenderContext<'_>,
-    name: hir::Name,
-    macro_: hir::Macro,
-) -> CompletionItem {
+pub(crate) fn render_macro(ctx: RenderContext<'_>, name: hir::Name, macro_: hir::Macro) -> Builder {
     let _p = profile::span("render_macro");
     render(ctx, name, macro_)
 }
@@ -19,7 +19,7 @@ fn render(
     ctx @ RenderContext { completion, .. }: RenderContext<'_>,
     name: hir::Name,
     macro_: hir::Macro,
-) -> CompletionItem {
+) -> Builder {
     let source_range = if completion.is_immediately_after_macro_bang() {
         cov_mark::hit!(completes_macro_call_if_cursor_at_bang_token);
         completion.token.parent().map_or_else(|| ctx.source_range(), |it| it.text_range())
@@ -66,7 +66,7 @@ fn render(
         item.add_import(import_to_add);
     }
 
-    item.build()
+    item
 }
 
 fn label(

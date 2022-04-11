@@ -9,6 +9,11 @@ use stdx::{impl_from, never};
 use syntax::{SmolStr, TextRange};
 use text_edit::TextEdit;
 
+use crate::{
+    context::CompletionContext,
+    render::{render_resolution, RenderContext},
+};
+
 /// `CompletionItem` describes a single completion variant in the editor pop-up.
 /// It is basically a POD with various properties. To construct a
 /// `CompletionItem`, use `new` method and the `Builder` struct.
@@ -134,6 +139,8 @@ pub struct CompletionRelevance {
     pub is_local: bool,
     /// This is set when trait items are completed in an impl of that trait.
     pub is_item_from_trait: bool,
+    /// This is set when an import is suggested whose name is already imported.
+    pub is_name_already_imported: bool,
     /// Set for method completions of the `core::ops` and `core::cmp` family.
     pub is_op_method: bool,
     /// Set for item completions that are private but in the workspace.
@@ -200,6 +207,7 @@ impl CompletionRelevance {
             type_match,
             is_local,
             is_item_from_trait,
+            is_name_already_imported,
             is_op_method,
             is_private_editable,
             postfix_match,
@@ -213,6 +221,10 @@ impl CompletionRelevance {
         // lower rank trait op methods
         if !is_op_method {
             score += 10;
+        }
+        // lower rank for conflicting import names
+        if !is_name_already_imported {
+            score += 1;
         }
         if exact_name_match {
             score += 10;
@@ -413,6 +425,14 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
+    pub(crate) fn from_resolution(
+        ctx: &CompletionContext,
+        local_name: hir::Name,
+        resolution: hir::ScopeDef,
+    ) -> Self {
+        render_resolution(RenderContext::new(ctx), local_name, resolution)
+    }
+
     pub(crate) fn build(self) -> CompletionItem {
         let _p = profile::span("item::Builder::build");
 

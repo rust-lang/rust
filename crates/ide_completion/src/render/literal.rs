@@ -5,7 +5,7 @@ use ide_db::SymbolKind;
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx},
-    item::CompletionItem,
+    item::{Builder, CompletionItem},
     render::{
         compute_ref_match, compute_type_match,
         variant::{
@@ -22,7 +22,7 @@ pub(crate) fn render_variant_lit(
     local_name: Option<hir::Name>,
     variant: hir::Variant,
     path: Option<hir::ModPath>,
-) -> Option<CompletionItem> {
+) -> Option<Builder> {
     let _p = profile::span("render_enum_variant");
     let db = ctx.db();
 
@@ -35,7 +35,7 @@ pub(crate) fn render_struct_literal(
     strukt: hir::Struct,
     path: Option<hir::ModPath>,
     local_name: Option<hir::Name>,
-) -> Option<CompletionItem> {
+) -> Option<Builder> {
     let _p = profile::span("render_struct_literal");
     let db = ctx.db();
 
@@ -48,7 +48,7 @@ fn render(
     thing: Variant,
     name: hir::Name,
     path: Option<hir::ModPath>,
-) -> Option<CompletionItem> {
+) -> Option<Builder> {
     let db = completion.db;
     let kind = thing.kind(db);
     let has_call_parens =
@@ -112,7 +112,7 @@ fn render(
     if let Some(import_to_add) = ctx.import_to_add {
         item.add_import(import_to_add);
     }
-    Some(item.build())
+    Some(item)
 }
 
 #[derive(Clone, Copy)]
