@@ -1,5 +1,5 @@
 // Test that we do not currently display `~const` in rustdoc
-// as that syntax is currently provisional; `~const Drop` has
+// as that syntax is currently provisional; `~const Destruct` has
 // no effect on stable code so it should be hidden as well.
 //
 // To future blessers: make sure that `const_trait_impl` is
@@ -7,6 +7,8 @@
 // not remove this test.
 #![feature(const_trait_impl)]
 #![crate_name = "foo"]
+
+use std::marker::Destruct;
 
 pub struct S<T>(T);
 
@@ -20,22 +22,36 @@ pub trait Tr<T> {
     // @!has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
     // @has - '//div[@id="method.a"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
     #[default_method_body_is_const]
-    fn a<A: ~const Clone>() where Option<A>: ~const Clone {}
+    fn a<A: ~const Clone + ~const Destruct>()
+    where
+        Option<A>: ~const Clone + ~const Destruct,
+    {
+    }
 }
 
 // @!has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]' '~const'
 // @has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/a[@class="trait"]' 'Clone'
 // @!has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where"]' '~const'
 // @has - '//section[@id="impl-Tr%3CT%3E"]/h3[@class="code-header in-band"]/span[@class="where fmt-newline"]' ': Clone'
-impl<T: ~const Clone> const Tr<T> for T where Option<T>: ~const Clone {
-    fn a<A: ~const Clone>() where Option<A>: ~const Clone {}
+impl<T: ~const Clone + ~const Destruct> const Tr<T> for T
+where
+    Option<T>: ~const Clone + ~const Destruct,
+{
+    fn a<A: ~const Clone + ~const Destruct>()
+    where
+        Option<A>: ~const Clone + ~const Destruct,
+    {
+    }
 }
 
 // @!has foo/fn.foo.html '//pre[@class="rust fn"]/code/a[@class="trait"]' '~const'
 // @has - '//pre[@class="rust fn"]/code/a[@class="trait"]' 'Clone'
 // @!has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]' '~const'
 // @has - '//pre[@class="rust fn"]/code/span[@class="where fmt-newline"]' ': Clone'
-pub const fn foo<F: ~const Clone>() where Option<F>: ~const Clone {
+pub const fn foo<F: ~const Clone + ~const Destruct>()
+where
+    Option<F>: ~const Clone + ~const Destruct,
+{
     F::a()
 }
 
@@ -44,7 +60,10 @@ impl<T> S<T> {
     // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/a[@class="trait"]' 'Clone'
     // @!has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where"]' '~const'
     // @has - '//section[@id="method.foo"]/h4[@class="code-header"]/span[@class="where fmt-newline"]' ': Clone'
-    pub const fn foo<B: ~const Clone>() where B: ~const Clone {
+    pub const fn foo<B: ~const Clone + ~const Destruct>()
+    where
+        B: ~const Clone + ~const Destruct,
+    {
         B::a()
     }
 }
