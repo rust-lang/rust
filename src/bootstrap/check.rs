@@ -243,12 +243,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&[
-            "compiler/rustc_codegen_cranelift",
-            "rustc_codegen_cranelift",
-            "compiler/rustc_codegen_gcc",
-            "rustc_codegen_gcc",
-        ])
+        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
     }
 
     fn make_run(run: RunConfig<'_>) {
