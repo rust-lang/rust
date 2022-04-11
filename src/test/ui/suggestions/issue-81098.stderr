@@ -27,7 +27,9 @@ LL | fn ok() -> impl core::fmt::Display {
    |            ^^^^^^^^^^^^^^^^^^^^^^^ `()` cannot be formatted with the default formatter
 LL |
 LL |     1;
-   |      - consider removing this semicolon
+   |     -- help: remove this semicolon
+   |     |
+   |     this expression has type `{integer}`, which implements `std::fmt::Display`
    |
    = help: the trait `std::fmt::Display` is not implemented for `()`
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
