@@ -1,0 +1,13 @@
+error[E0382]: use of moved value: `foo`
+  --> $DIR/repeat-drop-2.rs:4:17
+   |
+LL |     let foo = String::new();
+   |         --- move occurs because `foo` has type `String`, which does not implement the `Copy` trait
+LL |     let _bar = foo;
+   |                --- value moved here
+LL |     let _baz = [foo; 0];
+   |                 ^^^ value used here after move
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0382`.

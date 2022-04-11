@@ -54,6 +54,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Repeat { value, count } => {
                 let value_operand =
                     unpack!(block = this.as_operand(block, scope, &this.thir[value], None));
+                if let Some(0) = count.try_eval_usize(this.tcx, this.param_env) {
+                    if let Operand::Move(place) = value_operand {
+                        let success = this.cfg.start_new_block();
+                        this.cfg.terminate(
+                            block,
+                            source_info,
+                            TerminatorKind::Drop { place, target: success, unwind: None },
+                        );
+                        this.diverge_from(block);
+                        block = success;
+                        return block.and(Rvalue::Use(Operand::Constant(Box::new(Constant {
+                            span: expr_span,
+                            user_ty: None,
+                            literal: ty::Const::zero_sized(this.tcx, expr.ty).into(),
+                        }))));
+                    }
+                }
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Binary { op, lhs, rhs } => {
