@@ -665,6 +665,40 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+fn files_related_to_test(
+    config: &Config,
+    testpaths: &TestPaths,
+    props: &EarlyProps,
+    revision: Option<&str>,
+) -> Vec<PathBuf> {
+    let mut related = vec![];
+
+    if testpaths.file.is_dir() {
+        // run-make tests use their individual directory
+        for entry in WalkDir::new(&testpaths.file) {
+            let path = entry.unwrap().into_path();
+            if path.is_file() {
+                related.push(path);
+            }
+        }
+    } else {
+        related.push(testpaths.file.clone());
+    }
+
+    for aux in &props.aux {
+        let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
+        related.push(path);
+    }
+
+    // UI test files.
+    for extension in UI_EXTENSIONS {
+        let path = expected_output_path(testpaths, revision, &config.compare_mode, extension);
+        related.push(path);
+    }
+
+    related
+}
+
 fn is_up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -686,18 +720,8 @@ fn is_up_to_date(
 
     // Check timestamps.
     let mut inputs = inputs.clone();
-    // Use `add_dir` to account for run-make tests, which use their individual directory
-    inputs.add_dir(&testpaths.file);
-
-    for aux in &props.aux {
-        let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
+    for path in files_related_to_test(config, testpaths, props, revision) {
         inputs.add_path(&path);
-    }
-
-    // UI test files.
-    for extension in UI_EXTENSIONS {
-        let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
-        inputs.add_path(path);
     }
 
     inputs < Stamp::from_path(&stamp_name)
