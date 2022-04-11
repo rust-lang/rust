@@ -9,7 +9,7 @@ use rustc_hir::Node;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
-    metadata_symbol_name, ExportedSymbol, SymbolExportLevel,
+    metadata_symbol_name, ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel,
 };
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
@@ -42,7 +42,7 @@ pub fn crates_export_threshold(crate_types: &[CrateType]) -> SymbolExportLevel {
     }
 }
 
-fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportLevel> {
+fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<SymbolExportInfo> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -124,17 +124,38 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             } else {
                 symbol_export_level(tcx, def_id.to_def_id())
             };
+            let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
             debug!(
                 "EXPORTED SYMBOL (local): {} ({:?})",
                 tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
                 export_level
             );
-            (def_id.to_def_id(), export_level)
+            (def_id.to_def_id(), SymbolExportInfo {
+                level: export_level,
+                kind: if tcx.is_static(def_id.to_def_id()) {
+                    if codegen_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL) {
+                        SymbolExportKind::Tls
+                    } else {
+                        SymbolExportKind::Data
+                    }
+                } else {
+                    SymbolExportKind::Text
+                },
+                used: codegen_attrs.flags.contains(CodegenFnAttrFlags::USED)
+                    || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER),
+            })
         })
         .collect();
 
     if let Some(id) = tcx.proc_macro_decls_static(()) {
-        reachable_non_generics.insert(id.to_def_id(), SymbolExportLevel::C);
+        reachable_non_generics.insert(
+            id.to_def_id(),
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        );
     }
 
     reachable_non_generics
@@ -143,8 +164,8 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
 fn is_reachable_non_generic_provider_local(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let export_threshold = threshold(tcx);
 
-    if let Some(&level) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
-        level.is_below_threshold(export_threshold)
+    if let Some(&info) = tcx.reachable_non_generics(def_id.krate).get(&def_id) {
+        info.level.is_below_threshold(export_threshold)
     } else {
         false
     }
@@ -157,7 +178,7 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
 fn exported_symbols_provider_local<'tcx>(
     tcx: TyCtxt<'tcx>,
     cnum: CrateNum,
-) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportLevel)] {
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
@@ -167,13 +188,20 @@ fn exported_symbols_provider_local<'tcx>(
     let mut symbols: Vec<_> = tcx
         .reachable_non_generics(LOCAL_CRATE)
         .iter()
-        .map(|(&def_id, &level)| (ExportedSymbol::NonGeneric(def_id), level))
+        .map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info))
         .collect();
 
     if tcx.entry_fn(()).is_some() {
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
 
-        symbols.push((exported_symbol, SymbolExportLevel::C));
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Text,
+                used: false,
+            },
+        ));
     }
 
     if tcx.allocator_kind(()).is_some() {
@@ -181,7 +209,14 @@ fn exported_symbols_provider_local<'tcx>(
             let symbol_name = format!("__rust_{}", method.name);
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-            symbols.push((exported_symbol, SymbolExportLevel::Rust));
+            symbols.push((
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::Rust,
+                    kind: SymbolExportKind::Text,
+                    used: false,
+                },
+            ));
         }
     }
 
@@ -194,7 +229,14 @@ fn exported_symbols_provider_local<'tcx>(
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (exported_symbol, SymbolExportLevel::C)
+            (
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
+            )
         }));
     }
 
@@ -204,7 +246,14 @@ fn exported_symbols_provider_local<'tcx>(
 
         symbols.extend(MSAN_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (exported_symbol, SymbolExportLevel::C)
+            (
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
+            )
         }));
     }
 
@@ -212,7 +261,14 @@ fn exported_symbols_provider_local<'tcx>(
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-        symbols.push((exported_symbol, SymbolExportLevel::Rust));
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        ));
     }
 
     if tcx.sess.opts.share_generics() && tcx.local_crate_exports_generics() {
@@ -245,7 +301,14 @@ fn exported_symbols_provider_local<'tcx>(
                 MonoItem::Fn(Instance { def: InstanceDef::Item(def), substs }) => {
                     if substs.non_erasable_generics().next().is_some() {
                         let symbol = ExportedSymbol::Generic(def.did, substs);
-                        symbols.push((symbol, SymbolExportLevel::Rust));
+                        symbols.push((
+                            symbol,
+                            SymbolExportInfo {
+                                level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
+                            },
+                        ));
                     }
                 }
                 MonoItem::Fn(Instance { def: InstanceDef::DropGlue(_, Some(ty)), substs }) => {
@@ -254,7 +317,14 @@ fn exported_symbols_provider_local<'tcx>(
                         substs.non_erasable_generics().next(),
                         Some(GenericArgKind::Type(ty))
                     );
-                    symbols.push((ExportedSymbol::DropGlue(ty), SymbolExportLevel::Rust));
+                    symbols.push((
+                        ExportedSymbol::DropGlue(ty),
+                        SymbolExportInfo {
+                            level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
+                        },
+                    ));
                 }
                 _ => {
                     // Any other symbols don't qualify for sharing
