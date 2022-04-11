@@ -79,6 +79,10 @@ config_data! {
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_runBuildScripts |
         cargo_loadOutDirsFromCheck: bool = "true",
+        /// Advanced option, fully override the command rust-analyzer uses to
+        /// run build scripts and build procedural macros. The command should
+        /// include `--message-format=json` or a similar option.
+        cargo_runBuildScriptsCommand: Option<Vec<String>> = "null",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid compiling unnecessary things.
         cargo_useRustcWrapperForBuildScripts: bool = "true",
@@ -803,6 +807,7 @@ impl Config {
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_useRustcWrapperForBuildScripts,
+            run_build_script_command: self.data.cargo_runBuildScriptsCommand.clone(),
         }
     }
 

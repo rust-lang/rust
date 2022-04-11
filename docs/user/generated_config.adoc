@@ -64,6 +64,13 @@ List of features to activate.
 --
 Run build scripts (`build.rs`) for more precise code analysis.
 --
+[[rust-analyzer.cargo.runBuildScriptsCommand]]rust-analyzer.cargo.runBuildScriptsCommand (default: `null`)::
++
+--
+Advanced option, fully override the command rust-analyzer uses to
+run build scripts and build procedural macros. The command should
+include `--message-format=json` or a similar option.
+--
 [[rust-analyzer.cargo.useRustcWrapperForBuildScripts]]rust-analyzer.cargo.useRustcWrapperForBuildScripts (default: `true`)::
 +
 --

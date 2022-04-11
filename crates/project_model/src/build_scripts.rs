@@ -42,22 +42,15 @@ pub(crate) struct BuildScriptOutput {
 }
 
 impl WorkspaceBuildScripts {
-    pub(crate) fn run(
-        config: &CargoConfig,
-        workspace: &CargoWorkspace,
-        progress: &dyn Fn(String),
-    ) -> Result<WorkspaceBuildScripts> {
+    fn build_command(config: &CargoConfig) -> Command {
+        if let Some([program, args @ ..]) = config.run_build_script_command.as_deref() {
+            let mut cmd = Command::new(program);
+            cmd.args(args);
+            return cmd;
+        }
+
         let mut cmd = Command::new(toolchain::cargo());
 
-        if config.wrap_rustc_in_build_scripts {
-            // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
-            // that to compile only proc macros and build scripts during the initial
-            // `cargo check`.
-            let myself = std::env::current_exe()?;
-            cmd.env("RUSTC_WRAPPER", myself);
-            cmd.env("RA_RUSTC_WRAPPER", "1");
-        }
-        cmd.current_dir(workspace.workspace_root());
         cmd.args(&["check", "--quiet", "--workspace", "--message-format=json"]);
 
         // --all-targets includes tests, benches and examples in addition to the
@@ -80,6 +73,26 @@ impl WorkspaceBuildScripts {
                 cmd.arg(config.features.join(" "));
             }
         }
+
+        cmd
+    }
+    pub(crate) fn run(
+        config: &CargoConfig,
+        workspace: &CargoWorkspace,
+        progress: &dyn Fn(String),
+    ) -> Result<WorkspaceBuildScripts> {
+        let mut cmd = Self::build_command(config);
+
+        if config.wrap_rustc_in_build_scripts {
+            // Setup RUSTC_WRAPPER to point to `rust-analyzer` binary itself. We use
+            // that to compile only proc macros and build scripts during the initial
+            // `cargo check`.
+            let myself = std::env::current_exe()?;
+            cmd.env("RUSTC_WRAPPER", myself);
+            cmd.env("RA_RUSTC_WRAPPER", "1");
+        }
+
+        cmd.current_dir(workspace.workspace_root());
 
         cmd.stdout(Stdio::piped()).stderr(Stdio::piped()).stdin(Stdio::null());
 
@@ -104,7 +117,7 @@ impl WorkspaceBuildScripts {
                 }
 
                 // Copy-pasted from existing cargo_metadata. It seems like we
-                // should be using sered_stacker here?
+                // should be using serde_stacker here?
                 let mut deserializer = serde_json::Deserializer::from_str(line);
                 deserializer.disable_recursion_limit();
                 let message = Message::deserialize(&mut deserializer)
