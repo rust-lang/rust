@@ -621,9 +621,9 @@ impl<'a> Builder<'a> {
 
     pub fn get_help(build: &Build, subcommand: &str) -> Option<String> {
         let kind = match subcommand {
-            "build" => Kind::Build,
-            "doc" => Kind::Doc,
-            "test" => Kind::Test,
+            "build" | "b" => Kind::Build,
+            "doc" | "d" => Kind::Doc,
+            "test" | "t" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
             "install" => Kind::Install,
