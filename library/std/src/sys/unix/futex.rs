@@ -7,6 +7,11 @@
 use crate::sync::atomic::AtomicI32;
 use crate::time::Duration;
 
+/// Wait for a futex_wake operation to wake us.
+///
+/// Returns directly if the futex doesn't hold the expected value.
+///
+/// Returns false on timeout, and true in all other cases.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) -> bool {
     use super::time::Timespec;
@@ -68,6 +73,10 @@ pub fn futex_wait(futex: &AtomicI32, expected: i32, timeout: Option<Duration>) {
     }
 }
 
+/// Wake up one thread that's blocked on futex_wait on this futex.
+///
+/// Returns true if this actually woke up such a thread,
+/// or false if no thread was waiting on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake(futex: &AtomicI32) -> bool {
     unsafe {
@@ -80,6 +89,7 @@ pub fn futex_wake(futex: &AtomicI32) -> bool {
     }
 }
 
+/// Wake up all threads that are waiting on futex_wait on this futex.
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub fn futex_wake_all(futex: &AtomicI32) {
     unsafe {
