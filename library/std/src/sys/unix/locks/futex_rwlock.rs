@@ -27,33 +27,33 @@ const MAX_READERS: i32 = MASK - 1;
 const READERS_WAITING: i32 = 1 << 30;
 const WRITERS_WAITING: i32 = 1 << 31;
 
-fn unlocked(state: i32) -> bool {
+fn is_unlocked(state: i32) -> bool {
     state & MASK == 0
 }
 
-fn write_locked(state: i32) -> bool {
+fn is_write_locked(state: i32) -> bool {
     state & MASK == WRITE_LOCKED
 }
 
-fn readers_waiting(state: i32) -> bool {
+fn has_readers_waiting(state: i32) -> bool {
     state & READERS_WAITING != 0
 }
 
-fn writers_waiting(state: i32) -> bool {
+fn has_writers_waiting(state: i32) -> bool {
     state & WRITERS_WAITING != 0
 }
 
-fn read_lockable(state: i32) -> bool {
+fn is_read_lockable(state: i32) -> bool {
     // This also returns false if the counter could overflow if we tried to read lock it.
     //
     // We don't allow read-locking if there's readers waiting, even if the lock is unlocked
     // and there's no writers waiting. The only situation when this happens is after unlocking,
     // at which point the unlocking thread might be waking up writers, which have priority over readers.
     // The unlocking thread will clear the readers waiting bit and wake up readers, if necssary.
-    state & MASK < MAX_READERS && !readers_waiting(state) && !writers_waiting(state)
+    state & MASK < MAX_READERS && !has_readers_waiting(state) && !has_writers_waiting(state)
 }
 
-fn reached_max_readers(state: i32) -> bool {
+fn has_reached_max_readers(state: i32) -> bool {
     state & MASK == MAX_READERS
 }
 
@@ -69,14 +69,14 @@ impl RwLock {
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
         self.state
-            .fetch_update(Acquire, Relaxed, |s| read_lockable(s).then(|| s + READ_LOCKED))
+            .fetch_update(Acquire, Relaxed, |s| is_read_lockable(s).then(|| s + READ_LOCKED))
             .is_ok()
     }
 
     #[inline]
     pub unsafe fn read(&self) {
         let state = self.state.load(Relaxed);
-        if !read_lockable(state)
+        if !is_read_lockable(state)
             || self
                 .state
                 .compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
@@ -92,10 +92,10 @@ impl RwLock {
 
         // It's impossible for a reader to be waiting on a read-locked RwLock,
         // except if there is also a writer waiting.
-        debug_assert!(!readers_waiting(state) || writers_waiting(state));
+        debug_assert!(!has_readers_waiting(state) || has_writers_waiting(state));
 
         // Wake up a writer if we were the last reader and there's a writer waiting.
-        if unlocked(state) && writers_waiting(state) {
+        if is_unlocked(state) && has_writers_waiting(state) {
             self.wake_writer_or_readers(state);
         }
     }
@@ -106,7 +106,7 @@ impl RwLock {
 
         loop {
             // If we can lock it, lock it.
-            if read_lockable(state) {
+            if is_read_lockable(state) {
                 match self.state.compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
                 {
                     Ok(_) => return, // Locked!
@@ -118,12 +118,12 @@ impl RwLock {
             }
 
             // Check for overflow.
-            if reached_max_readers(state) {
+            if has_reached_max_readers(state) {
                 panic!("too many active read locks on RwLock");
             }
 
             // Make sure the readers waiting bit is set before we go to sleep.
-            if !readers_waiting(state) {
+            if !has_readers_waiting(state) {
                 if let Err(s) =
                     self.state.compare_exchange(state, state | READERS_WAITING, Relaxed, Relaxed)
                 {
@@ -142,7 +142,9 @@ impl RwLock {
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        self.state.fetch_update(Acquire, Relaxed, |s| unlocked(s).then(|| s + WRITE_LOCKED)).is_ok()
+        self.state
+            .fetch_update(Acquire, Relaxed, |s| is_unlocked(s).then(|| s + WRITE_LOCKED))
+            .is_ok()
     }
 
     #[inline]
@@ -156,9 +158,9 @@ impl RwLock {
     pub unsafe fn write_unlock(&self) {
         let state = self.state.fetch_sub(WRITE_LOCKED, Release) - WRITE_LOCKED;
 
-        debug_assert!(unlocked(state));
+        debug_assert!(is_unlocked(state));
 
-        if writers_waiting(state) || readers_waiting(state) {
+        if has_writers_waiting(state) || has_readers_waiting(state) {
             self.wake_writer_or_readers(state);
         }
     }
@@ -171,7 +173,7 @@ impl RwLock {
 
         loop {
             // If it's unlocked, we try to lock it.
-            if unlocked(state) {
+            if is_unlocked(state) {
                 match self.state.compare_exchange_weak(
                     state,
                     state | WRITE_LOCKED | other_writers_waiting,
@@ -187,7 +189,7 @@ impl RwLock {
             }
 
             // Set the waiting bit indicating that we're waiting on it.
-            if !writers_waiting(state) {
+            if !has_writers_waiting(state) {
                 if let Err(s) =
                     self.state.compare_exchange(state, state | WRITERS_WAITING, Relaxed, Relaxed)
                 {
@@ -207,7 +209,7 @@ impl RwLock {
             // Don't go to sleep if the lock has become available,
             // or if the writers waiting bit is no longer set.
             let s = self.state.load(Relaxed);
-            if unlocked(state) || !writers_waiting(s) {
+            if is_unlocked(state) || !has_writers_waiting(s) {
                 state = s;
                 continue;
             }
@@ -226,7 +228,7 @@ impl RwLock {
     /// back to waking up readers if there was no writer to wake up.
     #[cold]
     fn wake_writer_or_readers(&self, mut state: i32) {
-        assert!(unlocked(state));
+        assert!(is_unlocked(state));
 
         // The readers waiting bit might be turned on at any point now,
         // since readers will block when there's anything waiting.
@@ -299,13 +301,13 @@ impl RwLock {
 
     fn spin_write(&self) -> i32 {
         // Stop spinning when it's unlocked or when there's waiting writers, to keep things somewhat fair.
-        self.spin_until(|state| unlocked(state) || writers_waiting(state))
+        self.spin_until(|state| is_unlocked(state) || has_writers_waiting(state))
     }
 
     fn spin_read(&self) -> i32 {
         // Stop spinning when it's unlocked or read locked, or when there's waiting threads.
         self.spin_until(|state| {
-            !write_locked(state) || readers_waiting(state) || writers_waiting(state)
+            !is_write_locked(state) || has_readers_waiting(state) || has_writers_waiting(state)
         })
     }
 }
