@@ -1870,6 +1870,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 // These entities are explicitly allowed to be shadowed by fresh bindings.
                 None
             }
+            Res::SelfCtor(_) => {
+                // We resolve `Self` in pattern position as an ident sometimes during recovery,
+                // so delay a bug instead of ICEing.
+                self.r.session.delay_span_bug(
+                    ident.span,
+                    "unexpected `SelfCtor` in pattern, expected identifier"
+                );
+                None
+            }
             _ => span_bug!(
                 ident.span,
                 "unexpected resolution for an identifier in pattern: {:?}",
