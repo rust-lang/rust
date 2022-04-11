@@ -302,21 +302,11 @@ impl<'a> Clean<Option<WherePredicate>> for ty::Predicate<'a> {
 
 impl<'a> Clean<Option<WherePredicate>> for ty::PolyTraitPredicate<'a> {
     fn clean(&self, cx: &mut DocContext<'_>) -> Option<WherePredicate> {
-        // `T: ~const Drop` is not equivalent to `T: Drop`, and we don't currently document `~const` bounds
-        // because of its experimental status, so just don't show these.
         // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
         if self.skip_binder().constness == ty::BoundConstness::ConstIfConst
-            && [cx.tcx.lang_items().drop_trait(), cx.tcx.lang_items().destruct_trait()]
-                .iter()
-                .any(|tr| *tr == Some(self.skip_binder().def_id()))
+            && Some(self.skip_binder().def_id()) == cx.tcx.lang_items().destruct_trait()
         {
             return None;
-        }
-
-        #[cfg(bootstrap)]
-        {
-            // FIXME: remove `lang_items().drop_trait()` from above logic,
-            // as well as the comment about `~const Drop` because it was renamed to `Destruct`.
         }
 
         let poly_trait_ref = self.map_bound(|pred| pred.trait_ref);
