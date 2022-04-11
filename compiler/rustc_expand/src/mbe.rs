@@ -13,7 +13,6 @@ crate mod transcribe;
 use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
@@ -64,13 +63,13 @@ enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
 /// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
-    Delimited(DelimSpan, Lrc<Delimited>),
+    Delimited(DelimSpan, Delimited),
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
-    Sequence(DelimSpan, Lrc<SequenceRepetition>),
+    Sequence(DelimSpan, SequenceRepetition),
     /// e.g., `$var`.
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. Only appears on the LHS.

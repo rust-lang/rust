@@ -14,7 +14,6 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
@@ -407,7 +406,7 @@ pub fn compile_declarative_macro(
     let argument_gram = vec![
         mbe::TokenTree::Sequence(
             DelimSpan::dummy(),
-            Lrc::new(mbe::SequenceRepetition {
+            mbe::SequenceRepetition {
                 tts: vec![
                     mbe::TokenTree::MetaVarDecl(def.span, lhs_nm, tt_spec),
                     mbe::TokenTree::token(token::FatArrow, def.span),
@@ -419,12 +418,12 @@ pub fn compile_declarative_macro(
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
                 num_captures: 2,
-            }),
+            },
         ),
         // to phase into semicolon-termination instead of semicolon-separation
         mbe::TokenTree::Sequence(
             DelimSpan::dummy(),
-            Lrc::new(mbe::SequenceRepetition {
+            mbe::SequenceRepetition {
                 tts: vec![mbe::TokenTree::token(
                     if macro_rules { token::Semi } else { token::Comma },
                     def.span,
@@ -432,7 +431,7 @@ pub fn compile_declarative_macro(
                 separator: None,
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, def.span),
                 num_captures: 0,
-            }),
+            },
         ),
     ];
     // Convert it into `MatcherLoc` form.
