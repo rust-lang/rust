@@ -101,10 +101,7 @@ if foo {
 
 # Using crates from crates.io
 
-It is allowed to use crates from crates.io, though external
-dependencies should not be added gratuitously. All such crates must
-have a suitably permissive license. There is an automatic check which
-inspects the Cargo metadata to ensure this.
+See the [crates.io dependencies][crates] section.
 
 <a name="er"></a>
 
@@ -152,3 +149,4 @@ to the compiler.
   crate-related, often the spelling is changed to `krate`.
 
 [tcx]: ./ty.md
+[crates]: ./crates-io.md

@@ -21,4 +21,4 @@ to the compiler unless there is a good reason to do so.
 The `tidy` tool has [a list of crates that are allowed]. To add a
 dependency that is not already in the compiler, you will need to add it to the list.
 
-[a list of crates that are allowed]: https://github.com/rust-lang/rust/blob/19ecce332e56941ea0dd2a805270faa102acdb14/src/tools/tidy/src/deps.rs#L59
+[a list of crates that are allowed]: https://github.com/rust-lang/rust/blob/9d1b2106e23b1abd32fce1f17267604a5102f57a/src/tools/tidy/src/deps.rs#L73
