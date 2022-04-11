@@ -302,6 +302,7 @@ store.register_lints(&[
     methods::INEFFICIENT_TO_STRING,
     methods::INSPECT_FOR_EACH,
     methods::INTO_ITER_ON_REF,
+    methods::IS_DIGIT_ASCII_RADIX,
     methods::ITERATOR_STEP_BY_ZERO,
     methods::ITER_CLONED_COLLECT,
     methods::ITER_COUNT,

@@ -197,7 +197,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         if interned_name.chars().any(char::is_uppercase) {
             return;
         }
-        if interned_name.chars().all(|c| c.is_digit(10) || c == '_') {
+        if interned_name.chars().all(|c| c.is_ascii_digit() || c == '_') {
             span_lint(
                 self.0.cx,
                 JUST_UNDERSCORES_AND_DIGITS,

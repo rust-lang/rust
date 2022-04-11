@@ -165,6 +165,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(methods::FLAT_MAP_IDENTITY),
     LintId::of(methods::INSPECT_FOR_EACH),
     LintId::of(methods::INTO_ITER_ON_REF),
+    LintId::of(methods::IS_DIGIT_ASCII_RADIX),
     LintId::of(methods::ITERATOR_STEP_BY_ZERO),
     LintId::of(methods::ITER_CLONED_COLLECT),
     LintId::of(methods::ITER_COUNT),

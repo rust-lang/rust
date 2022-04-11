@@ -739,7 +739,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
     /// letters (`Clippy` is ok) and one lower-case letter (`NASA` is ok).
     /// Plurals are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
-        if s.starts_with(|c: char| c.is_digit(10)) {
+        if s.starts_with(|c: char| c.is_ascii_digit()) {
             return false;
         }
 
