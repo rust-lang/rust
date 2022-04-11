@@ -1,5 +1,5 @@
 use super::{cvs, wasm_base};
-use super::{LinkArgs, LinkerFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkArgs, LinkerFlavor, Target, TargetOptions};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
@@ -16,7 +16,11 @@ pub fn target() -> Target {
     let mut post_link_args = LinkArgs::new();
     post_link_args.insert(
         LinkerFlavor::Em,
-        vec!["-sABORTING_MALLOC=0".into(), "-Wl,--fatal-warnings".into()],
+        vec![
+            "-s".into(),
+            "ABORTING_MALLOC=0".into(),
+            "-Wl,--fatal-warnings".into(),
+        ],
     );
 
     let opts = TargetOptions {
@@ -27,7 +31,6 @@ pub fn target() -> Target {
         exe_suffix: ".js".into(),
         linker: None,
         is_like_emscripten: true,
-        panic_strategy: PanicStrategy::Unwind,
         post_link_args,
         families: cvs!["unix", "wasm"],
         ..options

@@ -12,7 +12,7 @@ use rustc_middle::bug;
 use rustc_session::config::PrintRequest;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
-use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::spec::MergeFunctions;
 use smallvec::{smallvec, SmallVec};
 use std::ffi::{CStr, CString};
 use tracing::debug;
@@ -107,10 +107,6 @@ unsafe fn configure_llvm(sess: &Session) {
             MergeFunctions::Aliases => {
                 add("-mergefunc-use-aliases", false);
             }
-        }
-
-        if sess.target.os == "emscripten" && sess.panic_strategy() == PanicStrategy::Unwind {
-            add("-enable-emscripten-cxx-exceptions", false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes

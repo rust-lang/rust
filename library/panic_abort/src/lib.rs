@@ -116,7 +116,7 @@ pub unsafe fn __rust_start_panic(_payload: *mut &mut dyn BoxMeUp) -> u32 {
 pub mod personalities {
     #[rustc_std_internal_symbol]
     #[cfg(not(any(
-        all(target_family = "wasm", not(target_os = "emscripten")),
+        all(target_family = "wasm"),
         all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
     )))]
     pub extern "C" fn rust_eh_personality() {}
