@@ -3,7 +3,7 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev
 
-// version: 1.53.0-nightly (9b0edb7fd 2021-03-27)
+// version: 1.61.0-nightly (68369a041 2022-02-22)
 
 extern crate rustc_error_codes;
 extern crate rustc_errors;
@@ -14,7 +14,7 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::registry;
-use rustc_session::config;
+use rustc_session::config::{self, CheckCfg};
 use rustc_span::source_map;
 use std::io;
 use std::path;
@@ -65,11 +65,11 @@ fn main() {
             buffer.clone(),
         ))),
         crate_cfg: rustc_hash::FxHashSet::default(),
+        crate_check_cfg: CheckCfg::default(),
         input_path: None,
         output_dir: None,
         output_file: None,
         file_loader: None,
-        stderr: None,
         lint_caps: rustc_hash::FxHashMap::default(),
         parse_sess_created: None,
         register_lints: None,

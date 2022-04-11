@@ -3,7 +3,7 @@
 // NOTE: For the example to compile, you will need to first run the following:
 //   rustup component add rustc-dev
 
-// version: 1.53.0-nightly (9b0edb7fd 2021-03-27)
+// version: 1.61.0-nightly (68369a041 2022-02-22)
 
 extern crate rustc_error_codes;
 extern crate rustc_errors;
@@ -15,7 +15,7 @@ extern crate rustc_span;
 
 use rustc_errors::registry;
 use rustc_hash::{FxHashMap, FxHashSet};
-use rustc_session::config;
+use rustc_session::config::{self, CheckCfg};
 use rustc_span::source_map;
 use std::path;
 use std::process;
@@ -36,6 +36,7 @@ fn main() {
         },
         // cfg! configuration in addition to the default ones
         crate_cfg: FxHashSet::default(), // FxHashSet<(String, Option<String>)>
+        crate_check_cfg: CheckCfg::default(), // CheckCfg
         input: config::Input::Str {
             name: source_map::FileName::Custom("main.rs".to_string()),
             input: "static HELLO: &str = \"Hello, world!\"; fn main() { println!(\"{}\", HELLO); }"
@@ -46,8 +47,6 @@ fn main() {
         output_file: None, // Option<PathBuf>
         file_loader: None, // Option<Box<dyn FileLoader + Send + Sync>>
         diagnostic_output: rustc_session::DiagnosticOutput::Default,
-        // Set to capture stderr output during compiler execution
-        stderr: None,                    // Option<Arc<Mutex<Vec<u8>>>>
         lint_caps: FxHashMap::default(), // FxHashMap<lint::LintId, lint::Level>
         // This is a callback from the driver that is called when [`ParseSess`] is created.
         parse_sess_created: None, //Option<Box<dyn FnOnce(&mut ParseSess) + Send>>
