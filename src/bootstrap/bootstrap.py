@@ -1328,7 +1328,7 @@ def main():
 
     # x.py help <cmd> ...
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
-        sys.argv[1] = 'h'
+        sys.argv[1] = "-h"
 
     help_triggered = (
         '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
