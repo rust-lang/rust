@@ -346,9 +346,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, format!("bad arg ({:?} != usize)", op_cnt_ty))
                 }
             }
-            StatementKind::SetDiscriminant { .. } => {
-                if self.mir_phase < MirPhase::DropsLowered {
-                    self.fail(location, "`SetDiscriminant` is not allowed until drop elaboration");
+            StatementKind::SetDiscriminant { place, .. } => {
+                if self.mir_phase < MirPhase::Deaggregated {
+                    self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
+                }
+                let pty = place.ty(&self.body.local_decls, self.tcx).ty.kind();
+                if !matches!(pty, ty::Adt(..) | ty::Generator(..) | ty::Opaque(..)) {
+                    self.fail(
+                        location,
+                        format!(
+                            "`SetDiscriminant` is only allowed on ADTs and generators, not {:?}",
+                            pty
+                        ),
+                    );
+                }
+            }
+            StatementKind::Deinit(..) => {
+                if self.mir_phase < MirPhase::Deaggregated {
+                    self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
             StatementKind::Retag(_, _) => {

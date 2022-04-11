@@ -243,6 +243,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         Assign(..) => "Assign",
         FakeRead(..) => "FakeRead",
         SetDiscriminant { .. } => "SetDiscriminant",
+        Deinit(..) => "Deinit",
         StorageLive(..) => "StorageLive",
         StorageDead(..) => "StorageDead",
         Retag(..) => "Retag",

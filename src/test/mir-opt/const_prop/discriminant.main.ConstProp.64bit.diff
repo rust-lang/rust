@@ -15,6 +15,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/discriminant.rs:11:9: 11:10
           StorageLive(_2);                 // scope 0 at $DIR/discriminant.rs:11:13: 11:64
           StorageLive(_3);                 // scope 0 at $DIR/discriminant.rs:11:34: 11:44
+          Deinit(_3);                      // scope 0 at $DIR/discriminant.rs:11:34: 11:44
           ((_3 as Some).0: bool) = const true; // scope 0 at $DIR/discriminant.rs:11:34: 11:44
           discriminant(_3) = 1;            // scope 0 at $DIR/discriminant.rs:11:34: 11:44
 -         _4 = discriminant(_3);           // scope 0 at $DIR/discriminant.rs:11:21: 11:31

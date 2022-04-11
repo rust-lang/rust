@@ -897,8 +897,10 @@ impl Visitor<'_> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
+            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
-            | MutatingUse(MutatingUseContext::Store) => {
+            | MutatingUse(MutatingUseContext::Store)
+            | MutatingUse(MutatingUseContext::SetDiscriminant) => {
                 if !self.found_assignment.insert(local) {
                     match &mut self.can_const_prop[local] {
                         // If the local can only get propagated in its own block, then we don't have

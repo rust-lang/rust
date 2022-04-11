@@ -1588,7 +1588,16 @@ pub enum StatementKind<'tcx> {
     FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
+    ///
+    /// This is permitted for both generators and ADTs. This does not necessarily write to the
+    /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
+    /// the type.
     SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
+
+    /// Deinitializes the place.
+    ///
+    /// This writes `uninit` bytes to the entire place.
+    Deinit(Box<Place<'tcx>>),
 
     /// Start a live range for the storage of the local.
     StorageLive(Local),
@@ -1739,6 +1748,7 @@ impl Debug for Statement<'_> {
             SetDiscriminant { ref place, variant_index } => {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
+            Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }

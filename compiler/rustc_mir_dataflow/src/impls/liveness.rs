@@ -18,30 +18,6 @@ use crate::{AnalysisDomain, Backward, CallReturnPlaces, GenKill, GenKillAnalysis
 /// such an assignment is currently marked as a "use" of `x` in an attempt to be maximally
 /// conservative.
 ///
-/// ## Enums and `SetDiscriminant`
-///
-/// Assigning a literal value to an `enum` (e.g. `Option<i32>`), does not result in a simple
-/// assignment of the form `_1 = /*...*/` in the MIR. For example, the following assignment to `x`:
-///
-/// ```
-/// x = Some(4);
-/// ```
-///
-/// compiles to this MIR
-///
-/// ```
-/// ((_1 as Some).0: i32) = const 4_i32;
-/// discriminant(_1) = 1;
-/// ```
-///
-/// However, `MaybeLiveLocals` **does** mark `x` (`_1`) as "killed" after a statement like this.
-/// That's because it treats the `SetDiscriminant` operation as a definition of `x`, even though
-/// the writes that actually initialized the locals happened earlier.
-///
-/// This makes `MaybeLiveLocals` unsuitable for certain classes of optimization normally associated
-/// with a live variables analysis, notably dead-store elimination. It's a dirty hack, but it works
-/// okay for the generator state transform (currently the main consumer of this analysis).
-///
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
@@ -161,7 +137,13 @@ impl DefUse {
         match context {
             PlaceContext::NonUse(_) => None,
 
-            PlaceContext::MutatingUse(MutatingUseContext::Store) => Some(DefUse::Def),
+            PlaceContext::MutatingUse(MutatingUseContext::Store | MutatingUseContext::Deinit) => {
+                Some(DefUse::Def)
+            }
+
+            // Setting the discriminant is not a use because it does no reading, but it is also not
+            // a def because it does not overwrite the whole place
+            PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant) => None,
 
             // `MutatingUseContext::Call` and `MutatingUseContext::Yield` indicate that this is the
             // destination place for a `Call` return or `Yield` resume respectively. Since this is

@@ -25,6 +25,7 @@
           _4 = _1;                         // scope 0 at $DIR/early_otherwise_branch.rs:4:12: 4:13
           StorageLive(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:4:15: 4:16
           _5 = _2;                         // scope 0 at $DIR/early_otherwise_branch.rs:4:15: 4:16
+          Deinit(_3);                      // scope 0 at $DIR/early_otherwise_branch.rs:4:11: 4:17
           (_3.0: std::option::Option<u32>) = move _4; // scope 0 at $DIR/early_otherwise_branch.rs:4:11: 4:17
           (_3.1: std::option::Option<u32>) = move _5; // scope 0 at $DIR/early_otherwise_branch.rs:4:11: 4:17
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:4:16: 4:17

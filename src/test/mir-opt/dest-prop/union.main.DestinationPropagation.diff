@@ -29,6 +29,7 @@
       }
   
       bb1: {
+          Deinit(_1);                      // scope 0 at $DIR/union.rs:13:14: 13:30
 -         (_1.0: u32) = move _2;           // scope 0 at $DIR/union.rs:13:14: 13:30
 -         StorageDead(_2);                 // scope 0 at $DIR/union.rs:13:29: 13:30
 +         nop;                             // scope 0 at $DIR/union.rs:13:14: 13:30

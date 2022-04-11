@@ -9,6 +9,7 @@
   
       bb0: {
 -         StorageLive(_1);                 // scope 0 at $DIR/simplify-locals.rs:22:13: 22:17
+-         Deinit(_1);                      // scope 0 at $DIR/simplify-locals.rs:22:13: 22:17
 -         discriminant(_1) = 0;            // scope 0 at $DIR/simplify-locals.rs:22:13: 22:17
 -         StorageDead(_1);                 // scope 0 at $DIR/simplify-locals.rs:22:17: 22:18
           return;                          // scope 0 at $DIR/simplify-locals.rs:23:2: 23:2

@@ -626,9 +626,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::SetDiscriminant { place, variant_index: _ } => {
-                self.mutate_place(location, (**place, span), Shallow(None), flow_state);
-            }
             StatementKind::CopyNonOverlapping(box rustc_middle::mir::CopyNonOverlapping {
                 ..
             }) => {
@@ -653,6 +650,9 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     LocalMutationIsAllowed::Yes,
                     flow_state,
                 );
+            }
+            StatementKind::Deinit(..) | StatementKind::SetDiscriminant { .. } => {
+                bug!("Statement not allowed in this MIR phase")
             }
         }
     }

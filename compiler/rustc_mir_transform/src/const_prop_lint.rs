@@ -778,7 +778,9 @@ impl Visitor<'_> for CanConstProp {
             // mutations of the same local via `Store`
             | MutatingUse(MutatingUseContext::Call)
             | MutatingUse(MutatingUseContext::AsmOutput)
+            | MutatingUse(MutatingUseContext::Deinit)
             // Actual store that can possibly even propagate a value
+            | MutatingUse(MutatingUseContext::SetDiscriminant)
             | MutatingUse(MutatingUseContext::Store) => {
                 if !self.found_assignment.insert(local) {
                     match &mut self.can_const_prop[local] {

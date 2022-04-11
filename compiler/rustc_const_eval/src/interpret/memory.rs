@@ -890,6 +890,11 @@ impl<'tcx, 'a, Tag: Provenance, Extra> AllocRefMut<'a, 'tcx, Tag, Extra> {
     ) -> InterpResult<'tcx> {
         self.write_scalar(alloc_range(offset, self.tcx.data_layout().pointer_size), val)
     }
+
+    /// Mark the entire referenced range as uninitalized
+    pub fn write_uninit(&mut self) {
+        self.alloc.mark_init(self.range, false);
+    }
 }
 
 impl<'tcx, 'a, Tag: Provenance, Extra> AllocRef<'a, 'tcx, Tag, Extra> {

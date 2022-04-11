@@ -791,6 +791,42 @@ where
         }
     }
 
+    pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::PointerTag>) -> InterpResult<'tcx> {
+        let mplace = match dest.place {
+            Place::Ptr(mplace) => MPlaceTy { mplace, layout: dest.layout },
+            Place::Local { frame, local } => {
+                match M::access_local_mut(self, frame, local)? {
+                    Ok(local) => match dest.layout.abi {
+                        Abi::Scalar(_) => {
+                            *local = LocalValue::Live(Operand::Immediate(Immediate::Scalar(
+                                ScalarMaybeUninit::Uninit,
+                            )));
+                            return Ok(());
+                        }
+                        Abi::ScalarPair(..) => {
+                            *local = LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(
+                                ScalarMaybeUninit::Uninit,
+                                ScalarMaybeUninit::Uninit,
+                            )));
+                            return Ok(());
+                        }
+                        _ => self.force_allocation(dest)?,
+                    },
+                    Err(mplace) => {
+                        // The local is in memory, go on below.
+                        MPlaceTy { mplace, layout: dest.layout }
+                    }
+                }
+            }
+        };
+        let Some(mut alloc) = self.get_place_alloc_mut(&mplace)? else {
+            // Zero-sized access
+            return Ok(());
+        };
+        alloc.write_uninit();
+        Ok(())
+    }
+
     /// Copies the data from an operand to a place. This does not support transmuting!
     /// Use `copy_op_transmute` if the layouts could disagree.
     #[inline(always)]

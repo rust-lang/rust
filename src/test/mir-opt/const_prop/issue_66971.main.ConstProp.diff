@@ -11,6 +11,8 @@
           StorageLive(_1);                 // scope 0 at $DIR/issue-66971.rs:16:5: 16:23
           StorageLive(_2);                 // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
           StorageLive(_3);                 // scope 0 at $DIR/issue-66971.rs:16:13: 16:15
+          nop;                             // scope 0 at $DIR/issue-66971.rs:16:13: 16:15
+          Deinit(_2);                      // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
           nop;                             // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
           (_2.1: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
           (_2.2: u8) = const 0_u8;         // scope 0 at $DIR/issue-66971.rs:16:12: 16:22
