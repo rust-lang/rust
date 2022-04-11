@@ -31,17 +31,19 @@ All tier 1 targets with host tools support the full standard library.
 target | notes
 -------|-------
 `aarch64-unknown-linux-gnu` | ARM64 Linux (kernel 4.2, glibc 2.17+) [^missing-stack-probes]
-`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+)
-`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+)
+`i686-pc-windows-gnu` | 32-bit MinGW (Windows 7+) [^windows-support]
+`i686-pc-windows-msvc` | 32-bit MSVC (Windows 7+) [^windows-support]
 `i686-unknown-linux-gnu` | 32-bit Linux (kernel 2.6.32+, glibc 2.11+)
 `x86_64-apple-darwin` | 64-bit macOS (10.7+, Lion+)
-`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+)
-`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+)
+`x86_64-pc-windows-gnu` | 64-bit MinGW (Windows 7+) [^windows-support]
+`x86_64-pc-windows-msvc` | 64-bit MSVC (Windows 7+) [^windows-support]
 `x86_64-unknown-linux-gnu` | 64-bit Linux (kernel 2.6.32+, glibc 2.11+)
 
 [^missing-stack-probes]: Stack probes support is missing on
   `aarch64-unknown-linux-gnu`, but it's planned to be implemented in the near
   future. The implementation is tracked on [issue #77071][77071].
+
+[^windows-support]: Only Windows 10 currently undergoes automated testing. Earlier versions of Windows rely on testing and support from the community.
 
 [77071]: https://github.com/rust-lang/rust/issues/77071
 

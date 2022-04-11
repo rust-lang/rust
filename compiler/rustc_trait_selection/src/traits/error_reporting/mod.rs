@@ -440,6 +440,13 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             }
                         }
 
+                        if Some(trait_ref.def_id()) == tcx.lang_items().drop_trait()
+                            && predicate_is_const
+                        {
+                            err.note("`~const Drop` was renamed to `~const Destruct`");
+                            err.note("See <https://github.com/rust-lang/rust/pull/94901> for more details");
+                        }
+
                         let explanation = if let ObligationCauseCode::MainFunctionType =
                             obligation.cause.code()
                         {
