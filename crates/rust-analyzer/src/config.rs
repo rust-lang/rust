@@ -571,10 +571,23 @@ impl Config {
                 None => tracing::info!("Invalid snippet {}", name),
             }
         }
+
+        self.validate(&mut errors);
+
         if errors.is_empty() {
             Ok(())
         } else {
             Err(ConfigUpdateError { errors })
+        }
+    }
+
+    fn validate(&self, error_sink: &mut Vec<(String, serde_json::Error)>) {
+        use serde::de::Error;
+        if self.data.checkOnSave_command.is_empty() {
+            error_sink.push((
+                "/checkOnSave/command".to_string(),
+                serde_json::Error::custom("expected a non-empty string"),
+            ));
         }
     }
 
