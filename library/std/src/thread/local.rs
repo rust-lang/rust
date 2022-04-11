@@ -194,7 +194,7 @@ macro_rules! __thread_local_inner {
             #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
             {
                 static mut VAL: $t = INIT_EXPR;
-                $crate::option::Option::Some(&VAL)
+                unsafe { $crate::option::Option::Some(&VAL) }
             }
 
             // If the platform has support for `#[thread_local]`, use it.
