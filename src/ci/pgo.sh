@@ -47,12 +47,6 @@ python3 ../x.py build --target=$PGO_HOST --host=$PGO_HOST \
     --stage 2 library/std \
     --llvm-profile-generate
 
-# Profile libcore compilation in opt-level=0 and opt-level=3
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
-    --edition=2021 --crate-type=lib ../library/core/src/lib.rs
-RUSTC_BOOTSTRAP=1 ./build/$PGO_HOST/stage2/bin/rustc \
-    --edition=2021 --crate-type=lib -Copt-level=3 ../library/core/src/lib.rs
-
 # Compile rustc perf
 cp -r /tmp/rustc-perf ./
 chown -R $(whoami): ./rustc-perf
