@@ -2593,14 +2593,15 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     ///
     /// If you want to insert an item to a sorted deque, while maintaining
-    /// sort order:
+    /// sort order, consider using [`partition_point`]:
     ///
     /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
     /// let num = 42;
-    /// let idx = deque.binary_search(&num).unwrap_or_else(|x| x);
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// // The above is equivalent to `let idx = deque.binary_search(&num).unwrap_or_else(|x| x);`
     /// deque.insert(idx, num);
     /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
@@ -2743,6 +2744,19 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert_eq!(i, 4);
     /// assert!(deque.iter().take(i).all(|&x| x < 5));
     /// assert!(deque.iter().skip(i).all(|&x| !(x < 5)));
+    /// ```
+    ///
+    /// If you want to insert an item to a sorted deque, while maintaining
+    /// sort order:
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<_> = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55].into();
+    /// let num = 42;
+    /// let idx = deque.partition_point(|&x| x < num);
+    /// deque.insert(idx, num);
+    /// assert_eq!(deque, &[0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 42, 55]);
     /// ```
     #[stable(feature = "vecdeque_binary_search", since = "1.54.0")]
     pub fn partition_point<P>(&self, mut pred: P) -> usize
