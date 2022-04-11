@@ -120,12 +120,21 @@ impl<'a> AstValidator<'a> {
             let err = "`let` expressions are not supported here";
             let mut diag = sess.struct_span_err(expr.span, err);
             diag.note("only supported directly in conditions of `if` and `while` expressions");
-            diag.note("as well as when nested within `&&` and parentheses in those conditions");
-            if let ForbiddenLetReason::ForbiddenWithOr(span) = forbidden_let_reason {
-                diag.span_note(
-                    span,
-                    "`||` operators are not currently supported in let chain expressions",
-                );
+            match forbidden_let_reason {
+                ForbiddenLetReason::GenericForbidden => {}
+                ForbiddenLetReason::NotSupportedOr(span) => {
+                    diag.span_note(
+                        span,
+                        "`||` operators are not supported in let chain expressions",
+                    );
+                }
+                ForbiddenLetReason::NotSupportedParentheses(span) => {
+                    diag.span_note(
+                        span,
+                        "`let`s wrapped in parentheses are not supported in a context with let \
+                        chains",
+                    );
+                }
             }
             diag.emit();
         } else {
@@ -1009,9 +1018,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.with_let_management(Some(ForbiddenLetReason::GenericForbidden), |this, forbidden_let_reason| {
             match &expr.kind {
                 ExprKind::Binary(Spanned { node: BinOpKind::Or, span }, lhs, rhs) => {
-                    let forbidden_let_reason = Some(ForbiddenLetReason::ForbiddenWithOr(*span));
-                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(lhs));
-                    this.with_let_management(forbidden_let_reason, |this, _| this.visit_expr(rhs));
+                    let local_reason = Some(ForbiddenLetReason::NotSupportedOr(*span));
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(lhs));
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(rhs));
                 }
                 ExprKind::If(cond, then, opt_else) => {
                     this.visit_block(then);
@@ -1036,7 +1045,23 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
-                ExprKind::Paren(_) | ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
+                ExprKind::Paren(local_expr) => {
+                    fn has_let_expr(expr: &Expr) -> bool {
+                        match expr.kind {
+                            ExprKind::Binary(_, ref lhs, ref rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+                            ExprKind::Let(..) => true,
+                            _ => false,
+                        }
+                    }
+                    let local_reason = if has_let_expr(local_expr) {
+                        Some(ForbiddenLetReason::NotSupportedParentheses(local_expr.span))
+                    }
+                    else {
+                        forbidden_let_reason
+                    };
+                    this.with_let_management(local_reason, |this, _| this.visit_expr(local_expr));
+                }
+                ExprKind::Binary(Spanned { node: BinOpKind::And, .. }, ..) => {
                     this.with_let_management(forbidden_let_reason, |this, _| visit::walk_expr(this, expr));
                     return;
                 }
@@ -1810,8 +1835,13 @@ pub fn check_crate(session: &Session, krate: &Crate, lints: &mut LintBuffer) -> 
 /// Used to forbid `let` expressions in certain syntactic locations.
 #[derive(Clone, Copy)]
 enum ForbiddenLetReason {
-    /// A let chain with the `||` operator
-    ForbiddenWithOr(Span),
     /// `let` is not valid and the source environment is not important
     GenericForbidden,
+    /// A let chain with the `||` operator
+    NotSupportedOr(Span),
+    /// A let chain with invalid parentheses
+    ///
+    /// For exemple, `let 1 = 1 && (expr && expr)` is allowed
+    /// but `(let 1 = 1 && (let 1 = 1 && (let 1 = 1))) && let a = 1` is not
+    NotSupportedParentheses(Span),
 }
