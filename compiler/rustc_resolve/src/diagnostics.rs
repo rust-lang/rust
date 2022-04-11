@@ -632,7 +632,7 @@ impl<'a> Resolver<'a> {
             VisResolutionError::Relative2018(span, path) => {
                 let mut err = self.session.struct_span_err(
                     span,
-                    "relative paths are not supported in visibilities on 2018 edition",
+                    "relative paths are not supported in visibilities in 2018 edition or later",
                 );
                 err.span_suggestion(
                     path.span,
