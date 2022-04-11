@@ -369,6 +369,7 @@ impl<'tcx> Inliner<'tcx> {
                 match stmt.kind {
                     StatementKind::StorageLive(_)
                     | StatementKind::StorageDead(_)
+                    | StatementKind::Deinit(_)
                     | StatementKind::Nop => {}
                     _ => cost += INSTR_COST,
                 }
