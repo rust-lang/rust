@@ -2483,7 +2483,7 @@ pub struct TraitRef {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct PolyTraitRef {
-    /// The `'a` in `<'a> Foo<&'a T>`.
+    /// The `'a` in `for<'a> Foo<&'a T>`.
     pub bound_generic_params: Vec<GenericParam>,
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
