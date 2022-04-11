@@ -290,6 +290,11 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
         attributes::apply_to_callsite(result, llvm::AttributePlace::Function, &{ attrs });
 
+        // Switch to the 'normal' basic block if we did an `invoke` instead of a `call`
+        if let Some((dest, _, _)) = dest_catch_funclet {
+            self.switch_to_block(dest);
+        }
+
         // Write results to outputs
         for (idx, op) in operands.iter().enumerate() {
             if let InlineAsmOperandRef::Out { reg, place: Some(place), .. }
