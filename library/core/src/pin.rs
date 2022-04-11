@@ -175,7 +175,7 @@
 //! relies on pinning requires unsafe code, but be aware that deciding to make
 //! use of pinning in your type (for example by implementing some operation on
 //! <code>[Pin]<[&]Self></code> or <code>[Pin]<[&mut] Self></code>) has consequences for your
-//! [`Drop`][Drop]implementation as well: if an element of your type could have been pinned,
+//! [`Drop`][Drop] implementation as well: if an element of your type could have been pinned,
 //! you must treat [`Drop`][Drop] as implicitly taking <code>[Pin]<[&mut] Self></code>.
 //!
 //! For example, you could implement [`Drop`][Drop] as follows:
