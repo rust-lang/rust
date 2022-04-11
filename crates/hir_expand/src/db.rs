@@ -263,7 +263,7 @@ fn parse_macro_expansion(
                 .collect::<Vec<_>>()
                 .join("\n");
 
-        tracing::warn!(
+        tracing::debug!(
             "fail on macro_parse: (reason: {:?} macro_call: {:#}) parents: {}",
             err,
             node.value,
