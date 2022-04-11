@@ -1,13 +1,13 @@
 error: usage of `&String::new()` for a function expecting a `&str` argument
-  --> $DIR/unnecessary_owned_empty_string.rs:12:22
+  --> $DIR/unnecessary_owned_empty_strings.rs:12:22
    |
 LL |     ref_str_argument(&String::new());
    |                      ^^^^^^^^^^^^^^ help: try: `""`
    |
-   = note: `-D clippy::unnecessary-owned-empty-string` implied by `-D warnings`
+   = note: `-D clippy::unnecessary-owned-empty-strings` implied by `-D warnings`
 
 error: usage of `&String::from("")` for a function expecting a `&str` argument
-  --> $DIR/unnecessary_owned_empty_string.rs:15:22
+  --> $DIR/unnecessary_owned_empty_strings.rs:15:22
    |
 LL |     ref_str_argument(&String::from(""));
    |                      ^^^^^^^^^^^^^^^^^ help: try: `""`

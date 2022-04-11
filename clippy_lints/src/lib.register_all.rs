@@ -310,7 +310,7 @@ store.register_group(true, "clippy::all", Some("clippy_all"), vec![
     LintId::of(unit_types::UNIT_CMP),
     LintId::of(unnamed_address::FN_ADDRESS_COMPARISONS),
     LintId::of(unnamed_address::VTABLE_ADDRESS_COMPARISONS),
-    LintId::of(unnecessary_owned_empty_string::UNNECESSARY_OWNED_EMPTY_STRING),
+    LintId::of(unnecessary_owned_empty_strings::UNNECESSARY_OWNED_EMPTY_STRINGS),
     LintId::of(unnecessary_sort_by::UNNECESSARY_SORT_BY),
     LintId::of(unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME),
     LintId::of(unused_io_amount::UNUSED_IO_AMOUNT),

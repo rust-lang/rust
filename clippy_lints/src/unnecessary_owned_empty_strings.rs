@@ -27,13 +27,13 @@ declare_clippy_lint! {
     /// vec!["1", "2", "3"].join("");
     /// ```
     #[clippy::version = "1.62.0"]
-    pub UNNECESSARY_OWNED_EMPTY_STRING,
+    pub UNNECESSARY_OWNED_EMPTY_STRINGS,
     style,
     "detects cases of references to owned empty strings being passed as an argument to a function expecting `&str`"
 }
-declare_lint_pass!(UnnecessaryOwnedEmptyString => [UNNECESSARY_OWNED_EMPTY_STRING]);
+declare_lint_pass!(UnnecessaryOwnedEmptyStrings => [UNNECESSARY_OWNED_EMPTY_STRINGS]);
 
-impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyString {
+impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyStrings {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if_chain! {
             if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner_expr) = expr.kind;
@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyString {
                 if match_def_path(cx, fun_def_id, &paths::STRING_NEW) {
                      span_lint_and_sugg(
                             cx,
-                            UNNECESSARY_OWNED_EMPTY_STRING,
+                            UNNECESSARY_OWNED_EMPTY_STRINGS,
                             expr.span,
                             "usage of `&String::new()` for a function expecting a `&str` argument",
                             "try",
@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryOwnedEmptyString {
                         then {
                             span_lint_and_sugg(
                                 cx,
-                                UNNECESSARY_OWNED_EMPTY_STRING,
+                                UNNECESSARY_OWNED_EMPTY_STRINGS,
                                 expr.span,
                                 "usage of `&String::from(\"\")` for a function expecting a `&str` argument",
                                 "try",
