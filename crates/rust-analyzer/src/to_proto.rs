@@ -418,14 +418,8 @@ pub(crate) fn inlay_hint(
     render_colons: bool,
     line_index: &LineIndex,
     inlay_hint: InlayHint,
-) -> lsp_ext::InlayHint {
-    lsp_ext::InlayHint {
-        label: lsp_ext::InlayHintLabel::String(match inlay_hint.kind {
-            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
-            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
-            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
-            _ => inlay_hint.label.to_string(),
-        }),
+) -> lsp_types::InlayHint {
+    lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
             InlayKind::ParameterHint | InlayKind::ImplicitReborrow => {
@@ -438,10 +432,16 @@ pub(crate) fn inlay_hint(
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint => position(line_index, inlay_hint.range.end()),
         },
+        label: lsp_types::InlayHintLabel::String(match inlay_hint.kind {
+            InlayKind::ParameterHint if render_colons => format!("{}:", inlay_hint.label),
+            InlayKind::TypeHint if render_colons => format!(": {}", inlay_hint.label),
+            InlayKind::ClosureReturnTypeHint => format!(" -> {}", inlay_hint.label),
+            _ => inlay_hint.label.to_string(),
+        }),
         kind: match inlay_hint.kind {
-            InlayKind::ParameterHint => Some(lsp_ext::InlayHintKind::PARAMETER),
+            InlayKind::ParameterHint => Some(lsp_types::InlayHintKind::PARAMETER),
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
-                Some(lsp_ext::InlayHintKind::TYPE)
+                Some(lsp_types::InlayHintKind::TYPE)
             }
             InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
@@ -465,6 +465,7 @@ pub(crate) fn inlay_hint(
             InlayKind::GenericParamListHint => false,
             InlayKind::ImplicitReborrow => false,
         }),
+        text_edits: None,
     }
 }
 

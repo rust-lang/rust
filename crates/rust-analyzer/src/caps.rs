@@ -112,11 +112,10 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             .into(),
         ),
         moniker_provider: None,
-        inlay_hint_provider: None,
+        inlay_hint_provider: Some(OneOf::Left(true)),
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,
-            "inlayHints": true,
             "joinLines": true,
             "matchingBrace": true,
             "moveItem": true,

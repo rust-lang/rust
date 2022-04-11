@@ -2,7 +2,6 @@
  * This file mirrors `crates/rust-analyzer/src/lsp_ext.rs` declarations.
  */
 
-import { InlayHint } from "vscode";
 import * as lc from "vscode-languageclient";
 
 export interface AnalyzerStatusParams {
@@ -101,12 +100,6 @@ export interface TestInfo {
 }
 
 export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, TestInfo[], void>("rust-analyzer/relatedTests");
-
-export interface InlayHintsParams {
-    textDocument: lc.TextDocumentIdentifier;
-    range: lc.Range;
-}
-export const inlayHints = new lc.RequestType<InlayHintsParams, InlayHint[], void>("experimental/inlayHints");
 
 export interface SsrParams {
     query: string;

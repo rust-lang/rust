@@ -90,9 +90,9 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                 const params: lc.CodeActionParams = {
                     textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
                     range: client.code2ProtocolConverter.asRange(range),
-                    context: client.code2ProtocolConverter.asCodeActionContext(context)
+                    context: await client.code2ProtocolConverter.asCodeActionContext(context, token)
                 };
-                return client.sendRequest(lc.CodeActionRequest.type, params, token).then((values) => {
+                return client.sendRequest(lc.CodeActionRequest.type, params, token).then(async (values) => {
                     if (values === null) return undefined;
                     const result: (vscode.CodeAction | vscode.Command)[] = [];
                     const groups = new Map<string, { index: number; items: vscode.CodeAction[] }>();
@@ -100,7 +100,7 @@ export function createClient(serverPath: string, workspace: Workspace, extraEnv:
                         // In our case we expect to get code edits only from diagnostics
                         if (lc.CodeAction.is(item)) {
                             assert(!item.command, "We don't expect to receive commands in CodeActions");
-                            const action = client.protocol2CodeConverter.asCodeAction(item);
+                            const action = await client.protocol2CodeConverter.asCodeAction(item, token);
                             result.push(action);
                             continue;
                         }

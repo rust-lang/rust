@@ -19,11 +19,11 @@ use lsp_types::{
     CallHierarchyIncomingCall, CallHierarchyIncomingCallsParams, CallHierarchyItem,
     CallHierarchyOutgoingCall, CallHierarchyOutgoingCallsParams, CallHierarchyPrepareParams,
     CodeLens, CompletionItem, Diagnostic, DiagnosticTag, DocumentFormattingParams, FoldingRange,
-    FoldingRangeParams, HoverContents, Location, LocationLink, NumberOrString, Position,
-    PrepareRenameResponse, Range, RenameParams, SemanticTokensDeltaParams,
-    SemanticTokensFullDeltaResult, SemanticTokensParams, SemanticTokensRangeParams,
-    SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation, SymbolTag,
-    TextDocumentIdentifier, Url, WorkspaceEdit,
+    FoldingRangeParams, HoverContents, InlayHint, InlayHintParams, Location, LocationLink,
+    NumberOrString, Position, PrepareRenameResponse, Range, RenameParams,
+    SemanticTokensDeltaParams, SemanticTokensFullDeltaResult, SemanticTokensParams,
+    SemanticTokensRangeParams, SemanticTokensRangeResult, SemanticTokensResult, SymbolInformation,
+    SymbolTag, TextDocumentIdentifier, Url, WorkspaceEdit,
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
@@ -38,10 +38,7 @@ use crate::{
     from_proto,
     global_state::{GlobalState, GlobalStateSnapshot},
     line_index::LineEndings,
-    lsp_ext::{
-        self, InlayHint, InlayHintsParams, PositionOrRange, ViewCrateGraphParams,
-        WorkspaceSymbolParams,
-    },
+    lsp_ext::{self, PositionOrRange, ViewCrateGraphParams, WorkspaceSymbolParams},
     lsp_utils::{all_edits_are_disjoint, invalid_params_error},
     to_proto, LspError, Result,
 };
@@ -1322,29 +1319,25 @@ pub(crate) fn publish_diagnostics(
 
 pub(crate) fn handle_inlay_hints(
     snap: GlobalStateSnapshot,
-    params: InlayHintsParams,
-) -> Result<Vec<InlayHint>> {
+    params: InlayHintParams,
+) -> Result<Option<Vec<InlayHint>>> {
     let _p = profile::span("handle_inlay_hints");
     let document_uri = &params.text_document.uri;
     let file_id = from_proto::file_id(&snap, document_uri)?;
     let line_index = snap.file_line_index(file_id)?;
-    let range = params
-        .range
-        .map(|range| {
-            from_proto::file_range(
-                &snap,
-                TextDocumentIdentifier::new(document_uri.to_owned()),
-                range,
-            )
-        })
-        .transpose()?;
+    let range = from_proto::file_range(
+        &snap,
+        TextDocumentIdentifier::new(document_uri.to_owned()),
+        params.range,
+    )?;
     let inlay_hints_config = snap.config.inlay_hints();
-    Ok(snap
-        .analysis
-        .inlay_hints(&inlay_hints_config, file_id, range)?
-        .into_iter()
-        .map(|it| to_proto::inlay_hint(inlay_hints_config.render_colons, &line_index, it))
-        .collect())
+    Ok(Some(
+        snap.analysis
+            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
+            .into_iter()
+            .map(|it| to_proto::inlay_hint(inlay_hints_config.render_colons, &line_index, it))
+            .collect(),
+    ))
 }
 
 pub(crate) fn handle_call_hierarchy_prepare(

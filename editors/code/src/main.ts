@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import * as os from "os";
 
 import * as commands from './commands';
-import { activateInlayHints } from './inlay_hints';
 import { Ctx } from './ctx';
 import { Config } from './config';
 import { log, isValidExecutable, isRustDocument } from './util';
@@ -54,7 +53,6 @@ async function tryActivate(context: vscode.ExtensionContext) {
     }
     await initCommonContext(context, ctx);
 
-    activateInlayHints(ctx);
     warnAboutExtensionConflicts();
 
     ctx.pushCleanup(configureLanguage());

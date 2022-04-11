@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: a61de7db4504a4d1
+lsp_ext.rs hash: 326ad62235135223
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -570,36 +570,6 @@ interface ExpandedMacro {
 ```
 
 Expands macro call at a given position.
-
-## Inlay Hints
-
-**Method:** `experimental/inlayHints`
-
-This request is sent from client to server to render "inlay hints" -- virtual text inserted into editor to show things like inferred types.
-Generally, the client should re-query inlay hints after every modification.
-Until it gets upstreamed, this follows the VS Code API.
-Upstream issues: https://github.com/microsoft/language-server-protocol/issues/956 , https://github.com/rust-analyzer/rust-analyzer/issues/2797
-
-**Request:**
-
-```typescript
-interface InlayHintsParams {
-    textDocument: TextDocumentIdentifier,
-}
-```
-
-**Response:** `InlayHint[]`
-
-```typescript
-interface InlayHint {
-    position: Position;
-    label: string | InlayHintLabelPart[];
-    tooltip?: string | MarkdownString | undefined;
-    kind?: InlayHintKind;
-    paddingLeft?: boolean;
-    paddingRight?: boolean;
-}
-```
 
 ## Hover Actions
 
