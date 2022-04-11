@@ -900,15 +900,14 @@ impl str {
     /// assert_eq!(None, lines.next());
     /// ```
     ///
-    /// Handling of a trailing bare CR is, sadly, anomalous:
-    /// (`std::io::BufRead::lines` handles this case correctly.)
+    /// Unlike [`std::io::BufRead::lines`], trailing bare CR is handled as a newline:
     ///
     /// ```
     /// let text = "foo\nbar\r";
     /// let mut lines = text.lines();
     ///
     /// assert_eq!(Some("foo"), lines.next());
-    /// assert_eq!(Some("bar"), lines.next()); // should really return "bar\r"
+    /// assert_eq!(Some("bar"), lines.next()); // does not return "bar\r"
     ///
     /// assert_eq!(None, lines.next());
     /// ```

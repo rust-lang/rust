@@ -2281,7 +2281,7 @@ pub trait BufRead: Read {
     /// assert_eq!(lines_iter.next(), None);
     /// ```
     ///
-    /// Unlike [`str::lines`], trailing bare CR is handled correctly:
+    /// Unlike [`str::lines`], trailing bare CR is not handled as a newline:
     ///
     /// ```
     /// use std::io::{self, BufRead};
@@ -2290,7 +2290,7 @@ pub trait BufRead: Read {
     ///
     /// let mut lines_iter = cursor.lines().map(|l| l.unwrap());
     /// assert_eq!(lines_iter.next(), Some(String::from("lorem")));
-    /// assert_eq!(lines_iter.next(), Some(String::from("ipsum\r"))); // bare CR is not a newline
+    /// assert_eq!(lines_iter.next(), Some(String::from("ipsum\r"))); // does not return "ipsum"
     /// assert_eq!(lines_iter.next(), None);
     /// ```
     ///
