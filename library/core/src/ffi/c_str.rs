@@ -196,19 +196,31 @@ impl CStr {
     /// allows inspection and interoperation of non-owned C strings. The total
     /// size of the raw C string must be smaller than `isize::MAX` **bytes**
     /// in memory due to calling the `slice::from_raw_parts` function.
-    /// This method is unsafe for a number of reasons:
     ///
-    /// * There is no guarantee to the validity of `ptr`.
-    /// * The returned lifetime is not guaranteed to be the actual lifetime of
-    ///   `ptr`.
-    /// * There is no guarantee that the memory pointed to by `ptr` contains a
-    ///   valid nul terminator byte at the end of the string.
-    /// * It is not guaranteed that the memory pointed by `ptr` won't change
-    ///   before the `CStr` has been destroyed.
+    /// # Safety
+    ///
+    /// * The memory pointed to by `ptr` must contain a valid nul terminator at the
+    ///   end of the string.
+    ///
+    /// * `ptr` must be [valid] for reads of bytes up to and including the null terminator.
+    ///   This means in particular:
+    ///
+    ///     * The entire memory range of this `CStr` must be contained within a single allocated object!
+    ///     * `ptr` must be non-null even for a zero-length cstr.
+    ///
+    /// * The memory referenced by the returned `CStr` must not be mutated for
+    ///   the duration of lifetime `'a`.
     ///
     /// > **Note**: This operation is intended to be a 0-cost cast but it is
     /// > currently implemented with an up-front calculation of the length of
     /// > the string. This is not guaranteed to always be the case.
+    ///
+    /// # Caveat
+    ///
+    /// The lifetime for the returned slice is inferred from its usage. To prevent accidental misuse,
+    /// it's suggested to tie the lifetime to whichever source lifetime is safe in the context,
+    /// such as by providing a helper function taking the lifetime of a host value for the slice,
+    /// or by explicit annotation.
     ///
     /// # Examples
     ///
@@ -227,6 +239,8 @@ impl CStr {
     /// }
     /// # }
     /// ```
+    ///
+    /// [valid]: core::ptr#safety
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -349,8 +363,11 @@ impl CStr {
     /// Unsafely creates a C string wrapper from a byte slice.
     ///
     /// This function will cast the provided `bytes` to a `CStr` wrapper without
-    /// performing any sanity checks. The provided slice **must** be nul-terminated
-    /// and not contain any interior nul bytes.
+    /// performing any sanity checks.
+    ///
+    /// # Safety
+    /// The provided slice **must** be nul-terminated and not contain any interior
+    /// nul bytes.
     ///
     /// # Examples
     ///
