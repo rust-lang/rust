@@ -26,18 +26,6 @@ struct Delimited {
     tts: Vec<TokenTree>,
 }
 
-impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    fn open_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::OpenDelim(self.delim), span.open)
-    }
-
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    fn close_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::CloseDelim(self.delim), span.close)
-    }
-}
-
 #[derive(PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
