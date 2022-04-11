@@ -30,7 +30,7 @@ const fn size_align<T>() -> (usize, usize) {
 #[lang = "alloc_layout"]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
-    size_: usize,
+    size: usize,
 
     // alignment of the requested block of memory, measured in bytes.
     // we ensure that this is always a power-of-two, because API's
@@ -39,7 +39,7 @@ pub struct Layout {
     //
     // (However, we do not analogously require `align >= sizeof(void*)`,
     //  even though that is *also* a requirement of `posix_memalign`.)
-    align_: ValidAlign,
+    align: ValidAlign,
 }
 
 impl Layout {
@@ -97,7 +97,7 @@ impl Layout {
     #[inline]
     pub const unsafe fn from_size_align_unchecked(size: usize, align: usize) -> Self {
         // SAFETY: the caller must ensure that `align` is a power of two.
-        Layout { size_: size, align_: unsafe { ValidAlign::new_unchecked(align) } }
+        Layout { size, align: unsafe { ValidAlign::new_unchecked(align) } }
     }
 
     /// The minimum size in bytes for a memory block of this layout.
@@ -106,7 +106,7 @@ impl Layout {
     #[must_use]
     #[inline]
     pub const fn size(&self) -> usize {
-        self.size_
+        self.size
     }
 
     /// The minimum byte alignment for a memory block of this layout.
@@ -116,7 +116,7 @@ impl Layout {
                   without modifying the layout"]
     #[inline]
     pub const fn align(&self) -> usize {
-        self.align_.as_nonzero().get()
+        self.align.as_nonzero().get()
     }
 
     /// Constructs a `Layout` suitable for holding a value of type `T`.
