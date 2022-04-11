@@ -157,6 +157,8 @@ pub struct TestProps {
     pub should_ice: bool,
     // If true, the stderr is expected to be different across bit-widths.
     pub stderr_per_bitwidth: bool,
+    // The MIR opt to unit test, if any
+    pub mir_unit_test: Option<String>,
 }
 
 mod directives {
@@ -189,6 +191,7 @@ mod directives {
     pub const STDERR_PER_BITWIDTH: &'static str = "stderr-per-bitwidth";
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
+    pub const MIR_UNIT_TEST: &'static str = "unit-test";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -232,6 +235,7 @@ impl TestProps {
             assembly_output: None,
             should_ice: false,
             stderr_per_bitwidth: false,
+            mir_unit_test: None,
         }
     }
 
@@ -392,6 +396,9 @@ impl TestProps {
                 config.set_name_directive(ln, STDERR_PER_BITWIDTH, &mut self.stderr_per_bitwidth);
                 config.set_name_directive(ln, INCREMENTAL, &mut self.incremental);
                 config.set_name_directive(ln, KNOWN_BUG, &mut self.known_bug);
+                config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
+                    s.trim().to_string()
+                });
             });
         }
 
