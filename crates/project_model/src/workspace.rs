@@ -663,6 +663,7 @@ fn cargo_to_crate_graph(
                 load,
                 &mut crate_graph,
                 &cfg_options,
+                override_cfg,
                 load_proc_macro,
                 &mut pkg_to_lib_crate,
                 &public_deps,
@@ -723,6 +724,7 @@ fn handle_rustc_crates(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     crate_graph: &mut CrateGraph,
     cfg_options: &CfgOptions,
+    override_cfg: &CfgOverrides,
     load_proc_macro: &mut dyn FnMut(&str, &AbsPath) -> Vec<ProcMacro>,
     pkg_to_lib_crate: &mut FxHashMap<la_arena::Idx<crate::PackageData>, CrateId>,
     public_deps: &SysrootPublicDeps,
@@ -749,6 +751,28 @@ fn handle_rustc_crates(
             for dep in &rustc_workspace[pkg].dependencies {
                 queue.push_back(dep.pkg);
             }
+
+            let mut cfg_options = cfg_options;
+            let mut replaced_cfg_options;
+
+            let overrides = match override_cfg {
+                CfgOverrides::Wildcard(cfg_diff) => Some(cfg_diff),
+                CfgOverrides::Selective(cfg_overrides) => cfg_overrides.get(&cargo[pkg].name),
+            };
+
+            if let Some(overrides) = overrides {
+                // FIXME: this is sort of a hack to deal with #![cfg(not(test))] vanishing such as seen
+                // in ed25519_dalek (#7243), and libcore (#9203) (although you only hit that one while
+                // working on rust-lang/rust as that's the only time it appears outside sysroot).
+                //
+                // A more ideal solution might be to reanalyze crates based on where the cursor is and
+                // figure out the set of cfgs that would have to apply to make it active.
+
+                replaced_cfg_options = cfg_options.clone();
+                replaced_cfg_options.apply_diff(overrides.clone());
+                cfg_options = &replaced_cfg_options;
+            };
+
             for &tgt in rustc_workspace[pkg].targets.iter() {
                 if rustc_workspace[tgt].kind != TargetKind::Lib {
                     continue;

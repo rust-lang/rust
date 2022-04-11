@@ -190,7 +190,7 @@ impl GlobalState {
         // NOTE: don't count blocking select! call as a loop-turn time
         let _p = profile::span("GlobalState::handle_event");
 
-        tracing::info!("handle_event({:?})", event);
+        tracing::debug!("handle_event({:?})", event);
         let task_queue_len = self.task_pool.handle.len();
         if task_queue_len > 0 {
             tracing::info!("task queue len: {}", task_queue_len);
