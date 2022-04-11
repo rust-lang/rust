@@ -429,8 +429,26 @@ where
 {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        // TODO use SIMD equality
-        self.to_array() == other.to_array()
+        // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
+        let mask = unsafe {
+            let tfvec: Simd<<T as SimdElement>::Mask, LANES> = intrinsics::simd_eq(*self, *other);
+            Mask::from_int_unchecked(tfvec)
+        };
+
+        // Two vectors are equal if all lanes tested true for vertical equality.
+        mask.all()
+    }
+
+    #[inline]
+    fn ne(&self, other: &Self) -> bool {
+        // Safety: All SIMD vectors are SimdPartialEq, and the comparison produces a valid mask.
+        let mask = unsafe {
+            let tfvec: Simd<<T as SimdElement>::Mask, LANES> = intrinsics::simd_ne(*self, *other);
+            Mask::from_int_unchecked(tfvec)
+        };
+
+        // Two vectors are non-equal if any lane tested true for vertical non-equality.
+        mask.any()
     }
 }
 
