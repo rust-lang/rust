@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `Foo: Copy` is not satisfied
-  --> $DIR/repeat-to-run-dtor-twice.rs:17:13
+  --> $DIR/repeat-to-run-dtor-twice.rs:17:15
    |
 LL |     let _ = [ a; 5 ];
-   |             ^^^^^^^^ the trait `Copy` is not implemented for `Foo`
+   |               ^ the trait `Copy` is not implemented for `Foo`
    |
    = note: the `Copy` trait is required because the repeated element will be copied
 help: consider annotating `Foo` with `#[derive(Copy)]`

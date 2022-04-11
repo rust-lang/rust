@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-61336.rs:6:5
+  --> $DIR/issue-61336.rs:6:6
    |
 LL |     [x; N]
-   |     ^^^^^^ the trait `Copy` is not implemented for `T`
+   |      ^ the trait `Copy` is not implemented for `T`
    |
    = note: the `Copy` trait is required because the repeated element will be copied
 help: consider restricting type parameter `T`

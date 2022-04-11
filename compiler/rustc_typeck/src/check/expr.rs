@@ -1292,6 +1292,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return tcx.ty_error();
         }
 
+        let is_const = match &element.kind {
+            hir::ExprKind::ConstBlock(..) => true,
+            hir::ExprKind::Path(qpath) => {
+                let res = self.typeck_results.borrow().qpath_res(qpath, element.hir_id);
+                matches!(
+                    res,
+                    Res::Def(DefKind::Const | DefKind::AssocConst | DefKind::AnonConst, _)
+                )
+            }
+            _ => false,
+        };
+
+        if !is_const {
+            let is_const_fn = match element.kind {
+                hir::ExprKind::Call(func, _args) => match *self.node_ty(func.hir_id).kind() {
+                    ty::FnDef(def_id, _) => tcx.is_const_fn(def_id),
+                    _ => false,
+                },
+                _ => false,
+            };
+
+            if count.try_eval_usize(tcx, self.param_env).map_or(true, |len| len > 1) {
+                let lang_item = self.tcx.require_lang_item(LangItem::Copy, None);
+                let code = traits::ObligationCauseCode::RepeatElementCopy { is_const_fn };
+                self.require_type_meets(element_ty, element.span, code, lang_item);
+            }
+        }
+
         tcx.mk_ty(ty::Array(t, count))
     }
 
