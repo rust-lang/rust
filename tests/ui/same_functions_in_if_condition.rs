@@ -1,3 +1,5 @@
+#![feature(adt_const_params)]
+#![allow(incomplete_features)]
 #![warn(clippy::same_functions_in_if_condition)]
 #![allow(clippy::ifs_same_cond)] // This warning is different from `ifs_same_cond`.
 #![allow(clippy::if_same_then_else, clippy::comparison_chain)] // all empty blocks
@@ -87,4 +89,21 @@ fn main() {
         "linux"
     };
     println!("{}", os);
+
+    #[derive(PartialEq, Eq)]
+    enum E {
+        A,
+        B,
+    }
+    fn generic<const P: E>() -> bool {
+        match P {
+            E::A => true,
+            E::B => false,
+        }
+    }
+    if generic::<{ E::A }>() {
+        println!("A");
+    } else if generic::<{ E::B }>() {
+        println!("B");
+    }
 }
