@@ -383,6 +383,7 @@ mod unit_hash;
 mod unit_return_expecting_ord;
 mod unit_types;
 mod unnamed_address;
+mod unnecessary_owned_empty_strings;
 mod unnecessary_self_imports;
 mod unnecessary_sort_by;
 mod unnecessary_wraps;
@@ -868,6 +869,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     });
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
     store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
+    store.register_late_pass(|| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

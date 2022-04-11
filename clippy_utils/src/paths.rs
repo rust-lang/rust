@@ -148,6 +148,7 @@ pub const CONVERT_IDENTITY: [&str; 3] = ["core", "convert", "identity"];
 pub const STD_FS_CREATE_DIR: [&str; 3] = ["std", "fs", "create_dir"];
 pub const STRING_AS_MUT_STR: [&str; 4] = ["alloc", "string", "String", "as_mut_str"];
 pub const STRING_AS_STR: [&str; 4] = ["alloc", "string", "String", "as_str"];
+pub const STRING_NEW: [&str; 4] = ["alloc", "string", "String", "new"];
 pub const STR_ENDS_WITH: [&str; 4] = ["core", "str", "<impl str>", "ends_with"];
 pub const STR_FROM_UTF8: [&str; 4] = ["core", "str", "converts", "from_utf8"];
 pub const STR_LEN: [&str; 4] = ["core", "str", "<impl str>", "len"];
