@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, iter, path::PathBuf};
+use std::{ffi::OsString, fmt, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
@@ -19,6 +19,7 @@ use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
+use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
     CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource, UnsetTestCrates,
@@ -31,9 +32,7 @@ use crate::{
     caps::completion_item_edit_resolve,
     diagnostics::DiagnosticsMapConfig,
     line_index::OffsetEncoding,
-    lsp_ext::supports_utf8,
-    lsp_ext::WorkspaceSymbolSearchScope,
-    lsp_ext::{self, WorkspaceSymbolSearchKind},
+    lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
 // Defines the server-side configuration of the rust-analyzer. We generate
@@ -369,11 +368,11 @@ impl Default for ConfigData {
 
 #[derive(Debug, Clone)]
 pub struct Config {
-    pub caps: lsp_types::ClientCapabilities,
+    pub discovered_projects: Option<Vec<ProjectManifest>>,
+    caps: lsp_types::ClientCapabilities,
+    root_path: AbsPathBuf,
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
-    pub discovered_projects: Option<Vec<ProjectManifest>>,
-    pub root_path: AbsPathBuf,
     snippets: Vec<Snippet>,
 }
 
@@ -505,6 +504,27 @@ pub struct ClientCommandsConfig {
     pub trigger_parameter_hints: bool,
 }
 
+pub struct ConfigUpdateError {
+    errors: Vec<(String, serde_json::Error)>,
+}
+
+impl fmt::Display for ConfigUpdateError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let errors = self.errors.iter().format_with("\n", |(key, e), f| {
+            f(key)?;
+            f(&": ")?;
+            f(e)
+        });
+        write!(
+            f,
+            "rust-analyzer found {} invalid config value{}:\n{}",
+            self.errors.len(),
+            if self.errors.len() == 1 { "" } else { "s" },
+            errors
+        )
+    }
+}
+
 impl Config {
     pub fn new(root_path: AbsPathBuf, caps: ClientCapabilities) -> Self {
         Config {
@@ -516,10 +536,8 @@ impl Config {
             snippets: Default::default(),
         }
     }
-    pub fn update(
-        &mut self,
-        mut json: serde_json::Value,
-    ) -> Result<(), Vec<(String, serde_json::Error)>> {
+
+    pub fn update(&mut self, mut json: serde_json::Value) -> Result<(), ConfigUpdateError> {
         tracing::info!("updating config from JSON: {:#}", json);
         if json.is_null() || json.as_object().map_or(false, |it| it.is_empty()) {
             return Ok(());
@@ -556,12 +574,24 @@ impl Config {
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(errors)
+            Err(ConfigUpdateError { errors })
         }
     }
 
     pub fn json_schema() -> serde_json::Value {
         ConfigData::json_schema()
+    }
+
+    pub fn root_path(&self) -> &AbsPathBuf {
+        &self.root_path
+    }
+
+    pub fn caps(&self) -> &lsp_types::ClientCapabilities {
+        &self.caps
+    }
+
+    pub fn detached_files(&self) -> &[AbsPathBuf] {
+        &self.detached_files
     }
 }
 
@@ -578,41 +608,29 @@ macro_rules! try_or {
 
 impl Config {
     pub fn linked_projects(&self) -> Vec<LinkedProject> {
-        if self.data.linkedProjects.is_empty() {
-            self.discovered_projects
-                .as_ref()
-                .into_iter()
-                .flatten()
-                .cloned()
-                .map(LinkedProject::from)
-                .collect()
-        } else {
-            self.data
-                .linkedProjects
+        match self.data.linkedProjects.as_slice() {
+            [] => match self.discovered_projects.as_ref() {
+                Some(discovered_projects) => {
+                    discovered_projects.iter().cloned().map(LinkedProject::from).collect()
+                }
+                None => Vec::new(),
+            },
+            linked_projects => linked_projects
                 .iter()
-                .filter_map(|linked_project| {
-                    let res = match linked_project {
-                        ManifestOrProjectJson::Manifest(it) => {
-                            let path = self.root_path.join(it);
-                            ProjectManifest::from_manifest_file(path)
-                                .map_err(|e| {
-                                    tracing::error!("failed to load linked project: {}", e)
-                                })
-                                .ok()?
-                                .into()
-                        }
-                        ManifestOrProjectJson::ProjectJson(it) => {
-                            ProjectJson::new(&self.root_path, it.clone()).into()
-                        }
-                    };
-                    Some(res)
+                .filter_map(|linked_project| match linked_project {
+                    ManifestOrProjectJson::Manifest(it) => {
+                        let path = self.root_path.join(it);
+                        ProjectManifest::from_manifest_file(path)
+                            .map_err(|e| tracing::error!("failed to load linked project: {}", e))
+                            .ok()
+                            .map(Into::into)
+                    }
+                    ManifestOrProjectJson::ProjectJson(it) => {
+                        Some(ProjectJson::new(&self.root_path, it.clone()).into())
+                    }
                 })
-                .collect()
+                .collect(),
         }
-    }
-
-    pub fn detached_files(&self) -> &[AbsPathBuf] {
-        &self.detached_files
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {

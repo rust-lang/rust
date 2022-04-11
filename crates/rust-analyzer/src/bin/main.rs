@@ -150,7 +150,17 @@ fn run_server() -> Result<()> {
 
     let mut config = Config::new(root_path, initialize_params.capabilities);
     if let Some(json) = initialize_params.initialization_options {
-        let _ = config.update(json);
+        if let Err(e) = config.update(json) {
+            use lsp_types::{
+                notification::{Notification, ShowMessage},
+                MessageType, ShowMessageParams,
+            };
+            let not = lsp_server::Notification::new(
+                ShowMessage::METHOD.to_string(),
+                ShowMessageParams { typ: MessageType::WARNING, message: e.to_string() },
+            );
+            connection.sender.send(lsp_server::Message::Notification(not)).unwrap();
+        }
     }
 
     let server_capabilities = rust_analyzer::server_capabilities(&config);
@@ -161,7 +171,11 @@ fn run_server() -> Result<()> {
             name: String::from("rust-analyzer"),
             version: Some(String::from(env!("REV"))),
         }),
-        offset_encoding: if supports_utf8(&config.caps) { Some("utf-8".to_string()) } else { None },
+        offset_encoding: if supports_utf8(config.caps()) {
+            Some("utf-8".to_string())
+        } else {
+            None
+        },
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();
@@ -183,7 +197,7 @@ fn run_server() -> Result<()> {
                     .collect::<Vec<_>>()
             })
             .filter(|workspaces| !workspaces.is_empty())
-            .unwrap_or_else(|| vec![config.root_path.clone()]);
+            .unwrap_or_else(|| vec![config.root_path().clone()]);
 
         let discovered = ProjectManifest::discover_all(&workspace_roots);
         tracing::info!("discovered projects: {:?}", discovered);

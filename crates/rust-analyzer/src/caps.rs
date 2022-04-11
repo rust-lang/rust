@@ -27,7 +27,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: completions_resolve_provider(&config.caps),
+            resolve_provider: completions_resolve_provider(config.caps()),
             trigger_characters: Some(vec![":".to_string(), ".".to_string(), "'".to_string()]),
             all_commit_characters: None,
             completion_item: None,
@@ -46,7 +46,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         document_highlight_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         workspace_symbol_provider: Some(OneOf::Left(true)),
-        code_action_provider: Some(code_action_capabilities(&config.caps)),
+        code_action_provider: Some(code_action_capabilities(config.caps())),
         code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
         document_formatting_provider: Some(OneOf::Left(true)),
         document_range_formatting_provider: match config.rustfmt() {

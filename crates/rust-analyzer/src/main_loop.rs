@@ -9,7 +9,6 @@ use std::{
 use always_assert::always;
 use crossbeam_channel::{select, Receiver};
 use ide_db::base_db::{SourceDatabaseExt, VfsPath};
-use itertools::Itertools;
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::notification::Notification as _;
 use vfs::{ChangeKind, FileId};
@@ -747,16 +746,8 @@ impl GlobalState {
                                     // Note that json can be null according to the spec if the client can't
                                     // provide a configuration. This is handled in Config::update below.
                                     let mut config = Config::clone(&*this.config);
-                                    if let Err(errors) = config.update(json.take()) {
-                                        let errors = errors
-                                            .iter()
-                                            .format_with("\n", |(key, e),f| {
-                                                f(key)?;
-                                                f(&": ")?;
-                                                f(e)
-                                            });
-                                        let msg= format!("Failed to deserialize config key(s):\n{}", errors);
-                                        this.show_message(lsp_types::MessageType::WARNING, msg);
+                                    if let Err(error) = config.update(json.take()) {
+                                        this.show_message(lsp_types::MessageType::WARNING, error.to_string());
                                     }
                                     this.update_configuration(config);
                                 }
