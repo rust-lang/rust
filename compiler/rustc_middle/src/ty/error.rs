@@ -347,8 +347,7 @@ impl<'tcx> Ty<'tcx> {
 impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         err: &TypeError<'tcx>,
         cause: &ObligationCause<'tcx>,
         sp: Span,
@@ -360,12 +359,12 @@ impl<'tcx> TyCtxt<'tcx> {
             ArgumentSorts(values, _) | Sorts(values) => {
                 match (values.expected.kind(), values.found.kind()) {
                     (ty::Closure(..), ty::Closure(..)) => {
-                        db.note("no two closures, even if identical, have the same type");
-                        db.help("consider boxing your closure and/or using it as a trait object");
+                        diag.note("no two closures, even if identical, have the same type");
+                        diag.help("consider boxing your closure and/or using it as a trait object");
                     }
                     (ty::Opaque(..), ty::Opaque(..)) => {
                         // Issue #63167
-                        db.note("distinct uses of `impl Trait` result in different opaque types");
+                        diag.note("distinct uses of `impl Trait` result in different opaque types");
                     }
                     (ty::Float(_), ty::Infer(ty::IntVar(_)))
                         if let Ok(
@@ -374,7 +373,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ) = self.sess.source_map().span_to_snippet(sp) =>
                     {
                         if snippet.chars().all(|c| c.is_digit(10) || c == '-' || c == '_') {
-                            db.span_suggestion(
+                            diag.span_suggestion(
                                 sp,
                                 "use a float literal",
                                 format!("{}.0", snippet),
@@ -386,30 +385,30 @@ impl<'tcx> TyCtxt<'tcx> {
                         let generics = self.generics_of(body_owner_def_id);
                         let e_span = self.def_span(generics.type_param(expected, self).def_id);
                         if !sp.contains(e_span) {
-                            db.span_label(e_span, "expected type parameter");
+                            diag.span_label(e_span, "expected type parameter");
                         }
                         let f_span = self.def_span(generics.type_param(found, self).def_id);
                         if !sp.contains(f_span) {
-                            db.span_label(f_span, "found type parameter");
+                            diag.span_label(f_span, "found type parameter");
                         }
-                        db.note(
+                        diag.note(
                             "a type parameter was expected, but a different one was found; \
                              you might be missing a type parameter or trait bound",
                         );
-                        db.note(
+                        diag.note(
                             "for more information, visit \
                              https://doc.rust-lang.org/book/ch10-02-traits.html\
                              #traits-as-parameters",
                         );
                     }
                     (ty::Projection(_), ty::Projection(_)) => {
-                        db.note("an associated type was expected, but a different one was found");
+                        diag.note("an associated type was expected, but a different one was found");
                     }
                     (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
-                            db.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "this type parameter");
                         }
                         let hir = self.hir();
                         let mut note = true;
@@ -444,14 +443,14 @@ impl<'tcx> TyCtxt<'tcx> {
                             note = !suggest_constraining_type_param(
                                 self,
                                 generics,
-                                db,
+                                diag,
                                 &format!("{}", proj.self_ty()),
                                 &path,
                                 None,
                             );
                         }
                         if note {
-                            db.note("you might be missing a type parameter or trait bound");
+                            diag.note("you might be missing a type parameter or trait bound");
                         }
                     }
                     (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
@@ -459,11 +458,11 @@ impl<'tcx> TyCtxt<'tcx> {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
-                            db.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "this type parameter");
                         }
-                        db.help("type parameters must be constrained to match other types");
-                        if self.sess.teach(&db.get_code().unwrap()) {
-                            db.help(
+                        diag.help("type parameters must be constrained to match other types");
+                        if self.sess.teach(&diag.get_code().unwrap()) {
+                            diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
 trait Trait<T> { fn foo(&self) -> T; }
@@ -489,7 +488,7 @@ impl<T> Trait<T> for X {
 ```",
                             );
                         }
-                        db.note(
+                        diag.note(
                             "for more information, visit \
                              https://doc.rust-lang.org/book/ch10-02-traits.html\
                              #traits-as-parameters",
@@ -499,9 +498,9 @@ impl<T> Trait<T> for X {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
-                            db.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "this type parameter");
                         }
-                        db.help(&format!(
+                        diag.help(&format!(
                             "every closure has a distinct type and so could not always match the \
                              caller-chosen type of parameter `{}`",
                             p
@@ -511,12 +510,12 @@ impl<T> Trait<T> for X {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
-                            db.span_label(p_span, "this type parameter");
+                            diag.span_label(p_span, "this type parameter");
                         }
                     }
                     (ty::Projection(proj_ty), _) => {
                         self.expected_projection(
-                            db,
+                            diag,
                             proj_ty,
                             values,
                             body_owner_def_id,
@@ -529,19 +528,19 @@ impl<T> Trait<T> for X {
                             values.found, values.expected,
                         );
                         if !(self.suggest_constraining_opaque_associated_type(
-                            db,
+                            diag,
                             &msg,
                             proj_ty,
                             values.expected,
                         ) || self.suggest_constraint(
-                            db,
+                            diag,
                             &msg,
                             body_owner_def_id,
                             proj_ty,
                             values.expected,
                         )) {
-                            db.help(&msg);
-                            db.note(
+                            diag.help(&msg);
+                            diag.note(
                                 "for more information, visit \
                                 https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
                             );
@@ -560,7 +559,7 @@ impl<T> Trait<T> for X {
             CyclicTy(ty) => {
                 // Watch out for various cases of cyclic types and try to explain.
                 if ty.is_closure() || ty.is_generator() {
-                    db.note(
+                    diag.note(
                         "closures cannot capture themselves or take themselves as argument;\n\
                          this error may be the result of a recent compiler bug-fix,\n\
                          see issue #46062 <https://github.com/rust-lang/rust/issues/46062>\n\
@@ -574,10 +573,10 @@ impl<T> Trait<T> for X {
                     .iter()
                     .filter(|attr| attr.has_name(sym::target_feature))
                     .map(|attr| attr.span);
-                db.note(
+                diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );
-                db.span_labels(target_spans, "`#[target_feature]` added here");
+                diag.span_labels(target_spans, "`#[target_feature]` added here");
             }
             _ => {}
         }
@@ -585,8 +584,7 @@ impl<T> Trait<T> for X {
 
     fn suggest_constraint(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         msg: &str,
         body_owner_def_id: DefId,
         proj_ty: &ty::ProjectionTy<'tcx>,
@@ -623,7 +621,7 @@ impl<T> Trait<T> for X {
                         }
 
                         if self.constrain_generic_bound_associated_type_structured_suggestion(
-                            db,
+                            diag,
                             &trait_ref,
                             pred.bounds,
                             &assoc,
@@ -642,7 +640,7 @@ impl<T> Trait<T> for X {
                     {
                         // This is type param `A` in `<A as T>::Foo`.
                         return self.constrain_generic_bound_associated_type_structured_suggestion(
-                            db,
+                            diag,
                             &trait_ref,
                             param.bounds,
                             &assoc,
@@ -673,8 +671,7 @@ impl<T> Trait<T> for X {
     ///    fn that returns the type.
     fn expected_projection(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         proj_ty: &ty::ProjectionTy<'tcx>,
         values: &ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
@@ -712,7 +709,7 @@ impl<T> Trait<T> for X {
             // want the more general suggestion later in this method about "consider constraining
             // the associated type or calling a method that returns the associated type".
             let point_at_assoc_fn = self.point_at_methods_that_satisfy_associated_type(
-                db,
+                diag,
                 assoc.container.id(),
                 current_method_ident,
                 proj_ty.item_def_id,
@@ -720,33 +717,36 @@ impl<T> Trait<T> for X {
             );
             // Possibly suggest constraining the associated type to conform to the
             // found type.
-            if self.suggest_constraint(db, &msg, body_owner_def_id, proj_ty, values.found)
+            if self.suggest_constraint(diag, &msg, body_owner_def_id, proj_ty, values.found)
                 || point_at_assoc_fn
             {
                 return;
             }
         }
 
-        self.suggest_constraining_opaque_associated_type(db, &msg, proj_ty, values.found);
+        self.suggest_constraining_opaque_associated_type(diag, &msg, proj_ty, values.found);
 
-        if self.point_at_associated_type(db, body_owner_def_id, values.found) {
+        if self.point_at_associated_type(diag, body_owner_def_id, values.found) {
             return;
         }
 
         if !impl_comparison {
             // Generic suggestion when we can't be more specific.
             if callable_scope {
-                db.help(&format!("{} or calling a method that returns `{}`", msg, values.expected));
+                diag.help(&format!(
+                    "{} or calling a method that returns `{}`",
+                    msg, values.expected
+                ));
             } else {
-                db.help(&msg);
+                diag.help(&msg);
             }
-            db.note(
+            diag.note(
                 "for more information, visit \
                  https://doc.rust-lang.org/book/ch19-03-advanced-traits.html",
             );
         }
-        if self.sess.teach(&db.get_code().unwrap()) {
-            db.help(
+        if self.sess.teach(&diag.get_code().unwrap()) {
+            diag.help(
                 "given an associated type `T` and a method `foo`:
 ```
 trait Trait {
@@ -769,8 +769,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// a return type. This can occur when dealing with `TryStream` (#71035).
     fn suggest_constraining_opaque_associated_type(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         msg: &str,
         proj_ty: &ty::ProjectionTy<'tcx>,
         ty: Ty<'tcx>,
@@ -790,7 +789,7 @@ fn foo(&self) -> Self::T { String::new() }
             let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(self);
 
             self.constrain_generic_bound_associated_type_structured_suggestion(
-                db,
+                diag,
                 &trait_ref,
                 opaque_hir_ty.bounds,
                 assoc,
@@ -806,8 +805,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     fn point_at_methods_that_satisfy_associated_type(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         assoc_container_id: DefId,
         current_method_ident: Option<Symbol>,
         proj_ty_item_def_id: DefId,
@@ -854,7 +852,7 @@ fn foo(&self) -> Self::T { String::new() }
             for (sp, label) in methods.into_iter() {
                 span.push_span_label(sp, label);
             }
-            db.span_help(span, &msg);
+            diag.span_help(span, &msg);
             return true;
         }
         false
@@ -862,8 +860,7 @@ fn foo(&self) -> Self::T { String::new() }
 
     fn point_at_associated_type(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         body_owner_def_id: DefId,
         found: Ty<'tcx>,
     ) -> bool {
@@ -887,7 +884,7 @@ fn foo(&self) -> Self::T { String::new() }
                             if let hir::Defaultness::Default { has_value: true } = item.defaultness
                             {
                                 if self.type_of(item.id.def_id) == found {
-                                    db.span_label(
+                                    diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
                                             trait defining them",
@@ -907,7 +904,7 @@ fn foo(&self) -> Self::T { String::new() }
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         if self.type_of(item.id.def_id) == found {
-                            db.span_label(item.span, "expected this associated type");
+                            diag.span_label(item.span, "expected this associated type");
                             return true;
                         }
                     }
@@ -927,8 +924,7 @@ fn foo(&self) -> Self::T { String::new() }
     /// type is defined on a supertrait of the one present in the bounds.
     fn constrain_generic_bound_associated_type_structured_suggestion(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         trait_ref: &ty::TraitRef<'tcx>,
         bounds: hir::GenericBounds<'_>,
         assoc: &ty::AssocItem,
@@ -958,15 +954,21 @@ fn foo(&self) -> Self::T { String::new() }
             _ => return false,
         };
 
-        self.constrain_associated_type_structured_suggestion(db, span, assoc, assoc_substs, ty, msg)
+        self.constrain_associated_type_structured_suggestion(
+            diag,
+            span,
+            assoc,
+            assoc_substs,
+            ty,
+            msg,
+        )
     }
 
     /// Given a span corresponding to a bound, provide a structured suggestion to set an
     /// associated type to a given type `ty`.
     fn constrain_associated_type_structured_suggestion(
         self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         span: Span,
         assoc: &ty::AssocItem,
         assoc_substs: &[ty::GenericArg<'tcx>],
@@ -984,7 +986,7 @@ fn foo(&self) -> Self::T { String::new() }
                 let item_args = self.format_generic_args(assoc_substs);
                 (span.shrink_to_hi(), format!("<{}{} = {}>", assoc.ident(self), item_args, ty))
             };
-            db.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
+            diag.span_suggestion_verbose(span, msg, sugg, MaybeIncorrect);
             return true;
         }
         false

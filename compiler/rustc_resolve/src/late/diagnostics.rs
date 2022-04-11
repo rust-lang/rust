@@ -1875,8 +1875,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
     /// Returns whether to add `'static` lifetime to the suggested lifetime list.
     crate fn report_elision_failure(
         &mut self,
-        // FIXME(eddyb) rename this since it's no longer a `DiagnosticBuilder`.
-        db: &mut Diagnostic,
+        diag: &mut Diagnostic,
         params: &[ElisionFailureInfo],
     ) -> bool {
         let mut m = String::new();
@@ -1891,7 +1890,7 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
             let ElisionFailureInfo { parent, index, lifetime_count: n, have_bound_regions, span } =
                 info;
 
-            db.span_label(span, "");
+            diag.span_label(span, "");
             let help_name = if let Some(ident) =
                 parent.and_then(|body| self.tcx.hir().body(body).params[index].pat.simple_ident())
             {
@@ -1923,27 +1922,27 @@ impl<'tcx> LifetimeContext<'_, 'tcx> {
         }
 
         if len == 0 {
-            db.help(
+            diag.help(
                 "this function's return type contains a borrowed value, \
                  but there is no value for it to be borrowed from",
             );
             true
         } else if elided_len == 0 {
-            db.help(
+            diag.help(
                 "this function's return type contains a borrowed value with \
                  an elided lifetime, but the lifetime cannot be derived from \
                  the arguments",
             );
             true
         } else if elided_len == 1 {
-            db.help(&format!(
+            diag.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say which {} it is borrowed from",
                 m
             ));
             false
         } else {
-            db.help(&format!(
+            diag.help(&format!(
                 "this function's return type contains a borrowed value, \
                  but the signature does not say whether it is borrowed from {}",
                 m
