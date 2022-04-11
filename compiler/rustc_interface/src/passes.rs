@@ -315,13 +315,17 @@ pub fn configure_and_expand(
                     new_path.push(path);
                 }
             }
-            env::set_var(
-                "PATH",
-                &env::join_paths(
-                    new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
-                )
-                .unwrap(),
-            );
+            // SAFETY: we're in a cfg!(windows) section, set_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                env::set_var(
+                    "PATH",
+                    &env::join_paths(
+                        new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
+                    )
+                    .unwrap(),
+                );
+            }
         }
 
         // Create the config for macro expansion
@@ -367,7 +371,11 @@ pub fn configure_and_expand(
             resolver.lint_buffer().buffer_lint(lint, node_id, span, msg);
         }
         if cfg!(windows) {
-            env::set_var("PATH", &old_path);
+            // SAFETY: we're in a cfg!(windows) section, set_var is always sound
+            #[cfg_attr(bootstrap, allow(unused_unsafe))]
+            unsafe {
+                env::set_var("PATH", &old_path);
+            }
         }
 
         if recursion_limit_hit {

@@ -13,7 +13,11 @@ fn test_get_dbpath_for_term() {
     }
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     env::set_var("TERMINFO_DIRS", ":");
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     env::remove_var("TERMINFO_DIRS");
 }

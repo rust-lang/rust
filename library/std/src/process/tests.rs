@@ -278,8 +278,12 @@ fn test_capture_env_at_spawn() {
 
     // This variable will not be present if the environment has already
     // been captured above.
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     env::set_var("RUN_TEST_NEW_ENV2", "456");
     let result = cmd.output().unwrap();
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     env::remove_var("RUN_TEST_NEW_ENV2");
 
     let output = String::from_utf8_lossy(&result.stdout).to_string();

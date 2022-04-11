@@ -41,7 +41,11 @@ fn main() {
             }
 
             "exec-test5" => {
-                env::set_var("VARIABLE", "ABC");
+                // SAFETY: in main(), no other threads could be reading or writing the environment
+                #[cfg_attr(bootstrap, allow(unused_unsafe))]
+                unsafe {
+                    env::set_var("VARIABLE", "ABC");
+                }
                 Command::new("definitely-not-a-real-binary").env("VARIABLE", "XYZ").exec();
                 assert_eq!(env::var("VARIABLE").unwrap(), "ABC");
                 println!("passed");

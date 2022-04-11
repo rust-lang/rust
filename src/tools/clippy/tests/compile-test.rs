@@ -330,6 +330,8 @@ fn run_ui_cargo() {
 
 #[test]
 fn compile_test() {
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
     run_ui();
     run_ui_toml();
@@ -345,6 +347,10 @@ struct VarGuard {
 }
 
 impl VarGuard {
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    // FIXME(skippy) this function should become unsafe with the obligation that no other thread
+    //               could be reading or writing the environment
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     fn set(key: &'static str, val: impl AsRef<OsStr>) -> Self {
         let value = var_os(key);
         set_var(key, val);
@@ -353,6 +359,10 @@ impl VarGuard {
 }
 
 impl Drop for VarGuard {
+    // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+    // FIXME(skippy) this function should become unsafe with the obligation that no other thread
+    //               could be reading or writing the environment
+    #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
     fn drop(&mut self) {
         match self.value.as_deref() {
             None => remove_var(self.key),

@@ -3,6 +3,8 @@ use super::UnstableFeatures;
 #[test]
 fn rustc_bootstrap_parsing() {
     let is_bootstrap = |env, krate| {
+        // FIXME(skippy) there's no fix for deprecated_safe until tests can be run single threaded
+        #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
         std::env::set_var("RUSTC_BOOTSTRAP", env);
         matches!(UnstableFeatures::from_environment(krate), UnstableFeatures::Cheat)
     };

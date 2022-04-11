@@ -1235,7 +1235,11 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 /// Installs a panic hook that will print the ICE message on unexpected panics.
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook() {
+///
+/// # Safety
+///
+/// Must not be called when any other thread could be reading or writing the environment.
+pub unsafe fn install_ice_hook() {
     // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
@@ -1320,7 +1324,11 @@ pub fn main() -> ! {
     init_rustc_env_logger();
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
-    install_ice_hook();
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    // FIXME(skippy) are there definitely zero threads here? other functions have been called
+    unsafe {
+        install_ice_hook();
+    }
     let exit_code = catch_with_exit_code(|| {
         let args = env::args_os()
             .enumerate()

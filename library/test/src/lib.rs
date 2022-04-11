@@ -145,6 +145,8 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
+        // FIXME(skippy) deprecate_safe: should be a single thread here, assert that somehow?
+        #[cfg_attr(not(bootstrap), allow(deprecated_safe))]
         env::remove_var(SECONDARY_TEST_INVOKER_VAR);
         let test = tests
             .iter()

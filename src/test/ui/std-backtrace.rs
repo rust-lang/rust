@@ -19,12 +19,16 @@ fn main() {
     } else if args.len() >= 2 {
         println!("stack backtrace:\n{}", std::backtrace::Backtrace::capture());
     } else {
-        runtest(&args[0]);
+        // SAFETY: in main(), no other threads could be reading or writing the environment
+        unsafe {
+            runtest(&args[0]);
+        }
         println!("test ok");
     }
 }
 
-fn runtest(me: &str) {
+// SAFETY: must not be called when any other thread could be reading or writing the environment
+unsafe fn runtest(me: &str) {
     env::remove_var("RUST_BACKTRACE");
     env::remove_var("RUST_LIB_BACKTRACE");
 

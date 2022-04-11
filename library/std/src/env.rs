@@ -542,7 +542,10 @@ pub struct JoinPathsError {
 ///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
 ///         paths.push(PathBuf::from("/home/xyz/bin"));
 ///         let new_path = env::join_paths(paths)?;
-///         env::set_var("PATH", &new_path);
+///         // SAFETY: in main(), no other threads could be reading or writing the environment
+///         unsafe {
+///             env::set_var("PATH", &new_path);
+///         }
 ///     }
 ///
 ///     Ok(())

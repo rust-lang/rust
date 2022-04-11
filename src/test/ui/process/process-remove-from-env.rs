@@ -28,15 +28,23 @@ fn main() {
     // save original environment
     let old_env = env::var_os("RUN_TEST_NEW_ENV");
 
-    env::set_var("RUN_TEST_NEW_ENV", "123");
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    #[cfg_attr(bootstrap, allow(unused_unsafe))]
+    unsafe {
+        env::set_var("RUN_TEST_NEW_ENV", "123");
+    }
 
     let mut cmd = env_cmd();
     cmd.env_remove("RUN_TEST_NEW_ENV");
 
     // restore original environment
-    match old_env {
-        None => env::remove_var("RUN_TEST_NEW_ENV"),
-        Some(val) => env::set_var("RUN_TEST_NEW_ENV", &val)
+    // SAFETY: in main(), no other threads could be reading or writing the environment
+    #[cfg_attr(bootstrap, allow(unused_unsafe))]
+    unsafe {
+        match old_env {
+            None => env::remove_var("RUN_TEST_NEW_ENV"),
+            Some(val) => env::set_var("RUN_TEST_NEW_ENV", &val)
+        }
     }
 
     let result = cmd.output().unwrap();
