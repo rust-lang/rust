@@ -45,6 +45,11 @@ fn writers_waiting(state: i32) -> bool {
 
 fn read_lockable(state: i32) -> bool {
     // This also returns false if the counter could overflow if we tried to read lock it.
+    //
+    // We don't allow read-locking if there's readers waiting, even if the lock is unlocked
+    // and there's no writers waiting. The only situation when this happens is after unlocking,
+    // at which point the unlocking thread might be waking up writers, which have priority over readers.
+    // The unlocking thread will clear the readers waiting bit and wake up readers, if necssary.
     state & MASK < MAX_READERS && !readers_waiting(state) && !writers_waiting(state)
 }
 
@@ -249,7 +254,8 @@ impl RwLock {
             if self.wake_writer() {
                 return;
             }
-            // No writers were actually waiting. Continue to wake up readers instead.
+            // No writers were actually blocked on futex_wait, so we continue
+            // to wake up readers instead, since we can't be sure if we notified a writer.
             state = READERS_WAITING;
         }
 
@@ -261,6 +267,11 @@ impl RwLock {
         }
     }
 
+    /// This wakes one writer and returns true if we woke up a writer that was
+    /// blocked on futex_wait.
+    ///
+    /// If this returns false, it might still be the case that we notified a
+    /// writer that was about to go to sleep.
     fn wake_writer(&self) -> bool {
         self.writer_notify.fetch_add(1, Release);
         futex_wake(&self.writer_notify)
