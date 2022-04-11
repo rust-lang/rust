@@ -395,14 +395,14 @@ macro_rules! make_mir_visitor {
                     StatementKind::SetDiscriminant { place, .. } => {
                         self.visit_place(
                             place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            PlaceContext::MutatingUse(MutatingUseContext::SetDiscriminant),
                             location
                         );
                     }
                     StatementKind::Deinit(place) => {
                         self.visit_place(
                             place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            PlaceContext::MutatingUse(MutatingUseContext::Deinit),
                             location
                         )
                     }
@@ -1181,6 +1181,10 @@ pub enum NonMutatingUseContext {
 pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
+    /// Appears on `SetDiscriminant`
+    SetDiscriminant,
+    /// Appears on `Deinit`
+    Deinit,
     /// Output operand of an inline assembly block.
     AsmOutput,
     /// Destination of a call.
