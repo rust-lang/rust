@@ -75,7 +75,8 @@ following values:
 * `1`: line tables only.
 * `2`: full debug info.
 
-Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.
+Note: The [`-g` flag][option-g-debug] is an alias for `-C debuginfo=2`.\
+Note: This option is incompatible with [strip](#strip) which will remove added symbols.
 
 ## default-linker-libraries
 
