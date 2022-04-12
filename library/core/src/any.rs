@@ -91,20 +91,21 @@
 //! `Provider` and the associated APIs support generic, type-driven access to data, and a mechanism
 //! for implementers to provide such data. The key parts of the interface are the `Provider`
 //! trait for objects which can provide data, and the [`request_value`] and [`request_ref`]
-//! functions for requesting data from an object which implements `Provider`. Note that end users
+//! functions for requesting data from an object which implements `Provider`. Generally, end users
 //! should not call `request_*` directly, they are helper functions for intermediate implementers
 //! to use to implement a user-facing interface.
 //!
 //! Typically, a data provider is a trait object of a trait which extends `Provider`. A user will
-//! request data from the trait object by specifying the type.
+//! request data from a trait object by specifying the type of the data.
 //!
 //! ## Data flow
 //!
-//! * A user requests an object, which is delegated to `request_value` or `request_ref`
+//! * A user requests an object of a specific type, which is delegated to `request_value` or
+//!   `request_ref`
 //! * `request_*` creates a `Demand` object and passes it to `Provider::provide`
-//! * The object provider's implementation of `Provider::provide` tries providing values of
+//! * The data provider's implementation of `Provider::provide` tries providing values of
 //!   different types using `Demand::provide_*`. If the type matches the type requested by
-//!   the user, it will be stored in the `Demand` object.
+//!   the user, the value will be stored in the `Demand` object.
 //! * `request_*` unpacks the `Demand` object and returns any stored value to the user.
 //!
 //! ## Examples
@@ -113,15 +114,15 @@
 //! # #![feature(provide_any)]
 //! use std::any::{Provider, Demand, request_ref};
 //!
-//! // Definition of MyTrait
+//! // Definition of MyTrait, a data provider.
 //! trait MyTrait: Provider {
 //!     // ...
 //! }
 //!
 //! // Methods on `MyTrait` trait objects.
 //! impl dyn MyTrait + '_ {
-//!     /// Common case: get a reference to a field of the struct.
-//!     pub fn get_context_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
+//!     /// Get a reference to a field of the implementing struct.
+//!     pub fn get_context_by_ref<T: ?Sized + 'static>(&self) -> Option<&T> {
 //!         request_ref::<T, _>(self)
 //!     }
 //! }
@@ -134,6 +135,8 @@
 //!
 //! impl Provider for SomeConcreteType {
 //!     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+//!         // Provide a string reference. We could provide multiple values with
+//!         // different types here.
 //!         req.provide_ref::<String>(&self.some_string);
 //!     }
 //! }
@@ -141,12 +144,12 @@
 //! // Downstream usage of `MyTrait`.
 //! fn use_my_trait(obj: &dyn MyTrait) {
 //!     // Request a &String from obj.
-//!     let _ = obj.get_context_ref::<String>().unwrap();
+//!     let _ = obj.get_context_by_ref::<String>().unwrap();
 //! }
 //! ```
 //!
 //! In this example, if the concrete type of `obj` in `use_my_trait` is `SomeConcreteType`, then
-//! the `get_context_ref` call will return a reference to `obj.some_string`.
+//! the `get_context_ref` call will return a reference to `obj.some_string` with type `&String`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -775,10 +778,10 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 /// Trait implemented by a type which can dynamically provide values based on type.
 #[unstable(feature = "provide_any", issue = "none")]
 pub trait Provider {
-    /// Object providers should implement this method to provide *all* values they are able to
-    /// provide using `req`.
+    /// Data providers should implement this method to provide *all* values they are able to
+    /// provide by using `demand`.
     #[unstable(feature = "provide_any", issue = "none")]
-    fn provide<'a>(&'a self, req: &mut Demand<'a>);
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>);
 }
 
 /// Request a value from the `Provider`.
@@ -816,12 +819,11 @@ where
 // Demand and its methods
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A helper object for providing objects by type.
+/// A helper object for providing data by type.
 ///
-/// An object provider provides values by calling this type's provide methods.
+/// A data provider provides values by calling this type's provide methods.
 #[allow(missing_debug_implementations)]
 #[unstable(feature = "provide_any", issue = "none")]
-// SAFETY: `TaggedOption::as_demand` relies on this precise definition.
 #[repr(transparent)]
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
@@ -836,7 +838,8 @@ impl<'a> Demand<'a> {
         self.provide_with::<tags::Value<T>, F>(fulfil)
     }
 
-    /// Provide a reference, note that the referee type must be bounded by `'static`, but may be unsized.
+    /// Provide a reference, note that the referee type must be bounded by `'static`,
+    /// but may be unsized.
     #[unstable(feature = "provide_any", issue = "none")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
@@ -902,7 +905,7 @@ mod tags {
         type Reified = T::Reified;
     }
 
-    /// Type-based tag for types bounded by `'static`, i.e., with no borrowed element.
+    /// Type-based tag for types bounded by `'static`, i.e., with no borrowed elements.
     #[derive(Debug)]
     pub struct Value<T: 'static>(PhantomData<T>);
 
@@ -960,7 +963,7 @@ impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
 #[unstable(feature = "provide_any", issue = "none")]
 impl<'a> dyn Erased<'a> {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
-    /// or `None` if it isn't.
+    /// or `None` otherwise.
     #[inline]
     fn downcast_mut<I>(&mut self) -> Option<&mut TaggedOption<'a, I>>
     where
