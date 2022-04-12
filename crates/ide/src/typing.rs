@@ -166,11 +166,34 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     if !stdx::always!(file.syntax().text().char_at(offset) == Some('=')) {
         return None;
     }
-    let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
-    if let_stmt.semicolon_token().is_some() {
-        return None;
+
+    if let Some(edit) = let_stmt(file, offset) {
+        return Some(edit);
     }
-    if let Some(expr) = let_stmt.initializer() {
+    if let Some(edit) = assign_expr(file, offset) {
+        return Some(edit);
+    }
+
+    return None;
+
+    fn assign_expr(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+        let binop: ast::BinExpr = find_node_at_offset(file.syntax(), offset)?;
+        if !matches!(binop.op_kind(), Some(ast::BinaryOp::Assignment { op: None })) {
+            return None;
+        }
+
+        if let Some(expr_stmt) = ast::ExprStmt::cast(binop.syntax().parent()?) {
+            if expr_stmt.semicolon_token().is_some() {
+                return None;
+            }
+        } else {
+            if !ast::StmtList::can_cast(binop.syntax().parent()?.kind()) {
+                // Parent must be `ExprStmt` or `StmtList` for `;` to be valid.
+                return None;
+            }
+        }
+
+        let expr = binop.rhs()?;
         let expr_range = expr.syntax().text_range();
         if expr_range.contains(offset) && offset != expr_range.start() {
             return None;
@@ -178,11 +201,26 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
         if file.syntax().text().slice(offset..expr_range.start()).contains_char('\n') {
             return None;
         }
-    } else {
-        return None;
+        let offset = expr.syntax().text_range().end();
+        Some(TextEdit::insert(offset, ";".to_string()))
     }
-    let offset = let_stmt.syntax().text_range().end();
-    Some(TextEdit::insert(offset, ";".to_string()))
+
+    fn let_stmt(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+        let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
+        if let_stmt.semicolon_token().is_some() {
+            return None;
+        }
+        let expr = let_stmt.initializer()?;
+        let expr_range = expr.syntax().text_range();
+        if expr_range.contains(offset) && offset != expr_range.start() {
+            return None;
+        }
+        if file.syntax().text().slice(offset..expr_range.start()).contains_char('\n') {
+            return None;
+        }
+        let offset = let_stmt.syntax().text_range().end();
+        Some(TextEdit::insert(offset, ";".to_string()))
+    }
 }
 
 /// Returns an edit which should be applied when a dot ('.') is typed on a blank line, indenting the line appropriately.
@@ -286,7 +324,7 @@ mod tests {
     }
 
     #[test]
-    fn test_on_eq_typed() {
+    fn test_semi_after_let() {
         //     do_check(r"
         // fn foo() {
         //     let foo =$0
@@ -320,6 +358,54 @@ fn foo() {
         //     let bar = 1;
         // }
         // ");
+    }
+
+    #[test]
+    fn test_semi_after_assign() {
+        type_char(
+            '=',
+            r#"
+fn f() {
+    i $0 0
+}
+"#,
+            r#"
+fn f() {
+    i = 0;
+}
+"#,
+        );
+        type_char(
+            '=',
+            r#"
+fn f() {
+    i $0 0
+    i
+}
+"#,
+            r#"
+fn f() {
+    i = 0;
+    i
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
+fn f(x: u8) {
+    if x $0
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
+fn f() {
+    g(i $0 0);
+}
+"#,
+        );
     }
 
     #[test]
