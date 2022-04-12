@@ -336,6 +336,7 @@ mod precedence;
 mod ptr;
 mod ptr_eq;
 mod ptr_offset_with_cast;
+mod pub_use;
 mod question_mark;
 mod ranges;
 mod redundant_clone;
@@ -870,6 +871,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_early_pass(|| Box::new(crate_in_macro_def::CrateInMacroDef));
     store.register_early_pass(|| Box::new(empty_structs_with_brackets::EmptyStructsWithBrackets));
     store.register_late_pass(|| Box::new(unnecessary_owned_empty_strings::UnnecessaryOwnedEmptyStrings));
+    store.register_early_pass(|| Box::new(pub_use::PubUse));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
