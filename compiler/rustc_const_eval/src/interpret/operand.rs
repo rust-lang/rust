@@ -248,7 +248,7 @@ impl<'tcx, Tag: Provenance> ImmTy<'tcx, Tag> {
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Try reading an immediate in memory; this is interesting particularly for `ScalarPair`.
     /// Returns `None` if the layout does not permit loading this as a value.
-    pub(crate) fn try_read_immediate_from_mplace(
+    fn try_read_immediate_from_mplace(
         &self,
         mplace: &MPlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx, Option<ImmTy<'tcx, M::PointerTag>>> {

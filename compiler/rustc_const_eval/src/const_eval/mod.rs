@@ -12,8 +12,8 @@ use rustc_span::{source_map::DUMMY_SP, symbol::Symbol};
 use rustc_target::abi::VariantIdx;
 
 use crate::interpret::{
-    intern_const_alloc_recursive, ConstValue, Immediate, InternKind, InterpCx, InterpResult,
-    MPlaceTy, MemPlaceMeta, Scalar,
+    intern_const_alloc_recursive, ConstValue, InternKind, InterpCx, InterpResult, MPlaceTy,
+    MemPlaceMeta, Scalar,
 };
 
 mod error;
@@ -119,44 +119,19 @@ fn const_to_valtree_inner<'tcx>(
         ty::Ref(_, inner_ty, _)  => {
             match inner_ty.kind() {
                 ty::Slice(_) | ty::Str => {
-                    match ecx.try_read_immediate_from_mplace(&place) {
-                        Ok(Some(imm)) => {
-                            let derefd = ecx.deref_operand(&place.into()).expect(&format!("couldnt deref {:?}", imm));
-                            debug!(?derefd);
+                    let derefd = ecx.deref_operand(&place.into()).unwrap();
+                    debug!(?derefd);
+                    let len = derefd.len(&ecx.tcx.tcx).unwrap();
+                    let valtree = slice_branches(ecx, &derefd, len);
+                    debug!(?valtree);
 
-                            let len = match *imm {
-                                Immediate::ScalarPair(_, b) => {
-                                    let len = b.to_machine_usize(&ecx.tcx.tcx).unwrap();
-                                    len
-                                }
-                                _ => bug!("expected ScalarPair for &[T] or &str"),
-                            };
-                            debug!(?len);
-
-                            let valtree = slice_branches(ecx, &derefd, len);
-                            debug!(?valtree);
-
-                            valtree
-                        }
-                        _ => {
-                            None
-                        }
-                    }
+                    valtree
                 }
                 _ => {
-                    let imm = ecx.try_read_immediate_from_mplace(&place).unwrap_or_else(|e| bug!("couldnt read immediate from {:?}, error: {:?}", place, e));
+                    let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
+                    debug!(?derefd_place);
 
-                    match imm {
-                        Some(imm) => {
-                            debug!(?imm);
-
-                            let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
-                            debug!(?derefd_place);
-
-                            const_to_valtree_inner(ecx, &derefd_place)
-                        }
-                        None => bug!("couldn't read immediate from {:?}", place),
-                    }
+                    const_to_valtree_inner(ecx, &derefd_place)
                 }
             }
         }
