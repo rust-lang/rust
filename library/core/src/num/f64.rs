@@ -593,7 +593,7 @@ impl f64 {
             // However, std can't simply compare to zero to check for zero, either,
             // as correctness requires avoiding equality tests that may be Subnormal == -0.0
             // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon".
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
             // So, this does use bitpattern matching for the rest.
 
             // SAFETY: f64 to u64 is fine. Usually.
@@ -991,10 +991,10 @@ impl f64 {
         // ...sorta.
         //
         // It turns out that at runtime, it is possible for a floating point number
-        // to be subject to floating point modes that alters nonzero subnormal numbers
+        // to be subject to floating point modes that alter nonzero subnormal numbers
         // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
         // This is not a problem usually, but at least one tier2 platform for Rust
-        // actually exhibits an FTZ behavior kby default: thumbv7neon
+        // actually exhibits an FTZ behavior by default: thumbv7neon
         // aka "the Neon FPU in AArch32 state"
         //
         // Even with this, not all instructions exhibit the FTZ behaviors on thumbv7neon,

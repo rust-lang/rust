@@ -594,7 +594,7 @@ impl f32 {
             // However, std can't simply compare to zero to check for zero, either,
             // as correctness requires avoiding equality tests that may be Subnormal == -0.0
             // because it may be wrong under "denormals are zero" and "flush to zero" modes.
-            // Most of std's targets don't use those, but they are used for thumbv7neon".
+            // Most of std's targets don't use those, but they are used for thumbv7neon.
             // So, this does use bitpattern matching for the rest.
 
             // SAFETY: f32 to u32 is fine. Usually.
@@ -609,6 +609,12 @@ impl f32 {
     // FIXME(jubilee): This probably could at least answer things correctly for Infinity,
     // like the f64 version does, but I need to run more checks on how things go on x86.
     // I fear losing mantissa data that would have answered that differently.
+    //
+    // # Safety
+    // This requires making sure you call this function for values it answers correctly on,
+    // otherwise it returns a wrong answer. This is not important for memory safety per se,
+    // but getting floats correct is important for not accidentally leaking const eval
+    // runtime-deviating logic which may or may not be acceptable.
     #[rustc_const_unstable(feature = "const_float_classify", issue = "72505")]
     const unsafe fn partial_classify(self) -> FpCategory {
         const EXP_MASK: u32 = 0x7f800000;
@@ -992,7 +998,7 @@ impl f32 {
         // ...sorta.
         //
         // It turns out that at runtime, it is possible for a floating point number
-        // to be subject to a floating point mode that alters nonzero subnormal numbers
+        // to be subject to floating point modes that alter nonzero subnormal numbers
         // to zero on reads and writes, aka "denormals are zero" and "flush to zero".
         // This is not a problem usually, but at least one tier2 platform for Rust
         // actually exhibits this behavior by default: thumbv7neon
