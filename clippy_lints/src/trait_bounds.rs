@@ -1,5 +1,5 @@
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::source::{snippet, snippet_with_applicability};
+use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
+use clippy_utils::source::{snippet, snippet_opt, snippet_with_applicability};
 use clippy_utils::{SpanlessEq, SpanlessHash};
 use core::hash::{Hash, Hasher};
 use if_chain::if_chain;
@@ -9,8 +9,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath, TraitBoundModifier,
-    TraitItem, Ty, TyKind, WherePredicate,
+    GenericArg, GenericBound, Generics, Item, ItemKind, Node, Path, PathSegment, PredicateOrigin, QPath,
+    TraitBoundModifier, TraitItem, TraitRef, Ty, TyKind, WherePredicate,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -36,7 +36,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.38.0"]
     pub TYPE_REPETITION_IN_BOUNDS,
     nursery,
-    "Types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
+    "types are repeated unnecessary in trait bounds use `+` instead of using `T: _, T: _`"
 }
 
 declare_clippy_lint! {
@@ -63,10 +63,26 @@ declare_clippy_lint! {
     ///
     /// fn func<T>(arg: T) where T: Clone + Default {}
     /// ```
+    ///
+    /// ```rust
+    /// fn foo<T: Default + Default>(bar: T) {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn foo<T: Default>(bar: T) {}
+    /// ```
+    ///
+    /// ```rust
+    /// fn foo<T>(bar: T) where T: Default + Default {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// fn foo<T>(bar: T) where T: Default {}
+    /// ```
     #[clippy::version = "1.47.0"]
     pub TRAIT_DUPLICATION_IN_BOUNDS,
     nursery,
-    "Check if the same trait bounds are specified twice during a function declaration"
+    "check if the same trait bounds are specified more than once during a generic declaration"
 }
 
 #[derive(Copy, Clone)]
@@ -87,6 +103,19 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
     fn check_generics(&mut self, cx: &LateContext<'tcx>, gen: &'tcx Generics<'_>) {
         self.check_type_repetition(cx, gen);
         check_trait_bound_duplication(cx, gen);
+        check_bounds_or_where_duplication(cx, gen);
+    }
+
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
+        // special handling for self trait bounds as these are not considered generics
+        // ie. trait Foo: Display {}
+        if let Item {
+            kind: ItemKind::Trait(_, _, _, bounds, ..),
+            ..
+        } = item
+        {
+            rollup_traits(cx, bounds, "these bounds contain repeated elements");
+        }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
@@ -241,6 +270,26 @@ fn check_trait_bound_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
     }
 }
 
+#[derive(PartialEq, Eq, Hash, Debug)]
+struct ComparableTraitRef(Res, Vec<Res>);
+
+fn check_bounds_or_where_duplication(cx: &LateContext<'_>, gen: &'_ Generics<'_>) {
+    if gen.span.from_expansion() {
+        return;
+    }
+
+    for predicate in gen.predicates {
+        if let WherePredicate::BoundPredicate(ref bound_predicate) = predicate {
+            let msg = if predicate.in_where_clause() {
+                "these where clauses contain repeated elements"
+            } else {
+                "these bounds contain repeated elements"
+            };
+            rollup_traits(cx, bound_predicate.bounds, msg);
+        }
+    }
+}
+
 fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'a [PathSegment<'a>], Span)> {
     if let GenericBound::Trait(t, tbm) = bound {
         let trait_path = t.trait_ref.path;
@@ -255,5 +304,73 @@ fn get_trait_info_from_bound<'a>(bound: &'a GenericBound<'_>) -> Option<(Res, &'
         Some((trait_path.res, trait_path.segments, trait_span))
     } else {
         None
+    }
+}
+
+// FIXME: ComparableTraitRef does not support nested bounds needed for associated_type_bounds
+fn into_comparable_trait_ref(trait_ref: &TraitRef<'_>) -> ComparableTraitRef {
+    ComparableTraitRef(
+        trait_ref.path.res,
+        trait_ref
+            .path
+            .segments
+            .iter()
+            .filter_map(|segment| {
+                // get trait bound type arguments
+                Some(segment.args?.args.iter().filter_map(|arg| {
+                    if_chain! {
+                        if let GenericArg::Type(ty) = arg;
+                        if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind;
+                        then { return Some(path.res) }
+                    }
+                    None
+                }))
+            })
+            .flatten()
+            .collect(),
+    )
+}
+
+fn rollup_traits(cx: &LateContext<'_>, bounds: &[GenericBound<'_>], msg: &str) {
+    let mut map = FxHashMap::default();
+    let mut repeated_res = false;
+
+    let only_comparable_trait_refs = |bound: &GenericBound<'_>| {
+        if let GenericBound::Trait(t, _) = bound {
+            Some((into_comparable_trait_ref(&t.trait_ref), t.span))
+        } else {
+            None
+        }
+    };
+
+    for bound in bounds.iter().filter_map(only_comparable_trait_refs) {
+        let (comparable_bound, span_direct) = bound;
+        if map.insert(comparable_bound, span_direct).is_some() {
+            repeated_res = true;
+        }
+    }
+
+    if_chain! {
+        if repeated_res;
+        if let [first_trait, .., last_trait] = bounds;
+        then {
+            let all_trait_span = first_trait.span().to(last_trait.span());
+
+            let mut traits = map.values()
+                .filter_map(|span| snippet_opt(cx, *span))
+                .collect::<Vec<_>>();
+            traits.sort_unstable();
+            let traits = traits.join(" + ");
+
+            span_lint_and_sugg(
+                cx,
+                TRAIT_DUPLICATION_IN_BOUNDS,
+                all_trait_span,
+                msg,
+                "try",
+                traits,
+                Applicability::MachineApplicable
+            );
+        }
     }
 }

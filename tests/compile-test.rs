@@ -397,6 +397,7 @@ const RUSTFIX_COVERAGE_KNOWN_EXCEPTIONS: &[&str] = &[
     "single_component_path_imports_nested_first.rs",
     "string_add.rs",
     "toplevel_ref_arg_non_rustfix.rs",
+    "trait_duplication_in_bounds.rs",
     "unit_arg.rs",
     "unnecessary_clone.rs",
     "unnecessary_lazy_eval_unfixable.rs",
