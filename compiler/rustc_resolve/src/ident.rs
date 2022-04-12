@@ -902,27 +902,24 @@ impl<'a> Resolver<'a> {
             self.resolution(module, key).try_borrow_mut().map_err(|_| (Determined, Weak::No))?; // This happens when there is a cycle of imports.
 
         if let Some(path_span) = finalize {
-            let Some(mut binding) = resolution.binding else {
-                return Err((Determined, Weak::No));
-            };
-
             // If the primary binding is unusable, search further and return the shadowed glob
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
             // hack to avoid inconsistent resolution ICEs during import validation.
-            if let Some(unusable_binding) = unusable_binding
-                && ptr::eq(binding, unusable_binding)
-            {
-                let Some(shadowed) = resolution.shadowed_glob else {
-                    return Err((Determined, Weak::No));
-                };
-
-                if ptr::eq(shadowed, unusable_binding) {
-                    return Err((Determined, Weak::No));
-                }
-
-                binding = shadowed;
-            }
+            let binding = [resolution.binding, resolution.shadowed_glob]
+                .into_iter()
+                .filter_map(|binding| match (binding, unusable_binding) {
+                    (Some(binding), Some(unusable_binding))
+                        if ptr::eq(binding, unusable_binding) =>
+                    {
+                        None
+                    }
+                    _ => binding,
+                })
+                .next();
+            let Some(binding) = binding else {
+                return Err((Determined, Weak::No));
+            };
 
             if !self.is_accessible_from(binding.vis, parent_scope.module) {
                 if last_import_segment {
