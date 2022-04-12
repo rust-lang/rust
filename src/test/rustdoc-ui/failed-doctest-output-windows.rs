@@ -1,5 +1,5 @@
 // only-windows
-// There's a parallel generic version of this test for POSIXy platforms.
+// There's a parallel generic version of this test for non-windows platforms.
 
 // Issue #51162: A failed doctest was not printing its stdout/stderr
 // FIXME: if/when the output of the test harness can be tested on its own, this test should be
