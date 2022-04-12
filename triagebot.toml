@@ -136,6 +136,21 @@ exclude_labels = [
     "T-*",
 ]
 
+[autolabel."T-libs"]
+trigger_files = [
+    "library/alloc",
+    "library/core",
+    "library/panic_abort",
+    "library/panic_unwind",
+    "library/std",
+    "library/stdarch",
+    "library/term",
+    "library/test",
+]
+exclude_labels = [
+    "T-*",
+]
+
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
 topic = "#{number} {title}"
