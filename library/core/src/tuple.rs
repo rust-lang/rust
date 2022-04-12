@@ -3,68 +3,88 @@
 use crate::cmp::Ordering::*;
 use crate::cmp::*;
 
-// macro for implementing n-ary tuple functions and operations
+// Recursive macro for implementing n-ary tuple functions and operations
+//
+// Also provides implementations for tuples with lesser arity. For example, tuple_impls!(A B C)
+// will implement everything for (A, B, C), (A, B) and (A,).
 macro_rules! tuple_impls {
-    ( $( ( $( $T:ident )+ ) )+ ) => {
-        $(
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialEq),+> PartialEq for ($($T,)+) where last_type!($($T,)+): ?Sized {
-                #[inline]
-                fn eq(&self, other: &($($T,)+)) -> bool {
-                    $( ${ignore(T)} self.${index()} == other.${index()} )&&+
-                }
-                #[inline]
-                fn ne(&self, other: &($($T,)+)) -> bool {
-                    $( ${ignore(T)} self.${index()} != other.${index()} )||+
-                }
+    // Stopping criteria (1-ary tuple)
+    ($T:ident) => {
+        tuple_impls!(@impl $T);
+    };
+    // Running criteria (n-ary tuple, with n >= 2)
+    ($T:ident $( $U:ident )+) => {
+        tuple_impls!($( $U )+);
+        tuple_impls!(@impl $T $( $U )+);
+    };
+    // "Private" internal implementation
+    (@impl $( $T:ident )+) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<$($T:PartialEq),+> PartialEq for ($($T,)+)
+        where
+            last_type!($($T,)+): ?Sized
+        {
+            #[inline]
+            fn eq(&self, other: &($($T,)+)) -> bool {
+                $( ${ignore(T)} self.${index()} == other.${index()} )&&+
             }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Eq),+> Eq for ($($T,)+) where last_type!($($T,)+): ?Sized {}
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
-            where
-                last_type!($($T,)+): ?Sized
-            {
-                #[inline]
-                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
-                    lexical_partial_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
-                #[inline]
-                fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
+            #[inline]
+            fn ne(&self, other: &($($T,)+)) -> bool {
+                $( ${ignore(T)} self.${index()} != other.${index()} )||+
             }
+        }
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Ord),+> Ord for ($($T,)+) where last_type!($($T,)+): ?Sized {
-                #[inline]
-                fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                    lexical_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
-                }
-            }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<$($T:Eq),+> Eq for ($($T,)+)
+        where
+            last_type!($($T,)+): ?Sized
+        {}
 
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Default),+> Default for ($($T,)+) {
-                #[inline]
-                fn default() -> ($($T,)+) {
-                    ($({ let x: $T = Default::default(); x},)+)
-                }
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
+        where
+            last_type!($($T,)+): ?Sized
+        {
+            #[inline]
+            fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
+                lexical_partial_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
             }
-        )+
+            #[inline]
+            fn lt(&self, other: &($($T,)+)) -> bool {
+                lexical_ord!(lt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+            }
+            #[inline]
+            fn le(&self, other: &($($T,)+)) -> bool {
+                lexical_ord!(le, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+            }
+            #[inline]
+            fn ge(&self, other: &($($T,)+)) -> bool {
+                lexical_ord!(ge, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+            }
+            #[inline]
+            fn gt(&self, other: &($($T,)+)) -> bool {
+                lexical_ord!(gt, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+            }
+        }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<$($T:Ord),+> Ord for ($($T,)+)
+        where
+            last_type!($($T,)+): ?Sized
+        {
+            #[inline]
+            fn cmp(&self, other: &($($T,)+)) -> Ordering {
+                lexical_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
+            }
+        }
+
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<$($T:Default),+> Default for ($($T,)+) {
+            #[inline]
+            fn default() -> ($($T,)+) {
+                ($({ let x: $T = Default::default(); x},)+)
+            }
+        }
     }
 }
 
@@ -105,17 +125,4 @@ macro_rules! last_type {
     ($a:ident, $($rest_a:ident,)+) => { last_type!($($rest_a,)+) };
 }
 
-tuple_impls! {
-    (A)
-    (A B)
-    (A B C)
-    (A B C D)
-    (A B C D E)
-    (A B C D E F)
-    (A B C D E F G)
-    (A B C D E F G H)
-    (A B C D E F G H I)
-    (A B C D E F G H I J)
-    (A B C D E F G H I J K)
-    (A B C D E F G H I J K L)
-}
+tuple_impls!(A B C D E F G H I J K L);
