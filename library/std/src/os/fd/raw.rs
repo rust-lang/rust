@@ -5,7 +5,7 @@
 use crate::fs;
 use crate::io;
 use crate::os::raw;
-#[cfg(doc)]
+#[cfg(all(doc, not(target_arch = "wasm32")))]
 use crate::os::unix::io::AsFd;
 #[cfg(unix)]
 use crate::os::unix::io::OwnedFd;

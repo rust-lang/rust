@@ -83,9 +83,23 @@ pub fn create_session(
     // target_override is documented to be called before init(), so this is okay
     let target_override = codegen_backend.target_override(&sopts);
 
+    let bundle = match rustc_errors::fluent_bundle(
+        sopts.maybe_sysroot.clone(),
+        sysroot_candidates(),
+        sopts.debugging_opts.translate_lang.clone(),
+        sopts.debugging_opts.translate_additional_ftl.as_deref(),
+        sopts.debugging_opts.translate_directionality_markers,
+    ) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            early_error(sopts.error_format, &format!("failed to load fluent bundle: {e}"));
+        }
+    };
+
     let mut sess = session::build_session(
         sopts,
         input_path,
+        bundle,
         descriptions,
         diagnostic_output,
         lint_caps,
