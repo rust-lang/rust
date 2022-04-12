@@ -2649,6 +2649,7 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
 /// Here is an example of how this could cause a problem:
 /// ```no_run
 /// #![feature(const_eval_select)]
+/// #![feature(core_intrinsics)]
 /// use std::hint::unreachable_unchecked;
 /// use std::intrinsics::const_eval_select;
 ///

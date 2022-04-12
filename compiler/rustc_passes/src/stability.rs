@@ -807,7 +807,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
     fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, id: hir::HirId) {
         if let Some(def_id) = path.res.opt_def_id() {
             let method_span = path.segments.last().map(|s| s.ident.span);
-            self.tcx.check_stability_allow_unstable(
+            let item_is_allowed = self.tcx.check_stability_allow_unstable(
                 def_id,
                 Some(id),
                 path.span,
@@ -817,8 +817,33 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                 } else {
                     AllowUnstable::No
                 },
-            )
+            );
+
+            if item_is_allowed {
+                // Check parent modules stability as well
+                //
+                // We check here rather than in `visit_path_segment` to prevent visiting the last
+                // path segment twice
+                let parents = path.segments.iter().rev().skip(1);
+                for path_segment in parents {
+                    if let Some(def_id) = path_segment.res.as_ref().and_then(Res::opt_def_id) {
+                        // use `None` for id to prevent deprecation check
+                        self.tcx.check_stability_allow_unstable(
+                            def_id,
+                            None,
+                            path.span,
+                            None,
+                            if is_unstable_reexport(self.tcx, id) {
+                                AllowUnstable::Yes
+                            } else {
+                                AllowUnstable::No
+                            },
+                        )
+                    }
+                }
+            }
         }
+
         intravisit::walk_path(self, path)
     }
 }

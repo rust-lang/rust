@@ -471,13 +471,15 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// This function will also check if the item is deprecated.
     /// If so, and `id` is not `None`, a deprecated lint attached to `id` will be emitted.
+    ///
+    /// Returns `true` if item is allowed aka, stable or unstable under an enabled feature.
     pub fn check_stability(
         self,
         def_id: DefId,
         id: Option<HirId>,
         span: Span,
         method_span: Option<Span>,
-    ) {
+    ) -> bool {
         self.check_stability_allow_unstable(def_id, id, span, method_span, AllowUnstable::No)
     }
 
@@ -497,7 +499,7 @@ impl<'tcx> TyCtxt<'tcx> {
         span: Span,
         method_span: Option<Span>,
         allow_unstable: AllowUnstable,
-    ) {
+    ) -> bool {
         self.check_optional_stability(
             def_id,
             id,
@@ -516,6 +518,8 @@ impl<'tcx> TyCtxt<'tcx> {
     /// missing stability attributes (not necessarily just emit a `bug!`). This is necessary
     /// for default generic parameters, which only have stability attributes if they were
     /// added after the type on which they're defined.
+    ///
+    /// Returns `true` if item is allowed aka, stable or unstable under an enabled feature.
     pub fn check_optional_stability(
         self,
         def_id: DefId,
@@ -524,13 +528,16 @@ impl<'tcx> TyCtxt<'tcx> {
         method_span: Option<Span>,
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
-    ) {
+    ) -> bool {
         let soft_handler = |lint, span, msg: &_| {
             self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
                 lint.build(msg).emit();
             })
         };
-        match self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable) {
+        let eval_result =
+            self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);
+        let is_allowed = matches!(eval_result, EvalResult::Allow);
+        match eval_result {
             EvalResult::Allow => {}
             EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
                 self.sess,
@@ -544,6 +551,8 @@ impl<'tcx> TyCtxt<'tcx> {
             ),
             EvalResult::Unmarked => unmarked(span, def_id),
         }
+
+        is_allowed
     }
 
     pub fn lookup_deprecation(self, id: DefId) -> Option<Deprecation> {

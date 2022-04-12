@@ -439,7 +439,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // as the rest of the type. As such, we ignore missing
                                 // stability attributes.
                             },
-                        )
+                        );
                     }
                     if let (hir::TyKind::Infer, false) = (&ty.kind, self.astconv.allow_ty_infer()) {
                         self.inferred_params.push(ty.span);
