@@ -864,6 +864,20 @@ pub(crate) fn snippet_text_document_ops(
                 rename_file,
             )))
         }
+        FileSystemEdit::MoveDir { src, src_id, dst } => {
+            let old_uri = snap.anchored_path(&src);
+            let new_uri = snap.anchored_path(&dst);
+            let mut rename_file =
+                lsp_types::RenameFile { old_uri, new_uri, options: None, annotation_id: None };
+            if snap.analysis.is_library_file(src_id).ok() == Some(true)
+                && snap.config.change_annotation_support()
+            {
+                rename_file.annotation_id = Some(outside_workspace_annotation_id())
+            }
+            ops.push(lsp_ext::SnippetDocumentChangeOperation::Op(lsp_types::ResourceOp::Rename(
+                rename_file,
+            )))
+        }
     }
     Ok(ops)
 }

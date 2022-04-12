@@ -85,6 +85,7 @@ impl From<FxHashMap<FileId, TextEdit>> for SourceChange {
 pub enum FileSystemEdit {
     CreateFile { dst: AnchoredPathBuf, initial_contents: String },
     MoveFile { src: FileId, dst: AnchoredPathBuf },
+    MoveDir { src: AnchoredPathBuf, src_id: FileId, dst: AnchoredPathBuf },
 }
 
 impl From<FileSystemEdit> for SourceChange {
