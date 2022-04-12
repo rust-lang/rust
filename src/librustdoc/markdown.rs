@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::fs::{create_dir_all, read_to_string, File};
 use std::io::prelude::*;
 use std::path::Path;
@@ -51,8 +52,8 @@ crate fn render<P: AsRef<Path>>(
 
     let mut css = String::new();
     for name in &options.markdown_css {
-        let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{name}\">\n");
-        css.push_str(&s)
+        write!(css, r#"<link rel="stylesheet" type="text/css" href="{name}">"#)
+            .expect("Writing to a String can't fail");
     }
 
     let input_str = read_to_string(input).map_err(|err| format!("{}: {}", input.display(), err))?;
