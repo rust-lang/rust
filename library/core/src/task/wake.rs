@@ -181,6 +181,9 @@ pub struct Context<'a> {
     // are contravariant while return-position lifetimes are
     // covariant).
     _marker: PhantomData<fn(&'a ()) -> &'a ()>,
+    // Ensure `Context` is `!Send` and `!Sync` in order to allow
+    // for future `!Send` and / or `!Sync` fields.
+    _marker2: PhantomData<*mut ()>,
 }
 
 impl<'a> Context<'a> {
@@ -190,7 +193,7 @@ impl<'a> Context<'a> {
     #[must_use]
     #[inline]
     pub const fn from_waker(waker: &'a Waker) -> Self {
-        Context { waker, _marker: PhantomData }
+        Context { waker, _marker: PhantomData, _marker2: PhantomData }
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
