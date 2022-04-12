@@ -679,14 +679,6 @@ where
             continue;
         }
 
-        if let Some((_, span)) = &depr {
-            struct_span_err!(diagnostic, attr.span, E0550, "multiple deprecated attributes")
-                .span_label(attr.span, "repeated deprecation attribute")
-                .span_label(*span, "first deprecation attribute")
-                .emit();
-            break;
-        }
-
         // FIXME(jhpratt) remove this eventually
         if attr.has_name(sym::rustc_deprecated) {
             diagnostic

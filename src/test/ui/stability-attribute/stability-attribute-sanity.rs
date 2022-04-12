@@ -59,7 +59,7 @@ fn multiple3() { }
 
 #[stable(feature = "a", since = "b")] //~ ERROR invalid stability version found
 #[deprecated(since = "b", note = "text")]
-#[deprecated(since = "b", note = "text")] //~ ERROR multiple deprecated attributes
+#[deprecated(since = "b", note = "text")] //~ ERROR multiple `deprecated` attributes
 #[rustc_const_unstable(feature = "c", issue = "none")]
 #[rustc_const_unstable(feature = "d", issue = "none")] //~ ERROR multiple stability levels
 pub const fn multiple4() { }

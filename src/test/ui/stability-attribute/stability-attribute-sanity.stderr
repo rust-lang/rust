@@ -1,3 +1,15 @@
+error: multiple `deprecated` attributes
+  --> $DIR/stability-attribute-sanity.rs:62:1
+   |
+LL | #[deprecated(since = "b", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/stability-attribute-sanity.rs:61:1
+   |
+LL | #[deprecated(since = "b", note = "text")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0541]: unknown meta item 'reason'
   --> $DIR/stability-attribute-sanity.rs:8:42
    |
@@ -82,14 +94,6 @@ error[E0544]: multiple stability levels
 LL | #[stable(feature = "a", since = "b")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0550]: multiple deprecated attributes
-  --> $DIR/stability-attribute-sanity.rs:62:1
-   |
-LL | #[deprecated(since = "b", note = "text")]
-   | ----------------------------------------- first deprecation attribute
-LL | #[deprecated(since = "b", note = "text")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ repeated deprecation attribute
-
 error[E0544]: multiple stability levels
   --> $DIR/stability-attribute-sanity.rs:64:1
    |
@@ -128,5 +132,5 @@ LL | #[stable(feature = "a", since = "1.0.0")]
 
 error: aborting due to 20 previous errors
 
-Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0550.
+Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549.
 For more information about an error, try `rustc --explain E0539`.
