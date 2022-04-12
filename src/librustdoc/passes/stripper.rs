@@ -41,6 +41,7 @@ impl<'a> DocFolder for Stripper<'a> {
             | clean::ConstantItem(..)
             | clean::UnionItem(..)
             | clean::AssocConstItem(..)
+            | clean::AssocTypeItem(..)
             | clean::TraitAliasItem(..)
             | clean::MacroItem(..)
             | clean::ForeignTypeItem => {
@@ -72,17 +73,14 @@ impl<'a> DocFolder for Stripper<'a> {
 
             clean::ImplItem(..) => {}
 
-            // tymethods have no control over privacy
-            clean::TyMethodItem(..) => {}
+            // tymethods etc. have no control over privacy
+            clean::TyMethodItem(..) | clean::TyAssocConstItem(..) | clean::TyAssocTypeItem(..) => {}
 
             // Proc-macros are always public
             clean::ProcMacroItem(..) => {}
 
             // Primitives are never stripped
             clean::PrimitiveItem(..) => {}
-
-            // Associated types are never stripped
-            clean::AssocTypeItem(..) => {}
 
             // Keywords are never stripped
             clean::KeywordItem(..) => {}

@@ -26,7 +26,7 @@ crate trait DocVisitor: Sized {
             ExternCrateItem { src: _ }
             | ImportItem(_)
             | FunctionItem(_)
-            | TypedefItem(_, _)
+            | TypedefItem(_)
             | OpaqueTyItem(_)
             | StaticItem(_)
             | ConstantItem(_)
@@ -40,7 +40,9 @@ crate trait DocVisitor: Sized {
             | MacroItem(_)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
-            | AssocConstItem(_, _)
+            | TyAssocConstItem(..)
+            | AssocConstItem(..)
+            | TyAssocTypeItem(..)
             | AssocTypeItem(..)
             | KeywordItem(_) => {}
         }

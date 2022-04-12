@@ -242,14 +242,15 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
         if let Some(ref s) = item.name {
             let (parent, is_inherent_impl_item) = match *item.kind {
                 clean::StrippedItem(..) => ((None, None), false),
-                clean::AssocConstItem(..) | clean::TypedefItem(_, true)
+                clean::AssocConstItem(..) | clean::AssocTypeItem(..)
                     if self.cache.parent_is_trait_impl =>
                 {
                     // skip associated items in trait impls
                     ((None, None), false)
                 }
-                clean::AssocTypeItem(..)
-                | clean::TyMethodItem(..)
+                clean::TyMethodItem(..)
+                | clean::TyAssocConstItem(..)
+                | clean::TyAssocTypeItem(..)
                 | clean::StructFieldItem(..)
                 | clean::VariantItem(..) => (
                     (
@@ -258,7 +259,7 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
                     ),
                     false,
                 ),
-                clean::MethodItem(..) | clean::AssocConstItem(..) => {
+                clean::MethodItem(..) | clean::AssocConstItem(..) | clean::AssocTypeItem(..) => {
                     if self.cache.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
@@ -373,7 +374,9 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             | clean::TyMethodItem(..)
             | clean::MethodItem(..)
             | clean::StructFieldItem(..)
+            | clean::TyAssocConstItem(..)
             | clean::AssocConstItem(..)
+            | clean::TyAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
             | clean::KeywordItem(..) => {

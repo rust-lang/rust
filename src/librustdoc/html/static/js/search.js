@@ -3,7 +3,7 @@
 
 (function() {
 // This mapping table should match the discriminants of
-// `rustdoc::html::item_type::ItemType` type in Rust.
+// `rustdoc::formats::item_type::ItemType` type in Rust.
 var itemTypes = [
     "mod",
     "externcrate",

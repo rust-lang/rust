@@ -527,6 +527,21 @@ crate enum HrefError {
     /// This item is known to rustdoc, but from a crate that does not have documentation generated.
     ///
     /// This can only happen for non-local items.
+    ///
+    /// # Example
+    ///
+    /// Crate `a` defines a public trait and crate `b` – the target crate that depends on `a` –
+    /// implements it for a local type.
+    /// We document `b` but **not** `a` (we only _build_ the latter – with `rustc`):
+    ///
+    /// ```sh
+    /// rustc a.rs --crate-type=lib
+    /// rustdoc b.rs --crate-type=lib --extern=a=liba.rlib
+    /// ```
+    ///
+    /// Now, the associated items in the trait impl want to link to the corresponding item in the
+    /// trait declaration (see `html::render::assoc_href_attr`) but it's not available since their
+    /// *documentation (was) not built*.
     DocumentationNotBuilt,
     /// This can only happen for non-local items when `--document-private-items` is not passed.
     Private,

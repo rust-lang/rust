@@ -5,6 +5,7 @@
 #![feature(no_core)]
 #![feature(rustdoc_internals)]
 #![feature(inherent_associated_types)]
+#![feature(lang_items)]
 #![no_core]
 
 /// [Self::f]
@@ -35,3 +36,6 @@ pub struct S;
 impl S {
     pub fn f() {}
 }
+
+#[lang = "sized"]
+pub trait Sized {}
