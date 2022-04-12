@@ -336,7 +336,7 @@ impl CompletionItem {
             kind: kind.into(),
             text_edit: None,
             deprecated: false,
-            trigger_call_info: None,
+            trigger_call_info: false,
             relevance: CompletionRelevance::default(),
             ref_match: None,
             imports_to_add: Default::default(),
@@ -419,7 +419,7 @@ pub(crate) struct Builder {
     kind: CompletionItemKind,
     text_edit: Option<TextEdit>,
     deprecated: bool,
-    trigger_call_info: Option<bool>,
+    trigger_call_info: bool,
     relevance: CompletionRelevance,
     ref_match: Option<Mutability>,
 }
@@ -465,7 +465,7 @@ impl Builder {
             lookup,
             kind: self.kind,
             deprecated: self.deprecated,
-            trigger_call_info: self.trigger_call_info.unwrap_or(false),
+            trigger_call_info: self.trigger_call_info,
             relevance: self.relevance,
             ref_match: self.ref_match,
             import_to_add: self.imports_to_add,
@@ -533,7 +533,7 @@ impl Builder {
         self
     }
     pub(crate) fn trigger_call_info(&mut self) -> &mut Builder {
-        self.trigger_call_info = Some(true);
+        self.trigger_call_info = true;
         self
     }
     pub(crate) fn add_import(&mut self, import_to_add: LocatedImport) -> &mut Builder {
