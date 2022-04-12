@@ -384,13 +384,22 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
         let lifted = self.lift_to_tcx(cx.tcx).unwrap();
         let trait_ = lifted.trait_ref(cx.tcx).clean(cx);
         let self_type = self.self_ty().clean(cx);
+        let self_def_id = self_type.def_id(&cx.cache);
+        let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
         Type::QPath {
             assoc: Box::new(projection_to_path_segment(*self, cx)),
-            self_def_id: self_type.def_id(&cx.cache),
+            should_show_cast,
             self_type: box self_type,
             trait_,
         }
     }
+}
+
+fn compute_should_show_cast(self_def_id: Option<DefId>, trait_: &Path, self_type: &Type) -> bool {
+    !trait_.segments.is_empty()
+        && self_def_id
+            .zip(Some(trait_.def_id()))
+            .map_or(!self_type.is_self_type(), |(id, trait_)| id != trait_)
 }
 
 fn projection_to_path_segment(ty: ty::ProjectionTy<'_>, cx: &mut DocContext<'_>) -> PathSegment {
@@ -421,8 +430,12 @@ impl Clean<GenericParamDef> for ty::GenericParamDef {
                     // the cleaning process of the type itself. To resolve this and have the
                     // `self_def_id` set, we override it here.
                     // See https://github.com/rust-lang/rust/issues/85454
-                    if let QPath { ref mut self_def_id, .. } = default {
-                        *self_def_id = Some(cx.tcx.parent(self.def_id));
+                    if let QPath { ref mut should_show_cast, ref trait_, ref self_type, .. } =
+                        default
+                    {
+                        let self_def_id = cx.tcx.parent(self.def_id);
+                        *should_show_cast =
+                            compute_should_show_cast(self_def_id, trait_, self_type);
                     }
 
                     Some(default)
@@ -1309,10 +1322,13 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
                 segments: trait_segments.iter().map(|x| x.clean(cx)).collect(),
             };
             register_res(cx, trait_.res);
+            let self_def_id = DefId::local(qself.hir_id.owner.local_def_index);
+            let self_type = qself.clean(cx);
+            let should_show_cast = compute_should_show_cast(Some(self_def_id), &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(p.segments.last().expect("segments were empty").clean(cx)),
-                self_def_id: Some(DefId::local(qself.hir_id.owner.local_def_index)),
-                self_type: box qself.clean(cx),
+                should_show_cast,
+                self_type: box self_type,
                 trait_,
             }
         }
@@ -1326,10 +1342,13 @@ fn clean_qpath(hir_ty: &hir::Ty<'_>, cx: &mut DocContext<'_>) -> Type {
             };
             let trait_ = hir::Path { span, res, segments: &[] }.clean(cx);
             register_res(cx, trait_.res);
+            let self_def_id = res.opt_def_id();
+            let self_type = qself.clean(cx);
+            let should_show_cast = compute_should_show_cast(self_def_id, &trait_, &self_type);
             Type::QPath {
                 assoc: Box::new(segment.clean(cx)),
-                self_def_id: res.opt_def_id(),
-                self_type: box qself.clean(cx),
+                should_show_cast,
+                self_type: box self_type,
                 trait_,
             }
         }
