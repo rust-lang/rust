@@ -2169,11 +2169,13 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // example code where clippy issues a warning
+    /// let x = Some(3);
+    /// x.as_ref().take();
     /// ```
     /// Use instead:
     /// ```rust
-    /// // example code which does not raise clippy warning
+    /// let x = Some(3);
+    /// x.as_ref();
     /// ```
     #[clippy::version = "1.61.0"]
     pub NEEDLESS_OPTION_TAKE,
