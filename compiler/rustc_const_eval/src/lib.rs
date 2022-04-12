@@ -34,26 +34,32 @@ pub mod transform;
 pub mod util;
 
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::ParamEnv;
 
 pub fn provide(providers: &mut Providers) {
     const_eval::provide(providers);
     providers.eval_to_const_value_raw = const_eval::eval_to_const_value_raw_provider;
     providers.eval_to_allocation_raw = const_eval::eval_to_allocation_raw_provider;
     providers.const_caller_location = const_eval::const_caller_location;
-    providers.try_destructure_const = |tcx, param_env_and_value| {
-        let (param_env, value) = param_env_and_value.into_parts();
-        const_eval::try_destructure_const(tcx, param_env, value).ok()
+    providers.try_destructure_const = |tcx, param_env_and_val| {
+        let (param_env, c) = param_env_and_val.into_parts();
+        const_eval::try_destructure_const(tcx, param_env, c).ok()
     };
-    providers.const_to_valtree = |tcx, param_env_and_value| {
+    providers.eval_to_valtree = |tcx, param_env_and_value| {
         let (param_env, raw) = param_env_and_value.into_parts();
-        const_eval::const_to_valtree(tcx, param_env, raw)
+        const_eval::eval_to_valtree(tcx, param_env, raw)
     };
-    providers.valtree_to_const_val = |tcx, (ty, valtree)| {
-        const_eval::valtree_to_const_value(tcx, ParamEnv::empty().and(ty), valtree)
+    providers.try_destructure_mir_constant = |tcx, param_env_and_value| {
+        let (param_env, value) = param_env_and_value.into_parts();
+        const_eval::try_destructure_mir_constant(tcx, param_env, value).ok()
     };
+    providers.valtree_to_const_val =
+        |tcx, (ty, valtree)| const_eval::valtree_to_const_value(tcx, ty, valtree);
     providers.deref_const = |tcx, param_env_and_value| {
         let (param_env, value) = param_env_and_value.into_parts();
         const_eval::deref_const(tcx, param_env, value)
+    };
+    providers.deref_mir_constant = |tcx, param_env_and_value| {
+        let (param_env, value) = param_env_and_value.into_parts();
+        const_eval::deref_mir_constant(tcx, param_env, value)
     };
 }

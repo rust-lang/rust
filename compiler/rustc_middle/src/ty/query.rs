@@ -13,8 +13,10 @@ use crate::middle::resolve_lifetime::{
 use crate::middle::stability::{self, DeprecationEntry};
 use crate::mir;
 use crate::mir::interpret::GlobalId;
-use crate::mir::interpret::{ConstAlloc, LitToConstError, LitToConstInput};
-use crate::mir::interpret::{ConstValue, EvalToAllocationRawResult, EvalToConstValueResult};
+use crate::mir::interpret::{
+    ConstValue, EvalToAllocationRawResult, EvalToConstValueResult, EvalToValTreeResult,
+};
+use crate::mir::interpret::{LitToConstError, LitToConstInput};
 use crate::mir::mono::CodegenUnit;
 use crate::thir;
 use crate::traits::query::{

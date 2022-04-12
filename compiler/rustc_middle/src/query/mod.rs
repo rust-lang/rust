@@ -946,12 +946,12 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    /// Convert an evaluated constant to a type level constant or
+    /// Evaluate a constant and convert it to a type level constant or
     /// return `None` if that is not possible.
-    query const_to_valtree(
-        key: ty::ParamEnvAnd<'tcx, ConstAlloc<'tcx>>
-    ) -> Option<ty::ValTree<'tcx>> {
-        desc { "destructure constant" }
+    query eval_to_valtree(
+        key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>
+    ) -> EvalToValTreeResult<'tcx> {
+        desc { "evaluate type-level constant" }
         remap_env_constness
     }
 
@@ -964,10 +964,14 @@ rustc_queries! {
     /// field values or return `None` if constant is invalid.
     ///
     /// Use infallible `TyCtxt::destructure_const` when you know that constant is valid.
-    query try_destructure_const(
-        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
-    ) -> Option<mir::DestructuredConst<'tcx>> {
-        desc { "destructure constant" }
+    query try_destructure_const(key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>) -> Option<mir::DestructuredConst<'tcx>> {
+        desc { "destructure type level constant"}
+    }
+
+    /// Tries to destructure an `mir::ConstantKind` ADT or array into its variant index
+    /// and its field values.
+    query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
+        desc { "destructure mir constant"}
         remap_env_constness
     }
 
@@ -976,6 +980,15 @@ rustc_queries! {
     query deref_const(
         key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
     ) -> ty::Const<'tcx> {
+        desc { "deref constant" }
+        remap_env_constness
+    }
+
+    /// Dereference a constant reference or raw pointer and turn the result into a constant
+    /// again.
+    query deref_mir_constant(
+        key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
+    ) -> mir::ConstantKind<'tcx> {
         desc { "deref constant" }
         remap_env_constness
     }
@@ -989,6 +1002,10 @@ rustc_queries! {
         key: LitToConstInput<'tcx>
     ) -> Result<ty::Const<'tcx>, LitToConstError> {
         desc { "converting literal to const" }
+    }
+
+    query lit_to_mir_constant(key: LitToConstInput<'tcx>) -> Result<mir::ConstantKind<'tcx>, LitToConstError> {
+        desc { "converting literal to mir constant" }
     }
 
     query check_match(key: DefId) {

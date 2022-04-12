@@ -662,7 +662,7 @@ pub enum PatKind<'tcx> {
     /// * Opaque constants, that must not be matched structurally. So anything that does not derive
     ///   `PartialEq` and `Eq`.
     Constant {
-        value: ty::Const<'tcx>,
+        value: mir::ConstantKind<'tcx>,
     },
 
     Range(PatRange<'tcx>),
@@ -692,8 +692,8 @@ pub enum PatKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
 pub struct PatRange<'tcx> {
-    pub lo: ty::Const<'tcx>,
-    pub hi: ty::Const<'tcx>,
+    pub lo: mir::ConstantKind<'tcx>,
+    pub hi: mir::ConstantKind<'tcx>,
     pub end: RangeEnd,
 }
 
