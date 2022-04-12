@@ -146,11 +146,14 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
     // and #84660 where it would otherwise allow unsoundness.
     if trait_ref.has_opaque_types() {
         trace!("{:#?}", item);
+        // First we find the opaque type in question.
         for ty in trait_ref.substs {
             for ty in ty.walk() {
                 let ty::subst::GenericArgKind::Type(ty) = ty.unpack() else { continue };
                 let ty::Opaque(def_id, _) = *ty.kind() else { continue };
                 trace!(?def_id);
+
+                // Then we search for mentions of the opaque type's type alias in the HIR
                 struct SpanFinder<'tcx> {
                     sp: Span,
                     def_id: DefId,
@@ -159,11 +162,14 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
                 impl<'v, 'tcx> hir::intravisit::Visitor<'v> for SpanFinder<'tcx> {
                     #[instrument(level = "trace", skip(self, _id))]
                     fn visit_path(&mut self, path: &'v hir::Path<'v>, _id: hir::HirId) {
+                        // You can't mention an opaque type directly, so we look for type aliases
                         if let hir::def::Res::Def(hir::def::DefKind::TyAlias, def_id) = path.res {
+                            // And check if that type alias's type contains the opaque type we're looking for
                             for arg in self.tcx.type_of(def_id).walk() {
                                 if let GenericArgKind::Type(ty) = arg.unpack() {
                                     if let ty::Opaque(def_id, _) = *ty.kind() {
                                         if def_id == self.def_id {
+                                            // Finally we update the span to the mention of the type alias
                                             self.sp = path.span;
                                             return;
                                         }
