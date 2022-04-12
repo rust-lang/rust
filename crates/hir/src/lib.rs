@@ -1358,9 +1358,9 @@ impl Function {
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type {
         let resolver = self.id.resolver(db.upcast());
-        let ret_type = &db.function_data(self.id).ret_type;
-        let ctx = hir_ty::TyLoweringContext::new(db, &resolver);
-        let ty = ctx.lower_ty(ret_type);
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let ty = callable_sig.ret().clone();
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 

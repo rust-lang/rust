@@ -602,3 +602,42 @@ fn func() {
         "#]],
     );
 }
+
+#[test]
+fn detail_impl_trait_in_return_position() {
+    check_empty(
+        r"
+//- minicore: sized
+trait Trait<T> {}
+fn foo<U>() -> impl Trait<U> {}
+fn main() {
+    self::$0
+}
+",
+        expect![[r"
+            tt Trait
+            fn main() fn()
+            fn foo()  fn() -> impl Trait<U>
+        "]],
+    );
+}
+
+#[test]
+fn detail_async_fn() {
+    // FIXME: #11438
+    check_empty(
+        r#"
+//- minicore: future, sized
+trait Trait<T> {}
+async fn foo() -> u8 {}
+fn main() {
+    self::$0
+}
+"#,
+        expect![[r"
+            tt Trait
+            fn main() fn()
+            fn foo()  async fn() -> impl Future<Output = u8>
+        "]],
+    );
+}
