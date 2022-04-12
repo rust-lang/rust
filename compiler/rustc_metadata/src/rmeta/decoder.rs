@@ -292,6 +292,18 @@ trait LazyQueryDecodable<'a, 'tcx, T> {
     ) -> T;
 }
 
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for T {
+    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, _: impl FnOnce() -> !) -> T {
+        self
+    }
+}
+
+impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<T> {
+    fn decode_query(self, _: CrateMetadataRef<'a>, _: TyCtxt<'tcx>, err: impl FnOnce() -> !) -> T {
+        if let Some(l) = self { l } else { err() }
+    }
+}
+
 impl<'a, 'tcx, T> LazyQueryDecodable<'a, 'tcx, T> for Option<Lazy<T>>
 where
     T: Decodable<DecodeContext<'a, 'tcx>>,
@@ -376,6 +388,17 @@ impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DeprecationEntry>>
     }
 }
 
+impl<'a, 'tcx> LazyQueryDecodable<'a, 'tcx, Option<DefId>> for Option<RawDefId> {
+    fn decode_query(
+        self,
+        cdata: CrateMetadataRef<'a>,
+        _: TyCtxt<'tcx>,
+        _: impl FnOnce() -> !,
+    ) -> Option<DefId> {
+        self.map(|raw_def_id| raw_def_id.decode(cdata))
+    }
+}
+
 impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
     #[inline]
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -394,8 +417,9 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.unwrap()
     }
 
+    #[inline]
     fn map_encoded_cnum_to_current(&self, cnum: CrateNum) -> CrateNum {
-        if cnum == LOCAL_CRATE { self.cdata().cnum } else { self.cdata().cnum_map[cnum] }
+        self.cdata().map_encoded_cnum_to_current(cnum)
     }
 
     fn read_lazy_with_meta<T: ?Sized + LazyMeta>(&mut self, meta: T::Meta) -> Lazy<T> {
@@ -706,8 +730,7 @@ impl<'a, 'tcx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a
     }
 }
 
-impl<'a, 'tcx, I: Idx, T: Decodable<DecodeContext<'a, 'tcx>>> Decodable<DecodeContext<'a, 'tcx>>
-    for Lazy<Table<I, T>>
+impl<'a, 'tcx, I: Idx, T> Decodable<DecodeContext<'a, 'tcx>> for Lazy<Table<I, T>>
 where
     Option<T>: FixedSizeEncoding,
 {
@@ -844,6 +867,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         self.root.tables.kind.get(self, item_id).map(|k| k.decode(self))
     }
 
+    #[inline]
+    pub(super) fn map_encoded_cnum_to_current(self, cnum: CrateNum) -> CrateNum {
+        if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
+    }
+
     fn kind(self, item_id: DefIndex) -> EntryKind {
         self.maybe_kind(item_id).unwrap_or_else(|| {
             bug!(
@@ -856,16 +884,14 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
-        self.root.tables.opt_def_kind.get(self, item_id).map(|k| k.decode(self)).unwrap_or_else(
-            || {
-                bug!(
-                    "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
-                    item_id,
-                    self.root.name,
-                    self.cnum,
-                )
-            },
-        )
+        self.root.tables.opt_def_kind.get(self, item_id).unwrap_or_else(|| {
+            bug!(
+                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
+                item_id,
+                self.root.name,
+                self.cnum,
+            )
+        })
     }
 
     fn get_span(self, index: DefIndex, sess: &Session) -> Span {
@@ -1449,9 +1475,9 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         index: DefIndex,
         def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
     ) -> DefPathHash {
-        *def_path_hashes.entry(index).or_insert_with(|| {
-            self.root.tables.def_path_hashes.get(self, index).unwrap().decode(self)
-        })
+        *def_path_hashes
+            .entry(index)
+            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index).unwrap())
     }
 
     #[inline]
