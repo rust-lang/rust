@@ -44,6 +44,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let sess = build_session(
         sessopts,
         None,
+        None,
         registry,
         DiagnosticOutput::Default,
         Default::default(),

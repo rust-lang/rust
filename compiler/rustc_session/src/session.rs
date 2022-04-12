@@ -20,8 +20,8 @@ use rustc_errors::emitter::{Emitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    fallback_fluent_bundle, fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, FluentBundle, MultiSpan,
+    fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
+    ErrorGuaranteed, FluentBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -1162,6 +1162,7 @@ pub enum DiagnosticOutput {
 pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
+    bundle: Option<Lrc<rustc_errors::FluentBundle>>,
     registry: rustc_errors::registry::Registry,
     diagnostics_output: DiagnosticOutput,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -1214,16 +1215,17 @@ pub fn build_session(
         hash_kind,
     ));
 
-    let bundle = fluent_bundle(
-        &sysroot,
-        sopts.debugging_opts.translate_lang.clone(),
-        sopts.debugging_opts.translate_additional_ftl.as_deref(),
-        sopts.debugging_opts.translate_directionality_markers,
-    )
-    .expect("failed to load fluent bundle");
     let fallback_bundle =
-        fallback_fluent_bundle(sopts.debugging_opts.translate_directionality_markers)
-            .expect("failed to load fallback fluent bundle");
+        match fallback_fluent_bundle(sopts.debugging_opts.translate_directionality_markers) {
+            Ok(bundle) => bundle,
+            Err(e) => {
+                early_error(
+                    sopts.error_format,
+                    &format!("failed to load fallback fluent bundle: {e}"),
+                );
+            }
+        };
+
     let emitter =
         default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
 
