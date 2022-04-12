@@ -865,8 +865,8 @@ impl Build {
                 }
             }
         } else {
-            let base = self.llvm_out(self.config.build).join("build");
-            let base = if !self.ninja() && self.config.build.contains("msvc") {
+            let base = self.llvm_out(target).join("build");
+            let base = if !self.ninja() && target.contains("msvc") {
                 if self.config.llvm_optimize {
                     if self.config.llvm_release_debuginfo {
                         base.join("RelWithDebInfo")

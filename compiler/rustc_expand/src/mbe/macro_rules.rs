@@ -439,7 +439,8 @@ pub fn compile_declarative_macro(
     let argument_gram = mbe::macro_parser::compute_locs(&sess.parse_sess, &argument_gram);
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
-    let mut tt_parser = TtParser::new(def.ident);
+    let mut tt_parser =
+        TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
     let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
         Success(m) => m,
         Failure(token, msg) => {

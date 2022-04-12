@@ -81,21 +81,11 @@ use rustc_session::parse::ParseSess;
 use rustc_span::symbol::MacroRulesNormalizedIdent;
 use rustc_span::Span;
 
-use smallvec::{smallvec, SmallVec};
-
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-
-// One element is enough to cover 95-99% of vectors for most benchmarks. Also, vectors longer than
-// one frequently have many elements, not just two or three.
-type NamedMatchVec = SmallVec<[NamedMatch; 1]>;
-
-// This type is used a lot. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(NamedMatchVec, 48);
 
 /// A unit within a matcher that a `MatcherPos` can refer to. Similar to (and derived from)
 /// `mbe::TokenTree`, but designed specifically for fast and easy traversal during matching.
@@ -221,7 +211,11 @@ struct MatcherPos {
     /// with one element per metavar decl in the matcher. Each element records token trees matched
     /// against the relevant metavar by the black box parser. An element will be a `MatchedSeq` if
     /// the corresponding metavar decl is within a sequence.
-    matches: Lrc<NamedMatchVec>,
+    ///
+    /// It is critical to performance that this is an `Lrc`, because it gets cloned frequently when
+    /// processing sequences. Mostly for sequence-ending possibilities that must be tried but end
+    /// up failing.
+    matches: Lrc<Vec<NamedMatch>>,
 }
 
 // This type is used a lot. Make sure it doesn't unintentionally get bigger.
@@ -246,18 +240,12 @@ impl MatcherPos {
                 let mut curr = &mut matches[metavar_idx];
                 for _ in 0..seq_depth - 1 {
                     match curr {
-                        MatchedSeq(seq) => {
-                            let seq = Lrc::make_mut(seq);
-                            curr = seq.last_mut().unwrap();
-                        }
+                        MatchedSeq(seq) => curr = seq.last_mut().unwrap(),
                         _ => unreachable!(),
                     }
                 }
                 match curr {
-                    MatchedSeq(seq) => {
-                        let seq = Lrc::make_mut(seq);
-                        seq.push(m);
-                    }
+                    MatchedSeq(seq) => seq.push(m),
                     _ => unreachable!(),
                 }
             }
@@ -350,7 +338,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
 /// ```
 #[derive(Debug, Clone)]
 crate enum NamedMatch {
-    MatchedSeq(Lrc<NamedMatchVec>),
+    MatchedSeq(Vec<NamedMatch>),
 
     // A metavar match of type `tt`.
     MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
@@ -388,7 +376,7 @@ pub struct TtParser {
 
     /// Pre-allocate an empty match array, so it can be cloned cheaply for macros with many rules
     /// that have no metavars.
-    empty_matches: Lrc<NamedMatchVec>,
+    empty_matches: Lrc<Vec<NamedMatch>>,
 }
 
 impl TtParser {
@@ -398,7 +386,7 @@ impl TtParser {
             cur_mps: vec![],
             next_mps: vec![],
             bb_mps: vec![],
-            empty_matches: Lrc::new(smallvec![]),
+            empty_matches: Lrc::new(vec![]),
         }
     }
 
@@ -452,11 +440,7 @@ impl TtParser {
                 } => {
                     // Install an empty vec for each metavar within the sequence.
                     for metavar_idx in next_metavar..next_metavar + num_metavar_decls {
-                        mp.push_match(
-                            metavar_idx,
-                            seq_depth,
-                            MatchedSeq(self.empty_matches.clone()),
-                        );
+                        mp.push_match(metavar_idx, seq_depth, MatchedSeq(vec![]));
                     }
 
                     if op == KleeneOp::ZeroOrMore || op == KleeneOp::ZeroOrOne {

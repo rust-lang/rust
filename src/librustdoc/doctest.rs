@@ -1069,13 +1069,7 @@ impl Tester for Collector {
                             }
                         }
                         TestFailure::ExecutionFailure(out) => {
-                            let reason = if let Some(code) = out.status.code() {
-                                format!("exit code {code}")
-                            } else {
-                                String::from("terminated by signal")
-                            };
-
-                            eprintln!("Test executable failed ({reason}).");
+                            eprintln!("Test executable failed ({reason}).", reason = out.status);
 
                             // FIXME(#12309): An unfortunate side-effect of capturing the test
                             // executable's output is that the relative ordering between the test's
