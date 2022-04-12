@@ -79,6 +79,7 @@ use crate::html::sources;
 use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
+use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -463,17 +464,22 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
 }
 
 fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
-    let content = SCRAPE_EXAMPLES_HELP_MD;
+    let mut content = SCRAPE_EXAMPLES_HELP_MD.to_owned();
+    content.push_str(&format!(
+      "## More information\n\n\
+      If you want more information about this feature, please read the [corresponding chapter in the Rustdoc book]({}/rustdoc/scraped-examples.html).",
+      DOC_RUST_LANG_ORG_CHANNEL));
+
     let mut ids = IdMap::default();
     format!(
-        "<div class=\"main-heading\">
+        "<div class=\"main-heading\">\
             <h1 class=\"fqn\">\
                 <span class=\"in-band\">About scraped examples</span>\
             </h1>\
         </div>\
         <div>{}</div>",
         Markdown {
-            content,
+            content: &content,
             links: &[],
             ids: &mut ids,
             error_codes: shared.codes,
