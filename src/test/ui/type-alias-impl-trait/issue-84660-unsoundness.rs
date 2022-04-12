@@ -1,4 +1,4 @@
-// Another example from issue #84660, this time weaponized as a safe transmut: an opaque type in an
+// Another example from issue #84660, this time weaponized as a safe transmute: an opaque type in an
 // impl header being accepted was used to create unsoundness.
 
 #![feature(type_alias_impl_trait)]

@@ -191,7 +191,7 @@ fn orphan_check_impl(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGua
                 return Err(reported);
             }
         }
-        span_bug!(sp, "opque type not found, but `has_opaque_types` is set")
+        span_bug!(sp, "opaque type not found, but `has_opaque_types` is set")
     }
 
     Ok(())
