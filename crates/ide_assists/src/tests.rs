@@ -162,6 +162,10 @@ fn check(handler: Handler, before: &str, expected: ExpectedResult, assist_label:
                     FileSystemEdit::MoveFile { src, dst } => {
                         (dst, db.file_text(src).as_ref().to_owned())
                     }
+                    FileSystemEdit::MoveDir { src, src_id, dst } => {
+                        // temporary placeholder for MoveDir since we are not using MoveDir in ide assists yet.
+                        (dst, format!("{:?}\n{:?}", src_id, src))
+                    }
                 };
                 let sr = db.file_source_root(dst.anchor);
                 let sr = db.source_root(sr);

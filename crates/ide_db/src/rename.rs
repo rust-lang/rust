@@ -178,17 +178,23 @@ fn rename_mod(
     let mut source_change = SourceChange::default();
 
     let InFile { file_id, value: def_source } = module.definition_source(sema.db);
-    let file_id = file_id.original_file(sema.db);
     if let ModuleSource::SourceFile(..) = def_source {
-        // mod is defined in path/to/dir/mod.rs
-        let path = if module.is_mod_rs(sema.db) {
-            format!("../{}/mod.rs", new_name)
-        } else {
-            format!("{}.rs", new_name)
-        };
-        let dst = AnchoredPathBuf { anchor: file_id, path };
-        let move_file = FileSystemEdit::MoveFile { src: file_id, dst };
-        source_change.push_file_system_edit(move_file);
+        let anchor = file_id.original_file(sema.db);
+        // not mod.rs and doesn't has children, rename file only
+        if !module.is_mod_rs(sema.db) && module.children(sema.db).next().is_none() {
+            let path = format!("{}.rs", new_name);
+            let dst = AnchoredPathBuf { anchor, path };
+            source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst })
+        } else if let Some(mod_name) = module.name(sema.db) {
+            // is mod.rs or has children, rename dir
+            let src = AnchoredPathBuf { anchor, path: mod_name.to_string() };
+            let dst = AnchoredPathBuf { anchor, path: new_name.to_string() };
+            source_change.push_file_system_edit(FileSystemEdit::MoveDir {
+                src,
+                src_id: anchor,
+                dst,
+            })
+        }
     }
 
     if let Some(src) = module.declaration_source(sema.db) {
