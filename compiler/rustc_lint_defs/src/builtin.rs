@@ -2206,7 +2206,7 @@ declare_lint! {
     /// and then this lint will ensure that the item is no longer used in the
     /// standard library. See the [stability documentation] for more details.
     ///
-    /// [stability documentation]: https://rustc-dev-guide.rust-lang.org/stability.html#rustc_deprecated
+    /// [stability documentation]: https://rustc-dev-guide.rust-lang.org/stability.html#deprecated
     pub DEPRECATED_IN_FUTURE,
     Allow,
     "detects use of items that will be deprecated in a future version",
