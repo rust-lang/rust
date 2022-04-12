@@ -134,10 +134,10 @@
 //! }
 //!
 //! impl Provider for SomeConcreteType {
-//!     fn provide<'a>(&'a self, req: &mut Demand<'a>) {
+//!     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
 //!         // Provide a string reference. We could provide multiple values with
 //!         // different types here.
-//!         req.provide_ref::<String>(&self.some_string);
+//!         demand.provide_ref::<String>(&self.some_string);
 //!     }
 //! }
 //!
@@ -780,11 +780,40 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 pub trait Provider {
     /// Data providers should implement this method to provide *all* values they are able to
     /// provide by using `demand`.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field with type `String` as a `&str`.
+    ///
+    /// ```rust
+    /// # #![feature(provide_any)]
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: String }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref::<str>(&self.field);
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "provide_any", issue = "none")]
     fn provide<'a>(&'a self, demand: &mut Demand<'a>);
 }
 
 /// Request a value from the `Provider`.
+///
+/// # Examples
+///
+/// Get a string value from a provider.
+///
+/// ```rust
+/// # #![feature(provide_any)]
+/// use std::any::{Provider, request_value};
+///
+/// fn get_string<P: Provider>(provider: &P) -> String {
+///     request_value::<String, _>(provider).unwrap()
+/// }
+/// ```
 #[unstable(feature = "provide_any", issue = "none")]
 pub fn request_value<'a, T, P>(provider: &'a P) -> Option<T>
 where
@@ -795,6 +824,19 @@ where
 }
 
 /// Request a reference from the `Provider`.
+///
+/// # Examples
+///
+/// Get a string reference from a provider.
+///
+/// ```rust
+/// # #![feature(provide_any)]
+/// use std::any::{Provider, request_ref};
+///
+/// fn get_str<P: Provider>(provider: &P) -> &str {
+///     request_ref::<str, _>(provider).unwrap()
+/// }
+/// ```
 #[unstable(feature = "provide_any", issue = "none")]
 pub fn request_ref<'a, T, P>(provider: &'a P) -> Option<&'a T>
 where
@@ -829,6 +871,22 @@ pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
 impl<'a> Demand<'a> {
     /// Provide a value or other type with only static lifetimes.
+    ///
+    /// # Examples
+    ///
+    /// Provides a `String` by cloning.
+    ///
+    /// ```rust
+    /// # #![feature(provide_any)]
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: String }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_value::<String, _>(|| self.field.clone());
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "provide_any", issue = "none")]
     pub fn provide_value<T, F>(&mut self, fulfil: F) -> &mut Self
     where
@@ -840,6 +898,22 @@ impl<'a> Demand<'a> {
 
     /// Provide a reference, note that the referee type must be bounded by `'static`,
     /// but may be unsized.
+    ///
+    /// # Examples
+    ///
+    /// Provides a reference to a field as a `&str`.
+    ///
+    /// ```rust
+    /// # #![feature(provide_any)]
+    /// use std::any::{Provider, Demand};
+    /// # struct SomeConcreteType { field: String }
+    ///
+    /// impl Provider for SomeConcreteType {
+    ///     fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+    ///         demand.provide_ref::<str>(&self.field);
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "provide_any", issue = "none")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
