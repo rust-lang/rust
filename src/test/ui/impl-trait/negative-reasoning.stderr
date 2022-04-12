@@ -1,8 +1,8 @@
 error: cannot implement trait on type alias impl trait
-  --> $DIR/negative-reasoning.rs:19:1
+  --> $DIR/negative-reasoning.rs:19:25
    |
 LL | impl AnotherTrait for D<OpaqueType> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                         ^^^^^^^^^^
    |
 note: type alias impl trait defined here
   --> $DIR/negative-reasoning.rs:7:19
