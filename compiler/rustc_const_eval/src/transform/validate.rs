@@ -3,15 +3,14 @@
 use rustc_index::bit_set::BitSet;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
-    AggregateKind, BasicBlock, Body, BorrowKind, Local, Location, MirPass, MirPhase, Operand,
-    PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind, START_BLOCK,
+    traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, Local, Location, MirPass,
+    MirPhase, Operand, Place, PlaceElem, PlaceRef, ProjectionElem, Rvalue, SourceScope, Statement,
+    StatementKind, Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::fold::BottomUpFolder;
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeFoldable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::AlwaysLiveLocals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
@@ -36,6 +35,13 @@ pub struct Validator {
 
 impl<'tcx> MirPass<'tcx> for Validator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // FIXME(JakobDegen): These bodies never instantiated in codegend anyway, so it's not
+        // terribly important that they pass the validator. However, I think other passes might
+        // still see them, in which case they might be surprised. It would probably be better if we
+        // didn't put this through the MIR pipeline at all.
+        if matches!(body.source.instance, InstanceDef::Intrinsic(..) | InstanceDef::Virtual(..)) {
+            return;
+        }
         let def_id = body.source.def_id();
         let param_env = tcx.param_env(def_id);
         let mir_phase = self.mir_phase;
@@ -240,6 +246,152 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         self.super_projection_elem(local, proj_base, elem, context, location);
     }
 
+    fn visit_place(&mut self, place: &Place<'tcx>, _: PlaceContext, _: Location) {
+        // Set off any `bug!`s in the type computation code
+        let _ = place.ty(&self.body.local_decls, self.tcx);
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        macro_rules! check_kinds {
+            ($t:expr, $text:literal, $($patterns:tt)*) => {
+                if !matches!(($t).kind(), $($patterns)*) {
+                    self.fail(location, format!($text, $t));
+                }
+            };
+        }
+        match rvalue {
+            Rvalue::Use(_) => {}
+            Rvalue::Aggregate(agg_kind, _) => {
+                let disallowed = match **agg_kind {
+                    AggregateKind::Array(..) => false,
+                    AggregateKind::Generator(..) => self.mir_phase >= MirPhase::GeneratorsLowered,
+                    _ => self.mir_phase >= MirPhase::Deaggregated,
+                };
+                if disallowed {
+                    self.fail(
+                        location,
+                        format!("{:?} have been lowered to field assignments", rvalue),
+                    )
+                }
+            }
+            Rvalue::Ref(_, BorrowKind::Shallow, _) => {
+                if self.mir_phase >= MirPhase::DropsLowered {
+                    self.fail(
+                        location,
+                        "`Assign` statement with a `Shallow` borrow should have been removed after drop lowering phase",
+                    );
+                }
+            }
+            Rvalue::Len(p) => {
+                let pty = p.ty(&self.body.local_decls, self.tcx).ty;
+                check_kinds!(
+                    pty,
+                    "Cannot compute length of non-array type {:?}",
+                    ty::Array(..) | ty::Slice(..)
+                );
+            }
+            Rvalue::BinaryOp(op, vals) | Rvalue::CheckedBinaryOp(op, vals) => {
+                use BinOp::*;
+                let a = vals.0.ty(&self.body.local_decls, self.tcx);
+                let b = vals.1.ty(&self.body.local_decls, self.tcx);
+                match op {
+                    Offset => {
+                        check_kinds!(a, "Cannot offset non-pointer type {:?}", ty::RawPtr(..));
+                        if b != self.tcx.types.isize && b != self.tcx.types.usize {
+                            self.fail(location, format!("Cannot offset by non-isize type {:?}", b));
+                        }
+                    }
+                    Eq | Lt | Le | Ne | Ge | Gt => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot compare type {:?}",
+                                ty::Bool
+                                    | ty::Char
+                                    | ty::Int(..)
+                                    | ty::Uint(..)
+                                    | ty::Float(..)
+                                    | ty::RawPtr(..)
+                                    | ty::FnPtr(..)
+                            )
+                        }
+                        // None of the possible types have lifetimes, so we can just compare
+                        // directly
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!("Cannot compare unequal types {:?} and {:?}", a, b),
+                            );
+                        }
+                    }
+                    Shl | Shr => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot shift non-integer type {:?}",
+                                ty::Uint(..) | ty::Int(..)
+                            )
+                        }
+                    }
+                    BitAnd | BitOr | BitXor => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform bitwise op on type {:?}",
+                                ty::Uint(..) | ty::Int(..) | ty::Bool
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Cannot perform bitwise op on unequal types {:?} and {:?}",
+                                    a, b
+                                ),
+                            );
+                        }
+                    }
+                    Add | Sub | Mul | Div | Rem => {
+                        for x in [a, b] {
+                            check_kinds!(
+                                x,
+                                "Cannot perform op on type {:?}",
+                                ty::Uint(..) | ty::Int(..) | ty::Float(..)
+                            )
+                        }
+                        if a != b {
+                            self.fail(
+                                location,
+                                format!("Cannot perform op on unequal types {:?} and {:?}", a, b),
+                            );
+                        }
+                    }
+                }
+            }
+            Rvalue::UnaryOp(op, operand) => {
+                let a = operand.ty(&self.body.local_decls, self.tcx);
+                match op {
+                    UnOp::Neg => {
+                        check_kinds!(a, "Cannot negate type {:?}", ty::Int(..) | ty::Float(..))
+                    }
+                    UnOp::Not => {
+                        check_kinds!(
+                            a,
+                            "Cannot binary not type {:?}",
+                            ty::Int(..) | ty::Uint(..) | ty::Bool
+                        );
+                    }
+                }
+            }
+            Rvalue::ShallowInitBox(operand, _) => {
+                let a = operand.ty(&self.body.local_decls, self.tcx);
+                check_kinds!(a, "Cannot shallow init type {:?}", ty::RawPtr(..));
+            }
+            _ => {}
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
             StatementKind::Assign(box (dest, rvalue)) => {
@@ -257,41 +409,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                match rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether the places
-                    // are identical.
-                    Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) => {
-                        if dest == src {
-                            self.fail(
-                                location,
-                                "encountered `Assign` statement with overlapping memory",
-                            );
-                        }
+                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
+                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    // The sides of an assignment must not alias. Currently this just checks whether
+                    // the places are identical.
+                    if dest == src {
+                        self.fail(
+                            location,
+                            "encountered `Assign` statement with overlapping memory",
+                        );
                     }
-                    Rvalue::Aggregate(agg_kind, _) => {
-                        let disallowed = match **agg_kind {
-                            AggregateKind::Array(..) => false,
-                            AggregateKind::Generator(..) => {
-                                self.mir_phase >= MirPhase::GeneratorsLowered
-                            }
-                            _ => self.mir_phase >= MirPhase::Deaggregated,
-                        };
-                        if disallowed {
-                            self.fail(
-                                location,
-                                format!("{:?} have been lowered to field assignments", rvalue),
-                            )
-                        }
-                    }
-                    Rvalue::Ref(_, BorrowKind::Shallow, _) => {
-                        if self.mir_phase >= MirPhase::DropsLowered {
-                            self.fail(
-                                location,
-                                "`Assign` statement with a `Shallow` borrow should have been removed after drop lowering phase",
-                            );
-                        }
-                    }
-                    _ => {}
                 }
             }
             StatementKind::AscribeUserType(..) => {
@@ -512,6 +639,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Yield { resume, drop, .. } => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`Yield` cannot appear outside generator bodies");
+                }
                 if self.mir_phase >= MirPhase::GeneratorsLowered {
                     self.fail(location, "`Yield` should have been replaced by generator lowering");
                 }
@@ -551,6 +681,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::GeneratorDrop => {
+                if self.body.generator.is_none() {
+                    self.fail(location, "`GeneratorDrop` cannot appear outside generator bodies");
+                }
                 if self.mir_phase >= MirPhase::GeneratorsLowered {
                     self.fail(
                         location,
@@ -558,11 +691,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            // Nothing to validate for these.
-            TerminatorKind::Resume
-            | TerminatorKind::Abort
-            | TerminatorKind::Return
-            | TerminatorKind::Unreachable => {}
+            TerminatorKind::Resume | TerminatorKind::Abort => {
+                let bb = location.block;
+                if !self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Resume` or `Abort` from non-cleanup basic block")
+                }
+            }
+            TerminatorKind::Return => {
+                let bb = location.block;
+                if self.body.basic_blocks()[bb].is_cleanup {
+                    self.fail(location, "Cannot `Return` from cleanup basic block")
+                }
+            }
+            TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator(terminator, location);

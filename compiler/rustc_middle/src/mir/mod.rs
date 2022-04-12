@@ -127,12 +127,24 @@ pub trait MirPass<'tcx> {
 /// The various "big phases" that MIR goes through.
 ///
 /// These phases all describe dialects of MIR. Since all MIR uses the same datastructures, the
-/// dialects forbid certain variants or values in certain phases.
+/// dialects forbid certain variants or values in certain phases. The sections below summarize the
+/// changes, but do not document them thoroughly. The full documentation is found in the appropriate
+/// documentation for the thing the change is affecting.
 ///
 /// Warning: ordering of variants is significant.
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
+    /// The dialect of MIR used during all phases before `DropsLowered` is the same. This is also
+    /// the MIR that analysis such as borrowck uses.
+    ///
+    /// One important thing to remember about the behavior of this section of MIR is that drop terminators
+    /// (including drop and replace) are *conditional*. The elaborate drops pass will then replace each
+    /// instance of a drop terminator with a nop, an unconditional drop, or a drop conditioned on a drop
+    /// flag. Of course, this means that it is important that the drop elaboration can accurately recognize
+    /// when things are initialized and when things are de-initialized. That means any code running on this
+    /// version of MIR must be sure to produce output that drop elaboration can reason about. See the
+    /// section on the drop terminatorss for more details.
     Built = 0,
     // FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
     // We used to have this for pre-miri MIR based const eval.
@@ -162,6 +174,16 @@ pub enum MirPhase {
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]
     Deaggregated = 4,
+    /// Before this phase, generators are in the "source code" form, featuring `yield` statements
+    /// and such. With this phase change, they are transformed into a proper state machine. Running
+    /// optimizations before this change can be potentially dangerous because the source code is to
+    /// some extent a "lie." In particular, `yield` terminators effectively make the value of all
+    /// locals visible to the caller. This means that dead store elimination before them, or code
+    /// motion across them, is not correct in general. This is also exasperated by type checking
+    /// having pre-computed a list of the types that it thinks are ok to be live across a yield
+    /// point - this is necessary to decide eg whether autotraits are implemented. Introducing new
+    /// types across a yield point will lead to ICEs becaues of this.
+    ///
     /// Beginning with this phase, the following variants are disallowed:
     /// * [`TerminatorKind::Yield`](terminator::TerminatorKind::Yield)
     /// * [`TerminatorKind::GeneratorDrop](terminator::TerminatorKind::GeneratorDrop)
@@ -1573,18 +1595,45 @@ impl Statement<'_> {
 /// causing an ICE if they are violated.
 #[derive(Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
-    /// Write the RHS Rvalue to the LHS Place.
+    /// Assign statements roughly correspond to an assignment in Rust proper (`x = ...`) except
+    /// without the possibility of dropping the previous value (that must be done separately, if at
+    /// all). The *exact* way this works is undecided. It probably does something like evaluating
+    /// the LHS to a place and the RHS to a value, and then storing the value to the place. Various
+    /// parts of this may do type specific things that are more complicated than simply copying
+    /// bytes.
     ///
-    /// The LHS place may not overlap with any memory accessed on the RHS.
+    /// **Needs clarification**: The implication of the above idea would be that assignment implies
+    /// that the resulting value is initialized. I believe we could commit to this separately from
+    /// committing to whatever part of the memory model we would need to decide on to make the above
+    /// paragragh precise. Do we want to?
+    ///
+    /// Assignments in which the types of the place and rvalue differ are not well-formed.
+    ///
+    /// **Needs clarification**: Do we ever want to worry about non-free (in the body) lifetimes for
+    /// the typing requirement in post drop-elaboration MIR? I think probably not - I'm not sure we
+    /// could meaningfully require this anyway. How about free lifetimes? Is ignoring this
+    /// interesting for optimizations? Do we want to allow such optimizations?
+    ///
+    /// **Needs clarification**: We currently require that the LHS place not overlap with any place
+    /// read as part of computation of the RHS for some rvalues (generally those not producing
+    /// primitives). This requirement is under discussion in [#68364]. As a part of this discussion,
+    /// it is also unclear in what order the components are evaluated.
+    ///
+    /// [#68364]: https://github.com/rust-lang/rust/issues/68364
+    ///
+    /// See [`Rvalue`] documentation for details on each of those.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
 
-    /// This represents all the reading that a pattern match may do
-    /// (e.g., inspecting constants and discriminant values), and the
-    /// kind of pattern it comes from. This is in order to adapt potential
-    /// error messages to these specific patterns.
+    /// This represents all the reading that a pattern match may do (e.g., inspecting constants and
+    /// discriminant values), and the kind of pattern it comes from. This is in order to adapt
+    /// potential error messages to these specific patterns.
     ///
     /// Note that this also is emitted for regular `let` bindings to ensure that locals that are
     /// never accessed still get some sanity checks for, e.g., `let x: ! = ..;`
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
     FakeRead(Box<(FakeReadCause, Place<'tcx>)>),
 
     /// Write the discriminant for a variant to the enum Place.
@@ -1599,17 +1648,35 @@ pub enum StatementKind<'tcx> {
     /// This writes `uninit` bytes to the entire place.
     Deinit(Box<Place<'tcx>>),
 
-    /// Start a live range for the storage of the local.
+    /// `StorageLive` and `StorageDead` statements mark the live range of a local.
+    ///
+    /// Using a local before a `StorageLive` or after a `StorageDead` is not well-formed. These
+    /// statements are not required. If the entire MIR body contains no `StorageLive`/`StorageDead`
+    /// statements for a particular local, the local is always considered live.
+    ///
+    /// More precisely, the MIR validator currently does a `MaybeStorageLiveLocals` analysis to
+    /// check validity of each use of a local. I believe this is equivalent to requiring for every
+    /// use of a local, there exist at least one path from the root to that use that contains a
+    /// `StorageLive` more recently than a `StorageDead`.
+    ///
+    /// **Needs clarification**: Is it permitted to have two `StorageLive`s without an intervening
+    /// `StorageDead`? Two `StorageDead`s without an intervening `StorageLive`? LLVM says poison,
+    /// yes. If the answer to any of these is "no," is breaking that rule UB or is it an error to
+    /// have a path in the CFG that might do this?
     StorageLive(Local),
 
-    /// End the current live range for the storage of the local.
+    /// See `StorageLive` above.
     StorageDead(Local),
 
-    /// Retag references in the given place, ensuring they got fresh tags. This is
-    /// part of the Stacked Borrows model. These statements are currently only interpreted
-    /// by miri and only generated when "-Z mir-emit-retag" is passed.
-    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
-    /// for more details.
+    /// Retag references in the given place, ensuring they got fresh tags.
+    ///
+    /// This is part of the Stacked Borrows model. These statements are currently only interpreted
+    /// by miri and only generated when `-Z mir-emit-retag` is passed. See
+    /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
+    /// more details.
+    ///
+    /// For code that is not specific to stacked borrows, you should consider retags to read
+    /// and modify the place in an opaque way.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -1624,6 +1691,10 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
+    ///
+    /// When executed at runtime this is a nop.
+    ///
+    /// Disallowed after drop elaboration.
     AscribeUserType(Box<(Place<'tcx>, UserTypeProjection)>, ty::Variance),
 
     /// Marks the start of a "coverage region", injected with '-Cinstrument-coverage'. A
@@ -1633,9 +1704,19 @@ pub enum StatementKind<'tcx> {
     /// executed.
     Coverage(Box<Coverage>),
 
-    /// Denotes a call to the intrinsic function copy_overlapping, where `src_dst` denotes the
-    /// memory being read from and written to(one field to save memory), and size
-    /// indicates how many bytes are being copied over.
+    /// Denotes a call to the intrinsic function `copy_nonoverlapping`.
+    ///
+    /// First, all three operands are evaluated. `src` and `dest` must each be a reference, pointer,
+    /// or `Box` pointing to the same type `T`. `count` must evaluate to a `usize`. Then, `src` and
+    /// `dest` are dereferenced, and `count * size_of::<T>()` bytes beginning with the first byte of
+    /// the `src` place are copied to the continguous range of bytes beginning with the first byte
+    /// of `dest`.
+    ///
+    /// **Needs clarification**: In what order are operands computed and dereferenced? It should
+    /// probably match the order for assignment, but that is also undecided.
+    ///
+    /// **Needs clarification**: Is this typed or not, ie is there a typed load and store involved?
+    /// I vaguely remember Ralf saying somewhere that he thought it should not be.
     CopyNonOverlapping(Box<CopyNonOverlapping<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
@@ -1785,8 +1866,82 @@ pub struct CopyNonOverlapping<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Places
 
-/// A path to a value; something that can be evaluated without
-/// changing or disturbing program state.
+/// Places roughly correspond to a "location in memory." Places in MIR are the same mathematical
+/// object as places in Rust. This of course means that what exactly they are is undecided and part
+/// of the Rust memory model. However, they will likely contain at least the following pieces of
+/// information in some form:
+///
+///  1. The address in memory that the place refers to.
+///  2. The provenance with which the place is being accessed.
+///  3. The type of the place and an optional variant index. See [`PlaceTy`][tcx::PlaceTy].
+///  4. Optionally, some metadata. This exists if and only if the type of the place is not `Sized`.
+///
+/// We'll give a description below of how all pieces of the place except for the provenance are
+/// calculated. We cannot give a description of the provenance, because that is part of the
+/// undecided aliasing model - we only include it here at all to acknowledge its existence.
+///
+/// Each local naturally corresponds to the place `Place { local, projection: [] }`. This place has
+/// the address of the local's allocation and the type of the local.
+///
+/// **Needs clarification:** Unsized locals seem to present a bit of an issue. Their allocation
+/// can't actually be created on `StorageLive`, because it's unclear how big to make the allocation.
+/// Furthermore, MIR produces assignments to unsized locals, although that is not permitted under
+/// `#![feature(unsized_locals)]` in Rust. Besides just putting "unsized locals are special and
+/// different" in a bunch of places, I (JakobDegen) don't know how to incorporate this behavior into
+/// the current MIR semantics in a clean way - possibly this needs some design work first.
+///
+/// For places that are not locals, ie they have a non-empty list of projections, we define the
+/// values as a function of the parent place, that is the place with its last [`ProjectionElem`]
+/// stripped. The way this is computed of course depends on the kind of that last projection
+/// element:
+///
+///  - [`Downcast`](ProjectionElem::Downcast): This projection sets the place's variant index to the
+///    given one, and makes no other changes. A `Downcast` projection on a place with its variant
+///    index already set is not well-formed.
+///  - [`Field`](ProjectionElem::Field): `Field` projections take their parent place and create a
+///    place referring to one of the fields of the type. The resulting address is the parent
+///    address, plus the offset of the field. The type becomes the type of the field. If the parent
+///    was unsized and so had metadata associated with it, then the metadata is retained if the
+///    field is unsized and thrown out if it is sized.
+///
+///    These projections are only legal for tuples, ADTs, closures, and generators. If the ADT or
+///    generator has more than one variant, the parent place's variant index must be set, indicating
+///    which variant is being used. If it has just one variant, the variant index may or may not be
+///    included - the single possible variant is inferred if it is not included.
+///  - [`ConstantIndex`](ProjectionElem::ConstantIndex): Computes an offset in units of `T` into the
+///    place as described in the documentation for the `ProjectionElem`. The resulting address is
+///    the parent's address plus that offset, and the type is `T`. This is only legal if the parent
+///    place has type `[T;  N]` or `[T]` (*not* `&[T]`). Since such a `T` is always sized, any
+///    resulting metadata is thrown out.
+///  - [`Subslice`](ProjectionElem::Subslice): This projection calculates an offset and a new
+///    address in a similar manner as `ConstantIndex`. It is also only legal on `[T; N]` and `[T]`.
+///    However, this yields a `Place` of type `[T]`, and additionally sets the metadata to be the
+///    length of the subslice.
+///  - [`Index`](ProjectionElem::Index): Like `ConstantIndex`, only legal on `[T; N]` or `[T]`.
+///    However, `Index` additionally takes a local from which the value of the index is computed at
+///    runtime. Computing the value of the index involves interpreting the `Local` as a
+///    `Place { local, projection: [] }`, and then computing its value as if done via
+///    [`Operand::Copy`]. The array/slice is then indexed with the resulting value. The local must
+///    have type `usize`.
+///  - [`Deref`](ProjectionElem::Deref): Derefs are the last type of projection, and the most
+///    complicated. They are only legal on parent places that are references, pointers, or `Box`. A
+///    `Deref` projection begins by loading a value from the parent place, as if by
+///    [`Operand::Copy`]. It then dereferences the resulting pointer, creating a place of the
+///    pointee's type. The resulting address is the address that was stored in the pointer. If the
+///    pointee type is unsized, the pointer additionally stored the value of the metadata.
+///
+/// Computing a place may cause UB. One possibility is that the pointer used for a `Deref` may not
+/// be suitably aligned. Another possibility is that the place is not in bounds, meaning it does not
+/// point to an actual allocation.
+///
+/// However, if this is actually UB and when the UB kicks in is undecided. This is being discussed
+/// in [UCG#319]. The options include that every place must obey those rules, that only some places
+/// must obey them, or that places impose no rules of their own.
+///
+/// [UCG#319]: https://github.com/rust-lang/unsafe-code-guidelines/issues/319
+///
+/// Rust currently requires that every place obey those two rules. This is checked by MIRI and taken
+/// advantage of by codegen (via `gep inbounds`). That is possibly subject to change.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, HashStable)]
 pub struct Place<'tcx> {
     pub local: Local,
@@ -2155,24 +2310,39 @@ pub struct SourceScopeLocalData {
 ///////////////////////////////////////////////////////////////////////////
 // Operands
 
-/// These are values that can appear inside an rvalue. They are intentionally
-/// limited to prevent rvalues from being nested in one another.
+/// An operand in MIR represents a "value" in Rust, the definition of which is undecided and part of
+/// the memory model. One proposal for a definition of values can be found [on UCG][value-def].
+///
+/// [value-def]: https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/value-domain.md
+///
+/// The most common way to create values is via loading a place. Loading a place is an operation
+/// which reads the memory of the place and converts it to a value. This is a fundamentally *typed*
+/// operation. The nature of the value produced depends on the type of the conversion. Furthermore,
+/// there may be other effects: if the type has a validity constraint loading the place might be UB
+/// if the validity constraint is not met.
+///
+/// **Needs clarification:** Ralf proposes that loading a place not have side-effects.
+/// This is what is implemented in miri today. Are these the semantics we want for MIR? Is this
+/// something we can even decide without knowing more about Rust's memory model?
+///
+/// **Needs clarifiation:** Is loading a place that has its variant index set well-formed? Miri
+/// currently implements it, but it seems like this may be something to check against in the
+/// validator.
 #[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum Operand<'tcx> {
-    /// Copy: The value must be available for use afterwards.
-    ///
-    /// This implies that the type of the place must be `Copy`; this is true
-    /// by construction during build, but also checked by the MIR type checker.
+    /// Creates a value by loading the given place. The type of the place must be `Copy`
     Copy(Place<'tcx>),
 
-    /// Move: The value (including old borrows of it) will not be used again.
+    /// Creates a value by performing loading the place, just like the `Copy` operand.
     ///
-    /// Safe for values of all types (modulo future developments towards `?Move`).
-    /// Correct usage patterns are enforced by the borrow checker for safe code.
-    /// `Copy` may be converted to `Move` to enable "last-use" optimizations.
+    /// This *may* additionally overwrite the place with `uninit` bytes, depending on how we decide
+    /// in [UCG#188]. You should not emit MIR that may attempt a subsequent second load of this
+    /// place without first re-initializing it.
+    ///
+    /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
     Move(Place<'tcx>),
 
-    /// Synthesizes a constant value.
+    /// Constants are already semantically values, and remain unchanged.
     Constant(Box<Constant<'tcx>>),
 }
 
@@ -2280,57 +2450,134 @@ impl<'tcx> Operand<'tcx> {
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 /// The various kinds of rvalues that can appear in MIR.
 ///
-/// Not all of these are allowed at every [`MirPhase`]. Check the documentation there to see which
-/// ones you do not have to worry about. The MIR validator will generally enforce such restrictions,
-/// causing an ICE if they are violated.
+/// Not all of these are allowed at every [`MirPhase`] - when this is the case, it's stated below.
+///
+/// Computing any rvalue begins by evaluating the places and operands in some order (**Needs
+/// clarification**: Which order?). These are then used to produce a "value" - the same kind of
+/// value that an [`Operand`] produces.
 pub enum Rvalue<'tcx> {
-    /// x (either a move or copy, depending on type of x)
+    /// Yields the operand unchanged
     Use(Operand<'tcx>),
 
-    /// [x; 32]
+    /// Creates an array where each element is the value of the operand.
+    ///
+    /// This is the cause of a bug in the case where the repetition count is zero because the value
+    /// is not dropped, see [#74836].
+    ///
+    /// Corresponds to source code like `[x; 32]`.
+    ///
+    /// [#74836]: https://github.com/rust-lang/rust/issues/74836
     Repeat(Operand<'tcx>, ty::Const<'tcx>),
 
-    /// &x or &mut x
+    /// Creates a reference of the indicated kind to the place.
+    ///
+    /// There is not much to document here, because besides the obvious parts the semantics of this
+    /// are essentially entirely a part of the aliasing model. There are many UCG issues discussing
+    /// exactly what the behavior of this operation should be.
+    ///
+    /// `Shallow` borrows are disallowed after drop lowering.
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
 
-    /// Accessing a thread local static. This is inherently a runtime operation, even if llvm
-    /// treats it as an access to a static. This `Rvalue` yields a reference to the thread local
-    /// static.
+    /// Creates a pointer/reference to the given thread local.
+    ///
+    /// The yielded type is a `*mut T` if the static is mutable, otherwise if the static is extern a
+    /// `*const T`, and if neither of those apply a `&T`.
+    ///
+    /// **Note:** This is a runtime operation that actually executes code and is in this sense more
+    /// like a function call. Also, eliminating dead stores of this rvalue causes `fn main() {}` to
+    /// SIGILL for some reason that I (JakobDegen) never got a chance to look into.
+    ///
+    /// **Needs clarification**: Are there weird additional semantics here related to the runtime
+    /// nature of this operation?
     ThreadLocalRef(DefId),
 
-    /// Create a raw pointer to the given place
-    /// Can be generated by raw address of expressions (`&raw const x`),
-    /// or when casting a reference to a raw pointer.
+    /// Creates a pointer with the indicated mutability to the place.
+    ///
+    /// This is generated by pointer casts like `&v as *const _` or raw address of expressions like
+    /// `&raw v` or `addr_of!(v)`.
+    ///
+    /// Like with references, the semantics of this operation are heavily dependent on the aliasing
+    /// model.
     AddressOf(Mutability, Place<'tcx>),
 
-    /// length of a `[X]` or `[X;n]` value
+    /// Yields the length of the place, as a `usize`.
+    ///
+    /// If the type of the place is an array, this is the array length. For slices (`[T]`, not
+    /// `&[T]`) this accesses the place's metadata to determine the length. This rvalue is
+    /// ill-formed for places of other types.
     Len(Place<'tcx>),
 
+    /// Performs essentially all of the casts that can be performed via `as`.
+    ///
+    /// This allows for casts from/to a variety of types.
+    ///
+    /// **FIXME**: Document exactly which `CastKind`s allow which types of casts. Figure out why
+    /// `ArrayToPointer` and `MutToConstPointer` are special.
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
+    /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
+    ///   parameter may be a `usize` as well.
+    /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
+    ///   raw pointers, or function pointers of matching types and return a `bool`.
+    /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
+    ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
+    ///   truncated as needed.
+    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
+    ///   types and return a value of that type.
+    /// * The remaining operations accept signed integers, unsigned integers, or floats with
+    ///   matching types and return a value of that type.
     BinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
+
+    /// Same as `BinaryOp`, but yields `(T, bool)` instead of `T`. In addition to performing the
+    /// same computation as the matching `BinaryOp`, checks if the infinite precison result would be
+    /// unequal to the actual result and sets the `bool` if this is the case.
+    ///
+    /// This only supports addition, subtraction, multiplication, and shift operations on integers.
     CheckedBinaryOp(BinOp, Box<(Operand<'tcx>, Operand<'tcx>)>),
 
+    /// Computes a value as described by the operation.
     NullaryOp(NullOp, Ty<'tcx>),
+
+    /// Exactly like `BinaryOp`, but less operands.
+    ///
+    /// Also does two's-complement arithmetic. Negation requires a signed integer or a float;
+    /// bitwise not requires a signed integer, unsigned integer, or bool. Both operation kinds
+    /// return a value with the same type as their operand.
     UnaryOp(UnOp, Operand<'tcx>),
 
-    /// Read the discriminant of an ADT.
+    /// Computes the discriminant of the place, returning it as an integer of type
+    /// [`discriminant_ty`].
     ///
-    /// Undefined (i.e., no effort is made to make it defined, but there’s no reason why it cannot
-    /// be defined to return, say, a 0) if ADT is not an enum.
+    /// The validity requirements for the underlying value are undecided for this rvalue, see
+    /// [#91095]. Note too that the value of the discriminant is not the same thing as the
+    /// variant index; use [`discriminant_for_variant`] to convert.
+    ///
+    /// For types defined in the source code as enums, this is well behaved. This is also well
+    /// formed for other types, but yields no particular value - there is no reason it couldn't be
+    /// defined to yield eg zero though.
+    ///
+    /// [`discriminant_ty`]: crate::ty::Ty::discriminant_ty
+    /// [#91095]: https://github.com/rust-lang/rust/issues/91095
+    /// [`discriminant_for_variant`]: crate::ty::Ty::discriminant_for_variant
     Discriminant(Place<'tcx>),
 
-    /// Creates an aggregate value, like a tuple or struct. This is
-    /// only needed because we want to distinguish `dest = Foo { x:
-    /// ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case
-    /// that `Foo` has a destructor. These rvalues can be optimized
-    /// away after type-checking and before lowering.
+    /// Creates an aggregate value, like a tuple or struct.
+    ///
+    /// This is needed because dataflow analysis needs to distinguish
+    /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
+    /// has a destructor.
+    ///
+    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Generator`. After
+    /// generator lowering, `Generator` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, Vec<Operand<'tcx>>),
 
     /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
     ///
-    /// This is different a normal transmute because dataflow analysis will treat the box
-    /// as initialized but its content as uninitialized.
+    /// This is different from a normal transmute because dataflow analysis will treat the box as
+    /// initialized but its content as uninitialized. Like other pointer casts, this in general
+    /// affects alias analysis.
+    ///
+    /// Disallowed after drop elaboration.
     ShallowInitBox(Operand<'tcx>, Ty<'tcx>),
 }
 
