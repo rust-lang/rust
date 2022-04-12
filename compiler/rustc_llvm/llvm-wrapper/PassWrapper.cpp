@@ -995,6 +995,13 @@ LLVMRustOptimizeWithNewPassManager(
         break;
       }
     }
+  } else {
+    // We're not building any of the default pipelines but we still want to
+    // add the verifier, instrumentation, etc passes if they were requested
+    for (const auto &C : PipelineStartEPCallbacks)
+      C(MPM, OptLevel);
+    for (const auto &C : OptimizerLastEPCallbacks)
+      C(MPM, OptLevel);
   }
 
   if (ExtraPassesLen) {
