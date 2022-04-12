@@ -645,7 +645,7 @@ fn orphan_check_trait_ref<'tcx>(
                 .substs
                 .types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .find(|ty| ty_is_local_constructor(*ty, in_crate));
+                .find(|&ty| ty_is_local_constructor(tcx, ty, in_crate));
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
 
@@ -677,7 +677,7 @@ fn contained_non_local_types<'tcx>(
     ty: Ty<'tcx>,
     in_crate: InCrate,
 ) -> Vec<Ty<'tcx>> {
-    if ty_is_local_constructor(ty, in_crate) {
+    if ty_is_local_constructor(tcx, ty, in_crate) {
         Vec::new()
     } else {
         match fundamental_ty_inner_tys(tcx, ty) {
@@ -730,7 +730,7 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
     }
 }
 
-fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
+fn ty_is_local_constructor(tcx: TyCtxt<'_>, ty: Ty<'_>, in_crate: InCrate) -> bool {
     debug!("ty_is_local_constructor({:?})", ty);
 
     match *ty.kind() {
@@ -789,11 +789,6 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
             false
         }
 
-        ty::Closure(..) => {
-            // Similar to the `Opaque` case (#83613).
-            false
-        }
-
         ty::Dynamic(ref tt, ..) => {
             if let Some(principal) = tt.principal() {
                 def_id_is_local(principal.def_id(), in_crate)
@@ -804,8 +799,20 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
 
         ty::Error(_) => true,
 
-        ty::Generator(..) | ty::GeneratorWitness(..) => {
-            bug!("ty_is_local invoked on unexpected type: {:?}", ty)
+        // These variants should never appear during coherence checking because they
+        // cannot be named directly.
+        //
+        // They could be indirectly used through an opaque type. While using opaque types
+        // in impls causes an error, this path can still be hit afterwards.
+        //
+        // See `test/ui/coherence/coherence-with-closure.rs` for an example where this
+        // could happens.
+        ty::Closure(..) | ty::Generator(..) | ty::GeneratorWitness(..) => {
+            tcx.sess.delay_span_bug(
+                DUMMY_SP,
+                format!("ty_is_local invoked on closure or generator: {:?}", ty),
+            );
+            true
         }
     }
 }

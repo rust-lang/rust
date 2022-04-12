@@ -60,6 +60,9 @@ pub enum Reveal {
     ///     let <() as Assoc>::Output = true;
     /// }
     /// ```
+    ///
+    /// We also do not reveal the hidden type of opaque types during
+    /// type-checking.
     UserFacing,
 
     /// At codegen time, all monomorphic projections will succeed.
