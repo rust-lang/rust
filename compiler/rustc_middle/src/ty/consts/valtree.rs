@@ -31,4 +31,20 @@ impl<'tcx> ValTree<'tcx> {
     pub fn zst() -> Self {
         Self::Branch(&[])
     }
+
+    #[inline]
+    pub fn unwrap_leaf(self) -> ScalarInt {
+        match self {
+            Self::Leaf(s) => s,
+            _ => bug!("expected leaf, got {:?}", self),
+        }
+    }
+
+    #[inline]
+    pub fn unwrap_branch(self) -> &'tcx [Self] {
+        match self {
+            Self::Branch(branch) => branch,
+            _ => bug!("expected branch, got {:?}", self),
+        }
+    }
 }
