@@ -167,7 +167,7 @@ fn add_function_impl(
     };
 
     let mut item = CompletionItem::new(completion_kind, replacement_range, label);
-    item.lookup_by(fn_name)
+    item.lookup_by(format!("fn {}", fn_name))
         .set_documentation(func.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
 
@@ -232,7 +232,7 @@ fn add_type_alias_impl(
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
     item.text_edit(TextEdit::replace(replacement_range, snippet))
-        .lookup_by(alias_name)
+        .lookup_by(format!("type {}", alias_name))
         .set_documentation(type_alias.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
     item.add_to(acc);
@@ -261,7 +261,7 @@ fn add_const_impl(
 
                 let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
                 item.text_edit(TextEdit::replace(replacement_range, snippet))
-                    .lookup_by(const_name)
+                    .lookup_by(format!("const {}", const_name))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
                         is_item_from_trait: true,
@@ -549,7 +549,7 @@ impl Test for T {
     #[test]
     fn name_ref_single_function() {
         check_edit(
-            "test",
+            "fn test",
             r#"
 trait Test {
     fn test();
@@ -578,7 +578,7 @@ impl Test for T {
     #[test]
     fn single_function() {
         check_edit(
-            "test",
+            "fn test",
             r#"
 trait Test {
     fn test();
@@ -607,7 +607,7 @@ impl Test for T {
     #[test]
     fn generic_fn() {
         check_edit(
-            "foo",
+            "fn foo",
             r#"
 trait Test {
     fn foo<T>();
@@ -632,7 +632,7 @@ impl Test for T {
 "#,
         );
         check_edit(
-            "foo",
+            "fn foo",
             r#"
 trait Test {
     fn foo<T>() where T: Into<String>;
@@ -662,7 +662,7 @@ where T: Into<String> {
     #[test]
     fn associated_type() {
         check_edit(
-            "SomeType",
+            "type SomeType",
             r#"
 trait Test {
     type SomeType;
@@ -687,7 +687,7 @@ impl Test for () {
     #[test]
     fn associated_const() {
         check_edit(
-            "SOME_CONST",
+            "const SOME_CONST",
             r#"
 trait Test {
     const SOME_CONST: u16;
@@ -709,7 +709,7 @@ impl Test for () {
         );
 
         check_edit(
-            "SOME_CONST",
+            "const SOME_CONST",
             r#"
 trait Test {
     const SOME_CONST: u16 = 92;
@@ -783,9 +783,9 @@ impl Test for T {{
             "default type OtherType = i32;",
             "default const OTHER_CONST: i32 = 0;",
         ] {
-            test("bar", "fn $0", "fn bar() {\n    $0\n}", next_sibling);
-            test("Foo", "type $0", "type Foo = ", next_sibling);
-            test("CONST", "const $0", "const CONST: u16 = ", next_sibling);
+            test("fn bar", "fn $0", "fn bar() {\n    $0\n}", next_sibling);
+            test("type Foo", "type $0", "type Foo = ", next_sibling);
+            test("const CONST", "const $0", "const CONST: u16 = ", next_sibling);
         }
     }
 
@@ -830,15 +830,15 @@ impl Foo for T {{
                 ),
             )
         };
-        test("function", "fn f$0", "fn function() {\n    $0\n}");
-        test("Type", "type T$0", "type Type = ");
-        test("CONST", "const C$0", "const CONST: i32 = ");
+        test("fn function", "fn f$0", "fn function() {\n    $0\n}");
+        test("type Type", "type T$0", "type Type = ");
+        test("const CONST", "const C$0", "const CONST: i32 = ");
     }
 
     #[test]
     fn generics_are_inlined_in_return_type() {
         check_edit(
-            "function",
+            "fn function",
             r#"
 trait Foo<T> {
     fn function() -> T;
@@ -867,7 +867,7 @@ impl Foo<u32> for Bar {
     #[test]
     fn generics_are_inlined_in_parameter() {
         check_edit(
-            "function",
+            "fn function",
             r#"
 trait Foo<T> {
     fn function(bar: T);
@@ -896,7 +896,7 @@ impl Foo<u32> for Bar {
     #[test]
     fn generics_are_inlined_when_part_of_other_types() {
         check_edit(
-            "function",
+            "fn function",
             r#"
 trait Foo<T> {
     fn function(bar: Vec<T>);
@@ -925,7 +925,7 @@ impl Foo<u32> for Bar {
     #[test]
     fn generics_are_inlined_complex() {
         check_edit(
-            "function",
+            "fn function",
             r#"
 trait Foo<T, U, V> {
     fn function(bar: Vec<T>, baz: U) -> Arc<Vec<V>>;
@@ -954,7 +954,7 @@ impl Foo<u32, Vec<usize>, u8> for Bar {
     #[test]
     fn generics_are_inlined_in_associated_const() {
         check_edit(
-            "BAR",
+            "const BAR",
             r#"
 trait Foo<T> {
     const BAR: T;
@@ -981,7 +981,7 @@ impl Foo<u32> for Bar {
     #[test]
     fn generics_are_inlined_in_where_clause() {
         check_edit(
-            "function",
+            "fn function",
             r#"
 trait SomeTrait<T> {}
 
