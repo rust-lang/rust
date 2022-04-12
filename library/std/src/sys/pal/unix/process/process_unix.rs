@@ -330,14 +330,22 @@ impl Command {
             if let Some(u) = self.get_uid() {
                 // When dropping privileges from root, the `setgroups` call
                 // will remove any extraneous groups. We only drop groups
-                // if the current uid is 0 and we weren't given an explicit
+                // if we have CAP_SETGID and we weren't given an explicit
                 // set of groups. If we don't call this, then even though our
                 // uid has dropped, we may still have groups that enable us to
                 // do super-user things.
                 //FIXME: Redox kernel does not support setgroups yet
                 #[cfg(not(target_os = "redox"))]
-                if libc::getuid() == 0 && self.get_groups().is_none() {
-                    cvt(libc::setgroups(0, crate::ptr::null()))?;
+                if self.get_groups().is_none() {
+                    let res = cvt(libc::setgroups(0, crate::ptr::null()));
+                    if let Err(e) = res {
+                        // Here we ignore the case of not having CAP_SETGID.
+                        // An alternative would be to require CAP_SETGID (in
+                        // addition to CAP_SETUID) for setting the UID.
+                        if e.raw_os_error() != Some(libc::EPERM) {
+                            return Err(e.into());
+                        }
+                    }
                 }
                 cvt(libc::setuid(u as uid_t))?;
             }
