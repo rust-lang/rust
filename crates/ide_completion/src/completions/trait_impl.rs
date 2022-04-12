@@ -228,13 +228,17 @@ fn add_type_alias_impl(
     let alias_name = type_alias.name(ctx.db).to_smol_str();
 
     let label = format!("type {} =", alias_name);
-    let snippet = format!("type {} = ", alias_name);
+    let replacement = format!("type {} = ", alias_name);
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
-    item.text_edit(TextEdit::replace(replacement_range, snippet))
-        .lookup_by(format!("type {}", alias_name))
+    item.lookup_by(format!("type {}", alias_name))
         .set_documentation(type_alias.docs(ctx.db))
         .set_relevance(CompletionRelevance { is_item_from_trait: true, ..Default::default() });
+    match ctx.config.snippet_cap {
+        Some(cap) => item
+            .snippet_edit(cap, TextEdit::replace(replacement_range, format!("{}$0;", replacement))),
+        None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
+    };
     item.add_to(acc);
 }
 
@@ -257,16 +261,22 @@ fn add_const_impl(
                 };
 
                 let label = make_const_compl_syntax(&transformed_const);
-                let snippet = format!("{} ", label);
+                let replacement = format!("{} ", label);
 
                 let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
-                item.text_edit(TextEdit::replace(replacement_range, snippet))
-                    .lookup_by(format!("const {}", const_name))
+                item.lookup_by(format!("const {}", const_name))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
                         is_item_from_trait: true,
                         ..Default::default()
                     });
+                match ctx.config.snippet_cap {
+                    Some(cap) => item.snippet_edit(
+                        cap,
+                        TextEdit::replace(replacement_range, format!("{}$0;", replacement)),
+                    ),
+                    None => item.text_edit(TextEdit::replace(replacement_range, replacement)),
+                };
                 item.add_to(acc);
             }
         }
@@ -678,7 +688,7 @@ trait Test {
 }
 
 impl Test for () {
-    type SomeType = \n\
+    type SomeType = $0;\n\
 }
 ",
         );
@@ -703,7 +713,7 @@ trait Test {
 }
 
 impl Test for () {
-    const SOME_CONST: u16 = \n\
+    const SOME_CONST: u16 = $0;\n\
 }
 ",
         );
@@ -725,7 +735,7 @@ trait Test {
 }
 
 impl Test for () {
-    const SOME_CONST: u16 = \n\
+    const SOME_CONST: u16 = $0;\n\
 }
 ",
         );
@@ -784,8 +794,8 @@ impl Test for T {{
             "default const OTHER_CONST: i32 = 0;",
         ] {
             test("fn bar", "fn $0", "fn bar() {\n    $0\n}", next_sibling);
-            test("type Foo", "type $0", "type Foo = ", next_sibling);
-            test("const CONST", "const $0", "const CONST: u16 = ", next_sibling);
+            test("type Foo", "type $0", "type Foo = $0;", next_sibling);
+            test("const CONST", "const $0", "const CONST: u16 = $0;", next_sibling);
         }
     }
 
@@ -831,8 +841,8 @@ impl Foo for T {{
             )
         };
         test("fn function", "fn f$0", "fn function() {\n    $0\n}");
-        test("type Type", "type T$0", "type Type = ");
-        test("const CONST", "const C$0", "const CONST: i32 = ");
+        test("type Type", "type T$0", "type Type = $0;");
+        test("const CONST", "const C$0", "const CONST: i32 = $0;");
     }
 
     #[test]
@@ -962,7 +972,7 @@ trait Foo<T> {
 struct Bar;
 
 impl Foo<u32> for Bar {
-    const B$0;
+    const B$0
 }
 "#,
             r#"
@@ -972,7 +982,7 @@ trait Foo<T> {
 struct Bar;
 
 impl Foo<u32> for Bar {
-    const BAR: u32 = ;
+    const BAR: u32 = $0;
 }
 "#,
         )
