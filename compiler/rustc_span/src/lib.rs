@@ -1318,17 +1318,26 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 let mut line_start: BytePos = Decodable::decode(d);
                 lines.push(line_start);
 
-                for _ in 1..num_lines {
-                    let diff = match bytes_per_diff {
-                        1 => d.read_u8() as u32,
-                        2 => d.read_u16() as u32,
-                        4 => d.read_u32(),
-                        _ => unreachable!(),
-                    };
-
-                    line_start = line_start + BytePos(diff);
-
-                    lines.push(line_start);
+                match bytes_per_diff {
+                    1 => {
+                        for _ in 1..num_lines {
+                            line_start = line_start + BytePos(d.read_u8() as u32);
+                            lines.push(line_start);
+                        }
+                    }
+                    2 => {
+                        for _ in 1..num_lines {
+                            line_start = line_start + BytePos(d.read_u16() as u32);
+                            lines.push(line_start);
+                        }
+                    }
+                    4 => {
+                        for _ in 1..num_lines {
+                            line_start = line_start + BytePos(d.read_u32());
+                            lines.push(line_start);
+                        }
+                    }
+                    _ => unreachable!(),
                 }
             }
 
