@@ -105,13 +105,34 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
 impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
+/// A note on unwinding: Panics may occur during the execution of some terminators. Depending on the
+/// `-C panic` flag, this may either cause the program to abort or the call stack to unwind. Such
+/// terminators have a `cleanup: Option<BasicBlock>` field on them. If stack unwinding occurs, then
+/// once the current function is reached, execution continues at the given basic block, if any. If
+/// `cleanup` is `None` then no cleanup is performed, and the stack continues unwinding. This is
+/// equivalent to the execution of a `Resume` terminator.
+///
+/// The basic block pointed to by a `cleanup` field must have its `cleanup` flag set. `cleanup`
+/// basic blocks have a couple restrictions:
+///  1. All `cleanup` fields in them must be `None`.
+///  2. `Return` terminators are not allowed in them. `Abort` and `Unwind` terminators are.
+///  3. All other basic blocks (in the current body) that are reachable from `cleanup` basic blocks
+///     must also be `cleanup`. This is a part of the type system and checked statically, so it is
+///     still an error to have such an edge in the CFG even if it's known that it won't be taken at
+///     runtime.
 #[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub enum TerminatorKind<'tcx> {
-    /// Block should have one successor in the graph; we jump there.
+    /// Block has one successor; we continue execution there.
     Goto { target: BasicBlock },
 
-    /// Operand evaluates to an integer; jump depending on its value
-    /// to one of the targets, and otherwise fallback to `otherwise`.
+    /// Switches based on the computed value.
+    ///
+    /// First, evaluates the `discr` operand. The type of the operand must be a signed or unsigned
+    /// integer, char, or bool, and must match the given type. Then, if the list of switch targets
+    /// contains the computed value, continues execution at the associated basic block. Otherwise,
+    /// continues execution at the "otherwise" basic block.
+    ///
+    /// Target values may not appear more than once.
     SwitchInt {
         /// The discriminant value being tested.
         discr: Operand<'tcx>,
@@ -124,29 +145,62 @@ pub enum TerminatorKind<'tcx> {
         targets: SwitchTargets,
     },
 
-    /// Indicates that the landing pad is finished and unwinding should
-    /// continue. Emitted by `build::scope::diverge_cleanup`.
+    /// Indicates that the landing pad is finished and that the process should continue unwinding.
+    ///
+    /// Like a return, this marks the end of this invocation of the function.
+    ///
+    /// Only permitted in cleanup blocks. `Resume` is not permitted with `-C unwind=abort` after
+    /// deaggregation runs.
     Resume,
 
-    /// Indicates that the landing pad is finished and that the process
-    /// should abort. Used to prevent unwinding for foreign items.
+    /// Indicates that the landing pad is finished and that the process should abort.
+    ///
+    /// Used to prevent unwinding for foreign items or with `-C unwind=abort`. Only permitted in
+    /// cleanup blocks.
     Abort,
 
-    /// Indicates a normal return. The return place should have
-    /// been filled in before this executes. This can occur multiple times
-    /// in different basic blocks.
+    /// Returns from the function.
+    ///
+    /// Like function calls, the exact semantics of returns in Rust are unclear. Returning very
+    /// likely at least assigns the value currently in the return place (`_0`) to the place
+    /// specified in the associated `Call` terminator in the calling function, as if assigned via
+    /// `dest = move _0`. It might additionally do other things, like have side-effects in the
+    /// aliasing model.
+    ///
+    /// If the body is a generator body, this has slightly different semantics; it instead causes a
+    /// `GeneratorState::Returned(_0)` to be created (as if by an `Aggregate` rvalue) and assigned
+    /// to the return place.
     Return,
 
     /// Indicates a terminator that can never be reached.
+    ///
+    /// Executing this terminator is UB.
     Unreachable,
 
-    /// Drop the `Place`.
+    /// The behavior of this statement differs significantly before and after drop elaboration.
+    /// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
+    /// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
+    /// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
+    /// issue tracking if drop glue has any interesting semantics in addition to those of a function
+    /// call?)
+    ///
+    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
+    /// `Drop` will be executed if...
+    ///
+    /// **Needs clarification**: End of that sentence. This in effect should document the exact
+    /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
+    ///
+    /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
+    /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
+    /// > consider indirect assignments.
     Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
 
-    /// Drop the `Place` and assign the new value over it. This ensures
-    /// that the assignment to `P` occurs *even if* the destructor for
-    /// place unwinds. Its semantics are best explained by the
-    /// elaboration:
+    /// Drops the place and assigns a new value to it.
+    ///
+    /// This first performs the exact same operation as the pre drop-elaboration `Drop` terminator;
+    /// it then additionally assigns the `value` to the `place` as if by an assignment statement.
+    /// This assignment occurs both in the unwind and the regular code paths. The semantics are best
+    /// explained by the elaboration:
     ///
     /// ```
     /// BB0 {
@@ -170,7 +224,7 @@ pub enum TerminatorKind<'tcx> {
     /// }
     /// ```
     ///
-    /// Note that DropAndReplace is eliminated as part of the `ElaborateDrops` pass.
+    /// Disallowed after drop elaboration.
     DropAndReplace {
         place: Place<'tcx>,
         value: Operand<'tcx>,
@@ -178,7 +232,16 @@ pub enum TerminatorKind<'tcx> {
         unwind: Option<BasicBlock>,
     },
 
-    /// Block ends with a call of a function.
+    /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
+    /// the referred to function. The operand types must match the argument types of the function.
+    /// The return place type must match the return type. The type of the `func` operand must be
+    /// callable, meaning either a function pointer, a function type, or a closure type.
+    ///
+    /// **Needs clarification**: The exact semantics of this. Current backends rely on `move`
+    /// operands not aliasing the return place. It is unclear how this is justified in MIR, see
+    /// [#71117].
+    ///
+    /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
         /// The function that’s being called.
         func: Operand<'tcx>,
@@ -187,7 +250,7 @@ pub enum TerminatorKind<'tcx> {
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
         args: Vec<Operand<'tcx>>,
-        /// Destination for the return value. If some, the call is converging.
+        /// Destination for the return value. If none, the call necessarily diverges.
         destination: Option<(Place<'tcx>, BasicBlock)>,
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<BasicBlock>,
@@ -199,8 +262,12 @@ pub enum TerminatorKind<'tcx> {
         fn_span: Span,
     },
 
-    /// Jump to the target if the condition has the expected value,
-    /// otherwise panic with a message and a cleanup target.
+    /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
+    /// initiates a panic. Initiating a panic corresponds to a `Call` terminator with some
+    /// unspecified constant as the function to call, all the operands stored in the `AssertMessage`
+    /// as parameters, and `None` for the destination. Keep in mind that the `cleanup` path is not
+    /// necessarily executed even in the case of a panic, for example in `-C panic=abort`. If the
+    /// assertion does not fail, execution continues at the specified basic block.
     Assert {
         cond: Operand<'tcx>,
         expected: bool,
@@ -209,7 +276,18 @@ pub enum TerminatorKind<'tcx> {
         cleanup: Option<BasicBlock>,
     },
 
-    /// A suspend point.
+    /// Marks a suspend point.
+    ///
+    /// Like `Return` terminators in generator bodies, this computes `value` and then a
+    /// `GeneratorState::Yielded(value)` as if by `Aggregate` rvalue. That value is then assigned to
+    /// the return place of the function calling this one, and execution continues in the calling
+    /// function. When next invoked with the same first argument, execution of this function
+    /// continues at the `resume` basic block, with the second argument written to the `resume_arg`
+    /// place. If the generator is dropped before then, the `drop` basic block is invoked.
+    ///
+    /// Not permitted in bodies that are not generator bodies, or after generator lowering.
+    ///
+    /// **Needs clarification**: What about the evaluation order of the `resume_arg` and `value`?
     Yield {
         /// The value to return.
         value: Operand<'tcx>,
@@ -221,11 +299,24 @@ pub enum TerminatorKind<'tcx> {
         drop: Option<BasicBlock>,
     },
 
-    /// Indicates the end of the dropping of a generator.
+    /// Indicates the end of dropping a generator.
+    ///
+    /// Semantically just a `return` (from the generators drop glue). Only permitted in the same situations
+    /// as `yield`.
+    ///
+    /// **Needs clarification**: Is that even correct? The generator drop code is always confusing
+    /// to me, because it's not even really in the current body.
+    ///
+    /// **Needs clarification**: Are there type system constraints on these terminators? Should
+    /// there be a "block type" like `cleanup` blocks for them?
     GeneratorDrop,
 
-    /// A block where control flow only ever takes one real path, but borrowck
-    /// needs to be more conservative.
+    /// A block where control flow only ever takes one real path, but borrowck needs to be more
+    /// conservative.
+    ///
+    /// At runtime this is semantically just a goto.
+    ///
+    /// Disallowed after drop elaboration.
     FalseEdge {
         /// The target normal control flow will take.
         real_target: BasicBlock,
@@ -233,9 +324,14 @@ pub enum TerminatorKind<'tcx> {
         /// practice.
         imaginary_target: BasicBlock,
     },
-    /// A terminator for blocks that only take one path in reality, but where we
-    /// reserve the right to unwind in borrowck, even if it won't happen in practice.
-    /// This can arise in infinite loops with no function calls for example.
+
+    /// A terminator for blocks that only take one path in reality, but where we reserve the right
+    /// to unwind in borrowck, even if it won't happen in practice. This can arise in infinite loops
+    /// with no function calls for example.
+    ///
+    /// At runtime this is semantically just a goto.
+    ///
+    /// Disallowed after drop elaboration.
     FalseUnwind {
         /// The target normal control flow will take.
         real_target: BasicBlock,
