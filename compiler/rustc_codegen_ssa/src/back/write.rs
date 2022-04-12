@@ -1731,7 +1731,7 @@ impl Emitter for SharedEmitter {
         None
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<rustc_errors::FluentBundle> {
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
         panic!("shared emitter attempted to translate a diagnostic");
     }
 }

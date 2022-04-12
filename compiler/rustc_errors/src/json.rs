@@ -15,7 +15,9 @@ use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
 use crate::DiagnosticId;
 use crate::ToolMetadata;
-use crate::{CodeSuggestion, FluentBundle, MultiSpan, SpanLabel, SubDiagnostic};
+use crate::{
+    CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
+};
 use rustc_lint_defs::Applicability;
 
 use rustc_data_structures::sync::Lrc;
@@ -38,7 +40,7 @@ pub struct JsonEmitter {
     registry: Option<Registry>,
     sm: Lrc<SourceMap>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
-    fallback_bundle: Lrc<FluentBundle>,
+    fallback_bundle: LazyFallbackBundle,
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
@@ -51,7 +53,7 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         terminal_width: Option<usize>,
@@ -75,7 +77,7 @@ impl JsonEmitter {
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         terminal_width: Option<usize>,
         macro_backtrace: bool,
     ) -> JsonEmitter {
@@ -97,7 +99,7 @@ impl JsonEmitter {
         registry: Option<Registry>,
         source_map: Lrc<SourceMap>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         pretty: bool,
         json_rendered: HumanReadableErrorType,
         terminal_width: Option<usize>,
@@ -192,8 +194,8 @@ impl Emitter for JsonEmitter {
         self.fluent_bundle.as_ref()
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
-        &self.fallback_bundle
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
     }
 
     fn should_show_explain(&self) -> bool {
