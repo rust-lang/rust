@@ -999,7 +999,7 @@ macro_rules! impl_helper_for {
 }
 impl_helper_for! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
-/// Determins if a string of text of that length of that radix could be guaranteed to be
+/// Determines if a string of text of that length of that radix could be guaranteed to be
 /// stored in the given type T.
 /// Note that if the radix is known to the compiler, it is just the check of digits.len that
 /// is done at runtime.
