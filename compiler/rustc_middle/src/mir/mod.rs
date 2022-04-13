@@ -2518,7 +2518,8 @@ pub enum Rvalue<'tcx> {
     /// * `Offset` has the same semantics as [`offset`](pointer::offset), except that the second
     ///   parameter may be a `usize` as well.
     /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
-    ///   raw pointers, or function pointers of matching types and return a `bool`.
+    ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
+    ///   matching, up to the usual caveat of the lifetimes in function pointers.
     /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
     ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
     ///   truncated as needed.
