@@ -103,16 +103,6 @@ impl !PartialOrd for LocalExpnId {}
 /// of `HashingControls` settings.
 fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str) {
     match ctx.hashing_controls() {
-        // Ideally, we would also check that `node_id_hashing_mode` was always
-        // `NodeIdHashingMode::HashDefPath`. However, we currently end up hashing
-        // `Span`s in this mode, and there's not an easy way to change that.
-        // All of the span-related data that we hash is pretty self-contained
-        // (in particular, we don't hash any `HirId`s), so this shouldn't result
-        // in any caching problems.
-        // FIXME: Enforce that we don't end up transitively hashing any `HirId`s,
-        // or ensure that this method is always invoked with the same
-        // `NodeIdHashingMode`
-        //
         // Note that we require that `hash_spans` be set according to the global
         // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
         // which will cause us to require that this method always be called with `Span` hashing
