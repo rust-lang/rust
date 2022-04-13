@@ -5,6 +5,7 @@
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementKind};
+use rustc_middle::ty;
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
@@ -216,6 +217,17 @@ where
             StatementKind::StorageDead(local) => {
                 self.state.qualif.remove(local);
                 self.state.borrow.remove(local);
+            }
+            StatementKind::Finalize(box place) => {
+                let place_ty = place.ty(self.ccx.body, self.ccx.tcx).ty;
+
+                if let ty::Adt(adt, substs) = *place_ty.kind() {
+                    let qualif = Q::in_adt_inherently(self.ccx, adt, substs);
+
+                    if !place.is_indirect() {
+                        self.assign_qualif_direct(&place, qualif);
+                    }
+                }
             }
             _ => self.super_statement(statement, location),
         }

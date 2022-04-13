@@ -18,10 +18,12 @@ fn test() -> () {
     bb0: {
         _6 = const false;                // scope 0 at $DIR/issue-41110.rs:15:9: 15:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41110.rs:15:9: 15:10
+        Deinit(_1);                      // scope 0 at $DIR/issue-41110.rs:15:13: 15:14
         _6 = const true;                 // scope 0 at $DIR/issue-41110.rs:15:13: 15:14
-        _1 = S;                          // scope 0 at $DIR/issue-41110.rs:15:13: 15:14
+        Finalize(_1);                    // scope 0 at $DIR/issue-41110.rs:15:13: 15:14
         StorageLive(_2);                 // scope 1 at $DIR/issue-41110.rs:16:9: 16:14
-        _2 = S;                          // scope 1 at $DIR/issue-41110.rs:16:17: 16:18
+        Deinit(_2);                      // scope 1 at $DIR/issue-41110.rs:16:17: 16:18
+        Finalize(_2);                    // scope 1 at $DIR/issue-41110.rs:16:17: 16:18
         StorageLive(_3);                 // scope 2 at $DIR/issue-41110.rs:17:5: 17:12
         StorageLive(_4);                 // scope 2 at $DIR/issue-41110.rs:17:10: 17:11
         _4 = move _2;                    // scope 2 at $DIR/issue-41110.rs:17:10: 17:11

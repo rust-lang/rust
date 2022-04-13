@@ -349,6 +349,8 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         }
     }
 
+    pm::run_passes(tcx, &mut body, &[&remove_finalize::RemoveFinalize]);
+
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 
     body
@@ -384,8 +386,18 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
         body.tainted_by_errors = Some(error_reported);
     }
 
-    // IMPORTANT
-    pm::run_passes(tcx, &mut body, &[&remove_false_edges::RemoveFalseEdges]);
+    pm::run_passes(
+        tcx,
+        &mut body,
+        &[
+            // Important cleanup. Otherwise precide live drops will follow these false edges.
+            &remove_false_edges::RemoveFalseEdges,
+            // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
+            // and it can help optimizations.
+            &deaggregator::Deaggregator,
+        ],
+    );
+    assert!(body.phase == MirPhase::Deaggregated);
 
     // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
     if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
@@ -401,7 +413,7 @@ fn mir_drops_elaborated_and_const_checked<'tcx>(
     }
 
     run_post_borrowck_cleanup_passes(tcx, &mut body);
-    assert!(body.phase == MirPhase::Deaggregated);
+    assert!(body.phase == MirPhase::DropsLowered);
     tcx.alloc_steal_mir(body)
 }
 
@@ -430,9 +442,6 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &add_retag::AddRetag,
         &lower_intrinsics::LowerIntrinsics,
         &simplify::SimplifyCfg::new("elaborate-drops"),
-        // `Deaggregator` is conceptually part of MIR building, some backends rely on it happening
-        // and it can help optimizations.
-        &deaggregator::Deaggregator,
         &deref_separator::Derefer,
         &Lint(const_prop_lint::ConstProp),
         &remove_finalize::RemoveFinalize,
@@ -558,6 +567,7 @@ fn promoted_mir<'tcx>(
         if let Some(error_reported) = tainted_by_errors {
             body.tainted_by_errors = Some(error_reported);
         }
+        pm::run_passes(tcx, body, &[&deaggregator::Deaggregator]);
         run_post_borrowck_cleanup_passes(tcx, body);
     }
 

@@ -42,7 +42,9 @@ fn test() -> Option<Box<u32>> {
         _5 = ShallowInitBox(move _4, u32); // scope 0 at $DIR/issue-62289.rs:9:10: 9:21
         StorageLive(_6);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
         StorageLive(_7);                 // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
-        _7 = Option::<u32>::None;        // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
+        Deinit(_7);                      // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
+        discriminant(_7) = 0;            // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
+        Finalize(_7);                    // scope 0 at $DIR/issue-62289.rs:9:15: 9:19
         _6 = <Option<u32> as Try>::branch(move _7) -> [return: bb2, unwind: bb12]; // scope 0 at $DIR/issue-62289.rs:9:15: 9:20
                                          // mir::Constant
                                          // + span: $DIR/issue-62289.rs:9:15: 9:20
@@ -87,7 +89,10 @@ fn test() -> Option<Box<u32>> {
 
     bb7: {
         StorageDead(_5);                 // scope 0 at $DIR/issue-62289.rs:9:20: 9:21
-        _0 = Option::<Box<u32>>::Some(move _1); // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        Deinit(_0);                      // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        ((_0 as Some).0: std::boxed::Box<u32>) = move _1; // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        discriminant(_0) = 1;            // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
+        Finalize(_0);                    // scope 0 at $DIR/issue-62289.rs:9:5: 9:22
         drop(_1) -> bb8;                 // scope 0 at $DIR/issue-62289.rs:9:21: 9:22
     }
 

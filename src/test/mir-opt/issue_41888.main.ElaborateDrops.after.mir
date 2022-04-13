@@ -21,9 +21,9 @@ fn main() -> () {
     }
 
     bb0: {
-        _9 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _7 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         _8 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
+        _9 = const false;                // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41888.rs:7:9: 7:10
         StorageLive(_2);                 // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
         _2 = cond() -> [return: bb1, unwind: bb11]; // scope 1 at $DIR/issue-41888.rs:8:8: 8:14
@@ -39,8 +39,12 @@ fn main() -> () {
     bb2: {
         StorageLive(_3);                 // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageLive(_4);                 // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
-        _4 = K;                          // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
-        _3 = E::F(move _4);              // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        Deinit(_4);                      // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
+        Finalize(_4);                    // scope 1 at $DIR/issue-41888.rs:9:18: 9:19
+        Deinit(_3);                      // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        ((_3 as F).0: K) = move _4;      // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        discriminant(_3) = 0;            // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
+        Finalize(_3);                    // scope 1 at $DIR/issue-41888.rs:9:13: 9:20
         StorageDead(_4);                 // scope 1 at $DIR/issue-41888.rs:9:19: 9:20
         goto -> bb14;                    // scope 1 at $DIR/issue-41888.rs:9:9: 9:10
     }

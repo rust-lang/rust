@@ -15,11 +15,13 @@ fn main() -> () {
         _5 = const false;                // scope 0 at $DIR/issue-41110.rs:8:9: 8:10
         StorageLive(_1);                 // scope 0 at $DIR/issue-41110.rs:8:9: 8:10
         StorageLive(_2);                 // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
+        Deinit(_2);                      // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
         _5 = const true;                 // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
-        _2 = S;                          // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
+        Finalize(_2);                    // scope 0 at $DIR/issue-41110.rs:8:13: 8:14
         StorageLive(_3);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
         StorageLive(_4);                 // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
-        _4 = S;                          // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
+        Deinit(_4);                      // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
+        Finalize(_4);                    // scope 0 at $DIR/issue-41110.rs:8:21: 8:22
         _3 = S::id(move _4) -> [return: bb1, unwind: bb4]; // scope 0 at $DIR/issue-41110.rs:8:21: 8:27
                                          // mir::Constant
                                          // + span: $DIR/issue-41110.rs:8:23: 8:25

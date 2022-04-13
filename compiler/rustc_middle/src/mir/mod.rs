@@ -168,13 +168,13 @@ pub enum MirPhase {
     /// Furthermore, `Drop` now uses explicit drop flags visible in the MIR and reaching a `Drop`
     /// terminator means that the auto-generated drop glue will be invoked. Also, `Copy` operands
     /// are allowed for non-`Copy` types.
-    DropsLowered = 3,
+    DropsLowered = 4,
     /// Beginning with this phase, the following variant is disallowed:
     /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     ///
     /// And the following variant is allowed:
     /// * [`StatementKind::SetDiscriminant`]
-    Deaggregated = 4,
+    Deaggregated = 3,
     /// Before this phase, generators are in the "source code" form, featuring `yield` statements
     /// and such. With this phase change, they are transformed into a proper state machine. Running
     /// optimizations before this change can be potentially dangerous because the source code is to
