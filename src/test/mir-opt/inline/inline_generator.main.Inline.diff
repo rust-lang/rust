@@ -118,6 +118,7 @@
 +         Deinit(_1);                      // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         ((_1 as Yielded).0: i32) = move _8; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant(_1) = 0;            // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
++         Finalize(_1);                    // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 3; // scope 6 at $DIR/inline-generator.rs:15:11: 15:39
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:11: 15:39
 +     }
@@ -129,6 +130,7 @@
 +         Deinit(_1);                      // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         ((_1 as Complete).0: bool) = move _10; // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         discriminant(_1) = 1;            // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
++         Finalize(_1);                    // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         discriminant((*(_2.0: &mut [generator@$DIR/inline-generator.rs:15:5: 15:41]))) = 1; // scope 6 at $DIR/inline-generator.rs:15:41: 15:41
 +         goto -> bb1;                     // scope 0 at $DIR/inline-generator.rs:15:41: 15:41
 +     }

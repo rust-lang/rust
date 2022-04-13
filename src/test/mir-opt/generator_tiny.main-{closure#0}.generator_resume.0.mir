@@ -50,6 +50,7 @@ fn main::{closure#0}(_1: Pin<&mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]
         Deinit(_0);                      // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         ((_0 as Yielded).0: ()) = move _7; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant(_0) = 0;            // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
+        Finalize(_0);                    // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         discriminant((*(_1.0: &mut [generator@$DIR/generator-tiny.rs:19:16: 25:6]))) = 3; // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
         return;                          // scope 1 at $DIR/generator-tiny.rs:22:13: 22:18
     }

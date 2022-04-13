@@ -71,6 +71,7 @@ mod normalize_array_len;
 mod nrvo;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod remove_false_edges;
+mod remove_finalize;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_uninit_drops;
@@ -434,6 +435,7 @@ fn run_post_borrowck_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tc
         &deaggregator::Deaggregator,
         &deref_separator::Derefer,
         &Lint(const_prop_lint::ConstProp),
+        &remove_finalize::RemoveFinalize,
     ];
 
     pm::run_passes(tcx, body, post_borrowck_cleanup);

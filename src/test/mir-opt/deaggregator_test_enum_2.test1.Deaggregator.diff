@@ -22,6 +22,7 @@
 +         Deinit(_0);                      // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
 +         ((_0 as A).0: i32) = move _4;    // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
 +         discriminant(_0) = 0;            // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
++         Finalize(_0);                    // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:9: 11:18
           StorageDead(_4);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:11:17: 11:18
           goto -> bb3;                     // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
       }
@@ -33,6 +34,7 @@
 +         Deinit(_0);                      // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
 +         ((_0 as B).0: i32) = move _5;    // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
 +         discriminant(_0) = 1;            // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
++         Finalize(_0);                    // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:9: 13:18
           StorageDead(_5);                 // scope 0 at $DIR/deaggregator_test_enum_2.rs:13:17: 13:18
           goto -> bb3;                     // scope 0 at $DIR/deaggregator_test_enum_2.rs:10:5: 14:6
       }

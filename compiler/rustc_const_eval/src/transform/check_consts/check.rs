@@ -693,6 +693,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             StatementKind::Assign(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::Deinit(..)
+            | StatementKind::Finalize(..)
             | StatementKind::FakeRead(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)

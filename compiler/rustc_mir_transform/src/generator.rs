@@ -1442,6 +1442,7 @@ impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::Deinit(..)
+            | StatementKind::Finalize(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)

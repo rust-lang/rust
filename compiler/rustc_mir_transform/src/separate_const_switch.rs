@@ -243,6 +243,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
             // we are interested in
             StatementKind::FakeRead(_)
             | StatementKind::Deinit(_)
+            | StatementKind::Finalize(_)
             | StatementKind::StorageLive(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
@@ -310,6 +311,7 @@ fn find_determining_place<'tcx>(
             // we are interested in
             StatementKind::FakeRead(_)
             | StatementKind::Deinit(_)
+            | StatementKind::Finalize(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(_, _)

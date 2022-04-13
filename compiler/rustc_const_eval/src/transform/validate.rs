@@ -488,9 +488,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             }
-            StatementKind::Deinit(..) => {
+            StatementKind::Finalize(..) | StatementKind::Deinit(..) => {
                 if self.mir_phase < MirPhase::Deaggregated {
-                    self.fail(location, "`Deinit`is not allowed until deaggregation");
+                    self.fail(
+                        location,
+                        format!("`{:?}`is not allowed until deaggregation", statement.kind),
+                    );
                 }
             }
             StatementKind::Retag(_, _) => {

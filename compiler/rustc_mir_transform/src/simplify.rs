@@ -499,6 +499,7 @@ impl<'tcx> Visitor<'tcx> for UsedLocals {
             }
 
             StatementKind::SetDiscriminant { ref place, variant_index: _ }
+            | StatementKind::Finalize(ref place)
             | StatementKind::Deinit(ref place) => {
                 self.visit_lhs(place, location);
             }
@@ -536,8 +537,14 @@ fn remove_unused_definitions(used_locals: &mut UsedLocals, body: &mut Body<'_>) 
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
                     StatementKind::SetDiscriminant { ref place, .. }
+                    | StatementKind::Finalize(ref place)
                     | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
-                    _ => true,
+                    StatementKind::FakeRead(_)
+                    | StatementKind::Retag(_, _)
+                    | StatementKind::AscribeUserType(_, _)
+                    | StatementKind::Coverage(_)
+                    | StatementKind::CopyNonOverlapping(_)
+                    | StatementKind::Nop => true,
                 };
 
                 if !keep {

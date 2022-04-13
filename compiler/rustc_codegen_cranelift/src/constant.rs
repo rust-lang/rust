@@ -519,6 +519,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::FakeRead(_)
                         | StatementKind::SetDiscriminant { .. }
                         | StatementKind::Deinit(_)
+                        | StatementKind::Finalize(..)
                         | StatementKind::StorageLive(_)
                         | StatementKind::StorageDead(_)
                         | StatementKind::Retag(_, _)

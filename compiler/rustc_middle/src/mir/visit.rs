@@ -406,6 +406,13 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
+                    StatementKind::Finalize(place) => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        )
+                    }
                     StatementKind::StorageLive(local) => {
                         self.visit_local(
                             local,

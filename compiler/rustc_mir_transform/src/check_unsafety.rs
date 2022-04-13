@@ -98,6 +98,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             | StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
             | StatementKind::Deinit(..)
+            | StatementKind::Finalize(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag { .. }

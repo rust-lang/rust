@@ -90,6 +90,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_discriminant(*variant_index, &dest)?;
             }
 
+            Finalize(place) => {
+                if M::enforce_validity(self) {
+                    let place = self.eval_place(**place)?;
+                    // Invariant: when `Finalize` is invoked on a place, that place is fully valid
+                    self.validate_operand(&self.place_to_op(&place)?)?;
+                }
+            }
+
             Deinit(place) => {
                 let dest = self.eval_place(**place)?;
                 self.write_uninit(&dest)?;

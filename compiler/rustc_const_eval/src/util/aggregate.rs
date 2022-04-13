@@ -70,8 +70,7 @@ pub fn expand_aggregate<'tcx>(
             kind: StatementKind::Assign(Box::new((lhs_field, Rvalue::Use(op)))),
         }
     });
-    [Statement { source_info, kind: StatementKind::Deinit(Box::new(orig_lhs)) }]
-        .into_iter()
-        .chain(operands)
-        .chain(set_discriminant)
+    let deinit = Statement { source_info, kind: StatementKind::Deinit(Box::new(orig_lhs)) };
+    let finalize = Statement { source_info, kind: StatementKind::Finalize(Box::new(orig_lhs)) };
+    [deinit].into_iter().chain(operands).chain(set_discriminant).chain(Some(finalize))
 }

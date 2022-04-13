@@ -531,6 +531,7 @@ impl<'a> Conflicts<'a> {
 
             StatementKind::SetDiscriminant { .. }
             | StatementKind::Deinit(..)
+            | StatementKind::Finalize(..)
             | StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)
             | StatementKind::Retag(..)

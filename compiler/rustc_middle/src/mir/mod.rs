@@ -1649,6 +1649,14 @@ pub enum StatementKind<'tcx> {
     /// This writes `uninit` bytes to the entire place.
     Deinit(Box<Place<'tcx>>),
 
+    /// Marks the place as fully initialized.
+    ///
+    /// This allows assigning the components of the place incrementally,
+    /// while still treating it just like a full assignment to the place *after* this statment.
+    /// It is not semantically the same as assigning to the place, because that would allow
+    /// marking all preceding partial writes to the place as dead.
+    Finalize(Box<Place<'tcx>>),
+
     /// `StorageLive` and `StorageDead` statements mark the live range of a local.
     ///
     /// Using a local before a `StorageLive` or after a `StorageDead` is not well-formed. These
@@ -1831,6 +1839,7 @@ impl Debug for Statement<'_> {
                 write!(fmt, "discriminant({:?}) = {:?}", place, variant_index)
             }
             Deinit(ref place) => write!(fmt, "Deinit({:?})", place),
+            Finalize(ref place) => write!(fmt, "Finalize({:?})", place),
             AscribeUserType(box (ref place, ref c_ty), ref variance) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
