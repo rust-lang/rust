@@ -1253,7 +1253,7 @@ options! {
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
-    gcc_ld: Option<LdImpl> = (None, parse_gcc_ld, [TRACKED], "implementation of ld used by cc"),
+    gcc_ld: Option<LdImpl> = (Some(LdImpl::Lld), parse_gcc_ld, [TRACKED], "implementation of ld used by cc"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
