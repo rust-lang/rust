@@ -266,12 +266,12 @@ impl TokenCursor {
         loop {
             let (tree, spacing) = if !self.frame.open_delim {
                 self.frame.open_delim = true;
-                TokenTree::open_tt(self.frame.span, self.frame.delim).into()
+                TokenTree::token(token::OpenDelim(self.frame.delim), self.frame.span.open).into()
             } else if let Some(tree) = self.frame.tree_cursor.next_with_spacing() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
-                TokenTree::close_tt(self.frame.span, self.frame.delim).into()
+                TokenTree::token(token::CloseDelim(self.frame.delim), self.frame.span.close).into()
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
                 continue;

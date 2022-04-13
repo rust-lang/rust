@@ -94,16 +94,6 @@ impl TokenTree {
         TokenTree::Token(Token::new(kind, span))
     }
 
-    /// Returns the opening delimiter as a token tree.
-    pub fn open_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::OpenDelim(delim), span.open)
-    }
-
-    /// Returns the closing delimiter as a token tree.
-    pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
-        TokenTree::token(token::CloseDelim(delim), span.close)
-    }
-
     pub fn uninterpolate(self) -> TokenTree {
         match self {
             TokenTree::Token(token) => TokenTree::Token(token.uninterpolate().into_owned()),
