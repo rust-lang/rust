@@ -226,6 +226,20 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for ty::ConstnessArg {
+    fn relate<R: TypeRelation<'tcx>>(
+        relation: &mut R,
+        a: ty::ConstnessArg,
+        b: ty::ConstnessArg,
+    ) -> RelateResult<'tcx, ty::ConstnessArg> {
+        if a == b {
+            Ok(a)
+        } else {
+            Err(TypeError::ConstnessArgMismatch(expected_found(relation, a, b)))
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for ty::BoundConstness {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
@@ -762,6 +776,9 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
             (GenericArgKind::Const(a_ct), GenericArgKind::Const(b_ct)) => {
                 Ok(relation.relate(a_ct, b_ct)?.into())
             }
+            (GenericArgKind::Constness(a_ca), GenericArgKind::Constness(b_ca)) => {
+                Ok(relation.relate(a_ca, b_ca)?.into())
+            }
             (GenericArgKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
@@ -769,6 +786,9 @@ impl<'tcx> Relate<'tcx> for GenericArg<'tcx> {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
             (GenericArgKind::Const(unpacked), x) => {
+                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
+            }
+            (GenericArgKind::Constness(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }
@@ -797,7 +817,6 @@ impl<'tcx> Relate<'tcx> for ty::TraitPredicate<'tcx> {
     ) -> RelateResult<'tcx, ty::TraitPredicate<'tcx>> {
         Ok(ty::TraitPredicate {
             trait_ref: relation.relate(a.trait_ref, b.trait_ref)?,
-            constness: relation.relate(a.constness, b.constness)?,
             polarity: relation.relate(a.polarity, b.polarity)?,
         })
     }

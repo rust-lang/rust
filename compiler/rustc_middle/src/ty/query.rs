@@ -161,16 +161,6 @@ macro_rules! separate_provide_extern_default {
     };
 }
 
-macro_rules! opt_remap_env_constness {
-    ([][$name:ident]) => {};
-    ([(remap_env_constness) $($rest:tt)*][$name:ident]) => {
-        let $name = $name.without_const();
-    };
-    ([$other:tt $($modifiers:tt)*][$name:ident]) => {
-        opt_remap_env_constness!([$($modifiers)*][$name])
-    };
-}
-
 macro_rules! define_callbacks {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -217,7 +207,6 @@ macro_rules! define_callbacks {
             #[inline(always)]
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, noop);
 
@@ -246,7 +235,6 @@ macro_rules! define_callbacks {
             pub fn $name(self, key: query_helper_param_ty!($($K)*)) -> query_stored::$name<$tcx>
             {
                 let key = key.into_query_param();
-                opt_remap_env_constness!([$($modifiers)*][key]);
 
                 let cached = try_get_cached(self.tcx, &self.tcx.query_caches.$name, &key, copy);
 

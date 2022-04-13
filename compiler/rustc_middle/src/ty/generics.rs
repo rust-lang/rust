@@ -118,6 +118,7 @@ pub struct Generics {
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
+    pub has_constness: bool,
     pub has_late_bound_regions: Option<Span>,
 }
 

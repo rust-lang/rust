@@ -458,6 +458,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a const param
                         _ => false,
                     },
+                    GenericArgKind::Constness(_) => false,
                 }
             })
             .map(|(item_param, _)| item_param)
@@ -501,6 +502,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     _ => return Err(NotUniqueParam::NotParam(c.into())),
                 },
+                GenericArgKind::Constness(_) => {}
             }
         }
 

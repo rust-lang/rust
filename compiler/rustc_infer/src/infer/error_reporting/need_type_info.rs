@@ -292,6 +292,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
             GenericArgKind::Lifetime(_) => bug!("unexpected lifetime"),
+            // TODO ?
+            GenericArgKind::Constness(_) => bug!("unexpected constness arg"),
         }
     }
 

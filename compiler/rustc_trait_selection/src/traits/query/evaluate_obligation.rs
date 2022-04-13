@@ -67,20 +67,10 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
 
-        let param_env = match obligation.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(pred) => {
-                // we ignore the value set to it.
-                let mut _constness = pred.constness;
-                obligation
-                    .param_env
-                    .with_constness(_constness.and(obligation.param_env.constness()))
-            }
-            // constness has no effect on the given predicate.
-            _ => obligation.param_env.without_const(),
-        };
-
-        let c_pred = self
-            .canonicalize_query_keep_static(param_env.and(obligation.predicate), &mut _orig_values);
+        let c_pred = self.canonicalize_query_keep_static(
+            obligation.param_env.and(obligation.predicate),
+            &mut _orig_values,
+        );
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.

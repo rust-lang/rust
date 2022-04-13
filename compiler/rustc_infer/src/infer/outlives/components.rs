@@ -88,6 +88,8 @@ fn compute_components<'tcx>(
                         GenericArgKind::Const(_) => {
                             compute_components_recursive(tcx, child, out, visited);
                         }
+                        // TODO ?
+                        GenericArgKind::Constness(_) => {}
                     }
                 }
             }
@@ -210,6 +212,8 @@ fn compute_components_recursive<'tcx>(
             GenericArgKind::Const(_) => {
                 compute_components_recursive(tcx, child, out, visited);
             }
+            // TODO ?
+            GenericArgKind::Constness(_) => {}
         }
     }
 }

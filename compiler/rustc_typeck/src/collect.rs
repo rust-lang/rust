@@ -1519,6 +1519,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                         params,
                         param_def_id_to_index,
                         has_self: generics.has_self,
+                        has_constness: false,
                         has_late_bound_regions: generics.has_late_bound_regions,
                     };
                 }

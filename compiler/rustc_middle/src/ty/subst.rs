@@ -34,19 +34,21 @@ use std::slice;
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct GenericArg<'tcx> {
     ptr: NonZeroUsize,
-    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>)>,
+    marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>, ty::Const<'tcx>, ty::ConstnessArg)>,
 }
 
 const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;
 const CONST_TAG: usize = 0b10;
+const CONSTNESS_TAG: usize = 0b11;
 
 #[derive(Debug, TyEncodable, TyDecodable, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GenericArgKind<'tcx> {
     Lifetime(ty::Region<'tcx>),
     Type(Ty<'tcx>),
     Const(ty::Const<'tcx>),
+    Constness(ty::ConstnessArg),
 }
 
 /// This function goes from `&'a [Ty<'tcx>]` to `&'a [GenericArg<'tcx>]`
@@ -93,6 +95,14 @@ impl<'tcx> GenericArgKind<'tcx> {
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
             }
+            GenericArgKind::Constness(carg) => (
+                CONSTNESS_TAG,
+                match carg {
+                    ty::ConstnessArg::Not => 0,
+                    ty::ConstnessArg::Required => 0b100,
+                    ty::ConstnessArg::Param => 0b1000,
+                },
+            ),
         };
 
         GenericArg { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
@@ -105,6 +115,7 @@ impl<'tcx> fmt::Debug for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.fmt(f),
             GenericArgKind::Type(ty) => ty.fmt(f),
             GenericArgKind::Const(ct) => ct.fmt(f),
+            GenericArgKind::Constness(ca) => ca.fmt(f),
         }
     }
 }
@@ -142,6 +153,13 @@ impl<'tcx> From<ty::Const<'tcx>> for GenericArg<'tcx> {
     }
 }
 
+impl<'tcx> From<ty::ConstnessArg> for GenericArg<'tcx> {
+    #[inline]
+    fn from(c: ty::ConstnessArg) -> GenericArg<'tcx> {
+        GenericArgKind::Constness(c).pack()
+    }
+}
+
 impl<'tcx> GenericArg<'tcx> {
     #[inline]
     pub fn unpack(self) -> GenericArgKind<'tcx> {
@@ -160,6 +178,12 @@ impl<'tcx> GenericArg<'tcx> {
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
                     &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
                 ))),
+                CONSTNESS_TAG => GenericArgKind::Constness(match ptr & (!TAG_MASK) {
+                    0 => ty::ConstnessArg::Not,
+                    0b100 => ty::ConstnessArg::Required,
+                    0b1000 => ty::ConstnessArg::Param,
+                    _ => intrinsics::unreachable(),
+                }),
                 _ => intrinsics::unreachable(),
             }
         }
@@ -192,6 +216,7 @@ impl<'a, 'tcx> Lift<'tcx> for GenericArg<'a> {
             GenericArgKind::Lifetime(lt) => tcx.lift(lt).map(|lt| lt.into()),
             GenericArgKind::Type(ty) => tcx.lift(ty).map(|ty| ty.into()),
             GenericArgKind::Const(ct) => tcx.lift(ct).map(|ct| ct.into()),
+            GenericArgKind::Constness(ca) => Some(ca.into()),
         }
     }
 }
@@ -202,6 +227,7 @@ impl<'tcx> TypeFoldable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.try_fold_with(folder).map(Into::into),
             GenericArgKind::Type(ty) => ty.try_fold_with(folder).map(Into::into),
             GenericArgKind::Const(ct) => ct.try_fold_with(folder).map(Into::into),
+            GenericArgKind::Constness(_) => Ok(self),
         }
     }
 }
@@ -212,6 +238,7 @@ impl<'tcx> TypeVisitable<'tcx> for GenericArg<'tcx> {
             GenericArgKind::Lifetime(lt) => lt.visit_with(visitor),
             GenericArgKind::Type(ty) => ty.visit_with(visitor),
             GenericArgKind::Const(ct) => ct.visit_with(visitor),
+            GenericArgKind::Constness(_) => ControlFlow::CONTINUE,
         }
     }
 }

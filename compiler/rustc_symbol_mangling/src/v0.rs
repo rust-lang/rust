@@ -871,6 +871,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     self.push("K");
                     self = c.print(self)?;
                 }
+                GenericArgKind::Constness(_) => {}
             }
         }
         self.push("E");

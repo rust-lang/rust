@@ -379,7 +379,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .iter()
                 .filter_map(|arg| match arg.unpack() {
                     GenericArgKind::Lifetime(r) => Some(r),
-                    GenericArgKind::Type(_) | GenericArgKind::Const(_) => None,
+                    GenericArgKind::Type(_)
+                    | GenericArgKind::Const(_)
+                    | GenericArgKind::Constness(_) => None,
                 })
                 .chain(std::iter::once(self.tcx.lifetimes.re_static))
                 .collect(),

@@ -616,7 +616,7 @@ pub enum ImplSource<'tcx, N> {
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
     /// any).
-    Param(Vec<N>, ty::BoundConstness),
+    Param(Vec<N>, ty::ConstnessArg),
 
     /// Virtual calls through an object.
     Object(ImplSourceObjectData<'tcx, N>),

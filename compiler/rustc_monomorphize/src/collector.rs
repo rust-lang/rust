@@ -629,7 +629,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         .flat_map(|arg| arg.walk())
         .filter(|arg| match arg.unpack() {
             GenericArgKind::Type(_) | GenericArgKind::Const(_) => true,
-            GenericArgKind::Lifetime(_) => false,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Constness(_) => false,
         })
         .count();
     debug!(" => type length={}", type_length);

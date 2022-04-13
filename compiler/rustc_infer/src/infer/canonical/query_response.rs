@@ -466,6 +466,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                         opt_values[b] = Some(*original_value);
                     }
                 }
+                GenericArgKind::Constness(_) => {}
             }
         }
 
@@ -570,6 +571,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 // Consts cannot outlive one another, so we don't expect to
                 // encounter this branch.
                 span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
+            }
+            GenericArgKind::Constness(_) => {
+                span_bug!(cause.span, "unexpected constness outlives {:?}", predicate);
             }
         };
         let predicate = predicate.rebind(atom).to_predicate(self.tcx);

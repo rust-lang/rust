@@ -67,6 +67,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                         GenericArgKind::Type(ty) => Some(self.type_bound(ty, visited)),
                         GenericArgKind::Lifetime(_) => None,
                         GenericArgKind::Const(_) => Some(self.recursive_bound(child, visited)),
+                        // TODO ?
+                        GenericArgKind::Constness(_) => None,
                     })
                     .filter(|bound| {
                         // Remove bounds that must hold, since they are not interesting.
@@ -208,6 +210,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     if !lt.is_late_bound() { Some(VerifyBound::OutlivedBy(lt)) } else { None }
                 }
                 GenericArgKind::Const(_) => Some(self.recursive_bound(child, visited)),
+                // TODO ?
+                GenericArgKind::Constness(_) => None,
             })
             .filter(|bound| {
                 // Remove bounds that must hold, since they are not interesting.

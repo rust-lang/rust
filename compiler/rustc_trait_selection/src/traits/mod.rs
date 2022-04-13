@@ -137,13 +137,15 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'tcx>(
         infcx.tcx.def_path_str(def_id)
     );
 
-    let trait_ref =
-        ty::Binder::dummy(ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) });
+    let trait_ref = ty::Binder::dummy(ty::TraitRef {
+        def_id,
+        substs: infcx.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Not),
+    });
     let obligation = Obligation {
         param_env,
         cause: ObligationCause::misc(span, hir::CRATE_HIR_ID),
         recursion_depth: 0,
-        predicate: trait_ref.without_const().to_predicate(infcx.tcx),
+        predicate: trait_ref.to_predicate(infcx.tcx),
     };
 
     let result = infcx.predicate_must_hold_modulo_regions(&obligation);
@@ -293,11 +295,8 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
 
-    let elaborated_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    );
+    let elaborated_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal());
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -345,11 +344,8 @@ pub fn normalize_param_env_or_error<'tcx>(
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
-    let outlives_env = ty::ParamEnv::new(
-        tcx.intern_predicates(&outlives_env),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    );
+    let outlives_env =
+        ty::ParamEnv::new(tcx.intern_predicates(&outlives_env), unnormalized_env.reveal());
     let Ok(outlives_predicates) = do_normalize_predicates(
         tcx,
         cause,
@@ -365,11 +361,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(
-        tcx.intern_predicates(&predicates),
-        unnormalized_env.reveal(),
-        unnormalized_env.constness(),
-    )
+    ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal())
 }
 
 pub fn fully_normalize<'a, 'tcx, T>(
@@ -528,7 +520,7 @@ fn prepare_vtable_segments<'tcx, T>(
 
     let mut emit_vptr_on_new_entry = false;
     let mut visited = util::PredicateSet::new(tcx);
-    let predicate = trait_ref.without_const().to_predicate(tcx);
+    let predicate = trait_ref.to_predicate(tcx);
     let mut stack: SmallVec<[(ty::PolyTraitRef<'tcx>, _, _); 5]> =
         smallvec![(trait_ref, emit_vptr_on_new_entry, None)];
     visited.insert(predicate);
@@ -810,16 +802,12 @@ pub fn vtable_trait_upcasting_coercion_new_vptr_slot<'tcx>(
 
     let trait_ref = ty::TraitRef {
         def_id: unsize_trait_did,
-        substs: tcx.mk_substs_trait(source, &[target.into()]),
+        substs: tcx.mk_substs_trait(source, &[target.into()], ty::ConstnessArg::Not),
     };
     let obligation = Obligation::new(
         ObligationCause::dummy(),
         ty::ParamEnv::reveal_all(),
-        ty::Binder::dummy(ty::TraitPredicate {
-            trait_ref,
-            constness: ty::BoundConstness::NotConst,
-            polarity: ty::ImplPolarity::Positive,
-        }),
+        ty::Binder::dummy(ty::TraitPredicate { trait_ref, polarity: ty::ImplPolarity::Positive }),
     );
 
     let implsrc = tcx.infer_ctxt().enter(|infcx| {

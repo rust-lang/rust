@@ -391,6 +391,8 @@ where
                     GenericArgKind::Const(_) => {
                         // Const parameters don't impose constraints.
                     }
+                    // TODO ?
+                    GenericArgKind::Constness(_) => {}
                 }
             }
 

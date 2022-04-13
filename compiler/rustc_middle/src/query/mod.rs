@@ -995,7 +995,14 @@ rustc_queries! {
     /// and its field values.
     query try_destructure_mir_constant(key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>) -> Option<mir::DestructuredMirConstant<'tcx>> {
         desc { "destructuring mir constant"}
-        remap_env_constness
+    }
+
+    /// Dereference a constant reference or raw pointer and turn the result into a constant
+    /// again.
+    query deref_const(
+        key: ty::ParamEnvAnd<'tcx, ty::Const<'tcx>>
+    ) -> ty::Const<'tcx> {
+        desc { "deref constant" }
     }
 
     /// Dereference a constant reference or raw pointer and turn the result into a constant
@@ -1004,7 +1011,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
     ) -> mir::ConstantKind<'tcx> {
         desc { "dereferencing mir constant" }
-        remap_env_constness
     }
 
     query const_caller_location(key: (rustc_span::Symbol, u32, u32)) -> ConstValue<'tcx> {
@@ -1240,32 +1246,26 @@ rustc_queries! {
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
     query is_copy_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
-        remap_env_constness
     }
     /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }
-        remap_env_constness
     }
     /// Query backing `Ty::is_freeze`.
     query is_freeze_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is freeze", env.value }
-        remap_env_constness
     }
     /// Query backing `Ty::is_unpin`.
     query is_unpin_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Unpin`", env.value }
-        remap_env_constness
     }
     /// Query backing `Ty::needs_drop`.
     query needs_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` needs drop", env.value }
-        remap_env_constness
     }
     /// Query backing `Ty::has_significant_drop_raw`.
     query has_significant_drop_raw(env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` has a significant drop", env.value }
-        remap_env_constness
     }
 
     /// Query backing `Ty::is_structural_eq_shallow`.
@@ -1304,7 +1304,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> Result<ty::layout::TyAndLayout<'tcx>, ty::layout::LayoutError<'tcx>> {
         desc { "computing layout of `{}`", key.value }
-        remap_env_constness
     }
 
     /// Compute a `FnAbi` suitable for indirect calls, i.e. to `fn` pointers.
@@ -1315,7 +1314,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
     ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}` function pointers", key.value.0 }
-        remap_env_constness
     }
 
     /// Compute a `FnAbi` suitable for declaring/defining an `fn` instance, and for
@@ -1327,7 +1325,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>
     ) -> Result<&'tcx abi::call::FnAbi<'tcx, Ty<'tcx>>, ty::layout::FnAbiError<'tcx>> {
         desc { "computing call ABI of `{}`", key.value.0 }
-        remap_env_constness
     }
 
     query dylib_dependency_formats(_: CrateNum)
@@ -1607,7 +1604,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>
     ) -> ty::inhabitedness::DefIdForest<'tcx> {
         desc { "computing the inhabitedness of `{:?}`", key }
-        remap_env_constness
     }
 
     query dep_kind(_: CrateNum) -> CrateDepKind {
@@ -1803,7 +1799,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
@@ -1811,7 +1806,6 @@ rustc_queries! {
         goal: ParamEnvAnd<'tcx, GenericArg<'tcx>>
     ) -> Result<GenericArg<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
-        remap_env_constness
     }
 
     /// Do not call this query directly: invoke `try_normalize_erasing_regions` instead.
@@ -1819,7 +1813,6 @@ rustc_queries! {
         goal: ParamEnvAnd<'tcx, mir::ConstantKind<'tcx>>
     ) -> Result<mir::ConstantKind<'tcx>, NoSolution> {
         desc { "normalizing `{}`", goal.value }
-        remap_env_constness
     }
 
     query implied_outlives_bounds(
@@ -1829,7 +1822,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing implied outlives bounds for `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly:
@@ -1841,7 +1833,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "computing dropck types for `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: invoke `infcx.predicate_may_hold()` or
@@ -1869,7 +1860,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_ascribe_user_type` `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Eq` type-op
@@ -1880,7 +1870,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_eq` `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Subtype` type-op
@@ -1891,7 +1880,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "evaluating `type_op_subtype` `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `ProvePredicate` type-op
@@ -1912,7 +1900,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1923,7 +1910,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1934,7 +1920,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
-        remap_env_constness
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -1945,7 +1930,6 @@ rustc_queries! {
         NoSolution,
     > {
         desc { "normalizing `{:?}`", goal }
-        remap_env_constness
     }
 
     query subst_and_check_impossible_predicates(key: (DefId, SubstsRef<'tcx>)) -> bool {
@@ -1959,7 +1943,6 @@ rustc_queries! {
         goal: CanonicalTyGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
         desc { "computing autoderef types for `{:?}`", goal }
-        remap_env_constness
     }
 
     query supported_target_features(_: CrateNum) -> FxHashMap<String, Option<Symbol>> {
@@ -1992,7 +1975,6 @@ rustc_queries! {
         key: ty::ParamEnvAnd<'tcx, (DefId, SubstsRef<'tcx>)>
     ) -> Result<Option<ty::Instance<'tcx>>, ErrorGuaranteed> {
         desc { "resolving instance `{}`", ty::Instance::new(key.value.0, key.value.1) }
-        remap_env_constness
     }
 
     query resolve_instance_of_const_arg(
@@ -2002,7 +1984,6 @@ rustc_queries! {
             "resolving instance of the const argument `{}`",
             ty::Instance::new(key.value.0.to_def_id(), key.value.2),
         }
-        remap_env_constness
     }
 
     query normalize_opaque_types(key: &'tcx ty::List<ty::Predicate<'tcx>>) -> &'tcx ty::List<ty::Predicate<'tcx>> {
@@ -2017,7 +1998,6 @@ rustc_queries! {
     /// size, to account for partial initialisation. See #49298 for details.)
     query conservative_is_privately_uninhabited(key: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool {
         desc { "conservatively checking if {:?} is privately uninhabited", key }
-        remap_env_constness
     }
 
     query limits(key: ()) -> Limits {

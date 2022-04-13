@@ -921,6 +921,8 @@ impl<'tcx> CanonicalUserType<'tcx> {
                             }
                             _ => false,
                         },
+
+                        GenericArgKind::Constness(_) => false,
                     }
                 })
             }
@@ -2798,8 +2800,17 @@ impl<'tcx> TyCtxt<'tcx> {
         iter.intern_with(|xs| self.intern_place_elems(xs))
     }
 
-    pub fn mk_substs_trait(self, self_ty: Ty<'tcx>, rest: &[GenericArg<'tcx>]) -> SubstsRef<'tcx> {
-        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    pub fn mk_substs_trait(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: &[GenericArg<'tcx>],
+        constness: ty::ConstnessArg,
+    ) -> SubstsRef<'tcx> {
+        self.mk_substs(
+            iter::once(self_ty.into())
+                .chain(rest.iter().cloned())
+                .chain(iter::once(constness.into())),
+        )
     }
 
     pub fn mk_bound_variable_kinds<

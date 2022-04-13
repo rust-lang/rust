@@ -203,5 +203,6 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 }
             }
         }
+        GenericArgKind::Constness(_) => {}
     }
 }

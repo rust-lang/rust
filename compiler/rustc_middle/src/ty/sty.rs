@@ -690,18 +690,20 @@ impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => {
-                self.rebind(tr).with_self_ty(tcx, self_ty).without_const().to_predicate(tcx)
-            }
+            ExistentialPredicate::Trait(tr) => self
+                .rebind(tr)
+                .with_self_ty(tcx, self_ty)
+                .to_poly_trait_predicate()
+                .to_predicate(tcx),
             ExistentialPredicate::Projection(p) => {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref = self.rebind(ty::TraitRef {
                     def_id: did,
-                    substs: tcx.mk_substs_trait(self_ty, &[]),
+                    substs: tcx.mk_substs_trait(self_ty, &[], ty::ConstnessArg::Not),
                 });
-                trait_ref.without_const().to_predicate(tcx)
+                trait_ref.to_poly_trait_predicate().to_predicate(tcx)
             }
         }
     }
@@ -830,7 +832,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         self.map_bound(|trait_ref| ty::TraitPredicate {
             trait_ref,
-            constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Positive,
         })
     }
@@ -839,7 +840,6 @@ impl<'tcx> PolyTraitRef<'tcx> {
     pub fn to_poly_trait_predicate_negative_polarity(&self) -> ty::PolyTraitPredicate<'tcx> {
         self.map_bound(|trait_ref| ty::TraitPredicate {
             trait_ref,
-            constness: ty::BoundConstness::NotConst,
             polarity: ty::ImplPolarity::Negative,
         })
     }
@@ -881,7 +881,10 @@ impl<'tcx> ExistentialTraitRef<'tcx> {
         // otherwise the escaping vars would be captured by the binder
         // debug_assert!(!self_ty.has_escaping_bound_vars());
 
-        ty::TraitRef { def_id: self.def_id, substs: tcx.mk_substs_trait(self_ty, self.substs) }
+        ty::TraitRef {
+            def_id: self.def_id,
+            substs: tcx.mk_substs_trait(self_ty, self.substs, ty::ConstnessArg::Not),
+        }
     }
 }
 
@@ -1422,7 +1425,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs: tcx.mk_substs_trait(self_ty, self.substs),
+                substs: tcx.mk_substs_trait(self_ty, self.substs, ty::ConstnessArg::Not),
             },
             term: self.term,
         }

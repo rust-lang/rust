@@ -27,14 +27,19 @@ pub trait TraitEngine<'tcx>: 'tcx {
         def_id: DefId,
         cause: ObligationCause<'tcx>,
     ) {
-        let trait_ref = ty::TraitRef { def_id, substs: infcx.tcx.mk_substs_trait(ty, &[]) };
+        let trait_ref = ty::TraitRef {
+            def_id,
+            substs: infcx.tcx.mk_substs_trait(ty, &[], ty::ConstnessArg::Param),
+        };
         self.register_predicate_obligation(
             infcx,
             Obligation {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(infcx.tcx),
+                predicate: ty::Binder::dummy(trait_ref)
+                    .to_poly_trait_predicate()
+                    .to_predicate(infcx.tcx),
             },
         );
     }
