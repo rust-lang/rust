@@ -478,7 +478,7 @@ pub fn compile_declarative_macro(
                     )
                     .pop()
                     .unwrap();
-                    valid &= check_lhs_nt_follows(&sess.parse_sess, features, &def, &tt);
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, &def, &tt);
                     return tt;
                 }
                 sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
@@ -563,16 +563,11 @@ pub fn compile_declarative_macro(
     }))
 }
 
-fn check_lhs_nt_follows(
-    sess: &ParseSess,
-    features: &Features,
-    def: &ast::Item,
-    lhs: &mbe::TokenTree,
-) -> bool {
+fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(_, delimited) = lhs {
-        check_matcher(sess, features, def, &delimited.tts)
+        check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
         sess.span_diagnostic.span_err(lhs.span(), msg);
@@ -632,16 +627,11 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     false
 }
 
-fn check_matcher(
-    sess: &ParseSess,
-    features: &Features,
-    def: &ast::Item,
-    matcher: &[mbe::TokenTree],
-) -> bool {
+fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
     let err = sess.span_diagnostic.err_count();
-    check_matcher_core(sess, features, def, &first_sets, matcher, &empty_suffix);
+    check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
     err == sess.span_diagnostic.err_count()
 }
 
@@ -955,7 +945,6 @@ impl<'tt> TokenSet<'tt> {
 // see `FirstSets::new`.
 fn check_matcher_core<'tt>(
     sess: &ParseSess,
-    features: &Features,
     def: &ast::Item,
     first_sets: &FirstSets<'tt>,
     matcher: &'tt [mbe::TokenTree],
@@ -1008,7 +997,7 @@ fn check_matcher_core<'tt>(
                     token::CloseDelim(d.delim),
                     span.close,
                 ));
-                check_matcher_core(sess, features, def, first_sets, &d.tts, &my_suffix);
+                check_matcher_core(sess, def, first_sets, &d.tts, &my_suffix);
                 // don't track non NT tokens
                 last.replace_with_irrelevant();
 
@@ -1040,8 +1029,7 @@ fn check_matcher_core<'tt>(
                 // At this point, `suffix_first` is built, and
                 // `my_suffix` is some TokenSet that we can use
                 // for checking the interior of `seq_rep`.
-                let next =
-                    check_matcher_core(sess, features, def, first_sets, &seq_rep.tts, my_suffix);
+                let next = check_matcher_core(sess, def, first_sets, &seq_rep.tts, my_suffix);
                 if next.maybe_empty {
                     last.add_all(&next);
                 } else {
