@@ -401,6 +401,22 @@ fn f(x: u8) {
         type_char_noop(
             '=',
             r#"
+fn f(x: u8) {
+    if x $0 {}
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
+fn f(x: u8) {
+    if x $0 0 {}
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
 fn f() {
     g(i $0 0);
 }
