@@ -2381,6 +2381,8 @@ macro_rules! define_print_and_forward_display {
     };
 }
 
+// TODO fix printing
+
 /// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
 /// the trait path. That is, it will print `Trait<U>` instead of
 /// `<T as Trait<U>>`.

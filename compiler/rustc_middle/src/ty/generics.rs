@@ -15,6 +15,7 @@ pub enum GenericParamDefKind {
     Lifetime,
     Type { has_default: bool, object_lifetime_default: ObjectLifetimeDefault, synthetic: bool },
     Const { has_default: bool },
+    Constness,
 }
 
 impl GenericParamDefKind {
@@ -23,6 +24,7 @@ impl GenericParamDefKind {
             GenericParamDefKind::Lifetime => "lifetime",
             GenericParamDefKind::Type { .. } => "type",
             GenericParamDefKind::Const { .. } => "constant",
+            GenericParamDefKind::Constness => "constness",
         }
     }
     pub fn to_ord(&self) -> ast::ParamKindOrd {
@@ -30,12 +32,13 @@ impl GenericParamDefKind {
             GenericParamDefKind::Lifetime => ast::ParamKindOrd::Lifetime,
             GenericParamDefKind::Type { .. } => ast::ParamKindOrd::Type,
             GenericParamDefKind::Const { .. } => ast::ParamKindOrd::Const,
+            GenericParamDefKind::Constness => ast::ParamKindOrd::Infer,
         }
     }
 
     pub fn is_ty_or_const(&self) -> bool {
         match self {
-            GenericParamDefKind::Lifetime => false,
+            GenericParamDefKind::Lifetime | GenericParamDefKind::Constness => false,
             GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => true,
         }
     }
@@ -100,6 +103,7 @@ pub struct GenericParamCount {
     pub lifetimes: usize,
     pub types: usize,
     pub consts: usize,
+    pub has_constness: bool,
 }
 
 /// Information about the formal type/lifetime parameters associated
@@ -118,7 +122,6 @@ pub struct Generics {
     pub param_def_id_to_index: FxHashMap<DefId, u32>,
 
     pub has_self: bool,
-    pub has_constness: bool,
     pub has_late_bound_regions: Option<Span>,
 }
 
@@ -139,6 +142,12 @@ impl<'tcx> Generics {
                 GenericParamDefKind::Lifetime => own_counts.lifetimes += 1,
                 GenericParamDefKind::Type { .. } => own_counts.types += 1,
                 GenericParamDefKind::Const { .. } => own_counts.consts += 1,
+                GenericParamDefKind::Constness => {
+                    if own_counts.has_constness {
+                        bug!("more than one constness parameter");
+                    }
+                    own_counts.has_constness = true;
+                }
             }
         }
 
@@ -150,7 +159,7 @@ impl<'tcx> Generics {
 
         for param in &self.params {
             match param.kind {
-                GenericParamDefKind::Lifetime => (),
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Constness => (),
                 GenericParamDefKind::Type { has_default, .. } => {
                     own_defaults.types += has_default as usize;
                 }
@@ -182,7 +191,7 @@ impl<'tcx> Generics {
                 GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                     return true;
                 }
-                GenericParamDefKind::Lifetime => {}
+                GenericParamDefKind::Lifetime | GenericParamDefKind::Constness => {}
             }
         }
         false

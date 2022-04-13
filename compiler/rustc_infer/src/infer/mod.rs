@@ -1199,6 +1199,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     });
                 self.tcx.mk_const_var(const_var_id, self.tcx.type_of(param.def_id)).into()
             }
+            GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
         }
     }
 

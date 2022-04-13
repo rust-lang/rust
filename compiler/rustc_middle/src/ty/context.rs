@@ -2438,7 +2438,9 @@ impl<'tcx> TyCtxt<'tcx> {
         let adt_def = self.adt_def(wrapper_def_id);
         let substs =
             InternalSubsts::for_item(self, wrapper_def_id, |param, substs| match param.kind {
-                GenericParamDefKind::Lifetime | GenericParamDefKind::Const { .. } => bug!(),
+                GenericParamDefKind::Lifetime
+                | GenericParamDefKind::Const { .. }
+                | GenericParamDefKind::Constness => bug!(),
                 GenericParamDefKind::Type { has_default, .. } => {
                     if param.index == 0 {
                         ty_param.into()
@@ -2627,6 +2629,7 @@ impl<'tcx> TyCtxt<'tcx> {
             GenericParamDefKind::Const { .. } => {
                 self.mk_const_param(param.index, param.name, self.type_of(param.def_id)).into()
             }
+            GenericParamDefKind::Constness => ty::ConstnessArg::Param.into(),
         }
     }
 
@@ -2798,6 +2801,23 @@ impl<'tcx> TyCtxt<'tcx> {
         iter: I,
     ) -> I::Output {
         iter.intern_with(|xs| self.intern_place_elems(xs))
+    }
+
+    pub fn mk_substs_trait_no_append(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: &[GenericArg<'tcx>],
+    ) -> SubstsRef<'tcx> {
+        assert!(matches!(rest.last().unwrap().unpack(), GenericArgKind::Constness(_)));
+        self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned()))
+    }
+
+    pub fn mk_substs_trait_non_const(
+        self,
+        self_ty: Ty<'tcx>,
+        rest: &[GenericArg<'tcx>],
+    ) -> SubstsRef<'tcx> {
+        self.mk_substs_trait(self_ty, rest, ty::ConstnessArg::Not)
     }
 
     pub fn mk_substs_trait(

@@ -53,9 +53,8 @@ fn sized_constraint_for_ty<'tcx>(
             let Some(sized_trait) = tcx.lang_items().sized_trait() else { return vec![ty] };
             let sized_predicate = ty::Binder::dummy(ty::TraitRef {
                 def_id: sized_trait,
-                substs: tcx.mk_substs_trait(ty, &[]),
+                substs: tcx.mk_substs_trait_non_const(ty, &[]),
             })
-            .without_const()
             .to_predicate(tcx);
             let predicates = tcx.predicates_of(adtdef.did()).predicates;
             if predicates.iter().any(|(p, _)| *p == sized_predicate) { vec![] } else { vec![ty] }
@@ -253,6 +252,8 @@ fn well_formed_types_in_env<'tcx>(
 
             // FIXME(eddyb) support const generics in Chalk
             GenericArgKind::Const(_) => None,
+
+            GenericArgKind::Constness(_) => None,
         }
     });
 

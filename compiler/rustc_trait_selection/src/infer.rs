@@ -108,14 +108,16 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
             trait_def_id, ty, params, param_env
         );
 
-        let trait_ref =
-            ty::TraitRef { def_id: trait_def_id, substs: self.tcx.mk_substs_trait(ty, params) };
+        let trait_ref = ty::TraitRef {
+            def_id: trait_def_id,
+            substs: self.tcx.mk_substs_trait_non_const(ty, params),
+        };
 
         let obligation = traits::Obligation {
             cause: traits::ObligationCause::dummy(),
             param_env,
             recursion_depth: 0,
-            predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(self.tcx),
+            predicate: ty::Binder::dummy(trait_ref).to_predicate(self.tcx),
         };
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
     }

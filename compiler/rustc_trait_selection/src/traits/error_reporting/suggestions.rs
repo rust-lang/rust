@@ -2501,7 +2501,6 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
             ObligationCauseCode::ImplDerivedObligation(ref data) => {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
-                parent_trait_pred.remap_constness_diag(param_env);
                 let parent_def_id = parent_trait_pred.def_id();
                 let msg = format!(
                     "required because of the requirements on the impl of `{}` for `{}`",
@@ -2785,7 +2784,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     self.tcx.mk_projection(
                         item_def_id,
                         // Future::Output has no substs
-                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[]),
+                        self.tcx.mk_substs_trait(trait_pred.self_ty(), &[], ty::ConstnessArg::Not),
                     )
                 });
                 let projection_ty = normalize_to(
@@ -2874,9 +2873,9 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     let field_ty = field.ty(self.tcx, substs);
                     let trait_substs = match diagnostic_name {
                         sym::PartialEq | sym::PartialOrd => {
-                            self.tcx.mk_substs_trait(field_ty, &[field_ty.into()])
+                            self.tcx.mk_substs_trait_non_const(field_ty, &[field_ty.into()])
                         }
-                        _ => self.tcx.mk_substs_trait(field_ty, &[]),
+                        _ => self.tcx.mk_substs_trait_non_const(field_ty, &[]),
                     };
                     let trait_pred = trait_pred.map_bound_ref(|tr| ty::TraitPredicate {
                         trait_ref: ty::TraitRef {

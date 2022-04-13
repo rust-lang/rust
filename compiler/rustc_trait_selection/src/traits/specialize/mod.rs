@@ -514,6 +514,8 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                 continue;
             }
 
+            // TODO FIX this
+            /*
             if ty::BoundConstness::ConstIfConst == poly_trait_ref.skip_binder().constness {
                 let new_trait_pred = poly_trait_ref.map_bound(|mut trait_pred| {
                     trait_pred.constness = ty::BoundConstness::NotConst;
@@ -521,7 +523,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
                 });
 
                 p = tcx.mk_predicate(new_trait_pred.map_bound(ty::PredicateKind::Trait))
-            }
+            }*/
         }
         pretty_predicates.push(p.to_string());
     }

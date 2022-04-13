@@ -688,7 +688,8 @@ fn vtable_entries<'tcx>(
                         InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
                             GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
                             GenericParamDefKind::Type { .. }
-                            | GenericParamDefKind::Const { .. } => {
+                            | GenericParamDefKind::Const { .. }
+                            | GenericParamDefKind::Constness => {
                                 trait_ref.substs[param.index as usize]
                             }
                         })

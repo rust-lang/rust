@@ -958,9 +958,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // We can only make objects from sized types.
                 let tr = ty::Binder::dummy(ty::TraitRef::new(
                     tcx.require_lang_item(LangItem::Sized, None),
-                    tcx.mk_substs_trait(source, &[]),
+                    tcx.mk_substs_trait_non_const(source, &[]),
                 ));
-                nested.push(predicate_to_obligation(tr.without_const().to_predicate(tcx)));
+                nested.push(predicate_to_obligation(tr.to_predicate(tcx)));
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:
@@ -993,6 +993,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         ty::ConstKind::Param(p) => Some(p.index),
                         _ => None,
                     },
+
+                    // TODO confirm that this is correct
+                    GenericArgKind::Constness(_) => None,
                 };
 
                 // FIXME(eddyb) cache this (including computing `unsizing_params`)
@@ -1098,7 +1101,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         impl_def_id: Option<DefId>,
     ) -> Result<ImplSourceConstDestructData<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         // `~const Destruct` in a non-const environment is always trivially true, since our type is `Drop`
-        if !obligation.is_const() {
+        if !obligation.predicate.constness().is_const() {
             return Ok(ImplSourceConstDestructData { nested: vec![] });
         }
 
@@ -1202,9 +1205,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                         def_id: self
                                             .tcx()
                                             .require_lang_item(LangItem::Destruct, None),
-                                        substs: self.tcx().mk_substs_trait(nested_ty, &[]),
+                                        substs: self.tcx().mk_substs_trait(
+                                            nested_ty,
+                                            &[],
+                                            ty::ConstnessArg::Required,
+                                        ),
                                     },
-                                    constness: ty::BoundConstness::ConstIfConst,
                                     polarity: ty::ImplPolarity::Positive,
                                 })
                                 .to_predicate(tcx),
@@ -1228,9 +1234,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         .rebind(ty::TraitPredicate {
                             trait_ref: ty::TraitRef {
                                 def_id: self.tcx().require_lang_item(LangItem::Destruct, None),
-                                substs: self.tcx().mk_substs_trait(nested_ty, &[]),
+                                substs: self.tcx().mk_substs_trait(
+                                    nested_ty,
+                                    &[],
+                                    ty::ConstnessArg::Required,
+                                ),
                             },
-                            constness: ty::BoundConstness::ConstIfConst,
                             polarity: ty::ImplPolarity::Positive,
                         })
                         .to_predicate(tcx);

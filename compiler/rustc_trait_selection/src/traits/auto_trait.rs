@@ -85,7 +85,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
 
-        let trait_ref = ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait(ty, &[]) };
+        let trait_ref =
+            ty::TraitRef { def_id: trait_did, substs: tcx.mk_substs_trait_non_const(ty, &[]) };
 
         let trait_pred = ty::Binder::dummy(trait_ref);
 
@@ -297,9 +298,8 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         predicates.push_back(ty::Binder::dummy(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
-                substs: infcx.tcx.mk_substs_trait(ty, &[]),
+                substs: infcx.tcx.mk_substs_trait_non_const(ty, &[]),
             },
-            constness: ty::BoundConstness::NotConst,
             // Auto traits are positive
             polarity: ty::ImplPolarity::Positive,
         }));
@@ -382,17 +382,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                 computed_preds.clone().chain(user_computed_preds.iter().cloned()),
             )
             .map(|o| o.predicate);
-            new_env = ty::ParamEnv::new(
-                tcx.mk_predicates(normalized_preds),
-                param_env.reveal(),
-                param_env.constness(),
-            );
+            new_env = ty::ParamEnv::new(tcx.mk_predicates(normalized_preds), param_env.reveal());
         }
 
         let final_user_env = ty::ParamEnv::new(
             tcx.mk_predicates(user_computed_preds.into_iter()),
             user_env.reveal(),
-            user_env.constness(),
         );
         debug!(
             "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \

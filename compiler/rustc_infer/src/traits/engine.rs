@@ -37,9 +37,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
                 cause,
                 recursion_depth: 0,
                 param_env,
-                predicate: ty::Binder::dummy(trait_ref)
-                    .to_poly_trait_predicate()
-                    .to_predicate(infcx.tcx),
+                predicate: ty::Binder::dummy(trait_ref).to_predicate(infcx.tcx),
             },
         );
     }

@@ -75,10 +75,7 @@ pub fn elaborate_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>,
 ) -> Elaborator<'tcx> {
-    elaborate_predicates(
-        tcx,
-        std::iter::once(trait_ref.to_poly_trait_predicate().to_predicate(tcx)),
-    )
+    elaborate_predicates(tcx, std::iter::once(trait_ref.to_predicate(tcx)))
 }
 
 pub fn elaborate_trait_refs<'tcx>(

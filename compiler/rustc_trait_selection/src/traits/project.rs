@@ -1136,7 +1136,7 @@ fn normalize_to_error<'a, 'tcx>(
         cause,
         recursion_depth: depth,
         param_env,
-        predicate: trait_ref.without_const().to_predicate(selcx.tcx()),
+        predicate: trait_ref.to_predicate(selcx.tcx()),
     };
     let tcx = selcx.infcx().tcx;
     let def_id = projection_ty.item_def_id;
@@ -1808,9 +1808,9 @@ fn confirm_pointee_candidate<'cx, 'tcx>(
     if check_is_sized {
         let sized_predicate = ty::Binder::dummy(ty::TraitRef::new(
             tcx.require_lang_item(LangItem::Sized, None),
-            tcx.mk_substs_trait(self_ty, &[]),
+            tcx.mk_substs_trait_non_const(self_ty, &[]),
         ))
-        .without_const()
+        .to_poly_trait_predicate()
         .to_predicate(tcx);
         obligations.push(Obligation::new(
             obligation.cause.clone(),

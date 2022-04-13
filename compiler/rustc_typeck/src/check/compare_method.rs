@@ -1423,11 +1423,7 @@ pub fn check_type_bounds<'tcx>(
                 .to_predicate(tcx),
             ),
         };
-        ty::ParamEnv::new(
-            tcx.intern_predicates(&predicates),
-            Reveal::UserFacing,
-            param_env.constness(),
-        )
+        ty::ParamEnv::new(tcx.intern_predicates(&predicates), Reveal::UserFacing)
     };
     debug!(?normalize_param_env);
 

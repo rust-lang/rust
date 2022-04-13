@@ -752,13 +752,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // <ty as Deref>
         let trait_ref = ty::TraitRef {
             def_id: tcx.lang_items().deref_trait()?,
-            substs: tcx.mk_substs_trait(ty, &[]),
+            substs: tcx.mk_substs_trait_non_const(ty, &[]),
         };
 
         let obligation = traits::Obligation::new(
             cause.clone(),
             param_env,
-            ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+            ty::Binder::dummy(trait_ref).to_predicate(tcx),
         );
         if !self.infcx.predicate_may_hold(&obligation) {
             return None;
@@ -957,7 +957,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ) {
         // If the predicate is `~const Destruct` in a non-const environment, we don't actually need
         // to check anything. We'll short-circuit checking any obligations in confirmation, too.
-        if !obligation.is_const() {
+        if !obligation.predicate.constness().is_const() {
             candidates.vec.push(ConstDestructCandidate(None));
             return;
         }

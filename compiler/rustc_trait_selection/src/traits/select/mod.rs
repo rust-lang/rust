@@ -1641,7 +1641,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (ParamCandidate(other), ParamCandidate(victim)) => {
                 let same_except_bound_vars = other.skip_binder().trait_ref
                     == victim.skip_binder().trait_ref
-                    && other.skip_binder().constness == victim.skip_binder().constness
+                    && other.skip_binder().constness() == victim.skip_binder().constness()
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                     && !other.skip_binder().trait_ref.has_escaping_bound_vars();
                 if same_except_bound_vars {
@@ -1652,7 +1652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // best to *not* create essentially duplicate candidates in the first place.
                     other.bound_vars().len() <= victim.bound_vars().len()
                 } else if other.skip_binder().trait_ref == victim.skip_binder().trait_ref
-                    && victim.skip_binder().constness == ty::BoundConstness::NotConst
+                    && victim.skip_binder().constness() == ty::ConstnessArg::Not
                     && other.skip_binder().polarity == victim.skip_binder().polarity
                 {
                     // Drop otherwise equivalent non-const candidates in favor of const candidates.

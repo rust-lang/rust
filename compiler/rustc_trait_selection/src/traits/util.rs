@@ -98,7 +98,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
     fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.tcx;
         let trait_ref = item.trait_ref();
-        let pred = trait_ref.without_const().to_predicate(tcx);
+        let pred = trait_ref.to_predicate(tcx);
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
@@ -110,9 +110,13 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, pred);
-        if item.path.iter().rev().skip(1).any(|&(tr, _)| {
-            anonymize_predicate(tcx, tr.without_const().to_predicate(tcx)) == anon_pred
-        }) {
+        if item
+            .path
+            .iter()
+            .rev()
+            .skip(1)
+            .any(|&(tr, _)| anonymize_predicate(tcx, tr.to_predicate(tcx)) == anon_pred)
+        {
             return false;
         }
 
@@ -251,7 +255,7 @@ pub fn predicate_for_trait_ref<'tcx>(
         cause,
         param_env,
         recursion_depth,
-        predicate: ty::Binder::dummy(trait_ref).without_const().to_predicate(tcx),
+        predicate: ty::Binder::dummy(trait_ref).to_predicate(tcx),
     }
 }
 
@@ -264,8 +268,10 @@ pub fn predicate_for_trait_def<'tcx>(
     self_ty: Ty<'tcx>,
     params: &[GenericArg<'tcx>],
 ) -> PredicateObligation<'tcx> {
-    let trait_ref =
-        ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(self_ty, params) };
+    let trait_ref = ty::TraitRef {
+        def_id: trait_def_id,
+        substs: tcx.mk_substs_trait(self_ty, params, ty::ConstnessArg::Not),
+    };
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
@@ -338,7 +344,7 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
+        substs: tcx.mk_substs_trait_non_const(self_ty, &[arguments_tuple.into()]),
     };
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
@@ -352,7 +358,7 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
     debug_assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait(self_ty, &[sig.skip_binder().resume_ty.into()]),
+        substs: tcx.mk_substs_trait_non_const(self_ty, &[sig.skip_binder().resume_ty.into()]),
     };
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
 }

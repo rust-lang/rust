@@ -30,14 +30,8 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        mut canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
+        canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
-        match canonicalized.value.value.predicate.kind().skip_binder() {
-            ty::PredicateKind::Trait(pred) => {
-                canonicalized.value.param_env.remap_constness_with(pred.constness);
-            }
-            _ => canonicalized.value.param_env = canonicalized.value.param_env.without_const(),
-        }
         tcx.type_op_prove_predicate(canonicalized)
     }
 }

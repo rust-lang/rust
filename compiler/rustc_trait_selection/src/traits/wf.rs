@@ -56,8 +56,8 @@ pub fn obligations<'a, 'tcx>(
             }
             .into()
         }
-        // There is nothing we have to do for lifetimes.
-        GenericArgKind::Lifetime(..) => return Some(Vec::new()),
+        // There is nothing we have to do for lifetimes and constness arguments.
+        GenericArgKind::Lifetime(..) | GenericArgKind::Constness(_) => return Some(Vec::new()),
     };
 
     let mut wf =
@@ -411,13 +411,13 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
                 def_id: self.infcx.tcx.require_lang_item(LangItem::Sized, None),
-                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
+                substs: self.infcx.tcx.mk_substs_trait_non_const(subty, &[]),
             };
             self.out.push(traits::Obligation::with_depth(
                 cause,
                 self.recursion_depth,
                 self.param_env,
-                ty::Binder::dummy(trait_ref).without_const().to_predicate(self.infcx.tcx),
+                ty::Binder::dummy(trait_ref).to_predicate(self.infcx.tcx),
             ));
         }
     }
@@ -434,6 +434,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 // No WF constraints for lifetimes being present, any outlives
                 // obligations are handled by the parent (e.g. `ty::Ref`).
                 GenericArgKind::Lifetime(_) => continue,
+
+                // No WF for constness argument
+                GenericArgKind::Constness(_) => continue,
 
                 GenericArgKind::Const(constant) => {
                     match constant.kind() {

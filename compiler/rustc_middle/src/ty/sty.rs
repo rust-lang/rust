@@ -690,20 +690,18 @@ impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
-            ExistentialPredicate::Trait(tr) => self
-                .rebind(tr)
-                .with_self_ty(tcx, self_ty)
-                .to_poly_trait_predicate()
-                .to_predicate(tcx),
+            ExistentialPredicate::Trait(tr) => {
+                self.rebind(tr).with_self_ty(tcx, self_ty).to_predicate(tcx)
+            }
             ExistentialPredicate::Projection(p) => {
                 self.rebind(p.with_self_ty(tcx, self_ty)).to_predicate(tcx)
             }
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref = self.rebind(ty::TraitRef {
                     def_id: did,
-                    substs: tcx.mk_substs_trait(self_ty, &[], ty::ConstnessArg::Not),
+                    substs: tcx.mk_substs_trait_non_const(self_ty, &[]),
                 });
-                trait_ref.to_poly_trait_predicate().to_predicate(tcx)
+                trait_ref.to_predicate(tcx)
             }
         }
     }
@@ -816,6 +814,27 @@ impl<'tcx> TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
         ty::TraitRef { def_id: trait_id, substs: tcx.intern_substs(&substs[..defs.params.len()]) }
     }
+
+    pub fn constness(self) -> ty::ConstnessArg {
+        // TODO remove panic
+        match self.substs.last().expect("constness").unpack() {
+            ty::subst::GenericArgKind::Constness(constness) => constness,
+            _ => panic!("?"),
+        }
+    }
+
+    pub fn without_const(mut self, tcx: TyCtxt<'tcx>) -> Self {
+        if self.constness().is_const() {
+            self.substs = tcx.mk_substs(
+                self.substs
+                    .iter()
+                    .take(self.substs.len() - 1)
+                    .chain(Some(ty::ConstnessArg::Not.into())),
+            );
+        }
+
+        self
+    }
 }
 
 pub type PolyTraitRef<'tcx> = Binder<'tcx, TraitRef<'tcx>>;
@@ -842,6 +861,10 @@ impl<'tcx> PolyTraitRef<'tcx> {
             trait_ref,
             polarity: ty::ImplPolarity::Negative,
         })
+    }
+
+    pub fn without_const(self, tcx: TyCtxt<'tcx>) -> Self {
+        self.map_bound(|tr| tr.without_const(tcx))
     }
 }
 

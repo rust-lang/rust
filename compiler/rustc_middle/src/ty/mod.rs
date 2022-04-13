@@ -831,11 +831,7 @@ impl<'tcx> TraitPredicate<'tcx> {
     }
 
     pub fn constness(self) -> ty::ConstnessArg {
-        // TODO remove panic
-        match self.trait_ref.substs.last().expect("constness").unpack() {
-            ty::subst::GenericArgKind::Constness(constness) => constness,
-            _ => panic!("?"),
-        }
+        self.trait_ref.constness()
     }
 }
 
@@ -993,6 +989,12 @@ impl<'tcx> ToPredicate<'tcx> for Binder<'tcx, PredicateKind<'tcx>> {
     #[inline(always)]
     fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
         tcx.mk_predicate(self)
+    }
+}
+
+impl<'tcx> ToPredicate<'tcx> for PolyTraitRef<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        self.to_poly_trait_predicate().to_predicate(tcx)
     }
 }
 

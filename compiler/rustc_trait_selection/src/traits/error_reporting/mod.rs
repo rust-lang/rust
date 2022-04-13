@@ -116,7 +116,7 @@ pub trait InferCtxtExt<'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        constness: ty::BoundConstness,
+        constness: ty::ConstnessArg,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()>;
 }
@@ -327,9 +327,8 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                         let trait_predicate = bound_predicate.rebind(trait_predicate);
                         let mut trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
-                        trait_predicate.remap_constness_diag(obligation.param_env);
-                        let predicate_is_const = ty::BoundConstness::ConstIfConst
-                            == trait_predicate.skip_binder().constness;
+                        let predicate_is_const =
+                            ty::ConstnessArg::Required == trait_predicate.skip_binder().constness();
 
                         if self.tcx.sess.has_errors().is_some()
                             && trait_predicate.references_error()
@@ -490,11 +489,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             self.suggest_borrowing_for_object_cast(&mut err, &root_obligation, *concrete_ty, *obj_ty);
                         }
 
-                        if trait_predicate.is_const_if_const() && obligation.param_env.is_const() {
-                            let non_const_predicate = trait_ref.without_const();
+                        if trait_predicate.constness().is_const() {
+                            let non_const_predicate = trait_ref.without_const(self.tcx);
                             let non_const_obligation = Obligation {
                                 cause: obligation.cause.clone(),
-                                param_env: obligation.param_env.without_const(),
+                                param_env: obligation.param_env,
                                 predicate: non_const_predicate.to_predicate(tcx),
                                 recursion_depth: obligation.recursion_depth,
                             };
@@ -504,7 +503,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                                     &format!(
                                         "the trait `{}` is implemented for `{}`, \
                                         but that implementation is not `const`",
-                                        non_const_predicate.print_modifiers_and_trait_path(),
+                                        non_const_predicate.print_only_trait_path(),
                                         trait_ref.skip_binder().self_ty(),
                                     ),
                                 );
@@ -599,7 +598,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             && let Ok((implemented_kind, params)) = self.type_implements_fn_trait(
                                 obligation.param_env,
                                 trait_ref.self_ty(),
-                                trait_predicate.skip_binder().constness,
+                                trait_predicate.skip_binder().constness(),
                                 trait_predicate.skip_binder().polarity,
                             )
                         {
@@ -729,7 +728,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                             && fallback_has_occurred
                         {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
-                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
+                                trait_pred.trait_ref.substs = self.tcx.mk_substs_trait_no_append(
                                     self.tcx.mk_unit(),
                                     &trait_pred.trait_ref.substs[1..],
                                 );
@@ -1276,7 +1275,7 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: ty::Binder<'tcx, Ty<'tcx>>,
-        constness: ty::BoundConstness,
+        constness: ty::ConstnessArg,
         polarity: ty::ImplPolarity,
     ) -> Result<(ty::ClosureKind, ty::Binder<'tcx, Ty<'tcx>>), ()> {
         self.commit_if_ok(|_| {
@@ -1292,13 +1291,12 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()]);
+                let substs = self.tcx.mk_substs_trait(ty.skip_binder(), &[var.into()], constness);
                 let obligation = Obligation::new(
                     ObligationCause::dummy(),
                     param_env,
                     ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::new(trait_def_id, substs),
-                        constness,
                         polarity,
                     })
                     .to_predicate(self.tcx),
@@ -1935,7 +1933,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
     ) -> PredicateObligation<'tcx> {
         let trait_pred = trait_ref_and_ty.map_bound_ref(|(tr, new_self_ty)| ty::TraitPredicate {
             trait_ref: ty::TraitRef {
-                substs: self.tcx.mk_substs_trait(*new_self_ty, &tr.trait_ref.substs[1..]),
+                substs: self.tcx.mk_substs_trait_no_append(*new_self_ty, &tr.trait_ref.substs[1..]),
                 ..tr.trait_ref
             },
             ..*tr
@@ -2351,7 +2349,7 @@ impl<'a, 'tcx> InferCtxtPrivExt<'a, 'tcx> for InferCtxt<'a, 'tcx> {
             let obligation = Obligation::new(
                 ObligationCause::dummy(),
                 param_env,
-                cleaned_pred.without_const().to_predicate(selcx.tcx()),
+                cleaned_pred.to_predicate(selcx.tcx()),
             );
 
             self.predicate_may_hold(&obligation)

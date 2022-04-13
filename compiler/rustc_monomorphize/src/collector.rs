@@ -1382,6 +1382,7 @@ fn create_mono_items_for_default_impls<'tcx>(
                     let substs =
                         InternalSubsts::for_item(tcx, method.def_id, |param, _| match param.kind {
                             GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                            GenericParamDefKind::Constness => ty::ConstnessArg::Not.into(),
                             GenericParamDefKind::Type { .. }
                             | GenericParamDefKind::Const { .. } => {
                                 trait_ref.substs[param.index as usize]
