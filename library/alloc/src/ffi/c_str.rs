@@ -6,7 +6,6 @@ use crate::boxed::Box;
 use crate::rc::Rc;
 use crate::slice::hack::into_vec;
 use crate::string::String;
-use crate::sync::Arc;
 use crate::vec::Vec;
 use core::borrow::Borrow;
 use core::ffi::{c_char, CStr};
@@ -18,6 +17,9 @@ use core::ptr;
 use core::slice;
 use core::slice::memchr;
 use core::str::{self, Utf8Error};
+
+#[cfg(target_has_atomic = "ptr")]
+use crate::sync::Arc;
 
 /// A type representing an owned, C-compatible, nul-terminated string with no nul bytes in the
 /// middle.
@@ -859,6 +861,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
     }
 }
 
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into an <code>[Arc]<[CStr]></code> by moving the [`CString`]
@@ -870,6 +873,7 @@ impl From<CString> for Arc<CStr> {
     }
 }
 
+#[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Arc<CStr> {
     /// Converts a `&CStr` into a `Arc<CStr>`,
