@@ -646,7 +646,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // now get all predicates in the same types as the where bounds, so we can chain them
         let predicates_from_where =
-            where_predicates.iter().flatten().map(|bounds| bounds.iter()).flatten();
+            where_predicates.iter().flatten().flat_map(|bounds| bounds.iter());
 
         // extract all bounds from the source code using their spans
         let all_matching_bounds_strs = expected_generic_param

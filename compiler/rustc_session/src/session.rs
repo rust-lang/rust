@@ -238,7 +238,7 @@ impl Session {
             }
             diag.emit();
             // If we should err, make sure we did.
-            if must_err && !self.has_errors().is_some() {
+            if must_err && self.has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.err(
                     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature \
