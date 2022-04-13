@@ -188,7 +188,6 @@ impl<T: ?Sized> const From<NonNull<T>> for Unique<T> {
     /// This conversion is infallible since `NonNull` cannot be null.
     #[inline]
     fn from(pointer: NonNull<T>) -> Self {
-        // SAFETY: A `NonNull` cannot be null
         Unique { pointer, _marker: PhantomData }
     }
 }
