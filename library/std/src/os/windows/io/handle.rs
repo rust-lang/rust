@@ -220,6 +220,7 @@ impl TryFrom<HandleOrInvalid> for OwnedHandle {
 
 /// This is the error type used by [`HandleOrNull`] when attempting to convert
 /// into a handle, to indicate that the value is null.
+// The empty field prevents constructing this, and allows extending it in the future.
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NullHandleError(());
@@ -237,6 +238,7 @@ impl crate::error::Error for NullHandleError {}
 /// This is the error type used by [`HandleOrInvalid`] when attempting to
 /// convert into a handle, to indicate that the value is
 /// `INVALID_HANDLE_VALUE`.
+// The empty field prevents constructing this, and allows extending it in the future.
 #[unstable(feature = "io_safety", issue = "87074")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InvalidHandleError(());
