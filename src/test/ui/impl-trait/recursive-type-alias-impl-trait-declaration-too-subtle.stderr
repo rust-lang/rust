@@ -1,25 +1,14 @@
-error: unconstrained opaque type
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:4:16
+error: cannot implement trait on type alias impl trait
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:20:21
+   |
+LL |     impl PartialEq<(Foo, i32)> for Bar {
+   |                     ^^^
+   |
+note: type alias impl trait defined here
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:16:16
    |
 LL |     type Foo = impl PartialEq<(Foo, i32)>;
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
 
-error: unconstrained opaque type
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:17:16
-   |
-LL |     type Foo = impl PartialEq<(Foo, i32)>;
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `Foo` must be used in combination with a concrete type within the same module
+error: aborting due to previous error
 
-error[E0276]: impl has stricter requirements than trait
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle.rs:23:9
-   |
-LL |         fn eq(&self, _other: &(Bar, i32)) -> bool {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl has extra requirement `b::Bar: PartialEq<(b::Bar, i32)>`
-
-error: aborting due to 3 previous errors
-
-For more information about this error, try `rustc --explain E0276`.

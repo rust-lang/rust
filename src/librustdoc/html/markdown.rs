@@ -1452,8 +1452,10 @@ fn init_id_map() -> FxHashMap<String, usize> {
     map.insert("trait-implementations".to_owned(), 1);
     map.insert("synthetic-implementations".to_owned(), 1);
     map.insert("blanket-implementations".to_owned(), 1);
-    map.insert("associated-types".to_owned(), 1);
-    map.insert("associated-const".to_owned(), 1);
+    map.insert("required-associated-types".to_owned(), 1);
+    map.insert("provided-associated-types".to_owned(), 1);
+    map.insert("provided-associated-consts".to_owned(), 1);
+    map.insert("required-associated-consts".to_owned(), 1);
     map.insert("required-methods".to_owned(), 1);
     map.insert("provided-methods".to_owned(), 1);
     map.insert("implementors".to_owned(), 1);

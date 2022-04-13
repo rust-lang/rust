@@ -8,7 +8,7 @@
 use RibKind::*;
 
 use crate::{path_names_to_string, BindingError, Finalize, LexicalScopeBinding};
-use crate::{Module, ModuleOrUniformRoot, ParentScope, PathResult};
+use crate::{Module, ModuleOrUniformRoot, NameBinding, ParentScope, PathResult};
 use crate::{ResolutionError, Resolver, Segment, UseError};
 
 use rustc_ast::ptr::P;
@@ -487,6 +487,7 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                         self_ty,
                         TypeNS,
                         Finalize::SimplePath(ty.id, ty.span),
+                        None,
                     )
                     .map_or(Res::Err, |d| d.res());
                 self.r.record_partial_res(ty.id, PartialRes::new(res));
@@ -676,12 +677,8 @@ impl<'a: 'ast, 'ast> Visitor<'ast> for LateResolutionVisitor<'a, '_, 'ast> {
                     // checking.
                     if path.segments.len() == 1 && path.segments[0].args.is_none() {
                         let mut check_ns = |ns| {
-                            self.resolve_ident_in_lexical_scope(
-                                path.segments[0].ident,
-                                ns,
-                                Finalize::No,
-                            )
-                            .is_some()
+                            self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
+                                .is_some()
                         };
                         if !check_ns(TypeNS) && check_ns(ValueNS) {
                             // This must be equivalent to `visit_anon_const`, but we cannot call it
@@ -750,11 +747,27 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         }
     }
 
+    fn maybe_resolve_ident_in_lexical_scope(
+        &mut self,
+        ident: Ident,
+        ns: Namespace,
+    ) -> Option<LexicalScopeBinding<'a>> {
+        self.r.resolve_ident_in_lexical_scope(
+            ident,
+            ns,
+            &self.parent_scope,
+            Finalize::No,
+            &self.ribs[ns],
+            None,
+        )
+    }
+
     fn resolve_ident_in_lexical_scope(
         &mut self,
         ident: Ident,
         ns: Namespace,
         finalize: Finalize,
+        unusable_binding: Option<&'a NameBinding<'a>>,
     ) -> Option<LexicalScopeBinding<'a>> {
         self.r.resolve_ident_in_lexical_scope(
             ident,
@@ -762,6 +775,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             &self.parent_scope,
             finalize,
             &self.ribs[ns],
+            unusable_binding,
         )
     }
 
@@ -771,7 +785,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         opt_ns: Option<Namespace>, // `None` indicates a module path in import
         finalize: Finalize,
     ) -> PathResult<'a> {
-        self.r.resolve_path_with_ribs(path, opt_ns, &self.parent_scope, finalize, Some(&self.ribs))
+        self.r.resolve_path_with_ribs(
+            path,
+            opt_ns,
+            &self.parent_scope,
+            finalize,
+            Some(&self.ribs),
+            None,
+        )
     }
 
     // AST resolution
@@ -934,19 +955,16 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             };
 
             for &ns in nss {
-                match self.resolve_ident_in_lexical_scope(ident, ns, Finalize::No) {
+                match self.maybe_resolve_ident_in_lexical_scope(ident, ns) {
                     Some(LexicalScopeBinding::Res(..)) => {
                         report_error(self, ns);
                     }
                     Some(LexicalScopeBinding::Item(binding)) => {
-                        let orig_unusable_binding =
-                            replace(&mut self.r.unusable_binding, Some(binding));
-                        if let Some(LexicalScopeBinding::Res(..)) =
-                            self.resolve_ident_in_lexical_scope(ident, ns, Finalize::No)
+                        if let Some(LexicalScopeBinding::Res(..)) = self
+                            .resolve_ident_in_lexical_scope(ident, ns, Finalize::No, Some(binding))
                         {
                             report_error(self, ns);
                         }
-                        self.r.unusable_binding = orig_unusable_binding;
                     }
                     None => {}
                 }
@@ -1802,7 +1820,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         // also be interpreted as a path to e.g. a constant, variant, etc.
         let is_syntactic_ambiguity = !has_sub && bm == BindingMode::ByValue(Mutability::Not);
 
-        let ls_binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, Finalize::No)?;
+        let ls_binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS)?;
         let (res, binding) = match ls_binding {
             LexicalScopeBinding::Item(binding)
                 if is_syntactic_ambiguity && binding.is_ambiguity() =>
@@ -1868,6 +1886,15 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             }
             Res::Def(DefKind::Fn, _) | Res::Local(..) | Res::Err => {
                 // These entities are explicitly allowed to be shadowed by fresh bindings.
+                None
+            }
+            Res::SelfCtor(_) => {
+                // We resolve `Self` in pattern position as an ident sometimes during recovery,
+                // so delay a bug instead of ICEing.
+                self.r.session.delay_span_bug(
+                    ident.span,
+                    "unexpected `SelfCtor` in pattern, expected identifier"
+                );
                 None
             }
             _ => span_bug!(
@@ -2071,17 +2098,14 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
     }
 
     fn self_type_is_available(&mut self) -> bool {
-        let binding = self.resolve_ident_in_lexical_scope(
-            Ident::with_dummy_span(kw::SelfUpper),
-            TypeNS,
-            Finalize::No,
-        );
+        let binding = self
+            .maybe_resolve_ident_in_lexical_scope(Ident::with_dummy_span(kw::SelfUpper), TypeNS);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 
     fn self_value_is_available(&mut self, self_span: Span) -> bool {
         let ident = Ident::new(kw::SelfLower, self_span);
-        let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS, Finalize::No);
+        let binding = self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS);
         if let Some(LexicalScopeBinding::Res(res)) = binding { res != Res::Err } else { false }
     }
 

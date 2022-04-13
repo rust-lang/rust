@@ -142,6 +142,38 @@ help: consider further restricting this bound
 LL |     T: B + Trait + Copy,
    |          ++++++++++++++
 
-error: aborting due to 9 previous errors
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:83:9
+   |
+LL | fn existing_colon_in_where<T>(t: T)
+   |                               - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+...
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider further restricting this bound
+   |
+LL |     T: Copy,
+   |        ++++
+
+error[E0382]: use of moved value: `t`
+  --> $DIR/use_of_moved_value_copy_suggestions.rs:75:9
+   |
+LL | fn existing_colon<T:>(t: T) {
+   |                       - move occurs because `t` has type `T`, which does not implement the `Copy` trait
+LL |
+LL |     [t, t];
+   |      -  ^ value used here after move
+   |      |
+   |      value moved here
+   |
+help: consider restricting type parameter `T`
+   |
+LL | fn existing_colon<T: Copy>(t: T) {
+   |                      ++++
+
+error: aborting due to 11 previous errors
 
 For more information about this error, try `rustc --explain E0382`.

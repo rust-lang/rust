@@ -1,10 +1,14 @@
-error: unconstrained opaque type
+error: cannot implement trait on type alias impl trait
+  --> $DIR/nested-tait-inference3.rs:10:10
+   |
+LL | impl Foo<FooX> for () { }
+   |          ^^^^
+   |
+note: type alias impl trait defined here
   --> $DIR/nested-tait-inference3.rs:6:13
    |
 LL | type FooX = impl Debug;
    |             ^^^^^^^^^^
-   |
-   = note: `FooX` must be used in combination with a concrete type within the same module
 
 error: aborting due to previous error
 

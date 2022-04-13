@@ -297,6 +297,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     Some(TypeNS),
                     parent_scope,
                     if finalize { Finalize::SimplePath(id, path.span) } else { Finalize::No },
+                    None,
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
@@ -1124,12 +1125,11 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             });
         } else {
             for ident in single_imports.iter().cloned() {
-                let result = self.r.resolve_ident_in_module(
+                let result = self.r.maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
                     &self.parent_scope,
-                    None,
                 );
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span);

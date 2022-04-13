@@ -18,6 +18,7 @@ impl<T: std::fmt::Debug> AnotherTrait for T {}
 // This is in error, because we cannot assume that `OpaqueType: !Debug`
 impl AnotherTrait for D<OpaqueType> {
     //~^ ERROR conflicting implementations of trait `AnotherTrait` for type `D<OpaqueType>`
+    //~| ERROR cannot implement trait on type alias impl trait
 }
 
 fn main() {}
