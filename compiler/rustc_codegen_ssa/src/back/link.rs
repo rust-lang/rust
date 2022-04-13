@@ -2607,8 +2607,6 @@ fn add_gcc_ld_path(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
                     }
                 }
             }
-        } else {
-            sess.fatal("option `-Z gcc-ld` is used even though linker flavor is not gcc");
         }
     }
 }
