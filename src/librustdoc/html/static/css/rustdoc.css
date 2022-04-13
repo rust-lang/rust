@@ -618,7 +618,7 @@ h2.location a {
 	position: relative;
 }
 
-.docblock > :not(.information) {
+.docblock > :not(.information):not(.more-examples-toggle) {
 	max-width: 100%;
 	overflow-x: auto;
 }
@@ -840,8 +840,8 @@ h2.small-section-header > .anchor {
 	content: '§';
 }
 
-.docblock a:not(.srclink):not(.test-arrow):hover,
-.docblock-short a:not(.srclink):not(.test-arrow):hover, .item-info a {
+.docblock a:not(.srclink):not(.test-arrow):not(.scrape-help):hover,
+.docblock-short a:not(.srclink):not(.test-arrow):not(.scrape-help):hover, .item-info a {
 	text-decoration: underline;
 }
 
@@ -2038,19 +2038,43 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 
 /* Begin: styles for --scrape-examples feature */
 
+.scraped-example-list .scrape-help {
+	margin-left: 10px;
+	padding: 0 4px;
+	font-weight: normal;
+	font-size: 12px;
+	position: relative;
+	bottom: 1px;
+	background: transparent;
+	border-width: 1px;
+	border-style: solid;
+	border-radius: 50px;
+}
+
 .scraped-example-title {
 	font-family: 'Fira Sans';
 }
 
-.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
-	overflow: hidden;
+.scraped-example .code-wrapper {
+	position: relative;
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.scraped-example:not(.expanded) .code-wrapper {
 	max-height: 240px;
 }
 
-.scraped-example:not(.expanded) .code-wrapper .example-wrap pre.rust {
+.scraped-example:not(.expanded) .code-wrapper pre {
 	overflow-y: hidden;
 	max-height: 240px;
 	padding-bottom: 0;
+}
+
+.scraped-example:not(.expanded) .code-wrapper pre.line-numbers {
+	overflow-x: hidden;
 }
 
 .scraped-example .code-wrapper .prev {
@@ -2077,14 +2101,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	cursor: pointer;
 }
 
-.scraped-example .code-wrapper {
-	position: relative;
-	display: flex;
-	flex-direction: row;
-	flex-wrap: wrap;
-	width: 100%;
-}
-
 .scraped-example:not(.expanded) .code-wrapper:before {
 	content: " ";
 	width: 100%;
@@ -2092,7 +2108,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	position: absolute;
 	z-index: 100;
 	top: 0;
-	background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
 }
 
 .scraped-example:not(.expanded) .code-wrapper:after {
@@ -2102,12 +2117,6 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	position: absolute;
 	z-index: 100;
 	bottom: 0;
-	background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-}
-
-.scraped-example:not(.expanded) .code-wrapper {
-	overflow: hidden;
-	max-height: 240px;
 }
 
 .scraped-example .code-wrapper .line-numbers {
@@ -2126,34 +2135,37 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	margin-bottom: 0;
 }
 
+.scraped-example:not(.expanded) .code-wrapper .example-wrap {
+	overflow-x: hidden;
+}
+
 .scraped-example .code-wrapper .example-wrap pre.rust {
 	overflow-x: inherit;
 	width: inherit;
 	overflow-y: hidden;
 }
 
-.scraped-example .example-wrap .rust span.highlight {
-	background: #fcffd6;
-}
-
-.scraped-example .example-wrap .rust span.highlight.focus {
-	background: #f6fdb0;
-}
 
 .more-examples-toggle {
+	max-width: calc(100% + 25px);
 	margin-top: 10px;
+	margin-left: -25px;
 }
 
-.more-examples-toggle summary {
-	color: #999;
+.more-examples-toggle .hide-more {
+	margin-left: 25px;
+	margin-bottom: 5px;
+	cursor: pointer;
+}
+
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
 	font-family: 'Fira Sans';
 }
 
 .more-scraped-examples {
-	margin-left: 25px;
+	margin-left: 5px;
 	display: flex;
 	flex-direction: row;
-	width: calc(100% - 25px);
 }
 
 .more-scraped-examples-inner {
@@ -2169,13 +2181,8 @@ details.rustdoc-toggle[open] > summary.hideme::after {
 	cursor: pointer;
 }
 
-.toggle-line:hover .toggle-line-inner {
-	background: #aaa;
-}
-
 .toggle-line-inner {
 	min-width: 2px;
-	background: #ddd;
 	height: 100%;
 }
 

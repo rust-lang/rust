@@ -9,6 +9,7 @@
     - [Linking to items by name](write-documentation/linking-to-items-by-name.md)
     - [Documentation tests](write-documentation/documentation-tests.md)
 - [Rustdoc-specific lints](lints.md)
+- [Scraped examples](scraped-examples.md)
 - [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)
 - [Deprecated features](deprecated-features.md)
