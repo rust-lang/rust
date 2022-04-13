@@ -173,6 +173,9 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
     if let Some(edit) = assign_expr(file, offset) {
         return Some(edit);
     }
+    if let Some(edit) = assign_to_eq(file, offset) {
+        return Some(edit);
+    }
 
     return None;
 
@@ -182,13 +185,13 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
             return None;
         }
 
+        // Parent must be `ExprStmt` or `StmtList` for `;` to be valid.
         if let Some(expr_stmt) = ast::ExprStmt::cast(binop.syntax().parent()?) {
             if expr_stmt.semicolon_token().is_some() {
                 return None;
             }
         } else {
             if !ast::StmtList::can_cast(binop.syntax().parent()?.kind()) {
-                // Parent must be `ExprStmt` or `StmtList` for `;` to be valid.
                 return None;
             }
         }
@@ -203,6 +206,25 @@ fn on_eq_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
         }
         let offset = expr.syntax().text_range().end();
         Some(TextEdit::insert(offset, ";".to_string()))
+    }
+
+    /// `a =$0 b;` removes the semicolon if an expression is valid in this context.
+    fn assign_to_eq(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
+        let binop: ast::BinExpr = find_node_at_offset(file.syntax(), offset)?;
+        if !matches!(binop.op_kind(), Some(ast::BinaryOp::CmpOp(ast::CmpOp::Eq { negated: false })))
+        {
+            return None;
+        }
+
+        let expr_stmt = ast::ExprStmt::cast(binop.syntax().parent()?)?;
+        let semi = expr_stmt.semicolon_token()?;
+
+        if expr_stmt.syntax().next_sibling().is_some() {
+            // Not the last statement in the list.
+            return None;
+        }
+
+        Some(TextEdit::delete(semi.text_range()))
     }
 
     fn let_stmt(file: &SourceFile, offset: TextSize) -> Option<TextEdit> {
@@ -419,6 +441,53 @@ fn f(x: u8) {
             r#"
 fn f() {
     g(i $0 0);
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn assign_to_eq() {
+        type_char(
+            '=',
+            r#"
+fn f(a: u8) {
+    a =$0 0;
+}
+"#,
+            r#"
+fn f(a: u8) {
+    a == 0
+}
+"#,
+        );
+        type_char(
+            '=',
+            r#"
+fn f(a: u8) {
+    a $0= 0;
+}
+"#,
+            r#"
+fn f(a: u8) {
+    a == 0
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
+fn f(a: u8) {
+    let e = a =$0 0;
+}
+"#,
+        );
+        type_char_noop(
+            '=',
+            r#"
+fn f(a: u8) {
+    let e = a =$0 0;
+    e
 }
 "#,
         );
