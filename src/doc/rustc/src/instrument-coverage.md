@@ -145,7 +145,7 @@ $ llvm-cov show -Xdemangler=rustfilt target/debug/examples/formatjson5 \
     -name=add_quoted_string
 ```
 
-<img alt="Screenshot of sample `llvm-cov show` result, for function add_quoted_string" src="img/llvm-cov-show-01.png" class="center"/>
+<img alt="Screenshot of sample `llvm-cov show` result, for function add_quoted_string" src="images/llvm-cov-show-01.png" class="center"/>
 <br/>
 <br/>
 
