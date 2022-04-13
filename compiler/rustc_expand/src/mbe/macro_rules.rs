@@ -435,7 +435,7 @@ pub fn compile_declarative_macro(
         ),
     ];
     // Convert it into `MatcherLoc` form.
-    let argument_gram = mbe::macro_parser::compute_locs(&sess.parse_sess, &argument_gram);
+    let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);
 
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let mut tt_parser =
@@ -540,7 +540,7 @@ pub fn compile_declarative_macro(
                 // Ignore the delimiters around the matcher.
                 match lhs {
                     mbe::TokenTree::Delimited(_, delimited) => {
-                        mbe::macro_parser::compute_locs(&sess.parse_sess, &delimited.tts)
+                        mbe::macro_parser::compute_locs(&delimited.tts)
                     }
                     _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "malformed macro lhs"),
                 }
