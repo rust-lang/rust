@@ -31,7 +31,7 @@ use ty::util::IntTypeExt;
 
 use rustc_type_ir::sty::TyKind::*;
 use rustc_type_ir::RegionKind as IrRegionKind;
-use rustc_type_ir::TyKind as IrTyKind;
+use rustc_type_ir::{TraitObjectRepresentation, TyKind as IrTyKind};
 
 // Re-export the `TyKind` from `rustc_type_ir` here for convenience
 #[rustc_diagnostic_item = "TyKind"]
@@ -692,6 +692,9 @@ impl<'tcx> ExistentialPredicate<'tcx> {
 }
 
 impl<'tcx> Binder<'tcx, ExistentialPredicate<'tcx>> {
+    /// Given an existential predicate like `?Self: PartialEq<u32>` (e.g., derived from `dyn PartialEq<u32>`),
+    /// and a concrete type `self_ty`, returns a full predicate where the existentially quantified variable `?Self`
+    /// has been replaced with `self_ty` (e.g., `self_ty: PartialEq<u32>`, in our example).
     pub fn with_self_ty(&self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> ty::Predicate<'tcx> {
         use crate::ty::ToPredicate;
         match self.skip_binder() {
@@ -1849,7 +1852,12 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_trait(self) -> bool {
-        matches!(self.kind(), Dynamic(..))
+        matches!(self.kind(), Dynamic(_, _, TraitObjectRepresentation::Unsized))
+    }
+
+    #[inline]
+    pub fn is_dyn_star(self) -> bool {
+        matches!(self.kind(), Dynamic(_, _, TraitObjectRepresentation::Sized))
     }
 
     #[inline]

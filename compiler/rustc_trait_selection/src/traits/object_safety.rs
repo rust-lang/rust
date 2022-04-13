@@ -20,8 +20,8 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::abstract_const::{walk_abstract_const, AbstractConst};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts, Subst};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
-    TraitObjectRepresentation,
+    self, EarlyBinder, TraitObjectRepresentation, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitor,
 };
 use rustc_middle::ty::{Predicate, ToPredicate};
 use rustc_session::lint::builtin::WHERE_CLAUSES_OBJECT_SAFETY;
