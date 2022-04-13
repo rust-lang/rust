@@ -59,5 +59,17 @@ note: immutable borrow here
 LL | fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
    |                           ^^^^^^^     ^^^^^^^
 
-error: aborting due to 5 previous errors
+error: mutable borrow from immutable input(s)
+  --> $DIR/mut_from_ref.rs:44:35
+   |
+LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
+   |                                   ^^^^^^^^
+   |
+note: immutable borrow here
+  --> $DIR/mut_from_ref.rs:44:26
+   |
+LL | unsafe fn also_broken(x: &u32) -> &mut u32 {
+   |                          ^^^^
+
+error: aborting due to 6 previous errors
 
