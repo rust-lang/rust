@@ -76,7 +76,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // (i.e., if there are no placeholders).
         let next_universe = self.universe().next_universe();
 
+        let mut region_replaced = false;
+
         let fld_r = |br: ty::BoundRegion| {
+            region_replaced = true;
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
                 name: br.kind,
@@ -100,11 +103,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
 
-        let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
+        let result =
+            self.tcx.replace_escaping_bound_vars(binder.skip_binder(), fld_r, fld_t, fld_c);
 
         // If there were higher-ranked regions to replace, then actually create
         // the next universe (this avoids needlessly creating universes).
-        if !map.is_empty() {
+        if region_replaced {
             let n_u = self.create_next_universe();
             assert_eq!(n_u, next_universe);
         }
@@ -113,8 +117,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "replace_bound_vars_with_placeholders(\
              next_universe={:?}, \
              result={:?}, \
-             map={:?})",
-            next_universe, result, map,
+             region_replaced={:?})",
+            next_universe, result, region_replaced,
         );
 
         result
