@@ -179,6 +179,7 @@ macro_rules! __thread_local_inner {
     // used to generate the `LocalKey` value for const-initialized thread locals
     (@key $t:ty, const $init:expr) => {{
         #[cfg_attr(not(windows), inline(always))] // see comments below
+        #[deny(unsafe_op_in_unsafe_fn)]
         unsafe fn __getit(
             _init: $crate::option::Option<&mut $crate::option::Option<$t>>,
         ) -> $crate::option::Option<&'static $t> {
@@ -193,7 +194,7 @@ macro_rules! __thread_local_inner {
             #[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
             {
                 static mut VAL: $t = INIT_EXPR;
-                $crate::option::Option::Some(&VAL)
+                unsafe { $crate::option::Option::Some(&VAL) }
             }
 
             // If the platform has support for `#[thread_local]`, use it.
