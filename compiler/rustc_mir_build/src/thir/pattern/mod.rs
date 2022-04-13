@@ -488,9 +488,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
             Ok(value) => {
-                let const_ =
-                    ty::Const::from_value(self.tcx, value, self.typeck_results.node_type(id));
-
+                let const_ = ty::Const::from_value(self.tcx, value, ty);
                 let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);
 
                 if !is_associated_const {
@@ -585,7 +583,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let lit_input =
             LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
         match self.tcx.at(expr.span).lit_to_const(lit_input) {
-            Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
+            Ok(constant) => *self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
             Err(LitToConstError::Reported) => PatKind::Wild,
             Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
@@ -739,6 +737,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 crate fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
     a: ty::Const<'tcx>,
@@ -746,8 +745,6 @@ crate fn compare_const_vals<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    trace!("compare_const_vals: {:?}, {:?}", a, b);
-
     let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);

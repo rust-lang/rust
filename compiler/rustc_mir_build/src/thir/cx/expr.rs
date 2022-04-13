@@ -8,7 +8,7 @@ use rustc_middle::hir::place::Place as HirPlace;
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
-use rustc_middle::mir::{BinOp, BorrowKind, Field, UnOp};
+use rustc_middle::mir::{self, BinOp, BorrowKind, Field, UnOp};
 use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -491,7 +491,11 @@ impl<'tcx> Cx<'tcx> {
                             hir::InlineAsmOperand::Const { ref anon_const } => {
                                 let anon_const_def_id =
                                     self.tcx.hir().local_def_id(anon_const.hir_id);
-                                let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
+                                let value = mir::ConstantKind::from_anon_const(
+                                    self.tcx,
+                                    anon_const_def_id,
+                                    self.param_env,
+                                );
                                 let span = self.tcx.hir().span(anon_const.hir_id);
 
                                 InlineAsmOperand::Const { value, span }

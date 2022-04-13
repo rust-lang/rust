@@ -634,6 +634,7 @@ pub(super) fn thir_abstract_const<'tcx>(
     }
 }
 
+#[instrument(skip(tcx), level = "debug")]
 pub(super) fn try_unify_abstract_consts<'tcx>(
     tcx: TyCtxt<'tcx>,
     (a, b): (ty::Unevaluated<'tcx, ()>, ty::Unevaluated<'tcx, ()>),
