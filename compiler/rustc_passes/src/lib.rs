@@ -23,6 +23,7 @@ extern crate tracing;
 
 use rustc_middle::ty::query::Providers;
 
+pub mod autodiff;
 mod check_attr;
 mod check_const;
 pub mod dead;
@@ -59,4 +60,5 @@ pub fn provide(providers: &mut Providers) {
     region::provide(providers);
     stability::provide(providers);
     upvars::provide(providers);
+    autodiff::provide(providers);
 }

@@ -23,4 +23,5 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn create_compiler_used_variable(&self);
     /// Declares the extern "C" main function for the entry point. Returns None if the symbol already exists.
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function>;
+    fn create_autodiff(&self) -> Vec<Self::Function>;
 }

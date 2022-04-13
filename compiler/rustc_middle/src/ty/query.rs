@@ -1,6 +1,7 @@
 use crate::dep_graph;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintLevelMap;
+use crate::metadata::DiffItems;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};

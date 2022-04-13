@@ -588,6 +588,17 @@ impl<'ll, 'tcx> MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             None
         }
     }
+
+    fn create_autodiff(&self) -> Vec<Self::Function> {
+        for item in self.tcx.autodiff_functions(()) {
+            dbg!(&item);
+
+            let instance = Instance::mono(self.tcx, item.source);
+            dbg!(&self.instances.borrow().get(&instance));
+        }
+
+        Vec::new()
+    }
 }
 
 impl<'ll> CodegenCx<'ll, '_> {

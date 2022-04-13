@@ -440,6 +440,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let no_builtins = tcx.sess.contains_name(crate_attrs, sym::no_builtins);
     let is_compiler_builtins = tcx.sess.contains_name(crate_attrs, sym::compiler_builtins);
 
+
     let crate_info = CrateInfo::new(tcx, target_cpu);
 
     let regular_config =
@@ -1525,6 +1526,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     .map_err(|_| ())?
             };
             compiled_modules.push(module);
+            //cgcx.backend.create_autodiff();
         }
 
         // Drop to print timings
