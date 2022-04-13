@@ -132,6 +132,16 @@ pub struct ReadDir(fs_imp::ReadDir);
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
 /// path or possibly other metadata through per-platform extension traits.
+///
+/// # Platform-specific behavior
+///
+/// On Unix, the `DirEntry` struct contains an internal reference to the open
+/// directory. Holding `DirEntry` objects will consume a file handle even
+/// after the `ReadDir` iterator is dropped.
+///
+/// Note that this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct DirEntry(fs_imp::DirEntry);
 

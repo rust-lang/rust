@@ -1,14 +1,28 @@
 /* global addClass, hasClass, removeClass, onEach */
 
 (function () {
-    // Scroll code block to put the given code location in the middle of the viewer
+    // Number of lines shown when code viewer is not expanded
+    const MAX_LINES = 10;
+
+    // Scroll code block to the given code location
     function scrollToLoc(elt, loc) {
-        var wrapper = elt.querySelector(".code-wrapper");
-        var halfHeight = wrapper.offsetHeight / 2;
         var lines = elt.querySelector('.line-numbers');
-        var offsetMid = (lines.children[loc[0]].offsetTop
-                         + lines.children[loc[1]].offsetTop) / 2;
-        var scrollOffset = offsetMid - halfHeight;
+        var scrollOffset;
+
+        // If the block is greater than the size of the viewer,
+        // then scroll to the top of the block. Otherwise scroll
+        // to the middle of the block.
+        if (loc[1] - loc[0] > MAX_LINES) {
+            var line = Math.max(0, loc[0] - 1);
+            scrollOffset = lines.children[line].offsetTop;
+        } else {
+            var wrapper = elt.querySelector(".code-wrapper");
+            var halfHeight = wrapper.offsetHeight / 2;
+            var offsetMid = (lines.children[loc[0]].offsetTop
+                             + lines.children[loc[1]].offsetTop) / 2;
+            scrollOffset = offsetMid - halfHeight;
+        }
+
         lines.scrollTo(0, scrollOffset);
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
@@ -70,8 +84,10 @@
     onEach(document.querySelectorAll('.more-examples-toggle'), function(toggle) {
         // Allow users to click the left border of the <details> section to close it,
         // since the section can be large and finding the [+] button is annoying.
-        toggle.querySelector('.toggle-line').addEventListener('click', function() {
-            toggle.open = false;
+        toggle.querySelectorAll('.toggle-line, .hide-more').forEach(button => {
+            button.addEventListener('click', function() {
+                toggle.open = false;
+            });
         });
 
         var moreExamples = toggle.querySelectorAll('.scraped-example');

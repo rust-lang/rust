@@ -70,7 +70,11 @@ def get(base, url, path, checksums, verbose=False, do_verify=True, help_on_error
     try:
         if do_verify:
             if url not in checksums:
-                raise RuntimeError("src/stage0.json doesn't contain a checksum for {}".format(url))
+                raise RuntimeError(("src/stage0.json doesn't contain a checksum for {}. "
+                                    "Pre-built artifacts might not available for this "
+                                    "target at this time, see https://doc.rust-lang.org/nightly"
+                                    "/rustc/platform-support.html for more information.")
+                                   .format(url))
             sha256 = checksums[url]
             if os.path.exists(path):
                 if verify(path, sha256, False):

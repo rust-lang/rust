@@ -17,8 +17,8 @@ use super::print_item::{full_path, item_path, print_item};
 use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, settings, AllTypes, LinkFromSrc, NameDoc, StylePath,
-    BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, settings, AllTypes,
+    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
 };
 
 use crate::clean::{self, types::ExternalLocation, ExternalCrate};
@@ -551,6 +551,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
+        let scrape_examples_help_file = self.dst.join("scrape-examples-help.html");
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {
@@ -606,6 +607,20 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &self.shared.style_files,
         );
         self.shared.fs.write(settings_file, v)?;
+
+        if self.shared.layout.scrape_examples_extension {
+            page.title = "About scraped examples";
+            page.description = "How the scraped examples feature works in Rustdoc";
+            let v = layout::render(
+                &self.shared.layout,
+                &page,
+                "",
+                scrape_examples_help(&*self.shared),
+                &self.shared.style_files,
+            );
+            self.shared.fs.write(scrape_examples_help_file, v)?;
+        }
+
         if let Some(ref redirections) = self.shared.redirections {
             if !redirections.borrow().is_empty() {
                 let redirect_map_path =

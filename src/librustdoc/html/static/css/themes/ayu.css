@@ -611,6 +611,18 @@ input:checked + .slider {
 	background-color: #ffb454 !important;
 }
 
+
+.scraped-example-list .scrape-help {
+	border-color: #aaa;
+	color: #eee;
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: white;
+	color: white;
+}
+.more-examples-toggle summary, .more-examples-toggle .hide-more {
+	color: #999;
+}
 .scraped-example .example-wrap .rust span.highlight {
 	background: rgb(91, 59, 1);
 }
@@ -624,8 +636,8 @@ input:checked + .slider {
 	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
 }
 .toggle-line-inner {
-	background: #616161;
+	background: #999;
 }
 .toggle-line:hover .toggle-line-inner {
-	background: #898989;
+	background: #c5c5c5;
 }

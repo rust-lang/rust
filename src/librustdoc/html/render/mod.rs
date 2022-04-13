@@ -75,8 +75,10 @@ use crate::html::format::{
 use crate::html::highlight;
 use crate::html::markdown::{HeadingOffset, IdMap, Markdown, MarkdownHtml, MarkdownSummaryLine};
 use crate::html::sources;
+use crate::html::static_files::SCRAPE_EXAMPLES_HELP_MD;
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::try_none;
+use crate::DOC_RUST_LANG_ORG_CHANNEL;
 
 /// A pair of name and its optional document.
 crate type NameDoc = (String, Option<String>);
@@ -458,6 +460,34 @@ fn settings(root_path: &str, suffix: &str, theme_names: Vec<String>) -> Result<S
         root_path = root_path,
         suffix = suffix
     ))
+}
+
+fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
+    let mut content = SCRAPE_EXAMPLES_HELP_MD.to_owned();
+    content.push_str(&format!(
+      "## More information\n\n\
+      If you want more information about this feature, please read the [corresponding chapter in the Rustdoc book]({}/rustdoc/scraped-examples.html).",
+      DOC_RUST_LANG_ORG_CHANNEL));
+
+    let mut ids = IdMap::default();
+    format!(
+        "<div class=\"main-heading\">\
+            <h1 class=\"fqn\">\
+                <span class=\"in-band\">About scraped examples</span>\
+            </h1>\
+        </div>\
+        <div>{}</div>",
+        Markdown {
+            content: &content,
+            links: &[],
+            ids: &mut ids,
+            error_codes: shared.codes,
+            edition: shared.edition(),
+            playground: &shared.playground,
+            heading_offset: HeadingOffset::H1
+        }
+        .into_string()
+    )
 }
 
 fn document(
@@ -2743,7 +2773,9 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
           <span></span>\
           <h5 id=\"{id}\">\
              <a href=\"#{id}\">Examples found in repository</a>\
+             <a class=\"scrape-help\" href=\"{root_path}scrape-examples-help.html\">?</a>\
           </h5>",
+        root_path = cx.root_path(),
         id = id
     );
 
@@ -2795,9 +2827,10 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
             .locations
             .iter()
             .map(|loc| {
-                let (byte_lo, byte_hi) = loc.call_expr.byte_span;
+                let (byte_lo, byte_hi) = loc.call_ident.byte_span;
                 let (line_lo, line_hi) = loc.call_expr.line_span;
                 let byte_range = (byte_lo - byte_min, byte_hi - byte_min);
+
                 let line_range = (line_lo - line_min, line_hi - line_min);
                 let (line_url, line_title) = link_to_loc(call_data, loc);
 
@@ -2913,6 +2946,7 @@ fn render_call_locations(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item) {
                   <summary class=\"hideme\">\
                      <span>More examples</span>\
                   </summary>\
+                  <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
                     <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
                     <div class=\"more-scraped-examples-inner\">"
