@@ -1,8 +1,8 @@
 use crate::convert::From;
 use crate::fmt;
 use crate::marker::{PhantomData, Unsize};
-use crate::mem;
 use crate::ops::{CoerceUnsized, DispatchFromDyn};
+use crate::ptr::NonNull;
 
 /// A wrapper around a raw non-null `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. Useful for building abstractions like
@@ -32,9 +32,8 @@ use crate::ops::{CoerceUnsized, DispatchFromDyn};
 )]
 #[doc(hidden)]
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
 pub struct Unique<T: ?Sized> {
-    pointer: *const T,
+    pointer: NonNull<T>,
     // NOTE: this marker has no consequences for variance, but is necessary
     // for dropck to understand that we logically own a `T`.
     //
@@ -71,9 +70,7 @@ impl<T: Sized> Unique<T> {
     #[must_use]
     #[inline]
     pub const fn dangling() -> Self {
-        // SAFETY: mem::align_of() returns a valid, non-null pointer. The
-        // conditions to call new_unchecked() are thus respected.
-        unsafe { Unique::new_unchecked(crate::ptr::invalid_mut::<T>(mem::align_of::<T>())) }
+        Self::from(NonNull::dangling())
     }
 }
 
@@ -87,15 +84,14 @@ impl<T: ?Sized> Unique<T> {
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
-        unsafe { Unique { pointer: ptr as _, _marker: PhantomData } }
+        unsafe { Unique { pointer: NonNull::new_unchecked(ptr), _marker: PhantomData } }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
     #[inline]
     pub const fn new(ptr: *mut T) -> Option<Self> {
-        if !ptr.is_null() {
-            // SAFETY: The pointer has already been checked and is not null.
-            Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
+        if let Some(pointer) = NonNull::new(ptr) {
+            Some(Unique { pointer, _marker: PhantomData })
         } else {
             None
         }
@@ -105,7 +101,7 @@ impl<T: ?Sized> Unique<T> {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn as_ptr(self) -> *mut T {
-        self.pointer as *mut T
+        self.pointer.as_ptr()
     }
 
     /// Dereferences the content.
@@ -118,7 +114,7 @@ impl<T: ?Sized> Unique<T> {
     pub const unsafe fn as_ref(&self) -> &T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
-        unsafe { &*self.as_ptr() }
+        unsafe { self.pointer.as_ref() }
     }
 
     /// Mutably dereferences the content.
@@ -131,17 +127,14 @@ impl<T: ?Sized> Unique<T> {
     pub const unsafe fn as_mut(&mut self) -> &mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
-        unsafe { &mut *self.as_ptr() }
+        unsafe { self.pointer.as_mut() }
     }
 
     /// Casts to a pointer of another type.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
-        // SAFETY: Unique::new_unchecked() creates a new unique and needs
-        // the given pointer to not be null.
-        // Since we are passing self as a pointer, it cannot be null.
-        unsafe { Unique::new_unchecked(self.as_ptr() as *mut U) }
+        Unique::from(self.pointer.cast())
     }
 }
 
@@ -184,7 +177,17 @@ impl<T: ?Sized> const From<&mut T> for Unique<T> {
     /// This conversion is infallible since references cannot be null.
     #[inline]
     fn from(reference: &mut T) -> Self {
-        // SAFETY: A mutable reference cannot be null
-        unsafe { Unique { pointer: reference as *mut T, _marker: PhantomData } }
+        Self::from(NonNull::from(reference))
+    }
+}
+
+#[unstable(feature = "ptr_internals", issue = "none")]
+impl<T: ?Sized> const From<NonNull<T>> for Unique<T> {
+    /// Converts a `NonNull<T>` to a `Unique<T>`.
+    ///
+    /// This conversion is infallible since `NonNull` cannot be null.
+    #[inline]
+    fn from(pointer: NonNull<T>) -> Self {
+        Unique { pointer, _marker: PhantomData }
     }
 }
