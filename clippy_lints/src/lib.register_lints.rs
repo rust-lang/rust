@@ -433,6 +433,7 @@ store.register_lints(&[
     ptr::PTR_ARG,
     ptr_eq::PTR_EQ,
     ptr_offset_with_cast::PTR_OFFSET_WITH_CAST,
+    pub_use::PUB_USE,
     question_mark::QUESTION_MARK,
     ranges::MANUAL_RANGE_CONTAINS,
     ranges::RANGE_MINUS_ONE,
