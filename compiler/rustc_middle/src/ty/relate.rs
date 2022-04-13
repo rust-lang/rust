@@ -142,11 +142,12 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
     b_subst: SubstsRef<'tcx>,
 ) -> RelateResult<'tcx, SubstsRef<'tcx>> {
     let tcx = relation.tcx();
-    let mut cached_ty = None;
 
-    let params = iter::zip(a_subst, b_subst).enumerate().map(|(i, (a, b))| {
-        let (variance, variance_info) = match variances {
-            Some((ty_def_id, variances)) => {
+    let zipped = iter::zip(a_subst, b_subst);
+    match variances {
+        Some((ty_def_id, variances)) => {
+            let mut cached_ty = None;
+            tcx.mk_substs(zipped.enumerate().map(|(i, (a, b))| {
                 let variance = variances[i];
                 let variance_info = if variance == ty::Invariant {
                     let ty = *cached_ty
@@ -155,14 +156,13 @@ pub fn relate_substs<'tcx, R: TypeRelation<'tcx>>(
                 } else {
                     ty::VarianceDiagInfo::default()
                 };
-                (variance, variance_info)
-            }
-            None => (ty::Invariant, ty::VarianceDiagInfo::default()),
-        };
-        relation.relate_with_variance(variance, variance_info, a, b)
-    });
-
-    tcx.mk_substs(params)
+                relation.relate_with_variance(variance, variance_info, a, b)
+            }))
+        }
+        None => tcx.mk_substs(zipped.map(|(a, b)| {
+            relation.relate_with_variance(ty::Invariant, ty::VarianceDiagInfo::default(), a, b)
+        })),
+    }
 }
 
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
