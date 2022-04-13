@@ -16,7 +16,7 @@ use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
 use rustc_hir::{
     Block, BlockCheckMode, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, Impl, ImplItem, ImplItemKind,
     IsAuto, Item, ItemKind, LoopSource, MatchSource, QPath, TraitItem, TraitItemKind, UnOp, UnsafeSource, Unsafety,
-    Variant, VariantData, VisibilityKind, YieldSource,
+    Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -196,7 +196,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
         _ => return (Pat::Str(""), Pat::Str("")),
     };
-    if matches!(item.vis.node, VisibilityKind::Inherited) {
+    if item.vis_span.is_empty() {
         (start_pat, end_pat)
     } else {
         (Pat::Str("pub"), end_pat)
@@ -217,7 +217,7 @@ fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
         ImplItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
         ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
     };
-    if matches!(item.vis.node, VisibilityKind::Inherited) {
+    if item.vis_span.is_empty() {
         (start_pat, end_pat)
     } else {
         (Pat::Str("pub"), end_pat)
@@ -225,7 +225,7 @@ fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
 }
 
 fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
-    if matches!(def.vis.node, VisibilityKind::Inherited) {
+    if def.vis_span.is_empty() {
         if def.is_positional() {
             (Pat::Str(""), Pat::Str(""))
         } else {
