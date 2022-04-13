@@ -93,6 +93,7 @@ fn main() {
 
     println!("{:?}", std::intrinsics::caller_location());
 
+    #[cfg(feature="master")]
     unsafe {
         test_simd();
     }
@@ -104,6 +105,7 @@ fn main() {
     println!("End");
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_simd() {
     let x = _mm_setzero_si128();
@@ -131,6 +133,7 @@ unsafe fn test_simd() {
     assert_eq!(mask1, 1);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_slli_si128() {
     #[rustfmt::skip]
@@ -158,6 +161,7 @@ unsafe fn test_mm_slli_si128() {
 }
 
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_movemask_epi8() {
     #[rustfmt::skip]
@@ -171,6 +175,7 @@ unsafe fn test_mm_movemask_epi8() {
     assert_eq!(r, 0b10100100_00100101);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "avx2")]
 unsafe fn test_mm256_movemask_epi8() {
     let a = _mm256_set1_epi8(-1);
@@ -179,6 +184,7 @@ unsafe fn test_mm256_movemask_epi8() {
     assert_eq!(r, e);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_add_epi8() {
     let a = _mm_setr_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
@@ -194,6 +200,7 @@ unsafe fn test_mm_add_epi8() {
     assert_eq_m128i(r, e);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_add_pd() {
     let a = _mm_setr_pd(1.0, 2.0);
@@ -202,12 +209,14 @@ unsafe fn test_mm_add_pd() {
     assert_eq_m128d(r, _mm_setr_pd(6.0, 12.0));
 }
 
+#[cfg(feature="master")]
 fn assert_eq_m128i(x: std::arch::x86_64::__m128i, y: std::arch::x86_64::__m128i) {
     unsafe {
         assert_eq!(std::mem::transmute::<_, [u8; 16]>(x), std::mem::transmute::<_, [u8; 16]>(y));
     }
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
     if _mm_movemask_pd(_mm_cmpeq_pd(a, b)) != 0b11 {
@@ -215,12 +224,14 @@ pub unsafe fn assert_eq_m128d(a: __m128d, b: __m128d) {
     }
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_cvtsi128_si64() {
     let r = _mm_cvtsi128_si64(std::mem::transmute::<[i64; 2], _>([5, 0]));
     assert_eq!(r, 5);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse4.1")]
 unsafe fn test_mm_cvtepi8_epi16() {
     let a = _mm_set1_epi8(10);
@@ -233,6 +244,7 @@ unsafe fn test_mm_cvtepi8_epi16() {
     assert_eq_m128i(r, e);
 }
 
+#[cfg(feature="master")]
 #[target_feature(enable = "sse4.1")]
 unsafe fn test_mm_extract_epi8() {
     #[rustfmt::skip]
@@ -246,7 +258,7 @@ unsafe fn test_mm_extract_epi8() {
     assert_eq!(r2, 3);
 }
 
-#[cfg(target_arch = "x86_64")]
+#[cfg(all(feature="master", target_arch = "x86_64"))]
 #[target_feature(enable = "sse2")]
 unsafe fn test_mm_insert_epi16() {
     let a = _mm_setr_epi16(0, 1, 2, 3, 4, 5, 6, 7);

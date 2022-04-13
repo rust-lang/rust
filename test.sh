@@ -14,22 +14,79 @@ fi
 export LD_LIBRARY_PATH="$GCC_PATH"
 export LIBRARY_PATH="$GCC_PATH"
 
-features=
+flags=
+gcc_master_branch=1
+channel="debug"
+func=all
 
-if [[ "$1" == "--features" ]]; then
-    shift
-    features="--features $1"
-    shift
-fi
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --release)
+            codegen_channel=release
+            shift
+            ;;
+        --release-sysroot)
+            sysroot_channel=release
+            shift
+            ;;
+        --no-default-features)
+            gcc_master_branch=0
+            flags="$flags --no-default-features"
+            shift
+            ;;
+        --features)
+            shift
+            flags="$flags --features $1"
+            shift
+            ;;
+        --release)
+            channel="release"
+            shift
+            ;;
+        "--test-rustc")
+            func=test_rustc
+            shift
+            ;;
 
-if [[ "$1" == "--release" ]]; then
+        "--test-libcore")
+            func=test_libcore
+            shift
+            ;;
+
+        "--clean-ui-tests")
+            func=clean_ui_tests
+            shift
+            ;;
+
+        "--std-tests")
+            func=std_tests
+            shift
+            ;;
+
+        "--extended-tests")
+            func=extended_sysroot_tests
+            shift
+            ;;
+
+        "--build-sysroot")
+            func=build_sysroot
+            shift
+            ;;
+        *)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+    esac
+done
+
+if [[ $channel == "release" ]]; then
     export CHANNEL='release'
-    CARGO_INCREMENTAL=1 cargo rustc --release $features
+    CARGO_INCREMENTAL=1 cargo rustc --release $flags
     shift
 else
     echo $LD_LIBRARY_PATH
     export CHANNEL='debug'
-    cargo rustc $features
+    cargo rustc $flags
 fi
 
 if [[ "$1" == "--build" ]]; then
@@ -78,7 +135,11 @@ function std_tests() {
     $RUN_WRAPPER ./target/out/dst_field_align || (echo $?; false)
 
     echo "[AOT] std_example"
-    $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE
+    std_flags="--cfg feature=\"master\""
+    if (( $gcc_master_branch == 0 )); then
+        std_flags=""
+    fi
+    $RUSTC example/std_example.rs --crate-type bin --target $TARGET_TRIPLE $std_flags
     $RUN_WRAPPER ./target/out/std_example --target $TARGET_TRIPLE
 
     echo "[AOT] subslice-patterns-const-eval"
@@ -122,6 +183,10 @@ function test_libcore() {
 #hyperfine --runs ${RUN_RUNS:-10} ./target/out/mod_bench{,_inline} ./target/out/mod_bench_llvm_*
 
 function extended_sysroot_tests() {
+    if (( $gcc_master_branch == 0 )); then
+        return
+    fi
+
     pushd rand
     cargo clean
     echo "[TEST] rust-random/rand"
@@ -208,38 +273,14 @@ function clean_ui_tests() {
     find rust/build/x86_64-unknown-linux-gnu/test/ui/ -name stamp -exec rm -rf {} \;
 }
 
-case $1 in
-    "--test-rustc")
-        test_rustc
-        ;;
+function all() {
+    clean
+    mini_tests
+    build_sysroot
+    std_tests
+    test_libcore
+    extended_sysroot_tests
+    test_rustc
+}
 
-    "--test-libcore")
-        test_libcore
-        ;;
-
-    "--clean-ui-tests")
-        clean_ui_tests
-        ;;
-
-    "--std-tests")
-        std_tests
-        ;;
-
-    "--extended-tests")
-        extended_sysroot_tests
-        ;;
-
-    "--build-sysroot")
-        build_sysroot
-        ;;
-
-    *)
-        clean
-        mini_tests
-        build_sysroot
-        std_tests
-        test_libcore
-        extended_sysroot_tests
-        test_rustc
-        ;;
-esac
+$func

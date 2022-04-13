@@ -301,6 +301,15 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             result.to_rvalue()
         }
         else {
+            #[cfg(not(feature="master"))]
+            if gcc_func.get_param_count() == 0 {
+                // FIXME(antoyo): As a temporary workaround for unsupported LLVM intrinsics.
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &[]));
+            }
+            else {
+                self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
+            }
+            #[cfg(feature="master")]
             self.block.add_eval(None, self.cx.context.new_call_through_ptr(None, func_ptr, &args));
             // Return dummy value when not having return value.
             let result = current_func.new_local(None, self.isize_type, "dummyValueThatShouldNeverBeUsed");
@@ -1287,6 +1296,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
+    #[cfg(feature="master")]
     pub fn shuffle_vector(&mut self, v1: RValue<'gcc>, v2: RValue<'gcc>, mask: RValue<'gcc>) -> RValue<'gcc> {
         let struct_type = mask.get_type().is_struct().expect("mask of struct type");
 
@@ -1360,6 +1370,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         else {
             result
         }
+    }
+
+    #[cfg(not(feature="master"))]
+    pub fn shuffle_vector(&mut self, _v1: RValue<'gcc>, _v2: RValue<'gcc>, _mask: RValue<'gcc>) -> RValue<'gcc> {
+        unimplemented!();
     }
 }
 

@@ -2,6 +2,20 @@ use gccjit::Function;
 
 use crate::context::CodegenCx;
 
+#[cfg(not(feature="master"))]
+pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
+    match name {
+        "llvm.x86.xgetbv" => {
+            let gcc_name = "__builtin_trap";
+            let func = cx.context.get_builtin_function(gcc_name);
+            cx.functions.borrow_mut().insert(gcc_name.to_string(), func);
+            return func;
+        },
+        _ => unimplemented!("unsupported LLVM intrinsic {}", name),
+    }
+}
+
+#[cfg(feature="master")]
 pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function<'gcc> {
     let gcc_name = match name {
         "llvm.x86.xgetbv" => "__builtin_ia32_xgetbv",

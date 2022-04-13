@@ -154,6 +154,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         ));
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_insert {
         require!(
             in_elem == arg_tys[2],
@@ -213,6 +214,8 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         // TODO(antoyo): perhaps use __builtin_convertvector for vector casting.
         return Ok(bx.context.new_bitcast(None, result, vector.get_type()));
     }
+
+    #[cfg(feature="master")]
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
@@ -503,6 +506,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(bx: &mut Builder<'a, 'gcc, 'tcx>, 
         simd_neg: Int => neg, Float => fneg;
     }
 
+    #[cfg(feature="master")]
     if name == sym::simd_saturating_add || name == sym::simd_saturating_sub {
         let lhs = args[0].immediate();
         let rhs = args[1].immediate();
