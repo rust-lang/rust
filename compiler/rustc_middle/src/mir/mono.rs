@@ -8,7 +8,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_hir::ItemId;
 use rustc_index::vec::Idx;
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -40,7 +40,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -198,26 +198,6 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
-        }
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                instance.hash_stable(hcx, hasher);
-            }
-            MonoItem::Static(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            MonoItem::GlobalAsm(item_id) => {
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    item_id.hash_stable(hcx, hasher);
-                })
-            }
         }
     }
 }
