@@ -41,7 +41,9 @@ impl<'a> Iterator for Chars<'a> {
     fn next(&mut self) -> Option<char> {
         // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
         // the resulting `ch` is a valid Unicode Scalar Value.
-        unsafe { next_code_point(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
+        unsafe {
+            next_code_point(&mut (&mut self.iter).copied()).map(|ch| char::from_u32_unchecked(ch))
+        }
     }
 
     #[inline]
@@ -81,7 +83,10 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     fn next_back(&mut self) -> Option<char> {
         // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
         // the resulting `ch` is a valid Unicode Scalar Value.
-        unsafe { next_code_point_reverse(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
+        unsafe {
+            next_code_point_reverse(&mut (&mut self.iter).copied())
+                .map(|ch| char::from_u32_unchecked(ch))
+        }
     }
 }
 

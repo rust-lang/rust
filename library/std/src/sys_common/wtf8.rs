@@ -847,7 +847,7 @@ impl<'a> Iterator for Wtf8CodePoints<'a> {
     #[inline]
     fn next(&mut self) -> Option<CodePoint> {
         // SAFETY: `self.bytes` has been created from a WTF-8 string
-        unsafe { next_code_point(&mut self.bytes).map(|c| CodePoint { value: c }) }
+        unsafe { next_code_point(&mut (&mut self.bytes).copied()).map(|c| CodePoint { value: c }) }
     }
 
     #[inline]

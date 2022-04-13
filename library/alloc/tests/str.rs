@@ -1,3 +1,4 @@
+use core::str::next_code_point;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::cmp::Ordering::{Equal, Greater, Less};
@@ -2366,4 +2367,72 @@ fn ceil_char_boundary() {
 #[should_panic]
 fn ceil_char_boundary_above_len_panic() {
     let _ = "x".ceil_char_boundary(2);
+}
+
+fn check_decoded_string<I: Iterator<Item = u8>>(mut iter: &mut I, expected: &str) {
+    for char in expected.chars() {
+        assert_eq!(Some(char as u32), unsafe { next_code_point(&mut iter) });
+    }
+    assert_eq!(None, unsafe { next_code_point(&mut iter) });
+}
+
+#[test]
+pub fn dirt_simple_code_point() {
+    unsafe {
+        let src = b"banana";
+        let mut iter = src.iter().copied();
+        for char in "banana".chars() {
+            assert_eq!(Some(char as u32), next_code_point(&mut iter));
+        }
+
+        let tmp = next_code_point(&mut iter);
+        assert_eq!(None, tmp);
+    }
+    {
+        let src = [
+            b'd', b'a', b'i', b' ', 229, 164, 167, 232, 179, 162, 232, 128, 133, b' ', b'k', b'e',
+            b'n', b'j', b'a',
+        ];
+
+        let mut iter = src.into_iter();
+
+        check_decoded_string(&mut iter, "dai 大賢者 kenja");
+    }
+}
+
+struct Shenanigans {
+    compressed: Vec<u8>,
+    cursor: usize,
+}
+
+// This provides an example of a u8 iterator which can not use Item=&u8.
+// A real-world case is a string stored in progmem on an AVR, which can
+// not be incorporated into a unit test
+impl Iterator for Shenanigans {
+    type Item = u8;
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+        let end = self.cursor + 6;
+        let i1 = self.cursor / 8;
+        let i2 = (end - 1) / 8;
+        if i2 >= self.compressed.len() {
+            return None;
+        }
+        let base64 = if i1 == i2 {
+            self.compressed[i1] >> (2 - self.cursor % 8) & 0x3f
+        } else {
+            0x3f & ((self.compressed[i1] << (self.cursor % 8 - 2))
+                | (self.compressed[i2] >> (10 - self.cursor % 8)))
+        };
+        self.cursor += 6;
+        Some(base64 + b' ')
+    }
+}
+
+#[test]
+pub fn fancy_code_point() {
+    let mut iter =
+        Shenanigans { compressed: vec![142, 139, 236, 228, 10, 238, 166, 122, 52], cursor: 0 };
+    for char in "CHOLY KNIGHT".chars() {
+        assert_eq!(Some(char as u32), unsafe { next_code_point(&mut iter) });
+    }
 }
