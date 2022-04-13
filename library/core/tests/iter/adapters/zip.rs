@@ -175,19 +175,6 @@ fn test_zip_map_rev_sideffectful() {
 }
 
 #[test]
-fn test_zip_nested_sideffectful() {
-    let mut xs = [0; 6];
-    let ys = [0; 4];
-
-    {
-        // test that it has the side effect nested inside enumerate
-        let it = xs.iter_mut().map(|x| *x = 1).enumerate().zip(&ys);
-        it.count();
-    }
-    assert_eq!(&xs, &[1, 1, 1, 1, 1, 0]);
-}
-
-#[test]
 fn test_zip_nth_back_side_effects_exhausted() {
     let mut a = Vec::new();
     let mut b = Vec::new();

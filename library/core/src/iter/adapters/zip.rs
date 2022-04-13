@@ -2,6 +2,7 @@ use crate::cmp;
 use crate::fmt::{self, Debug};
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 use crate::iter::{InPlaceIterable, SourceIter, TrustedLen};
+use crate::ops::Try;
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -95,6 +96,14 @@ where
         (lower, upper)
     }
 
+    fn fold<T, F>(self, init: T, f: F) -> T
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> T,
+    {
+        self.spec_fold(init, f)
+    }
+
     #[inline]
     #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
@@ -134,6 +143,95 @@ where
             (None, None) => None,
             _ => unreachable!(),
         }
+    }
+}
+
+trait ZipSpec: Iterator {
+    fn spec_fold<T, F>(self, init: T, f: F) -> T
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> T;
+
+    fn spec_try_fold<B, F, R>(&mut self, init: B, f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>;
+
+}
+
+impl<A, B> ZipSpec for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+{
+    default fn spec_fold<T, F>(mut self, init: T, mut f: F) -> T
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> T,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x);
+        }
+        accum
+    }
+
+    default fn spec_try_fold<T, F, R>(&mut self, init: T, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        let mut accum = init;
+        while let Some(x) = self.next() {
+            accum = f(accum, x)?;
+        }
+        try { accum }
+    }
+}
+
+impl<A, B> ZipSpec for Zip<A, B>
+where
+    A: Iterator,
+    B: Iterator,
+    Self: TrustedRandomAccess,
+{
+    fn spec_fold<T, F>(mut self, init: T, mut f: F) -> T
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> T,
+    {
+        let _ = self.advance_by(0);
+        let len = self.size();
+        let mut accum = init;
+        for i in 0..len {
+            // SAFETY: each item is only accessed once and we run the cleanup function afterwards
+            let x = unsafe { self.__iterator_get_unchecked(i) };
+            accum = f(accum, x);
+        }
+        // FIXME drop-guard or use ForLoopDesugar
+        self.cleanup(len, true);
+        accum
+    }
+
+    fn spec_try_fold<T, F, R>(&mut self, init: T, mut f: F) -> R
+    where
+        Self: Sized,
+        F: FnMut(T, Self::Item) -> R,
+        R: Try<Output = T>,
+    {
+        let _ = self.advance_by(0);
+        let len = self.size();
+        let mut accum = init;
+        for i in 0..len {
+            // SAFETY: each item is only accessed once and we run the cleanup function afterwards
+            let x = unsafe { self.__iterator_get_unchecked(i) };
+            accum = f(accum, x)?;
+        }
+        // FIXME drop-guard or use ForLoopDesugar
+        self.cleanup(len, true);
+        try { accum }
     }
 }
 
