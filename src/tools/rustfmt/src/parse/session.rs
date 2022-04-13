@@ -36,7 +36,7 @@ impl Emitter for SilentEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
         None
     }
-    fn fallback_fluent_bundle(&self) -> &Lrc<rustc_errors::FluentBundle> {
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
         panic!("silent emitter attempted to translate a diagnostic");
     }
 }
@@ -93,7 +93,7 @@ impl Emitter for SilentOnIgnoredFilesEmitter {
         self.emitter.fluent_bundle()
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<rustc_errors::FluentBundle> {
+    fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
         self.emitter.fallback_fluent_bundle()
     }
 }
@@ -114,8 +114,8 @@ fn default_handler(
     let emitter = if hide_parse_errors {
         silent_emitter()
     } else {
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(false)
-            .expect("failed to load fallback fluent bundle");
+        let fallback_bundle =
+            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
         Box::new(EmitterWriter::stderr(
             color_cfg,
             Some(source_map.clone()),
@@ -350,7 +350,7 @@ mod tests {
             fn fluent_bundle(&self) -> Option<&Lrc<rustc_errors::FluentBundle>> {
                 None
             }
-            fn fallback_fluent_bundle(&self) -> &Lrc<rustc_errors::FluentBundle> {
+            fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
                 panic!("test emitter attempted to translate a diagnostic");
             }
         }

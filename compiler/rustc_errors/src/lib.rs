@@ -33,7 +33,7 @@ use rustc_data_structures::sync::{self, Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 pub use rustc_error_messages::{
     fallback_fluent_bundle, fluent_bundle, DiagnosticMessage, FluentBundle, LanguageIdentifier,
-    MultiSpan, SpanLabel,
+    LazyFallbackBundle, MultiSpan, SpanLabel, DEFAULT_LOCALE_RESOURCES,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_serialize::json::Json;
@@ -547,7 +547,7 @@ impl Handler {
         treat_err_as_bug: Option<NonZeroUsize>,
         sm: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
@@ -562,7 +562,7 @@ impl Handler {
         color_config: ColorConfig,
         sm: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         flags: HandlerFlags,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(

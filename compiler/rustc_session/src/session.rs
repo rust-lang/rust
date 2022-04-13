@@ -21,7 +21,7 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, EmissionGuarantee,
-    ErrorGuaranteed, FluentBundle, MultiSpan,
+    ErrorGuaranteed, FluentBundle, LazyFallbackBundle, MultiSpan,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -1080,7 +1080,7 @@ fn default_emitter(
     registry: rustc_errors::registry::Registry,
     source_map: Lrc<SourceMap>,
     bundle: Option<Lrc<FluentBundle>>,
-    fallback_bundle: Lrc<FluentBundle>,
+    fallback_bundle: LazyFallbackBundle,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
     let macro_backtrace = sopts.debugging_opts.macro_backtrace;
@@ -1215,17 +1215,10 @@ pub fn build_session(
         hash_kind,
     ));
 
-    let fallback_bundle =
-        match fallback_fluent_bundle(sopts.debugging_opts.translate_directionality_markers) {
-            Ok(bundle) => bundle,
-            Err(e) => {
-                early_error(
-                    sopts.error_format,
-                    &format!("failed to load fallback fluent bundle: {e}"),
-                );
-            }
-        };
-
+    let fallback_bundle = fallback_fluent_bundle(
+        rustc_errors::DEFAULT_LOCALE_RESOURCES,
+        sopts.debugging_opts.translate_directionality_markers,
+    );
     let emitter =
         default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle, write_dest);
 
@@ -1460,8 +1453,7 @@ pub enum IncrCompSession {
 }
 
 fn early_error_handler(output: config::ErrorOutputType) -> rustc_errors::Handler {
-    let fallback_bundle =
-        fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
+    let fallback_bundle = fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter: Box<dyn Emitter + sync::Send> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();

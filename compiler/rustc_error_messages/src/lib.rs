@@ -1,5 +1,7 @@
 #![feature(let_chains)]
+#![feature(once_cell)]
 #![feature(path_try_exists)]
+#![feature(type_alias_impl_trait)]
 
 use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
@@ -14,6 +16,11 @@ use std::io;
 use std::path::{Path, PathBuf};
 use tracing::{instrument, trace};
 
+#[cfg(not(parallel_compiler))]
+use std::lazy::Lazy;
+#[cfg(parallel_compiler)]
+use std::lazy::SyncLazy as Lazy;
+
 #[cfg(parallel_compiler)]
 use intl_memoizer::concurrent::IntlLangMemoizer;
 #[cfg(not(parallel_compiler))]
@@ -22,7 +29,8 @@ use intl_memoizer::IntlLangMemoizer;
 pub use fluent_bundle::{FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
 
-static FALLBACK_FLUENT_RESOURCE: &'static str = include_str!("../locales/en-US/diagnostics.ftl");
+pub static DEFAULT_LOCALE_RESOURCES: &'static [&'static str] =
+    &[include_str!("../locales/en-US/typeck.ftl"), include_str!("../locales/en-US/parser.ftl")];
 
 pub type FluentBundle = fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>;
 
@@ -192,20 +200,30 @@ pub fn fluent_bundle(
     Ok(Some(bundle))
 }
 
+/// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
+/// evaluated fluent bundle.
+pub type LazyFallbackBundle = Lrc<Lazy<FluentBundle, impl FnOnce() -> FluentBundle>>;
+
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace")]
 pub fn fallback_fluent_bundle(
+    resources: &'static [&'static str],
     with_directionality_markers: bool,
-) -> Result<Lrc<FluentBundle>, TranslationBundleError> {
-    let fallback_resource = FluentResource::try_new(FALLBACK_FLUENT_RESOURCE.to_string())
-        .map_err(TranslationBundleError::from)?;
-    trace!(?fallback_resource);
-    let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
-    // See comment in `fluent_bundle`.
-    fallback_bundle.set_use_isolating(with_directionality_markers);
-    fallback_bundle.add_resource(fallback_resource).map_err(TranslationBundleError::from)?;
-    let fallback_bundle = Lrc::new(fallback_bundle);
-    Ok(fallback_bundle)
+) -> LazyFallbackBundle {
+    Lrc::new(Lazy::new(move || {
+        let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
+        // See comment in `fluent_bundle`.
+        fallback_bundle.set_use_isolating(with_directionality_markers);
+
+        for resource in resources {
+            let resource = FluentResource::try_new(resource.to_string())
+                .expect("failed to parse fallback fluent resource");
+            trace!(?resource);
+            fallback_bundle.add_resource_overriding(resource);
+        }
+
+        fallback_bundle
+    }))
 }
 
 /// Identifier for the Fluent message/attribute corresponding to a diagnostic message.

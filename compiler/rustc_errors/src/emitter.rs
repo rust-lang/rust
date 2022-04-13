@@ -16,7 +16,8 @@ use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, Styl
 use crate::styled_buffer::StyledBuffer;
 use crate::{
     CodeSuggestion, Diagnostic, DiagnosticArg, DiagnosticId, DiagnosticMessage, FluentBundle,
-    Handler, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight, SuggestionStyle,
+    Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic, SubstitutionHighlight,
+    SuggestionStyle,
 };
 
 use rustc_lint_defs::pluralize;
@@ -60,7 +61,7 @@ impl HumanReadableErrorType {
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMap>>,
         bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         teach: bool,
         terminal_width: Option<usize>,
         macro_backtrace: bool,
@@ -233,7 +234,7 @@ pub trait Emitter {
     /// Return `FluentBundle` with localized diagnostics for the default locale of the compiler.
     /// Used when the user has not requested a specific language or when a localized diagnostic is
     /// unavailable for the requested locale.
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle>;
+    fn fallback_fluent_bundle(&self) -> &FluentBundle;
 
     /// Convert diagnostic arguments (a rustc internal type that exists to implement
     /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
@@ -579,8 +580,8 @@ impl Emitter for EmitterWriter {
         self.fluent_bundle.as_ref()
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
-        &self.fallback_bundle
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
     }
 
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
@@ -635,7 +636,7 @@ impl Emitter for SilentEmitter {
         None
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
         panic!("silent emitter attempted to translate message")
     }
 
@@ -695,7 +696,7 @@ pub struct EmitterWriter {
     dst: Destination,
     sm: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
-    fallback_bundle: Lrc<FluentBundle>,
+    fallback_bundle: LazyFallbackBundle,
     short_message: bool,
     teach: bool,
     ui_testing: bool,
@@ -716,7 +717,7 @@ impl EmitterWriter {
         color_config: ColorConfig,
         source_map: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         teach: bool,
         terminal_width: Option<usize>,
@@ -740,7 +741,7 @@ impl EmitterWriter {
         dst: Box<dyn Write + Send>,
         source_map: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         teach: bool,
         colored: bool,

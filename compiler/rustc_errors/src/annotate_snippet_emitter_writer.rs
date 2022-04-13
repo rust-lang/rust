@@ -8,8 +8,8 @@
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
 use crate::{
-    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle, Level,
-    MultiSpan, Style, SubDiagnostic,
+    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
+    LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
 };
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
@@ -22,7 +22,7 @@ use rustc_span::SourceFile;
 pub struct AnnotateSnippetEmitterWriter {
     source_map: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
-    fallback_bundle: Lrc<FluentBundle>,
+    fallback_bundle: LazyFallbackBundle,
 
     /// If true, hides the longer explanation text
     short_message: bool,
@@ -67,8 +67,8 @@ impl Emitter for AnnotateSnippetEmitterWriter {
         self.fluent_bundle.as_ref()
     }
 
-    fn fallback_fluent_bundle(&self) -> &Lrc<FluentBundle> {
-        &self.fallback_bundle
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &**self.fallback_bundle
     }
 
     fn should_show_explain(&self) -> bool {
@@ -101,7 +101,7 @@ impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,
-        fallback_bundle: Lrc<FluentBundle>,
+        fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         macro_backtrace: bool,
     ) -> Self {

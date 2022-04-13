@@ -146,7 +146,7 @@ crate fn new_handler(
     debugging_opts: &DebuggingOptions,
 ) -> rustc_errors::Handler {
     let fallback_bundle =
-        rustc_errors::fallback_fluent_bundle(false).expect("failed to load fallback fluent bundle");
+        rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
