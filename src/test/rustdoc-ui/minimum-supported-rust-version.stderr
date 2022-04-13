@@ -1,0 +1,2 @@
+error: --minimum-supported-rust-version expects a valid semver value: unexpected end of input while parsing minor version number
+
