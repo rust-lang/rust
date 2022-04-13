@@ -1880,9 +1880,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 };
                             let sp = hir.span(id);
                             let sp = if let Some(first_bound) = has_bounds {
-                                // `sp` only covers `T`, change it so that it covers
-                                // `T:` when appropriate
                                 sp.until(first_bound.span())
+                            } else if let Some(colon_sp) =
+                                // If the generic param is declared with a colon but without bounds:
+                                // fn foo<T:>(t: T) { ... }
+                                param.colon_span_for_suggestions(
+                                    self.inh.tcx.sess.source_map(),
+                                )
+                            {
+                                sp.to(colon_sp)
                             } else {
                                 sp
                             };
