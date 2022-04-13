@@ -448,7 +448,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     // a box with a non-zst allocator should not be directly dereferenced
                     if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
-                        let ptr = cg_base.extract_field(bx, 0).extract_field(bx, 0);
+                        // Extract `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
+                        let ptr =
+                            cg_base.extract_field(bx, 0).extract_field(bx, 0).extract_field(bx, 0);
 
                         ptr.deref(bx.cx())
                     } else {
@@ -464,7 +466,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::ProjectionElem::Deref => {
                     // a box with a non-zst allocator should not be directly dereferenced
                     if cg_base.layout.ty.is_box() && !cg_base.layout.field(cx, 1).is_zst() {
-                        let ptr = cg_base.project_field(bx, 0).project_field(bx, 0);
+                        // Project `Box<T>` -> `Unique<T>` -> `NonNull<T>` -> `*const T`
+                        let ptr =
+                            cg_base.project_field(bx, 0).project_field(bx, 0).project_field(bx, 0);
 
                         bx.load_operand(ptr).deref(bx.cx())
                     } else {
