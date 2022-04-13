@@ -81,6 +81,7 @@ mod gather_locals;
 mod generator_interior;
 mod inherited;
 pub mod intrinsic;
+mod intrinsicck;
 pub mod method;
 mod op;
 mod pat;

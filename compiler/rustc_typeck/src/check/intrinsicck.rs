@@ -4,24 +4,15 @@ use rustc_data_structures::stable_set::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, UintTy};
 use rustc_session::lint;
 use rustc_span::{sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{Pointer, VariantIdx};
 use rustc_target::asm::{InlineAsmRegOrRegClass, InlineAsmType};
-
-fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
-    tcx.hir().deep_visit_item_likes_in_module(module_def_id, &mut ItemVisitor { tcx });
-}
-
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers { check_mod_intrinsics, ..*providers };
-}
 
 struct ItemVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,

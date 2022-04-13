@@ -63,6 +63,7 @@ This API is completely unstable and subject to change.
 #![feature(hash_drain_filter)]
 #![feature(if_let_guard)]
 #![feature(is_sorted)]
+#![feature(iter_intersperse)]
 #![feature(label_break_value)]
 #![feature(let_chains)]
 #![feature(let_else)]

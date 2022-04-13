@@ -804,10 +804,6 @@ rustc_queries! {
         desc { |tcx| "checking privacy in {}", describe_as_module(key, tcx) }
     }
 
-    query check_mod_intrinsics(key: LocalDefId) -> () {
-        desc { |tcx| "checking intrinsics in {}", describe_as_module(key, tcx) }
-    }
-
     query check_mod_liveness(key: LocalDefId) -> () {
         desc { |tcx| "checking liveness of variables in {}", describe_as_module(key, tcx) }
     }
