@@ -162,6 +162,11 @@ pub fn is_expr_from_proc_macro(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 }
 
 /// Checks if the span actually refers to a match expression
-pub fn is_span_match(cx: &LateContext<'_>, span: Span) -> bool {
+pub fn is_span_match(cx: &impl LintContext, span: Span) -> bool {
     span_matches_pat(cx.sess(), span, Pat::Str("match"), Pat::Str("}"))
+}
+
+/// Checks if the span actually refers to an if expression
+pub fn is_span_if(cx: &impl LintContext, span: Span) -> bool {
+    span_matches_pat(cx.sess(), span, Pat::Str("if"), Pat::Str("}"))
 }
