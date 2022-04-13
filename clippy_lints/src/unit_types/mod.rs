@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for UnitTypes {
         let_unit_value::check(cx, local);
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         unit_cmp::check(cx, expr);
         unit_arg::check(cx, expr);
     }

@@ -59,7 +59,7 @@ pub mod usage;
 pub mod visitors;
 
 pub use self::attrs::*;
-pub use self::check_proc_macro::{is_expr_from_proc_macro, is_span_if, is_span_match};
+pub use self::check_proc_macro::{is_from_proc_macro, is_span_if, is_span_match};
 pub use self::hir_utils::{
     both, count_eq, eq_expr_value, hash_expr, hash_stmt, over, HirEqInterExpr, SpanlessEq, SpanlessHash,
 };

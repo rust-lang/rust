@@ -14,17 +14,20 @@
 
 use rustc_ast::ast::{IntTy, LitIntType, LitKind, StrStyle, UintTy};
 use rustc_hir::{
-    Block, BlockCheckMode, Closure, Destination, Expr, ExprKind, LoopSource, MatchSource, QPath, UnOp, UnsafeSource,
-    YieldSource,
+    Block, BlockCheckMode, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, Impl, ImplItem, ImplItemKind,
+    IsAuto, Item, ItemKind, LoopSource, MatchSource, QPath, TraitItem, TraitItemKind, UnOp, UnsafeSource, Unsafety,
+    Variant, VariantData, VisibilityKind, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::{Span, Symbol};
+use rustc_target::spec::abi::Abi;
 
 #[derive(Clone, Copy)]
-enum Pat {
+pub enum Pat {
     Str(&'static str),
+    MultiStr(&'static [&'static str]),
     Sym(Symbol),
     Num,
 }
@@ -43,10 +46,12 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
         (match start_pat {
             Pat::Str(text) => start_str.starts_with(text),
+            Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
+            Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
             Pat::Num => end_str.as_bytes().last().map_or(false, u8::is_ascii_hexdigit),
         })
@@ -155,10 +160,121 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
     }
 }
 
-/// Checks if the expression likely came from a proc-macro
-pub fn is_expr_from_proc_macro(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    let (start_pat, end_pat) = expr_search_pat(cx.tcx, e);
-    !span_matches_pat(cx.sess(), e.span, start_pat, end_pat)
+fn fn_header_search_pat(header: FnHeader) -> Pat {
+    if header.is_async() {
+        Pat::Str("async")
+    } else if header.is_const() {
+        Pat::Str("const")
+    } else if header.is_unsafe() {
+        Pat::Str("unsafe")
+    } else if header.abi != Abi::Rust {
+        Pat::Str("extern")
+    } else {
+        Pat::MultiStr(&["fn", "extern"])
+    }
+}
+
+fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
+    let (start_pat, end_pat) = match &item.kind {
+        ItemKind::ExternCrate(_) => (Pat::Str("extern"), Pat::Str(";")),
+        ItemKind::Static(..) => (Pat::Str("static"), Pat::Str(";")),
+        ItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
+        ItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+        ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
+        ItemKind::TyAlias(..) | ItemKind::OpaqueTy(_) => (Pat::Str("type"), Pat::Str(";")),
+        ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
+        ItemKind::Struct(VariantData::Struct(..), _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
+        ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
+        ItemKind::Trait(_, Unsafety::Unsafe, ..)
+        | ItemKind::Impl(Impl {
+            unsafety: Unsafety::Unsafe,
+            ..
+        }) => (Pat::Str("unsafe"), Pat::Str("}")),
+        ItemKind::Trait(IsAuto::Yes, ..) => (Pat::Str("auto"), Pat::Str("}")),
+        ItemKind::Trait(..) => (Pat::Str("trait"), Pat::Str("}")),
+        ItemKind::Impl(_) => (Pat::Str("impl"), Pat::Str("}")),
+        _ => return (Pat::Str(""), Pat::Str("")),
+    };
+    if matches!(item.vis.node, VisibilityKind::Inherited) {
+        (start_pat, end_pat)
+    } else {
+        (Pat::Str("pub"), end_pat)
+    }
+}
+
+fn trait_item_search_pat(item: &TraitItem<'_>) -> (Pat, Pat) {
+    match &item.kind {
+        TraitItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
+        TraitItemKind::Type(..) => (Pat::Str("type"), Pat::Str(";")),
+        TraitItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+    }
+}
+
+fn impl_item_search_pat(item: &ImplItem<'_>) -> (Pat, Pat) {
+    let (start_pat, end_pat) = match &item.kind {
+        ImplItemKind::Const(..) => (Pat::Str("const"), Pat::Str(";")),
+        ImplItemKind::TyAlias(..) => (Pat::Str("type"), Pat::Str(";")),
+        ImplItemKind::Fn(sig, ..) => (fn_header_search_pat(sig.header), Pat::Str("")),
+    };
+    if matches!(item.vis.node, VisibilityKind::Inherited) {
+        (start_pat, end_pat)
+    } else {
+        (Pat::Str("pub"), end_pat)
+    }
+}
+
+fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
+    if matches!(def.vis.node, VisibilityKind::Inherited) {
+        if def.is_positional() {
+            (Pat::Str(""), Pat::Str(""))
+        } else {
+            (Pat::Sym(def.ident.name), Pat::Str(""))
+        }
+    } else {
+        (Pat::Str("pub"), Pat::Str(""))
+    }
+}
+
+fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
+    match v.data {
+        VariantData::Struct(..) => (Pat::Sym(v.ident.name), Pat::Str("}")),
+        VariantData::Tuple(..) => (Pat::Sym(v.ident.name), Pat::Str("")),
+        VariantData::Unit(..) => (Pat::Sym(v.ident.name), Pat::Sym(v.ident.name)),
+    }
+}
+
+pub trait WithSearchPat {
+    type Context: LintContext;
+    fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat);
+    fn span(&self) -> Span;
+}
+macro_rules! impl_with_search_pat {
+    ($cx:ident: $ty:ident with $fn:ident $(($tcx:ident))?) => {
+        impl<'cx> WithSearchPat for $ty<'cx> {
+            type Context = $cx<'cx>;
+            #[allow(unused_variables)]
+            fn search_pat(&self, cx: &Self::Context) -> (Pat, Pat) {
+                $(let $tcx = cx.tcx;)?
+                $fn($($tcx,)? self)
+            }
+            fn span(&self) -> Span {
+                self.span
+            }
+        }
+    };
+}
+impl_with_search_pat!(LateContext: Expr with expr_search_pat(tcx));
+impl_with_search_pat!(LateContext: Item with item_search_pat);
+impl_with_search_pat!(LateContext: TraitItem with trait_item_search_pat);
+impl_with_search_pat!(LateContext: ImplItem with impl_item_search_pat);
+impl_with_search_pat!(LateContext: FieldDef with field_def_search_pat);
+impl_with_search_pat!(LateContext: Variant with variant_search_pat);
+
+/// Checks if the item likely came from a proc-macro
+pub fn is_from_proc_macro<T: WithSearchPat>(cx: &T::Context, item: &T) -> bool {
+    let (start_pat, end_pat) = item.search_pat(cx);
+    !span_matches_pat(cx.sess(), item.span(), start_pat, end_pat)
 }
 
 /// Checks if the span actually refers to a match expression

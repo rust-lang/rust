@@ -7,6 +7,7 @@
 
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::is_from_proc_macro;
 use if_chain::if_chain;
 use rustc_ast::ast::{self, MetaItem, MetaItemKind};
 use rustc_hir as hir;
@@ -158,14 +159,18 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, it.span, article, desc);
+        if !is_from_proc_macro(cx, it) {
+            self.check_missing_docs_attrs(cx, attrs, it.span, article, desc);
+        }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(trait_item.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, trait_item.span, article, desc);
+        if !is_from_proc_macro(cx, trait_item) {
+            self.check_missing_docs_attrs(cx, attrs, trait_item.span, article, desc);
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
@@ -181,18 +186,24 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
         let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
-        self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
+        if !is_from_proc_macro(cx, impl_item) {
+            self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
+        }
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
         if !sf.is_positional() {
             let attrs = cx.tcx.hir().attrs(sf.hir_id);
-            self.check_missing_docs_attrs(cx, attrs, sf.span, "a", "struct field");
+            if !is_from_proc_macro(cx, sf) {
+                self.check_missing_docs_attrs(cx, attrs, sf.span, "a", "struct field");
+            }
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
         let attrs = cx.tcx.hir().attrs(v.id);
-        self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
+        if !is_from_proc_macro(cx, v) {
+            self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
+        }
     }
 }
