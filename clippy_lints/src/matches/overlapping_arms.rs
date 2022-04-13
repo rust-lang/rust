@@ -40,10 +40,8 @@ fn all_ranges<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], ty: Ty<'tcx>)
                         Some(rhs) => constant(cx, cx.typeck_results(), rhs)?.0,
                         None => miri_to_const(ty.numeric_max_val(cx.tcx)?)?,
                     };
-
                     let lhs_val = lhs_const.int_value(cx, ty)?;
                     let rhs_val = rhs_const.int_value(cx, ty)?;
-
                     let rhs_bound = match range_end {
                         RangeEnd::Included => EndBound::Included(rhs_val),
                         RangeEnd::Excluded => EndBound::Excluded(rhs_val),
