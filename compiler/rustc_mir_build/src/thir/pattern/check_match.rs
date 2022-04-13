@@ -844,7 +844,7 @@ fn non_exhaustive_match<'p, 'tcx>(
                     format!(
                         "{}{}{} => todo!()",
                         comma,
-                        snippet.strip_prefix(",").unwrap_or(&snippet),
+                        snippet.strip_prefix(',').unwrap_or(&snippet),
                         pattern
                     ),
                 ));
