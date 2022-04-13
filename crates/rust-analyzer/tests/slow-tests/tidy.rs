@@ -146,7 +146,7 @@ fn check_cargo_toml(path: &Path, text: String) {
 fn check_merge_commits() {
     let sh = &Shell::new().unwrap();
 
-    let bors = cmd!(sh, "git rev-list --merges --author 'bors\\[bot\\]' HEAD~19..").read().unwrap();
+    let bors = cmd!(sh, "git rev-list --merges --author 'bors' HEAD~19..").read().unwrap();
     let all = cmd!(sh, "git rev-list --merges HEAD~19..").read().unwrap();
     if bors != all {
         panic!(

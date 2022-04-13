@@ -66,7 +66,7 @@ If `cargo test` passes locally, that's a good sign that CI will be green as well
 The only exception is that some long-running tests are skipped locally by default.
 Use `env RUN_SLOW_TESTS=1 cargo test` to run the full suite.
 
-We use bors-ng to enforce the [not rocket science](https://graydon2.dreamwidth.org/1597.html) rule.
+We use bors to enforce the [not rocket science](https://graydon2.dreamwidth.org/1597.html) rule.
 
 ## Launching rust-analyzer
 
