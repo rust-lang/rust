@@ -527,7 +527,7 @@ fn check_must_not_suspend_ty<'tcx>(
             }
             has_emitted
         }
-        ty::Dynamic(binder, _) => {
+        ty::Dynamic(binder, _, _) => {
             let mut has_emitted = false;
             for predicate in binder.iter() {
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {

@@ -31,6 +31,7 @@ use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
     self, Const, DefIdTree, EarlyBinder, IsSuggestable, Ty, TyCtxt, TypeVisitable,
 };
+use rustc_middle::ty::{TraitObjectRepresentation};
 use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECTS};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
@@ -1572,7 +1573,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         debug!("region_bound: {:?}", region_bound);
 
-        let ty = tcx.mk_dynamic(existential_predicates, region_bound);
+        let ty = tcx.mk_dynamic(
+            existential_predicates,
+            region_bound,
+            TraitObjectRepresentation::Unsized, // FIXME: check whether the source syntax was dyn or dyn*
+        );
         debug!("trait_object_type: {:?}", ty);
         ty
     }

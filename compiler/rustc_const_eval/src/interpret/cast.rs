@@ -312,7 +312,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let new_vptr = self.get_vtable_ptr(ty, data_b.principal())?;
                 self.write_immediate(Immediate::new_dyn_trait(old_data, new_vptr, self), dest)
             }
-            (_, &ty::Dynamic(ref data, _)) => {
+            (_, &ty::Dynamic(ref data, _, _repr)) => {
                 // Initial cast from sized to dyn trait
                 let vtable = self.get_vtable_ptr(src_pointee_ty, data.principal())?;
                 let ptr = self.read_scalar(src)?;

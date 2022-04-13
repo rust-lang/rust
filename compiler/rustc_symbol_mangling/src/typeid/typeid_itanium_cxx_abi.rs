@@ -627,7 +627,7 @@ fn encode_ty<'tcx>(
         }
 
         // Trait types
-        ty::Dynamic(predicates, region) => {
+        ty::Dynamic(predicates, region, _repr) => {
             // u3dynI<element-type1[..element-typeN]>E, where <element-type> is <predicate>, as
             // vendor extended type.
             let mut s = String::from("u3dynI");

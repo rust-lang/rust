@@ -784,7 +784,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let upcast_trait_ref;
         match (source.kind(), target.kind()) {
             // TraitA+Kx+'a -> TraitB+Ky+'b (trait upcasting coercion).
-            (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
+            (&ty::Dynamic(ref data_a, r_a, repr_a), &ty::Dynamic(ref data_b, r_b, repr_b))
+                if repr_a == repr_b =>
+            {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let principal_a = data_a.principal().unwrap();
@@ -810,7 +812,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_b);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -888,7 +890,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let mut nested = vec![];
         match (source.kind(), target.kind()) {
             // Trait+Kx+'a -> Trait+Ky+'b (auto traits and lifetime subtyping).
-            (&ty::Dynamic(ref data_a, r_a), &ty::Dynamic(ref data_b, r_b)) => {
+            (&ty::Dynamic(ref data_a, r_a, repr_a), &ty::Dynamic(ref data_b, r_b, repr_b))
+                if repr_a == repr_b =>
+            {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
                 let iter = data_a
@@ -907,7 +911,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             .map(ty::Binder::dummy),
                     );
                 let existential_predicates = tcx.mk_poly_existential_predicates(iter);
-                let source_trait = tcx.mk_dynamic(existential_predicates, r_b);
+                let source_trait = tcx.mk_dynamic(existential_predicates, r_b, repr_b);
 
                 // Require that the traits involved in this upcast are **equal**;
                 // only the **lifetime bound** is changed.
@@ -934,7 +938,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // `T` -> `Trait`
-            (_, &ty::Dynamic(ref data, r)) => {
+            (_, &ty::Dynamic(ref data, r, _repr)) => {
                 let mut object_dids = data.auto_traits().chain(data.principal_def_id());
                 if let Some(did) = object_dids.find(|did| !tcx.is_object_safe(*did)) {
                     return Err(TraitNotObjectSafe(did));

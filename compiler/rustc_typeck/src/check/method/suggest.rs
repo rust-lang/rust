@@ -537,7 +537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 bound_spans.push((self.tcx.def_span(def.did()), msg))
                             }
                             // Point at the trait object that couldn't satisfy the bound.
-                            ty::Dynamic(preds, _) => {
+                            ty::Dynamic(preds, _, _) => {
                                 for pred in preds.iter() {
                                     match pred.skip_binder() {
                                         ty::ExistentialPredicate::Trait(tr) => bound_spans

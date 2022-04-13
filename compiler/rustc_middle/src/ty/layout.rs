@@ -2464,7 +2464,8 @@ where
 
                     match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                         ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        ty::Dynamic(_, _) => {
+                        // FIXME(eholk): Do the right thing with trait object representation
+                        ty::Dynamic(_, _, _repr) => {
                             TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
                                 tcx.lifetimes.re_static,
                                 tcx.mk_array(tcx.types.usize, 3),

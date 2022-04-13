@@ -479,7 +479,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                 })?;
             }
 
-            ty::Dynamic(predicates, r) => {
+            ty::Dynamic(predicates, r, _repr) => {
                 self.push("D");
                 self = self.print_dyn_existential(predicates)?;
                 self = r.print(self)?;

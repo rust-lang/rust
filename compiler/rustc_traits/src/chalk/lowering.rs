@@ -326,7 +326,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
                     )),
                 })
             }
-            ty::Dynamic(predicates, region) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
+            ty::Dynamic(predicates, region, _repr) => chalk_ir::TyKind::Dyn(chalk_ir::DynTy {
                 bounds: predicates.lower_into(interner),
                 lifetime: region.lower_into(interner),
             }),
