@@ -2286,7 +2286,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 single_char_add_str::check(cx, expr, args);
                 into_iter_on_ref::check(cx, expr, method_span, method_call.ident.name, args);
                 single_char_pattern::check(cx, expr, method_call.ident.name, args);
-                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args);
+                unnecessary_to_owned::check(cx, expr, method_call.ident.name, args, self.msrv.as_ref());
             },
             hir::ExprKind::Binary(op, lhs, rhs) if op.node == hir::BinOpKind::Eq || op.node == hir::BinOpKind::Ne => {
                 let mut info = BinaryExprInfo {
