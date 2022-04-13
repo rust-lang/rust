@@ -1319,24 +1319,18 @@ impl<D: Decoder> Decodable<D> for SourceFile {
                 lines.push(line_start);
 
                 match bytes_per_diff {
-                    1 => {
-                        for _ in 1..num_lines {
-                            line_start = line_start + BytePos(d.read_u8() as u32);
-                            lines.push(line_start);
-                        }
-                    }
-                    2 => {
-                        for _ in 1..num_lines {
-                            line_start = line_start + BytePos(d.read_u16() as u32);
-                            lines.push(line_start);
-                        }
-                    }
-                    4 => {
-                        for _ in 1..num_lines {
-                            line_start = line_start + BytePos(d.read_u32());
-                            lines.push(line_start);
-                        }
-                    }
+                    1 => lines.extend((1..num_lines).map(|_| {
+                        line_start = line_start + BytePos(d.read_u8() as u32);
+                        line_start
+                    })),
+                    2 => lines.extend((1..num_lines).map(|_| {
+                        line_start = line_start + BytePos(d.read_u16() as u32);
+                        line_start
+                    })),
+                    4 => lines.extend((1..num_lines).map(|_| {
+                        line_start = line_start + BytePos(d.read_u32());
+                        line_start
+                    })),
                     _ => unreachable!(),
                 }
             }
