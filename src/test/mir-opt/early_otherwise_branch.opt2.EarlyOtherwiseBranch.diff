@@ -32,7 +32,7 @@
           StorageDead(_5);                 // scope 0 at $DIR/early_otherwise_branch.rs:12:16: 12:17
           StorageDead(_4);                 // scope 0 at $DIR/early_otherwise_branch.rs:12:16: 12:17
           _8 = discriminant((_3.0: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:12:11: 12:17
--         switchInt(move _8) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb7]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
+-         switchInt(move _8) -> [0_isize: bb1, 1_isize: bb3, otherwise: bb2]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageLive(_11);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         _11 = discriminant((_3.1: std::option::Option<u32>)); // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         StorageLive(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
@@ -84,8 +84,8 @@
           return;                          // scope 0 at $DIR/early_otherwise_branch.rs:17:2: 17:2
       }
   
--     bb7: {
--         unreachable;                     // scope 0 at $DIR/early_otherwise_branch.rs:15:14: 15:15
+-     bb7 (cleanup): {
+-         resume;                          // scope 0 at $DIR/early_otherwise_branch.rs:11:1: 17:2
 +     bb5: {
 +         StorageDead(_12);                // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17
 +         switchInt(_8) -> [0_isize: bb3, 1_isize: bb2, otherwise: bb1]; // scope 0 at $DIR/early_otherwise_branch.rs:12:5: 12:17

@@ -19,12 +19,20 @@
   
       bb2: {
           _0 = const 1_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:38: 13:39
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
+          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
       }
   
       bb3: {
           _0 = const 2_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:49: 13:50
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
+          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:13:5: 13:52
+      }
+  
+      bb4: {
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:14:2: 14:2
+      }
+  
+      bb5 (cleanup): {
+          resume;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:12:1: 14:2
       }
   }
   
