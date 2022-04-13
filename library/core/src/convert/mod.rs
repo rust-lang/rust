@@ -108,7 +108,7 @@ pub const fn identity<T>(x: T) -> T {
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
-/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in a few aspects:
 ///
 /// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
