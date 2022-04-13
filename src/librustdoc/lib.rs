@@ -611,6 +611,14 @@ fn opts() -> Vec<RustcOptGroup> {
                 "path to function call information (for displaying examples in the documentation)",
             )
         }),
+        unstable("minimum-supported-rust-version", |o| {
+            o.optopt(
+                "",
+                "minimum-supported-rust-version",
+                "if provided, it will display the minimum supported rust version in the documentation",
+                "VERSION",
+            )
+        }),
         // deprecated / removed options
         stable("plugin-path", |o| {
             o.optmulti(

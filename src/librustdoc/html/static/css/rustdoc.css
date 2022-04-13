@@ -581,6 +581,11 @@ h2.location a {
 	cursor: pointer;
 }
 
+.extra-info {
+	margin-bottom: 1.5rem;
+	font-size: 1.05rem;
+}
+
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;

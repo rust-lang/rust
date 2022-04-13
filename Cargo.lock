@@ -4489,6 +4489,7 @@ dependencies = [
  "rayon",
  "regex",
  "rustdoc-json-types",
+ "semver",
  "serde",
  "serde_json",
  "smallvec",

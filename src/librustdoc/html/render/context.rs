@@ -124,6 +124,8 @@ crate struct SharedContext<'tcx> {
     crate cache: Cache,
 
     crate call_locations: AllCallLocations,
+
+    crate minimum_supported_rust_version: Option<String>,
 }
 
 impl SharedContext<'_> {
@@ -406,6 +408,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_link_to_definition,
             call_locations,
             no_emit_shared,
+            minimum_supported_rust_version,
             ..
         } = options;
 
@@ -490,6 +493,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             span_correspondance_map: matches,
             cache,
             call_locations,
+            minimum_supported_rust_version,
         };
 
         // Add the default themes to the `Vec` of stylepaths

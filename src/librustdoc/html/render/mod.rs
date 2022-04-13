@@ -467,14 +467,25 @@ fn document(
     parent: Option<&clean::Item>,
     heading_offset: HeadingOffset,
 ) {
+    document_inner(w, cx, item, parent, heading_offset, None)
+}
+
+fn document_inner(
+    w: &mut Buffer,
+    cx: &Context<'_>,
+    item: &clean::Item,
+    parent: Option<&clean::Item>,
+    heading_offset: HeadingOffset,
+    extra: Option<String>,
+) {
     if let Some(ref name) = item.name {
         info!("Documenting {}", name);
     }
     document_item_info(w, cx, item, parent);
     if parent.is_none() {
-        document_full_collapsible(w, item, cx, heading_offset);
+        document_full_collapsible(w, item, cx, heading_offset, extra);
     } else {
-        document_full(w, item, cx, heading_offset);
+        document_full(w, item, cx, heading_offset, extra);
     }
 }
 
@@ -539,8 +550,9 @@ fn document_full_collapsible(
     item: &clean::Item,
     cx: &Context<'_>,
     heading_offset: HeadingOffset,
+    extra: Option<String>,
 ) {
-    document_full_inner(w, item, cx, true, heading_offset);
+    document_full_inner(w, item, cx, true, heading_offset, extra);
 }
 
 fn document_full(
@@ -548,8 +560,9 @@ fn document_full(
     item: &clean::Item,
     cx: &Context<'_>,
     heading_offset: HeadingOffset,
+    extra: Option<String>,
 ) {
-    document_full_inner(w, item, cx, false, heading_offset);
+    document_full_inner(w, item, cx, false, heading_offset, extra);
 }
 
 fn document_full_inner(
@@ -558,7 +571,11 @@ fn document_full_inner(
     cx: &Context<'_>,
     is_collapsible: bool,
     heading_offset: HeadingOffset,
+    extra: Option<String>,
 ) {
+    if let Some(extra) = extra {
+        w.write_str(&extra);
+    }
     if let Some(s) = item.collapsed_doc_value() {
         debug!("Doc block: =====\n{}\n=====", s);
         if is_collapsible {
@@ -1442,7 +1459,7 @@ fn render_impl(
                         // because impls can't have a stability.
                         if item.doc_value().is_some() {
                             document_item_info(&mut info_buffer, cx, it, Some(parent));
-                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                            document_full(&mut doc_buffer, item, cx, HeadingOffset::H5, None);
                             short_documented = false;
                         } else {
                             // In case the item isn't documented,
@@ -1460,7 +1477,7 @@ fn render_impl(
                 } else {
                     document_item_info(&mut info_buffer, cx, item, Some(parent));
                     if rendering_params.show_def_docs {
-                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5);
+                        document_full(&mut doc_buffer, item, cx, HeadingOffset::H5, None);
                         short_documented = false;
                     }
                 }

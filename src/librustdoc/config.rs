@@ -276,6 +276,8 @@ crate struct RenderOptions {
     crate call_locations: AllCallLocations,
     /// If `true`, Context::init will not emit shared files.
     crate no_emit_shared: bool,
+    /// Comes from the `--minimum-supported-rust-version` option.
+    crate minimum_supported_rust_version: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -656,6 +658,16 @@ impl Options {
         let generate_link_to_definition = matches.opt_present("generate-link-to-definition");
         let extern_html_root_takes_precedence =
             matches.opt_present("extern-html-root-takes-precedence");
+        let minimum_supported_rust_version = matches.opt_str("minimum-supported-rust-version");
+        if let Some(ref minimum_supported_rust_version) = minimum_supported_rust_version {
+            if let Err(e) = semver::Version::parse(minimum_supported_rust_version) {
+                diag.struct_err(&format!(
+                    "--minimum-supported-rust-version expects a valid semver value: {e}"
+                ))
+                .emit();
+                return Err(1);
+            }
+        }
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
             diag.struct_err(
@@ -734,6 +746,7 @@ impl Options {
                 generate_link_to_definition,
                 call_locations,
                 no_emit_shared: false,
+                minimum_supported_rust_version,
             },
             crate_name,
             output_format,

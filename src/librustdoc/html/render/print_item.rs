@@ -16,7 +16,7 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_target::abi::{Layout, Primitive, TagEncoding, Variants};
 
 use super::{
-    collect_paths_for_type, document, ensure_trailing_slash, item_ty_to_section,
+    collect_paths_for_type, document, document_inner, ensure_trailing_slash, item_ty_to_section,
     notable_traits_decl, render_assoc_item, render_assoc_items, render_attributes_in_code,
     render_attributes_in_pre, render_impl, render_stability_since_raw, write_srclink,
     AssocItemLink, Context, ImplRenderingParameters,
@@ -188,7 +188,12 @@ fn toggle_close(w: &mut Buffer) {
 }
 
 fn item_module(w: &mut Buffer, cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) {
-    document(w, cx, item, None, HeadingOffset::H2);
+    if item.is_crate() {
+        let extra = cx.shared.minimum_supported_rust_version.as_ref().map(|v| format!("<div class=\"extra-info\">ⓘ The minimum supported Rust version for this crate is: <b>{}</b>.</div>", v));
+        document_inner(w, cx, item, None, HeadingOffset::H2, extra);
+    } else {
+        document(w, cx, item, None, HeadingOffset::H2);
+    }
 
     let mut indices = (0..items.len()).filter(|i| !items[*i].is_stripped()).collect::<Vec<usize>>();
 
