@@ -987,7 +987,7 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(
 
         // On MSVC packed debug information is produced by the linker itself so
         // there's no need to do anything else here.
-        SplitDebuginfo::Packed if sess.target.is_like_msvc => {}
+        SplitDebuginfo::Packed if sess.target.is_like_windows => {}
 
         // ... and otherwise we're processing a `*.dwp` packed dwarf file.
         //
