@@ -90,11 +90,10 @@ impl<'a> Printer<'a> {
         for attr in &**attrs {
             wln!(
                 self,
-                "#{}[{}{}]  // {:?}",
+                "#{}[{}{}]",
                 inner,
                 attr.path,
                 attr.input.as_ref().map(|it| it.to_string()).unwrap_or_default(),
-                attr.id,
             );
         }
     }
@@ -242,10 +241,19 @@ impl<'a> Printer<'a> {
                     ast_id: _,
                     flags,
                 } = &self.tree[it];
-                if flags.bits != 0 {
-                    wln!(self, "// flags = 0x{:X}", flags.bits);
-                }
                 self.print_visibility(*visibility);
+                if flags.contains(FnFlags::HAS_DEFAULT_KW) {
+                    w!(self, "default ");
+                }
+                if flags.contains(FnFlags::HAS_CONST_KW) {
+                    w!(self, "const ");
+                }
+                if flags.contains(FnFlags::HAS_ASYNC_KW) {
+                    w!(self, "async ");
+                }
+                if flags.contains(FnFlags::HAS_UNSAFE_KW) {
+                    w!(self, "unsafe ");
+                }
                 if let Some(abi) = abi {
                     w!(self, "extern \"{}\" ", abi);
                 }
@@ -254,7 +262,7 @@ impl<'a> Printer<'a> {
                 w!(self, "(");
                 if !params.is_empty() {
                     self.indented(|this| {
-                        for param in params.clone() {
+                        for (i, param) in params.clone().enumerate() {
                             this.print_attrs_of(param);
                             match &this.tree[param] {
                                 Param::Normal(name, ty) => {
@@ -263,7 +271,12 @@ impl<'a> Printer<'a> {
                                         None => w!(this, "_: "),
                                     }
                                     this.print_type_ref(ty);
-                                    wln!(this, ",");
+                                    w!(this, ",");
+                                    if flags.contains(FnFlags::HAS_SELF_PARAM) && i == 0 {
+                                        wln!(this, "  // self");
+                                    } else {
+                                        wln!(this);
+                                    }
                                 }
                                 Param::Varargs => {
                                     wln!(this, "...");
@@ -275,7 +288,11 @@ impl<'a> Printer<'a> {
                 w!(self, ") -> ");
                 self.print_type_ref(ret_type);
                 self.print_where_clause(explicit_generic_params);
-                wln!(self, ";");
+                if flags.contains(FnFlags::HAS_BODY) {
+                    wln!(self, " {{ ... }}");
+                } else {
+                    wln!(self, ";");
+                }
             }
             ModItem::Struct(it) => {
                 let Struct { visibility, name, fields, generic_params, ast_id: _ } = &self.tree[it];
