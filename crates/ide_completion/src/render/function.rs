@@ -228,7 +228,7 @@ fn should_add_parens(ctx: &CompletionContext) -> bool {
 }
 
 fn detail(db: &dyn HirDatabase, func: hir::Function) -> String {
-    let ret_ty = func.ret_type(db);
+    let ret_ty = func.async_ret_type(db).unwrap_or_else(|| func.ret_type(db));
     let mut detail = String::new();
 
     if func.is_const(db) {

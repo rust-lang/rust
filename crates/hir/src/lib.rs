@@ -1364,6 +1364,23 @@ impl Function {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
+    pub fn async_ret_type(self, db: &dyn HirDatabase) -> Option<Type> {
+        if !self.is_async(db) {
+            return None;
+        }
+        let resolver = self.id.resolver(db.upcast());
+        let substs = TyBuilder::placeholder_subst(db, self.id);
+        let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
+        let ret_ty = callable_sig.ret().clone();
+        for pred in ret_ty.impl_trait_bounds(db).into_iter().flatten() {
+            if let WhereClause::AliasEq(output_eq) = pred.into_value_and_skipped_binders().0 {
+                return Type::new_with_resolver_inner(db, &resolver, output_eq.ty).into();
+            }
+        }
+        never!("Async fn ret_type should be impl Future");
+        None
+    }
+
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
         if !db.function_data(self.id).has_self_param() {
             return None;

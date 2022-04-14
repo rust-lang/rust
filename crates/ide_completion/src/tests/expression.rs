@@ -624,12 +624,12 @@ fn main() {
 
 #[test]
 fn detail_async_fn() {
-    // FIXME: #11438
     check_empty(
         r#"
 //- minicore: future, sized
 trait Trait<T> {}
 async fn foo() -> u8 {}
+async fn bar<U>() -> impl Trait<U> {}
 fn main() {
     self::$0
 }
@@ -637,7 +637,8 @@ fn main() {
         expect![[r"
             tt Trait
             fn main() fn()
-            fn foo()  async fn() -> impl Future<Output = u8>
+            fn bar()  async fn() -> impl Trait<U>
+            fn foo()  async fn() -> u8
         "]],
     );
 }
