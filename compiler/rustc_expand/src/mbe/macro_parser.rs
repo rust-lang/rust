@@ -142,10 +142,13 @@ pub(super) fn compute_locs(sess: &ParseSess, matcher: &[TokenTree]) -> Vec<Match
                     locs.push(MatcherLoc::Token { token: token.clone() });
                 }
                 TokenTree::Delimited(span, delimited) => {
+                    let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
+                    let close_token = Token::new(token::CloseDelim(delimited.delim), span.close);
+
                     locs.push(MatcherLoc::Delimited);
-                    inner(sess, &[delimited.open_tt(*span)], locs, next_metavar, seq_depth);
+                    locs.push(MatcherLoc::Token { token: open_token });
                     inner(sess, &delimited.tts, locs, next_metavar, seq_depth);
-                    inner(sess, &[delimited.close_tt(*span)], locs, next_metavar, seq_depth);
+                    locs.push(MatcherLoc::Token { token: close_token });
                 }
                 TokenTree::Sequence(_, seq) => {
                     // We can't determine `idx_first_after` and construct the final

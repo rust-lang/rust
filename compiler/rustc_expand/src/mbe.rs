@@ -13,32 +13,19 @@ crate mod transcribe;
 use metavar_expr::MetaVarExpr;
 use rustc_ast::token::{self, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 /// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`. The delimiters
 /// might be `NoDelim`, but they are not represented explicitly.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: token::DelimToken,
     /// FIXME: #67062 has details about why this is sub-optimal.
     tts: Vec<TokenTree>,
 }
 
-impl Delimited {
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the opening delimiter.
-    fn open_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::OpenDelim(self.delim), span.open)
-    }
-
-    /// Returns a `self::TokenTree` with a `Span` corresponding to the closing delimiter.
-    fn close_tt(&self, span: DelimSpan) -> TokenTree {
-        TokenTree::token(token::CloseDelim(self.delim), span.close)
-    }
-}
-
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
+#[derive(PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
@@ -76,13 +63,13 @@ enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
 /// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, Clone, PartialEq, Encodable, Decodable)]
+#[derive(Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
-    Delimited(DelimSpan, Lrc<Delimited>),
+    Delimited(DelimSpan, Delimited),
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
-    Sequence(DelimSpan, Lrc<SequenceRepetition>),
+    Sequence(DelimSpan, SequenceRepetition),
     /// e.g., `$var`.
     MetaVar(Span, Ident),
     /// e.g., `$var:expr`. Only appears on the LHS.

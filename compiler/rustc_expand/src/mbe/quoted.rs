@@ -11,8 +11,6 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::edition::Edition;
 use rustc_span::{Span, SyntaxContext};
 
-use rustc_data_structures::sync::Lrc;
-
 const VALID_FRAGMENT_NAMES_MSG: &str = "valid fragment specifiers are \
                                         `ident`, `block`, `stmt`, `expr`, `pat`, `ty`, `lifetime`, \
                                         `literal`, `path`, `meta`, `tt`, `item` and `vis`";
@@ -213,12 +211,7 @@ fn parse_tree(
                         if parsing_patterns { count_metavar_decls(&sequence) } else { 0 };
                     TokenTree::Sequence(
                         delim_span,
-                        Lrc::new(SequenceRepetition {
-                            tts: sequence,
-                            separator,
-                            kleene,
-                            num_captures,
-                        }),
+                        SequenceRepetition { tts: sequence, separator, kleene, num_captures },
                     )
                 }
 
@@ -269,10 +262,10 @@ fn parse_tree(
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
-            Lrc::new(Delimited {
+            Delimited {
                 delim,
                 tts: parse(tts, parsing_patterns, sess, node_id, features, edition),
-            }),
+            },
         ),
     }
 }
