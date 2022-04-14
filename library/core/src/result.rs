@@ -1034,7 +1034,7 @@ impl<T, E> Result<T, E> {
     /// In the former case the expect message is used to describe the error that has occurred which
     /// is considered a bug. Consider the following example:
     ///
-    /// ```
+    /// ```should_panic
     /// // Read environment variable, panic if it is not present
     /// let path = std::env::var("IMPORTANT_PATH").unwrap();
     /// ```
@@ -1042,7 +1042,7 @@ impl<T, E> Result<T, E> {
     /// In the "expect as error message" style we would use expect to describe that the environment
     /// variable was not set when it should have been:
     ///
-    /// ```
+    /// ```should_panic
     /// let path = std::env::var("IMPORTANT_PATH")
     ///     .expect("env variable `IMPORTANT_PATH` is not set");
     /// ```
@@ -1050,7 +1050,7 @@ impl<T, E> Result<T, E> {
     /// In the latter style, we would instead describe the reason we _expect_ the `Result` will
     /// always be `Ok`. With this style we would instead write:
     ///
-    /// ```
+    /// ```should_panic
     /// let path = std::env::var("IMPORTANT_PATH")
     ///     .expect("env variable `IMPORTANT_PATH` is always be set by `wrapper_script.sh`");
     /// ```
