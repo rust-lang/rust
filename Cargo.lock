@@ -311,7 +311,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.62.0"
+version = "0.63.0"
 dependencies = [
  "anyhow",
  "atty",
@@ -348,6 +348,7 @@ dependencies = [
  "opener",
  "openssl",
  "os_info",
+ "pathdiff",
  "percent-encoding 2.1.0",
  "pretty_env_logger",
  "rustc-workspace-hack",
@@ -453,7 +454,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-util"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "core-foundation",
@@ -2651,9 +2652,9 @@ dependencies = [
 
 [[package]]
 name = "pathdiff"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "877630b3de15c0b64cc52f659345724fbf6bdad9bd9566699fc53688f3c34a34"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
 
 [[package]]
 name = "percent-encoding"
