@@ -1,4 +1,4 @@
-#!/bin/bash --verbose
+#!/usr/bin/env bash --verbose
 set -e
 
 source prepare_build.sh

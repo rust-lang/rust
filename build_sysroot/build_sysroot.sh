@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Requires the CHANNEL env var to be set to `debug` or `release.`
 

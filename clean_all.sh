@@ -1,4 +1,4 @@
-#!/bin/bash --verbose
+#!/usr/bin/env bash --verbose
 set -e
 
 rm -rf target/ build_sysroot/{sysroot/,sysroot_src/,target/,Cargo.lock} perf.data{,.old}

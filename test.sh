@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # TODO(antoyo): rewrite to cargo-make (or just) or something like that to only rebuild the sysroot when needed?
 
