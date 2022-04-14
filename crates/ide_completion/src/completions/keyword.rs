@@ -86,7 +86,7 @@ pub(crate) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         add_keyword("mod", "mod $0");
     }
 
-    if expects_item {
+    if expects_item || has_block_expr_parent {
         add_keyword("enum", "enum $1 {\n    $0\n}");
         add_keyword("struct", "struct $0");
         add_keyword("union", "union $1 {\n    $0\n}");
