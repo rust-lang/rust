@@ -39,8 +39,11 @@ pub(crate) const TRIGGER_CHARS: &str = ".=>{";
 // Some features trigger on typing certain characters:
 //
 // - typing `let =` tries to smartly add `;` if `=` is followed by an existing expression
+// - typing `=` between two expressions adds `;` when in statement position
+// - typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
 // - typing `.` in a chain method call auto-indents
 // - typing `{` in front of an expression inserts a closing `}` after the expression
+// - typing `{` in a use item adds a closing `}` in the right place
 //
 // VS Code::
 //
