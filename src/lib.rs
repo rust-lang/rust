@@ -299,10 +299,17 @@ pub fn target_features(sess: &Session) -> Vec<Symbol> {
                 if sess.is_nightly_build() || gate.is_none() { Some(feature) } else { None }
             },
         )
-        .filter(|feature| {
+        .filter(|_feature| {
             // TODO(antoyo): implement a way to get enabled feature in libgccjit.
             // Probably using the equivalent of __builtin_cpu_supports.
-            feature.contains("sse") || feature.contains("avx")
+            #[cfg(feature="master")]
+            {
+                _feature.contains("sse") || _feature.contains("avx")
+            }
+            #[cfg(not(feature="master"))]
+            {
+                false
+            }
             /*
                adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512gfni,
                avx512ifma, avx512pf, avx512vaes, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpclmulqdq,

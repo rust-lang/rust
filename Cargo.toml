@@ -13,6 +13,10 @@ name = "lang_tests"
 path = "tests/lib.rs"
 harness = false
 
+[features]
+default = ["master"]
+master = ["gccjit/master"]
+
 [dependencies]
 gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
 

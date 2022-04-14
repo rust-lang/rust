@@ -11,7 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        libgccjit_version: ["libgccjit.so", "libgccjit_without_int128.so"]
+        libgccjit_version: ["libgccjit.so", "libgccjit_without_int128.so", "libgccjit12.so"]
 
     steps:
     - uses: actions/checkout@v2
@@ -78,10 +78,19 @@ jobs:
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
 
     - name: Build
+      if: matrix.libgccjit_version != 'libgccjit12.so'
       run: |
         ./prepare_build.sh
         ./build.sh
         cargo test
+        ./clean_all.sh
+
+    - name: Build
+      if: matrix.libgccjit_version == 'libgccjit12.so'
+      run: |
+        ./prepare_build.sh
+        ./build.sh --no-default-features
+        cargo test --no-default-features
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -98,6 +107,7 @@ jobs:
         args: --release
 
     - name: Test
+      if: matrix.libgccjit_version != 'libgccjit12.so'
       run: |
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
@@ -107,3 +117,15 @@ jobs:
         export RUN_RUNS=2
 
         ./test.sh --release
+
+    - name: Test
+      if: matrix.libgccjit_version == 'libgccjit12.so'
+      run: |
+        # Enable backtraces for easier debugging
+        export RUST_BACKTRACE=1
+
+        # Reduce amount of benchmark runs as they are slow
+        export COMPILE_RUNS=2
+        export RUN_RUNS=2
+
+        ./test.sh --release --no-default-features

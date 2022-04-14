@@ -125,6 +125,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             .collect();
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
         if packed {
+            #[cfg(feature="master")]
             typ.set_packed();
         }
         self.struct_types.borrow_mut().insert(types, typ);
@@ -217,6 +218,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             .collect();
         typ.set_fields(None, &fields);
         if packed {
+            #[cfg(feature="master")]
             typ.as_type().set_packed();
         }
     }
