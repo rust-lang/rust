@@ -211,6 +211,10 @@ fn mutable_closure_in_loop() {
     let mut closure = |n| value += n;
     for _ in 0..5 {
         Some(1).map(|n| closure(n));
+
+        let mut value = 0;
+        let mut in_loop = |n| value += n;
+        Some(1).map(|n| in_loop(n));
     }
 }
 
