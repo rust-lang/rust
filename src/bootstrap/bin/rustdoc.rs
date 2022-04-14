@@ -31,7 +31,9 @@ fn main() {
 
     let mut cmd = Command::new(rustdoc);
 
-    if target.is_some() {
+    // I am not actually sure why it's necessary to pass the sysroot for `--test`,
+    // but `test --doc --stage 0` is broken without it :(
+    if target.is_some() || args.iter().any(|x| x == "--test") {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
         // unless one is already set.
