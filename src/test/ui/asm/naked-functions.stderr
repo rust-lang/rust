@@ -66,7 +66,7 @@ LL | | }
    | |_^
 
 error: referencing function parameters is not allowed in naked functions
-  --> $DIR/naked-functions.rs:41:31
+  --> $DIR/naked-functions.rs:42:31
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                               ^
@@ -74,7 +74,7 @@ LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    = help: follow the calling convention in asm block to use parameters
 
 error[E0787]: only `const` and `sym` operands are supported in naked functions
-  --> $DIR/naked-functions.rs:41:23
+  --> $DIR/naked-functions.rs:42:23
    |
 LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
    |                       ^^^^^^^^^
@@ -298,16 +298,6 @@ error: naked functions cannot be inlined
 LL | #[inline(never)]
    | ^^^^^^^^^^^^^^^^
 
-warning: formatting may not be suitable for sub-register argument
-  --> $DIR/naked-functions.rs:41:14
-   |
-LL |     asm!("/* {0} */", in(reg) a, options(noreturn));
-   |              ^^^              - for this argument
-   |
-   = note: `#[warn(asm_sub_register)]` on by default
-   = help: use the `e` modifier to have the register formatted as `eax`
-   = help: or use the `r` modifier to keep the default formatting of `rax`
-
-error: aborting due to 33 previous errors; 3 warnings emitted
+error: aborting due to 33 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0787`.
