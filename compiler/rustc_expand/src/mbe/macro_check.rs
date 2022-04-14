@@ -270,7 +270,7 @@ fn check_binders(
                     MISSING_FRAGMENT_SPECIFIER,
                     span,
                     node_id,
-                    &format!("missing fragment specifier"),
+                    "missing fragment specifier",
                 );
             }
             if !macros.is_empty() {

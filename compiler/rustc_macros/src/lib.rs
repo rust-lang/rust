@@ -44,7 +44,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
 #[proc_macro]
 #[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
 pub fn newtype_index(input: TokenStream) -> TokenStream {
-    newtype::newtype(input).into()
+    newtype::newtype(input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);

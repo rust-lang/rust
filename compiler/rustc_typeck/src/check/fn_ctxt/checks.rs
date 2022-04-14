@@ -415,8 +415,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .get_if_local(def_id)
                     .and_then(|node| node.body_id())
                     .into_iter()
-                    .map(|id| tcx.hir().body(id).params)
-                    .flatten();
+                    .flat_map(|id| tcx.hir().body(id).params)
+                    ;
 
                 for param in params {
                     spans.push_span_label(param.span, String::new());
