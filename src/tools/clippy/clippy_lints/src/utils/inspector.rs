@@ -281,8 +281,9 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
             for (op, _op_sp) in asm.operands {
                 match op {
                     hir::InlineAsmOperand::In { expr, .. }
-                    | hir::InlineAsmOperand::InOut { expr, .. }
-                    | hir::InlineAsmOperand::Sym { expr } => print_expr(cx, expr, indent + 1),
+                    | hir::InlineAsmOperand::InOut { expr, .. } => {
+                        print_expr(cx, expr, indent + 1);
+                    }
                     hir::InlineAsmOperand::Out { expr, .. } => {
                         if let Some(expr) = expr {
                             print_expr(cx, expr, indent + 1);
@@ -294,10 +295,26 @@ fn print_expr(cx: &LateContext<'_>, expr: &hir::Expr<'_>, indent: usize) {
                             print_expr(cx, out_expr, indent + 1);
                         }
                     },
-                    hir::InlineAsmOperand::Const { anon_const } => {
+                    hir::InlineAsmOperand::Const { anon_const }
+                    | hir::InlineAsmOperand::SymFn { anon_const } => {
                         println!("{}anon_const:", ind);
                         print_expr(cx, &cx.tcx.hir().body(anon_const.body).value, indent + 1);
                     },
+                    hir::InlineAsmOperand::SymStatic { path, .. } => {
+                        match path {
+                            hir::QPath::Resolved(ref ty, path) => {
+                                println!("{}Resolved Path, {:?}", ind, ty);
+                                println!("{}path: {:?}", ind, path);
+                            },
+                            hir::QPath::TypeRelative(ty, seg) => {
+                                println!("{}Relative Path, {:?}", ind, ty);
+                                println!("{}seg: {:?}", ind, seg);
+                            },
+                            hir::QPath::LangItem(lang_item, ..) => {
+                                println!("{}Lang Item Path, {:?}", ind, lang_item.name());
+                            },
+                        }
+                    }
                 }
             }
         },

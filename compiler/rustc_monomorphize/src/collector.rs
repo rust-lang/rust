@@ -435,7 +435,27 @@ fn collect_items_rec<'tcx>(
                             // are supported. Therefore the value should not
                             // depend on any other items.
                         }
-                        _ => span_bug!(*op_sp, "invalid operand type for global_asm!"),
+                        hir::InlineAsmOperand::SymFn { anon_const } => {
+                            let def_id = tcx.hir().body_owner_def_id(anon_const.body).to_def_id();
+                            if let Ok(val) = tcx.const_eval_poly(def_id) {
+                                rustc_data_structures::stack::ensure_sufficient_stack(|| {
+                                    collect_const_value(tcx, val, &mut neighbors);
+                                });
+                            }
+                        }
+                        hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
+                            let instance = Instance::mono(tcx, *def_id);
+                            if should_codegen_locally(tcx, &instance) {
+                                trace!("collecting static {:?}", def_id);
+                                neighbors.push(dummy_spanned(MonoItem::Static(*def_id)));
+                            }
+                        }
+                        hir::InlineAsmOperand::In { .. }
+                        | hir::InlineAsmOperand::Out { .. }
+                        | hir::InlineAsmOperand::InOut { .. }
+                        | hir::InlineAsmOperand::SplitInOut { .. } => {
+                            span_bug!(*op_sp, "invalid operand type for global_asm!")
+                        }
                     }
                 }
             } else {

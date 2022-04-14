@@ -99,7 +99,16 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
                 attributes::apply_to_llfn(entry, llvm::AttributePlace::Function, &attrs);
             }
 
-            // Run replace-all-uses-with for statics that need it
+            // Create the llvm.used and llvm.compiler.used variables.
+            if !cx.used_statics().borrow().is_empty() {
+                cx.create_used_variable()
+            }
+            if !cx.compiler_used_statics().borrow().is_empty() {
+                cx.create_compiler_used_variable()
+            }
+
+            // Run replace-all-uses-with for statics that need it. This must
+            // happen after the llvm.used variables are created.
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
                 unsafe {
                     let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
@@ -112,14 +121,6 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol) -> (ModuleCodegen
             // also be added to the `llvm.compiler.used` variable, created next.
             if cx.sess().instrument_coverage() {
                 cx.coverageinfo_finalize();
-            }
-
-            // Create the llvm.used and llvm.compiler.used variables.
-            if !cx.used_statics().borrow().is_empty() {
-                cx.create_used_variable()
-            }
-            if !cx.compiler_used_statics().borrow().is_empty() {
-                cx.create_compiler_used_variable()
             }
 
             // Finalize debuginfo

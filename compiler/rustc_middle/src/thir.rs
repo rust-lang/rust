@@ -526,7 +526,8 @@ pub enum InlineAsmOperand<'tcx> {
         span: Span,
     },
     SymFn {
-        expr: ExprId,
+        value: mir::ConstantKind<'tcx>,
+        span: Span,
     },
     SymStatic {
         def_id: DefId,

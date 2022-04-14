@@ -36,8 +36,10 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
 }
 
 #[derive(Debug)]
-pub enum GlobalAsmOperandRef {
+pub enum GlobalAsmOperandRef<'tcx> {
     Const { string: String },
+    SymFn { instance: Instance<'tcx> },
+    SymStatic { def_id: DefId },
 }
 
 pub trait AsmBuilderMethods<'tcx>: BackendTypes {
@@ -53,11 +55,11 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
     );
 }
 
-pub trait AsmMethods {
+pub trait AsmMethods<'tcx> {
     fn codegen_global_asm(
         &self,
         template: &[InlineAsmTemplatePiece],
-        operands: &[GlobalAsmOperandRef],
+        operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         line_spans: &[Span],
     );

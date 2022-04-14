@@ -154,17 +154,19 @@ pub fn parse_asm_args<'a>(
         } else if p.eat_keyword(kw::Const) {
             let anon_const = p.parse_anon_const_expr()?;
             ast::InlineAsmOperand::Const { anon_const }
-        } else if !is_global_asm && p.eat_keyword(sym::sym) {
+        } else if p.eat_keyword(sym::sym) {
             let expr = p.parse_expr()?;
-            match expr.kind {
-                ast::ExprKind::Path(..) => {}
-                _ => {
-                    let err = diag
-                        .struct_span_err(expr.span, "argument to `sym` must be a path expression");
-                    return Err(err);
-                }
-            }
-            ast::InlineAsmOperand::Sym { expr }
+            let ast::ExprKind::Path(qself, path) = &expr.kind else {
+                let err = diag
+                    .struct_span_err(expr.span, "expected a path for argument to `sym`");
+                return Err(err);
+            };
+            let sym = ast::InlineAsmSym {
+                id: ast::DUMMY_NODE_ID,
+                qself: qself.clone(),
+                path: path.clone(),
+            };
+            ast::InlineAsmOperand::Sym { sym }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other

@@ -1012,6 +1012,12 @@ impl<'a> Resolver<'a> {
                 err.span_label(trait_item_span, "item in trait");
                 err
             }
+            ResolutionError::InvalidAsmSym => {
+                let mut err = self.session.struct_span_err(span, "invalid `sym` operand");
+                err.span_label(span, &format!("is a local variable"));
+                err.help("`sym` operands must refer to either a function or a static");
+                err
+            }
         }
     }
 
