@@ -1023,6 +1023,62 @@ impl<T, E> Result<T, E> {
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
     /// ```
+    ///
+    /// # Common Message Styles
+    ///
+    /// There are two common styles for how people word `expect` messages. Using the message to
+    /// present information to users encountering a panic ("expect as error message") or using the
+    /// message to present information to developers debugging the panic ("expect as
+    /// precondition").
+    ///
+    /// In the former case the expect message is used to describe the error that has occurred which
+    /// is considered a bug. Consider the following example:
+    ///
+    /// ```
+    /// // Read environment variable, panic if it is not present
+    /// let path = std::env::var("IMPORTANT_PATH").unwrap();
+    /// ```
+    ///
+    /// In the "expect as error message" style we would use expect to describe that the environment
+    /// variable was not set when it should have been:
+    ///
+    /// ```
+    /// let path = std::env::var("IMPORTANT_PATH")
+    ///     .expect("env variable `IMPORTANT_PATH` is not set");
+    /// ```
+    ///
+    /// In the latter style, we would instead describe the reason we _expect_ the `Result` will
+    /// always be `Ok`. With this style we would instead write:
+    ///
+    /// ```
+    /// let path = std::env::var("IMPORTANT_PATH")
+    ///     .expect("env variable `IMPORTANT_PATH` is always be set by `wrapper_script.sh`");
+    /// ```
+    ///
+    /// The "expect as error message" style has the advantage of giving a more user friendly error
+    /// message, and is more consistent with the default output of the [panic hook] provided by
+    /// `std`.
+    ///
+    /// ```
+    /// thread 'expect_as_error_message' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/lib.rs:4:10
+    /// ```
+    ///
+    /// The "expect as precondition" style instead focuses on source code readability, making it
+    /// easier to understand what must have gone wrong in situations where panics are being used to
+    /// represent bugs exclusively. But this extra information often looks confusing when presented
+    /// directly to users with the default `std` panic hook's report format:
+    ///
+    /// ```
+    /// thread 'expect_as_precondition' panicked at 'env variable `IMPORTANT_PATH` is always set by `wrapper_script.sh`: NotPresent', src/lib.rs:4:10
+    /// ```
+    ///
+    /// This style works best when paired with a custom [panic hook] like the one provided by the
+    /// CLI working group library, [`human-panic`], which redirects panic messages to crash report
+    /// files while showing users a more "Oops, something went wrong!" message with a suggestion to
+    /// send the crash report file back to the developers.
+    ///
+    /// [panic hook]: https://doc.rust-lang.org/stable/std/panic/fn.set_hook.html
+    /// [`human-panic`]: https://docs.rs/human-panic
     #[inline]
     #[track_caller]
     #[stable(feature = "result_expect", since = "1.4.0")]
