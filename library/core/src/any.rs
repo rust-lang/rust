@@ -776,7 +776,7 @@ pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Trait implemented by a type which can dynamically provide values based on type.
-#[unstable(feature = "provide_any", issue = "none")]
+#[unstable(feature = "provide_any", issue = "96024")]
 pub trait Provider {
     /// Data providers should implement this method to provide *all* values they are able to
     /// provide by using `demand`.
@@ -796,7 +796,7 @@ pub trait Provider {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "provide_any", issue = "none")]
+    #[unstable(feature = "provide_any", issue = "96024")]
     fn provide<'a>(&'a self, demand: &mut Demand<'a>);
 }
 
@@ -814,7 +814,7 @@ pub trait Provider {
 ///     request_value::<String, _>(provider).unwrap()
 /// }
 /// ```
-#[unstable(feature = "provide_any", issue = "none")]
+#[unstable(feature = "provide_any", issue = "96024")]
 pub fn request_value<'a, T, P>(provider: &'a P) -> Option<T>
 where
     T: 'static,
@@ -837,7 +837,7 @@ where
 ///     request_ref::<str, _>(provider).unwrap()
 /// }
 /// ```
-#[unstable(feature = "provide_any", issue = "none")]
+#[unstable(feature = "provide_any", issue = "96024")]
 pub fn request_ref<'a, T, P>(provider: &'a P) -> Option<&'a T>
 where
     T: 'static + ?Sized,
@@ -865,7 +865,7 @@ where
 ///
 /// A data provider provides values by calling this type's provide methods.
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "provide_any", issue = "none")]
+#[unstable(feature = "provide_any", issue = "96024")]
 #[repr(transparent)]
 pub struct Demand<'a>(dyn Erased<'a> + 'a);
 
@@ -887,7 +887,7 @@ impl<'a> Demand<'a> {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "provide_any", issue = "none")]
+    #[unstable(feature = "provide_any", issue = "96024")]
     pub fn provide_value<T, F>(&mut self, fulfil: F) -> &mut Self
     where
         T: 'static,
@@ -914,7 +914,7 @@ impl<'a> Demand<'a> {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "provide_any", issue = "none")]
+    #[unstable(feature = "provide_any", issue = "96024")]
     pub fn provide_ref<T: ?Sized + 'static>(&mut self, value: &'a T) -> &mut Self {
         self.provide::<tags::Ref<tags::MaybeSizedValue<T>>>(value)
     }
@@ -1034,7 +1034,7 @@ impl<'a, I: tags::Type<'a>> Erased<'a> for TaggedOption<'a, I> {
     }
 }
 
-#[unstable(feature = "provide_any", issue = "none")]
+#[unstable(feature = "provide_any", issue = "96024")]
 impl<'a> dyn Erased<'a> {
     /// Returns some reference to the dynamic value if it is tagged with `I`,
     /// or `None` otherwise.
