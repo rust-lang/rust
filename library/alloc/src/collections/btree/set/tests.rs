@@ -427,6 +427,26 @@ fn test_clear() {
     x.clear();
     assert!(x.is_empty());
 }
+#[test]
+fn test_remove() {
+    let mut x = BTreeSet::new();
+    assert!(x.is_empty());
+
+    x.insert(1);
+    x.insert(2);
+    x.insert(3);
+    x.insert(4);
+
+    assert_eq!(x.remove(&2), true);
+    assert_eq!(x.remove(&0), false);
+    assert_eq!(x.remove(&5), false);
+    assert_eq!(x.remove(&1), true);
+    assert_eq!(x.remove(&2), false);
+    assert_eq!(x.remove(&3), true);
+    assert_eq!(x.remove(&4), true);
+    assert_eq!(x.remove(&4), false);
+    assert!(x.is_empty());
+}
 
 #[test]
 fn test_zip() {
