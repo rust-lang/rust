@@ -12,5 +12,4 @@ fn main() {
 }
 
 #[lang = "eh_personality"] extern "C" fn eh_personality() {}
-#[lang = "eh_catch_typeinfo"] static EH_CATCH_TYPEINFO: u8 = 0;
 #[lang = "panic_impl"] fn panic_impl(panic: &PanicInfo) -> ! { loop {} }

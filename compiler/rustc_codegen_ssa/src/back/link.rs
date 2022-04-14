@@ -21,7 +21,7 @@ use rustc_span::symbol::Symbol;
 use rustc_span::DebuggerVisualizerFile;
 use rustc_target::spec::crt_objects::{CrtObjects, CrtObjectsFallback};
 use rustc_target::spec::{LinkOutputKind, LinkerFlavor, LldFlavor, SplitDebuginfo};
-use rustc_target::spec::{PanicStrategy, RelocModel, RelroLevel, SanitizerSet, Target};
+use rustc_target::spec::{RelocModel, RelroLevel, SanitizerSet, Target};
 
 use super::archive::{find_library, ArchiveBuilder};
 use super::command::Command;
@@ -2045,15 +2045,6 @@ fn add_order_independent_options(
 
     if crt_objects_fallback {
         cmd.no_crt_objects();
-    }
-
-    if sess.target.is_like_emscripten {
-        cmd.arg("-s");
-        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
-            "DISABLE_EXCEPTION_CATCHING=1"
-        } else {
-            "DISABLE_EXCEPTION_CATCHING=0"
-        });
     }
 
     if flavor == LinkerFlavor::PtxLinker {

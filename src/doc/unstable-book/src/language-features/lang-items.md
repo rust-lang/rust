@@ -198,9 +198,6 @@ compiler. When a panic happens, this controls the message that's displayed on
 the screen. While the language item's name is `panic_impl`, the symbol name is
 `rust_begin_panic`.
 
-Finally, a `eh_catch_typeinfo` static is needed for certain targets which
-implement Rust panics on top of C++ exceptions.
-
 ## List of all language items
 
 This is a list of all language items in Rust along with where they are located in
@@ -229,10 +226,8 @@ the source code.
   - `unsafe_cell`: `libcore/cell.rs`
 - Runtime
   - `start`: `libstd/rt.rs`
-  - `eh_personality`: `libpanic_unwind/emcc.rs` (EMCC)
   - `eh_personality`: `libpanic_unwind/gcc.rs` (GNU)
   - `eh_personality`: `libpanic_unwind/seh.rs` (SEH)
-  - `eh_catch_typeinfo`: `libpanic_unwind/emcc.rs` (EMCC)
   - `panic`: `libcore/panicking.rs`
   - `panic_bounds_check`: `libcore/panicking.rs`
   - `panic_impl`: `libcore/panicking.rs`

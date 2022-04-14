@@ -5,8 +5,7 @@
 //! essentially gets categorized into three buckets currently:
 //!
 //! 1. MSVC targets use SEH in the `seh.rs` file.
-//! 2. Emscripten uses C++ exceptions in the `emcc.rs` file.
-//! 3. All other targets use libunwind/libgcc in the `gcc.rs` file.
+//! 2. All other targets use libunwind/libgcc in the `gcc.rs` file.
 //!
 //! More documentation about each implementation can be found in the respective
 //! module.
@@ -32,10 +31,7 @@ use core::any::Any;
 use core::panic::BoxMeUp;
 
 cfg_if::cfg_if! {
-    if #[cfg(target_os = "emscripten")] {
-        #[path = "emcc.rs"]
-        mod real_imp;
-    } else if #[cfg(target_os = "hermit")] {
+    if #[cfg(target_os = "hermit")] {
         #[path = "hermit.rs"]
         mod real_imp;
     } else if #[cfg(target_os = "l4re")] {
@@ -49,7 +45,7 @@ cfg_if::cfg_if! {
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",
         target_os = "solid_asp3",
-        all(target_family = "unix", not(target_os = "espidf")),
+        all(target_family = "unix", not(any(target_os = "emscripten", target_os = "espidf"))),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ))] {
         // Rust runtime's startup objects depend on these symbols, so make them public.
