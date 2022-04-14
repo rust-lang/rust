@@ -1059,7 +1059,7 @@ impl<T, E> Result<T, E> {
     /// message, and is more consistent with the default output of the [panic hook] provided by
     /// `std`.
     ///
-    /// ```
+    /// ```text
     /// thread 'expect_as_error_message' panicked at 'env variable `IMPORTANT_PATH` is not set: NotPresent', src/lib.rs:4:10
     /// ```
     ///
@@ -1068,7 +1068,7 @@ impl<T, E> Result<T, E> {
     /// represent bugs exclusively. But this extra information often looks confusing when presented
     /// directly to users with the default `std` panic hook's report format:
     ///
-    /// ```
+    /// ```text
     /// thread 'expect_as_precondition' panicked at 'env variable `IMPORTANT_PATH` is always set by `wrapper_script.sh`: NotPresent', src/lib.rs:4:10
     /// ```
     ///
