@@ -182,16 +182,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::TokenKind::BlockComment { doc_style, terminated } => {
                 if !terminated {
-                    let msg = match doc_style {
-                        Some(_) => "unterminated block doc-comment",
-                        None => "unterminated block comment",
-                    };
-                    let last_bpos = self.pos;
-                    self.sess.span_diagnostic.span_fatal_with_code(
-                        self.mk_sp(start, last_bpos),
-                        msg,
-                        error_code!(E0758),
-                    );
+                    self.report_unterminated_block_comment(start, doc_style);
                 }
 
                 // Skip non-doc comments
@@ -551,6 +542,55 @@ impl<'a> StringReader<'a> {
         }
 
         err.emit()
+    }
+
+    fn report_unterminated_block_comment(&self, start: BytePos, doc_style: Option<DocStyle>) {
+        let msg = match doc_style {
+            Some(_) => "unterminated block doc-comment",
+            None => "unterminated block comment",
+        };
+        let last_bpos = self.pos;
+        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+            self.mk_sp(start, last_bpos),
+            msg,
+            error_code!(E0758),
+        );
+        let mut nested_block_comment_open_idxs = vec![];
+        let mut last_nested_block_comment_idxs = None;
+        let mut content_chars = self.str_from(start).char_indices().peekable();
+
+        while let Some((idx, current_char)) = content_chars.next() {
+            match content_chars.peek() {
+                Some((_, '*')) if current_char == '/' => {
+                    nested_block_comment_open_idxs.push(idx);
+                }
+                Some((_, '/')) if current_char == '*' => {
+                    last_nested_block_comment_idxs =
+                        nested_block_comment_open_idxs.pop().map(|open_idx| (open_idx, idx));
+                }
+                _ => {}
+            };
+        }
+
+        if let Some((nested_open_idx, nested_close_idx)) = last_nested_block_comment_idxs {
+            err.span_label(self.mk_sp(start, start + BytePos(2)), msg)
+                .span_label(
+                    self.mk_sp(
+                        start + BytePos(nested_open_idx as u32),
+                        start + BytePos(nested_open_idx as u32 + 2),
+                    ),
+                    "...as last nested comment starts here, maybe you want to close this instead?",
+                )
+                .span_label(
+                    self.mk_sp(
+                        start + BytePos(nested_close_idx as u32),
+                        start + BytePos(nested_close_idx as u32 + 2),
+                    ),
+                    "...and last nested comment terminates here.",
+                );
+        }
+
+        err.emit();
     }
 
     // RFC 3101 introduced the idea of (reserved) prefixes. As of Rust 2021,
