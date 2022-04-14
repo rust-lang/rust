@@ -126,6 +126,8 @@ declare_features! (
     (accepted, default_type_params, "1.0.0", None, None),
     /// Allows `#[deprecated]` attribute.
     (accepted, deprecated, "1.9.0", Some(29935), None),
+    /// Allows `#[derive(Default)]` and `#[default]` on enums.
+    (accepted, derive_default_enum, "1.62.0", Some(86985), None),
     /// Allows the use of destructuring assignments.
     (accepted, destructuring_assignment, "1.59.0", Some(71126), None),
     /// Allows `#[doc(alias = "...")]`.
