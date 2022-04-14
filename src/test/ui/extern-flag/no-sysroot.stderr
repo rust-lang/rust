@@ -1,0 +1,11 @@
+error: external crate `somedep` unused in `no_sysroot`: remove the dependency or add `use somedep as _;`
+  --> $DIR/no-sysroot.rs:5:1
+   |
+LL | fn main() {
+   | ^
+   |
+   = note: requested on the command line with `-D unused-crate-dependencies`
+   = help: remove unnecessary dependency `somedep`
+
+error: aborting due to previous error
+

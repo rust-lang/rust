@@ -477,6 +477,14 @@ pub struct ExternEntry {
     /// This can be disabled with the `noprelude` option like
     /// `--extern noprelude:name`.
     pub add_prelude: bool,
+    /// The extern entry is an explicitly listed sysroot crate.
+    ///
+    /// `--extern sysroot:std=/path/to/lib/libstd.rlib`
+    /// This is useful for when the build system is using explicit sysroot
+    /// dependencies rather than allowing rustc to find them implicitly. This is
+    /// primarily used to suppress `unused-crate-dependencies` warnings, since
+    /// these dependencies are added unconditionally.
+    pub sysroot_dep: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -536,7 +544,7 @@ impl Externs {
 
 impl ExternEntry {
     fn new(location: ExternLocation) -> ExternEntry {
-        ExternEntry { location, is_private_dep: false, add_prelude: false }
+        ExternEntry { location, is_private_dep: false, add_prelude: false, sysroot_dep: false }
     }
 
     pub fn files(&self) -> Option<impl Iterator<Item = &CanonicalizedPath>> {
@@ -2186,6 +2194,7 @@ pub fn parse_externs(
 
         let mut is_private_dep = false;
         let mut add_prelude = true;
+        let mut sysroot_dep = false;
         if let Some(opts) = options {
             if !is_unstable_enabled {
                 early_error(
@@ -2207,6 +2216,7 @@ pub fn parse_externs(
                             );
                         }
                     }
+                    "sysroot" => sysroot_dep = true,
                     _ => early_error(error_format, &format!("unknown --extern option `{opt}`")),
                 }
             }
@@ -2215,6 +2225,8 @@ pub fn parse_externs(
         // Crates start out being not private, and go to being private `priv`
         // is specified.
         entry.is_private_dep |= is_private_dep;
+        // likewise `sysroot`
+        entry.sysroot_dep |= sysroot_dep;
         // If any flag is missing `noprelude`, then add to the prelude.
         entry.add_prelude |= add_prelude;
     }
