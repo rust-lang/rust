@@ -3614,17 +3614,6 @@ Function *EnzymeLogic::CreatePrimalAndGradient(
           if (NumPreds == 0)
             continue;
           Phi->removeIncomingValue(newBB);
-
-          // If we have a single predecessor, removeIncomingValue may have
-          // erased the PHI node itself.
-          if (NumPreds == 1)
-            continue;
-
-          // Try to replace the PHI node with a constant value.
-          if (Value *PhiConstant = Phi->hasConstantValue()) {
-            Phi->replaceAllUsesWith(PhiConstant);
-            Phi->eraseFromParent();
-          }
         }
       }
 
