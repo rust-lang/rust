@@ -133,9 +133,9 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
 
             // `Deprecation` is just two pointers, no need to intern it
-            let depr_entry = DeprecationEntry::local(depr.clone(), def_id);
+            let depr_entry = DeprecationEntry::local(*depr, def_id);
             self.index.depr_map.insert(def_id, depr_entry);
-        } else if let Some(parent_depr) = self.parent_depr.clone() {
+        } else if let Some(parent_depr) = self.parent_depr {
             if inherit_deprecation.yes() {
                 is_deprecated = true;
                 info!("tagging child {:?} as deprecated from parent", def_id);

@@ -63,9 +63,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// common state. Used in coherence.
     pub fn fork(&self) -> Self {
         Self {
-            tcx: self.tcx.clone(),
-            defining_use_anchor: self.defining_use_anchor.clone(),
-            in_progress_typeck_results: self.in_progress_typeck_results.clone(),
+            tcx: self.tcx,
+            defining_use_anchor: self.defining_use_anchor,
+            in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
