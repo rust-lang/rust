@@ -123,8 +123,8 @@ pub struct Parser<'a> {
     pub capture_cfg: bool,
     restrictions: Restrictions,
     expected_tokens: Vec<TokenType>,
-    // Important: This must only be advanced from `next_tok`
-    // to ensure that `token_cursor.num_next_calls` is updated properly
+    // Important: This must only be advanced from `bump` to ensure that
+    // `token_cursor.num_next_calls` is updated properly.
     token_cursor: TokenCursor,
     desugar_doc_comments: bool,
     /// This field is used to keep track of how many left angle brackets we have seen. This is
@@ -476,33 +476,6 @@ impl<'a> Parser<'a> {
         parser
     }
 
-    #[inline]
-    fn next_tok(&mut self, fallback_span: Span) -> (Token, Spacing) {
-        loop {
-            let (mut next, spacing) = if self.desugar_doc_comments {
-                self.token_cursor.inlined_next_desugared()
-            } else {
-                self.token_cursor.inlined_next()
-            };
-            self.token_cursor.num_next_calls += 1;
-            // We've retrieved an token from the underlying
-            // cursor, so we no longer need to worry about
-            // an unglued token. See `break_and_eat` for more details
-            self.token_cursor.break_last_token = false;
-            if next.span.is_dummy() {
-                // Tweak the location for better diagnostics, but keep syntactic context intact.
-                next.span = fallback_span.with_ctxt(next.span.ctxt());
-            }
-            if matches!(
-                next.kind,
-                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
-            ) {
-                continue;
-            }
-            return (next, spacing);
-        }
-    }
-
     pub fn unexpected<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
@@ -697,7 +670,7 @@ impl<'a> Parser<'a> {
                 //
                 // If we consume any additional tokens, then this token
                 // is not needed (we'll capture the entire 'glued' token),
-                // and `next_tok` will set this field to `None`
+                // and `bump` will set this field to `None`
                 self.token_cursor.break_last_token = true;
                 // Use the spacing of the glued token as the spacing
                 // of the unglued second token.
@@ -1035,8 +1008,29 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token.
     pub fn bump(&mut self) {
-        let next_token = self.next_tok(self.token.span);
-        self.inlined_bump_with(next_token);
+        let fallback_span = self.token.span;
+        loop {
+            let (mut next, spacing) = if self.desugar_doc_comments {
+                self.token_cursor.inlined_next_desugared()
+            } else {
+                self.token_cursor.inlined_next()
+            };
+            self.token_cursor.num_next_calls += 1;
+            // We've retrieved an token from the underlying
+            // cursor, so we no longer need to worry about
+            // an unglued token. See `break_and_eat` for more details
+            self.token_cursor.break_last_token = false;
+            if next.span.is_dummy() {
+                // Tweak the location for better diagnostics, but keep syntactic context intact.
+                next.span = fallback_span.with_ctxt(next.span.ctxt());
+            }
+            if !matches!(
+                next.kind,
+                token::OpenDelim(token::NoDelim) | token::CloseDelim(token::NoDelim)
+            ) {
+                return self.inlined_bump_with((next, spacing));
+            }
+        }
     }
 
     /// Look-ahead `dist` tokens of `self.token` and get access to that token there.
