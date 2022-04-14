@@ -19,6 +19,7 @@ use super::{Normalized, NormalizedTy, ProjectionCacheEntry, ProjectionCacheKey};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use crate::traits::error_reporting::InferCtxtExt as _;
+use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::select::ProjectionMatchesProjection;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1562,7 +1563,16 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // type parameters, opaques, and unnormalized projections have pointer
                     // metadata if they're known (e.g. by the param_env) to be sized
                     ty::Param(_) | ty::Projection(..) | ty::Opaque(..)
-                        if tail.is_sized(selcx.tcx().at(obligation.cause.span), obligation.param_env) =>
+                        if selcx.infcx().predicate_must_hold_modulo_regions(
+                            &obligation.with(
+                                ty::Binder::dummy(ty::TraitRef::new(
+                                    selcx.tcx().require_lang_item(LangItem::Sized, None),
+                                    selcx.tcx().mk_substs_trait(self_ty, &[]),
+                                ))
+                                .without_const()
+                                .to_predicate(selcx.tcx()),
+                            ),
+                        ) =>
                     {
                         true
                     }
