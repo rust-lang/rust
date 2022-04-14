@@ -149,8 +149,6 @@ pub enum InvalidProgramInfo<'tcx> {
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
-    /// An invalid transmute happened.
-    TransmuteSizeDiff(Ty<'tcx>, Ty<'tcx>),
     /// SizeOf of unsized type was requested.
     SizeOfUnsizedType(Ty<'tcx>),
 }
@@ -166,11 +164,6 @@ impl fmt::Display for InvalidProgramInfo<'_> {
             }
             Layout(ref err) => write!(f, "{}", err),
             FnAbiAdjustForForeignAbi(ref err) => write!(f, "{}", err),
-            TransmuteSizeDiff(from_ty, to_ty) => write!(
-                f,
-                "transmuting `{}` to `{}` is not possible, because these types do not have the same size",
-                from_ty, to_ty
-            ),
             SizeOfUnsizedType(ty) => write!(f, "size_of called on unsized type `{}`", ty),
         }
     }

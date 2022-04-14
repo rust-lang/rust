@@ -1,3 +1,5 @@
+use crate::check::wfcheck::for_item;
+
 use super::coercion::CoerceMany;
 use super::compare_method::check_type_bounds;
 use super::compare_method::{compare_const_impl, compare_impl_method, compare_ty_impl};
@@ -870,6 +872,14 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                     }
                 }
             }
+        }
+        DefKind::GlobalAsm => {
+            let it = tcx.hir().item(id);
+            let hir::ItemKind::GlobalAsm(asm) = it.kind else { span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it) };
+            for_item(tcx, it).with_fcx(|fcx| {
+                fcx.check_asm(asm, it.hir_id());
+                Default::default()
+            })
         }
         _ => {}
     }

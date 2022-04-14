@@ -41,6 +41,7 @@ pub unsafe extern "C" fn inc_asm(a: u32) -> u32 {
     asm!("/* {0} */", in(reg) a, options(noreturn));
     //~^ ERROR referencing function parameters is not allowed in naked functions
     //~| ERROR only `const` and `sym` operands are supported in naked functions
+    //~| WARN formatting may not be suitable for sub-register argument [asm_sub_register]
 }
 
 #[naked]
