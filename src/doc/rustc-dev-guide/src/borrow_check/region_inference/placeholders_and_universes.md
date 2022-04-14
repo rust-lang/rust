@@ -122,7 +122,7 @@ Now let's extend `bar` a bit by adding one more variable, `y`:
 ```rust,ignore
 fn bar<'a, T>(t: &'a T) {
     let x: for<'b> fn(&'b u32) = ...;
-    let y: for<'c> fn(&'b u32) = ...;
+    let y: for<'c> fn(&'c u32) = ...;
 }
 ```
 
