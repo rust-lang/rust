@@ -3,6 +3,7 @@
 use std::convert::TryFrom;
 
 use rustc_hir::Mutability;
+use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{
     mir::{self, interpret::ConstAlloc},
@@ -74,7 +75,7 @@ fn branches<'tcx>(
         let field = ecx.mplace_field(&place, i).unwrap();
         const_to_valtree_inner(ecx, &field)
     });
-    // For enums, we preped their variant index before the variant's fields so we can figure out
+    // For enums, we prepend their variant index before the variant's fields so we can figure out
     // the variant again when just seeing a valtree.
     let branches = variant.into_iter().chain(fields);
     Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
@@ -83,16 +84,12 @@ fn branches<'tcx>(
 fn slice_branches<'tcx>(
     ecx: &CompileTimeEvalContext<'tcx, 'tcx>,
     place: &MPlaceTy<'tcx>,
-    n: u64,
 ) -> Option<ty::ValTree<'tcx>> {
-    let elems = (0..n).map(|i| {
+    let n = place.len(&ecx.tcx()).expect(&format!("expected to use len of place {:?}", place));
+    let branches = (0..n).map(|i| {
         let place_elem = ecx.mplace_index(place, i).unwrap();
         const_to_valtree_inner(ecx, &place_elem)
     });
-
-    // Need `len` for the ValTree -> ConstValue conversion
-    let len = Some(Some(ty::ValTree::Leaf(ScalarInt::from(n))));
-    let branches = len.into_iter().chain(elems);
 
     Some(ty::ValTree::Branch(ecx.tcx.arena.alloc_from_iter(branches.collect::<Option<Vec<_>>>()?)))
 }
@@ -116,33 +113,19 @@ fn const_to_valtree_inner<'tcx>(
         // agree with runtime equality tests.
         ty::FnPtr(_) | ty::RawPtr(_) => None,
 
-        ty::Ref(_, inner_ty, _)  => {
-            match inner_ty.kind() {
-                ty::Slice(_) | ty::Str => {
-                    let derefd = ecx.deref_operand(&place.into()).unwrap();
-                    debug!(?derefd);
-                    let len = derefd.len(&ecx.tcx.tcx).unwrap();
-                    let valtree = slice_branches(ecx, &derefd, len);
-                    debug!(?valtree);
+        ty::Ref(_, _, _)  => {
+            let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
+            debug!(?derefd_place);
 
-                    valtree
-                }
-                _ => {
-                    let derefd_place = ecx.deref_operand(&place.into()).unwrap_or_else(|e| bug!("couldn't deref {:?}, error: {:?}", place, e));
-                    debug!(?derefd_place);
-
-                    const_to_valtree_inner(ecx, &derefd_place)
-                }
-            }
+            const_to_valtree_inner(ecx, &derefd_place)
         }
 
-        ty::Str => {
-            bug!("ty::Str should have been handled in ty::Ref branch that uses raw bytes");
-        }
-        ty::Slice(_) => {
-            bug!("should have been handled in the Ref arm");
-        }
+        ty::Str | ty::Slice(_) | ty::Array(_, _) => {
+            let valtree = slice_branches(ecx, place);
+            debug!(?valtree);
 
+            valtree
+        }
         // Trait objects are not allowed in type level constants, as we have no concept for
         // resolving their backing type, even if we can do that at const eval time. We may
         // hypothetically be able to allow `dyn StructuralEq` trait objects in the future,
@@ -150,7 +133,6 @@ fn const_to_valtree_inner<'tcx>(
         ty::Dynamic(..) => None,
 
         ty::Tuple(substs) => branches(ecx, place, substs.len(), None),
-        ty::Array(_, len) => branches(ecx, place, usize::try_from(len.eval_usize(ecx.tcx.tcx, ecx.param_env)).unwrap(), None),
 
         ty::Adt(def, _) => {
             if def.variants().is_empty() {
