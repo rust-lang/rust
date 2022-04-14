@@ -30,9 +30,9 @@ use crate::{A, B};
 use a::{c, d::{e}};
         "#,
         expect![[r##"
-            #![doc = " file comment"]  // AttrId { ast_index: 0 }
-            #![no_std]  // AttrId { ast_index: 1 }
-            #![doc = " another file comment"]  // AttrId { ast_index: 2 }
+            #![doc = " file comment"]
+            #![no_std]
+            #![doc = " another file comment"]
 
             pub(self) extern crate self as renamed;
 
@@ -42,7 +42,7 @@ use a::{c, d::{e}};
 
             pub(self) use globs::*;
 
-            #[doc = " docs on import"]  // AttrId { ast_index: 0 }
+            #[doc = " docs on import"]
             pub(self) use crate::{A, B};
 
             pub(self) use a::{c, d::{e}};
@@ -67,15 +67,15 @@ extern "C" {
 }
         "#,
         expect![[r##"
-            #[on_extern_block]  // AttrId { ast_index: 0 }
+            #[on_extern_block]
             extern "C" {
-                #[on_extern_type]  // AttrId { ast_index: 0 }
+                #[on_extern_type]
                 pub(self) type ExType;
 
-                #[on_extern_static]  // AttrId { ast_index: 0 }
+                #[on_extern_static]
                 pub(self) static EX_STATIC: u8 = _;
 
-                #[on_extern_fn]  // AttrId { ast_index: 0 }
+                #[on_extern_fn]
                 pub(self) fn ex_fn() -> ();
             }
         "##]],
@@ -115,14 +115,14 @@ enum E {
         expect![[r##"
             pub(self) struct Unit;
 
-            #[derive(Debug)]  // AttrId { ast_index: 0 }
+            #[derive(Debug)]
             pub(self) struct Struct {
-                #[doc = " fld docs"]  // AttrId { ast_index: 0 }
+                #[doc = " fld docs"]
                 pub(self) fld: (),
             }
 
             pub(self) struct Tuple(
-                #[attr]  // AttrId { ast_index: 0 }
+                #[attr]
                 pub(self) 0: u8,
             );
 
@@ -132,14 +132,14 @@ enum E {
             }
 
             pub(self) enum E {
-                #[doc = " comment on Unit"]  // AttrId { ast_index: 0 }
+                #[doc = " comment on Unit"]
                 Unit,
-                #[doc = " comment on Tuple"]  // AttrId { ast_index: 0 }
+                #[doc = " comment on Tuple"]
                 Tuple(
                     pub(self) 0: u8,
                 ),
                 Struct {
-                    #[doc = " comment on a: u8"]  // AttrId { ast_index: 0 }
+                    #[doc = " comment on a: u8"]
                     pub(self) a: u8,
                 },
             }
@@ -170,14 +170,13 @@ trait Tr: SuperTrait + 'lifetime {
 
             pub(self) const _: Anon = _;
 
-            #[attr]  // AttrId { ast_index: 0 }
-            #[inner_attr_in_fn]  // AttrId { ast_index: 1 }
-            // flags = 0x2
+            #[attr]
+            #[inner_attr_in_fn]
             pub(self) fn f(
-                #[attr]  // AttrId { ast_index: 0 }
+                #[attr]
                 arg: u8,
                 _: (),
-            ) -> ();
+            ) -> () { ... }
 
             pub(self) trait Tr<Self>
             where
@@ -186,9 +185,8 @@ trait Tr: SuperTrait + 'lifetime {
             {
                 pub(self) type Assoc: AssocBound = Default;
 
-                // flags = 0x1
                 pub(self) fn method(
-                    _: &Self,
+                    _: &Self,  // self
                 ) -> ();
             }
         "##]],
@@ -211,13 +209,12 @@ mod inline {
 mod outline;
         "#,
         expect![[r##"
-            #[doc = " outer"]  // AttrId { ast_index: 0 }
-            #[doc = " inner"]  // AttrId { ast_index: 1 }
+            #[doc = " outer"]
+            #[doc = " inner"]
             pub(self) mod inline {
                 pub(self) use super::*;
 
-                // flags = 0x2
-                pub(self) fn fn_in_module() -> ();
+                pub(self) fn fn_in_module() -> () { ... }
             }
 
             pub(self) mod outline;
@@ -338,12 +335,11 @@ trait Tr<'a, T: 'a>: Super where Self: for<'a> Tr<'a, T> {}
                 T: 'a,
                 T: 'b
             {
-                // flags = 0x2
                 pub(self) fn f<G>(
                     arg: impl Copy,
                 ) -> impl Copy
                 where
-                    G: 'a;
+                    G: 'a { ... }
             }
 
             pub(self) enum Enum<'a, T, const U: u8> {
@@ -392,10 +388,9 @@ pub(crate) trait Tr {
             pub(crate) trait Tr<Self> {
                 pub(crate) fn f() -> ();
 
-                // flags = 0x3
                 pub(crate) fn method(
-                    _: &Self,
-                ) -> ();
+                    _: &Self,  // self
+                ) -> () { ... }
             }
         "#]],
     )
