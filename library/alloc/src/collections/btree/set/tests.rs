@@ -320,6 +320,42 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_is_superset() {
+    fn is_superset(a: &[i32], b: &[i32]) -> bool {
+        let set_a = BTreeSet::from_iter(a.iter());
+        let set_b = BTreeSet::from_iter(b.iter());
+        set_a.is_superset(&set_b)
+    }
+
+    assert_eq!(is_superset(&[], &[]), true);
+    assert_eq!(is_superset(&[], &[1, 2]), false);
+    assert_eq!(is_superset(&[0], &[1, 2]), false);
+    assert_eq!(is_superset(&[1], &[1, 2]), false);
+    assert_eq!(is_superset(&[4], &[1, 2]), false);
+    assert_eq!(is_superset(&[1, 4], &[1, 2]), false);
+    assert_eq!(is_superset(&[1, 2], &[1, 2]), true);
+    assert_eq!(is_superset(&[1, 2, 3], &[1, 3]), true);
+    assert_eq!(is_superset(&[1, 2, 3], &[]), true);
+    assert_eq!(is_superset(&[-1, 1, 2, 3], &[-1, 3]), true);
+
+    if cfg!(miri) {
+        // Miri is too slow
+        return;
+    }
+
+    let large = Vec::from_iter(0..100);
+    assert_eq!(is_superset(&[], &large), false);
+    assert_eq!(is_superset(&large, &[]), true);
+    assert_eq!(is_superset(&large, &[1]), true);
+    assert_eq!(is_superset(&large, &[50, 99]), true);
+    assert_eq!(is_superset(&large, &[100]), false);
+    assert_eq!(is_superset(&large, &[0, 99]), true);
+    assert_eq!(is_superset(&[-1], &large), false);
+    assert_eq!(is_superset(&[0], &large), false);
+    assert_eq!(is_superset(&[99, 100], &large), false);
+}
+
+#[test]
 fn test_retain() {
     let mut set = BTreeSet::from([1, 2, 3, 4, 5, 6]);
     set.retain(|&k| k % 2 == 0);
