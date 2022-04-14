@@ -723,37 +723,34 @@ fn qux(bar: Bar, baz: Baz) {
 
     #[test]
     fn expanding_glob_import_with_macro_defs() {
-        // FIXME: this is currently fails because `Definition::find_usages` ignores macros
-        //       https://github.com/rust-analyzer/rust-analyzer/issues/3484
-        //
-        //         check_assist(
-        //             expand_glob_import,
-        //             r"
-        // //- /lib.rs crate:foo
-        // #[macro_export]
-        // macro_rules! bar {
-        //     () => ()
-        // }
+        check_assist(
+            expand_glob_import,
+            r#"
+//- /lib.rs crate:foo
+#[macro_export]
+macro_rules! bar {
+    () => ()
+}
 
-        // pub fn baz() {}
+pub fn baz() {}
 
-        // //- /main.rs crate:main deps:foo
-        // use foo::*$0;
+//- /main.rs crate:main deps:foo
+use foo::*$0;
 
-        // fn main() {
-        //     bar!();
-        //     baz();
-        // }
-        // ",
-        //             r"
-        // use foo::{bar, baz};
+fn main() {
+    bar!();
+    baz();
+}
+"#,
+            r#"
+use foo::{bar, baz};
 
-        // fn main() {
-        //     bar!();
-        //     baz();
-        // }
-        // ",
-        //         )
+fn main() {
+    bar!();
+    baz();
+}
+"#,
+        );
     }
 
     #[test]
