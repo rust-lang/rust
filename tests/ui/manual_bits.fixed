@@ -1,38 +1,44 @@
 // run-rustfix
 
 #![warn(clippy::manual_bits)]
-#![allow(clippy::no_effect, path_statements, unused_must_use, clippy::unnecessary_operation)]
+#![allow(
+    clippy::no_effect,
+    clippy::useless_conversion,
+    path_statements,
+    unused_must_use,
+    clippy::unnecessary_operation
+)]
 
 use std::mem::{size_of, size_of_val};
 
 fn main() {
-    i8::BITS;
-    i16::BITS;
-    i32::BITS;
-    i64::BITS;
-    i128::BITS;
-    isize::BITS;
+    i8::BITS as usize;
+    i16::BITS as usize;
+    i32::BITS as usize;
+    i64::BITS as usize;
+    i128::BITS as usize;
+    isize::BITS as usize;
 
-    u8::BITS;
-    u16::BITS;
-    u32::BITS;
-    u64::BITS;
-    u128::BITS;
-    usize::BITS;
+    u8::BITS as usize;
+    u16::BITS as usize;
+    u32::BITS as usize;
+    u64::BITS as usize;
+    u128::BITS as usize;
+    usize::BITS as usize;
 
-    i8::BITS;
-    i16::BITS;
-    i32::BITS;
-    i64::BITS;
-    i128::BITS;
-    isize::BITS;
+    i8::BITS as usize;
+    i16::BITS as usize;
+    i32::BITS as usize;
+    i64::BITS as usize;
+    i128::BITS as usize;
+    isize::BITS as usize;
 
-    u8::BITS;
-    u16::BITS;
-    u32::BITS;
-    u64::BITS;
-    u128::BITS;
-    usize::BITS;
+    u8::BITS as usize;
+    u16::BITS as usize;
+    u32::BITS as usize;
+    u64::BITS as usize;
+    u128::BITS as usize;
+    usize::BITS as usize;
 
     size_of::<usize>() * 4;
     4 * size_of::<usize>();
@@ -42,7 +48,12 @@ fn main() {
     size_of_val(&0u32) * 8;
 
     type Word = u32;
-    Word::BITS;
+    Word::BITS as usize;
     type Bool = bool;
     size_of::<Bool>() * 8;
+
+    let _: u32 = u128::BITS as u32;
+    let _: u32 = u128::BITS.try_into().unwrap();
+    let _ = (u128::BITS as usize).pow(5);
+    let _ = &(u128::BITS as usize);
 }
