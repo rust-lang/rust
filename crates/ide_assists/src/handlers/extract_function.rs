@@ -692,7 +692,14 @@ impl FunctionBody {
                         (constness, expr.clone(), infer_expr_opt(expr))
                     },
                     ast::Fn(fn_) => {
-                        (fn_.const_token().is_some(), fn_.body().map(ast::Expr::BlockExpr), Some(sema.to_def(&fn_)?.ret_type(sema.db)))
+                        let func = sema.to_def(&fn_)?;
+                        let mut ret_ty = func.ret_type(sema.db);
+                        if func.is_async(sema.db) {
+                            if let Some(async_ret) = func.async_ret_type(sema.db) {
+                                ret_ty = async_ret;
+                            }
+                        }
+                        (fn_.const_token().is_some(), fn_.body().map(ast::Expr::BlockExpr), Some(ret_ty))
                     },
                     ast::Static(statik) => {
                         (true, statik.body(), Some(sema.to_def(&statik)?.ty(sema.db)))
@@ -4026,6 +4033,7 @@ fn $0fun_name(n: i32) -> i32 {
         check_assist(
             extract_function,
             r#"
+//- minicore: future
 fn main() {
     $0some_function().await;$0
 }
@@ -4055,6 +4063,7 @@ async fn some_function() {
         check_assist(
             extract_function,
             r#"
+//- minicore: future, result
 async fn foo() -> Result<(), ()> {
     $0async {}.await;
     Err(())?$0
@@ -4065,7 +4074,7 @@ async fn foo() -> Result<(), ()> {
     fun_name().await?
 }
 
-async fn $0fun_name() -> _ {
+async fn $0fun_name() -> Result<(), ()> {
     async {}.await;
     Err(())?
 }
@@ -4078,6 +4087,7 @@ async fn $0fun_name() -> _ {
         check_assist(
             extract_function,
             r#"
+//- minicore: future
 async fn foo() -> i32 {
     loop {
         let n = 1;$0
@@ -4119,6 +4129,7 @@ async fn $0fun_name() -> Result<i32, i32> {
         check_assist(
             extract_function,
             r#"
+//- minicore: future
 fn main() {
     $0function_call("a", some_function().await);$0
 }
