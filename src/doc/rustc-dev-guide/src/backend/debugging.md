@@ -11,6 +11,8 @@ project on its own that probably needs to have its own debugging document (not
 that I could find one). But here are some tips that are important in a rustc
 context:
 
+### Minimize the example
+
 As a general rule, compilers generate lots of information from analyzing code.
 Thus, a useful first step is usually to find a minimal example. One way to do
 this is to
@@ -24,6 +26,13 @@ everything relevant to the new crate
 3. further minimize the issue by making the code shorter (there are tools that
 help with this like `creduce`)
 
+For more discussion on methodology for steps 2 and 3 above, there is an
+[epic blog post][mcve-blog] from pnkfelix specifically about Rust program minimization.
+
+[mcve-blog]: https://blog.pnkfx.org/blog/2019/11/18/rust-bug-minimization-patterns/
+
+### Enable LLVM internal checks
+
 The official compilers (including nightlies) have LLVM assertions disabled,
 which means that LLVM assertion failures can show up as compiler crashes (not
 ICEs but "real" crashes) and other sorts of weird behavior. If you are
@@ -34,11 +43,28 @@ anything turns up.
 
 The rustc build process builds the LLVM tools into
 `./build/<host-triple>/llvm/bin`. They can be called directly.
+These tools include:
+ * [`llc`], which compiles bitcode (`.bc` files) to executable code; this can be used to
+   replicate LLVM backend bugs.
+ * [`opt`], a bitcode transformer that runs LLVM optimization passes.
+ * [`bugpoint`], which reduces large test cases to small, useful ones.
+ * and many others, some of which are referenced in the text below.
+
+[`llc`]: https://llvm.org/docs/CommandGuide/llc.html
+[`opt`]: https://llvm.org/docs/CommandGuide/opt.html
+[`bugpoint`]: https://llvm.org/docs/Bugpoint.html
+
+By default, the Rust build system does not check for changes to the LLVM source code or
+its build configuration settings. So, if you need to rebuild the LLVM that is linked
+into `rustc`, first delete the file `llvm-finished-building`, which should be located
+in `build/<host-triple>/llvm/`.
 
 The default rustc compilation pipeline has multiple codegen units, which is
 hard to replicate manually and means that LLVM is called multiple times in
 parallel.  If you can get away with it (i.e. if it doesn't make your bug
 disappear), passing `-C codegen-units=1` to rustc will make debugging easier.
+
+### Get your hands on raw LLVM input
 
 For rustc to generate LLVM IR, you need to pass the `--emit=llvm-ir` flag. If
 you are building via cargo, use the `RUSTFLAGS` environment variable (e.g.
@@ -52,24 +78,22 @@ other useful options. Also, debug info in LLVM IR can clutter the output a lot:
 `RUSTFLAGS="-C debuginfo=0"` is really useful.
 
 `RUSTFLAGS="-C save-temps"` outputs LLVM bitcode (not the same as IR) at
-different stages during compilation, which is sometimes useful. One just needs
-to convert the bitcode files to `.ll` files using `llvm-dis` which should be in
-the target local compilation of rustc.
+different stages during compilation, which is sometimes useful. The output LLVM
+bitcode will be in `.bc` files in the compiler's output directory, set via the
+`--out-dir DIR` argument to `rustc`.
 
-If you are seeing incorrect behavior due to an optimization pass, a very handy
-LLVM option is `-opt-bisect-limit`, which takes an integer denoting the index
-value of the highest pass to run.  Index values for taken passes are stable
-from run to run; by coupling this with software that automates bisecting the
-search space based on the resulting program, an errant pass can be quickly
-determined.  When an `-opt-bisect-limit` is specified, all runs are displayed
-to standard error, along with their index and output indicating if the
-pass was run or skipped.  Setting the limit to an index of -1 (e.g.,
-`RUSTFLAGS="-C llvm-args=-opt-bisect-limit=-1"`) will show all passes and
-their corresponding index values.
+ * If you are hitting an assertion failure or segmentation fault from the LLVM
+   backend when invoking `rustc` itself, it is a good idea to try passing each
+   of these `.bc` files to the `llc` command, and see if you get the same
+   failure. (LLVM developers often prefer a bug reduced to a `.bc` file over one
+   that uses a Rust crate for its minimized reproduction.)
 
-If you want to play with the optimization pipeline, you can use the `opt` tool
-from `./build/<host-triple>/llvm/bin/` with the LLVM IR emitted by rustc.  Note
-that rustc emits different IR depending on whether `-O` is enabled, even
+ * To get human readable versions of the LLVM bitcode, one just needs to convert
+   the bitcode (`.bc`) files to `.ll` files using `llvm-dis`, which should be in
+   the target local compilation of rustc.
+
+
+Note that rustc emits different IR depending on whether `-O` is enabled, even
 without LLVM's optimizations, so if you want to play with the IR rustc emits,
 you should:
 
@@ -93,6 +117,18 @@ to some file. Also, if you are using neither `-filter-print-funcs` nor `-C
 codegen-units=1`, then, because the multiple codegen units run in parallel, the
 printouts will mix together and you won't be able to read anything.
 
+ * One caveat to the aforementioned methodology: the `-print` family of options
+   to LLVM only prints the IR unit that the pass runs on (e.g., just a
+   function), and does not include any referenced declarations, globals,
+   metadata, etc. This means you cannot in general feed the output of `-print`
+   into `llc` to reproduce a given problem.
+
+ * Within LLVM itself, calling `F.getParent()->dump()` at the beginning of
+   `SafeStackLegacyPass::runOnFunction` will dump the whole module, which
+   may provide better basis for reproduction. (However, you
+   should be able to get that same dump from the `.bc` files dumped by
+   `-C save-temps`.)
+
 If you want just the IR for a specific function (say, you want to see why it
 causes an assertion or doesn't optimize correctly), you can use `llvm-extract`,
 e.g.
@@ -104,6 +140,45 @@ $ ./build/$TRIPLE/llvm/bin/llvm-extract \
     < unextracted.ll \
     > extracted.ll
 ```
+
+### Investigate LLVM optimization passes
+
+If you are seeing incorrect behavior due to an optimization pass, a very handy
+LLVM option is `-opt-bisect-limit`, which takes an integer denoting the index
+value of the highest pass to run.  Index values for taken passes are stable
+from run to run; by coupling this with software that automates bisecting the
+search space based on the resulting program, an errant pass can be quickly
+determined.  When an `-opt-bisect-limit` is specified, all runs are displayed
+to standard error, along with their index and output indicating if the
+pass was run or skipped.  Setting the limit to an index of -1 (e.g.,
+`RUSTFLAGS="-C llvm-args=-opt-bisect-limit=-1"`) will show all passes and
+their corresponding index values.
+
+If you want to play with the optimization pipeline, you can use the [`opt`] tool
+from `./build/<host-triple>/llvm/bin/` with the LLVM IR emitted by rustc.
+
+When investigating the implementation of LLVM itself, you should be
+aware of its [internal debug infrastructure][llvm-debug].
+This is provided in LLVM Debug builds, which you enable for rustc
+LLVM builds by changing this setting in the config.toml:
+```
+[llvm]
+# Indicates whether the LLVM assertions are enabled or not
+assertions = true
+
+# Indicates whether the LLVM build is a Release or Debug build
+optimize = false
+```
+The quick summary is:
+ * Setting `assertions=true` enables coarse-grain debug messaging.
+   * beyond that, setting `optimize=false` enables fine-grain debug messaging.
+ * `LLVM_DEBUG(dbgs() << msg)` in LLVM is like `debug!(msg)` in `rustc`.
+ * The `-debug` option turns on all messaging; it is like setting the
+   environment variable `RUSTC_LOG=debug` in `rustc`.
+ * The `-debug-only=<pass1>,<pass2>` variant is more selective; it is like
+   setting the environment variable `RUSTC_LOG=path1,path2` in `rustc`.
+
+[llvm-debug]: https://llvm.org/docs/ProgrammersManual.html#the-llvm-debug-macro-and-debug-option
 
 ### Getting help and asking questions
 
@@ -164,7 +239,9 @@ create a minimal working example with Godbolt. Go to
    optimizations transform it.
 
 5. Once you have a godbolt link demonstrating the issue, it is pretty easy to
-   fill in an LLVM bug. Just visit [bugs.llvm.org](https://bugs.llvm.org/).
+   fill in an LLVM bug. Just visit their [github issues page][llvm-issues].
+
+[llvm-issues]: https://github.com/llvm/llvm-project/issues
 
 ### Porting bug fixes from LLVM
 
