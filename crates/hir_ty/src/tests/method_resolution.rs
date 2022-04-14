@@ -1767,3 +1767,26 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn primitive_assoc_fn_shadowed_by_use() {
+    check_types(
+        r#"
+//- /lib.rs crate:lib deps:core
+use core::u16;
+
+fn f() -> u16 {
+    let x = u16::from_le_bytes();
+      x
+    //^ u16
+}
+
+//- /core.rs crate:core
+pub mod u16 {}
+
+impl u16 {
+    pub fn from_le_bytes() -> Self { 0 }
+}
+        "#,
+    )
+}

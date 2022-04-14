@@ -317,6 +317,18 @@ impl Resolver {
             }
         }
 
+        // If a path of the shape `u16::from_le_bytes` failed to resolve at all, then we fall back
+        // to resolving to the primitive type, to allow this to still work in the presence of
+        // `use core::u16;`.
+        if path.kind == PathKind::Plain && path.segments().len() > 1 {
+            match BuiltinType::by_name(&path.segments()[0]) {
+                Some(builtin) => {
+                    return Some(ResolveValueResult::Partial(TypeNs::BuiltinType(builtin), 1));
+                }
+                None => {}
+            }
+        }
+
         None
     }
 
