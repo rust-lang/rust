@@ -730,9 +730,9 @@ impl Duration {
     /// // subnormal float
     /// let res = Duration::from_secs_f64(f64::from_bits(1));
     /// assert_eq!(res, Duration::new(0, 0));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::from_secs_f64(0.999e-9);
-    /// assert_eq!(res, Duration::new(0, 0));
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -760,17 +760,17 @@ impl Duration {
     /// let res = Duration::from_secs_f32(1e-20);
     /// assert_eq!(res, Duration::new(0, 0));
     /// let res = Duration::from_secs_f32(4.2e-7);
-    /// assert_eq!(res, Duration::new(0, 419));
+    /// assert_eq!(res, Duration::new(0, 420));
     /// let res = Duration::from_secs_f32(2.7);
-    /// assert_eq!(res, Duration::new(2, 700_000_047));
+    /// assert_eq!(res, Duration::new(2, 700_000_048));
     /// let res = Duration::from_secs_f32(3e10);
     /// assert_eq!(res, Duration::new(30_000_001_024, 0));
     /// // subnormal float
     /// let res = Duration::from_secs_f32(f32::from_bits(1));
     /// assert_eq!(res, Duration::new(0, 0));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Duration::new(0, 0));
+    /// assert_eq!(res, Duration::new(0, 1));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use]
@@ -815,7 +815,7 @@ impl Duration {
     /// use std::time::Duration;
     ///
     /// let dur = Duration::new(2, 700_000_000);
-    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_640));
+    /// assert_eq!(dur.mul_f32(3.14), Duration::new(8, 478_000_641));
     /// assert_eq!(dur.mul_f32(3.14e5), Duration::new(847800, 0));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
@@ -838,8 +838,7 @@ impl Duration {
     ///
     /// let dur = Duration::new(2, 700_000_000);
     /// assert_eq!(dur.div_f64(3.14), Duration::new(0, 859_872_611));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f64(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -862,9 +861,8 @@ impl Duration {
     /// let dur = Duration::new(2, 700_000_000);
     /// // note that due to rounding errors result is slightly
     /// // different from 0.859_872_611
-    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_579));
-    /// // note that truncation is used, not rounding
-    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_598));
+    /// assert_eq!(dur.div_f32(3.14), Duration::new(0, 859_872_580));
+    /// assert_eq!(dur.div_f32(3.14e5), Duration::new(0, 8_599));
     /// ```
     #[stable(feature = "duration_float", since = "1.38.0")]
     #[must_use = "this returns the result of the operation, \
@@ -1278,13 +1276,30 @@ macro_rules! try_from_secs {
         } else if exp < 0 {
             // the input is less than 1 second
             let t = <$double_ty>::from(mant) << ($offset + exp);
-            let nanos = (u128::from(NANOS_PER_SEC) * u128::from(t)) >> ($mant_bits + $offset);
-            (0, nanos as u32)
+            let nanos_offset = $mant_bits + $offset;
+            let nanos_tmp = u128::from(NANOS_PER_SEC) * u128::from(t);
+            let nanos = (nanos_tmp >> nanos_offset) as u32;
+            if nanos_tmp & (1 << (nanos_offset - 1)) == 0 {
+                (0, nanos)
+            } else if nanos + 1 != NANOS_PER_SEC {
+                (0, nanos + 1)
+            } else {
+                (1, 0)
+            }
         } else if exp < $mant_bits {
-            let secs = mant >> ($mant_bits - exp);
+            let secs = u64::from(mant >> ($mant_bits - exp));
             let t = <$double_ty>::from((mant << exp) & MANT_MASK);
-            let nanos = (<$double_ty>::from(NANOS_PER_SEC) * t) >> $mant_bits;
-            (u64::from(secs), nanos as u32)
+            let nanos_tmp = <$double_ty>::from(NANOS_PER_SEC) * t;
+            let nanos = (nanos_tmp >> $mant_bits) as u32;
+            if nanos_tmp & (1 << ($mant_bits - 1)) == 0 {
+                (secs, nanos)
+            } else if nanos + 1 != NANOS_PER_SEC {
+                (secs, nanos + 1)
+            } else {
+                // `secs + 1` can not overflow since `exp` is less than `$mant_bits`
+                // and the latter is less than 64 bits for both `f32` and `f64`
+                (secs + 1, 0)
+            }
         } else if exp < 64 {
             // the input has no fractional part
             let secs = u64::from(mant) << (exp - $mant_bits);
@@ -1315,17 +1330,17 @@ impl Duration {
     /// let res = Duration::try_from_secs_f32(1e-20);
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
     /// let res = Duration::try_from_secs_f32(4.2e-7);
-    /// assert_eq!(res, Ok(Duration::new(0, 419)));
+    /// assert_eq!(res, Ok(Duration::new(0, 420)));
     /// let res = Duration::try_from_secs_f32(2.7);
-    /// assert_eq!(res, Ok(Duration::new(2, 700_000_047)));
+    /// assert_eq!(res, Ok(Duration::new(2, 700_000_048)));
     /// let res = Duration::try_from_secs_f32(3e10);
     /// assert_eq!(res, Ok(Duration::new(30_000_001_024, 0)));
     /// // subnormal float:
     /// let res = Duration::try_from_secs_f32(f32::from_bits(1));
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::try_from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// let res = Duration::try_from_secs_f32(-5.0);
     /// assert!(res.is_err());
@@ -1372,9 +1387,9 @@ impl Duration {
     /// // subnormal float
     /// let res = Duration::try_from_secs_f64(f64::from_bits(1));
     /// assert_eq!(res, Ok(Duration::new(0, 0)));
-    /// // conversion uses truncation, not rounding
+    /// // conversion uses rounding
     /// let res = Duration::try_from_secs_f32(0.999e-9);
-    /// assert_eq!(res, Ok(Duration::new(0, 0)));
+    /// assert_eq!(res, Ok(Duration::new(0, 1)));
     ///
     /// let res = Duration::try_from_secs_f64(-5.0);
     /// assert!(res.is_err());
