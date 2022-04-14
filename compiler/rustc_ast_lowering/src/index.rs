@@ -52,7 +52,9 @@ pub(super) fn index_hir<'hir>(
     };
 
     match item {
-        OwnerNode::Crate(citem) => collector.visit_mod(&citem, citem.inner, hir::CRATE_HIR_ID),
+        OwnerNode::Crate(citem) => {
+            collector.visit_mod(&citem, citem.spans.inner_span, hir::CRATE_HIR_ID)
+        }
         OwnerNode::Item(item) => collector.visit_item(item),
         OwnerNode::TraitItem(item) => collector.visit_trait_item(item),
         OwnerNode::ImplItem(item) => collector.visit_impl_item(item),

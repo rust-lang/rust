@@ -1095,11 +1095,11 @@ impl<'tcx> DumpVisitor<'tcx> {
 
         let sm = self.tcx.sess.source_map();
         let krate_mod = self.tcx.hir().root_module();
-        let filename = sm.span_to_filename(krate_mod.inner);
+        let filename = sm.span_to_filename(krate_mod.spans.inner_span);
         let data_id = id_from_hir_id(id, &self.save_ctxt);
         let children =
             krate_mod.item_ids.iter().map(|i| id_from_def_id(i.def_id.to_def_id())).collect();
-        let span = self.span_from_span(krate_mod.inner);
+        let span = self.span_from_span(krate_mod.spans.inner_span);
         let attrs = self.tcx.hir().attrs(id);
 
         self.dumper.dump_def(
