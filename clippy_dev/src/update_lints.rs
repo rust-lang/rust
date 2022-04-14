@@ -217,12 +217,13 @@ fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lin
 
     let mut output = GENERATED_FILE_COMMENT.to_string();
 
-    output.push_str(&format!(
-        "store.register_group(true, \"clippy::{0}\", Some(\"clippy_{0}\"), vec![\n",
+    let _ = writeln!(
+        output,
+        "store.register_group(true, \"clippy::{0}\", Some(\"clippy_{0}\"), vec![",
         group_name
-    ));
+    );
     for (module, name) in details {
-        output.push_str(&format!("    LintId::of({}::{}),\n", module, name));
+        let _ = writeln!(output, "    LintId::of({}::{}),", module, name);
     }
     output.push_str("])\n");
 
@@ -235,7 +236,8 @@ fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
     let mut output = GENERATED_FILE_COMMENT.to_string();
     output.push_str("{\n");
     for lint in lints {
-        output.push_str(&format!(
+        let _ = write!(
+            output,
             concat!(
                 "    store.register_removed(\n",
                 "        \"clippy::{}\",\n",
@@ -243,7 +245,7 @@ fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
                 "    );\n"
             ),
             lint.name, lint.reason,
-        ));
+        );
     }
     output.push_str("}\n");
 
@@ -269,7 +271,7 @@ fn gen_register_lint_list<'a>(
         if !is_public {
             output.push_str("    #[cfg(feature = \"internal\")]\n");
         }
-        output.push_str(&format!("    {}::{},\n", module_name, lint_name));
+        let _ = writeln!(output, "    {}::{},", module_name, lint_name);
     }
     output.push_str("])\n");
 

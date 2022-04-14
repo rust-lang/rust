@@ -165,6 +165,7 @@ store.register_lints(&[
     format_args::TO_STRING_IN_FORMAT_ARGS,
     format_impl::PRINT_IN_FORMAT_IMPL,
     format_impl::RECURSIVE_FORMAT_IMPL,
+    format_push_string::FORMAT_PUSH_STRING,
     formatting::POSSIBLE_MISSING_COMMA,
     formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
     formatting::SUSPICIOUS_ELSE_FORMATTING,

@@ -8,6 +8,7 @@
 #![allow(clippy::collapsible_else_if)]
 
 use std::ffi::OsStr;
+use std::fmt::Write as _;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{collections::HashMap, io::ErrorKind};
@@ -110,11 +111,12 @@ impl ClippyWarning {
             let lint = format!("`{}`", self.linttype);
 
             let mut output = String::from("| ");
-            output.push_str(&format!(
+            let _ = write!(
+                output,
                 "[`{}`](../target/lintcheck/sources/{}#L{})",
                 file_with_pos, file, self.line
-            ));
-            output.push_str(&format!(r#" | {:<50} | "{}" |"#, lint, self.message));
+            );
+            let _ = write!(output, r#" | {:<50} | "{}" |"#, lint, self.message);
             output.push('\n');
             output
         } else {
@@ -835,10 +837,11 @@ pub fn main() {
         text.push_str("| file | lint | message |\n");
         text.push_str("| --- | --- | --- |\n");
     }
-    text.push_str(&format!("{}", all_msgs.join("")));
+    write!(text, "{}", all_msgs.join(""));
     text.push_str("\n\n### ICEs:\n");
-    ices.iter()
-        .for_each(|(cratename, msg)| text.push_str(&format!("{}: '{}'", cratename, msg)));
+    for (cratename, msg) in ices.iter() {
+        let _ = write!(text, "{}: '{}'", cratename, msg);
+    }
 
     println!("Writing logs to {}", config.lintcheck_results_path.display());
     std::fs::create_dir_all(config.lintcheck_results_path.parent().unwrap()).unwrap();
