@@ -1301,7 +1301,7 @@ impl<T: ?Sized> *const T {
     where
         T: Sized,
     {
-        self.addr() % core::mem::align_of::<T>() == 0
+        self.is_aligned_to(core::mem::align_of::<T>())
     }
 
     /// Returns whether the pointer is aligned to `align`.
