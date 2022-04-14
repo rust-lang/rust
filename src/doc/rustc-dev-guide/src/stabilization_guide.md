@@ -84,6 +84,9 @@ decision is to stabilize, we proceed to do the actual code modification.
 
 ## Stabilization PR
 
+*This is for stabilizing language features.  If you are stabilizing a library
+feature, see [the stabilization chapter of the std dev guide][std-guide-stabilization] instead.*
+
 Once we have decided to stabilize a feature, we need to have
 a PR that actually makes that stabilization happen. These kinds
 of PRs are a great way to get involved in Rust, as they take
@@ -95,6 +98,24 @@ require steps beyond what this guide talks about.
 
 Note: Before we stabilize any feature, it's the rule that it
 should appear in the documentation.
+
+### Determining the stabilization version
+
+The version in which the feature will be stabilized *must* match
+the value of [the `src/version` file in `master`][src-version] when the PR is merged.
+
+It's worth checking [the version schedule on the Forge][forge-versions] to see whether
+changes are coming soon.  You'll usually use the version labelled "Nightly".
+"Nightly" is two versions higher than the current stable release,
+since what's currently in beta will be the next stable release,
+and any changes you're making now will be in the one after that.
+
+No PR is merged instantly, so you'll want to be careful around release time.
+The version bump happens [the Friday before][forge-release-process] the stable release,
+not the same time as the release.  So if you're opening a PR shortly before then,
+be prepared to update the version, or consider just opening it for one version
+higher than the current nightly, with a note saying not to merge until
+after the upcoming version bump.
 
 ### Updating the feature-gate listing
 
@@ -119,14 +140,7 @@ When it is done, it should look like:
 // note that we changed this
 ```
 
-Note that, the version number is updated to be the version number
-of the stable release where this feature will appear. This can be
-found by consulting [the forge](https://forge.rust-lang.org/), which will guide
-you the next stable release number. You want to add 1 to that,
-because the code that lands today will become go into beta on that
-date, and then become stable after that. So, at the time of this
-writing, the next stable release (i.e. what is currently beta) was
-1.30.0, hence I wrote 1.31.0 above.
+(The version here is the one discussed in the previous section.)
 
 ### Removing existing uses of the feature-gate
 
@@ -184,6 +198,10 @@ if something { /* XXX */ }
 ```
 
 [rust-lang/rust#32409]: https://github.com/rust-lang/rust/issues/32409
+[std-guide-stabilization]: https://std-dev-guide.rust-lang.org/feature-lifecycle/stabilization.html
+[src-version]: https://github.com/rust-lang/rust/blob/master/src/version
+[forge-versions]: https://forge.rust-lang.org/#current-release-versions
+[forge-release-process]: https://forge.rust-lang.org/release/process.html
 [`compiler/rustc_feature`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_feature/index.html
 [The Reference]: https://github.com/rust-lang/reference
 [The Book]: https://github.com/rust-lang/book
