@@ -68,6 +68,10 @@ impl BuiltinType {
         (name![f32], BuiltinType::Float(BuiltinFloat::F32)),
         (name![f64], BuiltinType::Float(BuiltinFloat::F64)),
     ];
+
+    pub fn by_name(name: &Name) -> Option<Self> {
+        Self::ALL.iter().find_map(|(n, ty)| if n == name { Some(*ty) } else { None })
+    }
 }
 
 impl AsName for BuiltinType {
