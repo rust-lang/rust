@@ -67,7 +67,7 @@ impl<'a> RenderContext<'a> {
 
     fn is_deprecated(&self, def: impl HasAttrs) -> bool {
         let attrs = def.attrs(self.db());
-        attrs.by_key("deprecated").exists() || attrs.by_key("rustc_deprecated").exists()
+        attrs.by_key("deprecated").exists()
     }
 
     fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
@@ -675,8 +675,6 @@ fn main() { let _: m::Spam = S$0 }
             r#"
 #[deprecated]
 fn something_deprecated() {}
-#[rustc_deprecated(since = "1.0.0")]
-fn something_else_deprecated() {}
 
 fn main() { som$0 }
 "#,
@@ -685,8 +683,8 @@ fn main() { som$0 }
                 [
                     CompletionItem {
                         label: "main()",
-                        source_range: 127..130,
-                        delete: 127..130,
+                        source_range: 56..59,
+                        delete: 56..59,
                         insert: "main()$0",
                         kind: SymbolKind(
                             Function,
@@ -696,25 +694,13 @@ fn main() { som$0 }
                     },
                     CompletionItem {
                         label: "something_deprecated()",
-                        source_range: 127..130,
-                        delete: 127..130,
+                        source_range: 56..59,
+                        delete: 56..59,
                         insert: "something_deprecated()$0",
                         kind: SymbolKind(
                             Function,
                         ),
                         lookup: "something_deprecated",
-                        detail: "fn()",
-                        deprecated: true,
-                    },
-                    CompletionItem {
-                        label: "something_else_deprecated()",
-                        source_range: 127..130,
-                        delete: 127..130,
-                        insert: "something_else_deprecated()$0",
-                        kind: SymbolKind(
-                            Function,
-                        ),
-                        lookup: "something_else_deprecated",
                         detail: "fn()",
                         deprecated: true,
                     },
