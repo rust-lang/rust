@@ -137,6 +137,9 @@ impl Unit {
             kw trait
             kw static
             kw mod
+            kw enum
+            kw struct
+            kw union
             kw match
             kw while
             kw while let
@@ -227,6 +230,9 @@ fn complete_in_block() {
             kw trait
             kw static
             kw mod
+            kw enum
+            kw struct
+            kw union
             kw match
             kw while
             kw while let
@@ -269,6 +275,9 @@ fn complete_after_if_expr() {
             kw trait
             kw static
             kw mod
+            kw enum
+            kw struct
+            kw union
             kw match
             kw while
             kw while let
@@ -339,6 +348,9 @@ fn completes_in_loop_ctx() {
             kw trait
             kw static
             kw mod
+            kw enum
+            kw struct
+            kw union
             kw match
             kw while
             kw while let
