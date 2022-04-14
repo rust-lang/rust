@@ -52,7 +52,7 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext) -> Opti
     let current_scope = ctx.sema.scope(&star.parent()?)?;
     let current_module = current_scope.module();
 
-    let refs_in_target = find_refs_in_mod(ctx, target_module, Some(current_module))?;
+    let refs_in_target = find_refs_in_mod(ctx, target_module, current_module)?;
     let imported_defs = find_imported_defs(ctx, star)?;
 
     let target = parent.either(|n| n.syntax().clone(), |n| n.syntax().clone());
@@ -168,18 +168,12 @@ impl Refs {
     }
 }
 
-fn find_refs_in_mod(
-    ctx: &AssistContext,
-    module: Module,
-    visible_from: Option<Module>,
-) -> Option<Refs> {
-    if let Some(from) = visible_from {
-        if !is_mod_visible_from(ctx, module, from) {
-            return None;
-        }
+fn find_refs_in_mod(ctx: &AssistContext, module: Module, visible_from: Module) -> Option<Refs> {
+    if !is_mod_visible_from(ctx, module, visible_from) {
+        return None;
     }
 
-    let module_scope = module.scope(ctx.db(), visible_from);
+    let module_scope = module.scope(ctx.db(), Some(visible_from));
     let refs = module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
     Some(Refs(refs))
 }
@@ -729,37 +723,34 @@ fn qux(bar: Bar, baz: Baz) {
 
     #[test]
     fn expanding_glob_import_with_macro_defs() {
-        // FIXME: this is currently fails because `Definition::find_usages` ignores macros
-        //       https://github.com/rust-analyzer/rust-analyzer/issues/3484
-        //
-        //         check_assist(
-        //             expand_glob_import,
-        //             r"
-        // //- /lib.rs crate:foo
-        // #[macro_export]
-        // macro_rules! bar {
-        //     () => ()
-        // }
+        check_assist(
+            expand_glob_import,
+            r#"
+//- /lib.rs crate:foo
+#[macro_export]
+macro_rules! bar {
+    () => ()
+}
 
-        // pub fn baz() {}
+pub fn baz() {}
 
-        // //- /main.rs crate:main deps:foo
-        // use foo::*$0;
+//- /main.rs crate:main deps:foo
+use foo::*$0;
 
-        // fn main() {
-        //     bar!();
-        //     baz();
-        // }
-        // ",
-        //             r"
-        // use foo::{bar, baz};
+fn main() {
+    bar!();
+    baz();
+}
+"#,
+            r#"
+use foo::{bar, baz};
 
-        // fn main() {
-        //     bar!();
-        //     baz();
-        // }
-        // ",
-        //         )
+fn main() {
+    bar!();
+    baz();
+}
+"#,
+        );
     }
 
     #[test]
