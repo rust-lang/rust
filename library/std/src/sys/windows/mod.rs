@@ -7,7 +7,6 @@ use crate::path::PathBuf;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[macro_use]
 pub mod compat;
