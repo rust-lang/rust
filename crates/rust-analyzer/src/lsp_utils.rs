@@ -47,6 +47,26 @@ impl GlobalState {
         )
     }
 
+    /// Sends a notification to the client containing the error `message`.
+    /// If `additional_info` is [`Some`], appends a note to the notification telling to check the logs.
+    /// This will always log `message` + `additional_info` to the server's error log.
+    pub(crate) fn show_and_log_error(&mut self, message: String, additional_info: Option<String>) {
+        let mut message = message;
+        match additional_info {
+            Some(additional_info) => {
+                tracing::error!("{}\n\n{}", &message, &additional_info);
+                if tracing::enabled!(tracing::Level::ERROR) {
+                    message.push_str("\n\nCheck the server logs for additional info.");
+                }
+            }
+            None => tracing::error!("{}", &message),
+        }
+
+        self.send_notification::<lsp_types::notification::ShowMessage>(
+            lsp_types::ShowMessageParams { typ: lsp_types::MessageType::ERROR, message },
+        )
+    }
+
     /// rust-analyzer is resilient -- if it fails, this doesn't usually affect
     /// the user experience. Part of that is that we deliberately hide panics
     /// from the user.

@@ -72,9 +72,10 @@ impl GlobalState {
             status.message =
                 Some("Reload required due to source changes of a procedural macro.".into())
         }
-        if let Some(error) = self.fetch_build_data_error() {
+        if let Err(_) = self.fetch_build_data_error() {
             status.health = lsp_ext::Health::Warning;
-            status.message = Some(error)
+            status.message =
+                Some("Failed to run build scripts of some packages, check the logs.".to_string());
         }
         if !self.config.cargo_autoreload()
             && self.is_quiescent()
@@ -84,7 +85,7 @@ impl GlobalState {
             status.message = Some("Workspace reload required".to_string())
         }
 
-        if let Some(error) = self.fetch_workspace_error() {
+        if let Err(error) = self.fetch_workspace_error() {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
@@ -167,8 +168,8 @@ impl GlobalState {
         let _p = profile::span("GlobalState::switch_workspaces");
         tracing::info!("will switch workspaces");
 
-        if let Some(error_message) = self.fetch_workspace_error() {
-            tracing::error!("failed to switch workspaces: {}", error_message);
+        if let Err(error_message) = self.fetch_workspace_error() {
+            self.show_and_log_error(error_message, None);
             if !self.workspaces.is_empty() {
                 // It only makes sense to switch to a partially broken workspace
                 // if we don't have any workspace at all yet.
@@ -176,8 +177,11 @@ impl GlobalState {
             }
         }
 
-        if let Some(error_message) = self.fetch_build_data_error() {
-            tracing::error!("failed to switch build data: {}", error_message);
+        if let Err(error) = self.fetch_build_data_error() {
+            self.show_and_log_error(
+                "rust-analyzer failed to run build scripts".to_string(),
+                Some(error),
+            );
         }
 
         let workspaces = self
@@ -277,20 +281,18 @@ impl GlobalState {
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
         if self.proc_macro_client.is_none() {
-            self.proc_macro_client = match self.config.proc_macro_srv() {
-                None => None,
-                Some((path, args)) => match ProcMacroServer::spawn(path.clone(), args) {
-                    Ok(it) => Some(it),
+            if let Some((path, args)) = self.config.proc_macro_srv() {
+                match ProcMacroServer::spawn(path.clone(), args) {
+                    Ok(it) => self.proc_macro_client = Some(it),
                     Err(err) => {
                         tracing::error!(
                             "Failed to run proc_macro_srv from path {}, error: {:?}",
                             path.display(),
                             err
                         );
-                        None
                     }
-                },
-            };
+                }
+            }
         }
 
         let watch = match files_config.watcher {
@@ -348,7 +350,7 @@ impl GlobalState {
         tracing::info!("did switch workspaces");
     }
 
-    fn fetch_workspace_error(&self) -> Option<String> {
+    fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
         for ws in self.fetch_workspaces_queue.last_op_result() {
@@ -358,35 +360,30 @@ impl GlobalState {
         }
 
         if buf.is_empty() {
-            return None;
+            return Ok(());
         }
 
-        Some(buf)
+        Err(buf)
     }
 
-    fn fetch_build_data_error(&self) -> Option<String> {
-        let mut buf = "rust-analyzer failed to run build scripts:\n".to_string();
-        let mut has_errors = false;
+    fn fetch_build_data_error(&self) -> Result<(), String> {
+        let mut buf = String::new();
 
         for ws in &self.fetch_build_data_queue.last_op_result().1 {
             match ws {
-                Ok(data) => {
-                    if let Some(err) = data.error() {
-                        has_errors = true;
-                        stdx::format_to!(buf, "{:#}\n", err);
-                    }
-                }
-                Err(err) => {
-                    has_errors = true;
-                    stdx::format_to!(buf, "{:#}\n", err);
-                }
+                Ok(data) => match data.error() {
+                    Some(stderr) => stdx::format_to!(buf, "{:#}\n", stderr),
+                    _ => (),
+                },
+                // io errors
+                Err(err) => stdx::format_to!(buf, "{:#}\n", err),
             }
         }
 
-        if has_errors {
-            Some(buf)
+        if buf.is_empty() {
+            Ok(())
         } else {
-            None
+            Err(buf)
         }
     }
 

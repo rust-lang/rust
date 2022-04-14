@@ -111,10 +111,7 @@ impl GlobalState {
             && self.config.detached_files().is_empty()
             && self.config.notifications().cargo_toml_not_found
         {
-            self.show_message(
-                lsp_types::MessageType::ERROR,
-                "rust-analyzer failed to discover workspace".to_string(),
-            );
+            self.show_and_log_error("rust-analyzer failed to discover workspace".to_string(), None);
         };
 
         if self.config.did_save_text_document_dynamic_registration() {
@@ -406,9 +403,9 @@ impl GlobalState {
                                 flycheck::Progress::DidCancel => (Progress::End, None),
                                 flycheck::Progress::DidFinish(result) => {
                                     if let Err(err) = result {
-                                        self.show_message(
-                                            lsp_types::MessageType::ERROR,
-                                            format!("cargo check failed: {}", err),
+                                        self.show_and_log_error(
+                                            "cargo check failed".to_string(),
+                                            Some(err.to_string()),
                                         );
                                     }
                                     (Progress::End, None)
@@ -564,7 +561,6 @@ impl GlobalState {
         if self.workspaces.is_empty() && !self.is_quiescent() {
             self.respond(lsp_server::Response::new_err(
                 req.id,
-                // FIXME: i32 should impl From<ErrorCode> (from() guarantees lossless conversion)
                 lsp_server::ErrorCode::ContentModified as i32,
                 "waiting for cargo metadata or cargo check".to_owned(),
             ));
