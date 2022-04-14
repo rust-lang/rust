@@ -1589,6 +1589,9 @@ impl<T: ?Sized> *mut T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
+        // SAFETY: `is_power_of_two()` will return `false` for zero.
+        unsafe { core::intrinsics::assume(align != 0) };
+
         // Cast is needed for `T: !Sized`
         self.cast::<u8>().addr() % align == 0
     }
