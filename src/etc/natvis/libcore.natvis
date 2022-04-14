@@ -113,7 +113,7 @@
   </Type>
 
   <Type Name="core::ptr::unique::Unique&lt;*&gt;">
-    <DisplayString>Unique({(void*)pointer}: {pointer})</DisplayString>
+    <DisplayString>Unique({(void*)pointer.pointer}: {pointer.pointer})</DisplayString>
     <Expand>
       <ExpandedItem>pointer</ExpandedItem>
     </Expand>
