@@ -907,6 +907,10 @@ impl<'a> CrateLoader<'a> {
                 // Don't worry about pathless `--extern foo` sysroot references
                 continue;
             }
+            if entry.nounused_dep {
+                // We're not worried about this one
+                continue;
+            }
             let name_interned = Symbol::intern(name);
             if self.used_extern_options.contains(&name_interned) {
                 continue;

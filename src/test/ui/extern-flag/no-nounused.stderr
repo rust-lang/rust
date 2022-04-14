@@ -1,0 +1,10 @@
+error: external crate `somedep` unused in `no_nounused`: remove the dependency or add `use somedep as _;`
+  --> $DIR/no-nounused.rs:5:1
+   |
+LL | fn main() {
+   | ^
+   |
+   = note: requested on the command line with `-D unused-crate-dependencies`
+
+error: aborting due to previous error
+
