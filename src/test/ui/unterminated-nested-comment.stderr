@@ -14,7 +14,7 @@ LL | | /*
 LL | | */
    | |_--^
    |   |
-   |   ...and last nested comment terminates here
+   |   ...and last nested comment terminates here.
 
 error: aborting due to previous error
 

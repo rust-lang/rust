@@ -557,39 +557,36 @@ impl<'a> StringReader<'a> {
         );
         let mut nested_block_comment_open_idxs = vec![];
         let mut last_nested_block_comment_idxs = None;
-        let mut content_chars = self.str_from(start).char_indices();
+        let mut content_chars = self.str_from(start).char_indices().peekable();
 
-        if let Some((_, mut last_char)) = content_chars.next() {
-            while let Some((idx, c)) = content_chars.next() {
-                match c {
-                    '*' if last_char == '/' => {
-                        nested_block_comment_open_idxs.push(idx);
-                    }
-                    '/' if last_char == '*' => {
-                        last_nested_block_comment_idxs =
-                            nested_block_comment_open_idxs.pop().map(|open_idx| (open_idx, idx));
-                    }
-                    _ => {}
-                };
-                last_char = c;
-            }
+        while let Some((idx, current_char)) = content_chars.next() {
+            match content_chars.peek() {
+                Some((_, '*')) if current_char == '/' => {
+                    nested_block_comment_open_idxs.push(idx);
+                }
+                Some((_, '/')) if current_char == '*' => {
+                    last_nested_block_comment_idxs =
+                        nested_block_comment_open_idxs.pop().map(|open_idx| (open_idx, idx));
+                }
+                _ => {}
+            };
         }
 
         if let Some((nested_open_idx, nested_close_idx)) = last_nested_block_comment_idxs {
             err.span_label(self.mk_sp(start, start + BytePos(2)), msg)
                 .span_label(
                     self.mk_sp(
-                        start + BytePos(nested_open_idx as u32 - 1),
-                        start + BytePos(nested_open_idx as u32 + 1),
+                        start + BytePos(nested_open_idx as u32),
+                        start + BytePos(nested_open_idx as u32 + 2),
                     ),
                     "...as last nested comment starts here, maybe you want to close this instead?",
                 )
                 .span_label(
                     self.mk_sp(
-                        start + BytePos(nested_close_idx as u32 - 1),
-                        start + BytePos(nested_close_idx as u32 + 1),
+                        start + BytePos(nested_close_idx as u32),
+                        start + BytePos(nested_close_idx as u32 + 2),
                     ),
-                    "...and last nested comment terminates here",
+                    "...and last nested comment terminates here.",
                 );
         }
 
