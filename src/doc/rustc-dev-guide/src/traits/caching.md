@@ -53,7 +53,7 @@ where clauses that are in scope. The determination of which cache to
 use is done by the method `pick_candidate_cache` in `select.rs`. At
 the moment, we use a very simple, conservative rule: if there are any
 where-clauses in scope, then we use the local cache.  We used to try
-and draw finer-grained distinctions, but that led to a serious of
+and draw finer-grained distinctions, but that led to a series of
 annoying and weird bugs like [#22019] and [#18290]. This simple rule seems
 to be pretty clearly safe and also still retains a very high hit rate
 (~95% when compiling rustc).
