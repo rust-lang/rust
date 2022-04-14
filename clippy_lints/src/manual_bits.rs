@@ -24,7 +24,7 @@ declare_clippy_lint! {
     /// ```
     /// Use instead:
     /// ```rust
-    /// usize::BITS;
+    /// usize::BITS as usize;
     /// ```
     #[clippy::version = "1.60.0"]
     pub MANUAL_BITS,
