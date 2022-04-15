@@ -20,7 +20,9 @@ use rustc_hash::FxHashMap;
 use syntax::{
     algo::find_node_at_offset,
     ast::{self, HasName},
-    match_ast, AstNode, SyntaxNode, TextRange, TextSize, T,
+    match_ast, AstNode,
+    SyntaxKind::*,
+    SyntaxNode, TextRange, TextSize, T,
 };
 
 use crate::{FilePosition, NavigationTarget, TryToNav};
@@ -104,7 +106,7 @@ pub(crate) fn find_all_refs(
         }
         None => {
             let search = make_searcher(false);
-            Some(find_defs(sema, &syntax, position.offset).into_iter().map(search).collect())
+            Some(find_defs(sema, &syntax, position.offset)?.into_iter().map(search).collect())
         }
     }
 }
@@ -113,31 +115,47 @@ pub(crate) fn find_defs<'a>(
     sema: &'a Semantics<RootDatabase>,
     syntax: &SyntaxNode,
     offset: TextSize,
-) -> impl Iterator<Item = Definition> + 'a {
-    sema.find_nodes_at_offset_with_descend(syntax, offset).filter_map(move |name_like| {
-        let def = match name_like {
-            ast::NameLike::NameRef(name_ref) => match NameRefClass::classify(sema, &name_ref)? {
-                NameRefClass::Definition(def) => def,
-                NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
-                    Definition::Local(local_ref)
-                }
-            },
-            ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
-                NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
-                    Definition::Local(local_def)
-                }
-            },
-            ast::NameLike::Lifetime(lifetime) => NameRefClass::classify_lifetime(sema, &lifetime)
-                .and_then(|class| match class {
-                    NameRefClass::Definition(it) => Some(it),
-                    _ => None,
-                })
-                .or_else(|| {
-                    NameClass::classify_lifetime(sema, &lifetime).and_then(NameClass::defined)
-                })?,
-        };
-        Some(def)
+) -> Option<impl Iterator<Item = Definition> + 'a> {
+    let token = syntax.token_at_offset(offset).find(|t| {
+        matches!(
+            t.kind(),
+            IDENT | INT_NUMBER | LIFETIME_IDENT | T![self] | T![super] | T![crate] | T![Self]
+        )
+    });
+    token.map(|token| {
+        sema.descend_into_macros_with_same_kind(token)
+            .into_iter()
+            .filter_map(|it| ast::NameLike::cast(it.parent()?))
+            .filter_map(move |name_like| {
+                let def = match name_like {
+                    ast::NameLike::NameRef(name_ref) => {
+                        match NameRefClass::classify(sema, &name_ref)? {
+                            NameRefClass::Definition(def) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                                Definition::Local(local_ref)
+                            }
+                        }
+                    }
+                    ast::NameLike::Name(name) => match NameClass::classify(sema, &name)? {
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => it,
+                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                            Definition::Local(local_def)
+                        }
+                    },
+                    ast::NameLike::Lifetime(lifetime) => {
+                        NameRefClass::classify_lifetime(sema, &lifetime)
+                            .and_then(|class| match class {
+                                NameRefClass::Definition(it) => Some(it),
+                                _ => None,
+                            })
+                            .or_else(|| {
+                                NameClass::classify_lifetime(sema, &lifetime)
+                                    .and_then(NameClass::defined)
+                            })?
+                    }
+                };
+                Some(def)
+            })
     })
 }
 
