@@ -393,7 +393,7 @@ struct LintcheckConfig {
     lintcheck_results_path: PathBuf,
     /// whether to just run --fix and not collect all the warnings
     fix: bool,
-    /// A list of lint that this lintcheck run shound focus on
+    /// A list of lints that this lintcheck run should focus on
     lint_filter: Vec<String>,
     /// Indicate if the output should support markdown syntax
     markdown: bool,
