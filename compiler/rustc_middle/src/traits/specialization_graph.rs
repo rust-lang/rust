@@ -180,6 +180,7 @@ pub struct LeafDef {
     /// Example:
     ///
     /// ```
+    /// #![feature(specialization)]
     /// trait Tr {
     ///     fn assoc(&self);
     /// }

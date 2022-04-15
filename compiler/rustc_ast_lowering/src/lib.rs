@@ -934,7 +934,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Given an associated type constraint like one of these:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// T: Iterator<Item: Debug>
     ///             ^^^^^^^^^^^
     /// T: Iterator<Item = Debug>

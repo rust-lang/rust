@@ -202,7 +202,7 @@ pub enum TerminatorKind<'tcx> {
     /// This assignment occurs both in the unwind and the regular code paths. The semantics are best
     /// explained by the elaboration:
     ///
-    /// ```
+    /// ```ignore (MIR)
     /// BB0 {
     ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
     /// }
@@ -210,7 +210,7 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// becomes
     ///
-    /// ```
+    /// ```ignore (MIR)
     /// BB0 {
     ///   Drop(P, goto BB1, unwind BB2)
     /// }

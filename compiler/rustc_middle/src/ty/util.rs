@@ -975,7 +975,7 @@ impl<'tcx> ExplicitSelf<'tcx> {
     ///
     /// Examples:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// impl<'a> Foo for &'a T {
     ///     // Legal declarations:
     ///     fn method1(self: &&'a T); // ExplicitSelf::ByReference

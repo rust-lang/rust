@@ -37,21 +37,21 @@ pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // maybe-init:
-///                                            // {}
-///     let a = S; let b = S; let c; let d;    // {a, b}
+/// fn foo(pred: bool) {                        // maybe-init:
+///                                             // {}
+///     let a = S; let mut b = S; let c; let d; // {a, b}
 ///
 ///     if pred {
-///         drop(a);                           // {   b}
-///         b = S;                             // {   b}
+///         drop(a);                            // {   b}
+///         b = S;                              // {   b}
 ///
 ///     } else {
-///         drop(b);                           // {a}
-///         d = S;                             // {a,       d}
+///         drop(b);                            // {a}
+///         d = S;                              // {a,       d}
 ///
-///     }                                      // {a, b,    d}
+///     }                                       // {a, b,    d}
 ///
-///     c = S;                                 // {a, b, c, d}
+///     c = S;                                  // {a, b, c, d}
 /// }
 /// ```
 ///
@@ -90,21 +90,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // maybe-uninit:
-///                                            // {a, b, c, d}
-///     let a = S; let b = S; let c; let d;    // {      c, d}
+/// fn foo(pred: bool) {                        // maybe-uninit:
+///                                             // {a, b, c, d}
+///     let a = S; let mut b = S; let c; let d; // {      c, d}
 ///
 ///     if pred {
-///         drop(a);                           // {a,    c, d}
-///         b = S;                             // {a,    c, d}
+///         drop(a);                            // {a,    c, d}
+///         b = S;                              // {a,    c, d}
 ///
 ///     } else {
-///         drop(b);                           // {   b, c, d}
-///         d = S;                             // {   b, c   }
+///         drop(b);                            // {   b, c, d}
+///         d = S;                              // {   b, c   }
 ///
-///     }                                      // {a, b, c, d}
+///     }                                       // {a, b, c, d}
 ///
-///     c = S;                                 // {a, b,    d}
+///     c = S;                                  // {a, b,    d}
 /// }
 /// ```
 ///
@@ -155,21 +155,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for MaybeUninitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // definite-init:
-///                                            // {          }
-///     let a = S; let b = S; let c; let d;    // {a, b      }
+/// fn foo(pred: bool) {                        // definite-init:
+///                                             // {          }
+///     let a = S; let mut b = S; let c; let d; // {a, b      }
 ///
 ///     if pred {
-///         drop(a);                           // {   b,     }
-///         b = S;                             // {   b,     }
+///         drop(a);                            // {   b,     }
+///         b = S;                              // {   b,     }
 ///
 ///     } else {
-///         drop(b);                           // {a,        }
-///         d = S;                             // {a,       d}
+///         drop(b);                            // {a,        }
+///         d = S;                              // {a,       d}
 ///
-///     }                                      // {          }
+///     }                                       // {          }
 ///
-///     c = S;                                 // {       c  }
+///     c = S;                                  // {       c  }
 /// }
 /// ```
 ///
@@ -210,21 +210,21 @@ impl<'a, 'tcx> HasMoveData<'tcx> for DefinitelyInitializedPlaces<'a, 'tcx> {
 ///
 /// ```rust
 /// struct S;
-/// fn foo(pred: bool) {                       // ever-init:
-///                                            // {          }
-///     let a = S; let b = S; let c; let d;    // {a, b      }
+/// fn foo(pred: bool) {                        // ever-init:
+///                                             // {          }
+///     let a = S; let mut b = S; let c; let d; // {a, b      }
 ///
 ///     if pred {
-///         drop(a);                           // {a, b,     }
-///         b = S;                             // {a, b,     }
+///         drop(a);                            // {a, b,     }
+///         b = S;                              // {a, b,     }
 ///
 ///     } else {
-///         drop(b);                           // {a, b,      }
-///         d = S;                             // {a, b,    d }
+///         drop(b);                            // {a, b,      }
+///         d = S;                              // {a, b,    d }
 ///
-///     }                                      // {a, b,    d }
+///     }                                       // {a, b,    d }
 ///
-///     c = S;                                 // {a, b, c, d }
+///     c = S;                                  // {a, b, c, d }
 /// }
 /// ```
 pub struct EverInitializedPlaces<'a, 'tcx> {

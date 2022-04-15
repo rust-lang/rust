@@ -91,12 +91,13 @@
 //! another function. It suffices to just take a reference in order to introduce
 //! an edge. Consider the following example:
 //!
-//! ```rust
+//! ```
+//! # use core::fmt::Display;
 //! fn print_val<T: Display>(x: T) {
 //!     println!("{}", x);
 //! }
 //!
-//! fn call_fn(f: &Fn(i32), x: i32) {
+//! fn call_fn(f: &dyn Fn(i32), x: i32) {
 //!     f(x);
 //! }
 //!

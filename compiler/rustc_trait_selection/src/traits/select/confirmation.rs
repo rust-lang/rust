@@ -712,9 +712,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// and we desugared it so that the type of the expression is
     /// `Closure`, and `Closure` expects `i32` as argument. Then it
     /// is "as if" the compiler generated this impl:
-    ///
-    ///     impl Fn(i32) for Closure { ... }
-    ///
+    /// ```ignore (illustrative)
+    /// impl Fn(i32) for Closure { ... }
+    /// ```
     /// Now imagine our obligation is `Closure: Fn(usize)`. So far
     /// we have matched the self type `Closure`. At this point we'll
     /// compare the `i32` to `usize` and generate an error.

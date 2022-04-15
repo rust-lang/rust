@@ -896,20 +896,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///
     /// In the simplest case, where there are no unions involved, if a mutable borrow of `x` is
     /// attempted while a shared borrow is live, then this function will return:
-    ///
-    ///     ("x", "", "")
-    ///
+    /// ```
+    /// ("x", "", "")
+    /// # ;
+    /// ```
     /// In the simple union case, if a mutable borrow of a union field `x.z` is attempted while
     /// a shared borrow of another field `x.y`, then this function will return:
-    ///
-    ///     ("x", "x.z", "x.y")
-    ///
+    /// ```
+    /// ("x", "x.z", "x.y")
+    /// # ;
+    /// ```
     /// In the more complex union case, where the union is a field of a struct, then if a mutable
     /// borrow of a union field in a struct `x.u.z` is attempted while a shared borrow of
     /// another field `x.u.y`, then this function will return:
-    ///
-    ///     ("x.u", "x.u.z", "x.u.y")
-    ///
+    /// ```
+    /// ("x.u", "x.u.z", "x.u.y")
+    /// # ;
+    /// ```
     /// This is used when creating error messages like below:
     ///
     /// ```text

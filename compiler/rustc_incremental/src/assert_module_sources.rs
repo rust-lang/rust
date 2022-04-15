@@ -5,6 +5,7 @@
 //! The user adds annotations to the crate of the following form:
 //!
 //! ```
+//! # #![feature(rustc_attrs)]
 //! #![rustc_partition_reused(module="spike", cfg="rpass2")]
 //! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 //! ```

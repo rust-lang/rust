@@ -6,7 +6,7 @@
 //! is always the "expected" output from the POV of diagnostics.
 //!
 //! Examples:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(cause, param_env).sub(a, b)
 //!     // requires that `a <: b`, with `a` considered the "expected" type
 //!
@@ -15,11 +15,11 @@
 //!
 //!     infcx.at(cause, param_env).eq(a, b)
 //!     // requires that `a == b`, with `a` considered the "expected" type
-//!
+//! ```
 //! For finer-grained control, you can also do use `trace`:
-//!
+//! ```ignore (fragment)
 //!     infcx.at(...).trace(a, b).sub(&c, &d)
-//!
+//! ```
 //! This will set `a` and `b` as the "root" values for
 //! error-reporting, but actually operate on `c` and `d`. This is
 //! sometimes useful when the types of `c` and `d` are not traceable

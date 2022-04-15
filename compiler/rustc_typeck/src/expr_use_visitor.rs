@@ -698,12 +698,13 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// In the following example the closures `c` only captures `p.x` even though `incr`
     /// is a capture of the nested closure
     ///
-    /// ```rust,ignore(cannot-test-this-because-pseudo-code)
-    /// let p = ..;
+    /// ```
+    /// struct P { x: i32 }
+    /// let mut p = P { x: 4 };
     /// let c = || {
     ///    let incr = 10;
     ///    let nested = || p.x += incr;
-    /// }
+    /// };
     /// ```
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing

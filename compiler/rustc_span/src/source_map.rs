@@ -1058,10 +1058,11 @@ impl SourceMap {
 
     /// Tries to find the span of the semicolon of a macro call statement.
     /// The input must be the *call site* span of a statement from macro expansion.
-    ///
-    ///           v output
-    ///     mac!();
-    ///     ^^^^^^ input
+    /// ```ignore (illustrative)
+    /// //       v output
+    ///    mac!();
+    /// // ^^^^^^ input
+    /// ```
     pub fn mac_call_stmt_semi_span(&self, mac_call: Span) -> Option<Span> {
         let span = self.span_extend_while(mac_call, char::is_whitespace).ok()?;
         let span = span.shrink_to_hi().with_hi(BytePos(span.hi().0.checked_add(1)?));

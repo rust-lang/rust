@@ -7,9 +7,9 @@ use std::error::Error;
 
 /// A dep-node filter goes from a user-defined string to a query over
 /// nodes. Right now the format is like this:
-///
-///     x & y & z
-///
+/// ```ignore (illustrative)
+/// x & y & z
+/// ```
 /// where the format-string of the dep-node must contain `x`, `y`, and
 /// `z`.
 #[derive(Debug)]

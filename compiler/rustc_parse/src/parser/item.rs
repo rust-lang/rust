@@ -485,7 +485,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an implementation item.
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// impl<'a, T> TYPE { /* impl items */ }
     /// impl<'a, T> TRAIT for TYPE { /* impl items */ }
     /// impl<'a, T> !TRAIT for TYPE { /* impl items */ }
@@ -493,7 +493,7 @@ impl<'a> Parser<'a> {
     /// ```
     ///
     /// We actually parse slightly more relaxed grammar for better error reporting and recovery.
-    /// ```
+    /// ```ebnf
     /// "impl" GENERICS "const"? "!"? TYPE "for"? (TYPE | "..") ("where" PREDICATES)? "{" BODY "}"
     /// "impl" GENERICS "const"? "!"? TYPE ("where" PREDICATES)? "{" BODY "}"
     /// ```
@@ -806,7 +806,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `type` alias with the following grammar:
-    /// ```
+    /// ```ebnf
     /// TypeAlias = "type" Ident Generics {":" GenericBounds}? {"=" Ty}? ";" ;
     /// ```
     /// The `"type"` has already been eaten.
@@ -930,7 +930,7 @@ impl<'a> Parser<'a> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// extern crate foo;
     /// extern crate bar as foo;
     /// ```
@@ -1630,7 +1630,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a declarative macro 2.0 definition.
     /// The `macro` keyword has already been parsed.
-    /// ```
+    /// ```ebnf
     /// MacBody = "{" TOKEN_STREAM "}" ;
     /// MacParams = "(" TOKEN_STREAM ")" ;
     /// DeclMac = "macro" Ident MacParams? MacBody ;

@@ -22,11 +22,11 @@ impl<'a, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'a, 'tcx> {
     /// (*), computes the "definition type" for an opaque type
     /// definition -- that is, the inferred value of `Foo1<'x>` or
     /// `Foo2<'x>` that we would conceptually use in its definition:
-    ///
-    ///     type Foo1<'x> = impl Bar<'x> = AAA; <-- this type AAA
-    ///     type Foo2<'x> = impl Bar<'x> = BBB; <-- or this type BBB
-    ///     fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
-    ///
+    /// ```ignore (illustrative)
+    /// type Foo1<'x> = impl Bar<'x> = AAA;  // <-- this type AAA
+    /// type Foo2<'x> = impl Bar<'x> = BBB;  // <-- or this type BBB
+    /// fn foo<'a, 'b>(..) -> (Foo1<'a>, Foo2<'b>) { .. }
+    /// ```
     /// Note that these values are defined in terms of a distinct set of
     /// generic parameters (`'x` instead of `'a`) from C1 or C2. The main
     /// purpose of this function is to do that translation.

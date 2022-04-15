@@ -255,9 +255,9 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// `FulfillmentContext` will drive `SelectionContext` to consider that impl before giving up.
     /// If we were to rely on `FulfillmentContext`s decision, we might end up synthesizing an impl
     /// like this:
-    ///
-    ///     impl<T> Send for Foo<T> where T: IntoIterator
-    ///
+    /// ```ignore (illustrative)
+    /// impl<T> Send for Foo<T> where T: IntoIterator
+    /// ```
     /// While it might be technically true that Foo implements Send where `T: IntoIterator`,
     /// the bound is overly restrictive - it's really only necessary that `T: Iterator`.
     ///
@@ -420,10 +420,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     /// two trait predicates that differ only in their region parameters:
     /// one containing a HRTB lifetime parameter, and one containing a 'normal'
     /// lifetime parameter. For example:
-    ///
-    ///     T as MyTrait<'a>
-    ///     T as MyTrait<'static>
-    ///
+    /// ```ignore (illustrative)
+    /// T as MyTrait<'a>
+    /// T as MyTrait<'static>
+    /// ```
     /// If we put both of these predicates in our computed `ParamEnv`, we'll
     /// confuse `SelectionContext`, since it will (correctly) view both as being applicable.
     ///

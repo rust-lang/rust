@@ -312,6 +312,7 @@ pub enum Res<Id = hir::HirId> {
     /// HACK(min_const_generics): self types also have an optional requirement to **not** mention
     /// any generic parameters to allow the following with `min_const_generics`:
     /// ```
+    /// # struct Foo;
     /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
     ///
     /// struct Bar([u8; baz::<Self>()]);

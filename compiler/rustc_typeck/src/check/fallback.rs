@@ -144,6 +144,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// code. The most common case is something like this:
     ///
     /// ```rust
+    /// # fn foo() -> i32 { 4 }
     /// match foo() {
     ///     22 => Default::default(), // call this type `?D`
     ///     _ => return, // return has type `!`
@@ -168,7 +169,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// fallback to use based on whether there is a coercion pattern
     /// like this:
     ///
-    /// ```
+    /// ```ignore (not-rust)
     /// ?Diverging -> ?V
     /// ?NonDiverging -> ?V
     /// ?V != ?NonDiverging

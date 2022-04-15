@@ -13,7 +13,7 @@
 //! Instead of listing all those constructors (which is intractable), we group those value
 //! constructors together as much as possible. Example:
 //!
-//! ```
+//! ```compile_fail,E0004
 //! match (0, false) {
 //!     (0 ..=100, true) => {} // `p_1`
 //!     (50..=150, false) => {} // `p_2`
@@ -344,13 +344,13 @@ enum IntBorder {
 /// straddles the boundary of one of the inputs.
 ///
 /// The following input:
-/// ```
+/// ```text
 ///   |-------------------------| // `self`
 /// |------|  |----------|   |----|
 ///    |-------| |-------|
 /// ```
 /// would be iterated over as follows:
-/// ```
+/// ```text
 ///   ||---|--||-|---|---|---|--|
 /// ```
 #[derive(Debug, Clone)]
@@ -492,14 +492,17 @@ impl Slice {
 ///
 /// Let's look at an example, where we are trying to split the last pattern:
 /// ```
+/// # fn foo(x: &[bool]) {
 /// match x {
 ///     [true, true, ..] => {}
 ///     [.., false, false] => {}
 ///     [..] => {}
 /// }
+/// # }
 /// ```
 /// Here are the results of specialization for the first few lengths:
 /// ```
+/// # fn foo(x: &[bool]) { match x {
 /// // length 0
 /// [] => {}
 /// // length 1
@@ -520,6 +523,8 @@ impl Slice {
 /// [true, true, _, _,     _    ] => {}
 /// [_,    _,    _, false, false] => {}
 /// [_,    _,    _, _,     _    ] => {}
+/// # _ => {}
+/// # }}
 /// ```
 ///
 /// If we went above length 5, we would simply be inserting more columns full of wildcards in the
@@ -1128,7 +1133,8 @@ impl<'tcx> SplitWildcard<'tcx> {
 /// In the following example `Fields::wildcards` returns `[_, _, _, _]`. Then in
 /// `extract_pattern_arguments` we fill some of the entries, and the result is
 /// `[Some(0), _, _, _]`.
-/// ```rust
+/// ```compile_fail,E0004
+/// # fn foo() -> [Option<u8>; 4] { [None; 4] }
 /// let x: [Option<u8>; 4] = foo();
 /// match x {
 ///     [Some(0), ..] => {}
