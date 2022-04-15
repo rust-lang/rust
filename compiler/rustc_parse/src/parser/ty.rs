@@ -523,6 +523,9 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
+            // If we ever start to allow `const fn()`, then update
+            // feature gating for `#![feature(const_extern_fn)]` to
+            // cover it.
             self.error_fn_ptr_bad_qualifier(whole_span, span, "const");
         }
         if let ast::Async::Yes { span, .. } = asyncness {
