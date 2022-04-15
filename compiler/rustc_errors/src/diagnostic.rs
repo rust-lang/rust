@@ -832,7 +832,7 @@ impl Diagnostic {
         name: impl Into<Cow<'static, str>>,
         arg: DiagnosticArgValue<'static>,
     ) -> &mut Self {
-        self.args.push((name.into(), arg.into()));
+        self.args.push((name.into(), arg));
         self
     }
 
