@@ -16,7 +16,7 @@
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(crate_visibility_modifier)]
-#![feature(derive_default_enum)]
+#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(drain_filter)]
 #![feature(hash_drain_filter)]
 #![feature(label_break_value)]

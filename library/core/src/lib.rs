@@ -167,7 +167,7 @@
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
-#![feature(derive_default_enum)]
+#![cfg_attr(bootstrap, feature(derive_default_enum))]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
