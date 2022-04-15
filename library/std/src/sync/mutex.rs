@@ -192,6 +192,7 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
                       points can cause deadlocks, delays, \
                       and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[clippy::has_significant_drop]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
