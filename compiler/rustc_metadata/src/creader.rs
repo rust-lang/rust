@@ -208,10 +208,7 @@ impl CStore {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
-            tcx.sess
-                .parse_sess
-                .span_diagnostic
-                .emit_unused_externs(level.as_str(), &unused_externs);
+            tcx.sess.parse_sess.span_diagnostic.emit_unused_externs(level, &unused_externs);
         }
     }
 }

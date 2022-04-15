@@ -969,10 +969,10 @@ impl Handler {
         self.inner.borrow_mut().emitter.emit_future_breakage_report(diags)
     }
 
-    pub fn emit_unused_externs(&self, lint_level: &str, unused_externs: &[&str]) {
+    pub fn emit_unused_externs(&self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
         let mut inner = self.inner.borrow_mut();
 
-        if lint_level == "deny" || lint_level == "forbid" {
+        if lint_level.is_error() {
             inner.bump_err_count();
         }
 
@@ -1147,7 +1147,7 @@ impl HandlerInner {
         self.emitter.emit_artifact_notification(path, artifact_type);
     }
 
-    fn emit_unused_externs(&mut self, lint_level: &str, unused_externs: &[&str]) {
+    fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
         self.emitter.emit_unused_externs(lint_level, unused_externs);
     }
 
