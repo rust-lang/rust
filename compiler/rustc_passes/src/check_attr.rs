@@ -80,6 +80,7 @@ impl CheckAttrVisitor<'_> {
                     self.check_rustc_must_implement_one_of(attr, span, target)
                 }
                 sym::target_feature => self.check_target_feature(hir_id, attr, span, target),
+                sym::thread_local => self.check_thread_local(attr, span, target),
                 sym::track_caller => {
                     self.check_track_caller(hir_id, attr.span, attrs, span, target)
                 }
@@ -517,6 +518,21 @@ impl CheckAttrVisitor<'_> {
                     .sess
                     .struct_span_err(attr.span, "attribute should be applied to a function")
                     .span_label(span, "not a function")
+                    .emit();
+                false
+            }
+        }
+    }
+
+    /// Checks if the `#[thread_local]` attribute on `item` is valid. Returns `true` if valid.
+    fn check_thread_local(&self, attr: &Attribute, span: Span, target: Target) -> bool {
+        match target {
+            Target::ForeignStatic | Target::Static => true,
+            _ => {
+                self.tcx
+                    .sess
+                    .struct_span_err(attr.span, "attribute should be applied to a static")
+                    .span_label(span, "not a static")
                     .emit();
                 false
             }
