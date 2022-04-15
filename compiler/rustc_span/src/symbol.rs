@@ -1149,6 +1149,8 @@ symbols! {
         rust_2018_preview,
         rust_2021,
         rust_2021_preview,
+        rust_2024,
+        rust_2024_preview,
         rust_begin_unwind,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
