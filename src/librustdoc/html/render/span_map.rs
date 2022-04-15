@@ -119,11 +119,14 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_mod(&mut self, m: &'tcx Mod<'tcx>, span: Span, id: HirId) {
         // To make the difference between "mod foo {}" and "mod foo;". In case we "import" another
         // file, we want to link to it. Otherwise no need to create a link.
-        if !span.overlaps(m.inner) {
+        if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
             if let Some(Node::Item(item)) = self.tcx.hir().find(id) {
-                self.matches.insert(item.ident.span, LinkFromSrc::Local(clean::Span::new(m.inner)));
+                self.matches.insert(
+                    item.ident.span,
+                    LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
+                );
             }
         }
         intravisit::walk_mod(self, m, id);

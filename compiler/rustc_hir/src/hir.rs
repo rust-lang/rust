@@ -2557,11 +2557,17 @@ impl FnRetTy<'_> {
 
 #[derive(Encodable, Debug, HashStable_Generic)]
 pub struct Mod<'hir> {
+    pub spans: ModSpans,
+    pub item_ids: &'hir [ItemId],
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic, Encodable)]
+pub struct ModSpans {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
-    pub inner: Span,
-    pub item_ids: &'hir [ItemId],
+    pub inner_span: Span,
+    pub inject_use_span: Span,
 }
 
 #[derive(Debug, HashStable_Generic)]
@@ -3059,8 +3065,8 @@ impl<'hir> OwnerNode<'hir> {
             OwnerNode::Item(Item { span, .. })
             | OwnerNode::ForeignItem(ForeignItem { span, .. })
             | OwnerNode::ImplItem(ImplItem { span, .. })
-            | OwnerNode::TraitItem(TraitItem { span, .. })
-            | OwnerNode::Crate(Mod { inner: span, .. }) => *span,
+            | OwnerNode::TraitItem(TraitItem { span, .. }) => *span,
+            OwnerNode::Crate(Mod { spans: ModSpans { inner_span, .. }, .. }) => *inner_span,
         }
     }
 

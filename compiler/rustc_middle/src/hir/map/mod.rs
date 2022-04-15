@@ -584,7 +584,7 @@ impl<'hir> Map<'hir> {
             Some(OwnerNode::Item(&Item { span, kind: ItemKind::Mod(ref m), .. })) => {
                 (m, span, hir_id)
             }
-            Some(OwnerNode::Crate(item)) => (item, item.inner, hir_id),
+            Some(OwnerNode::Crate(item)) => (item, item.spans.inner_span, hir_id),
             node => panic!("not a module: {:?}", node),
         }
     }
@@ -1012,7 +1012,7 @@ impl<'hir> Map<'hir> {
             Node::Infer(i) => i.span,
             Node::Visibility(v) => bug!("unexpected Visibility {:?}", v),
             Node::Local(local) => local.span,
-            Node::Crate(item) => item.inner,
+            Node::Crate(item) => item.spans.inner_span,
         };
         Some(span)
     }
