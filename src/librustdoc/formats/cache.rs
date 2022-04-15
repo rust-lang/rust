@@ -464,10 +464,20 @@ impl<'a, 'tcx> DocFolder for CacheBuilder<'a, 'tcx> {
             let impl_item = Impl { impl_item: item };
             if impl_item.trait_did().map_or(true, |d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
+                    if let ItemId::Blanket { for_, .. } = &impl_item.impl_item.def_id
+                        && for_ != &did {
+                        continue;
+                    }
                     self.cache.impls.entry(did).or_insert_with(Vec::new).push(impl_item.clone());
                 }
             } else {
                 let trait_did = impl_item.trait_did().expect("no trait did");
+                if let ItemId::Blanket { for_, .. } = &impl_item.impl_item.def_id {
+                    dids = dids
+                        .into_iter()
+                        .filter(|did| did == for_)
+                        .collect();
+                }
                 self.cache.orphan_trait_impls.push((trait_did, dids, impl_item));
             }
             None
