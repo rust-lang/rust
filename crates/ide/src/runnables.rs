@@ -226,7 +226,11 @@ fn find_related_tests(
     search_scope: Option<SearchScope>,
     tests: &mut FxHashSet<Runnable>,
 ) {
-    let defs = references::find_defs(sema, syntax, position.offset);
+    // FIXME: why is this using references::find_defs, this should use ide_db::search
+    let defs = match references::find_defs(sema, syntax, position.offset) {
+        Some(defs) => defs,
+        None => return,
+    };
     for def in defs {
         let defs = def
             .usages(sema)

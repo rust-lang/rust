@@ -208,6 +208,16 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.descend_into_macros(token)
     }
 
+    /// Descend the token into macrocalls to all its mapped counterparts.
+    ///
+    /// Returns the original non descended token if none of the mapped counterparts have the same syntax kind.
+    pub fn descend_into_macros_with_same_kind(
+        &self,
+        token: SyntaxToken,
+    ) -> SmallVec<[SyntaxToken; 1]> {
+        self.imp.descend_into_macros_with_same_kind(token)
+    }
+
     /// Maps a node down by mapping its first and last token down.
     pub fn descend_node_into_attributes<N: AstNode>(&self, node: N) -> SmallVec<[N; 1]> {
         self.imp.descend_node_into_attributes(node)
@@ -599,25 +609,19 @@ impl<'db> SemanticsImpl<'db> {
         };
 
         if first == last {
-            self.descend_into_macros_impl(
-                first,
-                &mut |InFile { value, .. }| {
-                    if let Some(node) = value.ancestors().find_map(N::cast) {
-                        res.push(node)
-                    }
-                },
-                false,
-            );
+            self.descend_into_macros_impl(first, &mut |InFile { value, .. }| {
+                if let Some(node) = value.ancestors().find_map(N::cast) {
+                    res.push(node)
+                }
+                false
+            });
         } else {
             // Descend first and last token, then zip them to look for the node they belong to
             let mut scratch: SmallVec<[_; 1]> = smallvec![];
-            self.descend_into_macros_impl(
-                first,
-                &mut |token| {
-                    scratch.push(token);
-                },
-                false,
-            );
+            self.descend_into_macros_impl(first, &mut |token| {
+                scratch.push(token);
+                false
+            });
 
             let mut scratch = scratch.into_iter();
             self.descend_into_macros_impl(
@@ -638,8 +642,8 @@ impl<'db> SemanticsImpl<'db> {
                             }
                         }
                     }
+                    false
                 },
-                false,
             );
         }
         res
@@ -647,21 +651,41 @@ impl<'db> SemanticsImpl<'db> {
 
     fn descend_into_macros(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
         let mut res = smallvec![];
-        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| res.push(value), false);
+        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| {
+            res.push(value);
+            false
+        });
+        res
+    }
+
+    fn descend_into_macros_with_same_kind(&self, token: SyntaxToken) -> SmallVec<[SyntaxToken; 1]> {
+        let kind = token.kind();
+        let mut res = smallvec![];
+        self.descend_into_macros_impl(token.clone(), &mut |InFile { value, .. }| {
+            if value.kind() == kind {
+                res.push(value);
+            }
+            false
+        });
+        if res.is_empty() {
+            res.push(token);
+        }
         res
     }
 
     fn descend_into_macros_single(&self, token: SyntaxToken) -> SyntaxToken {
         let mut res = token.clone();
-        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| res = value, true);
+        self.descend_into_macros_impl(token, &mut |InFile { value, .. }| {
+            res = value;
+            true
+        });
         res
     }
 
     fn descend_into_macros_impl(
         &self,
         token: SyntaxToken,
-        f: &mut dyn FnMut(InFile<SyntaxToken>),
-        single: bool,
+        f: &mut dyn FnMut(InFile<SyntaxToken>) -> bool,
     ) {
         let _p = profile::span("descend_into_macros");
         let parent = match token.parent() {
@@ -688,16 +712,11 @@ impl<'db> SemanticsImpl<'db> {
                     self.cache(value, file_id);
                 }
 
-                let mut mapped_tokens =
-                    expansion_info.map_token_down(self.db.upcast(), item, token)?;
-
+                let mapped_tokens = expansion_info.map_token_down(self.db.upcast(), item, token)?;
                 let len = stack.len();
+
                 // requeue the tokens we got from mapping our current token down
-                if single {
-                    stack.extend(mapped_tokens.next());
-                } else {
-                    stack.extend(mapped_tokens);
-                }
+                stack.extend(mapped_tokens);
                 // if the length changed we have found a mapping for the token
                 (stack.len() != len).then(|| ())
             };
@@ -787,8 +806,8 @@ impl<'db> SemanticsImpl<'db> {
             })()
             .is_none();
 
-            if was_not_remapped {
-                f(token)
+            if was_not_remapped && f(token) {
+                break;
             }
         }
     }
