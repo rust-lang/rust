@@ -4,6 +4,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
+use rustc_middle::middle::stability::{self, DeprecationAsSafeKind};
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
@@ -72,10 +73,27 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                 let func_ty = func.ty(self.body, self.tcx);
                 let sig = func_ty.fn_sig(self.tcx);
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
-                    self.require_unsafe(
-                        UnsafetyViolationKind::General,
-                        UnsafetyViolationDetails::CallToUnsafeFunction,
-                    )
+                    // check if this is a call to a #[deprecated_safe] fn() and lint if so
+                    // instead of erroring
+                    if let ty::FnDef(func_id, _) = func_ty.kind()
+                        && stability::check_deprecation_as_safe(
+                            self.tcx,
+                            *func_id,
+                            self.source_info.span,
+                        )
+                    {
+                        self.require_unsafe(
+                            UnsafetyViolationKind::DeprecatedSafe {
+                                depr_as_safe: *func_id,
+                            },
+                            UnsafetyViolationDetails::CallToUnsafeFunction,
+                        )
+                    } else {
+                        self.require_unsafe(
+                            UnsafetyViolationKind::General,
+                            UnsafetyViolationDetails::CallToUnsafeFunction,
+                        )
+                    }
                 }
 
                 if let ty::FnDef(func_id, _) = func_ty.kind() {
@@ -289,7 +307,8 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             // `unsafe` blocks are required in safe code
             Safety::Safe => violations.into_iter().for_each(|&violation| {
                 match violation.kind {
-                    UnsafetyViolationKind::General => {}
+                    UnsafetyViolationKind::General
+                    | UnsafetyViolationKind::DeprecatedSafe { .. } => {}
                     UnsafetyViolationKind::UnsafeFn => {
                         bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                     }
@@ -300,7 +319,15 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             }),
             // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
             Safety::FnUnsafe => violations.into_iter().for_each(|&(mut violation)| {
-                violation.kind = UnsafetyViolationKind::UnsafeFn;
+                if unsafe_op_in_unsafe_fn_allowed(self.tcx, violation.lint_root) {
+                    return;
+                }
+
+                // switch violation kind so that the unsafe_op_in_unsafe_fn lint is emitted instead,
+                // but preserve any deprecated_safe lint
+                if !matches!(violation.kind, UnsafetyViolationKind::DeprecatedSafe { .. }) {
+                    violation.kind = UnsafetyViolationKind::UnsafeFn;
+                }
                 if !self.violations.contains(&violation) {
                     self.violations.push(violation)
                 }
@@ -310,10 +337,10 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
                 update_entry(
                     self,
                     hir_id,
-                    match self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, violation.lint_root).0
-                    {
-                        Level::Allow => AllAllowedInUnsafeFn(violation.lint_root),
-                        _ => SomeDisallowedInUnsafeFn,
+                    if unsafe_op_in_unsafe_fn_allowed(self.tcx, violation.lint_root) {
+                        AllAllowedInUnsafeFn(violation.lint_root)
+                    } else {
+                        SomeDisallowedInUnsafeFn
                     },
                 )
             }),
@@ -580,8 +607,8 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let (description, note) = details.description_and_note();
 
         // Report an error.
-        let unsafe_fn_msg =
-            if unsafe_op_in_unsafe_fn_allowed(tcx, lint_root) { " function or" } else { "" };
+        let unsafe_op_in_unsafe_fn_allowed = unsafe_op_in_unsafe_fn_allowed(tcx, lint_root);
+        let unsafe_fn_msg = if unsafe_op_in_unsafe_fn_allowed { " function or" } else { "" };
 
         match kind {
             UnsafetyViolationKind::General => {
@@ -612,6 +639,15 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     .emit();
                 },
             ),
+            UnsafetyViolationKind::DeprecatedSafe { depr_as_safe } => {
+                stability::report_deprecation_as_safe(
+                    tcx,
+                    DeprecationAsSafeKind::FnCall { unsafe_op_in_unsafe_fn_allowed },
+                    depr_as_safe,
+                    lint_root,
+                    source_info.span,
+                )
+            }
         }
     }
 
