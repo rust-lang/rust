@@ -1,4 +1,4 @@
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:5:5
    |
 LL |     let a;
@@ -20,7 +20,7 @@ help: add a semicolon after the `match` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:14:5
    |
 LL |     let b;
@@ -41,7 +41,7 @@ help: add a semicolon after the `if` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:21:5
    |
 LL |     let c;
@@ -62,7 +62,7 @@ help: add a semicolon after the `if` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:28:5
    |
 LL |     let d;
@@ -83,7 +83,7 @@ help: add a semicolon after the `if` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:36:5
    |
 LL |     let e;
@@ -104,7 +104,7 @@ help: add a semicolon after the `if` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:43:5
    |
 LL |     let f;
@@ -120,7 +120,7 @@ LL -         1 => f = "three",
 LL +         1 => "three",
    | 
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:49:5
    |
 LL |     let g: usize;
@@ -140,7 +140,7 @@ help: add a semicolon after the `if` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:64:5
    |
 LL |     let a;
@@ -161,7 +161,7 @@ help: add a semicolon after the `match` expression
 LL |     };
    |      +
 
-error: unneeded late initalization
+error: unneeded late initialization
   --> $DIR/needless_late_init.rs:81:5
    |
 LL |     let a;

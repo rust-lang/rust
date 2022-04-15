@@ -18,7 +18,7 @@ pub fn install_hook(force_override: bool) {
 
     // So a little bit of a funny story. Git on unix requires the pre-commit file
     // to have the `execute` permission to be set. The Rust functions for modifying
-    // these flags doesn't seem to work when executed with normal user permissions. 
+    // these flags doesn't seem to work when executed with normal user permissions.
     //
     // However, there is a little hack that is also being used by Rust itself in their
     // setup script. Git saves the `execute` flag when syncing files. This means
