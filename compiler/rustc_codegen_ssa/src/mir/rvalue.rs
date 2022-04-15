@@ -212,7 +212,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
                         }
                     }
-                    mir::CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
+                    mir::CastKind::Pointer(
+                        PointerCast::UnsafeFnPointer | PointerCast::DeprecatedSafeFnPointer,
+                    ) => {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }

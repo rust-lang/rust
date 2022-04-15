@@ -2011,7 +2011,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
 
-                    CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
+                    CastKind::Pointer(
+                        ptr_cast @ (PointerCast::UnsafeFnPointer
+                        | PointerCast::DeprecatedSafeFnPointer),
+                    ) => {
                         let fn_sig = op.ty(body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -2021,7 +2024,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         // and hence may contain unnormalized results.
                         let fn_sig = self.normalize(fn_sig, location);
 
-                        let ty_fn_ptr_from = tcx.safe_to_unsafe_fn_ty(fn_sig);
+                        let ty_fn_ptr_from = match ptr_cast {
+                            PointerCast::UnsafeFnPointer => tcx.safe_to_unsafe_fn_ty(fn_sig),
+                            PointerCast::DeprecatedSafeFnPointer => {
+                                tcx.unsafe_to_safe_fn_ty(fn_sig)
+                            }
+                            // parent match arm matches only these two variants
+                            _ => unreachable!(),
+                        };
 
                         if let Err(terr) = self.eq_types(
                             *ty,
