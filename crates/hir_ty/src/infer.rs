@@ -59,7 +59,8 @@ mod closure;
 pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile::span("infer_query");
     let resolver = def.resolver(db.upcast());
-    let mut ctx = InferenceContext::new(db, def, resolver);
+    let body = db.body(def);
+    let mut ctx = InferenceContext::new(db, def, &body, resolver);
 
     match def {
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
@@ -360,7 +361,7 @@ impl Index<PatId> for InferenceResult {
 pub(crate) struct InferenceContext<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) owner: DefWithBodyId,
-    pub(crate) body: Arc<Body>,
+    pub(crate) body: &'a Body,
     pub(crate) resolver: Resolver,
     table: unify::InferenceTable<'a>,
     trait_env: Arc<TraitEnvironment>,
@@ -394,7 +395,12 @@ fn find_breakable<'c>(
 }
 
 impl<'a> InferenceContext<'a> {
-    fn new(db: &'a dyn HirDatabase, owner: DefWithBodyId, resolver: Resolver) -> Self {
+    fn new(
+        db: &'a dyn HirDatabase,
+        owner: DefWithBodyId,
+        body: &'a Body,
+        resolver: Resolver,
+    ) -> Self {
         let krate = owner.module(db.upcast()).krate();
         let trait_env = owner
             .as_generic_def_id()
@@ -406,7 +412,7 @@ impl<'a> InferenceContext<'a> {
             return_ty: TyKind::Error.intern(Interner), // set in collect_fn_signature
             db,
             owner,
-            body: db.body(owner),
+            body,
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
@@ -452,12 +458,11 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn collect_fn(&mut self, data: &FunctionData) {
-        let body = Arc::clone(&self.body); // avoid borrow checker problem
         let ctx = crate::lower::TyLoweringContext::new(self.db, &self.resolver)
             .with_impl_trait_mode(ImplTraitLoweringMode::Param);
         let param_tys =
             data.params.iter().map(|(_, type_ref)| ctx.lower_ty(type_ref)).collect::<Vec<_>>();
-        for (ty, pat) in param_tys.into_iter().zip(body.params.iter()) {
+        for (ty, pat) in param_tys.into_iter().zip(self.body.params.iter()) {
             let ty = self.insert_type_vars(ty);
             let ty = self.normalize_associated_types_in(ty);
 

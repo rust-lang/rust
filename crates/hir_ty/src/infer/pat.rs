@@ -1,6 +1,6 @@
 //! Type inference for patterns.
 
-use std::{iter::repeat, sync::Arc};
+use std::iter::repeat;
 
 use chalk_ir::Mutability;
 use hir_def::{
@@ -100,10 +100,9 @@ impl<'a> InferenceContext<'a> {
         expected: &Ty,
         mut default_bm: BindingMode,
     ) -> Ty {
-        let body = Arc::clone(&self.body); // avoid borrow checker problem
         let mut expected = self.resolve_ty_shallow(expected);
 
-        if is_non_ref_pat(&body, pat) {
+        if is_non_ref_pat(&self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(Adjustment {
@@ -122,7 +121,7 @@ impl<'a> InferenceContext<'a> {
                 pat_adjustments.shrink_to_fit();
                 self.result.pat_adjustments.insert(pat, pat_adjustments);
             }
-        } else if let Pat::Ref { .. } = &body[pat] {
+        } else if let Pat::Ref { .. } = &self.body[pat] {
             cov_mark::hit!(match_ergonomics_ref);
             // When you encounter a `&pat` pattern, reset to Move.
             // This is so that `w` is by value: `let (_, &w) = &(1, &2);`
@@ -133,7 +132,7 @@ impl<'a> InferenceContext<'a> {
         let default_bm = default_bm;
         let expected = expected;
 
-        let ty = match &body[pat] {
+        let ty = match &self.body[pat] {
             Pat::Tuple { args, ellipsis } => {
                 let expectations = match expected.as_tuple() {
                     Some(parameters) => &*parameters.as_slice(Interner),

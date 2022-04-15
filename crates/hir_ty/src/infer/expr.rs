@@ -4,7 +4,6 @@ use std::{
     collections::hash_map::Entry,
     iter::{repeat, repeat_with},
     mem,
-    sync::Arc,
 };
 
 use chalk_ir::{
@@ -80,8 +79,7 @@ impl<'a> InferenceContext<'a> {
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
         self.db.unwind_if_cancelled();
 
-        let body = Arc::clone(&self.body); // avoid borrow checker problem
-        let ty = match &body[tgt_expr] {
+        let ty = match &self.body[tgt_expr] {
             Expr::Missing => self.err_ty(),
             &Expr::If { condition, then_branch, else_branch } => {
                 self.infer_expr(
@@ -560,17 +558,7 @@ impl<'a> InferenceContext<'a> {
                 }
                 .intern(Interner)
             }
-            Expr::Box { expr } => {
-                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
-                if let Some(box_) = self.resolve_boxed_box() {
-                    TyBuilder::adt(self.db, box_)
-                        .push(inner_ty)
-                        .fill_with_defaults(self.db, || self.table.new_type_var())
-                        .build()
-                } else {
-                    self.err_ty()
-                }
-            }
+            &Expr::Box { expr } => self.infer_expr_box(expr),
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let inner_ty = self.resolve_ty_shallow(&inner_ty);
@@ -796,6 +784,18 @@ impl<'a> InferenceContext<'a> {
             self.diverges = Diverges::Always;
         }
         ty
+    }
+
+    fn infer_expr_box(&mut self, inner_expr: ExprId) -> chalk_ir::Ty<Interner> {
+        let inner_ty = self.infer_expr_inner(inner_expr, &Expectation::none());
+        if let Some(box_) = self.resolve_boxed_box() {
+            TyBuilder::adt(self.db, box_)
+                .push(inner_ty)
+                .fill_with_defaults(self.db, || self.table.new_type_var())
+                .build()
+        } else {
+            self.err_ty()
+        }
     }
 
     fn infer_overloadable_binop(
