@@ -8,7 +8,7 @@ use rustc_errors::{
     MultiSpan,
 };
 use rustc_hir as hir;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, Node, QPath};
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -1473,12 +1473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn suggest_use_candidates(
-        &self,
-        err: &mut Diagnostic,
-        mut msg: String,
-        candidates: Vec<DefId>,
-    ) {
+    fn suggest_use_candidates(&self, err: &mut Diagnostic, msg: String, candidates: Vec<DefId>) {
         let parent_map = self.tcx.visible_parent_map(());
 
         // Separate out candidates that must be imported with a glob, because they are named `_`
@@ -1502,80 +1497,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
 
         let module_did = self.tcx.parent_module(self.body_id);
-        let (span, found_use) = find_use_placement(self.tcx, module_did);
-        if let Some(span) = span {
-            let path_strings = candidates.iter().map(|trait_did| {
-                // Produce an additional newline to separate the new use statement
-                // from the directly following item.
-                let additional_newline = if found_use { "" } else { "\n" };
-                format!(
-                    "use {};\n{}",
-                    with_crate_prefix!(self.tcx.def_path_str(*trait_did)),
-                    additional_newline
-                )
-            });
+        let (module, _, _) = self.tcx.hir().get_module(module_did);
+        let span = module.spans.inject_use_span;
 
-            let glob_path_strings = globs.iter().map(|trait_did| {
-                let parent_did = parent_map.get(trait_did).unwrap();
+        let path_strings = candidates.iter().map(|trait_did| {
+            format!("use {};\n", with_crate_prefix!(self.tcx.def_path_str(*trait_did)),)
+        });
 
-                // Produce an additional newline to separate the new use statement
-                // from the directly following item.
-                let additional_newline = if found_use { "" } else { "\n" };
-                format!(
-                    "use {}::*; // trait {}\n{}",
-                    with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
-                    self.tcx.item_name(*trait_did),
-                    additional_newline
-                )
-            });
+        let glob_path_strings = globs.iter().map(|trait_did| {
+            let parent_did = parent_map.get(trait_did).unwrap();
+            format!(
+                "use {}::*; // trait {}\n",
+                with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
+                self.tcx.item_name(*trait_did),
+            )
+        });
 
-            err.span_suggestions(
-                span,
-                &msg,
-                path_strings.chain(glob_path_strings),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            let limit = if candidates.len() + globs.len() == 5 { 5 } else { 4 };
-            for (i, trait_did) in candidates.iter().take(limit).enumerate() {
-                if candidates.len() + globs.len() > 1 {
-                    msg.push_str(&format!(
-                        "\ncandidate #{}: `use {};`",
-                        i + 1,
-                        with_crate_prefix!(self.tcx.def_path_str(*trait_did))
-                    ));
-                } else {
-                    msg.push_str(&format!(
-                        "\n`use {};`",
-                        with_crate_prefix!(self.tcx.def_path_str(*trait_did))
-                    ));
-                }
-            }
-            for (i, trait_did) in
-                globs.iter().take(limit.saturating_sub(candidates.len())).enumerate()
-            {
-                let parent_did = parent_map.get(trait_did).unwrap();
-
-                if candidates.len() + globs.len() > 1 {
-                    msg.push_str(&format!(
-                        "\ncandidate #{}: `use {}::*; // trait {}`",
-                        candidates.len() + i + 1,
-                        with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
-                        self.tcx.item_name(*trait_did),
-                    ));
-                } else {
-                    msg.push_str(&format!(
-                        "\n`use {}::*; // trait {}`",
-                        with_crate_prefix!(self.tcx.def_path_str(*parent_did)),
-                        self.tcx.item_name(*trait_did),
-                    ));
-                }
-            }
-            if candidates.len() > limit {
-                msg.push_str(&format!("\nand {} others", candidates.len() + globs.len() - limit));
-            }
-            err.note(&msg);
-        }
+        err.span_suggestions(
+            span,
+            &msg,
+            path_strings.chain(glob_path_strings),
+            Applicability::MaybeIncorrect,
+        );
     }
 
     fn suggest_valid_traits(
@@ -2104,53 +2047,6 @@ impl Ord for TraitInfo {
 /// and wraps them into `TraitInfo` for custom sorting.
 pub fn all_traits(tcx: TyCtxt<'_>) -> Vec<TraitInfo> {
     tcx.all_traits().map(|def_id| TraitInfo { def_id }).collect()
-}
-
-fn find_use_placement<'tcx>(tcx: TyCtxt<'tcx>, target_module: LocalDefId) -> (Option<Span>, bool) {
-    // FIXME(#94854): this code uses an out-of-date method for inferring a span
-    // to suggest. It would be better to thread the ModSpans from the AST into
-    // the HIR, and then use that to drive the suggestion here.
-
-    let mut span = None;
-    let mut found_use = false;
-    let (module, _, _) = tcx.hir().get_module(target_module);
-
-    // Find a `use` statement.
-    for &item_id in module.item_ids {
-        let item = tcx.hir().item(item_id);
-        match item.kind {
-            hir::ItemKind::Use(..) => {
-                // Don't suggest placing a `use` before the prelude
-                // import or other generated ones.
-                if !item.span.from_expansion() {
-                    span = Some(item.span.shrink_to_lo());
-                    found_use = true;
-                    break;
-                }
-            }
-            // Don't place `use` before `extern crate`...
-            hir::ItemKind::ExternCrate(_) => {}
-            // ...but do place them before the first other item.
-            _ => {
-                if span.map_or(true, |span| item.span < span) {
-                    if !item.span.from_expansion() {
-                        span = Some(item.span.shrink_to_lo());
-                        // Don't insert between attributes and an item.
-                        let attrs = tcx.hir().attrs(item.hir_id());
-                        // Find the first attribute on the item.
-                        // FIXME: This is broken for active attributes.
-                        for attr in attrs {
-                            if !attr.span.is_dummy() && span.map_or(true, |span| attr.span < span) {
-                                span = Some(attr.span.shrink_to_lo());
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    (span, found_use)
 }
 
 fn print_disambiguation_help<'tcx>(
