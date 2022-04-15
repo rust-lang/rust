@@ -21,7 +21,7 @@ Formatting is checked by the `tidy` script. It runs automatically when you do
 
 If you want to use format-on-save in your editor, the pinned version of
 `rustfmt` is built under `build/<target>/stage0/bin/rustfmt`. You'll have to
-pass the <!-- date: 2021-09 --> `--edition=2021` argument yourself when calling
+pass the <!-- date: 2022-04 --> `--edition=2021` argument yourself when calling
 `rustfmt` directly.
 
 [fmt]: https://github.com/rust-dev-tools/fmt-rfcs
