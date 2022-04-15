@@ -44,7 +44,6 @@ use crate::{
     Field, Function, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait, Type, TypeAlias,
     Variant,
 };
-use base_db::CrateId;
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
 /// original source files. It should not be used inside the HIR itself.
@@ -414,7 +413,6 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         literal: &ast::RecordExpr,
     ) -> Option<Vec<(Field, Type)>> {
-        let krate = self.resolver.krate();
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
@@ -423,7 +421,7 @@ impl SourceAnalyzer {
 
         let (variant, missing_fields, _exhaustive) =
             record_literal_missing_fields(db, infer, expr_id, &body[expr_id])?;
-        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
+        let res = self.missing_fields(db, substs, variant, missing_fields);
         Some(res)
     }
 
@@ -432,7 +430,6 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pattern: &ast::RecordPat,
     ) -> Option<Vec<(Field, Type)>> {
-        let krate = self.resolver.krate();
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
@@ -441,14 +438,13 @@ impl SourceAnalyzer {
 
         let (variant, missing_fields, _exhaustive) =
             record_pattern_missing_fields(db, infer, pat_id, &body[pat_id])?;
-        let res = self.missing_fields(db, krate, substs, variant, missing_fields);
+        let res = self.missing_fields(db, substs, variant, missing_fields);
         Some(res)
     }
 
     fn missing_fields(
         &self,
         db: &dyn HirDatabase,
-        krate: CrateId,
         substs: &Substitution,
         variant: VariantId,
         missing_fields: Vec<LocalFieldId>,
@@ -460,7 +456,7 @@ impl SourceAnalyzer {
             .map(|local_id| {
                 let field = FieldId { parent: variant, local_id };
                 let ty = field_types[local_id].clone().substitute(Interner, substs);
-                (field.into(), Type::new_with_resolver_inner(db, krate, &self.resolver, ty))
+                (field.into(), Type::new_with_resolver_inner(db, &self.resolver, ty))
             })
             .collect()
     }
