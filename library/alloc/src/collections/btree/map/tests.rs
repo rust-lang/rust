@@ -791,7 +791,11 @@ fn test_range_finding_ill_order_in_range_ord() {
     impl Ord for EvilTwin {
         fn cmp(&self, other: &Self) -> Ordering {
             let ord = self.0.cmp(&other.0);
-            if COMPARES.fetch_add(1, SeqCst) > 0 { ord.reverse() } else { ord }
+            if COMPARES.fetch_add(1, SeqCst) > 0 {
+                ord.reverse()
+            } else {
+                ord
+            }
         }
     }
 
@@ -943,13 +947,12 @@ mod test_drain_filter {
     fn mutating_and_keeping() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        assert!(
-            map.drain_filter(|_, v| {
+        assert!(map
+            .drain_filter(|_, v| {
                 *v += 6;
                 false
             })
-            .eq(iter::empty())
-        );
+            .eq(iter::empty()));
         assert!(map.keys().copied().eq(0..3));
         assert!(map.values().copied().eq(6..9));
         map.check();
@@ -960,13 +963,12 @@ mod test_drain_filter {
     fn mutating_and_removing() {
         let pairs = (0..3).map(|i| (i, i));
         let mut map = BTreeMap::from_iter(pairs);
-        assert!(
-            map.drain_filter(|_, v| {
+        assert!(map
+            .drain_filter(|_, v| {
                 *v += 6;
                 true
             })
-            .eq((0..3).map(|i| (i, i + 6)))
-        );
+            .eq((0..3).map(|i| (i, i + 6))));
         assert!(map.is_empty());
         map.check();
     }
@@ -1876,6 +1878,72 @@ fn test_first_last_entry() {
     assert_eq!(a.first_entry().unwrap().key(), &1);
     assert_eq!(a.last_entry().unwrap().key(), &1);
     a.check();
+}
+
+#[test]
+fn test_pop_first_last() {
+    let mut map = BTreeMap::new();
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
+
+    map.insert(1, 10);
+    map.insert(2, 20);
+    map.insert(3, 30);
+    map.insert(4, 40);
+
+    assert_eq!(map.len(), 4);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 1);
+    assert_eq!(val, 10);
+    assert_eq!(map.len(), 3);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 2);
+    assert_eq!(val, 20);
+    assert_eq!(map.len(), 2);
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 4);
+    assert_eq!(val, 40);
+    assert_eq!(map.len(), 1);
+
+    map.insert(5, 50);
+    map.insert(6, 60);
+    assert_eq!(map.len(), 3);
+
+    let (key, val) = map.pop_first().unwrap();
+    assert_eq!(key, 3);
+    assert_eq!(val, 30);
+    assert_eq!(map.len(), 2);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 6);
+    assert_eq!(val, 60);
+    assert_eq!(map.len(), 1);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 5);
+    assert_eq!(val, 50);
+    assert_eq!(map.len(), 0);
+
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
+
+    map.insert(7, 70);
+    map.insert(8, 80);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 8);
+    assert_eq!(val, 80);
+    assert_eq!(map.len(), 1);
+
+    let (key, val) = map.pop_last().unwrap();
+    assert_eq!(key, 7);
+    assert_eq!(val, 70);
+    assert_eq!(map.len(), 0);
+
+    assert_eq!(map.pop_first(), None);
+    assert_eq!(map.pop_last(), None);
 }
 
 #[test]
